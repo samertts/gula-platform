@@ -8,7 +8,7 @@ from typing import Any
 from app.pipeline.normalizer import NormalizedResult
 from app.storage.db import InMemoryDB
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 
 class ResultRepository:

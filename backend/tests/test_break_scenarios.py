@@ -444,8 +444,10 @@ class TestScenario5_CorrelationLogs:
 
         ta = threading.Thread(target=request_a)
         tb = threading.Thread(target=request_b)
-        ta.start(); tb.start()
-        ta.join(); tb.join()
+        ta.start()
+        tb.start()
+        ta.join()
+        tb.join()
 
         assert results["user"] is None, (
             f"user_id leaked between requests: {results['user']}"

@@ -8,7 +8,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 from ..core.database import Base
 

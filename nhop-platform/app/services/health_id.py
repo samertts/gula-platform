@@ -10,7 +10,7 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 from ..models.citizen import Citizen
 

@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy import desc, text
 
-from backend.app._compat import UTC
+from datetime import UTC
 from backend.app.database import SessionLocal
 from backend.app.national.workflow_runtime.domain.entities import (
     WorkflowDefinition,

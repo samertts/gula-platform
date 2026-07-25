@@ -16,7 +16,7 @@ from sqlalchemy import Boolean, DateTime, Enum, Index, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 from .base import Base
 

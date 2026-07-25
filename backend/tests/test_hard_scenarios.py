@@ -143,7 +143,9 @@ class TestSlowDeath:
 
         async def call_next(_req):
             passed.append(True)
-            r = MagicMock(); r.headers = {}; return r
+            r = MagicMock()
+            r.headers = {}
+            return r
 
         with patch("app.core.self_healing.health", mock_h):
             _run_async(mw.dispatch(req, call_next))
@@ -191,7 +193,9 @@ class TestRedisDown:
 
         async def call_next(_req):
             passed.append(True)
-            r = MagicMock(); r.headers = {}; return r
+            r = MagicMock()
+            r.headers = {}
+            return r
 
         with patch("app.core.self_healing.health", h):
             _run_async(mw.dispatch(req, call_next))
@@ -379,8 +383,10 @@ class TestRaceCondition:
         results = []
         t1 = threading.Thread(target=lambda: results.append(update_attempt(1, "writer-A")))
         t2 = threading.Thread(target=lambda: results.append(update_attempt(1, "writer-B")))
-        t1.start(); t2.start()
-        t1.join(); t2.join()
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
 
         successes = sum(1 for r in results if r)
         assert successes == 1, (

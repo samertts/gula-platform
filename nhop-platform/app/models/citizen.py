@@ -16,7 +16,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 from ..core.database import Base
 

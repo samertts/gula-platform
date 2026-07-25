@@ -12,7 +12,7 @@ from app.services.outbreak_detection import (
     get_resistance_report,
 )
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 FROZEN_NOW = datetime(2026, 4, 19, 12, 0, tzinfo=UTC)
 

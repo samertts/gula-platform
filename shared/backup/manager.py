@@ -5,9 +5,9 @@ import logging
 import subprocess
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 logger = logging.getLogger("gula.backup")
 

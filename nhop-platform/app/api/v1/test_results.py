@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import and_, asc, desc
 from sqlalchemy.orm import Session
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 from ...core.database import get_db
 from ...models.citizen import Citizen

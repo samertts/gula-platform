@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 
 @dataclass(slots=True)

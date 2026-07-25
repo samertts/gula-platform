@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 
 def test_order_tests_requires_doctor_role(app_client, make_citizen):

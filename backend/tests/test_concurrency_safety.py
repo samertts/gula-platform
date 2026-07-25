@@ -285,14 +285,18 @@ class TestLabResultOptimisticLockInvariant:
         """Newly created results start at version=1, ready for CAS."""
         lab = Lab(name="V Lab", license_number="LIC-V",
                   lab_type="private", city="Baghdad")
-        db.add(lab); db.flush()
+        db.add(lab)
+        db.flush()
         patient = Patient(lab_id=lab.id, full_name="P", phone="07700111111",
                           health_id="HID-V-1")
-        db.add(patient); db.flush()
+        db.add(patient)
+        db.flush()
         order = LabOrder(lab_id=lab.id, patient_id=patient.id, status="pending")
-        db.add(order); db.flush()
+        db.add(order)
+        db.flush()
         result = LabResult(order_id=order.id, test_name="X", value=1.0)
-        db.add(result); db.commit()
+        db.add(result)
+        db.commit()
         db.refresh(result)
         assert result.version == 1
 

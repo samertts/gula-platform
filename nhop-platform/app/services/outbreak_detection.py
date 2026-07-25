@@ -28,7 +28,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 from ..models.antibiotic_sensitivity import AntibioticSensitivity
 from ..models.disease_case import DiseaseCase

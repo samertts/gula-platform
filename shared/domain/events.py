@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 
 @dataclass

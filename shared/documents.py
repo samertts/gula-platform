@@ -4,11 +4,11 @@ import hashlib
 import logging
 import mimetypes
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 logger = logging.getLogger("gula.documents")
 

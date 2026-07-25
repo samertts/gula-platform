@@ -40,7 +40,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 REPO_ROOT   = Path(__file__).parent.parent.resolve()

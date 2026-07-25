@@ -3,10 +3,10 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 logger = logging.getLogger("gula.audit")
 

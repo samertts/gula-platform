@@ -110,7 +110,8 @@ class TestPasswordHashing:
     def test_hash_password_returns_hash(self):
         """Should return a bcrypt hash string."""
         if not self._can_hash():
-            import pytest; pytest.skip("bcrypt not available in test environment")
+            import pytest
+            pytest.skip("bcrypt not available in test environment")
         from app.security.auth import hash_password
         h = hash_password("MyPassword123")
         assert h is not None
@@ -119,7 +120,8 @@ class TestPasswordHashing:
     def test_verify_correct_password(self):
         """Correct password should verify successfully."""
         if not self._can_hash():
-            import pytest; pytest.skip("bcrypt not available in test environment")
+            import pytest
+            pytest.skip("bcrypt not available in test environment")
         from app.security.auth import hash_password, verify_password
         h = hash_password("CorrectHorseBatteryStaple")
         assert verify_password("CorrectHorseBatteryStaple", h) is True
@@ -127,7 +129,8 @@ class TestPasswordHashing:
     def test_verify_wrong_password(self):
         """Wrong password should fail verification."""
         if not self._can_hash():
-            import pytest; pytest.skip("bcrypt not available in test environment")
+            import pytest
+            pytest.skip("bcrypt not available in test environment")
         from app.security.auth import hash_password, verify_password
         h = hash_password("CorrectPassword")
         assert verify_password("WrongPassword", h) is False
@@ -135,7 +138,8 @@ class TestPasswordHashing:
     def test_different_hashes_for_same_password(self):
         """bcrypt should produce different hashes due to salting."""
         if not self._can_hash():
-            import pytest; pytest.skip("bcrypt not available in test environment")
+            import pytest
+            pytest.skip("bcrypt not available in test environment")
         from app.security.auth import hash_password
         h1 = hash_password("SamePassword")
         h2 = hash_password("SamePassword")

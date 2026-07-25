@@ -233,6 +233,26 @@ const en = {
     phone: "Invalid phone number",
     passwordMatch: "Passwords do not match",
   },
+  identity: {
+    title: "Identity & Access",
+    subtitle: "Manage digital identity and access policies",
+  },
+  niam: {
+    governance: "Governance",
+    governanceDesc: "Manage platform authorities and identities",
+    federation: "Federation",
+    federationDesc: "Manage federation and mutual trust",
+    lifecycle: "Lifecycle",
+    lifecycleDesc: "Manage digital identity lifecycles",
+    adaptiveAuth: "Adaptive Auth",
+    adaptiveAuthDesc: "Adaptive authentication and risk policies",
+    trust: "Trust",
+    trustDesc: "Manage trust services and digital signatures",
+    workflows: "Workflows",
+    workflowsDesc: "Manage identity approvals and workflows",
+    certificates: "Certificates",
+    certificatesDesc: "Manage digital certificates and keys",
+  },
 };
 
 export default en;

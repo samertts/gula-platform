@@ -44,7 +44,7 @@ from pathlib import Path
 import requests
 import urllib3
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

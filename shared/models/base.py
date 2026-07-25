@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from backend.app._compat import UTC
+from datetime import UTC
 from sqlalchemy import Boolean, Column, DateTime, Integer
 
 

@@ -4,10 +4,7 @@ import json
 import logging
 import traceback
 from contextvars import ContextVar
-from datetime import datetime
-from typing import Any
-
-from backend.app._compat import UTC
+from datetime import UTC, datetime
 
 _ctx_request_id: ContextVar[str] = ContextVar("request_id", default="")
 _ctx_user_id: ContextVar[int | None] = ContextVar("user_id", default=None)

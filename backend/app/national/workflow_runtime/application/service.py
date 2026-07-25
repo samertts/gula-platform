@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from backend.app._compat import UTC
+from datetime import UTC
 from backend.app.national.workflow_runtime.application.interfaces import (
     WorkflowApprovalHandler,
     WorkflowNotifier,

@@ -14,7 +14,7 @@ from uuid import UUID
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 from ..models.notification import (
     Notification,

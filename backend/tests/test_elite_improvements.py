@@ -165,8 +165,10 @@ class TestCorrelationContextVars:
 
         ta = threading.Thread(target=thread_a)
         tb = threading.Thread(target=thread_b)
-        ta.start(); tb.start()
-        ta.join(); tb.join()
+        ta.start()
+        tb.start()
+        ta.join()
+        tb.join()
 
         assert results["a_user"] == 100
         assert results["a_lab"]  == 200
@@ -302,7 +304,8 @@ class TestDegradedModeMiddleware:
     @pytest.mark.asyncio
     async def test_none_level_passes_all(self):
         from app.core.self_healing import DegradationLevel, SystemHealth
-        h = object.__new__(SystemHealth); h._init()
+        h = object.__new__(SystemHealth)
+        h._init()
         assert h.degradation_level == DegradationLevel.NONE
         _resp, passed = await self._dispatch(h, "POST", "/api/orders")
         assert passed  # passed through
@@ -310,7 +313,8 @@ class TestDegradedModeMiddleware:
     @pytest.mark.asyncio
     async def test_l2_blocks_post(self):
         from app.core.self_healing import DegradationLevel, SystemHealth
-        h = object.__new__(SystemHealth); h._init()
+        h = object.__new__(SystemHealth)
+        h._init()
         h.enter_degraded_mode("test", DegradationLevel.L2_READ_ONLY)
         resp, passed = await self._dispatch(h, "POST", "/api/orders")
         assert not passed
@@ -319,7 +323,8 @@ class TestDegradedModeMiddleware:
     @pytest.mark.asyncio
     async def test_l2_allows_get(self):
         from app.core.self_healing import DegradationLevel, SystemHealth
-        h = object.__new__(SystemHealth); h._init()
+        h = object.__new__(SystemHealth)
+        h._init()
         h.enter_degraded_mode("test", DegradationLevel.L2_READ_ONLY)
         _resp, passed = await self._dispatch(h, "GET", "/api/patients")
         assert passed  # GET passes in L2
@@ -327,7 +332,8 @@ class TestDegradedModeMiddleware:
     @pytest.mark.asyncio
     async def test_l3_blocks_get_on_non_critical(self):
         from app.core.self_healing import DegradationLevel, SystemHealth
-        h = object.__new__(SystemHealth); h._init()
+        h = object.__new__(SystemHealth)
+        h._init()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
         resp, passed = await self._dispatch(h, "GET", "/api/patients")
         assert not passed
@@ -336,7 +342,8 @@ class TestDegradedModeMiddleware:
     @pytest.mark.asyncio
     async def test_l3_allows_health(self):
         from app.core.self_healing import DegradationLevel, SystemHealth
-        h = object.__new__(SystemHealth); h._init()
+        h = object.__new__(SystemHealth)
+        h._init()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
         _resp, passed = await self._dispatch(h, "GET", "/health")
         assert passed  # /health is in _ALWAYS_ALLOWED
@@ -344,7 +351,8 @@ class TestDegradedModeMiddleware:
     @pytest.mark.asyncio
     async def test_l3_allows_auth_login(self):
         from app.core.self_healing import DegradationLevel, SystemHealth
-        h = object.__new__(SystemHealth); h._init()
+        h = object.__new__(SystemHealth)
+        h._init()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
         _resp, passed = await self._dispatch(h, "POST", "/auth/login")
         assert passed  # /auth/login is in _CRITICAL_PATHS
@@ -352,7 +360,8 @@ class TestDegradedModeMiddleware:
     @pytest.mark.asyncio
     async def test_l3_allows_kill_switch_deactivate(self):
         from app.core.self_healing import DegradationLevel, SystemHealth
-        h = object.__new__(SystemHealth); h._init()
+        h = object.__new__(SystemHealth)
+        h._init()
         h.enter_degraded_mode("storm", DegradationLevel.L3_CRITICAL_ONLY)
         _resp, passed = await self._dispatch(h, "POST", "/admin/kill-switch/deactivate")
         assert passed  # operator recovery path must always work
@@ -360,7 +369,8 @@ class TestDegradedModeMiddleware:
     @pytest.mark.asyncio
     async def test_l2_response_includes_level_name(self):
         from app.core.self_healing import DegradationLevel, SystemHealth
-        h = object.__new__(SystemHealth); h._init()
+        h = object.__new__(SystemHealth)
+        h._init()
         h.enter_degraded_mode("test", DegradationLevel.L2_READ_ONLY)
         resp, _ = await self._dispatch(h, "DELETE", "/api/orders/1")
         assert resp.status_code == 503
@@ -370,7 +380,8 @@ class TestDegradedModeMiddleware:
     @pytest.mark.asyncio
     async def test_l1_passes_writes_with_header(self):
         from app.core.self_healing import DegradationLevel, SystemHealth
-        h = object.__new__(SystemHealth); h._init()
+        h = object.__new__(SystemHealth)
+        h._init()
         h.enter_degraded_mode("pressure", DegradationLevel.L1_CACHE_HEAVY)
         _resp, passed = await self._dispatch(h, "POST", "/api/orders")
         assert passed  # L1 allows writes

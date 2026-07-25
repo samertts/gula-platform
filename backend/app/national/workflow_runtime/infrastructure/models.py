@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import Column, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSON
 
-from backend.app._compat import UTC
+from datetime import UTC
 from backend.app.national.base import BaseEntity, NationalBase
 
 

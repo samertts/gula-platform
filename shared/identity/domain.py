@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum
 
-from backend.app._compat import UTC
+from datetime import UTC
 
 
 class Gender(Enum):

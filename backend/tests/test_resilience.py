@@ -143,8 +143,10 @@ class TestAuthResilience:
         def check():
             results.append(limiter.check("concurrent:test2", max_requests=100, window_seconds=60))
         threads = [threading.Thread(target=check) for _ in range(50)]
-        for t in threads: t.start()
-        for t in threads: t.join()
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
         assert len(results) == 50
         assert all(isinstance(r, bool) for r in results)
 

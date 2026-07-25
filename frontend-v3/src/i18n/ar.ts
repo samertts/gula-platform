@@ -233,6 +233,26 @@ const ar = {
     phone: "رقم الهاتف غير صحيح",
     passwordMatch: "كلمة المرور غير متطابقة",
   },
+  identity: {
+    title: "الهوية والوصول",
+    subtitle: "إدارة الهوية الرقمية وسياسات الوصول",
+  },
+  niam: {
+    governance: "الحوكمة",
+    governanceDesc: "إدارة سلطات وهويات المنصة",
+    federation: "الاتحاد",
+    federationDesc: "إدارة الاتحاد والموثوقية المتبادلة",
+    lifecycle: "دورة الحياة",
+    lifecycleDesc: "إدارة دورة حياة الهويات الرقمية",
+    adaptiveAuth: "المصادقة التكيفية",
+    adaptiveAuthDesc: "سياسات المصادقة التكيفية والمخاطر",
+    trust: "الثقة",
+    trustDesc: "إدارة خدمات الثقة والتوقيع الرقمي",
+    workflows: "سير العمل",
+    workflowsDesc: "إدارة موافقات وسير عمل الهوية",
+    certificates: "الشهادات",
+    certificatesDesc: "إدارة الشهادات الرقمية والمفاتيح",
+  },
 };
 
 export default ar;
