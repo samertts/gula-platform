@@ -30,6 +30,10 @@ const AdminLabsPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({
 const AdminUsersPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminUsersPage })));
 const AdminAuditPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminAuditPage })));
 const FhirPage = lazy(() => import("@/pages/fhir/FhirPage").then(m => ({ default: m.FhirPage })));
+const FhirExplorerPage = lazy(() => import("@/pages/fhir/FhirExplorerPage").then(m => ({ default: m.FhirExplorerPage })));
+const FhirPatientPage = lazy(() => import("@/pages/fhir/FhirPatientPage").then(m => ({ default: m.FhirPatientPage })));
+const FhirObservationPage = lazy(() => import("@/pages/fhir/FhirObservationPage").then(m => ({ default: m.FhirObservationPage })));
+const FhirReportPage = lazy(() => import("@/pages/fhir/FhirReportPage").then(m => ({ default: m.FhirReportPage })));
 const EhrPage = lazy(() => import("@/pages/ehr/EhrPage").then(m => ({ default: m.EhrPage })));
 const HospitalPage = lazy(() => import("@/pages/hospital/HospitalPage").then(m => ({ default: m.HospitalPage })));
 const EdgePage = lazy(() => import("@/pages/edge/EdgePage").then(m => ({ default: m.EdgePage })));
@@ -138,6 +142,10 @@ export const router = createBrowserRouter([
       { path: "admin/users", element: <RoleGuard roles={adminRoles}><LazyPage><AdminUsersPage /></LazyPage></RoleGuard> },
       { path: "admin/audit", element: <RoleGuard roles={adminRoles}><LazyPage><AdminAuditPage /></LazyPage></RoleGuard> },
       { path: "fhir", element: <RoleGuard roles={adminRoles}><LazyPage><FhirPage /></LazyPage></RoleGuard> },
+      { path: "fhir/explorer", element: <RoleGuard roles={adminRoles}><LazyPage><FhirExplorerPage /></LazyPage></RoleGuard> },
+      { path: "fhir/patients", element: <RoleGuard roles={adminRoles}><LazyPage><FhirPatientPage /></LazyPage></RoleGuard> },
+      { path: "fhir/observations", element: <RoleGuard roles={adminRoles}><LazyPage><FhirObservationPage /></LazyPage></RoleGuard> },
+      { path: "fhir/reports", element: <RoleGuard roles={adminRoles}><LazyPage><FhirReportPage /></LazyPage></RoleGuard> },
       { path: "ehr", element: <RoleGuard roles={adminRoles}><LazyPage><EhrPage /></LazyPage></RoleGuard> },
       { path: "hospital", element: <RoleGuard roles={adminRoles}><LazyPage><HospitalPage /></LazyPage></RoleGuard> },
       { path: "edge", element: <RoleGuard roles={['master_admin', 'admin']}><LazyPage><EdgePage /></LazyPage></RoleGuard> },

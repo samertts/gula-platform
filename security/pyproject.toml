@@ -1,0 +1,129 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gula-security-framework"
+version = "1.0.0"
+description = "GULA Security Framework (GSF) — Permanent Enterprise Security Subsystem for the Iraqi National Healthcare Platform"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "GULA Platform Engineering", email = "security@gula.iq" },
+]
+keywords = ["security", "healthcare", "fhir", "iraq", "gsf", "zero-trust"]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Healthcare Industry",
+    "Intended Audience :: System Administrators",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+    "Framework :: Pydantic :: 2",
+]
+
+dependencies = [
+    "cryptography>=49.0.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.2",
+    "passlib[bcrypt]>=1.7.4",
+    "bcrypt>=4.1.3",
+    "joserfc>=1.7.3",
+    "pyotp>=2.10.0",
+    "webauthn>=3.0.0",
+]
+
+[project.optional-dependencies]
+aws = ["boto3>=1.34.0"]
+vault = ["hvac>=2.3.0"]
+all = [
+    "boto3>=1.34.0",
+    "hvac>=2.3.0",
+]
+
+[project.urls]
+Homepage = "https://gula.iq/security"
+Repository = "https://github.com/gula-platform/gula-security-framework"
+Documentation = "https://docs.gula.iq/gsf"
+Changelog = "https://docs.gula.iq/gsf/changelog"
+IssueTracker = "https://github.com/gula-platform/gula-security-framework/issues"
+
+[tool.setuptools.packages.find]
+include = ["security*", "security.modules*"]
+where = [".."]
+
+[tool.setuptools.package-data]
+"security" = ["py.typed", "VERSION.md"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+fix = true
+show-fixes = true
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "C4", "PIE", "RET", "T20", "RUF", "Q", "SLF"]
+ignore = ["E501", "B008", "N818", "RUF012", "SLF001", "RUF001", "RUF002", "RUF003"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["T20", "N", "F401", "F841", "SLF001"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+warn_unused_configs = true
+warn_return_any = true
+warn_unused_ignores = true
+show_error_codes = true
+pretty = true
+ignore_missing_imports = true
+no_implicit_optional = true
+explicit_package_bases = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+norecursedirs = [".git", "__pycache__", ".venv", "build", "dist"]
+addopts = "-ra --strict-markers --strict-config -v --tb=short"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "unit: isolated unit tests (no network, no secrets),",
+    "integration: requires dependencies (DB, vault, etc.),",
+    "crypto: cryptographic operation tests",
+    "slow: tests that take more than 5 seconds",
+    "security: security-critical behavior verification",
+]
+
+[tool.coverage.run]
+source = ["security"]
+omit = ["*/tests/*", "*__pycache__*", "*/reports/*"]
+concurrency = ["thread"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if __name__ == .__main__.:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if False:",
+    "if TYPE_CHECKING:",
+]
+fail_under = 85
