@@ -1,53 +1,48 @@
 from __future__ import annotations
 
 import csv
-import gzip
 import hashlib
 import io
 import json
 import logging
-import os
 import re
-import shutil
-import tempfile
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from security.modules.audit.models import AuditEvent, AuditPolicy
 from security.modules.audit.immutable import ImmutableAuditLog
+from security.modules.audit.models import AuditEvent, AuditPolicy
 
 logger = logging.getLogger(__name__)
 
 
 class AuditQuery(BaseModel):
-    actor_id: Optional[str] = None
-    actor_type: Optional[str] = None
-    action: Optional[str] = None
-    resource_type: Optional[str] = None
-    resource_id: Optional[str] = None
-    outcome: Optional[str] = None
-    start_time: Optional[datetime] = None
-    end_time: Optional[datetime] = None
+    actor_id: str | None = None
+    actor_type: str | None = None
+    action: str | None = None
+    resource_type: str | None = None
+    resource_id: str | None = None
+    outcome: str | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
     limit: int = 1000
     offset: int = 0
 
 
 class AuditService:
-    def __init__(self, policy: Optional[AuditPolicy] = None, storage_path: Optional[str] = None):
+    def __init__(self, policy: AuditPolicy | None = None, storage_path: str | None = None):
         self.policy = policy or AuditPolicy()
         self.immutable_log = ImmutableAuditLog(storage_path=storage_path)
-        self._in_memory_events: List[AuditEvent] = []
-        self._alert_rules: List[Dict[str, Any]] = []
+        self._in_memory_events: list[AuditEvent] = []
+        self._alert_rules: list[dict[str, Any]] = []
 
     def create_event(self, event: AuditEvent) -> AuditEvent:
         if not event.event_id:
             event.event_id = str(uuid4())
         if not event.timestamp:
-            event.timestamp = datetime.now(timezone.utc)
+            event.timestamp = datetime.now(UTC)
 
         previous_hash = ""
         if self._in_memory_events:
@@ -87,7 +82,7 @@ class AuditService:
             except Exception as e:
                 logger.error(f"Alert rule callback failed: {e}")
 
-    def query_events(self, query: AuditQuery) -> List[AuditEvent]:
+    def query_events(self, query: AuditQuery) -> list[AuditEvent]:
         results = list(self._in_memory_events)
 
         if query.actor_id:
@@ -112,11 +107,11 @@ class AuditService:
 
         return results
 
-    def verify_log_integrity(self) -> Dict[str, Any]:
+    def verify_log_integrity(self) -> dict[str, Any]:
         if not self._in_memory_events:
             return {"valid": True, "checked": 0, "message": "No events to verify"}
 
-        violations: List[str] = []
+        violations: list[str] = []
         for i in range(1, len(self._in_memory_events)):
             expected_prev_hash = self._in_memory_events[i - 1].hash
             actual_prev_hash = self._in_memory_events[i].previous_hash
@@ -137,8 +132,8 @@ class AuditService:
             "violations": violations,
         }
 
-    def enforce_retention(self) -> Dict[str, Any]:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=self.policy.retention_days)
+    def enforce_retention(self) -> dict[str, Any]:
+        cutoff = datetime.now(UTC) - timedelta(days=self.policy.retention_days)
         before_count = len(self._in_memory_events)
 
         self._in_memory_events = [e for e in self._in_memory_events if e.timestamp > cutoff]
@@ -156,7 +151,7 @@ class AuditService:
                 indent=2, default=str,
             )
 
-        elif format == "csv":
+        if format == "csv":
             output = io.StringIO()
             writer = csv.writer(output)
             writer.writerow(["event_id", "timestamp", "actor_id", "actor_type", "action",
@@ -168,7 +163,7 @@ class AuditService:
                 ])
             return output.getvalue()
 
-        elif format == "fhir":
+        if format == "fhir":
             fhir_entries = []
             for e in events:
                 fhir_entries.append({
@@ -184,31 +179,30 @@ class AuditService:
                 })
             return json.dumps(fhir_entries, indent=2, default=str)
 
-        elif format == "syslog":
+        if format == "syslog":
             lines = []
             for e in events:
                 lines.append(
                     f"<13>1 {e.timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')} gula-audit "
                     f"AuditService - - [event@{e.event_id} "
-                    f"actor=\"{e.actor_id}\" action=\"{e.action}\" "
-                    f"resource=\"{e.resource_id}\" outcome=\"{e.outcome}\"]"
+                    f'actor="{e.actor_id}" action="{e.action}" '
+                    f'resource="{e.resource_id}" outcome="{e.outcome}"]'
                 )
             return "\n".join(lines)
 
-        else:
-            raise ValueError(f"Unsupported export format: {format}")
+        raise ValueError(f"Unsupported export format: {format}")
 
     def add_alert_rule(self, pattern: str, callback: Any) -> None:
         self._alert_rules.append({"pattern": pattern, "callback": callback})
 
-    def get_statistics(self) -> Dict[str, Any]:
+    def get_statistics(self) -> dict[str, Any]:
         events = self._in_memory_events
         if not events:
             return {"total": 0, "by_action": {}, "by_outcome": {}, "by_actor": {}}
 
-        action_counts: Dict[str, int] = {}
-        outcome_counts: Dict[str, int] = {}
-        actor_counts: Dict[str, int] = {}
+        action_counts: dict[str, int] = {}
+        outcome_counts: dict[str, int] = {}
+        actor_counts: dict[str, int] = {}
 
         for e in events:
             action_counts[e.action] = action_counts.get(e.action, 0) + 1

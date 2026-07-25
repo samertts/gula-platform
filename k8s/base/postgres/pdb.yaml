@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgres-primary-pdb
+  namespace: gula
+  labels:
+    app: postgres-primary
+    component: database
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: postgres-primary

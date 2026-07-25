@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
 import logging
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -11,28 +10,28 @@ from security.modules.terraform.models import TerraformAuditFinding, TerraformSe
 
 logger = logging.getLogger(__name__)
 
-SENSITIVE_OUTPUT_PATTERNS: List[str] = [
+SENSITIVE_OUTPUT_PATTERNS: list[str] = [
     r"(?i)(password|secret|token|key|credential|private_key|ca_cert|certificate)",
     r"(?i)(access_key|secret_key|session_token)",
     r"(?i)(connection_string|dsn|jdbc|jwt|refresh_token)",
 ]
 
-OPEN_PORTS_RISK: Set[int] = {22, 23, 3389, 5900, 5901, 6379, 9200, 9300, 27017, 5432, 3306}
+OPEN_PORTS_RISK: set[int] = {22, 23, 3389, 5900, 5901, 6379, 9200, 9300, 27017, 5432, 3306}
 
 
 class TerraformAuditReport(BaseModel):
-    findings: List[TerraformAuditFinding] = Field(default_factory=list)
+    findings: list[TerraformAuditFinding] = Field(default_factory=list)
     passed: bool = True
     resource_count: int = 0
     file_count: int = 0
 
 
 class TerraformSecurityManager:
-    def __init__(self, config: Optional[TerraformSecurityConfig] = None):
+    def __init__(self, config: TerraformSecurityConfig | None = None):
         self.config = config or TerraformSecurityConfig()
 
-    def validate_state_file_security(self) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_state_file_security(self) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         if not self.config.state_file_locking:
@@ -55,13 +54,13 @@ class TerraformSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_provider_versioning(self, content: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_provider_versioning(self, content: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
-        provider_patterns = re.findall(r'required_providers\s*\{[^}]*\}', content, re.DOTALL)
+        provider_patterns = re.findall(r"required_providers\s*\{[^}]*\}", content, re.DOTALL)
         for block in provider_patterns:
-            provider_blocks = re.findall(r'(\w+)\s*=\s*\{([^}]*)\}', block)
+            provider_blocks = re.findall(r"(\w+)\s*=\s*\{([^}]*)\}", block)
             for name, body in provider_blocks:
                 if "source" not in body:
                     findings.append(f"Provider '{name}' missing 'source' attribute")
@@ -77,15 +76,15 @@ class TerraformSecurityManager:
                         findings.append(f"Provider '{name}' has insufficient version constraint: '{version}'")
                         passed = False
 
-        terraform_block = re.search(r'terraform\s*\{[^}]*\}', content, re.DOTALL)
+        terraform_block = re.search(r"terraform\s*\{[^}]*\}", content, re.DOTALL)
         if not provider_patterns and not terraform_block:
             findings.append("No required_providers block found - providers not pinned")
             passed = False
 
         return {"findings": findings, "passed": passed}
 
-    def check_backend_config(self, content: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def check_backend_config(self, content: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         backend_match = re.search(r'backend\s+"(\w+)"\s*\{([^}]*)\}', content, re.DOTALL)
@@ -113,8 +112,8 @@ class TerraformSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def detect_sensitive_outputs(self, content: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def detect_sensitive_outputs(self, content: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         output_blocks = re.findall(r'output\s+"([^"]+)"\s*\{([^}]*)\}', content)
@@ -135,8 +134,8 @@ class TerraformSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_variable_security(self, content: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_variable_security(self, content: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         variable_blocks = re.findall(r'variable\s+"([^"]+)"\s*\{([^}]*)\}', content)
@@ -163,14 +162,14 @@ class TerraformSecurityManager:
                             findings.append(f"Variable '{name}' has sensitive default value - avoid defaults for secrets")
                             passed = False
 
-            validation = re.search(r'validation\s*\{', body)
+            validation = re.search(r"validation\s*\{", body)
             if not validation:
                 pass
 
         return {"findings": findings, "passed": passed}
 
-    def validate_module_sources(self, content: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_module_sources(self, content: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         module_blocks = re.findall(r'module\s+"([^"]+)"\s*\{([^}]*)\}', content)
@@ -180,7 +179,7 @@ class TerraformSecurityManager:
                 source = source_match.group(1)
 
                 if source.startswith("git::") or source.startswith("github.com"):
-                    version_match = re.search(r'ref=([^\s]+)', source) or re.search(r'version\s*=\s*["\']([^"\']+)["\']', body)
+                    version_match = re.search(r"ref=([^\s]+)", source) or re.search(r'version\s*=\s*["\']([^"\']+)["\']', body)
                     if not version_match:
                         findings.append(f"Module '{mod_name}' from git source '{source}' not pinned to a version/ref")
                         passed = False
@@ -206,14 +205,14 @@ class TerraformSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def audit_iam_permissions(self, content: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def audit_iam_permissions(self, content: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         iam_policy_blocks = re.findall(r'resource\s+"aws_iam_policy"\s+"([^"]+)"\s*\{([^}]*)\}', content)
 
         for name, body in iam_policy_blocks:
-            policy_match = re.search(r'policy\s*=\s*(<<[A-Z]+|jsonencode)', body)
+            policy_match = re.search(r"policy\s*=\s*(<<[A-Z]+|jsonencode)", body)
             if policy_match:
                 if "Statement" in body or "Effect" in body:
                     if '"*"' in body and '"Action"' in body:
@@ -225,14 +224,14 @@ class TerraformSecurityManager:
 
         iam_role_blocks = re.findall(r'resource\s+"aws_iam_role"\s+"([^"]+)"\s*\{([^}]*)\}', content)
         for name, body in iam_role_blocks:
-            assume_role = re.search(r'assume_role_policy', body)
+            assume_role = re.search(r"assume_role_policy", body)
             if not assume_role:
                 findings.append(f"IAM role '{name}' has no assume_role_policy")
 
         return {"findings": findings, "passed": passed}
 
-    def audit_security_group_rules(self, content: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def audit_security_group_rules(self, content: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         sg_rule_blocks = re.findall(
@@ -240,12 +239,12 @@ class TerraformSecurityManager:
         )
 
         for resource_type, name, body in sg_rule_blocks:
-            cidr_match = re.search(r'cidr_blocks\s*=\s*\[([^\]]*)\]', body)
+            cidr_match = re.search(r"cidr_blocks\s*=\s*\[([^\]]*)\]", body)
             if cidr_match:
                 cidrs = cidr_match.group(1)
                 if '"0.0.0.0/0"' in cidrs:
-                    from_port = re.search(r'from_port\s*=\s*(\d+)', body)
-                    to_port = re.search(r'to_port\s*=\s*(\d+)', body)
+                    from_port = re.search(r"from_port\s*=\s*(\d+)", body)
+                    to_port = re.search(r"to_port\s*=\s*(\d+)", body)
                     protocol = re.search(r'protocol\s*=\s*["\']([^"\']+)["\']', body)
 
                     proto = protocol.group(1) if protocol else "all"
@@ -256,7 +255,7 @@ class TerraformSecurityManager:
                         findings.append(f"'{name}' allows all traffic from 0.0.0.0/0 (wildcard protocol)")
                         passed = False
                     elif fp <= 443 and tp >= 443:
-                        if fp == 443 or (fp <= 80 and 80 <= tp):
+                        if fp == 443 or (fp <= 80 and tp >= 80):
                             pass
                         else:
                             findings.append(f"'{name}' allows [{fp}-{tp}] from 0.0.0.0/0 - overly permissive")
@@ -271,9 +270,9 @@ class TerraformSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def enforce_resource_tagging(self, content: str, required_tags: Optional[List[str]] = None) -> Dict[str, Any]:
+    def enforce_resource_tagging(self, content: str, required_tags: list[str] | None = None) -> dict[str, Any]:
         tags = required_tags or ["Environment", "Project", "Owner", "CostCenter"]
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         resource_blocks = re.findall(r'resource\s+"(aws_\w+)"\s+"([^"]+)"\s*\{([^}]*)\}', content)
@@ -292,8 +291,8 @@ class TerraformSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_encryption_at_rest(self, content: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_encryption_at_rest(self, content: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         s3_buckets = re.findall(r'resource\s+"aws_s3_bucket"\s+"([^"]+)"\s*\{([^}]*)\}', content)
@@ -304,7 +303,7 @@ class TerraformSecurityManager:
 
         rds_instances = re.findall(r'resource\s+"aws_db_instance"\s+"([^"]+)"\s*\{([^}]*)\}', content)
         for name, body in rds_instances:
-            storage_encrypted = re.search(r'storage_encrypted\s*=\s*(true|false)', body)
+            storage_encrypted = re.search(r"storage_encrypted\s*=\s*(true|false)", body)
             if storage_encrypted and storage_encrypted.group(1) == "false":
                 findings.append(f"RDS instance '{name}' storage encryption is disabled")
                 passed = False
@@ -314,7 +313,7 @@ class TerraformSecurityManager:
 
         ebs_volumes = re.findall(r'resource\s+"aws_ebs_volume"\s+"([^"]+)"\s*\{([^}]*)\}', content)
         for name, body in ebs_volumes:
-            encrypted = re.search(r'encrypted\s*=\s*(true|false)', body)
+            encrypted = re.search(r"encrypted\s*=\s*(true|false)", body)
             if encrypted and encrypted.group(1) == "false":
                 findings.append(f"EBS volume '{name}' encryption is disabled")
                 passed = False
@@ -324,7 +323,7 @@ class TerraformSecurityManager:
 
         kms_keys = re.findall(r'resource\s+"aws_kms_key"\s+"([^"]+)"\s*\{([^}]*)\}', content)
         for name, body in kms_keys:
-            deletion_window = re.search(r'deletion_window_in_days\s*=\s*(\d+)', body)
+            deletion_window = re.search(r"deletion_window_in_days\s*=\s*(\d+)", body)
             if deletion_window:
                 if int(deletion_window.group(1)) < 7:
                     findings.append(f"KMS key '{name}' deletion_window_in_days is {deletion_window.group(1)} - minimum 7")
@@ -335,7 +334,7 @@ class TerraformSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def integrate_checkov(self, content: str) -> Dict[str, Any]:
+    def integrate_checkov(self, content: str) -> dict[str, Any]:
         checkov_checks = {
             "CKV_AWS_1": {"description": "IAM password policy should prevent password reuse", "severity": "MEDIUM"},
             "CKV_AWS_2": {"description": "S3 bucket should have versioning enabled", "severity": "HIGH"},
@@ -361,7 +360,7 @@ class TerraformSecurityManager:
             "CKV_AWS_55": {"description": "EKS cluster should have secrets encryption", "severity": "HIGH"},
         }
 
-        findings: List[str] = []
+        findings: list[str] = []
         matches = 0
         passed = True
 
@@ -381,8 +380,8 @@ class TerraformSecurityManager:
 
         return {"findings": findings, "passed": passed, "checkov_matches": matches, "total_checks": len(checkov_checks)}
 
-    def full_audit(self, tf_content: str, required_tags: Optional[List[str]] = None) -> TerraformAuditReport:
-        all_findings: List[TerraformAuditFinding] = []
+    def full_audit(self, tf_content: str, required_tags: list[str] | None = None) -> TerraformAuditReport:
+        all_findings: list[TerraformAuditFinding] = []
         passed = True
 
         checks = [

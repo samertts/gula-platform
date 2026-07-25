@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from security.modules.headers.cors import StrictCORSManager
 from security.modules.headers.csp import CSPBuilder

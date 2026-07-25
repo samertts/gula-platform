@@ -7,9 +7,8 @@ import re
 import secrets
 import threading
 from base64 import urlsafe_b64encode
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid4
 
 from security.modules.fhir.models import FHIRSecurityLabel
 
@@ -217,7 +216,7 @@ class PrivacyEngine:
 
     def support_right_to_access(self, patient_data: dict[str, Any], format: str = "json") -> dict[str, Any]:
         exported = {
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "data": patient_data,
             "format": format,
             "includes_phi": True,
@@ -247,7 +246,7 @@ class PrivacyEngine:
             "fields_redacted": redact,
             "remaining_fields": list(redacted.keys()),
             "data": redacted,
-            "redacted_at": datetime.now(timezone.utc).isoformat(),
+            "redacted_at": datetime.now(UTC).isoformat(),
         }
 
     def generate_portability_package(
@@ -258,7 +257,7 @@ class PrivacyEngine:
     ) -> dict[str, Any]:
         package: dict[str, Any] = {
             "patient_id": patient_id,
-            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "exported_at": datetime.now(UTC).isoformat(),
             "format": format,
             "data": data,
         }
@@ -267,7 +266,7 @@ class PrivacyEngine:
             package["content"] = json.dumps({
                 "resourceType": "Bundle",
                 "type": "export",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "entry": [{"resource": data}],
             }, indent=2, default=str)
         else:

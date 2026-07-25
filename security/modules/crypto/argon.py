@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import hashlib
 import logging
 import os
 
-from passlib.hash import argon2
-from passlib.hash import bcrypt
+from passlib.hash import argon2, bcrypt
 
 from security.modules.crypto.base import Hasher
 from security.modules.crypto.models import HashAlgorithm, HashResult

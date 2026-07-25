@@ -7,19 +7,18 @@ import os
 import re
 import sqlite3
 import stat
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519, padding, rsa
-
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-CRITICAL_SYSTEM_FILES: List[str] = [
+CRITICAL_SYSTEM_FILES: list[str] = [
     "/etc/passwd", "/etc/shadow", "/etc/sudoers", "/etc/hosts",
     "/etc/resolv.conf", "/etc/ssh/sshd_config", "/etc/nginx/nginx.conf",
     "/etc/postgresql/postgresql.conf", "/etc/redis/redis.conf",
@@ -28,7 +27,7 @@ CRITICAL_SYSTEM_FILES: List[str] = [
     "/etc/docker/daemon.json",
 ]
 
-CRITICAL_APPLICATION_PATTERNS: List[str] = [
+CRITICAL_APPLICATION_PATTERNS: list[str] = [
     "**/config*.yaml", "**/config*.yml", "**/config*.json",
     "**/application*.properties", "**/.env*",
     "**/Dockerfile*", "**/docker-compose*",
@@ -41,9 +40,9 @@ CRITICAL_APPLICATION_PATTERNS: List[str] = [
 class IntegrityBaseline(BaseModel):
     id: str = ""
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    file_hashes: Dict[str, str] = Field(default_factory=dict)
-    file_metadata: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
-    config_snapshots: Dict[str, str] = Field(default_factory=dict)
+    file_hashes: dict[str, str] = Field(default_factory=dict)
+    file_metadata: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    config_snapshots: dict[str, str] = Field(default_factory=dict)
 
 
 class IntegrityViolation(BaseModel):
@@ -58,15 +57,15 @@ class IntegrityViolation(BaseModel):
 
 class IntegrityReport(BaseModel):
     passed: bool = True
-    violations: List[IntegrityViolation] = Field(default_factory=list)
+    violations: list[IntegrityViolation] = Field(default_factory=list)
     files_checked: int = 0
     total_files: int = 0
 
 
 class IntegrityVerifier:
-    def __init__(self, baseline_path: Optional[str] = None):
+    def __init__(self, baseline_path: str | None = None):
         self.baseline_path = Path(baseline_path) if baseline_path else Path.cwd() / ".integrity-baseline.json"
-        self.baseline: Optional[IntegrityBaseline] = None
+        self.baseline: IntegrityBaseline | None = None
         self._load_baseline()
 
     def _load_baseline(self) -> None:
@@ -88,11 +87,11 @@ class IntegrityVerifier:
                 for chunk in iter(lambda: f.read(65536), b""):
                     h.update(chunk)
             return h.hexdigest()
-        except (IOError, PermissionError) as e:
+        except (OSError, PermissionError) as e:
             logger.error(f"Cannot compute hash for {file_path}: {e}")
             return ""
 
-    def _get_file_metadata(self, file_path: str) -> Dict[str, Any]:
+    def _get_file_metadata(self, file_path: str) -> dict[str, Any]:
         try:
             st = os.stat(file_path)
             return {
@@ -100,15 +99,15 @@ class IntegrityVerifier:
                 "mode": stat.S_IMODE(st.st_mode),
                 "owner": st.st_uid,
                 "group": st.st_gid,
-                "mtime": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat(),
-                "ctime": datetime.fromtimestamp(st.st_ctime, tz=timezone.utc).isoformat(),
+                "mtime": datetime.fromtimestamp(st.st_mtime, tz=UTC).isoformat(),
+                "ctime": datetime.fromtimestamp(st.st_ctime, tz=UTC).isoformat(),
             }
         except (OSError, PermissionError):
             return {}
 
-    def create_baseline(self, paths: List[str]) -> IntegrityBaseline:
-        file_hashes: Dict[str, str] = {}
-        file_metadata: Dict[str, Dict[str, Any]] = {}
+    def create_baseline(self, paths: list[str]) -> IntegrityBaseline:
+        file_hashes: dict[str, str] = {}
+        file_metadata: dict[str, dict[str, Any]] = {}
 
         for path in paths:
             p = Path(path)
@@ -126,7 +125,7 @@ class IntegrityVerifier:
                             file_metadata[str(fpath)] = self._get_file_metadata(str(fpath))
 
         self.baseline = IntegrityBaseline(
-            id=datetime.now(timezone.utc).isoformat(),
+            id=datetime.now(UTC).isoformat(),
             file_hashes=file_hashes,
             file_metadata=file_metadata,
         )
@@ -135,14 +134,14 @@ class IntegrityVerifier:
         logger.info(f"Created integrity baseline with {len(file_hashes)} files")
         return self.baseline
 
-    def verify_files(self, paths: Optional[List[str]] = None) -> IntegrityReport:
+    def verify_files(self, paths: list[str] | None = None) -> IntegrityReport:
         if not self.baseline:
             return IntegrityReport(passed=False, violations=[
                 IntegrityViolation(path="", violation_type="no_baseline",
                                    description="No integrity baseline found. Run create_baseline() first.")
             ])
 
-        violations: List[IntegrityViolation] = []
+        violations: list[IntegrityViolation] = []
         files_checked = 0
 
         target_files = paths or list(self.baseline.file_hashes.keys())
@@ -213,9 +212,9 @@ class IntegrityVerifier:
 
         return report
 
-    def verify_binary_signatures(self, binary_paths: List[str],
-                                  public_key_pem: Optional[str] = None) -> Dict[str, Any]:
-        findings: List[str] = []
+    def verify_binary_signatures(self, binary_paths: list[str],
+                                  public_key_pem: str | None = None) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
         signed = 0
         unsigned = 0
@@ -266,8 +265,8 @@ class IntegrityVerifier:
             "findings": findings,
         }
 
-    def verify_database_integrity(self, db_path: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def verify_database_integrity(self, db_path: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         if not os.path.exists(db_path):
@@ -293,7 +292,7 @@ class IntegrityVerifier:
             tables = [row[0] for row in cursor.fetchall()]
 
             for table in tables:
-                cursor.execute(f"SELECT COUNT(*) FROM \"{table}\"")
+                cursor.execute(f'SELECT COUNT(*) FROM "{table}"')
                 row_count = cursor.fetchone()[0]
 
             cursor.execute("PRAGMA foreign_key_check")
@@ -312,14 +311,14 @@ class IntegrityVerifier:
 
         return {"passed": passed, "findings": findings}
 
-    def detect_config_drift(self, config_files: Dict[str, str]) -> IntegrityReport:
+    def detect_config_drift(self, config_files: dict[str, str]) -> IntegrityReport:
         if not self.baseline:
             return IntegrityReport(passed=False, violations=[
                 IntegrityViolation(path="", violation_type="no_baseline",
                                    description="No baseline for drift detection")
             ])
 
-        violations: List[IntegrityViolation] = []
+        violations: list[IntegrityViolation] = []
 
         for path, expected_content in config_files.items():
             if not os.path.exists(path):
@@ -345,7 +344,7 @@ class IntegrityVerifier:
                         severity="HIGH",
                         description=f"Configuration drift detected for '{path}'",
                     ))
-            except IOError as e:
+            except OSError as e:
                 violations.append(IntegrityViolation(
                     path=path, violation_type="read_error",
                     description=f"Cannot read '{path}': {e}",
@@ -358,7 +357,7 @@ class IntegrityVerifier:
             total_files=len(config_files),
         )
 
-    def monitor_critical_files(self, custom_paths: Optional[List[str]] = None) -> IntegrityReport:
+    def monitor_critical_files(self, custom_paths: list[str] | None = None) -> IntegrityReport:
         watch_paths = custom_paths or CRITICAL_SYSTEM_FILES
         existing_paths = [p for p in watch_paths if os.path.exists(p)]
 
@@ -367,13 +366,13 @@ class IntegrityVerifier:
 
         return self.verify_files(existing_paths)
 
-    def compare_with_baseline(self, new_baseline: IntegrityBaseline) -> Dict[str, Any]:
+    def compare_with_baseline(self, new_baseline: IntegrityBaseline) -> dict[str, Any]:
         if not self.baseline:
             return {"passed": False, "message": "No existing baseline to compare against"}
 
-        added: List[str] = []
-        removed: List[str] = []
-        changed: List[str] = []
+        added: list[str] = []
+        removed: list[str] = []
+        changed: list[str] = []
 
         old_hashes = self.baseline.file_hashes
         new_hashes = new_baseline.file_hashes

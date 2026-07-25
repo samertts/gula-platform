@@ -12,16 +12,16 @@ Exports:
     SecurityMetricsCollector: Security KPI collection and dashboard data
 """
 
-from security.modules.threat_detection.models import ThreatEvent, DetectionRule, SecurityMetric
-from security.modules.threat_detection.engine import ThreatDetectionEngine
-from security.modules.threat_detection.risk_engine import RiskEngine
 from security.modules.threat_detection.dashboard import SecurityMetricsCollector
+from security.modules.threat_detection.engine import ThreatDetectionEngine
+from security.modules.threat_detection.models import DetectionRule, SecurityMetric, ThreatEvent
+from security.modules.threat_detection.risk_engine import RiskEngine
 
 __all__ = [
-    "ThreatEvent",
     "DetectionRule",
-    "SecurityMetric",
-    "ThreatDetectionEngine",
     "RiskEngine",
+    "SecurityMetric",
     "SecurityMetricsCollector",
+    "ThreatDetectionEngine",
+    "ThreatEvent",
 ]

@@ -6,8 +6,7 @@ import logging
 import os
 
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ed25519, ec, padding
-from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature, encode_dss_signature
+from cryptography.hazmat.primitives.asymmetric import ec, ed25519
 
 from security.modules.crypto.base import Signer
 from security.modules.crypto.models import SignatureAlgorithm

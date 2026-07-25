@@ -2,18 +2,18 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-REDIS_KNOWN_WEAK_PASSWORDS: List[str] = [
+REDIS_KNOWN_WEAK_PASSWORDS: list[str] = [
     "redis", "password", "admin", "123456", "default",
     "changeme", "pass", "root", "test", "guest",
 ]
 
-EVICTION_POLICY_RISK: Dict[str, str] = {
+EVICTION_POLICY_RISK: dict[str, str] = {
     "noeviction": "Safe - returns errors on memory limit",
     "allkeys-lru": "Medium - evicts any key, potential data loss",
     "volatile-lru": "Safe - evicts only keys with TTL set",
@@ -34,17 +34,17 @@ class RedisConfigIssue(BaseModel):
 
 
 class RedisSecurityReport(BaseModel):
-    issues: List[RedisConfigIssue] = Field(default_factory=list)
+    issues: list[RedisConfigIssue] = Field(default_factory=list)
     passed: bool = True
     overall_severity: str = "PASS"
 
 
 class RedisSecurityManager:
-    def __init__(self, config_content: str = "", config_lines: Optional[List[str]] = None):
+    def __init__(self, config_content: str = "", config_lines: list[str] | None = None):
         self.config_content = config_content
         self.config_lines = config_lines or config_content.split("\n") if config_content else []
 
-    def _get_config_value(self, key: str) -> Optional[str]:
+    def _get_config_value(self, key: str) -> str | None:
         for line in self.config_lines:
             stripped = line.strip()
             if stripped.startswith("#") or stripped.startswith(";"):
@@ -54,12 +54,12 @@ class RedisSecurityManager:
                 return match.group(1).strip()
         return None
 
-    def validate_config(self, content: Optional[str] = None) -> RedisSecurityReport:
+    def validate_config(self, content: str | None = None) -> RedisSecurityReport:
         if content:
             self.config_content = content
             self.config_lines = content.split("\n")
 
-        issues: List[RedisConfigIssue] = []
+        issues: list[RedisConfigIssue] = []
         passed = True
 
         requirepass = self._get_config_value("requirepass")
@@ -194,8 +194,8 @@ class RedisSecurityManager:
 
         return RedisSecurityReport(issues=issues, passed=passed, overall_severity=severity)
 
-    def validate_acl(self, acl_content: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_acl(self, acl_content: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         for line in acl_content.split("\n"):
@@ -232,7 +232,7 @@ class RedisSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_tls(self, config_content: Optional[str] = None) -> Dict[str, Any]:
+    def check_tls(self, config_content: str | None = None) -> dict[str, Any]:
         if config_content:
             self.config_lines = config_content.split("\n")
 
@@ -242,7 +242,7 @@ class RedisSecurityManager:
         tls_ca = self._get_config_value("tls-ca-cert-file")
         tls_auth = self._get_config_value("tls-auth-clients")
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         if not tls_port:
@@ -273,11 +273,11 @@ class RedisSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_network_exposure(self, bind_address: Optional[str] = None, port: Optional[int] = None) -> Dict[str, Any]:
+    def check_network_exposure(self, bind_address: str | None = None, port: int | None = None) -> dict[str, Any]:
         bind = bind_address or self._get_config_value("bind") or "0.0.0.0"
         port_val = port or int(self._get_config_value("port") or "6379")
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         if bind in ("0.0.0.0", "::", "*"):
@@ -288,9 +288,9 @@ class RedisSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_default_credentials(self) -> Dict[str, Any]:
+    def check_default_credentials(self) -> dict[str, Any]:
         requirepass = self._get_config_value("requirepass")
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         if requirepass is None:
@@ -302,8 +302,8 @@ class RedisSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_persistence_security(self) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_persistence_security(self) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         aof = self._get_config_value("appendonly")
@@ -321,9 +321,9 @@ class RedisSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def review_eviction_policy(self) -> Dict[str, Any]:
+    def review_eviction_policy(self) -> dict[str, Any]:
         policy = self._get_config_value("maxmemory-policy") or "noeviction"
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         risk_info = EVICTION_POLICY_RISK.get(policy, "Unknown - review manually")
@@ -333,5 +333,5 @@ class RedisSecurityManager:
 
         return {"findings": findings, "passed": passed, "policy": policy, "risk": risk_info}
 
-    def full_security_audit(self, config_content: Optional[str] = None) -> RedisSecurityReport:
+    def full_security_audit(self, config_content: str | None = None) -> RedisSecurityReport:
         return self.validate_config(config_content)

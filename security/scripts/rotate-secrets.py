@@ -24,7 +24,7 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -201,7 +201,7 @@ class AuditLogger:
         details: str = "",
     ) -> None:
         entry = (
-            f"[{datetime.now(timezone.utc).isoformat()}] "
+            f"[{datetime.now(UTC).isoformat()}] "
             f"SECRET_ROTATION secret={secret_name} "
             f"action={action} status={status} {details}"
         )

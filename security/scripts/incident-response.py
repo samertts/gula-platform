@@ -36,9 +36,8 @@ import json
 import logging
 import os
 import sys
-import time
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -144,9 +143,9 @@ class Incident:
 
     def __post_init__(self) -> None:
         if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc).isoformat()
+            self.timestamp = datetime.now(UTC).isoformat()
         if not self.incident_id:
-            ts = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+            ts = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
             self.incident_id = f"INC-{ts}-{os.urandom(2).hex()}"
 
 
@@ -190,7 +189,7 @@ class RunbookLookup:
         """Get initial response actions based on incident type."""
         severity = incident.severity
         actions: list[str] = [
-            f"[{datetime.now(timezone.utc).isoformat()}] Incident {incident.incident_id} reported",
+            f"[{datetime.now(UTC).isoformat()}] Incident {incident.incident_id} reported",
             f"Acknowledge incident: {incident.title}",
         ]
 
@@ -300,7 +299,7 @@ class IncidentAuditLogger:
 
     def log(self, incident_id: str, action: str, details: str = "") -> str:
         entry = json.dumps({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "incident_id": incident_id,
             "action": action,
             "details": details,

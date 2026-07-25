@@ -132,7 +132,7 @@ jobs:
           path: build/
 
       - name: Run Lighthouse CI
-        uses: GoogleChrome/lighthouse-ci-action@v12
+        uses: GoogleChrome/lighthouse-ci-action@b0d0393e1f8e0e3091ad580b53d6411d7a1ae74d
         with:
           configPath: frontend-v2/lighthouse.config.json
           temporaryPublicStorage: true

@@ -3,11 +3,11 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import threading
 import time
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from security.modules.crypto.models import (
     EncryptionAlgorithm,
@@ -46,7 +46,7 @@ class KeyRotationManager:
             key_id=key_id,
             purpose=purpose,
             algorithm=alg,
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             rotation_count=0,
             status="active",
         )
@@ -103,7 +103,7 @@ class KeyRotationManager:
                 key_id=new_key_id,
                 purpose=old_metadata.purpose,
                 algorithm=old_metadata.algorithm,
-                created_at=datetime.now(timezone.utc),
+                created_at=datetime.now(UTC),
                 rotation_count=old_metadata.rotation_count + 1,
                 status="active",
             )
@@ -111,7 +111,7 @@ class KeyRotationManager:
             old_metadata.status = "rotated"
             self._active_key_id = new_key_id
 
-            self._grace_periods[target_key_id] = datetime.now(timezone.utc) + timedelta(
+            self._grace_periods[target_key_id] = datetime.now(UTC) + timedelta(
                 days=self._config.key_rotation_days // 2
             )
 
@@ -119,7 +119,7 @@ class KeyRotationManager:
                 "old_key_id": target_key_id,
                 "new_key_id": new_key_id,
                 "purpose": old_metadata.purpose.value,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "success": True,
             }
             self._rotation_history.append(record)
@@ -165,14 +165,14 @@ class KeyRotationManager:
                 for key_id in list(self._keys.keys()):
                     meta = self._metadata.get(key_id)
                     if meta and meta.status == "active" and key_id != self._active_key_id:
-                        expired = datetime.now(timezone.utc) - (meta.created_at or datetime.now(timezone.utc))
+                        expired = datetime.now(UTC) - (meta.created_at or datetime.now(UTC))
                         if expired.days >= self._config.key_rotation_days:
                             self._metadata[key_id].status = "expired"
                             logger.info("Key expired: %s", key_id)
 
                 last_rotation = self._metadata.get(self._active_key_id)
                 if last_rotation and last_rotation.created_at:
-                    age = datetime.now(timezone.utc) - last_rotation.created_at
+                    age = datetime.now(UTC) - last_rotation.created_at
                     if age.days >= self._config.key_rotation_days:
                         self.rotate()
                         logger.info("Auto rotation completed for %s", self._active_key_id)
@@ -214,7 +214,7 @@ class KeyRotationManager:
 
     def is_key_in_grace_period(self, key_id: str) -> bool:
         if key_id in self._grace_periods:
-            return datetime.now(timezone.utc) < self._grace_periods[key_id]
+            return datetime.now(UTC) < self._grace_periods[key_id]
         return False
 
     def backup_keys(self, passphrase: bytes) -> bytes:
@@ -248,7 +248,7 @@ class KeyRotationManager:
                     key_id=key_id,
                     purpose=KeyPurpose.DATA_ENCRYPTION,
                     algorithm=EncryptionAlgorithm.AES_256_GCM,
-                    created_at=datetime.now(timezone.utc),
+                    created_at=datetime.now(UTC),
                     status="active",
                 )
             self._active_key_id = key_data.get("active_key_id", "")

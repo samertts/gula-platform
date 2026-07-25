@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from security.modules.compliance.models import (
     ComplianceControl,
@@ -14,14 +13,14 @@ from security.modules.compliance.models import (
 
 logger = logging.getLogger(__name__)
 
-ISO27001_DOMAINS: Dict[str, str] = {
+ISO27001_DOMAINS: dict[str, str] = {
     "A.5": "Organizational Controls",
     "A.6": "People Controls",
     "A.7": "Physical Controls",
     "A.8": "Technological Controls",
 }
 
-ISO27001_ANNEX_A: Dict[str, Dict[str, Any]] = {
+ISO27001_ANNEX_A: dict[str, dict[str, Any]] = {
     "A.5.1": {"domain": "A.5", "description": "Information security policy"},
     "A.5.2": {"domain": "A.5", "description": "Information security roles and responsibilities"},
     "A.5.3": {"domain": "A.5", "description": "Segregation of duties"},
@@ -119,7 +118,7 @@ ISO27001_ANNEX_A: Dict[str, Dict[str, Any]] = {
 
 class ISO27001Validator:
     def __init__(self):
-        self._controls: Dict[str, ComplianceControl] = {}
+        self._controls: dict[str, ComplianceControl] = {}
         self._initialize_controls()
 
     def _initialize_controls(self) -> None:
@@ -136,12 +135,12 @@ class ISO27001Validator:
             )
 
     def update_control(self, control_id: str, status: ControlStatus,
-                        evidence: Optional[List[str]] = None) -> bool:
+                        evidence: list[str] | None = None) -> bool:
         if control_id in self._controls:
             self._controls[control_id].implementation_status = status
             if evidence:
                 self._controls[control_id].evidence = evidence
-            self._controls[control_id].last_assessed = datetime.now(timezone.utc)
+            self._controls[control_id].last_assessed = datetime.now(UTC)
             return True
         return False
 
@@ -150,13 +149,13 @@ class ISO27001Validator:
         for control_id, control in self._controls.items():
             if control.category == ISO27001_DOMAINS.get(domain, ""):
                 control.implementation_status = status
-                control.last_assessed = datetime.now(timezone.utc)
+                control.last_assessed = datetime.now(UTC)
                 updated += 1
         return updated
 
-    def verify_isms_implementation(self) -> Dict[str, Any]:
+    def verify_isms_implementation(self) -> dict[str, Any]:
         isms_controls = ["A.5.1", "A.5.2", "A.5.3", "A.5.22", "A.5.23", "A.5.35", "A.5.36"]
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         for cid in isms_controls:
@@ -171,8 +170,8 @@ class ISO27001Validator:
     def generate_soa(self) -> str:
         soa_lines = [
             "STATEMENT OF APPLICABILITY",
-            f"Generated: {datetime.now(timezone.utc).isoformat()}",
-            f"Framework: ISO/IEC 27001:2022",
+            f"Generated: {datetime.now(UTC).isoformat()}",
+            "Framework: ISO/IEC 27001:2022",
             "=" * 60,
             "",
         ]
@@ -189,15 +188,15 @@ class ISO27001Validator:
 
         return "\n".join(soa_lines)
 
-    def manage_evidence(self, control_id: str, evidence: List[str]) -> bool:
+    def manage_evidence(self, control_id: str, evidence: list[str]) -> bool:
         if control_id in self._controls:
             self._controls[control_id].evidence.extend(evidence)
-            self._controls[control_id].last_assessed = datetime.now(timezone.utc)
+            self._controls[control_id].last_assessed = datetime.now(UTC)
             return True
         return False
 
-    def get_domain_summary(self) -> Dict[str, Dict[str, int]]:
-        summary: Dict[str, Dict[str, int]] = {}
+    def get_domain_summary(self) -> dict[str, dict[str, int]]:
+        summary: dict[str, dict[str, int]] = {}
         for domain_id, domain_name in ISO27001_DOMAINS.items():
             controls = [c for c in self._controls.values() if c.category == domain_name]
             summary[domain_name] = {

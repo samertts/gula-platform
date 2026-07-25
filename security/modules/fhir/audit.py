@@ -6,10 +6,9 @@ import hmac
 import json
 import logging
 import threading
-import time
-from base64 import urlsafe_b64encode
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import uuid4
 
 from security.modules.fhir.models import ClinicalAuditEvent
@@ -61,7 +60,7 @@ class ClinicalAuditor:
         details: dict[str, Any] | None = None,
     ) -> ClinicalAuditEvent:
         event_id = str(uuid4())
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
 
         event_data: dict[str, Any] = {
             "event_id": event_id,
@@ -184,7 +183,7 @@ class ClinicalAuditor:
                 action=e.get("action", ""),
                 outcome=e.get("outcome", "success"),
                 outcome_desc=e.get("outcome_desc", ""),
-                timestamp=datetime.fromisoformat(e["timestamp"]) if isinstance(e.get("timestamp"), str) else datetime.now(timezone.utc),
+                timestamp=datetime.fromisoformat(e["timestamp"]) if isinstance(e.get("timestamp"), str) else datetime.now(UTC),
                 signature=e.get("chain_hash", ""),
                 details=e.get("details", {}),
             )
@@ -247,7 +246,7 @@ class ClinicalAuditor:
         return json.dumps(events, indent=2, default=str)
 
     def enforce_retention(self) -> int:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=self._retention_days)
+        cutoff = datetime.now(UTC) - timedelta(days=self._retention_days)
         cutoff_str = cutoff.isoformat()
         count = 0
 
@@ -282,7 +281,7 @@ class ClinicalAuditor:
             action=event_data.get("action", ""),
             outcome=event_data.get("outcome", "success"),
             outcome_desc=event_data.get("outcome_desc", ""),
-            timestamp=datetime.fromisoformat(event_data["timestamp"]) if isinstance(event_data.get("timestamp"), str) else datetime.now(timezone.utc),
+            timestamp=datetime.fromisoformat(event_data["timestamp"]) if isinstance(event_data.get("timestamp"), str) else datetime.now(UTC),
             signature=event_data.get("chain_hash", ""),
             details=event_data.get("details", {}),
         )

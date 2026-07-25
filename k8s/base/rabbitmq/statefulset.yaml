@@ -8,7 +8,9 @@ metadata:
     component: messaging
 spec:
   serviceName: rabbitmq
-  replicas: 1
+  replicas: 3
+  updateStrategy:
+    type: RollingUpdate
   selector:
     matchLabels:
       app: rabbitmq
@@ -21,7 +23,8 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 999
-        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: rabbitmq
           image: rabbitmq:4.1-management-alpine

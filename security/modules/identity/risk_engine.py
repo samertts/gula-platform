@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import ipaddress
 import logging
 import math
@@ -8,8 +7,9 @@ import re
 import threading
 import time
 from collections import defaultdict
-from datetime import datetime, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from security.modules.identity.models import RiskLevel
 
@@ -172,7 +172,7 @@ class RiskEngine:
 
     def _score_time_anomaly(self, context: dict[str, Any]) -> float:
         user_id = context.get("user_id", "")
-        current_hour = datetime.now(timezone.utc).hour
+        current_hour = datetime.now(UTC).hour
 
         if not user_id:
             return 0.3
@@ -373,7 +373,7 @@ class RiskEngine:
             key = f"{resource}:{action}"
             profile["behavior_patterns"][key] = profile["behavior_patterns"].get(key, 0) + 1
 
-        current_hour = datetime.now(timezone.utc).hour
+        current_hour = datetime.now(UTC).hour
         profile["active_hours"].add(current_hour)
 
         geo = context.get("geolocation", {})

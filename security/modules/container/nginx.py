@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-INSECURE_TLS_VERSIONS: Set[str] = {"TLSv1", "TLSv1.1"}
-SECURE_TLS_VERSIONS: Set[str] = {"TLSv1.2", "TLSv1.3"}
+INSECURE_TLS_VERSIONS: set[str] = {"TLSv1", "TLSv1.1"}
+SECURE_TLS_VERSIONS: set[str] = {"TLSv1.2", "TLSv1.3"}
 
-WEAK_CIPHERS: Set[str] = {
+WEAK_CIPHERS: set[str] = {
     "RC4", "DES", "3DES", "MD5", "EXPORT", "LOW", "MEDIUM",
     "NULL", "aNULL", "eNULL", "ADH", "AECDH", "PSK", "SRP",
 }
@@ -24,11 +24,11 @@ class NginxConfigFinding(BaseModel):
     severity: str
     description: str
     remediation: str
-    line_number: Optional[int] = None
+    line_number: int | None = None
 
 
 class NginxSecurityReport(BaseModel):
-    findings: List[NginxConfigFinding] = Field(default_factory=list)
+    findings: list[NginxConfigFinding] = Field(default_factory=list)
     passed: bool = True
     overall_severity: str = "PASS"
 
@@ -40,8 +40,8 @@ class NginxSecurityManager:
     def _strip_nginx_comments(self, content: str) -> str:
         return re.sub(r"#.*$", "", content, flags=re.MULTILINE)
 
-    def _check_directive(self, content: str, directive: str, expected_value: Optional[str] = None,
-                        allow_absent: bool = False) -> Tuple[bool, Optional[str]]:
+    def _check_directive(self, content: str, directive: str, expected_value: str | None = None,
+                        allow_absent: bool = False) -> tuple[bool, str | None]:
         pattern = rf"^\s*{re.escape(directive)}\s+(.+?);"
         match = re.search(pattern, content, re.MULTILINE)
         if not match:
@@ -51,9 +51,9 @@ class NginxSecurityManager:
             return (value.lower() == expected_value.lower(), value)
         return (True, value)
 
-    def check_server_tokens(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def check_server_tokens(self, content: str | None = None) -> dict[str, Any]:
         c = self._strip_nginx_comments(content or self.config_content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         present, value = self._check_directive(c, "server_tokens")
@@ -66,9 +66,9 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_tls_config(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def validate_tls_config(self, content: str | None = None) -> dict[str, Any]:
         c = self._strip_nginx_comments(content or self.config_content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         present, value = self._check_directive(c, "ssl_protocols")
@@ -119,9 +119,9 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_hsts(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def check_hsts(self, content: str | None = None) -> dict[str, Any]:
         c = self._strip_nginx_comments(content or self.config_content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         present, value = self._check_directive(c, "add_header Strict-Transport-Security")
@@ -143,9 +143,9 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_request_size_limit(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def check_request_size_limit(self, content: str | None = None) -> dict[str, Any]:
         c = self._strip_nginx_comments(content or self.config_content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         present, value = self._check_directive(c, "client_max_body_size")
@@ -172,9 +172,9 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_rate_limiting(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def check_rate_limiting(self, content: str | None = None) -> dict[str, Any]:
         c = self._strip_nginx_comments(content or self.config_content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         limit_req_zone = re.search(r"limit_req_zone\s", c)
@@ -195,9 +195,9 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_access_control(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def validate_access_control(self, content: str | None = None) -> dict[str, Any]:
         c = self._strip_nginx_comments(content or self.config_content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         has_allow = re.search(r"^\s*allow\s", c, re.MULTILINE)
@@ -241,9 +241,9 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_upstream_security(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def check_upstream_security(self, content: str | None = None) -> dict[str, Any]:
         c = self._strip_nginx_comments(content or self.config_content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         upstream_blocks = re.findall(r"upstream\s+(\S+)\s*{([^}]*)}", c)
@@ -276,9 +276,9 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_logging(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def check_logging(self, content: str | None = None) -> dict[str, Any]:
         c = self._strip_nginx_comments(content or self.config_content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         access_log = re.search(r"access_log\s+", c)
@@ -298,9 +298,9 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_http2_security(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def check_http2_security(self, content: str | None = None) -> dict[str, Any]:
         c = content or self.config_content
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         http2_present = "http2" in c.lower()
@@ -314,9 +314,9 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_client_cert(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def validate_client_cert(self, content: str | None = None) -> dict[str, Any]:
         c = content or self.config_content
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         client_cert = re.search(r"ssl_client_certificate\s+", c)
@@ -332,9 +332,9 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_additional_security_headers(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def check_additional_security_headers(self, content: str | None = None) -> dict[str, Any]:
         c = self._strip_nginx_comments(content or self.config_content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         security_headers = {
@@ -354,11 +354,11 @@ class NginxSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def full_security_audit(self, config_content: Optional[str] = None) -> NginxSecurityReport:
+    def full_security_audit(self, config_content: str | None = None) -> NginxSecurityReport:
         if config_content:
             self.config_content = config_content
 
-        report_findings: List[NginxConfigFinding] = []
+        report_findings: list[NginxConfigFinding] = []
         passed = True
 
         checks = [

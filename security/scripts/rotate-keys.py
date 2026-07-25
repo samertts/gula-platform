@@ -27,11 +27,9 @@ import json
 import logging
 import os
 import sys
-import time
 from abc import ABC, abstractmethod
-from collections.abc import Generator
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -123,13 +121,13 @@ class KeyGenerator:
         if algorithm == "aes":
             key = self.generate_aes_key(info.get("key_length", 32))
             return {"private": key.hex(), "public": ""}
-        elif algorithm == "signing":
+        if algorithm == "signing":
             priv, pub = self.generate_signing_key()
             return {"private": priv.hex(), "public": pub.hex()}
-        elif algorithm == "hmac":
+        if algorithm == "hmac":
             key = self.generate_hmac_key(info.get("key_length", 32))
             return {"private": key.hex(), "public": ""}
-        elif algorithm == "ecdsa":
+        if algorithm == "ecdsa":
             try:
                 from cryptography.hazmat.primitives.asymmetric import ec
                 private_key = ec.generate_private_key(ec.SECP256R1())
@@ -208,7 +206,7 @@ class KeyAuditLogger:
 
     def log(self, action: str, key_id: str, algorithm: str, status: str, details: str = "") -> None:
         entry = json.dumps({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "action": action,
             "key_id": key_id,
             "algorithm": algorithm,
@@ -304,7 +302,7 @@ class KeyRotationEngine:
 
         try:
             key_data = self.generator.generate(algorithm)
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.now(UTC).isoformat()
             metadata = KeyMetadata(
                 key_id=new_key_id,
                 algorithm=algorithm,

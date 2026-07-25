@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from security.modules.compliance.models import (
     ComplianceControl,
@@ -14,7 +13,7 @@ from security.modules.compliance.models import (
 
 logger = logging.getLogger(__name__)
 
-ASVS_CHAPTERS: Dict[str, Dict[str, Any]] = {
+ASVS_CHAPTERS: dict[str, dict[str, Any]] = {
     "V1": {
         "name": "Architecture, Design and Threat Modeling",
         "controls": {
@@ -242,7 +241,7 @@ ASVS_CHAPTERS: Dict[str, Dict[str, Any]] = {
 
 class ASVSValidator:
     def __init__(self):
-        self._controls: Dict[str, ComplianceControl] = {}
+        self._controls: dict[str, ComplianceControl] = {}
         self._initialize_controls()
 
     def _initialize_controls(self) -> None:
@@ -280,23 +279,23 @@ class ASVSValidator:
         return test_procedures.get(control_id, "Manual verification required per ASVS documentation")
 
     def update_control_status(self, control_id: str, status: ControlStatus,
-                               evidence: Optional[List[str]] = None) -> bool:
+                               evidence: list[str] | None = None) -> bool:
         if control_id in self._controls:
             self._controls[control_id].implementation_status = status
             if evidence:
                 self._controls[control_id].evidence = evidence
-            self._controls[control_id].last_assessed = datetime.now(timezone.utc)
+            self._controls[control_id].last_assessed = datetime.now(UTC)
             return True
         return False
 
-    def update_controls_batch(self, updates: Dict[str, ControlStatus]) -> int:
+    def update_controls_batch(self, updates: dict[str, ControlStatus]) -> int:
         updated = 0
         for control_id, status in updates.items():
             if self.update_control_status(control_id, status):
                 updated += 1
         return updated
 
-    def verify_control(self, control_id: str, verification_data: Dict[str, Any]) -> Dict[str, Any]:
+    def verify_control(self, control_id: str, verification_data: dict[str, Any]) -> dict[str, Any]:
         if control_id not in self._controls:
             return {"found": False, "message": f"Control {control_id} not found"}
 
@@ -325,14 +324,14 @@ class ASVSValidator:
             "last_assessed": control.last_assessed,
         }
 
-    def get_control(self, control_id: str) -> Optional[ComplianceControl]:
+    def get_control(self, control_id: str) -> ComplianceControl | None:
         return self._controls.get(control_id)
 
-    def get_all_controls(self) -> Dict[str, ComplianceControl]:
+    def get_all_controls(self) -> dict[str, ComplianceControl]:
         return dict(self._controls)
 
-    def get_controls_by_chapter(self) -> Dict[str, List[ComplianceControl]]:
-        chapters: Dict[str, List[ComplianceControl]] = {}
+    def get_controls_by_chapter(self) -> dict[str, list[ComplianceControl]]:
+        chapters: dict[str, list[ComplianceControl]] = {}
         for control_id, control in self._controls.items():
             chapter_key = f"V{control_id.split('-')[1].split('.')[0]}"
             if chapter_key not in chapters:
@@ -368,11 +367,11 @@ class ASVSValidator:
             remediation_plan=remediation,
         )
 
-    def gap_analysis(self) -> Dict[str, Any]:
+    def gap_analysis(self) -> dict[str, Any]:
         controls = list(self._controls.values())
         total = len(controls)
 
-        by_chapter: Dict[str, Dict[str, int]] = {}
+        by_chapter: dict[str, dict[str, int]] = {}
         for control_id, control in self._controls.items():
             chapter_key = f"V{control_id.split('-')[1].split('.')[0]}"
             chapter_name = ASVS_CHAPTERS.get(chapter_key, {}).get("name", "Unknown")

@@ -6,11 +6,11 @@ import logging
 import threading
 import time
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-from security.modules.identity.models import AccessDecision, RiskLevel
+from security.modules.identity.models import AccessDecision
 
 logger = logging.getLogger("gula.security.modules.identity.abac")
 
@@ -101,15 +101,15 @@ class ABACEngine:
 
         if self._backend_engine is not None:
             try:
-                from backend.app.security.abac import ABACRule, AttributeCondition
+                from backend.app.security.abac import ABACRule
 
                 rule = ABACRule(
                     id=policy.id,
                     name=policy.name,
                     description=policy.description,
-                    effect=getattr(__import__("backend.app.security.abac", fromlist=["Effect"]), "Effect").ALLOW
+                    effect=__import__("backend.app.security.abac", fromlist=["Effect"]).Effect.ALLOW
                     if policy.effect == Effect.ALLOW
-                    else getattr(__import__("backend.app.security.abac", fromlist=["Effect"]), "Effect").DENY,
+                    else __import__("backend.app.security.abac", fromlist=["Effect"]).Effect.DENY,
                     resource=policy.resource,
                     action=policy.action,
                     priority=policy.priority,

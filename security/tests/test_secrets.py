@@ -1,4 +1,4 @@
-Tests for GSF Secret Management (GSF-001/002).
+"""Tests for GSF Secret Management (GSF-001/002).
 
 Tests secret validation, rotation, environment backend, scanner patterns,
 and edge cases for the secrets module.
@@ -19,8 +19,7 @@ import pytest
 # Allow imports from the security package
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from scripts.rotate_secrets import SecretValidator, RotationConfig, AuditLogger
-
+from scripts.rotate_secrets import AuditLogger, RotationConfig, SecretValidator
 
 # ---------------------------------------------------------------------------
 # Secret Validation Tests
@@ -167,9 +166,9 @@ class TestSecretScanner:
         (r'(?i)api[_-]?key[=\s"\']+[A-Za-z0-9_\-]{16,}', "API Key"),
         (r'(?i)secret[=\s"\']+[A-Za-z0-9_\-!@#$%^&*()=+]{16,}', "Secret"),
         (r'(?i)password[=\s"\']+[^,;\])\)\s]{8,}', "Password"),
-        (r'AKIA[0-9A-Z]{16}', "AWS Access Key"),
-        (r'(?i)ghp_[A-Za-z0-9]{36}', "GitHub Token"),
-        (r'(?i)-----BEGIN\s+(RSA|EC|DSA|OPENSSH|PRIVATE)\s+KEY-----', "Private Key"),
+        (r"AKIA[0-9A-Z]{16}", "AWS Access Key"),
+        (r"(?i)ghp_[A-Za-z0-9]{36}", "GitHub Token"),
+        (r"(?i)-----BEGIN\s+(RSA|EC|DSA|OPENSSH|PRIVATE)\s+KEY-----", "Private Key"),
     ]
 
     @pytest.mark.parametrize(

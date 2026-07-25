@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from security.modules.container.models import DockerSecurityConfig
 
 logger = logging.getLogger(__name__)
 
-DOCKERFILE_BEST_PRACTICES: Dict[str, Dict[str, Any]] = {
+DOCKERFILE_BEST_PRACTICES: dict[str, dict[str, Any]] = {
     "no_root_user": {"rule": "DL3002", "description": "Do not use root as the last USER in Dockerfile", "severity": "HIGH"},
     "pin_base_image": {"rule": "DL3006", "description": "Always tag base image with a specific version", "severity": "MEDIUM"},
     "apt_get_cleanup": {"rule": "DL3009", "description": "Delete apt-get lists after install to reduce image size", "severity": "LOW"},
@@ -38,18 +37,18 @@ class ImageVulnerability(BaseModel):
     cve_id: str
     package: str
     installed_version: str
-    fixed_version: Optional[str] = None
+    fixed_version: str | None = None
     severity: str
     cvss_score: float = 0.0
 
 
 class DockerSecurityManager:
-    def __init__(self, config: Optional[DockerSecurityConfig] = None):
+    def __init__(self, config: DockerSecurityConfig | None = None):
         self.config = config or DockerSecurityConfig()
-        self._cve_cache: Dict[str, List[ImageVulnerability]] = {}
+        self._cve_cache: dict[str, list[ImageVulnerability]] = {}
 
-    def analyze_dockerfile(self, dockerfile_content: str) -> List[DockerfileFinding]:
-        findings: List[DockerfileFinding] = []
+    def analyze_dockerfile(self, dockerfile_content: str) -> list[DockerfileFinding]:
+        findings: list[DockerfileFinding] = []
         lines = dockerfile_content.split("\n")
 
         last_user_root = True
@@ -191,8 +190,8 @@ class DockerSecurityManager:
 
         return findings
 
-    def detect_privilege_escalation(self, run_args: List[str]) -> List[str]:
-        issues: List[str] = []
+    def detect_privilege_escalation(self, run_args: list[str]) -> list[str]:
+        issues: list[str] = []
         privileged_keywords = ["--privileged", "CAP_SYS_ADMIN", "CAP_DAC_OVERRIDE",
                               "SYS_ADMIN", "DAC_OVERRIDE", "--cap-add=ALL"]
 
@@ -211,7 +210,7 @@ class DockerSecurityManager:
 
         return issues
 
-    def audit_capabilities(self, current_caps: List[str], required_caps: Optional[List[str]] = None) -> Dict[str, Any]:
+    def audit_capabilities(self, current_caps: list[str], required_caps: list[str] | None = None) -> dict[str, Any]:
         dangerous_caps = {
             "SYS_ADMIN": "Mount, namespace, and kernel operations",
             "SYS_RAWIO": "Raw I/O port access",
@@ -228,8 +227,8 @@ class DockerSecurityManager:
         }
 
         required = required_caps or ["CHOWN", "SETGID", "SETUID", "NET_BIND_SERVICE"]
-        findings: List[str] = []
-        excess_caps: List[str] = []
+        findings: list[str] = []
+        excess_caps: list[str] = []
 
         for cap in current_caps:
             cap_name = cap.upper().removeprefix("CAP_") if cap.upper().startswith("CAP_") else cap.upper()
@@ -246,8 +245,8 @@ class DockerSecurityManager:
             "passed": len(findings) == 0 and len(missing_required) == 0,
         }
 
-    def validate_user_namespace(self) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_user_namespace(self) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         if self.config.user_namespace == "host":
@@ -256,8 +255,8 @@ class DockerSecurityManager:
 
         return {"findings": findings, "passed": passed, "current_mode": self.config.user_namespace}
 
-    def enforce_read_only_filesystem(self) -> Dict[str, Any]:
-        findings: List[str] = []
+    def enforce_read_only_filesystem(self) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         if not self.config.security_opt_list:
@@ -265,9 +264,9 @@ class DockerSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_resource_limits(self, limits: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def validate_resource_limits(self, limits: dict[str, Any] | None = None) -> dict[str, Any]:
         limits = limits or self.config.resource_limits if hasattr(self.config, "resource_limits") else {}
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         cpu = limits.get("cpu", limits.get("nano_cpus", "unlimited"))
@@ -296,9 +295,9 @@ class DockerSecurityManager:
 
         return {"findings": findings, "passed": passed, "limits": limits}
 
-    def validate_healthcheck(self, dockerfile_content: str) -> Dict[str, Any]:
+    def validate_healthcheck(self, dockerfile_content: str) -> dict[str, Any]:
         has_healthcheck = bool(re.search(r"^\s*HEALTHCHECK\s", dockerfile_content, re.MULTILINE))
-        findings: List[str] = []
+        findings: list[str] = []
         passed = has_healthcheck
 
         if not has_healthcheck:
@@ -306,7 +305,7 @@ class DockerSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_non_root_user(self, dockerfile_content: str) -> Dict[str, Any]:
+    def validate_non_root_user(self, dockerfile_content: str) -> dict[str, Any]:
         lines = dockerfile_content.split("\n")
         last_user_is_root = True
 
@@ -317,7 +316,7 @@ class DockerSecurityManager:
                 if user.lower() != "root" and user != "0":
                     last_user_is_root = False
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = not last_user_is_root
 
         if last_user_is_root:
@@ -325,7 +324,7 @@ class DockerSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_multi_stage_build(self, dockerfile_content: str) -> Dict[str, Any]:
+    def validate_multi_stage_build(self, dockerfile_content: str) -> dict[str, Any]:
         lines = dockerfile_content.split("\n")
         stage_count = 0
         has_build_stage = False
@@ -339,7 +338,7 @@ class DockerSecurityManager:
                         has_build_stage = True
                     has_final_stage = True
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = stage_count >= 2 and has_build_stage and has_final_stage
 
         if stage_count < 2:
@@ -347,9 +346,9 @@ class DockerSecurityManager:
 
         return {"findings": findings, "passed": passed, "stage_count": stage_count}
 
-    def scan_secrets(self, content: str) -> List[Dict[str, Any]]:
+    def scan_secrets(self, content: str) -> list[dict[str, Any]]:
         import re as _re
-        secrets: List[Dict[str, Any]] = []
+        secrets: list[dict[str, Any]] = []
 
         patterns = {
             "aws_access_key": r"(?i)(AKIA[0-9A-Z]{16})",
@@ -382,10 +381,10 @@ class DockerSecurityManager:
 
         return secrets
 
-    def scan_dockerfile_secrets(self, dockerfile_content: str) -> Dict[str, Any]:
+    def scan_dockerfile_secrets(self, dockerfile_content: str) -> dict[str, Any]:
         secrets = self.scan_secrets(dockerfile_content)
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = len(secrets) == 0
 
         if secrets:
@@ -394,8 +393,8 @@ class DockerSecurityManager:
 
         return {"findings": findings, "passed": passed, "secrets_found": len(secrets)}
 
-    def analyze_compose_security(self, compose_content: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def analyze_compose_security(self, compose_content: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
         secrets = self.scan_secrets(compose_content)
 
@@ -409,12 +408,12 @@ class DockerSecurityManager:
 
         return {"findings": findings, "passed": passed, "secrets_found": len(secrets)}
 
-    def lookup_cve(self, package: str, version: str) -> List[ImageVulnerability]:
+    def lookup_cve(self, package: str, version: str) -> list[ImageVulnerability]:
         if package in self._cve_cache:
             return self._cve_cache[package]
 
         logger.info(f"CVE lookup for {package}@{version} - using embedded CVE database abstraction")
-        known_vulnerabilities: Dict[str, List[Dict[str, Any]]] = {
+        known_vulnerabilities: dict[str, list[dict[str, Any]]] = {
             "openssl": [
                 {"cve": "CVE-2024-5535", "fixed": "3.0.14", "severity": "HIGH", "score": 7.5},
                 {"cve": "CVE-2024-4741", "fixed": "3.0.13", "severity": "HIGH", "score": 7.4},
@@ -434,7 +433,7 @@ class DockerSecurityManager:
             ],
         }
 
-        vulns: List[ImageVulnerability] = []
+        vulns: list[ImageVulnerability] = []
         if package.lower() in known_vulnerabilities:
             for v in known_vulnerabilities[package.lower()]:
                 fixed = v["fixed"]
@@ -453,9 +452,9 @@ class DockerSecurityManager:
 
     @staticmethod
     def _is_version_affected(installed: str, fixed: str) -> bool:
-        def parse_ver(v: str) -> Tuple[int, ...]:
+        def parse_ver(v: str) -> tuple[int, ...]:
             parts = v.replace("~", "-").replace("+", ".").replace("-", ".").split(".")
-            result: List[int] = []
+            result: list[int] = []
             for p in parts:
                 try:
                     result.append(int(p))
@@ -471,9 +470,9 @@ class DockerSecurityManager:
             logger.warning(f"Could not compare versions: {installed} vs {fixed}")
             return False
 
-    def check_security_opt(self, opt_list: Optional[List[str]] = None) -> Dict[str, Any]:
+    def check_security_opt(self, opt_list: list[str] | None = None) -> dict[str, Any]:
         opts = opt_list or self.config.security_opt_list
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         if "no-new-privileges" not in opts:

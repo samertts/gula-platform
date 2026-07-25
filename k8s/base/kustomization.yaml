@@ -9,21 +9,27 @@ resources:
   - secrets.yaml
   - postgres/statefulset.yaml
   - postgres/service.yaml
+  - postgres/pdb.yaml
   - redis/deployment.yaml
   - redis/service.yaml
+  - redis/pdb.yaml
   - backend/pvc.yaml
   - backend/deployment.yaml
   - backend/service.yaml
   - backend/service-blue-green.yaml
   - backend/hpa.yaml
+  - backend/pdb.yaml
   - frontend/deployment.yaml
   - frontend/service.yaml
+  - frontend/pdb.yaml
   - gateway/deployment.yaml
   - gateway/service.yaml
   - gateway/ingress.yaml
+  - gateway/pdb.yaml
   - rabbitmq/configmap.yaml
   - rabbitmq/statefulset.yaml
   - rabbitmq/service.yaml
+  - rabbitmq/pdb.yaml
   - microservices/deployments.yaml
   - microservices/services.yaml
   - microservices/hpa.yaml

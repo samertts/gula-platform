@@ -4,11 +4,12 @@ import logging
 import secrets
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from joserfc import jwk, jwt as jose_jwt
+from joserfc import jwk
+from joserfc import jwt as jose_jwt
 from joserfc.errors import JoseError
 
 from security.modules.identity.models import TokenClaims
@@ -47,7 +48,7 @@ class JWTManager:
             self._backend_blacklist = None
 
         try:
-            from backend.app.config import SECRET_KEY, REFRESH_TOKEN_SECRET, JWT_ALGORITHM
+            from backend.app.config import JWT_ALGORITHM, REFRESH_TOKEN_SECRET, SECRET_KEY
             self._backend_secret = SECRET_KEY
             self._backend_refresh_secret = REFRESH_TOKEN_SECRET
             self._backend_algorithm = JWT_ALGORITHM
@@ -131,7 +132,7 @@ class JWTManager:
         extra_claims: dict[str, Any] | None = None,
         algorithm: str = "RS256",
     ) -> str:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload: dict[str, Any] = {
             "sub": subject,
             "iss": self._issuer,
@@ -154,7 +155,7 @@ class JWTManager:
         subject: str,
         extra_claims: dict[str, Any] | None = None,
     ) -> str:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload: dict[str, Any] = {
             "sub": subject,
             "iss": self._issuer,
@@ -177,7 +178,7 @@ class JWTManager:
         extra_claims: dict[str, Any] | None = None,
         algorithm: str = "RS256",
     ) -> str:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         payload: dict[str, Any] = {
             "sub": subject,
             "iss": self._issuer,

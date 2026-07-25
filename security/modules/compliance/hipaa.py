@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from security.modules.compliance.models import (
     ComplianceControl,
@@ -14,7 +13,7 @@ from security.modules.compliance.models import (
 
 logger = logging.getLogger(__name__)
 
-HIPAA_SECURITY_RULE_CATEGORIES: Dict[str, str] = {
+HIPAA_SECURITY_RULE_CATEGORIES: dict[str, str] = {
     "Administrative": "Administrative Safeguards",
     "Physical": "Physical Safeguards",
     "Technical": "Technical Safeguards",
@@ -22,7 +21,7 @@ HIPAA_SECURITY_RULE_CATEGORIES: Dict[str, str] = {
     "Documentation": "Documentation and Policies",
 }
 
-HIPAA_CONTROLS: Dict[str, Dict[str, Any]] = {
+HIPAA_CONTROLS: dict[str, dict[str, Any]] = {
     "ADM-1": {"category": "Administrative", "description": "Security management process - risk analysis and management"},
     "ADM-2": {"category": "Administrative", "description": "Security management process - sanction policy"},
     "ADM-3": {"category": "Administrative", "description": "Security management process - information system activity review"},
@@ -72,7 +71,7 @@ HIPAA_CONTROLS: Dict[str, Dict[str, Any]] = {
     "DOC-4": {"category": "Documentation", "description": "Policy and procedure updates as needed"},
 }
 
-HIPAA_PRIVACY_RULE_CONTROLS: Dict[str, str] = {
+HIPAA_PRIVACY_RULE_CONTROLS: dict[str, str] = {
     "PRIV-1": "Patient rights to access PHI",
     "PRIV-2": "Patient rights to amend PHI",
     "PRIV-3": "Patient rights to accounting of disclosures",
@@ -87,7 +86,7 @@ HIPAA_PRIVACY_RULE_CONTROLS: Dict[str, str] = {
     "PRIV-12": "Marketing communications restrictions",
 }
 
-HITECH_CONTROLS: Dict[str, str] = {
+HITECH_CONTROLS: dict[str, str] = {
     "HITECH-1": "Breach notification to affected individuals",
     "HITECH-2": "Breach notification to HHS",
     "HITECH-3": "Breach notification to media",
@@ -103,9 +102,9 @@ HITECH_CONTROLS: Dict[str, str] = {
 
 class HIPAAValidator:
     def __init__(self):
-        self._security_controls: Dict[str, ComplianceControl] = {}
-        self._privacy_controls: Dict[str, ComplianceControl] = {}
-        self._hitech_controls: Dict[str, ComplianceControl] = {}
+        self._security_controls: dict[str, ComplianceControl] = {}
+        self._privacy_controls: dict[str, ComplianceControl] = {}
+        self._hitech_controls: dict[str, ComplianceControl] = {}
         self._initialize_controls()
 
     def _initialize_controls(self) -> None:
@@ -143,17 +142,17 @@ class HIPAAValidator:
             )
 
     def update_control(self, control_set: str, control_id: str,
-                        status: ControlStatus, evidence: Optional[List[str]] = None) -> bool:
+                        status: ControlStatus, evidence: list[str] | None = None) -> bool:
         target = self._get_control_set(control_set)
         if not target or control_id not in target:
             return False
         target[control_id].implementation_status = status
         if evidence:
             target[control_id].evidence = evidence
-        target[control_id].last_assessed = datetime.now(timezone.utc)
+        target[control_id].last_assessed = datetime.now(UTC)
         return True
 
-    def _get_control_set(self, name: str) -> Optional[Dict[str, ComplianceControl]]:
+    def _get_control_set(self, name: str) -> dict[str, ComplianceControl] | None:
         mapping = {
             "security": self._security_controls,
             "privacy": self._privacy_controls,
@@ -162,8 +161,8 @@ class HIPAAValidator:
         }
         return mapping.get(name.lower())
 
-    def verify_breach_notification(self, breach_data: Dict[str, Any]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def verify_breach_notification(self, breach_data: dict[str, Any]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         phi_involved = breach_data.get("phi_involved", False)
@@ -180,9 +179,9 @@ class HIPAAValidator:
 
         return {"passed": passed, "findings": findings}
 
-    def verify_patient_rights(self, capability_data: Dict[str, bool]) -> Dict[str, Any]:
+    def verify_patient_rights(self, capability_data: dict[str, bool]) -> dict[str, Any]:
         required = ["access_phi", "amend_phi", "accounting_disclosures", "restrict_uses", "request_alternative_comms"]
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         for right in required:
@@ -192,8 +191,8 @@ class HIPAAValidator:
 
         return {"passed": passed, "findings": findings}
 
-    def check_edi_transaction_security(self, edi_capabilities: Dict[str, bool]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def check_edi_transaction_security(self, edi_capabilities: dict[str, bool]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         required_edi = ["x12_837", "x12_835", "x12_270", "x12_271", "x12_276", "x12_277", "x12_278", "x12_820", "x12_834"]
@@ -213,11 +212,11 @@ class HIPAAValidator:
 
         return {"passed": passed, "findings": findings}
 
-    def verify_covered_entity(self, entity_type: str) -> Dict[str, Any]:
+    def verify_covered_entity(self, entity_type: str) -> dict[str, Any]:
         covered_entities = ["health_plan", "healthcare_clearinghouse", "healthcare_provider"]
         business_associates = ["billing_company", "transcription", "cloud_provider", "analytics", "consultant"]
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         if entity_type in covered_entities:
@@ -231,8 +230,8 @@ class HIPAAValidator:
 
         return {"passed": passed, "findings": findings}
 
-    def integrate_healthcare_security(self) -> Dict[str, Any]:
-        integration_points: List[str] = [
+    def integrate_healthcare_security(self) -> dict[str, Any]:
+        integration_points: list[str] = [
             "Patient data encryption (AES-256 at rest, TLS 1.2+ in transit)",
             "Access control: role-based access for healthcare staff",
             "Audit logging: track all ePHI access and modifications",

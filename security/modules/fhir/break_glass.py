@@ -3,11 +3,11 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from security.modules.fhir.models import BreakGlassAccess, PurposeOfUse
+from security.modules.fhir.models import BreakGlassAccess
 
 logger = logging.getLogger("gula.security.modules.fhir.break_glass")
 
@@ -53,7 +53,7 @@ class BreakGlassManager:
             reason=reason,
             duration_minutes=duration_minutes,
             approved_by=approved_by,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             status="active" if approved_by else "pending",
         )
 
@@ -83,7 +83,7 @@ class BreakGlassManager:
             "grant_id": grant_id,
             "status": access.status,
             "duration_minutes": duration_minutes,
-            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)).isoformat(),
+            "expires_at": (datetime.now(UTC) + timedelta(minutes=duration_minutes)).isoformat(),
             "message": "Break glass access requested" if not approved_by else "Break glass access granted",
         }
 
@@ -107,13 +107,13 @@ class BreakGlassManager:
             "grant_id": grant_id,
             "status": "active",
             "message": "Break glass access approved",
-            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=access.duration_minutes)).isoformat(),
+            "expires_at": (datetime.now(UTC) + timedelta(minutes=access.duration_minutes)).isoformat(),
         }
 
     def verify_access(self, accessor_id: str, patient_id: str) -> dict[str, Any]:
         with self._lock:
             grant_ids = self._active_grants.get(accessor_id, [])
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
 
             for gid in grant_ids:
                 access = self._access_grants.get(gid)
@@ -163,7 +163,7 @@ class BreakGlassManager:
             "grant_id": grant_id,
             "new_duration_minutes": access.duration_minutes,
             "new_expires_at": (
-                datetime.now(timezone.utc) + timedelta(minutes=access.duration_minutes)
+                datetime.now(UTC) + timedelta(minutes=access.duration_minutes)
             ).isoformat(),
         }
 
@@ -194,7 +194,7 @@ class BreakGlassManager:
         return True
 
     def get_active_grants(self, patient_id: str | None = None) -> list[dict[str, Any]]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result: list[dict[str, Any]] = []
 
         with self._lock:
@@ -261,7 +261,7 @@ class BreakGlassManager:
         return True
 
     def cleanup_expired(self) -> int:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         count = 0
         with self._lock:
             for gid, access in list(self._access_grants.items()):

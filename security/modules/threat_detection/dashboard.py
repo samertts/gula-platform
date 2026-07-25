@@ -1,21 +1,19 @@
 from __future__ import annotations
 
-import json
 import logging
-import math
 import statistics
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional, Tuple
-from uuid import uuid4
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-from security.modules.threat_detection.models import SecurityMetric, ThreatEvent
+from security.modules.threat_detection.models import SecurityMetric
 
 logger = logging.getLogger(__name__)
 
-SECURITY_KPI_DEFINITIONS: Dict[str, Dict[str, Any]] = {
+SECURITY_KPI_DEFINITIONS: dict[str, dict[str, Any]] = {
     "auth_failure_rate": {
         "name": "Authentication Failure Rate",
         "description": "Rate of failed authentication attempts per hour",
@@ -111,28 +109,28 @@ class KpiResult(BaseModel):
 
 class SecurityHealthScore(BaseModel):
     overall_score: float = 0.0
-    kpis: Dict[str, KpiResult] = Field(default_factory=dict)
+    kpis: dict[str, KpiResult] = Field(default_factory=dict)
     assessment: str = ""
     generated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class MetricsTimeSeries(BaseModel):
     metric_name: str
-    data_points: List[Dict[str, Any]] = Field(default_factory=list)
+    data_points: list[dict[str, Any]] = Field(default_factory=list)
     unit: str = "count"
 
 
 class SecurityMetricsCollector:
     def __init__(self):
-        self._metrics: Dict[str, List[SecurityMetric]] = defaultdict(list)
-        self._event_sources: Dict[str, Callable] = {}
-        self._time_series: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
-        self._metric_collectors: Dict[str, Callable] = {}
+        self._metrics: dict[str, list[SecurityMetric]] = defaultdict(list)
+        self._event_sources: dict[str, Callable] = {}
+        self._time_series: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        self._metric_collectors: dict[str, Callable] = {}
 
     def record_metric(self, metric: SecurityMetric) -> None:
         self._metrics[metric.metric_name].append(metric)
         self._time_series[metric.metric_name].append({
-            "timestamp": metric.timestamp.isoformat() if metric.timestamp else datetime.now(timezone.utc).isoformat(),
+            "timestamp": metric.timestamp.isoformat() if metric.timestamp else datetime.now(UTC).isoformat(),
             "value": metric.value,
             "labels": metric.labels,
         })
@@ -143,8 +141,8 @@ class SecurityMetricsCollector:
     def register_metric_source(self, metric_name: str, collector: Callable) -> None:
         self._metric_collectors[metric_name] = collector
 
-    def collect_all_metrics(self) -> Dict[str, float]:
-        results: Dict[str, float] = {}
+    def collect_all_metrics(self) -> dict[str, float]:
+        results: dict[str, float] = {}
         for name, collector in self._metric_collectors.items():
             try:
                 value = collector()
@@ -159,7 +157,7 @@ class SecurityMetricsCollector:
                 logger.error(f"Metric collection failed for '{name}': {e}")
         return results
 
-    def get_metric(self, metric_name: str, aggregation: str = "avg") -> Optional[float]:
+    def get_metric(self, metric_name: str, aggregation: str = "avg") -> float | None:
         metrics = self._metrics.get(metric_name, [])
         if not metrics:
             return None
@@ -167,18 +165,18 @@ class SecurityMetricsCollector:
         values = [m.value for m in metrics]
         if aggregation == "avg":
             return sum(values) / len(values)
-        elif aggregation == "sum":
+        if aggregation == "sum":
             return sum(values)
-        elif aggregation == "max":
+        if aggregation == "max":
             return max(values)
-        elif aggregation == "min":
+        if aggregation == "min":
             return min(values)
-        elif aggregation == "latest":
+        if aggregation == "latest":
             return values[-1]
         return values[-1]
 
     def get_time_series(self, metric_name: str, hours: int = 24) -> MetricsTimeSeries:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         points = self._time_series.get(metric_name, [])
         filtered = [p for p in points if p.get("timestamp", "") >= cutoff.isoformat()]
         definition = SECURITY_KPI_DEFINITIONS.get(metric_name, {})
@@ -189,8 +187,8 @@ class SecurityMetricsCollector:
             unit=definition.get("unit", "count"),
         )
 
-    def calculate_kpis(self, event_data: Optional[Dict[str, Any]] = None) -> Dict[str, KpiResult]:
-        kpis: Dict[str, KpiResult] = {}
+    def calculate_kpis(self, event_data: dict[str, Any] | None = None) -> dict[str, KpiResult]:
+        kpis: dict[str, KpiResult] = {}
         data = event_data or {}
 
         kpi_calculators = {
@@ -257,11 +255,11 @@ class SecurityMetricsCollector:
             values = [p["value"] for p in recent]
             if values[-1] > values[0] * 1.1:
                 return "increasing"
-            elif values[-1] < values[0] * 0.9:
+            if values[-1] < values[0] * 0.9:
                 return "decreasing"
         return "stable"
 
-    def calculate_health_score(self, event_data: Optional[Dict[str, Any]] = None) -> SecurityHealthScore:
+    def calculate_health_score(self, event_data: dict[str, Any] | None = None) -> SecurityHealthScore:
         kpis = self.calculate_kpis(event_data)
         if not kpis:
             return SecurityHealthScore(overall_score=0.0, kpis={}, assessment="No data available")
@@ -310,7 +308,7 @@ class SecurityMetricsCollector:
         )
 
     def to_prometheus_format(self) -> str:
-        lines: List[str] = []
+        lines: list[str] = []
         for metric_name, metrics in self._metrics.items():
             if not metrics:
                 continue
@@ -330,7 +328,7 @@ class SecurityMetricsCollector:
 
         return "\n".join(lines)
 
-    def get_dashboard_data(self) -> Dict[str, Any]:
+    def get_dashboard_data(self) -> dict[str, Any]:
         kpis = self.calculate_kpis()
         health = self.calculate_health_score()
 
@@ -351,8 +349,8 @@ class SecurityMetricsCollector:
             },
         }
 
-    def trend_analysis(self, metric_name: str, hours: int = 168) -> Dict[str, Any]:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    def trend_analysis(self, metric_name: str, hours: int = 168) -> dict[str, Any]:
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
         metrics = [m for m in self._metrics.get(metric_name, []) if m.timestamp >= cutoff]
 
         if len(metrics) < 2:

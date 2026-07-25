@@ -2,23 +2,21 @@ from __future__ import annotations
 
 import json
 import logging
-import secrets
 import threading
 import time
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from typing import Any
 
-from webauthn import generate_authentication_options, generate_registration_options
-from webauthn import options as webauthn_options
-from webauthn import verify_authentication_response, verify_registration_response
+from webauthn import (
+    generate_authentication_options,
+    generate_registration_options,
+    verify_authentication_response,
+    verify_registration_response,
+)
 from webauthn.helpers.structs import (
     AuthenticatorAttachment,
     AuthenticatorSelectionCriteria,
-    CredentialCreationOptions,
-    CredentialRequestOptions,
-    PublicKeyCredentialCreationOptions,
     PublicKeyCredentialDescriptor,
-    PublicKeyCredentialRequestOptions,
     PublicKeyCredentialType,
     ResidentKeyRequirement,
     UserVerificationRequirement,

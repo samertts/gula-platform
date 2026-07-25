@@ -6,9 +6,9 @@ import logging
 import secrets
 import threading
 import time as time_module
-from base64 import urlsafe_b64encode
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 import pyotp
 
@@ -90,7 +90,7 @@ class MFAManager:
             "is_active": True,
             "is_primary": True,
             "backup_codes": [self.hash_recovery_code(c) for c in backup_codes],
-            "enrolled_at": datetime.now(timezone.utc).isoformat(),
+            "enrolled_at": datetime.now(UTC).isoformat(),
         }
 
         with self._lock:
@@ -112,7 +112,7 @@ class MFAManager:
             secret = device.get("secret", "")
             if factor == AuthFactor.TOTP:
                 if self.verify_totp(secret, token):
-                    device["last_used_at"] = datetime.now(timezone.utc).isoformat()
+                    device["last_used_at"] = datetime.now(UTC).isoformat()
                     return True
             elif factor == AuthFactor.SMS or factor == AuthFactor.EMAIL:
                 if self._verify_sms_email_code(user_id, token, factor):

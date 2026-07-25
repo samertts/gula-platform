@@ -6,17 +6,11 @@ import json
 import logging
 import os
 import tempfile
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-from uuid import uuid4
+from typing import Any
 
 from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec, ed25519, rsa
-from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature, encode_dss_signature
-
 from pydantic import BaseModel
 
 from security.modules.audit.models import AuditEvent
@@ -34,16 +28,16 @@ class ImmutableLogEntry(BaseModel):
     data_hash: str
     previous_hash: str
     signature: str = ""
-    merkle_root: Optional[str] = None
+    merkle_root: str | None = None
 
 
 class ImmutableAuditLog:
-    def __init__(self, storage_path: Optional[str] = None, signing_key: Optional[bytes] = None):
+    def __init__(self, storage_path: str | None = None, signing_key: bytes | None = None):
         self.storage_path = Path(storage_path) if storage_path else Path(tempfile.gettempdir()) / "gula-audit"
         self.storage_path.mkdir(parents=True, exist_ok=True)
 
-        self._chain: List[ImmutableLogEntry] = []
-        self._entries: List[AuditEvent] = []
+        self._chain: list[ImmutableLogEntry] = []
+        self._entries: list[AuditEvent] = []
         self._chain_file = self.storage_path / "audit_chain.jsonl"
         self._merkle_file = self.storage_path / "merkle_roots.jsonl"
         self.current_hash: str = "0" * 64
@@ -99,7 +93,7 @@ class ImmutableAuditLog:
 
         leaf_hashes = [e.data_hash for e in self._chain[-MERKLE_ROOT_INTERVAL:]]
         while len(leaf_hashes) > 1:
-            new_level: List[str] = []
+            new_level: list[str] = []
             for i in range(0, len(leaf_hashes), 2):
                 if i + 1 < len(leaf_hashes):
                     combined = leaf_hashes[i] + leaf_hashes[i + 1]
@@ -114,10 +108,10 @@ class ImmutableAuditLog:
         try:
             with open(self._chain_file, "a") as f:
                 f.write(json.dumps(self._entry_to_dict(entry)) + "\n")
-        except IOError as e:
+        except OSError as e:
             logger.error(f"Failed to persist audit entry: {e}")
 
-    def _entry_to_dict(self, entry: ImmutableLogEntry) -> Dict[str, Any]:
+    def _entry_to_dict(self, entry: ImmutableLogEntry) -> dict[str, Any]:
         return {
             "index": entry.index,
             "event_id": entry.event_id,
@@ -140,11 +134,11 @@ class ImmutableAuditLog:
                             self._chain.append(entry)
                 if self._chain:
                     self.current_hash = self._chain[-1].data_hash
-            except (IOError, json.JSONDecodeError) as e:
+            except (OSError, json.JSONDecodeError) as e:
                 logger.error(f"Failed to load audit chain: {e}")
 
-    def verify_integrity(self) -> Dict[str, Any]:
-        violations: List[str] = []
+    def verify_integrity(self) -> dict[str, Any]:
+        violations: list[str] = []
         passed = True
 
         for i in range(1, len(self._chain)):
@@ -168,16 +162,16 @@ class ImmutableAuditLog:
             "first_violation_index": violations[0] if violations else None,
         }
 
-    def detect_tampering(self) -> Dict[str, Any]:
+    def detect_tampering(self) -> dict[str, Any]:
         integrity = self.verify_integrity()
         tampered = not integrity["valid"]
 
-        findings: List[str] = []
+        findings: list[str] = []
         if tampered:
             findings = integrity["violations"]
 
         if os.path.exists(self._chain_file):
-            file_mtime = datetime.fromtimestamp(os.path.getmtime(self._chain_file), tz=timezone.utc)
+            file_mtime = datetime.fromtimestamp(os.path.getmtime(self._chain_file), tz=UTC)
             findings.append(f"Chain file last modified: {file_mtime.isoformat()}")
 
         return {
@@ -215,7 +209,7 @@ class ImmutableAuditLog:
             "    return True",
             "",
             'if __name__ == "__main__":',
-            '    if len(sys.argv) < 3:',
+            "    if len(sys.argv) < 3:",
             '        print("Usage: verify_chain.py <chain_file> <signing_key>")',
             "        sys.exit(1)",
             "    result = verify_chain(sys.argv[1], sys.argv[2])",
@@ -223,14 +217,14 @@ class ImmutableAuditLog:
         ]
         return "\n".join(lines)
 
-    def get_forensic_analysis(self, event_id: str) -> Dict[str, Any]:
+    def get_forensic_analysis(self, event_id: str) -> dict[str, Any]:
         for i, entry in enumerate(self._chain):
             if entry.event_id == event_id:
                 context_start = max(0, i - 3)
                 context_end = min(len(self._chain), i + 4)
                 surrounding_entries = self._chain[context_start:context_end]
 
-                chain_proof: Dict[str, Any] = {
+                chain_proof: dict[str, Any] = {
                     "target_entry": self._entry_to_dict(entry),
                     "target_index": i,
                     "chain_length": len(self._chain),
@@ -254,7 +248,7 @@ class ImmutableAuditLog:
 
         root = self._compute_merkle_root()
         publication = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "merkle_root": root,
             "chain_length": len(self._chain),
             "last_event_id": self._chain[-1].event_id,

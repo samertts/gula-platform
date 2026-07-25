@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import json
 import logging
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -15,7 +14,7 @@ from security.modules.compliance.models import (
 
 logger = logging.getLogger(__name__)
 
-CROSS_FRAMEWORK_MAPPINGS: Dict[str, Dict[str, List[str]]] = {
+CROSS_FRAMEWORK_MAPPINGS: dict[str, dict[str, list[str]]] = {
     "HIPAA-SEC-TEC-4": {
         "description": "Encryption and decryption of ePHI",
         "mappings": {
@@ -58,12 +57,12 @@ class FrameworkMapping(BaseModel):
 class MappedControl(BaseModel):
     original_id: str
     original_framework: ComplianceFramework
-    mapped_ids: Dict[str, List[str]] = Field(default_factory=dict)
+    mapped_ids: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class ComplianceMapper:
     def __init__(self):
-        self._mappings: Dict[str, FrameworkMapping] = {}
+        self._mappings: dict[str, FrameworkMapping] = {}
         self._initialize_mappings()
 
     def _initialize_mappings(self) -> None:
@@ -98,17 +97,15 @@ class ComplianceMapper:
         )
 
     def find_equivalent_controls(self, control_id: str,
-                                  source_framework: ComplianceFramework) -> List[FrameworkMapping]:
-        results: List[FrameworkMapping] = []
+                                  source_framework: ComplianceFramework) -> list[FrameworkMapping]:
+        results: list[FrameworkMapping] = []
         for mapping in self._mappings.values():
-            if mapping.from_control == control_id and mapping.from_framework == source_framework:
-                results.append(mapping)
-            elif mapping.to_control == control_id and mapping.to_framework == source_framework:
+            if (mapping.from_control == control_id and mapping.from_framework == source_framework) or (mapping.to_control == control_id and mapping.to_framework == source_framework):
                 results.append(mapping)
         return results
 
-    def get_mapped_controls(self, framework: ComplianceFramework) -> List[MappedControl]:
-        mapped: Dict[str, MappedControl] = {}
+    def get_mapped_controls(self, framework: ComplianceFramework) -> list[MappedControl]:
+        mapped: dict[str, MappedControl] = {}
 
         for mapping in self._mappings.values():
             if mapping.from_framework == framework:
@@ -124,9 +121,9 @@ class ComplianceMapper:
 
         return list(mapped.values())
 
-    def deduplicate_controls(self, controls: List[ComplianceControl]) -> List[ComplianceControl]:
-        seen_descriptions: Set[str] = set()
-        deduped: List[ComplianceControl] = []
+    def deduplicate_controls(self, controls: list[ComplianceControl]) -> list[ComplianceControl]:
+        seen_descriptions: set[str] = set()
+        deduped: list[ComplianceControl] = []
 
         for control in controls:
             desc_key = control.description[:100].lower()
@@ -136,7 +133,7 @@ class ComplianceMapper:
 
         return deduped
 
-    def calculate_composite_score(self, reports: List[ComplianceReport]) -> Dict[str, Any]:
+    def calculate_composite_score(self, reports: list[ComplianceReport]) -> dict[str, Any]:
         if not reports:
             return {"composite_score": 0.0, "framework_scores": {}, "overall_status": "NO_DATA"}
 
@@ -174,10 +171,10 @@ class ComplianceMapper:
             "frameworks_assessed": len(reports),
         }
 
-    def generate_unified_report(self, reports: List[ComplianceReport]) -> Dict[str, Any]:
+    def generate_unified_report(self, reports: list[ComplianceReport]) -> dict[str, Any]:
         composite = self.calculate_composite_score(reports)
 
-        all_controls: List[ComplianceControl] = []
+        all_controls: list[ComplianceControl] = []
         for report in reports:
             all_controls.extend(report.findings)
 
@@ -206,7 +203,7 @@ class ComplianceMapper:
             ][:30],
         }
 
-    def get_framework_view(self, reports: List[ComplianceReport],
+    def get_framework_view(self, reports: list[ComplianceReport],
                             framework: ComplianceFramework) -> ComplianceReport:
         for report in reports:
             if report.framework == framework:

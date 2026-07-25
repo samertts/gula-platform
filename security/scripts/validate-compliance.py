@@ -31,10 +31,8 @@ import json
 import logging
 import os
 import sys
-import time
-from collections.abc import Generator
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -220,7 +218,7 @@ class ComplianceChecker:
             framework_id=framework_id,
             framework_name=framework["name"],
             version=framework.get("version", ""),
-            assessment_date=datetime.now(timezone.utc).isoformat(),
+            assessment_date=datetime.now(UTC).isoformat(),
             overall_score=round(overall * 100, 1),
             control_results=control_results,
         )
@@ -321,7 +319,7 @@ class RiskRegister:
                         "score": 1.0 - control.score,
                         "severity": "HIGH" if control.score < 0.5 else "MEDIUM",
                         "mitigation": f"Implement controls for {control.control_name}",
-                        "assessed_at": datetime.now(timezone.utc).isoformat(),
+                        "assessed_at": datetime.now(UTC).isoformat(),
                     })
         return risks
 
@@ -337,7 +335,7 @@ def generate_report(
 ) -> str:
     """Generate compliance report. Returns path to report file."""
     os.makedirs(output_dir, exist_ok=True)
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
 
     json_path = os.path.join(output_dir, f"compliance-report-{timestamp}.json")
     with open(json_path, "w", encoding="utf-8") as f:
@@ -370,7 +368,7 @@ def _generate_html(report: ComplianceReport, path: str) -> None:
         "tr:nth-child(even){background:#f8f9fa}",
         ".framework{margin:2em 0;padding:1em;border:1px solid #dee2e6;border-radius:8px}",
         "</style></head><body>",
-        f"<h1>GSF Compliance Report</h1>",
+        "<h1>GSF Compliance Report</h1>",
         f"<p>Generated: {report.generated_at}</p>",
         f"<p>Overall Score: <span class='score'>{report.overall_compliance_score:.1f}%</span></p>",
         f"<p>Drift Detected: {'Yes' if report.drift_detected else 'No'}</p>",
@@ -456,7 +454,7 @@ def main() -> int:
     overall = sum(f.overall_score for f in framework_results) / len(framework_results) if framework_results else 0.0
 
     report = ComplianceReport(
-        generated_at=datetime.now(timezone.utc).isoformat(),
+        generated_at=datetime.now(UTC).isoformat(),
         frameworks=framework_results,
         drift_detected=drift_detected,
         drift_details=drift_details,

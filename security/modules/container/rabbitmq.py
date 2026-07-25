@@ -1,26 +1,25 @@
 from __future__ import annotations
 
-import io
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_RABBITMQ_CREDENTIALS: List[Dict[str, str]] = [
+DEFAULT_RABBITMQ_CREDENTIALS: list[dict[str, str]] = [
     {"username": "guest", "password": "guest"},
     {"username": "admin", "password": "admin"},
     {"username": "rabbitmq", "password": "rabbitmq"},
 ]
 
-WEAK_AUTH_MECHANISMS: List[str] = [
+WEAK_AUTH_MECHANISMS: list[str] = [
     "PLAIN",
     "AMQPLAIN",
 ]
 
-STRONG_AUTH_MECHANISMS: List[str] = [
+STRONG_AUTH_MECHANISMS: list[str] = [
     "EXTERNAL",
     "SCRAM-SHA-256",
     "SCRAM-SHA-512",
@@ -29,15 +28,15 @@ STRONG_AUTH_MECHANISMS: List[str] = [
 
 class RabbitMQUser(BaseModel):
     username: str
-    tags: List[str] = Field(default_factory=list)
-    vhost_permissions: Dict[str, Dict[str, List[str]]] = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
+    vhost_permissions: dict[str, dict[str, list[str]]] = Field(default_factory=dict)
 
 
 class RabbitMQPolicy(BaseModel):
     name: str
     vhost: str
     pattern: str
-    definition: Dict[str, Any] = Field(default_factory=dict)
+    definition: dict[str, Any] = Field(default_factory=dict)
     priority: int = 0
 
 
@@ -49,7 +48,7 @@ class RabbitMQSecurityFinding(BaseModel):
 
 
 class RabbitMQSecurityReport(BaseModel):
-    findings: List[RabbitMQSecurityFinding] = Field(default_factory=list)
+    findings: list[RabbitMQSecurityFinding] = Field(default_factory=list)
     passed: bool = True
     overall_severity: str = "PASS"
 
@@ -57,13 +56,13 @@ class RabbitMQSecurityReport(BaseModel):
 class RabbitMQSecurityManager:
     def __init__(self, config_content: str = ""):
         self.config_content = config_content
-        self.users: List[RabbitMQUser] = []
-        self.policies: List[RabbitMQPolicy] = []
-        self.parameters: Dict[str, Any] = {}
+        self.users: list[RabbitMQUser] = []
+        self.policies: list[RabbitMQPolicy] = []
+        self.parameters: dict[str, Any] = {}
 
-    def check_default_credentials(self, users: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
+    def check_default_credentials(self, users: list[dict[str, str]] | None = None) -> dict[str, Any]:
         check_users = users or [{"username": "guest", "password": "guest"}]
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         for user in check_users:
@@ -75,9 +74,9 @@ class RabbitMQSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_tls(self, config_content: Optional[str] = None) -> Dict[str, Any]:
+    def check_tls(self, config_content: str | None = None) -> dict[str, Any]:
         content = config_content or self.config_content
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         if "ssl_options" not in content.lower() and "ssl" not in content.lower():
@@ -107,12 +106,12 @@ class RabbitMQSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_vhost_isolation(self, users: Optional[List[RabbitMQUser]] = None,
-                                  vhosts: Optional[List[str]] = None) -> Dict[str, Any]:
+    def validate_vhost_isolation(self, users: list[RabbitMQUser] | None = None,
+                                  vhosts: list[str] | None = None) -> dict[str, Any]:
         user_list = users or self.users
         vhost_list = vhosts or []
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         if not vhost_list:
@@ -134,9 +133,9 @@ class RabbitMQSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def audit_user_permissions(self, users: Optional[List[RabbitMQUser]] = None) -> Dict[str, Any]:
+    def audit_user_permissions(self, users: list[RabbitMQUser] | None = None) -> dict[str, Any]:
         user_list = users or self.users
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         for user in user_list:
@@ -157,9 +156,9 @@ class RabbitMQSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def review_policies(self, policies: Optional[List[RabbitMQPolicy]] = None) -> Dict[str, Any]:
+    def review_policies(self, policies: list[RabbitMQPolicy] | None = None) -> dict[str, Any]:
         policy_list = policies or self.policies
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         for policy in policy_list:
@@ -184,9 +183,9 @@ class RabbitMQSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_auth_mechanism(self, mechanisms: Optional[List[str]] = None) -> Dict[str, Any]:
+    def validate_auth_mechanism(self, mechanisms: list[str] | None = None) -> dict[str, Any]:
         auth_mechs = mechanisms or ["PLAIN", "AMQPLAIN"]
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         for mech in auth_mechs:
@@ -201,9 +200,9 @@ class RabbitMQSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_shovel_federation(self, config_content: Optional[str] = None) -> Dict[str, Any]:
+    def check_shovel_federation(self, config_content: str | None = None) -> dict[str, Any]:
         content = config_content or self.config_content
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         if "rabbitmq_shovel" in content or "shovel" in content.lower():
@@ -223,12 +222,12 @@ class RabbitMQSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def full_security_audit(self, config_content: Optional[str] = None,
-                            users: Optional[List[RabbitMQUser]] = None) -> RabbitMQSecurityReport:
+    def full_security_audit(self, config_content: str | None = None,
+                            users: list[RabbitMQUser] | None = None) -> RabbitMQSecurityReport:
         if config_content:
             self.config_content = config_content
 
-        report_findings: List[RabbitMQSecurityFinding] = []
+        report_findings: list[RabbitMQSecurityFinding] = []
         passed = True
 
         default_creds = self.check_default_credentials(

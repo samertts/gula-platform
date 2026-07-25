@@ -1,0 +1,191 @@
+rules:
+  - id: hardcoded-password
+    patterns:
+      - pattern-either:
+          - pattern: password = "..."
+          - pattern: passwd = "..."
+          - pattern: PASSWORD = "..."
+          - pattern: POSTGRES_PASSWORD = "..."
+          - pattern: REDIS_PASSWORD = "..."
+      - pattern-not-regex: (CHANGE_ME|change-me|your-|placeholder)
+      - pattern-not-regex: (os\.environ|os\.getenv|environ\.get|\.env\.)
+    message: "Hardcoded password detected - use environment variables or secrets management"
+    severity: ERROR
+    languages: [python]
+    paths:
+      exclude:
+        - "*/tests/*"
+        - "*test_*"
+        - "*/migrations/*"
+        - "*/archive/*"
+
+  - id: sql-injection
+    patterns:
+      - pattern-either:
+          - pattern: |
+              $CURSOR.execute(f"...{...}...")
+          - pattern: |
+              $CURSOR.execute("..." + ...)
+          - pattern: |
+              $CURSOR.execute('...' % ...)
+          - pattern: |
+              $DB.execute(f"...{...}...")
+    message: "Potential SQL injection - use parameterized queries with placeholders (%s or :param)"
+    severity: ERROR
+    languages: [python]
+    paths:
+      exclude:
+        - "*/tests/*"
+        - "*/migrations/*"
+
+  - id: hardcoded-jwt-secret
+    patterns:
+      - pattern: |
+          jwt.encode(..., ..., algorithm=...)
+      - pattern: |
+          jwt.decode(..., ..., algorithms=[...])
+      - pattern: |
+          jwt.decode(..., ..., algorithm=...)
+      - pattern: |
+          JWTSECRET = "..."
+      - pattern: |
+          JWT_SECRET = "..."
+      - pattern-not-regex: (os\.environ|os\.getenv|environ\.get|CHANGE_ME)
+    message: "Hardcoded JWT secret detected - use environment variables"
+    severity: ERROR
+    languages: [python, javascript, typescript]
+    paths:
+      exclude:
+        - "*/tests/*"
+
+  - id: unsafe-eval-exec
+    patterns:
+      - pattern-either:
+          - pattern: eval(...)
+          - pattern: exec(...)
+          - pattern: exec(..., ...)
+          - pattern: compile(..., ..., ..., ...)
+    message: "Unsafe use of eval/exec/compile - can lead to remote code execution"
+    severity: ERROR
+    languages: [python]
+    paths:
+      exclude:
+        - "*/tests/*"
+        - "*/migrations/*"
+
+  - id: logging-sensitive-data
+    patterns:
+      - pattern-either:
+          - pattern: |
+              logging.info("...password...")
+          - pattern: |
+              logger.info("...password...")
+          - pattern: |
+              logging.info("...token...")
+          - pattern: |
+              logger.info("...token...")
+          - pattern: |
+              logging.info("...secret...")
+          - pattern: |
+              logger.info("...secret...")
+          - pattern: |
+              logging.info("...nid...")
+          - pattern: |
+              logger.info("...national_id...")
+    message: "Potential logging of sensitive/PII data (password, token, secret, NID)"
+    severity: WARNING
+    languages: [python]
+    paths:
+      exclude:
+        - "*/tests/*"
+
+  - id: insecure-http-connection
+    patterns:
+      - pattern: |
+          requests.get("http://...", ...)
+      - pattern: |
+          requests.post("http://...", ...)
+      - pattern: |
+          httpx.get("http://...", ...)
+      - pattern: |
+          httpx.post("http://...", ...)
+      - pattern-not-regex: localhost|127\.0\.0\.1|0\.0\.0\.0
+    message: "Insecure HTTP connection detected - use HTTPS for external communications"
+    severity: WARNING
+    languages: [python]
+    paths:
+      exclude:
+        - "*/tests/*"
+        - "*/migrations/*"
+
+  - id: weak-encryption-algorithm
+    patterns:
+      - pattern-either:
+          - pattern: cryptography.hazmat.primitives.ciphers.algorithms.DES(...)
+          - pattern: cryptography.hazmat.primitives.ciphers.algorithms.RC4(...)
+          - pattern: cryptography.hazmat.primitives.ciphers.algorithms.Blowfish(...)
+          - pattern: hashlib.md5(...)
+          - pattern: hashlib.sha1(...)
+    message: "Weak encryption/hashing algorithm detected - use AES-256 or SHA-256 instead"
+    severity: ERROR
+    languages: [python]
+    paths:
+      exclude:
+        - "*/tests/*"
+
+  - id: assert-used-in-production
+    patterns:
+      - pattern: |
+          assert ...
+    message: "assert statements are stripped when Python runs with -O (optimized mode) - use proper validation instead"
+    severity: WARNING
+    languages: [python]
+    paths:
+      include:
+        - "backend/app/**"
+      exclude:
+        - "*/tests/*"
+
+  - id: pickle-unsafe-deserialization
+    patterns:
+      - pattern-either:
+          - pattern: pickle.loads(...)
+          - pattern: pickle.load(...)
+          - pattern: cPickle.loads(...)
+          - pattern: cPickle.load(...)
+    message: "Unsafe deserialization with pickle - can lead to remote code execution"
+    severity: ERROR
+    languages: [python]
+    paths:
+      exclude:
+        - "*/tests/*"
+
+  - id: debug-mode-enabled
+    patterns:
+      - pattern: |
+          app.run(..., debug=True, ...)
+      - pattern: |
+          uvicorn.run(..., debug=True, ...)
+      - pattern: |
+          uvicorn.run(..., reload=True, ...)
+      - pattern: |
+          DEBUG = True
+    message: "Debug mode enabled - disable in production"
+    severity: WARNING
+    languages: [python]
+    paths:
+      exclude:
+        - "*/tests/*"
+
+  - id: path-traversal
+    patterns:
+      - pattern: |
+          open(... + ..., ...)
+      - pattern: |
+          open(os.path.join(..., ...), ...)
+    message: "Potential path traversal - validate user input before file operations"
+    severity: WARNING
+    languages: [python]
+    paths:
+      exclude:
+        - "*/tests/*"

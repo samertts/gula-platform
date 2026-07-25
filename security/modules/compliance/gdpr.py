@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from security.modules.compliance.models import (
     ComplianceControl,
@@ -14,7 +13,7 @@ from security.modules.compliance.models import (
 
 logger = logging.getLogger(__name__)
 
-GDPR_ARTICLES: Dict[str, Dict[str, Any]] = {
+GDPR_ARTICLES: dict[str, dict[str, Any]] = {
     "ART-5": {"category": "Principles", "description": "Principles relating to processing of personal data"},
     "ART-6": {"category": "Lawfulness", "description": "Lawfulness of processing"},
     "ART-7": {"category": "Consent", "description": "Conditions for consent"},
@@ -91,9 +90,9 @@ GDPR_ARTICLES: Dict[str, Dict[str, Any]] = {
 
 class GDPRValidator:
     def __init__(self):
-        self._controls: Dict[str, ComplianceControl] = {}
-        self._dpia_records: List[Dict[str, Any]] = []
-        self._dpa_records: List[Dict[str, Any]] = []
+        self._controls: dict[str, ComplianceControl] = {}
+        self._dpia_records: list[dict[str, Any]] = []
+        self._dpa_records: list[dict[str, Any]] = []
         self._initialize_controls()
 
     def _initialize_controls(self) -> None:
@@ -105,21 +104,21 @@ class GDPRValidator:
                 description=f"GDPR Article {article_id}: {info['description']}",
                 implementation_status=ControlStatus.NOT_IMPLEMENTED,
                 test_procedure=f"Verify GDPR Article {article_id} compliance",
-                risk_if_missing=f"GDPR non-compliance - up to 4% of global annual turnover fine",
+                risk_if_missing="GDPR non-compliance - up to 4% of global annual turnover fine",
             )
 
     def update_control(self, article_id: str, status: ControlStatus,
-                        evidence: Optional[List[str]] = None) -> bool:
+                        evidence: list[str] | None = None) -> bool:
         key = f"GDPR-{article_id}"
         if key in self._controls:
             self._controls[key].implementation_status = status
             if evidence:
                 self._controls[key].evidence = evidence
-            self._controls[key].last_assessed = datetime.now(timezone.utc)
+            self._controls[key].last_assessed = datetime.now(UTC)
             return True
         return False
 
-    def verify_data_subject_rights(self, capabilities: Dict[str, bool]) -> Dict[str, Any]:
+    def verify_data_subject_rights(self, capabilities: dict[str, bool]) -> dict[str, Any]:
         rights_map = {
             "access": ("ART-15", "Right of access"),
             "rectification": ("ART-16", "Right to rectification"),
@@ -129,7 +128,7 @@ class GDPRValidator:
             "object": ("ART-21", "Right to object"),
         }
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         for right, (article, name) in rights_map.items():
@@ -145,8 +144,8 @@ class GDPRValidator:
 
         return {"passed": passed, "findings": findings}
 
-    def verify_consent_management(self, consent_data: Dict[str, Any]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def verify_consent_management(self, consent_data: dict[str, Any]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         if not consent_data.get("explicit_consent", False):
@@ -171,7 +170,7 @@ class GDPRValidator:
 
         return {"passed": passed, "findings": findings}
 
-    def perform_dpia(self, processing_activity: Dict[str, Any]) -> Dict[str, Any]:
+    def perform_dpia(self, processing_activity: dict[str, Any]) -> dict[str, Any]:
         dpia_result = {
             "dpia_required": False,
             "risk_level": "LOW",
@@ -203,7 +202,7 @@ class GDPRValidator:
             ]
 
         dpia_record = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "activity": processing_activity,
             "result": dpia_result,
         }
@@ -211,8 +210,8 @@ class GDPRValidator:
 
         return dpia_result
 
-    def verify_breach_notification(self, breach_details: Dict[str, Any]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def verify_breach_notification(self, breach_details: dict[str, Any]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         has_dpa_notification = breach_details.get("notified_supervisory_authority", False)
@@ -239,8 +238,8 @@ class GDPRValidator:
 
         return {"passed": passed, "findings": findings}
 
-    def verify_dpa_requirements(self, dpa_data: Dict[str, Any]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def verify_dpa_requirements(self, dpa_data: dict[str, Any]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         required_elements = [
@@ -261,7 +260,7 @@ class GDPRValidator:
                 passed = False
 
         dpa_record = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "data": dpa_data,
             "compliant": passed,
         }
@@ -269,8 +268,8 @@ class GDPRValidator:
 
         return {"passed": passed, "findings": findings}
 
-    def check_international_transfers(self, transfer_data: Dict[str, List[str]]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def check_international_transfers(self, transfer_data: dict[str, list[str]]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         adequacy_countries = ["EU/EEA", "United Kingdom", "Argentina", "Canada", "Japan",
@@ -289,8 +288,8 @@ class GDPRValidator:
 
         return {"passed": passed, "findings": findings}
 
-    def verify_data_retention(self, retention_policies: Dict[str, int]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def verify_data_retention(self, retention_policies: dict[str, int]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         for data_type, retention_days in retention_policies.items():

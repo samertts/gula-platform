@@ -25,138 +25,27 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: |
-          pip install flake8 bandit safety
+        run: pip install flake8 bandit safety
 
       - name: Run Constitution Enforcer (25 Rules)
-        run: |
-          python3 scripts/constitution_enforcer.py --diff-mode --base origin/main 2>&1
+        run: python3 scripts/constitution_enforcer.py --diff-mode --base origin/main 2>&1
 
       - name: Check Free First Compliance
-        run: |
-          echo "=== Free First Compliance ==="
-          # Check for paid service patterns in requirements
-          python3 -c "
-import re, pathlib, sys
-paid_patterns = [
-    r'(openai|anthropic|google\.ai|aws|azure|gcp)\.(com|io)',
-    r'stripe\.com', r'twilio\.com', r'sendgrid\.net',
-    r'auth0\.com', r'okta\.com', r'supabase\.(co|com)',
-    r'firebase\.(io|googleapis\.com)',
-]
-issues = []
-for f in pathlib.Path('.').rglob('requirements*.txt'):
-    text = f.read_text()
-    for pat in paid_patterns:
-        if re.search(pat, text, re.I):
-            issues.append(f'{f}: {pat}')
-for f in pathlib.Path('.').rglob('package.json'):
-    if 'node_modules' in str(f): continue
-    text = f.read_text()
-    for pat in paid_patterns:
-        if re.search(pat, text, re.I):
-            issues.append(f'{f}: {pat}')
-if issues:
-    for iss in issues: print(f'  WARNING: {iss}')
-    print('Free First: WARN — review paid references')
-else:
-    print('Free First: PASS — no paid dependency patterns found')
-"
+        run: python3 scripts/github-actions/check-free-first-compliance.py
 
       - name: Check Open Source First Compliance
-        run: |
-          echo "=== Open Source First Compliance ==="
-          python3 -c "
-import re, pathlib, sys
-proprietary = ['commercial', 'proprietary', 'all rights reserved', 'eula', 'enterprise license']
-issues = []
-for f in pathlib.Path('.').rglob('requirements*.txt'):
-    text = f.read_text().lower()
-    for lic in proprietary:
-        if lic in text:
-            issues.append(f'{f}: contains \"{lic}\"')
-for f in pathlib.Path('.').rglob('package.json'):
-    if 'node_modules' in str(f): continue
-    text = f.read_text().lower()
-    for lic in proprietary:
-        if lic in text:
-            issues.append(f'{f}: contains \"{lic}\"')
-if issues:
-    for iss in issues: print(f'  WARNING: {iss}')
-    print('Open Source First: WARN — proprietary references found')
-else:
-    print('Open Source First: PASS — all dependencies appear open source')
-"
+        run: python3 scripts/github-actions/check-open-source-first.py
 
       - name: Check No Vendor Lock-In
-        run: |
-          echo "=== Vendor Lock-In Check ==="
-          # Check for direct vendor SDK usage without abstraction
-          python3 -c "
-import re, pathlib, sys
-vendor_sdks = [
-    (r'import\s+boto3', 'AWS SDK (boto3)'),
-    (r'from\s+boto3', 'AWS SDK (boto3)'),
-    (r'from\s+azure\.', 'Azure SDK'),
-    (r'import\s+azure\.', 'Azure SDK'),
-    (r'from\s+google\.cloud', 'GCP SDK'),
-    (r'import\s+google\.cloud', 'GCP SDK'),
-    (r'import\s+supabase', 'Supabase SDK'),
-    (r'from\s+supabase', 'Supabase SDK'),
-    (r'import\s+auth0', 'Auth0 SDK'),
-    (r'from\s+auth0', 'Auth0 SDK'),
-    (r'import\s+okta', 'Okta SDK'),
-    (r'from\s+okta', 'Okta SDK'),
-    (r'import\s+stripe', 'Stripe SDK'),
-    (r'from\s+stripe', 'Stripe SDK'),
-]
-issues = []
-for f in pathlib.Path('backend/app').rglob('*.py'):
-    text = f.read_text()
-    rel = f.relative_to(pathlib.Path('.'))
-    for pat, name in vendor_sdks:
-        if re.search(pat, text):
-            issues.append(f'{rel}: {name}')
-if issues:
-    for iss in issues: print(f'  FAIL: {iss}')
-    print('Vendor Lock-In: FAIL — direct vendor SDK usage detected')
-    sys.exit(1)
-else:
-    print('Vendor Lock-In: PASS — no direct vendor SDK usage')
-"
+        run: python3 scripts/github-actions/check-vendor-lockin.py
 
       - name: Check Self-Hosted First Compliance
-        run: |
-          echo "=== Self-Hosted First Compliance ==="
-          python3 -c "
-import re, pathlib
-saas_refs = [
-    r'supabase\.(co|com)', r'firebase\.(io|googleapis)',
-    r'auth0\.com', r'okta\.com',
-    r'aws\.amazon\.com', r'azure\.microsoft\.com',
-    r'cloud\.google\.com', r'mongodb\.com/atlas',
-    r'datadog\.com', r'newrelic\.com',
-    r'sendgrid\.(net|com)', r'twilio\.com',
-    r'pagerduty\.com',
-]
-issues = []
-for f in list(pathlib.Path('backend').rglob('*.py')) + list(pathlib.Path('.github').rglob('*.yml')):
-    text = f.read_text()
-    for pat in saas_refs:
-        if re.search(pat, text, re.I):
-            rel = f.relative_to(pathlib.Path('.'))
-            issues.append(f'{rel}: references {pat}')
-if issues:
-    for iss in issues: print(f'  WARNING: {iss}')
-    print('Self-Hosted First: WARN — SaaS references detected')
-else:
-    print('Self-Hosted First: PASS — no SaaS references')
-"
+        run: python3 scripts/github-actions/check-selfhosted-first.py
 
       - name: Check Cost Governance
         run: |
           echo "=== Cost Governance Check ==="
-          echo "Cost Governance: PASS — infrastructure uses self-hosted open source stack"
+          echo "Cost Governance: PASS"
           echo "  Database: PostgreSQL (free)"
           echo "  Cache: Redis (free)"
           echo "  Storage: MinIO (free)"
@@ -166,41 +55,17 @@ else:
           echo "  AI: Ollama (free)"
 
       - name: Check ADR Compliance
-        run: |
-          echo "=== ADR Cost / Open Source Compliance ==="
-          python3 -c "
-import pathlib, sys
-adr_dir = pathlib.Path('docs/adr')
-if adr_dir.exists():
-    adrs = sorted(adr_dir.glob('ADR-*.md'))
-    issues = []
-    for adr in adrs:
-        text = adr.read_text()
-        if 'open source' not in text.lower() and 'free ' not in text.lower():
-            issues.append(f'{adr.name}: missing Open Source/Free alternatives section')
-    if issues:
-        for iss in issues: print(f'  WARNING: {iss}')
-        print('ADR Compliance: WARN — some ADRs may lack cost/open-source sections')
-    else:
-        print(f'ADR Compliance: PASS — {len(adrs)} ADRs reviewed')
-else:
-    print('ADR Compliance: SKIP — no ADR directory')
-"
+        run: python3 scripts/github-actions/check-adr-compliance.py
 
       - name: Summary
         run: |
           echo ""
-          echo "═══════════════════════════════════════════════════════════════"
-          echo "  PROGRAM-CONSTITUTION-001 Compliance Summary"
-          echo "═══════════════════════════════════════════════════════════════"
+          echo "=== PROGRAM-CONSTITUTION-001 Compliance Summary ==="
           echo ""
-          echo "  ✅ Free First         — Paid dependency patterns checked"
-          echo "  ✅ Open Source First  — License compliance checked"
-          echo "  ✅ No Vendor Lock-In  — Direct SDK usage checked"
-          echo "  ✅ Self-Hosted First  — SaaS references checked"
-          echo "  ✅ Cost Governance    — Infrastructure cost optimized"
-          echo "  ✅ Constitution Enforcement — 25 rules validated"
+          echo "  Free First         \u2714"
+          echo "  Open Source First  \u2714"
+          echo "  No Vendor Lock-In  \u2714"
+          echo "  Self-Hosted First  \u2714"
+          echo "  Cost Governance    \u2714"
+          echo "  Constitution Enforcement \u2714"
           echo ""
-          echo "  Full policy: docs/constitution/COST_GOVERNANCE.md"
-          echo "  Full policy: docs/constitution/SYSTEM_CONSTITUTION.md"
-          echo "═══════════════════════════════════════════════════════════════"

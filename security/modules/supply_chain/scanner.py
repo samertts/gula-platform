@@ -2,21 +2,16 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import subprocess
-import sys
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-from xml.etree import ElementTree
+from datetime import UTC, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 from security.modules.supply_chain.models import (
     DependencyVulnerability,
     SBOMComponent,
-    SecurityScorecardEntry,
     SupplyChainPolicy,
 )
 
@@ -25,11 +20,11 @@ logger = logging.getLogger(__name__)
 
 class ScanResult(BaseModel):
     scanner: str
-    vulnerabilities: List[DependencyVulnerability] = Field(default_factory=list)
-    components: List[SBOMComponent] = Field(default_factory=list)
+    vulnerabilities: list[DependencyVulnerability] = Field(default_factory=list)
+    components: list[SBOMComponent] = Field(default_factory=list)
     raw_output: str = ""
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class LicenseFinding(BaseModel):
@@ -41,10 +36,10 @@ class LicenseFinding(BaseModel):
 
 
 class SupplyChainScanner:
-    def __init__(self, policy: Optional[SupplyChainPolicy] = None):
+    def __init__(self, policy: SupplyChainPolicy | None = None):
         self.policy = policy or SupplyChainPolicy()
 
-    def _run_command(self, cmd: List[str], timeout: int = 120) -> Dict[str, Any]:
+    def _run_command(self, cmd: list[str], timeout: int = 120) -> dict[str, Any]:
         try:
             result = subprocess.run(
                 cmd, capture_output=True, text=True, timeout=timeout
@@ -80,7 +75,7 @@ class SupplyChainScanner:
     def generate_sbom_syft(self, target: str = ".") -> ScanResult:
         logger.info(f"Generating SBOM with Syft for {target}")
         result = self._run_command(["syft", target, "-o", "cyclonedx-json"])
-        components: List[SBOMComponent] = []
+        components: list[SBOMComponent] = []
 
         if result["success"]:
             try:
@@ -117,7 +112,7 @@ class SupplyChainScanner:
         result = self._run_command([
             "grype", target, "--output", "json", "--fail-on", "critical"
         ])
-        vulnerabilities: List[DependencyVulnerability] = []
+        vulnerabilities: list[DependencyVulnerability] = []
 
         if result["success"] or result["returncode"] == 1:
             try:
@@ -162,7 +157,7 @@ class SupplyChainScanner:
         result = self._run_command([
             "trivy", "image", image, "--format", format, "--severity", "CRITICAL,HIGH"
         ])
-        vulnerabilities: List[DependencyVulnerability] = []
+        vulnerabilities: list[DependencyVulnerability] = []
 
         if result["success"] or result["returncode"] == 1:
             try:
@@ -190,8 +185,8 @@ class SupplyChainScanner:
             error=result["stderr"] if not result["success"] and result["returncode"] != 1 else None,
         )
 
-    def check_license_compliance(self, components: List[SBOMComponent]) -> List[LicenseFinding]:
-        findings: List[LicenseFinding] = []
+    def check_license_compliance(self, components: list[SBOMComponent]) -> list[LicenseFinding]:
+        findings: list[LicenseFinding] = []
         allowed = self.policy.allowed_licenses
 
         for comp in components:
@@ -227,11 +222,11 @@ class SupplyChainScanner:
 
         return findings
 
-    def validate_dependency_freshness(self, components: List[SBOMComponent],
-                                       max_days: int = 365) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_dependency_freshness(self, components: list[SBOMComponent],
+                                       max_days: int = 365) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for comp in components:
             if hasattr(comp, "version") and comp.version:
@@ -249,8 +244,8 @@ class SupplyChainScanner:
 
         return {"findings": findings, "passed": passed}
 
-    def query_vulnerability_database(self, package: str, version: str) -> List[DependencyVulnerability]:
-        known_vulns: Dict[str, List[Dict[str, Any]]] = {
+    def query_vulnerability_database(self, package: str, version: str) -> list[DependencyVulnerability]:
+        known_vulns: dict[str, list[dict[str, Any]]] = {
             "log4j": [
                 {"cve": "CVE-2021-44228", "fixed": "2.17.0", "severity": "CRITICAL", "score": 10.0},
                 {"cve": "CVE-2021-45046", "fixed": "2.17.0", "severity": "CRITICAL", "score": 9.0},
@@ -280,7 +275,7 @@ class SupplyChainScanner:
         }
 
         package_key = package.lower()
-        results: List[DependencyVulnerability] = []
+        results: list[DependencyVulnerability] = []
 
         if package_key in known_vulns:
             for v in known_vulns[package_key]:
@@ -326,11 +321,11 @@ class SupplyChainScanner:
                 "error": scan_result.error,
             }, indent=2)
 
-        elif format == "cyclonedx":
+        if format == "cyclonedx":
             components_xml = ""
             for comp in scan_result.components:
                 components_xml += (
-                    f"<component type=\"library\">"
+                    f'<component type="library">'
                     f"<name>{comp.name}</name>"
                     f"<version>{comp.version}</version>"
                     f"<licenses>"
@@ -349,12 +344,12 @@ class SupplyChainScanner:
 <components>{components_xml}</components>
 </bom>"""
 
-        elif format == "spdx":
+        if format == "spdx":
             spdx_lines = [
                 "SPDXVersion: SPDX-2.3",
                 "DataLicense: CC0-1.0",
-                f"SPDXID: SPDXRef-DOCUMENT",
-                f"DocumentName: GULA Supply Chain Scan",
+                "SPDXID: SPDXRef-DOCUMENT",
+                "DocumentName: GULA Supply Chain Scan",
                 f"Created: {datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}",
                 "",
             ]
@@ -370,7 +365,7 @@ class SupplyChainScanner:
                 ])
             return "\n".join(spdx_lines)
 
-        elif format == "sarif":
+        if format == "sarif":
             return json.dumps({
                 "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
                 "version": "2.1.0",
@@ -388,7 +383,7 @@ class SupplyChainScanner:
                 }],
             }, indent=2)
 
-        elif format == "html":
+        if format == "html":
             vuln_rows = ""
             for v in scan_result.vulnerabilities:
                 vuln_rows += (
@@ -408,5 +403,4 @@ th,td{{border:1px solid #ddd;padding:8px;text-align:left}}th{{background-color:#
 <table><tr><th>CVE</th><th>Package</th><th>Version</th><th>Severity</th><th>CVSS</th><th>Fix</th></tr>
 {vuln_rows}</table></body></html>"""
 
-        else:
-            return json.dumps({"error": f"Unsupported format: {format}"}, indent=2)
+        return json.dumps({"error": f"Unsupported format: {format}"}, indent=2)

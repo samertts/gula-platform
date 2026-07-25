@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-AUTH_METHOD_RANKING: Dict[str, int] = {
+AUTH_METHOD_RANKING: dict[str, int] = {
     "trust": 0,
     "password": 1,
     "md5": 2,
@@ -21,15 +21,15 @@ AUTH_METHOD_RANKING: Dict[str, int] = {
     "reject": 10,
 }
 
-UNTRUSTED_LANGUAGES: Set[str] = {"plpgsql", "sql"}
-TRUSTED_LANGUAGES: Set[str] = {"plperl", "pltcl", "plpython3u", "pljava", "plr", "plsh"}
+UNTRUSTED_LANGUAGES: set[str] = {"plpgsql", "sql"}
+TRUSTED_LANGUAGES: set[str] = {"plperl", "pltcl", "plpython3u", "pljava", "plr", "plsh"}
 
 
 class PgHbaEntry(BaseModel):
     connection_type: str
     database: str
     user: str
-    address: Optional[str] = None
+    address: str | None = None
     auth_method: str
     auth_options: str = ""
 
@@ -39,11 +39,11 @@ class PostgreSQLConfigFinding(BaseModel):
     severity: str
     description: str
     remediation: str
-    line_reference: Optional[str] = None
+    line_reference: str | None = None
 
 
 class PostgreSQLSecurityReport(BaseModel):
-    findings: List[PostgreSQLConfigFinding] = Field(default_factory=list)
+    findings: list[PostgreSQLConfigFinding] = Field(default_factory=list)
     passed: bool = True
     overall_severity: str = "PASS"
 
@@ -52,13 +52,13 @@ class PostgreSQLSecurityManager:
     def __init__(self, pg_hba_content: str = "", postgresql_conf_content: str = ""):
         self.pg_hba_content = pg_hba_content
         self.postgresql_conf_content = postgresql_conf_content
-        self._pg_hba_entries: List[PgHbaEntry] = []
+        self._pg_hba_entries: list[PgHbaEntry] = []
 
-    def _parse_pg_hba(self, content: Optional[str] = None) -> List[PgHbaEntry]:
+    def _parse_pg_hba(self, content: str | None = None) -> list[PgHbaEntry]:
         if content:
             self.pg_hba_content = content
 
-        entries: List[PgHbaEntry] = []
+        entries: list[PgHbaEntry] = []
         for line in self.pg_hba_content.split("\n"):
             stripped = line.strip()
             if stripped.startswith("#") or not stripped:
@@ -86,9 +86,9 @@ class PostgreSQLSecurityManager:
         self._pg_hba_entries = entries
         return entries
 
-    def analyze_pg_hba(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def analyze_pg_hba(self, content: str | None = None) -> dict[str, Any]:
         entries = self._parse_pg_hba(content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         for entry in entries:
@@ -112,9 +112,9 @@ class PostgreSQLSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_auth_methods(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def validate_auth_methods(self, content: str | None = None) -> dict[str, Any]:
         entries = self._parse_pg_hba(content)
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         for entry in entries:
@@ -127,9 +127,9 @@ class PostgreSQLSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_ssl_tls(self, conf_content: Optional[str] = None) -> Dict[str, Any]:
+    def check_ssl_tls(self, conf_content: str | None = None) -> dict[str, Any]:
         content = conf_content or self.postgresql_conf_content
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         ssl_match = re.search(r"^\s*ssl\s*=\s*(on|off|true|false|1|0)\s*$", content, re.MULTILINE | re.IGNORECASE)
@@ -162,8 +162,8 @@ class PostgreSQLSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def audit_role_permissions(self, roles: Dict[str, List[str]]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def audit_role_permissions(self, roles: dict[str, list[str]]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         for role_name, privileges in roles.items():
@@ -185,8 +185,8 @@ class PostgreSQLSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_row_level_security(self, tables_with_rls: Dict[str, bool]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_row_level_security(self, tables_with_rls: dict[str, bool]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         sensitive_tables = ["patient", "patient_record", "consent", "audit_log",
@@ -201,9 +201,9 @@ class PostgreSQLSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_audit_logging(self, conf_content: Optional[str] = None) -> Dict[str, Any]:
+    def check_audit_logging(self, conf_content: str | None = None) -> dict[str, Any]:
         content = conf_content or self.postgresql_conf_content
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         shared_preload = re.search(r"^\s*shared_preload_libraries\s*=\s*'([^']*)'", content, re.MULTILINE)
@@ -236,8 +236,8 @@ class PostgreSQLSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def review_extensions(self, installed_extensions: List[str]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def review_extensions(self, installed_extensions: list[str]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         for ext in installed_extensions:
@@ -255,9 +255,9 @@ class PostgreSQLSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def check_connection_security(self, conf_content: Optional[str] = None) -> Dict[str, Any]:
+    def check_connection_security(self, conf_content: str | None = None) -> dict[str, Any]:
         content = conf_content or self.postgresql_conf_content
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
 
         listen_addresses = re.search(r"^\s*listen_addresses\s*=\s*'([^']+)'", content, re.MULTILINE)
@@ -280,8 +280,8 @@ class PostgreSQLSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def enforce_password_policy(self, password: str, username: Optional[str] = None) -> Dict[str, Any]:
-        findings: List[str] = []
+    def enforce_password_policy(self, password: str, username: str | None = None) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         if len(password) < 12:
@@ -316,8 +316,8 @@ class PostgreSQLSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_encryption_at_rest(self, data_directory: Optional[str] = None) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_encryption_at_rest(self, data_directory: str | None = None) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         if data_directory:
@@ -329,14 +329,14 @@ class PostgreSQLSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def full_security_audit(self, pg_hba: Optional[str] = None,
-                           conf: Optional[str] = None) -> PostgreSQLSecurityReport:
+    def full_security_audit(self, pg_hba: str | None = None,
+                           conf: str | None = None) -> PostgreSQLSecurityReport:
         if pg_hba:
             self.pg_hba_content = pg_hba
         if conf:
             self.postgresql_conf_content = conf
 
-        report_findings: List[PostgreSQLConfigFinding] = []
+        report_findings: list[PostgreSQLConfigFinding] = []
         passed = True
 
         hba_result = self.analyze_pg_hba()

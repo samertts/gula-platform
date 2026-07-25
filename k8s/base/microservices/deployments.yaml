@@ -3,10 +3,6 @@
 # External ports per ARCHITECTURE.md:
 #   lab:8001  patient:8002  order:8003  result:8004  sample:8005  notification:8006  ai:9000
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Shared env vars template (used by all data-plane microservices)
-# ─────────────────────────────────────────────────────────────────────────────
-
 ---
 # Lab Service (:8001)
 apiVersion: apps/v1
@@ -19,6 +15,11 @@ metadata:
     component: microservice
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: svc-lab
@@ -31,6 +32,8 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.37
@@ -42,6 +45,11 @@ spec:
         - name: svc-lab
           image: ghcr.io/samertts/gula-platform/svc-lab:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
           env:
             - name: DATABASE_URL
               value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
@@ -86,6 +94,21 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
       imagePullSecrets:
         - name: ghcr-credentials
 
@@ -101,6 +124,11 @@ metadata:
     component: microservice
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: svc-patient
@@ -113,6 +141,8 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.37
@@ -124,6 +154,11 @@ spec:
         - name: svc-patient
           image: ghcr.io/samertts/gula-platform/svc-patient:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
           env:
             - name: DATABASE_URL
               value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
@@ -168,6 +203,21 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
       imagePullSecrets:
         - name: ghcr-credentials
 
@@ -183,6 +233,11 @@ metadata:
     component: microservice
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: svc-order
@@ -195,6 +250,8 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.37
@@ -206,6 +263,11 @@ spec:
         - name: svc-order
           image: ghcr.io/samertts/gula-platform/svc-order:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
           env:
             - name: DATABASE_URL
               value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
@@ -250,6 +312,21 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
       imagePullSecrets:
         - name: ghcr-credentials
 
@@ -265,6 +342,11 @@ metadata:
     component: microservice
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: svc-result
@@ -277,6 +359,8 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.37
@@ -288,6 +372,11 @@ spec:
         - name: svc-result
           image: ghcr.io/samertts/gula-platform/svc-result:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
           env:
             - name: DATABASE_URL
               value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
@@ -344,6 +433,21 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
       imagePullSecrets:
         - name: ghcr-credentials
 
@@ -359,6 +463,11 @@ metadata:
     component: microservice
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: svc-sample
@@ -371,6 +480,8 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-postgres
           image: busybox:1.37
@@ -382,6 +493,11 @@ spec:
         - name: svc-sample
           image: ghcr.io/samertts/gula-platform/svc-sample:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
           env:
             - name: DATABASE_URL
               value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
@@ -426,6 +542,21 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
       imagePullSecrets:
         - name: ghcr-credentials
 
@@ -441,6 +572,11 @@ metadata:
     component: microservice
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: svc-notification
@@ -453,6 +589,8 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
         - name: wait-for-rabbitmq
           image: busybox:1.37
@@ -461,6 +599,11 @@ spec:
         - name: svc-notification
           image: ghcr.io/samertts/gula-platform/svc-notification:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
           env:
             - name: RABBITMQ_URL
               value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASS)@rabbitmq:5672/gula
@@ -504,6 +647,21 @@ spec:
               port: 8000
             initialDelaySeconds: 15
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
       imagePullSecrets:
         - name: ghcr-credentials
 
@@ -519,6 +677,11 @@ metadata:
     component: microservice
 spec:
   replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: svc-ai
@@ -531,10 +694,17 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: svc-ai
           image: ghcr.io/samertts/gula-platform/svc-ai:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
           env:
             - name: AI_PROVIDER
               value: ollama
@@ -567,5 +737,19 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 15
             timeoutSeconds: 10
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 60
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
       imagePullSecrets:
         - name: ghcr-credentials

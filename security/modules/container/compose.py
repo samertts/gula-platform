@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-SENSITIVE_ENV_PATTERNS: List[str] = [
+SENSITIVE_ENV_PATTERNS: list[str] = [
     r"(?i)(password|passwd|pwd|secret|token|api_key|apikey|auth|credential)",
     r"(?i)(AWS_ACCESS_KEY|AWS_SECRET_KEY|AWS_SESSION_TOKEN)",
     r"(?i)(DATABASE_URL|DB_URL|REDIS_URL|RABBITMQ_URL|AMQP_URL)",
@@ -23,14 +23,14 @@ SENSITIVE_ENV_PATTERNS: List[str] = [
 
 class ComposeServiceFinding(BaseModel):
     service_name: str
-    findings: List[str] = Field(default_factory=list)
+    findings: list[str] = Field(default_factory=list)
     severity: str = "MEDIUM"
 
 
 class ComposeSecurityReport(BaseModel):
     file_path: str
-    service_findings: List[ComposeServiceFinding] = Field(default_factory=list)
-    global_findings: List[str] = Field(default_factory=list)
+    service_findings: list[ComposeServiceFinding] = Field(default_factory=list)
+    global_findings: list[str] = Field(default_factory=list)
     passed: bool = True
     overall_severity: str = "PASS"
 
@@ -38,18 +38,18 @@ class ComposeSecurityReport(BaseModel):
 class ComposeSecurityManager:
     def __init__(self, compose_content: str = ""):
         self.compose_content = compose_content
-        self._parsed: Optional[Dict[str, Any]] = None
+        self._parsed: dict[str, Any] | None = None
 
-    def parse_compose(self, content: Optional[str] = None) -> Dict[str, Any]:
+    def parse_compose(self, content: str | None = None) -> dict[str, Any]:
         if content:
             self.compose_content = content
 
         if not self.compose_content.strip():
             return {}
 
-        parsed: Dict[str, Any] = {}
-        current_section: Optional[str] = None
-        current_service: Optional[str] = None
+        parsed: dict[str, Any] = {}
+        current_section: str | None = None
+        current_service: str | None = None
         in_services = False
         in_networks = False
         in_volumes = False
@@ -138,11 +138,11 @@ class ComposeSecurityManager:
 
         return parsed
 
-    def audit_network_isolation(self, parsed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def audit_network_isolation(self, parsed: dict[str, Any] | None = None) -> dict[str, Any]:
         if parsed is None:
             parsed = self.parse_compose()
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
         services = parsed.get("services", {})
 
@@ -166,11 +166,11 @@ class ComposeSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_volume_mounts(self, parsed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def validate_volume_mounts(self, parsed: dict[str, Any] | None = None) -> dict[str, Any]:
         if parsed is None:
             parsed = self.parse_compose()
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
         services = parsed.get("services", {})
 
@@ -198,11 +198,11 @@ class ComposeSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def detect_secrets_in_env(self, parsed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def detect_secrets_in_env(self, parsed: dict[str, Any] | None = None) -> dict[str, Any]:
         if parsed is None:
             parsed = self.parse_compose()
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
         services = parsed.get("services", {})
 
@@ -231,11 +231,11 @@ class ComposeSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def analyze_port_exposure(self, parsed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def analyze_port_exposure(self, parsed: dict[str, Any] | None = None) -> dict[str, Any]:
         if parsed is None:
             parsed = self.parse_compose()
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
         services = parsed.get("services", {})
 
@@ -257,11 +257,11 @@ class ComposeSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_dependency_versions(self, parsed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def validate_dependency_versions(self, parsed: dict[str, Any] | None = None) -> dict[str, Any]:
         if parsed is None:
             parsed = self.parse_compose()
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
         services = parsed.get("services", {})
 
@@ -279,11 +279,11 @@ class ComposeSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_healthcheck(self, parsed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def validate_healthcheck(self, parsed: dict[str, Any] | None = None) -> dict[str, Any]:
         if parsed is None:
             parsed = self.parse_compose()
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
         services = parsed.get("services", {})
 
@@ -298,11 +298,11 @@ class ComposeSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def validate_restart_policy(self, parsed: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    def validate_restart_policy(self, parsed: dict[str, Any] | None = None) -> dict[str, Any]:
         if parsed is None:
             parsed = self.parse_compose()
 
-        findings: List[str] = []
+        findings: list[str] = []
         passed = True
         services = parsed.get("services", {})
 
@@ -318,12 +318,12 @@ class ComposeSecurityManager:
 
         return {"findings": findings, "passed": passed}
 
-    def full_audit(self, content: Optional[str] = None) -> ComposeSecurityReport:
+    def full_audit(self, content: str | None = None) -> ComposeSecurityReport:
         parsed = self.parse_compose(content)
-        all_findings: List[ComposeServiceFinding] = []
-        global_findings: List[str] = []
+        all_findings: list[ComposeServiceFinding] = []
+        global_findings: list[str] = []
         overall_passed = True
-        severities: List[str] = []
+        severities: list[str] = []
 
         network = self.audit_network_isolation(parsed)
         volumes = self.validate_volume_mounts(parsed)
@@ -349,7 +349,7 @@ class ComposeSecurityManager:
                 severities.append("MEDIUM")
 
         for svc_name in parsed.get("services", {}):
-            svc_findings: List[str] = []
+            svc_findings: list[str] = []
             svc_config = parsed["services"][svc_name]
 
             if svc_config.get("privileged"):
@@ -384,7 +384,7 @@ class ComposeSecurityManager:
         )
 
     def suggest_remediation(self, finding: str) -> str:
-        remediation_map: Dict[str, str] = {
+        remediation_map: dict[str, str] = {
             "host network": "Add 'network_mode: bridge' and define custom networks",
             "docker.sock": "Remove docker socket mount or use docker-in-docker pattern",
             "privileged": "Remove 'privileged: true' and add only required capabilities",
@@ -406,9 +406,9 @@ class ComposeSecurityManager:
 
         return "Review configuration against security best practices"
 
-    def generate_security_report(self, content: Optional[str] = None) -> str:
+    def generate_security_report(self, content: str | None = None) -> str:
         report = self.full_audit(content)
-        lines: List[str] = [
+        lines: list[str] = [
             "=" * 60,
             "Docker Compose Security Audit Report",
             "=" * 60,

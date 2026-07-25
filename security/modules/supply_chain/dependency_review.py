@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
-import os
 import re
 import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
-from urllib.parse import urlparse
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -17,7 +13,7 @@ from security.modules.supply_chain.models import DependencyVulnerability, Supply
 
 logger = logging.getLogger(__name__)
 
-TYPO_SQUATTING_PACKAGES: Dict[str, List[str]] = {
+TYPO_SQUATTING_PACKAGES: dict[str, list[str]] = {
     "pytorch": ["pytorche", "pytorch-cpu"],
     "tensorflow": ["tensorflo", "tensor-flow", "tensorlfow"],
     "requests": ["requestz", "reqests", "requests3"],
@@ -33,37 +29,37 @@ TYPO_SQUATTING_PACKAGES: Dict[str, List[str]] = {
     "sqlalchemy": ["sql-alchemy", "sqlalchemy2", "sqlalchemy3"],
 }
 
-TYPO_SQUATTING_PREFIXES: List[str] = ["python-", "py-", "python3-", "python2-"]
-TYPO_SQUATTING_SUFFIXES: List[str] = ["-python", "-py", "-dev", "-library", "-helper"]
+TYPO_SQUATTING_PREFIXES: list[str] = ["python-", "py-", "python3-", "python2-"]
+TYPO_SQUATTING_SUFFIXES: list[str] = ["-python", "-py", "-dev", "-library", "-helper"]
 
 
 class DependencyDiff(BaseModel):
     package: str
-    old_version: Optional[str] = None
+    old_version: str | None = None
     new_version: str
     action: str = "added"
-    license: Optional[str] = None
+    license: str | None = None
 
 
 class DependencyReviewResult(BaseModel):
-    new_dependencies: List[DependencyDiff] = Field(default_factory=list)
-    removed_dependencies: List[DependencyDiff] = Field(default_factory=list)
-    updated_dependencies: List[DependencyDiff] = Field(default_factory=list)
-    license_issues: List[DependencyDiff] = Field(default_factory=list)
-    malicious_packages: List[Dict[str, Any]] = Field(default_factory=list)
-    freshness_issues: List[str] = Field(default_factory=list)
+    new_dependencies: list[DependencyDiff] = Field(default_factory=list)
+    removed_dependencies: list[DependencyDiff] = Field(default_factory=list)
+    updated_dependencies: list[DependencyDiff] = Field(default_factory=list)
+    license_issues: list[DependencyDiff] = Field(default_factory=list)
+    malicious_packages: list[dict[str, Any]] = Field(default_factory=list)
+    freshness_issues: list[str] = Field(default_factory=list)
     lockfile_valid: bool = True
-    lockfile_errors: List[str] = Field(default_factory=list)
-    scorecard_score: Optional[float] = None
+    lockfile_errors: list[str] = Field(default_factory=list)
+    scorecard_score: float | None = None
     passed: bool = True
 
 
 class DependencyReviewer:
-    def __init__(self, policy: Optional[SupplyChainPolicy] = None):
+    def __init__(self, policy: SupplyChainPolicy | None = None):
         self.policy = policy or SupplyChainPolicy()
 
-    def validate_dependabot_config(self, config_yaml: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def validate_dependabot_config(self, config_yaml: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         if "package-ecosystem" not in config_yaml.lower():
@@ -95,8 +91,8 @@ class DependencyReviewer:
 
         return {"findings": findings, "passed": passed}
 
-    def parse_dependabot_alerts(self, alerts_json: str) -> List[DependencyVulnerability]:
-        vulnerabilities: List[DependencyVulnerability] = []
+    def parse_dependabot_alerts(self, alerts_json: str) -> list[DependencyVulnerability]:
+        vulnerabilities: list[DependencyVulnerability] = []
 
         try:
             data = json.loads(alerts_json)
@@ -122,10 +118,10 @@ class DependencyReviewer:
 
         return vulnerabilities
 
-    def review_new_dependencies(self, new_deps: List[DependencyDiff],
-                                 existing_deps: List[DependencyDiff]) -> Dict[str, Any]:
-        findings: List[str] = []
-        license_issues: List[str] = []
+    def review_new_dependencies(self, new_deps: list[DependencyDiff],
+                                 existing_deps: list[DependencyDiff]) -> dict[str, Any]:
+        findings: list[str] = []
+        license_issues: list[str] = []
         passed = True
 
         allowed_licenses_upper = [l.upper() for l in self.policy.allowed_licenses]
@@ -153,8 +149,8 @@ class DependencyReviewer:
 
         return {"findings": findings, "license_issues": license_issues, "passed": passed}
 
-    def analyze_transitive_dependencies(self, lockfile: Dict[str, Any]) -> Dict[str, Any]:
-        findings: List[str] = []
+    def analyze_transitive_dependencies(self, lockfile: dict[str, Any]) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         if isinstance(lockfile, dict):
@@ -169,7 +165,7 @@ class DependencyReviewer:
 
         return {"findings": findings, "passed": passed}
 
-    def detect_malicious_package(self, name: str, version: str) -> Optional[Dict[str, Any]]:
+    def detect_malicious_package(self, name: str, version: str) -> dict[str, Any] | None:
         name_lower = name.lower().replace("-", "").replace("_", "")
 
         for legit_pkg, typos in TYPO_SQUATTING_PACKAGES.items():
@@ -213,8 +209,8 @@ class DependencyReviewer:
 
         return None
 
-    def check_version_range_safety(self, specifier: str) -> Dict[str, Any]:
-        findings: List[str] = []
+    def check_version_range_safety(self, specifier: str) -> dict[str, Any]:
+        findings: list[str] = []
         passed = True
 
         if not specifier or specifier.strip() == "*":
@@ -236,8 +232,8 @@ class DependencyReviewer:
 
         return {"findings": findings, "passed": passed, "specifier": specifier}
 
-    def validate_lockfile(self, lockfile_path: str, expected_format: Optional[str] = None) -> Dict[str, Any]:
-        errors: List[str] = []
+    def validate_lockfile(self, lockfile_path: str, expected_format: str | None = None) -> dict[str, Any]:
+        errors: list[str] = []
         passed = True
 
         path = Path(lockfile_path)
@@ -264,7 +260,7 @@ class DependencyReviewer:
                 passed = False
 
         elif lockfile_path.endswith("yarn.lock"):
-            integrity_pattern = re.compile(r'^\s+integrity\s+(sha\d+-)')
+            integrity_pattern = re.compile(r"^\s+integrity\s+(sha\d+-)")
             has_integrity = bool(integrity_pattern.search(content))
             if not has_integrity:
                 errors.append("yarn.lock missing integrity hashes")
@@ -299,7 +295,7 @@ class DependencyReviewer:
 
         return {"errors": errors, "passed": passed}
 
-    def run_openssf_scorecard(self, repo_url: str) -> Dict[str, Any]:
+    def run_openssf_scorecard(self, repo_url: str) -> dict[str, Any]:
         logger.info(f"Running OpenSSF Scorecard for {repo_url}")
 
         result = subprocess.run(
@@ -307,7 +303,7 @@ class DependencyReviewer:
             capture_output=True, text=True, timeout=120
         )
 
-        scorecard_data: Dict[str, Any] = {
+        scorecard_data: dict[str, Any] = {
             "score": 0.0,
             "category_scores": {},
             "findings": [],
@@ -368,9 +364,9 @@ class DependencyReviewer:
 
         return f"![OpenSSF Scorecard](https://img.shields.io/badge/OpenSSF%20Scorecard-{label}-{color})"
 
-    def full_dependency_review(self, new_deps: List[DependencyDiff],
-                                existing_deps: List[DependencyDiff],
-                                lockfile_path: Optional[str] = None) -> DependencyReviewResult:
+    def full_dependency_review(self, new_deps: list[DependencyDiff],
+                                existing_deps: list[DependencyDiff],
+                                lockfile_path: str | None = None) -> DependencyReviewResult:
         result = DependencyReviewResult()
         result.new_dependencies = new_deps
 

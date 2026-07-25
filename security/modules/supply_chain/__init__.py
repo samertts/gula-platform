@@ -17,22 +17,22 @@ Exports:
     DependencyReviewer: Dependency review and audit
 """
 
+from security.modules.supply_chain.code_scanning import CodeScanner
+from security.modules.supply_chain.dependency_review import DependencyReviewer
 from security.modules.supply_chain.models import (
     DependencyVulnerability,
     SBOMComponent,
-    SupplyChainPolicy,
     SecurityScorecardEntry,
+    SupplyChainPolicy,
 )
 from security.modules.supply_chain.scanner import SupplyChainScanner
-from security.modules.supply_chain.code_scanning import CodeScanner
-from security.modules.supply_chain.dependency_review import DependencyReviewer
 
 __all__ = [
-    "DependencyVulnerability",
-    "SBOMComponent",
-    "SupplyChainPolicy",
-    "SecurityScorecardEntry",
-    "SupplyChainScanner",
     "CodeScanner",
     "DependencyReviewer",
+    "DependencyVulnerability",
+    "SBOMComponent",
+    "SecurityScorecardEntry",
+    "SupplyChainPolicy",
+    "SupplyChainScanner",
 ]

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from security.modules.compliance.models import (
     ComplianceControl,
@@ -32,7 +31,7 @@ class CSFTier(str, Enum):
     ADAPTIVE = "ADAPTIVE"
 
 
-NIST_CSF2_CATEGORIES: Dict[str, Dict[str, Any]] = {
+NIST_CSF2_CATEGORIES: dict[str, dict[str, Any]] = {
     "GV.OC": {"function": CSF2Function.GOVERN, "name": "Organizational Context"},
     "GV.RM": {"function": CSF2Function.GOVERN, "name": "Risk Management Strategy"},
     "GV.RR": {"function": CSF2Function.GOVERN, "name": "Roles and Responsibilities"},
@@ -61,7 +60,7 @@ NIST_CSF2_CATEGORIES: Dict[str, Dict[str, Any]] = {
     "RC.CO": {"function": CSF2Function.RECOVER, "name": "Communications"},
 }
 
-NIST_CSF2_CONTROLS: Dict[str, Dict[str, Any]] = {
+NIST_CSF2_CONTROLS: dict[str, dict[str, Any]] = {
     "GV.OC-1": {"category": "GV.OC", "description": "Organizational mission, vision, and stakeholder expectations are understood"},
     "GV.OC-2": {"category": "GV.OC", "description": "Legal, regulatory, and contractual requirements are identified"},
     "GV.OC-3": {"category": "GV.OC", "description": "Critical services and dependencies are identified"},
@@ -141,7 +140,7 @@ NIST_CSF2_CONTROLS: Dict[str, Dict[str, Any]] = {
 
 class NISTCSFValidator:
     def __init__(self):
-        self._controls: Dict[str, ComplianceControl] = {}
+        self._controls: dict[str, ComplianceControl] = {}
         self._current_tier: CSFTier = CSFTier.PARTIAL
         self._target_tier: CSFTier = CSFTier.REPEATABLE
         self._initialize_controls()
@@ -161,12 +160,12 @@ class NISTCSFValidator:
             )
 
     def update_control(self, control_id: str, status: ControlStatus,
-                        evidence: Optional[List[str]] = None) -> bool:
+                        evidence: list[str] | None = None) -> bool:
         if control_id in self._controls:
             self._controls[control_id].implementation_status = status
             if evidence:
                 self._controls[control_id].evidence = evidence
-            self._controls[control_id].last_assessed = datetime.now(timezone.utc)
+            self._controls[control_id].last_assessed = datetime.now(UTC)
             return True
         return False
 
@@ -175,7 +174,7 @@ class NISTCSFValidator:
         for control_id, control in self._controls.items():
             if control.category.endswith(category):
                 control.implementation_status = status
-                control.last_assessed = datetime.now(timezone.utc)
+                control.last_assessed = datetime.now(UTC)
                 updated += 1
         return updated
 
@@ -192,9 +191,9 @@ class NISTCSFValidator:
 
         if ratio >= 0.9:
             return CSFTier.ADAPTIVE
-        elif ratio >= 0.7:
+        if ratio >= 0.7:
             return CSFTier.REPEATABLE
-        elif ratio >= 0.4:
+        if ratio >= 0.4:
             return CSFTier.RISK_INFORMED
         return CSFTier.PARTIAL
 
@@ -202,7 +201,7 @@ class NISTCSFValidator:
         self._current_tier = current
         self._target_tier = target
 
-    def get_tier_gap(self) -> Dict[str, Any]:
+    def get_tier_gap(self) -> dict[str, Any]:
         tier_values = {CSFTier.PARTIAL: 1, CSFTier.RISK_INFORMED: 2,
                        CSFTier.REPEATABLE: 3, CSFTier.ADAPTIVE: 4}
         gap = tier_values.get(self._target_tier, 3) - tier_values.get(self._current_tier, 1)
@@ -214,7 +213,7 @@ class NISTCSFValidator:
             "gap_description": "At tier" if gap == 0 else f"{gap} level(s) below target" if gap > 0 else "Above target",
         }
 
-    def verify_control(self, control_id: str, verification_data: Dict[str, Any]) -> Dict[str, Any]:
+    def verify_control(self, control_id: str, verification_data: dict[str, Any]) -> dict[str, Any]:
         control = self._controls.get(control_id)
         if not control:
             return {"found": False}
@@ -238,8 +237,8 @@ class NISTCSFValidator:
             "current_status": control.implementation_status.value,
         }
 
-    def get_controls_by_function(self) -> Dict[str, List[ComplianceControl]]:
-        by_function: Dict[str, List[ComplianceControl]] = {}
+    def get_controls_by_function(self) -> dict[str, list[ComplianceControl]]:
+        by_function: dict[str, list[ComplianceControl]] = {}
         for function in CSF2Function:
             by_function[function.value] = []
         for control in self._controls.values():
@@ -285,7 +284,7 @@ class NISTCSFValidator:
             remediation_plan=remediation,
         )
 
-    def integrate_with_risk_register(self, risk_data: Dict[str, Any]) -> Dict[str, Any]:
+    def integrate_with_risk_register(self, risk_data: dict[str, Any]) -> dict[str, Any]:
         high_risk_controls = {}
         for control_id, control in self._controls.items():
             if control.implementation_status in (ControlStatus.NOT_IMPLEMENTED, ControlStatus.PARTIALLY_IMPLEMENTED):

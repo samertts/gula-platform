@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gula-gateway-pdb
+  namespace: gula
+  labels:
+    app: gula-api-gateway
+    component: gateway
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: gula-api-gateway

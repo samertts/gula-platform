@@ -1,11 +1,8 @@
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 import threading
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -52,11 +49,11 @@ class ConsentManager:
             status="active",
             scope=scope,
             purpose=purpose or [],
-            effective_start=effective_start or datetime.now(timezone.utc),
+            effective_start=effective_start or datetime.now(UTC),
             effective_end=effective_end,
             restrictions=restrictions or [],
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         with self._lock:
@@ -72,7 +69,7 @@ class ConsentManager:
             if consent is None:
                 return False
             consent.status = "revoked"
-            consent.updated_at = datetime.now(timezone.utc)
+            consent.updated_at = datetime.now(UTC)
 
         logger.info("Consent revoked: %s", consent_id[:16])
         return True
@@ -84,7 +81,7 @@ class ConsentManager:
 
     def get_active_consent(self, patient_id: str) -> PatientConsent | None:
         consents = self.get_patient_consents(patient_id)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         active = [
             c for c in consents
@@ -204,7 +201,7 @@ class ConsentManager:
         if consent is None:
             return {"valid": False, "reason": "Consent not found"}
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         if consent.status != "active":
             return {"valid": False, "reason": f"Consent status is '{consent.status}'"}
@@ -223,7 +220,7 @@ class ConsentManager:
             "patient_id": patient_id,
             "user_id": user_id,
             "reason": reason,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "breach_id": str(uuid4()),
         }
         with self._lock:

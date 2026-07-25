@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -36,9 +35,9 @@ class ComplianceControl(BaseModel):
     category: str = ""
     description: str = ""
     implementation_status: ControlStatus = ControlStatus.NOT_IMPLEMENTED
-    evidence: List[str] = Field(default_factory=list)
+    evidence: list[str] = Field(default_factory=list)
     test_procedure: str = ""
-    last_assessed: Optional[datetime] = None
+    last_assessed: datetime | None = None
     risk_if_missing: str = ""
 
 
@@ -50,5 +49,5 @@ class ComplianceReport(BaseModel):
     passed: int = 0
     failed: int = 0
     not_applicable: int = 0
-    findings: List[ComplianceControl] = Field(default_factory=list)
-    remediation_plan: Dict[str, str] = Field(default_factory=dict)
+    findings: list[ComplianceControl] = Field(default_factory=list)
+    remediation_plan: dict[str, str] = Field(default_factory=dict)

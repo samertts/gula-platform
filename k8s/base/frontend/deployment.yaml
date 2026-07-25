@@ -11,6 +11,11 @@ spec:
   selector:
     matchLabels:
       app: gula-frontend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -19,10 +24,17 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
-        runAsUser: 101     # nginx user
+        runAsUser: 101
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: nginx
           image: nginx:1.28-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
           ports:
             - containerPort: 80
               name: http
@@ -35,16 +47,27 @@ spec:
               cpu: "250m"
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 80
             initialDelaySeconds: 5
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /
+              path: /health
               port: 80
             initialDelaySeconds: 3
             periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 30
           volumeMounts:
             - name: html
               mountPath: /usr/share/nginx/html
@@ -52,6 +75,10 @@ spec:
             - name: nginx-conf
               mountPath: /etc/nginx/conf.d
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
       volumes:
         - name: html
           configMap:
@@ -59,3 +86,7 @@ spec:
         - name: nginx-conf
           configMap:
             name: gula-frontend-nginx-conf
+        - name: tmp
+          emptyDir: {}
+        - name: nginx-cache
+          emptyDir: {}

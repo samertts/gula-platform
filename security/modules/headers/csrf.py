@@ -78,7 +78,7 @@ class CSRFProtector:
 
     def create_dependency(self) -> Any:
         try:
-            from fastapi import Request, HTTPException
+            from fastapi import HTTPException, Request
 
             async def csrf_dependency(request: Request) -> None:
                 if request.method.upper() in {m.upper() for m in self._config.exempt_methods}:

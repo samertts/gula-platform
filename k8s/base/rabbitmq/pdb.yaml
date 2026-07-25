@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rabbitmq-pdb
+  namespace: gula
+  labels:
+    app: rabbitmq
+    component: message-queue
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: rabbitmq

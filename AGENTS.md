@@ -1,5 +1,3 @@
-This file is the authoritative operating constitution for all AI coding agents working on this repository. Read and follow it before performing any task.
-
 # AI Agent Guidance for GULA Platform
 
 All AI agents (Claude Code, ChatGPT, Gemini, OpenCode, GitHub Copilot, and future agents)
@@ -189,3 +187,95 @@ Never simplify the national platform. Always preserve:
 - National Health Platform compatibility
 
 Never remove dormant enterprise modules. Dormant modules are strategic assets. Improve them without activating unfinished functionality. All code must remain mergeable into future national releases. Every engineering decision must support future deployment across all Iraqi governorates.
+
+---
+
+# Workspace Anchored Summary (auto-updated)
+
+Last updated: cycle that extracted `TestResultService` + `StatsService`.
+
+## Objective
+Transform the GULA monorepo into a production-grade national healthcare platform by fixing infrastructure, security, architecture, frontend–backend alignment, and code quality across the entire codebase.
+
+## Important Details
+- Python 3.12 is the fixed target (all Dockerfiles, CI, mypy config `python_version = "3.12"`, `requires-python = ">=3.12"`).
+- `_compat.py` simplified to direct stdlib imports (no more Python 3.10/3.11 fallback).
+- Arabic is the primary language; `frontend-v3` is Arabic‑first with `dir="rtl"` in `index.html`.
+- Backend integration tests require PostgreSQL (no local PG); 39 pure‑unit tests require Python 3.12 env.
+- Ruff target = `py312`; all E9, F, UP violations: **zero**. Remaining violations are E402 (intentional cond-imports, 182), naming conventions (N801/N999, 212), and SIM simplifications (60).
+- TypeScript compiles with zero errors (`tsc --noEmit` exit 0). Vite production build succeeds in ~6s.
+
+## Work State
+
+### Service Extraction — Complete (8 services)
+| Service | Lines | Route before | Route after | Reduction |
+|---|---|---|---|---|
+| `lab_service.py` | 203 | 312 | 94 | −70% |
+| `sample_service.py` | 179 | 294 | 72 | −76% |
+| `admin_service.py` | 480 | 1046 | 493 | −53% |
+| `quality_control_service.py` | 294 | 416 | 97 | −77% |
+| `metrics_service.py` | 291 | 400 | 29 | −93% |
+| `mobile_service.py` | 183 | 281 | 179 | −36% |
+| `test_result_service.py` | 384 | 735 | 138 | −81% |
+| `stats_service.py` | 356 | 448 | 70 | −84% |
+| **Total** | **2370** | **3932** | **1172** | **−70%** |
+
+### Completed This Cycle
+- Created `test_result_service.py`: Westgard + result entry engine, flag computation, critical alerts, audit, verification logic
+- Created `stats_service.py`: 6 analytics endpoints with Redis caching (daily trends, test frequency, flag distribution, patient growth, summary, turnaround)
+- Thinned `routes/test_results.py`: 735→138 lines (−81%)
+- Thinned `routes/stats.py`: 448→70 lines (−84%)
+- Ruff E9/F/UP: 0 errors on all 4 new/edited files
+
+### Completed (Prior Cycles)
+1. **Infra & Security (RUN 1):** Python 3.14→3.12 across 13 Dockerfiles, 5 CI workflows, 2 mypy configs, 7 docs. Removed hardcoded secrets. Gitleaks pre-commit hook. Non‑root + HEALTHCHECK.
+2. **Model hygiene:** Fixed `relationship`→`relationship_type` in `models/ai.py`. 10 `backref=`→`back_populates=`. Fixed `foreign_keys=[user_id]` on `RoleAssignment.user`. Added `bind=engine`.
+3. **Code quality (ruff):** Fixed 9 UP046/UP017/UP036/UP042, 12 SIM117, 2 SIM113, 1 SIM115.
+4. **Frontend type alignment:** Removed `(data as any)` casts from 13 pages. Fixed `PaginatedResponse`, added `PatientListResponse`, `DashboardData`, `StatsSummary`.
+5. **datetime.utcnow() deprecation:** Fixed in 5 core modules.
+6. **i18n:** Added translation keys for 8 pages. 67 inactive bounded‑context pages untranslated.
+7. **Dead code removed:** 6 unused hooks, unused `AsyncBoundary` component.
+8. **Route completeness:** 4 FHIR sub‑pages registered. `IdentityPage` upgraded.
+9. **Docker optimization:** `.dockerignore` excludes large dirs (build ~200 MB).
+10. **Security framework:** `security/` module with 18 sub‑modules.
+
+### Active
+- (none — all extraction cycles complete)
+
+### Blocked
+- Unit tests requiring Python 3.12 (`datetime.UTC` import) — environment is Python 3.10.
+- 62 `backref=` remain in inactive bounded contexts — not blocking.
+
+## Next Move
+1. Write unit tests for the 2 new service modules (test_result_service, stats_service)
+2. Extract from remaining fat routes: `results.py` (675 lines), `dashboard.py` (250+ lines), `patients.py`
+3. Fix Python environment to run unit tests with Python 3.12
+
+## Relevant Files
+
+### Routes (thin)
+- `backend/app/routes/test_results.py` — 138 lines, delegates to `services/test_result_service.py`
+- `backend/app/routes/stats.py` — 70 lines, delegates to `services/stats_service.py`
+- `backend/app/routes/admin.py` — 493 lines, delegates to `services/admin_service.py`
+- `backend/app/routes/quality_control.py` — 97 lines, delegates to `services/quality_control_service.py`
+- `backend/app/routes/metrics.py` — 29 lines, delegates to `services/metrics_service.py`
+- `backend/app/routes/mobile.py` — 179 lines, delegates to `services/mobile_service.py`
+
+### Services
+- `backend/app/services/test_result_service.py` — 384 lines: result create/get/verify/list/timeline, Westgard flags, critical alerts, audit
+- `backend/app/services/stats_service.py` — 356 lines: 6 analytics queries with Redis caching
+- `backend/app/services/admin_service.py` — 480 lines: platform stats, lab CRUD, user mgmt, audit
+- `backend/app/services/quality_control_service.py` — 294 lines: Westgard multi-rule engine
+- `backend/app/services/metrics_service.py` — 291 lines: Prometheus + JSON + health pings
+- `backend/app/services/mobile_service.py` — 183 lines: token refresh, password change, mobile stats
+- `backend/app/services/lab_service.py` — 203 lines: lab CRUD
+- `backend/app/services/sample_service.py` — 179 lines: sample CRUD
+
+### Fat routes remaining (candidates for extraction)
+- `backend/app/routes/results.py` — ~675 lines
+- `backend/app/routes/dashboard.py` — ~250 lines
+- `backend/app/routes/patients.py` — ~200 lines
+
+### Other
+- `backend/pyproject.toml`: `requires-python = ">=3.12"`, `target-version = "py312"`, mypy `python_version = "3.12"`
+- `backend/app/factory.py`: route registration at line 440+

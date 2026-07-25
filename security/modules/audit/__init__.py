@@ -8,9 +8,9 @@ Exports:
     ImmutableAuditLog: Hash-chained immutable audit log with cryptographic verification
 """
 
+from security.modules.audit.immutable import ImmutableAuditLog
 from security.modules.audit.models import AuditEvent, AuditPolicy
 from security.modules.audit.service import AuditService
-from security.modules.audit.immutable import ImmutableAuditLog
 
 __all__ = [
     "AuditEvent",

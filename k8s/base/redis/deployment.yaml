@@ -11,6 +11,11 @@ spec:
   selector:
     matchLabels:
       app: redis
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
@@ -20,9 +25,16 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: redis
           image: redis:7-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: false
           command:
             - redis-server
             - --appendonly
@@ -63,6 +75,10 @@ spec:
           volumeMounts:
             - name: redis-data
               mountPath: /data
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: redis-data
+          emptyDir: {}
+        - name: tmp
           emptyDir: {}

@@ -31,9 +31,9 @@ from security.modules.crypto.field_encryption import FieldEncryptor
 from security.modules.crypto.hashing import SHA256Hasher, SHA512Hasher
 from security.modules.crypto.key_rotation import KeyRotationManager
 from security.modules.crypto.models import (
+    EncryptedData,
     EncryptionAlgorithm,
     EncryptionConfig,
-    EncryptedData,
     HashAlgorithm,
     HashResult,
     KeyMetadata,
@@ -51,9 +51,9 @@ __all__ = [
     "Cipher",
     "ECDSA256Signer",
     "Ed25519Signer",
+    "EncryptedData",
     "EncryptionAlgorithm",
     "EncryptionConfig",
-    "EncryptedData",
     "FieldEncryptor",
     "HMACSigner",
     "HashAlgorithm",

@@ -9,6 +9,8 @@ metadata:
 spec:
   serviceName: postgres-primary
   replicas: 1
+  updateStrategy:
+    type: RollingUpdate
   selector:
     matchLabels:
       app: postgres-primary
@@ -22,9 +24,16 @@ spec:
         runAsNonRoot: true
         runAsUser: 999
         fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgres
           image: postgres:17-alpine
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: false
           env:
             - name: POSTGRES_USER
               value: postgres
@@ -60,6 +69,13 @@ spec:
             initialDelaySeconds: 10
             periodSeconds: 10
             timeoutSeconds: 5
+            failureThreshold: 3
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "labdb"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
           volumeMounts:
             - name: pgdata
               mountPath: /var/lib/postgresql/data

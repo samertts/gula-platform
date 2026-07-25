@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import hashlib
 import logging
-import secrets
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -56,7 +54,7 @@ class SessionManager:
         self._enforce_concurrent_limit(user_id)
 
         session_id = str(uuid4())
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires_at = now + timedelta(seconds=self._absolute_timeout)
 
         session_data: dict[str, Any] = {
@@ -108,7 +106,7 @@ class SessionManager:
         if not session.get("is_active", True):
             return None
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires_at = datetime.fromisoformat(session["expires_at"])
         if now > expires_at:
             self.destroy_session(session_id)
@@ -135,7 +133,7 @@ class SessionManager:
         session = self._get_session_data(session_id)
         if session is None or not session.get("is_active", True):
             return False
-        session["last_activity"] = datetime.now(timezone.utc).isoformat()
+        session["last_activity"] = datetime.now(UTC).isoformat()
 
         with self._lock:
             self._sessions[session_id] = session
@@ -283,7 +281,7 @@ class SessionManager:
         count = 0
         with self._lock:
             expired = []
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             for sid, session in list(self._sessions.items()):
                 expires_at = datetime.fromisoformat(session["expires_at"])
                 last_activity = datetime.fromisoformat(session["last_activity"])

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 from uuid import uuid4
 
 from security.modules.identity.jwt import JWTManager
@@ -97,7 +97,7 @@ class SMARTOnFHIRManager:
             "launch_type": launch_type,
             "software_id": software_id,
             "is_active": True,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             **kwargs,
         }
 
@@ -125,7 +125,7 @@ class SMARTOnFHIRManager:
             "client_id": client_id,
             "launch_context": launch_context,
             "user_id": user_id,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "type": "ehr",
         }
 

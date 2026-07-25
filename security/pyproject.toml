@@ -55,7 +55,7 @@ IssueTracker = "https://github.com/gula-platform/gula-security-framework/issues"
 
 [tool.setuptools.packages.find]
 include = ["security*", "security.modules*"]
-where = [".."]
+where = ["."]
 
 [tool.setuptools.package-data]
 "security" = ["py.typed", "VERSION.md"]

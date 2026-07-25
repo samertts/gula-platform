@@ -3,17 +3,14 @@ from __future__ import annotations
 import logging
 import secrets
 import time as time_module
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
 
-from joserfc import jwk, jwt as jose_jwt
-
 from security.modules.identity.jwt import JWTManager
 from security.modules.identity.pkce import PKCEManager
-from security.modules.identity.models import IdentityProvider
 
 logger = logging.getLogger("gula.security.modules.identity.oidc")
 
@@ -99,6 +96,8 @@ class OIDCProvider:
         try:
             from backend.app.security.oauth2_provider import (
                 build_openid_config as _backend_config,
+            )
+            from backend.app.security.oauth2_provider import (
                 get_jwks as _backend_jwks,
             )
             self._backend_config_fn = _backend_config
@@ -110,7 +109,11 @@ class OIDCProvider:
         try:
             from backend.app.security.oauth2_provider import (
                 generate_auth_code as _backend_auth_code,
+            )
+            from backend.app.security.oauth2_provider import (
                 generate_client_id as _backend_client_id,
+            )
+            from backend.app.security.oauth2_provider import (
                 generate_client_secret as _backend_client_secret,
             )
             self._backend_auth_code = _backend_auth_code
@@ -184,7 +187,7 @@ class OIDCProvider:
             "grant_types": grant_types or ["authorization_code"],
             "response_types": response_types or ["code"],
             "token_endpoint_auth_method": token_endpoint_auth_method,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "is_active": True,
             **kwargs,
         }
@@ -223,7 +226,7 @@ class OIDCProvider:
             return {"error": "unsupported_response_type", "error_description": f"Unsupported response type: {response_type}"}
 
         code = self._backend_auth_code() if self._backend_auth_code else secrets.token_urlsafe(32)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         code_data: dict[str, Any] = {
             "code": code,
             "client_id": request.client_id,
@@ -272,7 +275,7 @@ class OIDCProvider:
             return OIDCTokenResponse(access_token="", expires_in=0)
         if redirect_uri and code_data["redirect_uri"] != redirect_uri:
             return OIDCTokenResponse(access_token="", expires_in=0)
-        if datetime.now(timezone.utc) > code_data["expires_at"]:
+        if datetime.now(UTC) > code_data["expires_at"]:
             return OIDCTokenResponse(access_token="", expires_in=0)
 
         client = self._clients.get(client_id, {})
@@ -367,7 +370,7 @@ class OIDCProvider:
             "user_id": user_id,
             "client_id": client_id,
             "scopes": scopes,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
             "is_active": True,
         }
         return session_id

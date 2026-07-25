@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import json
 import logging
 import re
 import statistics
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -15,7 +15,7 @@ from security.modules.threat_detection.models import DetectionRule, ThreatEvent
 
 logger = logging.getLogger(__name__)
 
-MITRE_ATTACK_MAPPING: Dict[str, str] = {
+MITRE_ATTACK_MAPPING: dict[str, str] = {
     "brute_force": "T1110",
     "credential_access": "T1003",
     "exploit_public_facing": "T1190",
@@ -43,7 +43,7 @@ class CorrelationRule(BaseModel):
     name: str
     description: str
     severity: str
-    conditions: Dict[str, Any] = Field(default_factory=dict)
+    conditions: dict[str, Any] = Field(default_factory=dict)
     window_seconds: int = 300
 
 
@@ -53,20 +53,20 @@ class DetectionResult(BaseModel):
     severity: str
     title: str
     description: str
-    mitre_id: Optional[str] = None
-    events: List[ThreatEvent] = Field(default_factory=list)
+    mitre_id: str | None = None
+    events: list[ThreatEvent] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
-    response_actions: List[str] = Field(default_factory=list)
+    response_actions: list[str] = Field(default_factory=list)
 
 
 class ThreatDetectionEngine:
     def __init__(self):
-        self._rules: List[DetectionRule] = []
-        self._correlation_rules: List[CorrelationRule] = []
-        self._event_buffer: Dict[str, List[ThreatEvent]] = defaultdict(list)
-        self._alerts: List[DetectionResult] = []
-        self._response_handlers: Dict[str, List[Callable]] = defaultdict(list)
-        self._anomaly_baselines: Dict[str, Dict[str, float]] = {}
+        self._rules: list[DetectionRule] = []
+        self._correlation_rules: list[CorrelationRule] = []
+        self._event_buffer: dict[str, list[ThreatEvent]] = defaultdict(list)
+        self._alerts: list[DetectionResult] = []
+        self._response_handlers: dict[str, list[Callable]] = defaultdict(list)
+        self._anomaly_baselines: dict[str, dict[str, float]] = {}
 
         self._initialize_default_rules()
 
@@ -158,7 +158,7 @@ class ThreatDetectionEngine:
     def register_response_handler(self, action: str, handler: Callable) -> None:
         self._response_handlers[action].append(handler)
 
-    def process_event(self, event: ThreatEvent) -> Optional[DetectionResult]:
+    def process_event(self, event: ThreatEvent) -> DetectionResult | None:
         if not event.event_id:
             event.event_id = str(uuid4())
 
@@ -180,35 +180,35 @@ class ThreatDetectionEngine:
 
         return None
 
-    def process_events_batch(self, events: List[ThreatEvent]) -> List[DetectionResult]:
-        alerts: List[DetectionResult] = []
+    def process_events_batch(self, events: list[ThreatEvent]) -> list[DetectionResult]:
+        alerts: list[DetectionResult] = []
         for event in events:
             alert = self.process_event(event)
             if alert:
                 alerts.append(alert)
         return alerts
 
-    def _evaluate_rule(self, rule: DetectionRule, event: ThreatEvent) -> Optional[DetectionResult]:
+    def _evaluate_rule(self, rule: DetectionRule, event: ThreatEvent) -> DetectionResult | None:
         logic = rule.detection_logic
         logic_type = logic.get("type", "")
 
         try:
             if logic_type == "pattern":
                 return self._evaluate_pattern(rule, event, logic)
-            elif logic_type == "threshold":
+            if logic_type == "threshold":
                 return self._evaluate_threshold(rule, event, logic)
-            elif logic_type == "anomaly":
+            if logic_type == "anomaly":
                 return self._evaluate_anomaly(rule, event, logic)
-            elif logic_type == "temporal":
+            if logic_type == "temporal":
                 return self._evaluate_temporal(rule, event, logic)
-            elif logic_type == "blocklist":
+            if logic_type == "blocklist":
                 return self._evaluate_blocklist(rule, event, logic)
         except Exception as e:
             logger.error(f"Rule evaluation error for {rule.rule_id}: {e}")
 
         return None
 
-    def _evaluate_pattern(self, rule: DetectionRule, event: ThreatEvent, logic: Dict[str, Any]) -> Optional[DetectionResult]:
+    def _evaluate_pattern(self, rule: DetectionRule, event: ThreatEvent, logic: dict[str, Any]) -> DetectionResult | None:
         pattern = logic.get("pattern", "")
         if pattern and re.search(pattern, event.description, re.IGNORECASE):
             return DetectionResult(
@@ -223,7 +223,7 @@ class ThreatDetectionEngine:
             )
         return None
 
-    def _evaluate_threshold(self, rule: DetectionRule, event: ThreatEvent, logic: Dict[str, Any]) -> Optional[DetectionResult]:
+    def _evaluate_threshold(self, rule: DetectionRule, event: ThreatEvent, logic: dict[str, Any]) -> DetectionResult | None:
         field = logic.get("field", "")
         value = logic.get("value", "")
         count = logic.get("count", 5)
@@ -234,7 +234,7 @@ class ThreatDetectionEngine:
             return None
 
         key = f"{rule.rule_id}:{field}:{field_value}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cutoff = now - timedelta(seconds=window)
 
         self._event_buffer[key] = [
@@ -258,7 +258,7 @@ class ThreatDetectionEngine:
             )
         return None
 
-    def _evaluate_anomaly(self, rule: DetectionRule, event: ThreatEvent, logic: Dict[str, Any]) -> Optional[DetectionResult]:
+    def _evaluate_anomaly(self, rule: DetectionRule, event: ThreatEvent, logic: dict[str, Any]) -> DetectionResult | None:
         field = logic.get("field", "")
         field_value = getattr(event, field, 0)
         deviation = logic.get("deviation", 2.0)
@@ -295,7 +295,7 @@ class ThreatDetectionEngine:
         self._event_buffer[event_key] = freq[-100:]
         return None
 
-    def _evaluate_temporal(self, rule: DetectionRule, event: ThreatEvent, logic: Dict[str, Any]) -> Optional[DetectionResult]:
+    def _evaluate_temporal(self, rule: DetectionRule, event: ThreatEvent, logic: dict[str, Any]) -> DetectionResult | None:
         field = logic.get("field", "")
         value = logic.get("value", "")
 
@@ -303,7 +303,7 @@ class ThreatDetectionEngine:
         if value and str(field_value) != str(value):
             return None
 
-        hour = event.timestamp.hour if event.timestamp else datetime.now(timezone.utc).hour
+        hour = event.timestamp.hour if event.timestamp else datetime.now(UTC).hour
         is_business_hours = 8 <= hour <= 18
 
         if logic.get("business_hours", "true") == "true" and not is_business_hours:
@@ -320,7 +320,7 @@ class ThreatDetectionEngine:
 
         return None
 
-    def _evaluate_blocklist(self, rule: DetectionRule, event: ThreatEvent, logic: Dict[str, Any]) -> Optional[DetectionResult]:
+    def _evaluate_blocklist(self, rule: DetectionRule, event: ThreatEvent, logic: dict[str, Any]) -> DetectionResult | None:
         blocklisted_ips = ["1.2.3.4", "10.0.0.1", "192.168.1.1"]
         field = logic.get("field", "")
         field_value = str(getattr(event, field, ""))
@@ -338,7 +338,7 @@ class ThreatDetectionEngine:
             )
         return None
 
-    def _evaluate_correlation(self, rule: CorrelationRule, event: ThreatEvent) -> Optional[DetectionResult]:
+    def _evaluate_correlation(self, rule: CorrelationRule, event: ThreatEvent) -> DetectionResult | None:
         conditions = rule.conditions
         field = conditions.get("field", "")
         value = conditions.get("value", "")
@@ -349,7 +349,7 @@ class ThreatDetectionEngine:
             return None
 
         key = f"corr_{rule.name}_{field}_{field_value}"
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cutoff = now - timedelta(seconds=window)
 
         self._event_buffer[key] = [
@@ -397,14 +397,14 @@ class ThreatDetectionEngine:
 
         return score
 
-    def reduce_false_positives(self, events: List[ThreatEvent]) -> List[ThreatEvent]:
-        seen_sources: Dict[str, int] = defaultdict(int)
+    def reduce_false_positives(self, events: list[ThreatEvent]) -> list[ThreatEvent]:
+        seen_sources: dict[str, int] = defaultdict(int)
         for e in events:
             key = f"{e.threat_type}:{e.source}:{e.mitre_attack_id}"
             seen_sources[key] += 1
 
-        filtered: List[ThreatEvent] = []
-        source_counts: Dict[str, int] = defaultdict(int)
+        filtered: list[ThreatEvent] = []
+        source_counts: dict[str, int] = defaultdict(int)
 
         for e in sorted(events, key=lambda x: x.timestamp, reverse=True):
             source_key = f"{e.threat_type}:{e.source}"
@@ -414,9 +414,9 @@ class ThreatDetectionEngine:
 
         return filtered
 
-    def deduplicate_alerts(self, alerts: List[DetectionResult]) -> List[DetectionResult]:
-        seen: Set[str] = set()
-        deduped: List[DetectionResult] = []
+    def deduplicate_alerts(self, alerts: list[DetectionResult]) -> list[DetectionResult]:
+        seen: set[str] = set()
+        deduped: list[DetectionResult] = []
 
         for alert in alerts:
             key = f"{alert.rule_id}:{alert.description[:50]}"
@@ -426,16 +426,16 @@ class ThreatDetectionEngine:
 
         return sorted(deduped, key=lambda a: self.prioritize_alerts(a), reverse=True)
 
-    def get_mitre_coverage(self) -> Dict[str, List[str]]:
-        coverage: Dict[str, List[str]] = defaultdict(list)
+    def get_mitre_coverage(self) -> dict[str, list[str]]:
+        coverage: dict[str, list[str]] = defaultdict(list)
         for rule in self._rules:
             if rule.mitre_mapping:
                 coverage[rule.mitre_mapping].append(rule.rule_id)
         return dict(coverage)
 
-    def run_scheduled_scan(self) -> List[DetectionResult]:
-        alerts: List[DetectionResult] = []
-        now = datetime.now(timezone.utc)
+    def run_scheduled_scan(self) -> list[DetectionResult]:
+        alerts: list[DetectionResult] = []
+        now = datetime.now(UTC)
 
         for key, events in list(self._event_buffer.items()):
             if len(events) > 20:

@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-import re
-from typing import Any, Dict, List, Optional, Set, Tuple
-from uuid import uuid4
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -12,12 +10,11 @@ from security.modules.kubernetes.models import (
     K8sSecurityConfig,
     NetworkPolicySpec,
     PodSecurityContext,
-    PodSecurityPolicy,
 )
 
 logger = logging.getLogger(__name__)
 
-POD_SECURITY_STANDARDS: Dict[str, Dict[str, Any]] = {
+POD_SECURITY_STANDARDS: dict[str, dict[str, Any]] = {
     "privileged": {
         "allowed_capabilities": ["ALL"],
         "allowed_host_paths": True,
@@ -56,13 +53,13 @@ POD_SECURITY_STANDARDS: Dict[str, Dict[str, Any]] = {
     },
 }
 
-DANGEROUS_SYSCALLS: Set[str] = {
+DANGEROUS_SYSCALLS: set[str] = {
     "sys_admin", "sys_module", "sys_rawio", "sys_ptrace",
     "sys_boot", "sys_time", "sys_tty_config", "syslog",
     "sys_veto", "sys_pacct", "sys_setuid",
 }
 
-ESSENTIAL_CLUSTER_ROLES: Set[str] = {
+ESSENTIAL_CLUSTER_ROLES: set[str] = {
     "cluster-admin", "admin", "edit", "view", "system:kube-scheduler",
     "system:kube-controller-manager", "system:node-proxier",
     "system:volume-scheduler", "system:node",
@@ -82,7 +79,7 @@ class RbacFinding(BaseModel):
 class PodFinding(BaseModel):
     resource_name: str
     namespace: str
-    issues: List[str] = Field(default_factory=list)
+    issues: list[str] = Field(default_factory=list)
     passed: bool = True
 
 
@@ -91,29 +88,29 @@ class NetworkPolicyFinding(BaseModel):
     has_default_deny_ingress: bool = False
     has_default_deny_egress: bool = False
     policy_count: int = 0
-    issues: List[str] = Field(default_factory=list)
+    issues: list[str] = Field(default_factory=list)
 
 
 class KubernetesSecurityReport(BaseModel):
-    pod_findings: List[PodFinding] = Field(default_factory=list)
-    rbac_findings: List[RbacFinding] = Field(default_factory=list)
-    network_policy_findings: List[NetworkPolicyFinding] = Field(default_factory=list)
+    pod_findings: list[PodFinding] = Field(default_factory=list)
+    rbac_findings: list[RbacFinding] = Field(default_factory=list)
+    network_policy_findings: list[NetworkPolicyFinding] = Field(default_factory=list)
     overall_passed: bool = True
 
 
 class KubernetesSecurityManager:
-    def __init__(self, config: Optional[K8sSecurityConfig] = None):
+    def __init__(self, config: K8sSecurityConfig | None = None):
         self.config = config or K8sSecurityConfig()
 
-    def enforce_pod_security_standard(self, pod_spec: Dict[str, Any],
-                                       standard: Optional[str] = None) -> Dict[str, Any]:
+    def enforce_pod_security_standard(self, pod_spec: dict[str, Any],
+                                       standard: str | None = None) -> dict[str, Any]:
         std = standard or self.config.pod_security_standards
         rules = POD_SECURITY_STANDARDS.get(std)
 
         if not rules:
             return {"passed": False, "issues": [f"Unknown security standard: {std}"]}
 
-        issues: List[str] = []
+        issues: list[str] = []
         passed = True
 
         containers = pod_spec.get("spec", {}).get("containers", []) + pod_spec.get("spec", {}).get("initContainers", [])
@@ -157,10 +154,10 @@ class KubernetesSecurityManager:
 
         return {"passed": passed, "issues": issues, "standard": std}
 
-    def validate_pod_security_context(self, pod_spec: Dict[str, Any],
-                                       context: Optional[PodSecurityContext] = None) -> Dict[str, Any]:
+    def validate_pod_security_context(self, pod_spec: dict[str, Any],
+                                       context: PodSecurityContext | None = None) -> dict[str, Any]:
         ctx = context or PodSecurityContext()
-        issues: List[str] = []
+        issues: list[str] = []
         passed = True
 
         spec = pod_spec.get("spec", {})
@@ -178,9 +175,7 @@ class KubernetesSecurityManager:
             issues.append("seccompProfile not configured")
             passed = False
 
-        if sc.get("seLinuxOptions"):
-            pass
-        elif not sc.get("seLinuxOptions") and sc.get("runAsNonRoot"):
+        if sc.get("seLinuxOptions") or (not sc.get("seLinuxOptions") and sc.get("runAsNonRoot")):
             pass
 
         containers = spec.get("containers", [])
@@ -192,7 +187,7 @@ class KubernetesSecurityManager:
             if not ctr_sc.get("readOnlyRootFilesystem", False):
                 issues.append(f"Container '{ctr.get('name')}' does not have readOnlyRootFilesystem")
                 passed = False
-            if not ctr_sc.get("allowPrivilegeEscalation", True) is False:
+            if ctr_sc.get("allowPrivilegeEscalation", True) is not False:
                 if sc.get("runAsNonRoot"):
                     pass
                 else:
@@ -201,8 +196,8 @@ class KubernetesSecurityManager:
 
         return {"passed": passed, "issues": issues}
 
-    def audit_network_policies(self, namespaces: Dict[str, List[NetworkPolicySpec]]) -> List[NetworkPolicyFinding]:
-        findings: List[NetworkPolicyFinding] = []
+    def audit_network_policies(self, namespaces: dict[str, list[NetworkPolicySpec]]) -> list[NetworkPolicyFinding]:
+        findings: list[NetworkPolicyFinding] = []
 
         for ns, policies in namespaces.items():
             npf = NetworkPolicyFinding(namespace=ns, policy_count=len(policies))
@@ -237,8 +232,8 @@ class KubernetesSecurityManager:
 
         return findings
 
-    def audit_rbac(self, subjects: List[Dict[str, Any]], namespace: str = "") -> List[RbacFinding]:
-        findings: List[RbacFinding] = []
+    def audit_rbac(self, subjects: list[dict[str, Any]], namespace: str = "") -> list[RbacFinding]:
+        findings: list[RbacFinding] = []
 
         for subject in subjects:
             subject_kind = subject.get("kind", "User")
@@ -297,9 +292,9 @@ class KubernetesSecurityManager:
 
         return findings
 
-    def validate_service_account(self, pod_spec: Dict[str, Any]) -> Dict[str, Any]:
+    def validate_service_account(self, pod_spec: dict[str, Any]) -> dict[str, Any]:
         spec = pod_spec.get("spec", {})
-        issues: List[str] = []
+        issues: list[str] = []
         passed = True
 
         if spec.get("automountServiceAccountToken", True):
@@ -314,8 +309,8 @@ class KubernetesSecurityManager:
 
         return {"passed": passed, "issues": issues}
 
-    def validate_secret_security(self, secret_objects: List[Dict[str, Any]]) -> Dict[str, Any]:
-        issues: List[str] = []
+    def validate_secret_security(self, secret_objects: list[dict[str, Any]]) -> dict[str, Any]:
+        issues: list[str] = []
         passed = True
 
         for secret in secret_objects:
@@ -328,8 +323,8 @@ class KubernetesSecurityManager:
 
         return {"passed": passed, "issues": issues}
 
-    def verify_admission_controllers(self) -> Dict[str, Any]:
-        issues: List[str] = []
+    def verify_admission_controllers(self) -> dict[str, Any]:
+        issues: list[str] = []
         passed = True
         required = ["PodSecurity", "NodeRestriction", "ServiceAccount", "NamespaceLifecycle"]
         recommended = ["MutatingAdmissionWebhook", "ValidatingAdmissionWebhook", "ResourceQuota",
@@ -351,8 +346,8 @@ class KubernetesSecurityManager:
 
         return {"passed": passed, "issues": issues, "configured": configured, "missing_required": missing_required}
 
-    def validate_container_security_context(self, pod_spec: Dict[str, Any]) -> Dict[str, Any]:
-        issues: List[str] = []
+    def validate_container_security_context(self, pod_spec: dict[str, Any]) -> dict[str, Any]:
+        issues: list[str] = []
         passed = True
 
         for container_type in ["containers", "initContainers"]:
@@ -389,8 +384,8 @@ class KubernetesSecurityManager:
 
         return {"passed": passed, "issues": issues}
 
-    def validate_resource_quotas(self, quota_spec: Dict[str, Any]) -> Dict[str, Any]:
-        issues: List[str] = []
+    def validate_resource_quotas(self, quota_spec: dict[str, Any]) -> dict[str, Any]:
+        issues: list[str] = []
         passed = True
 
         hard = quota_spec.get("spec", {}).get("hard", {})
@@ -413,8 +408,8 @@ class KubernetesSecurityManager:
 
         return {"passed": passed, "issues": issues}
 
-    def verify_namespace_isolation(self, namespace_config: Dict[str, Any]) -> Dict[str, Any]:
-        issues: List[str] = []
+    def verify_namespace_isolation(self, namespace_config: dict[str, Any]) -> dict[str, Any]:
+        issues: list[str] = []
         passed = True
 
         labels = namespace_config.get("metadata", {}).get("labels", {})
@@ -432,8 +427,8 @@ class KubernetesSecurityManager:
 
         return {"passed": passed, "issues": issues}
 
-    def check_pod_priority_preemption(self, pod_spec: Dict[str, Any]) -> Dict[str, Any]:
-        issues: List[str] = []
+    def check_pod_priority_preemption(self, pod_spec: dict[str, Any]) -> dict[str, Any]:
+        issues: list[str] = []
         passed = True
 
         priority_class = pod_spec.get("spec", {}).get("priorityClassName", "")
@@ -452,7 +447,7 @@ class KubernetesSecurityManager:
 
         return {"passed": passed, "issues": issues}
 
-    def generate_opa_constraint_template(self, template_name: str, spec: Dict[str, Any]) -> str:
+    def generate_opa_constraint_template(self, template_name: str, spec: dict[str, Any]) -> str:
         template = {
             "apiVersion": "templates.gatekeeper.sh/v1beta1",
             "kind": "ConstraintTemplate",
@@ -467,7 +462,7 @@ class KubernetesSecurityManager:
         }
         return json.dumps(template, indent=2)
 
-    def _default_opa_rego(self, name: str, spec: Dict[str, Any]) -> str:
+    def _default_opa_rego(self, name: str, spec: dict[str, Any]) -> str:
         return f"""
 package {name}
 
@@ -485,9 +480,9 @@ violation[{{"msg": msg}}] {{
 }}
 """.strip()
 
-    def full_security_audit(self, namespace_data: Dict[str, Dict[str, Any]]) -> KubernetesSecurityReport:
-        pod_findings: List[PodFinding] = []
-        rbac_findings: List[RbacFinding] = []
+    def full_security_audit(self, namespace_data: dict[str, dict[str, Any]]) -> KubernetesSecurityReport:
+        pod_findings: list[PodFinding] = []
+        rbac_findings: list[RbacFinding] = []
         overall_passed = True
 
         for ns, data in namespace_data.items():

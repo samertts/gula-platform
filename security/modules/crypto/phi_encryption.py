@@ -5,13 +5,10 @@ import hmac as _hmac_module
 import json
 import logging
 import os
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-
-from security.modules.crypto.models import EncryptionAlgorithm, KeyPurpose
 
 logger = logging.getLogger("gula.security.modules.crypto.phi_encryption")
 
@@ -177,7 +174,7 @@ class PHIEncryptor:
             "table": table,
             "column": column,
             "patient_id_hash": self._hash_patient_id(patient_id),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         self._audit_log.append(entry)
         logger.info("PHI %s: %s.%s patient=%s", action, table, column, self._hash_patient_id(patient_id))

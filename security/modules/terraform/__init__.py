@@ -7,11 +7,11 @@ Exports:
     TerraformSecurityManager: Terraform security analysis and enforcement
 """
 
-from security.modules.terraform.models import TerraformSecurityConfig, TerraformAuditFinding
+from security.modules.terraform.models import TerraformAuditFinding, TerraformSecurityConfig
 from security.modules.terraform.security import TerraformSecurityManager
 
 __all__ = [
-    "TerraformSecurityConfig",
     "TerraformAuditFinding",
+    "TerraformSecurityConfig",
     "TerraformSecurityManager",
 ]

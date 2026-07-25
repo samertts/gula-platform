@@ -5,8 +5,9 @@ import hmac as _hmac
 import logging
 import os
 
+from cryptography.hazmat.primitives.ciphers import Cipher as CipherCtx
+from cryptography.hazmat.primitives.ciphers import algorithms, modes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.ciphers import Cipher as CipherCtx, algorithms, modes
 
 from security.modules.crypto.base import Cipher
 from security.modules.crypto.models import EncryptionAlgorithm

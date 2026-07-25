@@ -1,16 +1,12 @@
 from __future__ import annotations
 
-import csv
 import html
 import ipaddress
 import json
 import logging
 import os
 import re
-import secrets
-import struct
-from io import BytesIO
-from typing import Any, BinaryIO
+from typing import Any
 from urllib.parse import urlparse
 
 from security.modules.headers.models import SanitizerConfig

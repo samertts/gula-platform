@@ -1,0 +1,13 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: gula-frontend-pdb
+  namespace: gula
+  labels:
+    app: gula-frontend
+    component: frontend
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: gula-frontend

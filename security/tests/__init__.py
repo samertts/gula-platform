@@ -1,4 +1,4 @@
-GSF Test Suite — Comprehensive test suite for the GULA Security Framework.
+"""GSF Test Suite — Comprehensive test suite for the GULA Security Framework.
 
 Tests are organized by module and cover all security-critical functionality:
 - GSF-001/002: Secrets management (validation, rotation, scanning)
@@ -15,6 +15,6 @@ FIXTURES_DIR = TEST_DIR / "fixtures"
 FIXTURES_DIR.mkdir(exist_ok=True)
 
 __all__ = [
-    "TEST_DIR",
     "FIXTURES_DIR",
+    "TEST_DIR",
 ]

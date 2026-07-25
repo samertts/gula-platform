@@ -29,6 +29,8 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       # Wait for postgres and redis to be ready
       initContainers:
         - name: wait-for-postgres
@@ -53,6 +55,11 @@ spec:
         - name: gula-backend
           image: ghcr.io/samertts/gula-platform/backend:latest
           imagePullPolicy: Always
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            readOnlyRootFilesystem: true
           envFrom:
             - configMapRef:
                 name: gula-config
@@ -114,9 +121,13 @@ spec:
           volumeMounts:
             - name: audit-anchors
               mountPath: /app/data
+            - name: tmp
+              mountPath: /tmp
       volumes:
         - name: audit-anchors
           persistentVolumeClaim:
             claimName: audit-anchors-pvc
+        - name: tmp
+          emptyDir: {}
       imagePullSecrets:
         - name: ghcr-credentials

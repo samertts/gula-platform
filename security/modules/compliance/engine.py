@@ -2,23 +2,22 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from pydantic import BaseModel, Field
 
+from security.modules.compliance.asvs import ASVSValidator
+from security.modules.compliance.gdpr import GDPRValidator
+from security.modules.compliance.hipaa import HIPAAValidator
+from security.modules.compliance.iso27001 import ISO27001Validator
+from security.modules.compliance.mapper import ComplianceMapper
 from security.modules.compliance.models import (
-    ComplianceControl,
     ComplianceFramework,
     ComplianceReport,
     ControlStatus,
 )
-from security.modules.compliance.asvs import ASVSValidator
 from security.modules.compliance.nist import NISTCSFValidator
-from security.modules.compliance.iso27001 import ISO27001Validator
-from security.modules.compliance.hipaa import HIPAAValidator
-from security.modules.compliance.gdpr import GDPRValidator
-from security.modules.compliance.mapper import ComplianceMapper
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class ScheduledCheck(BaseModel):
     check_id: str
     framework: ComplianceFramework
     interval_hours: int = 24
-    last_run: Optional[datetime] = None
+    last_run: datetime | None = None
     enabled: bool = True
 
 
@@ -35,14 +34,14 @@ class RemediationPlan(BaseModel):
     plan_id: str
     framework: ComplianceFramework
     created_at: datetime = Field(default_factory=datetime.utcnow)
-    actions: List[Dict[str, Any]] = Field(default_factory=list)
-    target_date: Optional[datetime] = None
+    actions: list[dict[str, Any]] = Field(default_factory=list)
+    target_date: datetime | None = None
     status: str = "ACTIVE"
 
 
 class ComplianceEngine:
     def __init__(self):
-        self._validators: Dict[ComplianceFramework, Any] = {
+        self._validators: dict[ComplianceFramework, Any] = {
             ComplianceFramework.OWASP_ASVS: ASVSValidator(),
             ComplianceFramework.NIST_CSF: NISTCSFValidator(),
             ComplianceFramework.ISO_27001: ISO27001Validator(),
@@ -50,10 +49,10 @@ class ComplianceEngine:
             ComplianceFramework.GDPR: GDPRValidator(),
         }
         self._mapper = ComplianceMapper()
-        self._scheduled_checks: Dict[str, ScheduledCheck] = {}
-        self._reports: List[ComplianceReport] = []
-        self._remediation_plans: List[RemediationPlan] = []
-        self._evidence_store: Dict[str, List[str]] = {}
+        self._scheduled_checks: dict[str, ScheduledCheck] = {}
+        self._reports: list[ComplianceReport] = []
+        self._remediation_plans: list[RemediationPlan] = []
+        self._evidence_store: dict[str, list[str]] = {}
 
     def register_framework(self, framework: ComplianceFramework, validator: Any) -> None:
         self._validators[framework] = validator
@@ -65,7 +64,7 @@ class ComplianceEngine:
         return validator
 
     def update_control(self, framework: ComplianceFramework, control_id: str,
-                        status: ControlStatus, evidence: Optional[List[str]] = None) -> bool:
+                        status: ControlStatus, evidence: list[str] | None = None) -> bool:
         validator = self.get_validator(framework)
         if hasattr(validator, "update_control"):
             result = validator.update_control(control_id, status, evidence)
@@ -80,9 +79,7 @@ class ComplianceEngine:
 
     def generate_report(self, framework: ComplianceFramework) -> ComplianceReport:
         validator = self.get_validator(framework)
-        if hasattr(validator, "generate_report"):
-            report = validator.generate_report()
-        elif hasattr(validator, "generate_report"):
+        if hasattr(validator, "generate_report") or hasattr(validator, "generate_report"):
             report = validator.generate_report()
         else:
             raise ValueError(f"Validator for {framework} does not support report generation")
@@ -91,7 +88,7 @@ class ComplianceEngine:
         self._generate_remediation(report)
         return report
 
-    def generate_all_reports(self) -> Dict[ComplianceFramework, ComplianceReport]:
+    def generate_all_reports(self) -> dict[ComplianceFramework, ComplianceReport]:
         reports = {}
         for framework in self._validators:
             try:
@@ -106,7 +103,7 @@ class ComplianceEngine:
             return
 
         plan = RemediationPlan(
-            plan_id=f"PLAN-{report.framework.value}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+            plan_id=f"PLAN-{report.framework.value}-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
             framework=report.framework,
             actions=[
                 {
@@ -124,16 +121,16 @@ class ComplianceEngine:
     def schedule_automated_check(self, framework: ComplianceFramework,
                                    interval_hours: int = 24) -> ScheduledCheck:
         check = ScheduledCheck(
-            check_id=f"CHECK-{framework.value}-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
+            check_id=f"CHECK-{framework.value}-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}",
             framework=framework,
             interval_hours=interval_hours,
         )
         self._scheduled_checks[check.check_id] = check
         return check
 
-    def run_scheduled_checks(self) -> List[ComplianceReport]:
-        reports: List[ComplianceReport] = []
-        now = datetime.now(timezone.utc)
+    def run_scheduled_checks(self) -> list[ComplianceReport]:
+        reports: list[ComplianceReport] = []
+        now = datetime.now(UTC)
 
         for check_id, check in list(self._scheduled_checks.items()):
             if not check.enabled:
@@ -150,10 +147,10 @@ class ComplianceEngine:
 
         return reports
 
-    def collect_evidence(self, control_key: str) -> List[str]:
+    def collect_evidence(self, control_key: str) -> list[str]:
         return self._evidence_store.get(control_key, [])
 
-    def _store_evidence(self, key: str, evidence: List[str]) -> None:
+    def _store_evidence(self, key: str, evidence: list[str]) -> None:
         if key not in self._evidence_store:
             self._evidence_store[key] = []
         self._evidence_store[key].extend(evidence)
@@ -164,7 +161,7 @@ class ComplianceEngine:
         if format == "json":
             return json.dumps(report.model_dump(mode="json"), indent=2, default=str)
 
-        elif format == "html":
+        if format == "html":
             controls_html = ""
             for ctrl in report.findings[:30]:
                 controls_html += (
@@ -185,15 +182,15 @@ tr:nth-child(even){{background-color:#f9f9f9}}.status{{font-weight:bold}}</style
 <table><tr><th>ID</th><th>Framework</th><th>Category</th><th>Status</th><th>Description</th></tr>
 {controls_html}</table></body></html>"""
 
-        elif format == "xlsx":
+        if format == "xlsx":
             return json.dumps({"message": "XLSX export requires openpyxl library"}, indent=2)
 
-        elif format == "pdf":
+        if format == "pdf":
             return json.dumps({"message": "PDF export requires reportlab library"}, indent=2)
 
         return json.dumps({"error": f"Unsupported format: {format}"}, indent=2)
 
-    def get_dashboard_data(self) -> Dict[str, Any]:
+    def get_dashboard_data(self) -> dict[str, Any]:
         all_reports = self.generate_all_reports()
         reports_list = list(all_reports.values())
         composite = self._mapper.calculate_composite_score(reports_list)
@@ -215,7 +212,7 @@ tr:nth-child(even){{background-color:#f9f9f9}}.status{{font-weight:bold}}</style
             "evidence_count": sum(len(v) for v in self._evidence_store.values()),
         }
 
-    def get_remediation_status(self) -> Dict[str, Any]:
+    def get_remediation_status(self) -> dict[str, Any]:
         status = {"active_plans": 0, "completed_plans": 0, "pending_actions": 0, "completed_actions": 0}
         for plan in self._remediation_plans:
             if plan.status == "ACTIVE":
@@ -230,7 +227,7 @@ tr:nth-child(even){{background-color:#f9f9f9}}.status{{font-weight:bold}}</style
 
         return status
 
-    def get_dashboard_integration(self) -> Dict[str, Any]:
+    def get_dashboard_integration(self) -> dict[str, Any]:
         return {
             "module": "compliance",
             "available_validators": [fw.value for fw in self._validators],

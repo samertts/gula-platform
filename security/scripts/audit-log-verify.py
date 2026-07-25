@@ -29,17 +29,16 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import hmac
 import json
 import logging
 import os
 import sys
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, BinaryIO
+from typing import Any
 
 logger = logging.getLogger("gsf.audit-verify")
 
@@ -174,7 +173,7 @@ class FileAuditBackend(AuditBackend):
 
     @staticmethod
     def _read_file(filepath: Path) -> Iterator[AuditEntry]:
-        with open(filepath, "r", encoding="utf-8") as f:
+        with open(filepath, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -227,7 +226,7 @@ class AuditVerifier:
 
     def verify(self, backend: AuditBackend) -> VerificationResult:
         result = VerificationResult(backend_type=backend.name())
-        result.verification_time_utc = datetime.now(timezone.utc).isoformat()
+        result.verification_time_utc = datetime.now(UTC).isoformat()
 
         previous_hash = "0" * 64
         first = True
@@ -336,10 +335,9 @@ class AlertManager:
 def get_backend(args: argparse.Namespace) -> AuditBackend:
     if args.backend == "database":
         return DatabaseAuditBackend()
-    elif args.backend == "s3":
+    if args.backend == "s3":
         return S3AuditBackend()
-    else:
-        return FileAuditBackend(args.path)
+    return FileAuditBackend(args.path)
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

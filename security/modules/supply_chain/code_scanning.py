@@ -3,17 +3,11 @@ from __future__ import annotations
 import json
 import logging
 import os
-import re
 import subprocess
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
-
-from security.modules.supply_chain.models import DependencyVulnerability
 
 logger = logging.getLogger(__name__)
 
@@ -27,25 +21,25 @@ class CodeScanFinding(BaseModel):
     column: int = 0
     message: str
     description: str = ""
-    cwe: Optional[str] = None
+    cwe: str | None = None
     remediation: str = ""
 
 
 class CodeScanResult(BaseModel):
     tool: str
-    findings: List[CodeScanFinding] = Field(default_factory=list)
+    findings: list[CodeScanFinding] = Field(default_factory=list)
     raw_output: str = ""
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
     quality_gate_passed: bool = True
-    quality_gate_reasons: List[str] = Field(default_factory=list)
+    quality_gate_reasons: list[str] = Field(default_factory=list)
 
 
 class CodeScanner:
     def __init__(self):
-        self._finding_cache: Dict[str, List[CodeScanFinding]] = {}
+        self._finding_cache: dict[str, list[CodeScanFinding]] = {}
 
-    def _run_tool(self, cmd: List[str], timeout: int = 300) -> Dict[str, Any]:
+    def _run_tool(self, cmd: list[str], timeout: int = 300) -> dict[str, Any]:
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
             return {
@@ -61,7 +55,7 @@ class CodeScanner:
         except Exception as e:
             return {"stdout": "", "stderr": str(e), "returncode": -1, "success": False}
 
-    def run_codeql(self, source_path: str, query_path: Optional[str] = None) -> CodeScanResult:
+    def run_codeql(self, source_path: str, query_path: str | None = None) -> CodeScanResult:
         logger.info(f"Running CodeQL on {source_path}")
         db_path = f"/tmp/codeql-db-{uuid4().hex[:8]}"
 
@@ -75,7 +69,7 @@ class CodeScanner:
             if not result["success"] and "already exists" not in result["stderr"]:
                 logger.warning(f"CodeQL command failed: {result['stderr']}")
 
-        findings: List[CodeScanFinding] = []
+        findings: list[CodeScanFinding] = []
         sarif_path = "/tmp/codeql-results.sarif"
         if os.path.exists(sarif_path):
             try:
@@ -112,7 +106,7 @@ class CodeScanner:
             quality_gate_passed=len([f for f in findings if f.severity in ("CRITICAL", "HIGH")]) == 0,
         )
 
-    def run_semgrep(self, target: str, rules: Optional[List[str]] = None) -> CodeScanResult:
+    def run_semgrep(self, target: str, rules: list[str] | None = None) -> CodeScanResult:
         logger.info(f"Running Semgrep on {target}")
 
         cmd = ["semgrep", "--json", "--quiet", target]
@@ -123,7 +117,7 @@ class CodeScanner:
             cmd.extend(["--config", "auto"])
 
         result = self._run_tool(cmd)
-        findings: List[CodeScanFinding] = []
+        findings: list[CodeScanFinding] = []
 
         if result["success"]:
             try:
@@ -163,7 +157,7 @@ class CodeScanner:
     def run_bandit(self, target: str) -> CodeScanResult:
         logger.info(f"Running Bandit SAST on {target}")
         result = self._run_tool(["bandit", "-r", target, "-f", "json"])
-        findings: List[CodeScanFinding] = []
+        findings: list[CodeScanFinding] = []
 
         if result["success"]:
             try:
@@ -197,7 +191,7 @@ class CodeScanner:
     def run_checkov(self, target: str) -> CodeScanResult:
         logger.info(f"Running Checkov on {target}")
         result = self._run_tool(["checkov", "--directory", target, "--output", "json", "--quiet"])
-        findings: List[CodeScanFinding] = []
+        findings: list[CodeScanFinding] = []
 
         if result["success"]:
             try:
@@ -232,9 +226,9 @@ class CodeScanner:
             error=result["stderr"] if not result["success"] else None,
         )
 
-    def aggregate_results(self, results: List[CodeScanResult]) -> Dict[str, Any]:
-        all_findings: List[CodeScanFinding] = []
-        seen: Set[str] = set()
+    def aggregate_results(self, results: list[CodeScanResult]) -> dict[str, Any]:
+        all_findings: list[CodeScanFinding] = []
+        seen: set[str] = set()
 
         for result in results:
             for finding in result.findings:
@@ -255,7 +249,7 @@ class CodeScanner:
             "deduplication_ratio": len(all_findings) / max(len([r for r in results for f in r.findings]), 1),
         }
 
-    def generate_sarif_output(self, findings: List[CodeScanFinding], tool_name: str = "GSF-007-CodeScan") -> str:
+    def generate_sarif_output(self, findings: list[CodeScanFinding], tool_name: str = "GSF-007-CodeScan") -> str:
         sarif_results = []
         for f in findings:
             sarif_results.append({
@@ -279,8 +273,8 @@ class CodeScanner:
             }],
         }, indent=2)
 
-    def generate_pr_comments(self, findings: List[CodeScanFinding]) -> List[Dict[str, Any]]:
-        comments: List[Dict[str, Any]] = []
+    def generate_pr_comments(self, findings: list[CodeScanFinding]) -> list[dict[str, Any]]:
+        comments: list[dict[str, Any]] = []
 
         for f in findings[:50]:
             comment = {
@@ -298,16 +292,16 @@ class CodeScanner:
 
         return comments
 
-    def evaluate_quality_gate(self, findings: List[CodeScanFinding],
-                               thresholds: Optional[Dict[str, int]] = None) -> Dict[str, Any]:
+    def evaluate_quality_gate(self, findings: list[CodeScanFinding],
+                               thresholds: dict[str, int] | None = None) -> dict[str, Any]:
         thresholds = thresholds or {"CRITICAL": 0, "HIGH": 5, "MEDIUM": 20}
 
-        severity_counts: Dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
+        severity_counts: dict[str, int] = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
         for f in findings:
             if f.severity in severity_counts:
                 severity_counts[f.severity] += 1
 
-        reasons: List[str] = []
+        reasons: list[str] = []
         passed = True
 
         for severity, threshold in thresholds.items():
@@ -318,8 +312,8 @@ class CodeScanner:
 
         return {"passed": passed, "reasons": reasons, "counts": severity_counts, "thresholds": thresholds}
 
-    def full_scan(self, target: str) -> List[CodeScanResult]:
-        results: List[CodeScanResult] = []
+    def full_scan(self, target: str) -> list[CodeScanResult]:
+        results: list[CodeScanResult] = []
 
         bandit_result = self.run_bandit(target)
         if bandit_result.success:

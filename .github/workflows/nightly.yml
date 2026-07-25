@@ -376,7 +376,7 @@ jobs:
 
       - name: Send Telegram notification
         if: ${{ !github.event.inputs.skip_notify }}
-        uses: appleboy/telegram-action@1.1.0
+        uses: appleboy/telegram-action@d51e4fc0b1e85eb0c5500fd4545ec84d88a27b08
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}

@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 import logging
 import math
-from collections import defaultdict
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -14,7 +13,7 @@ from security.modules.threat_detection.models import ThreatEvent
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_RISK_WEIGHTS: Dict[str, float] = {
+DEFAULT_RISK_WEIGHTS: dict[str, float] = {
     "severity_critical": 10.0,
     "severity_high": 5.0,
     "severity_medium": 2.0,
@@ -25,7 +24,7 @@ DEFAULT_RISK_WEIGHTS: Dict[str, float] = {
     "confidence": 1.0,
 }
 
-RISK_THRESHOLDS: Dict[str, float] = {
+RISK_THRESHOLDS: dict[str, float] = {
     "low": 0.0,
     "medium": 20.0,
     "high": 50.0,
@@ -39,8 +38,8 @@ class EntityRisk(BaseModel):
     current_score: float = 0.0
     base_score: float = 0.0
     max_score: float = 0.0
-    score_history: List[Dict[str, Any]] = Field(default_factory=list)
-    last_event: Optional[datetime] = None
+    score_history: list[dict[str, Any]] = Field(default_factory=list)
+    last_event: datetime | None = None
     event_count: int = 0
     risk_level: str = "low"
 
@@ -50,23 +49,23 @@ class RiskAssessment(BaseModel):
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     overall_score: float = 0.0
     risk_level: str = "low"
-    entity_risks: Dict[str, EntityRisk] = Field(default_factory=dict)
-    top_contributors: List[str] = Field(default_factory=list)
+    entity_risks: dict[str, EntityRisk] = Field(default_factory=dict)
+    top_contributors: list[str] = Field(default_factory=list)
 
 
 class RiskEngine:
-    def __init__(self, weights: Optional[Dict[str, float]] = None):
+    def __init__(self, weights: dict[str, float] | None = None):
         self.weights = weights or DEFAULT_RISK_WEIGHTS
-        self._entity_risks: Dict[str, EntityRisk] = {}
-        self._event_history: List[ThreatEvent] = []
-        self._risk_history: List[Dict[str, Any]] = []
+        self._entity_risks: dict[str, EntityRisk] = {}
+        self._event_history: list[ThreatEvent] = []
+        self._risk_history: list[dict[str, Any]] = []
 
-    def calculate_risk_score(self, entity_id: str, events: Optional[List[ThreatEvent]] = None) -> float:
+    def calculate_risk_score(self, entity_id: str, events: list[ThreatEvent] | None = None) -> float:
         all_events = events or [e for e in self._event_history if e.source == entity_id]
         if not all_events:
             return 0.0
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         total_risk = 0.0
         decay_hours = self.weights.get("temporal_decay_hours", 24)
 
@@ -106,7 +105,7 @@ class RiskEngine:
         risk.risk_level = self._determine_risk_level(score)
 
         risk.score_history.append({
-            "timestamp": event.timestamp.isoformat() if event.timestamp else datetime.now(timezone.utc).isoformat(),
+            "timestamp": event.timestamp.isoformat() if event.timestamp else datetime.now(UTC).isoformat(),
             "score": score,
             "event_id": event.event_id,
             "severity": event.severity,
@@ -121,12 +120,12 @@ class RiskEngine:
         self._event_history.append(event)
         return self.update_entity_risk(event.source, "ip", event)
 
-    def process_events(self, events: List[ThreatEvent]) -> Dict[str, EntityRisk]:
+    def process_events(self, events: list[ThreatEvent]) -> dict[str, EntityRisk]:
         for event in events:
             self.process_event(event)
         return self._entity_risks
 
-    def aggregate_risk(self, entity_ids: Optional[List[str]] = None) -> RiskAssessment:
+    def aggregate_risk(self, entity_ids: list[str] | None = None) -> RiskAssessment:
         entities = list(self._entity_risks.values())
         if entity_ids:
             entities = [e for e in entities if e.entity_id in entity_ids]
@@ -158,30 +157,28 @@ class RiskEngine:
 
         return assessment
 
-    def get_entity_risk(self, entity_id: str) -> Optional[EntityRisk]:
+    def get_entity_risk(self, entity_id: str) -> EntityRisk | None:
         return self._entity_risks.get(entity_id)
 
     def get_risk_threshold_action(self, score: float) -> str:
         if score >= RISK_THRESHOLDS["critical"]:
             return "IMMEDIATE_BLOCK"
-        elif score >= RISK_THRESHOLDS["high"]:
+        if score >= RISK_THRESHOLDS["high"]:
             return "REQUIRE_MFA_AND_NOTIFY"
-        elif score >= RISK_THRESHOLDS["medium"]:
+        if score >= RISK_THRESHOLDS["medium"]:
             return "REQUIRE_MFA"
-        else:
-            return "MONITOR_ONLY"
+        return "MONITOR_ONLY"
 
     def _determine_risk_level(self, score: float) -> str:
         if score >= RISK_THRESHOLDS["critical"]:
             return "critical"
-        elif score >= RISK_THRESHOLDS["high"]:
+        if score >= RISK_THRESHOLDS["high"]:
             return "high"
-        elif score >= RISK_THRESHOLDS["medium"]:
+        if score >= RISK_THRESHOLDS["medium"]:
             return "medium"
-        else:
-            return "low"
+        return "low"
 
-    def generate_risk_report(self, entity_id: Optional[str] = None) -> str:
+    def generate_risk_report(self, entity_id: str | None = None) -> str:
         if entity_id and entity_id in self._entity_risks:
             risk = self._entity_risks[entity_id]
             assessment = self.aggregate_risk([entity_id])
@@ -203,9 +200,9 @@ class RiskEngine:
 
         return json.dumps(data, indent=2, default=str)
 
-    def get_historical_trend(self, entity_id: Optional[str] = None,
-                              hours: int = 168) -> Dict[str, Any]:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    def get_historical_trend(self, entity_id: str | None = None,
+                              hours: int = 168) -> dict[str, Any]:
+        cutoff = datetime.now(UTC) - timedelta(hours=hours)
 
         if entity_id and entity_id in self._entity_risks:
             risk = self._entity_risks[entity_id]
