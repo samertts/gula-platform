@@ -5,26 +5,69 @@ AEAD encryption, digital signatures, key derivation, key wrapping,
 and key rotation. Backed by the cryptography library (OpenSSL/BoringSSL).
 
 Exports:
-    CryptoEngine: Core cryptographic engine
-    AeadEncryptor: Authenticated encryption (AES-256-GCM, ChaCha20-Poly1305)
-    KeyDerivation: PBKDF2, Argon2id, HKDF key derivation
-    DigitalSigner: Ed25519, ECDSA, RSA-PSS signature operations
-    KeyManager: Key lifecycle management and rotation
-    CertificateAuthority: X.509 certificate operations
+    Cipher: Abstract encryption interface
+    Hasher: Abstract hashing interface
+    Signer: Abstract signing interface
+    KeyGenerator: Abstract key generation interface
+    KeyRotator: Abstract key rotation interface
+    AES256GCMCipher: AES-256-GCM encryption
+    AES256CBCWithHMACCipher: AES-256-CBC with HMAC-SHA256
+    Argon2idHasher: Argon2id password hashing
+    SHA256Hasher: SHA-256 hashing
+    SHA512Hasher: SHA-512 hashing
+    Ed25519Signer: Ed25519 digital signatures
+    ECDSA256Signer: ECDSA P-256 signatures
+    HMACSigner: HMAC-SHA256/512 signing
+    SecureRandom: Secure random generation
+    FieldEncryptor: Field-level encryption
+    PHIEncryptor: PHI (health data) encryption
+    KeyRotationManager: Key lifecycle management
 """
 
-from security.modules.crypto.engine import CryptoEngine
-from security.modules.crypto.aead import AeadEncryptor
-from security.modules.crypto.kdf import KeyDerivation
-from security.modules.crypto.signer import DigitalSigner
-from security.modules.crypto.key_mgmt import KeyManager
-from security.modules.crypto.ca import CertificateAuthority
+from security.modules.crypto.aes import AES256CBCWithHMACCipher, AES256GCMCipher
+from security.modules.crypto.argon import Argon2idHasher
+from security.modules.crypto.base import Cipher, Hasher, KeyGenerator, KeyRotator, Signer
+from security.modules.crypto.field_encryption import FieldEncryptor
+from security.modules.crypto.hashing import SHA256Hasher, SHA512Hasher
+from security.modules.crypto.key_rotation import KeyRotationManager
+from security.modules.crypto.models import (
+    EncryptionAlgorithm,
+    EncryptionConfig,
+    EncryptedData,
+    HashAlgorithm,
+    HashResult,
+    KeyMetadata,
+    KeyPurpose,
+    SignatureAlgorithm,
+)
+from security.modules.crypto.phi_encryption import PHIEncryptor
+from security.modules.crypto.random import SecureRandom
+from security.modules.crypto.signing import ECDSA256Signer, Ed25519Signer, HMACSigner
 
 __all__ = [
-    "CryptoEngine",
-    "AeadEncryptor",
-    "KeyDerivation",
-    "DigitalSigner",
-    "KeyManager",
-    "CertificateAuthority",
+    "AES256CBCWithHMACCipher",
+    "AES256GCMCipher",
+    "Argon2idHasher",
+    "Cipher",
+    "ECDSA256Signer",
+    "Ed25519Signer",
+    "EncryptionAlgorithm",
+    "EncryptionConfig",
+    "EncryptedData",
+    "FieldEncryptor",
+    "HMACSigner",
+    "HashAlgorithm",
+    "HashResult",
+    "Hasher",
+    "KeyGenerator",
+    "KeyMetadata",
+    "KeyPurpose",
+    "KeyRotationManager",
+    "KeyRotator",
+    "PHIEncryptor",
+    "SHA256Hasher",
+    "SHA512Hasher",
+    "SecureRandom",
+    "SignatureAlgorithm",
+    "Signer",
 ]
