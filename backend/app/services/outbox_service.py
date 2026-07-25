@@ -229,11 +229,11 @@ def purge_old_events(db: Session, days: int = 30) -> int:
     Safe to run periodically from a maintenance CRON job.
     Returns the number of rows deleted.
     """
-    from datetime import datetime, timedelta
+    from datetime import datetime, timedelta, timezone
 
     from sqlalchemy import text
 
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     result = db.execute(
         text("""
             DELETE FROM outbox_events

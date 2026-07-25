@@ -7,7 +7,7 @@ import os
 import re
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -129,7 +129,7 @@ class AuditLogger:
     ):
         entry = {
             "id": str(uuid.uuid4()),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "action": action,
             "entity_type": entity_type,
             "entity_id": entity_id,
@@ -170,7 +170,7 @@ class IntegrityChecker:
             **entry,
             "previous_hash": previous_hash,
             "hash": entry_hash,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         self._chain.append(record)
         return record
