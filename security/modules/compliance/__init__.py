@@ -1,32 +1,42 @@
-GSF-007: Compliance Module — Compliance framework mapping.
+GSF-009: Compliance Module — Multi-framework compliance validation.
 
-Maps GSF security controls to multiple regulatory frameworks and
-standards including OWASP ASVS Level 3, NIST CSF 2.0, NIST SP 800-53,
-ISO 27001:2022, ISO 27799, HIPAA Security Rule, GDPR, and Iraqi
-national healthcare regulations. Provides compliance reporting and
-continuous monitoring.
+Provides comprehensive compliance verification across multiple frameworks
+including OWASP ASVS, NIST CSF 2.0, ISO 27001, HIPAA, and GDPR with
+cross-framework mapping and unified reporting.
 
 Exports:
-    ComplianceEngine: Compliance assessment engine
-    FrameworkMapper: Multi-framework control mapping
-    ControlEvaluator: Security control effectiveness evaluation
-    ComplianceReport: Compliance report generator
-    EvidenceCollector: Automated evidence collection
-    GapAnalysis: Compliance gap identification
+    ComplianceFramework: Supported compliance frameworks enum
+    ControlStatus: Control implementation status enum
+    ComplianceControl: Compliance control model
+    ComplianceReport: Compliance report model
+    ASVSValidator: OWASP ASVS Level 3 validator
+    NISTCSFValidator: NIST CSF 2.0 validator
+    ISO27001Validator: ISO 27001 Annex A validator
+    HIPAAValidator: HIPAA Privacy/Security Rule validator
+    GDPRValidator: GDPR compliance validator
+    ComplianceMapper: Cross-framework control mapping
+    ComplianceEngine: Unified compliance engine
 """
 
+from security.modules.compliance.models import ComplianceFramework, ControlStatus, ComplianceControl, ComplianceReport
+from security.modules.compliance.asvs import ASVSValidator
+from security.modules.compliance.nist import NISTCSFValidator
+from security.modules.compliance.iso27001 import ISO27001Validator
+from security.modules.compliance.hipaa import HIPAAValidator
+from security.modules.compliance.gdpr import GDPRValidator
+from security.modules.compliance.mapper import ComplianceMapper
 from security.modules.compliance.engine import ComplianceEngine
-from security.modules.compliance.mapper import FrameworkMapper
-from security.modules.compliance.evaluator import ControlEvaluator
-from security.modules.compliance.reporting import ComplianceReport
-from security.modules.compliance.evidence import EvidenceCollector
-from security.modules.compliance.gaps import GapAnalysis
 
 __all__ = [
-    "ComplianceEngine",
-    "FrameworkMapper",
-    "ControlEvaluator",
+    "ComplianceFramework",
+    "ControlStatus",
+    "ComplianceControl",
     "ComplianceReport",
-    "EvidenceCollector",
-    "GapAnalysis",
+    "ASVSValidator",
+    "NISTCSFValidator",
+    "ISO27001Validator",
+    "HIPAAValidator",
+    "GDPRValidator",
+    "ComplianceMapper",
+    "ComplianceEngine",
 ]

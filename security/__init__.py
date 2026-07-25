@@ -1,4 +1,4 @@
-GULA Security Framework (GSF) — Permanent Enterprise Security Subsystem.
+"""GULA Security Framework (GSF) — Permanent Enterprise Security Subsystem.
 
 GSF provides comprehensive security capabilities for the GULA National Healthcare
 Platform, covering identity, secrets, cryptography, authentication, authorization,

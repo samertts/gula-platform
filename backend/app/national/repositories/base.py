@@ -1,12 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
-
-T = TypeVar("T")
+from typing import Any
 
 
-class Repository(Generic[T], ABC):
+class Repository[T](ABC):
     @abstractmethod
     async def get(self, id: str) -> T | None: ...
 

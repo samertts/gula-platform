@@ -38,14 +38,13 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app._compat import UTC
 from app.database import get_db
 from app.security.dependencies import get_current_user
 
@@ -173,7 +172,7 @@ def purge_expired_keys(db: Session) -> int:
     """Delete idempotency keys older than _KEY_TTL_HOURS.
     Call from a maintenance CRON or startup task.
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=_KEY_TTL_HOURS)
+    cutoff = datetime.now(UTC) - timedelta(hours=_KEY_TTL_HOURS)
     result = db.execute(
         text("""
             DELETE FROM idempotency_keys
