@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from backend.app.integration.connector.spec import (
+from app.integration.connector.spec import (
     ConnectorEndpoint,
     ConnectorHealth,
     ConnectorSpec,

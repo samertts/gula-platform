@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from sqlalchemy import Column, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSON
 
-from backend.app.national.base import BaseEntity, NationalBase
+from app.national.base import BaseEntity, NationalBase
 
 
 class NationalTaskModel(BaseEntity, NationalBase):

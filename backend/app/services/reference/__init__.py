@@ -1,9 +1,9 @@
-from backend.app.services.reference.master_reference_data import (
+from app.services.reference.master_reference_data import (
     MasterReferenceDataService,
     ReferenceDataType,
     ReferenceEntry,
 )
-from backend.app.services.reference.national_lab_catalog import (
+from app.services.reference.national_lab_catalog import (
     BillingCodeDef,
     ContainerDef,
     CPTMapping,
@@ -17,7 +17,7 @@ from backend.app.services.reference.national_lab_catalog import (
     ReferenceRangeDef,
     SpecimenTypeDef,
 )
-from backend.app.services.reference.universal_identifier import (
+from app.services.reference.universal_identifier import (
     IdentifierType,
     UniversalIdentifierService,
 )

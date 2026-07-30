@@ -5,11 +5,11 @@ from typing import Any
 
 from sqlalchemy import desc, text
 
-from backend.app.database import SessionLocal
-from backend.app.national.task_engine.domain.entities import (
+from app.database import SessionLocal
+from app.national.task_engine.domain.entities import (
     NationalTask,
 )
-from backend.app.national.task_engine.domain.repository import (
+from app.national.task_engine.domain.repository import (
     NationalTaskRepository,
     TaskAssignmentRepository,
     TaskAuditLogRepository,
@@ -18,7 +18,7 @@ from backend.app.national.task_engine.domain.repository import (
     TaskQueueRepository,
     TaskSLARepository,
 )
-from backend.app.national.task_engine.infrastructure.models import (
+from app.national.task_engine.infrastructure.models import (
     NationalTaskModel,
 )
 

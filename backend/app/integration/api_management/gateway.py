@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from backend.app.integration.api_management.auth import APIAuth
+from app.integration.api_management.auth import APIAuth
 
 logger = logging.getLogger("gula.integration.api_management.gateway")
 

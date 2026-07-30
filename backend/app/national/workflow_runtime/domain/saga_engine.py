@@ -5,8 +5,8 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from backend.app.national.workflow_runtime.domain.entities import SagaLog
-from backend.app.national.workflow_runtime.domain.enums import CompensationStrategy
+from app.national.workflow_runtime.domain.entities import SagaLog
+from app.national.workflow_runtime.domain.enums import CompensationStrategy
 
 logger = logging.getLogger("gula.workflow_runtime.saga")
 

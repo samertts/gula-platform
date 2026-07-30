@@ -5,7 +5,7 @@ import logging
 import time
 from typing import Any
 
-from backend.app.integration.connectors import BaseConnector, ConnectorRegistry
+from app.integration.connectors import BaseConnector, ConnectorRegistry
 
 logger = logging.getLogger("gula.integration.connectors.barcode")
 

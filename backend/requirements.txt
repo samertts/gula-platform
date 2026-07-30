@@ -21,6 +21,8 @@ redis>=8.0.1
 sentry-sdk[fastapi]>=2.66.0
 webauthn>=3.0.0
 pyotp>=2.10.0
+email-validator>=2.1.0  # required by pydantic EmailStr
+defusedxml>=0.7.1
 # Google AI Studio — official Gemini SDK (OPTIONAL — not installed by default)
 # The platform works without this: raw HTTPS fallback is used automatically.
 # Install manually to unlock proper system_instruction + structured safety settings:

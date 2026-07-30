@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 
-from backend.app.integration.connectors import BaseConnector, ConnectorRegistry
+from app.integration.connectors import BaseConnector, ConnectorRegistry
 
 logger = logging.getLogger("gula.integration.connectors.cloud_storage")
 

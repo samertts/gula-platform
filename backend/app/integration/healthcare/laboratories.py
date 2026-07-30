@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 
 import httpx
 
-from backend.app.integration.connectors import BaseConnector, ConnectorRegistry
+from app.integration.connectors import BaseConnector, ConnectorRegistry
 
 logger = logging.getLogger("gula.integration.healthcare.laboratories")
 

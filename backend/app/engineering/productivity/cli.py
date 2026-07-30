@@ -4,18 +4,18 @@ import argparse
 import sys
 from pathlib import Path
 
-from backend.app.engineering.ci.quality_gates import QualityGates
-from backend.app.engineering.crud.generator import CRUDGenerator, EntityField, EntitySpec
-from backend.app.engineering.generators.capability import (
+from app.engineering.ci.quality_gates import QualityGates
+from app.engineering.crud.generator import CRUDGenerator, EntityField, EntitySpec
+from app.engineering.generators.capability import (
     CapabilityGenerator,
     CapabilitySpec,
 )
-from backend.app.engineering.generators.microservice import MicroserviceGenerator, MicroserviceSpec
-from backend.app.engineering.generators.module import ModuleGenerator, ModuleSpec
-from backend.app.engineering.generators.plugin import PluginGenerator, PluginSpec
-from backend.app.engineering.generators.project import ProjectGenerator, ProjectSpec
-from backend.app.engineering.validation.clean_arch import CleanArchitectureValidator
-from backend.app.engineering.validation.solid import SOLIDValidator
+from app.engineering.generators.microservice import MicroserviceGenerator, MicroserviceSpec
+from app.engineering.generators.module import ModuleGenerator, ModuleSpec
+from app.engineering.generators.plugin import PluginGenerator, PluginSpec
+from app.engineering.generators.project import ProjectGenerator, ProjectSpec
+from app.engineering.validation.clean_arch import CleanArchitectureValidator
+from app.engineering.validation.solid import SOLIDValidator
 
 PACKAGE = "backend.app.engineering"
 

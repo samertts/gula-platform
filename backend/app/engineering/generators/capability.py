@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from backend.app.engineering.generators.base import BaseGenerator, GenerateResult
+from app.engineering.generators.base import BaseGenerator, GenerateResult
 
 
 @dataclass
@@ -188,7 +188,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends
 
-from backend.app.security.dependencies import get_current_user, require_permission
+from app.security.dependencies import get_current_user, require_permission
 
 router = APIRouter(prefix="/{prefix}", tags=["{tag}"])
 
@@ -513,7 +513,7 @@ __all__ = ["{cap_cap}Capability"]
 import logging
 from typing import Any
 
-from backend.app.kernel.integration import get_kernel
+from app.kernel.integration import get_kernel
 
 logger = logging.getLogger("gula.capability.{cap}")
 

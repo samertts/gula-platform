@@ -11,12 +11,16 @@ from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_user
 from ..services.test_result_service import (
+    citizen_timeline as service_timeline,
+)
+from ..services.test_result_service import (
     create_result,
     get_result,
     list_citizen_results,
     verify_result,
+)
+from ..services.test_result_service import (
     validate_result_payload as service_validate,
-    citizen_timeline as service_timeline,
 )
 
 router = APIRouter(prefix="/test-results", tags=["test-results"])

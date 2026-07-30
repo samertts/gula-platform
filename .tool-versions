@@ -1,0 +1,6 @@
+# GULA Platform — Unified Tool Versions
+# Managed by .tool-versions (asdf/mise compatible)
+# See docs/environment/VERSION_MATRIX.md
+
+node 24
+python 3.12

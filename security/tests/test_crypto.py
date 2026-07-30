@@ -4,6 +4,7 @@ import os
 
 import pytest
 
+from security.modules.crypto.key_rotation import KeyRotationManager
 from security.modules.crypto.models import (
     EncryptedData,
     EncryptionAlgorithm,
@@ -12,6 +13,7 @@ from security.modules.crypto.models import (
     KeyPurpose,
     SignatureAlgorithm,
 )
+from security.modules.crypto.signing import ECDSA256Signer, Ed25519Signer, HMACSigner
 
 
 class TestAES256GCM:
@@ -393,5 +395,3 @@ class TestKeyRotation:
         keys = key_rotation_manager.list_keys()
         assert len(keys) >= 2
 
-
-from security.modules.crypto.signing import ECDSA256Signer, Ed25519Signer, HMACSigner

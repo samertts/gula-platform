@@ -50,7 +50,7 @@ def _cache_set(key: str, data: dict, ttl: int = _CACHE_TTL) -> None:
     if not r:
         return
     with contextlib.suppress(Exception):
-        r.setex(key, ttl, json.dumps(data, default=str))
+        r.set(key, json.dumps(data, default=str), ex=ttl)
 
 
 def _cache_key(lab_id: int, endpoint: str, **params) -> str:

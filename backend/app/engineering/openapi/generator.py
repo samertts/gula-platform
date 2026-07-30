@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.app.engineering.generators.base import BaseGenerator, GenerateResult
+from app.engineering.generators.base import BaseGenerator, GenerateResult
 
 
 @dataclass

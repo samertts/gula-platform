@@ -5,17 +5,17 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.national.task_engine.application.service import TaskEngineService
-from backend.app.national.task_engine.domain.entities import (
+from app.national.task_engine.application.service import TaskEngineService
+from app.national.task_engine.domain.entities import (
     NationalTask,
     TaskQueue,
     TaskSLADefinition,
 )
-from backend.app.national.task_engine.domain.enums import (
+from app.national.task_engine.domain.enums import (
     TaskCategory,
     TaskPriority,
 )
-from backend.app.national.task_engine.infrastructure.repository import (
+from app.national.task_engine.infrastructure.repository import (
     SQLAlchemyNationalTaskRepository,
     SQLAlchemyTaskAssignmentRepository,
     SQLAlchemyTaskAuditLogRepository,
@@ -24,7 +24,7 @@ from backend.app.national.task_engine.infrastructure.repository import (
     SQLAlchemyTaskQueueRepository,
     SQLAlchemyTaskSLARepository,
 )
-from backend.app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/national/tasks", tags=["National Task Engine"])
 

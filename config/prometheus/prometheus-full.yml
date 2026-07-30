@@ -138,26 +138,26 @@ remote_write:
         regex: 'gula_.*|otel_.*|slo_.*'
         action: keep
 
-# ─── Federation (multi-region) ─────────────────────────────────────────────────
-- job_name: 'federate-baghdad'
-  scrape_interval: 60s
-  honor_labels: true
-  metrics_path: '/federate'
-  params:
-    'match[]':
-      - '{__name__=~"gula_.*"}'
-      - '{__name__=~"slo_.*"}'
-      - '{__name__=~"otel_.*"}'
-  static_configs:
-    - targets: ['baghdad-prometheus:9090']
+  # ─── Federation (multi-region) ─────────────────────────────────────────────
+  - job_name: 'federate-baghdad'
+    scrape_interval: 60s
+    honor_labels: true
+    metrics_path: '/federate'
+    params:
+      'match[]':
+        - '{__name__=~"gula_.*"}'
+        - '{__name__=~"slo_.*"}'
+        - '{__name__=~"otel_.*"}'
+    static_configs:
+      - targets: ['baghdad-prometheus:9090']
 
-- job_name: 'federate-basra'
-  scrape_interval: 60s
-  honor_labels: true
-  metrics_path: '/federate'
-  params:
-    'match[]':
-      - '{__name__=~"gula_.*"}'
-      - '{__name__=~"slo_.*"}'
-  static_configs:
-    - targets: ['basra-prometheus:9090']
+  - job_name: 'federate-basra'
+    scrape_interval: 60s
+    honor_labels: true
+    metrics_path: '/federate'
+    params:
+      'match[]':
+        - '{__name__=~"gula_.*"}'
+        - '{__name__=~"slo_.*"}'
+    static_configs:
+      - targets: ['basra-prometheus:9090']

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.app.integration.gateway.base import MessageGateway
+from app.integration.gateway.base import MessageGateway
 
 logger = logging.getLogger("gula.integration.gateway.registry")
 

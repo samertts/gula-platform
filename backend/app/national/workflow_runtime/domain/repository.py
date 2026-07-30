@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any
 
-from backend.app.national.workflow_runtime.domain.entities import (
+from app.national.workflow_runtime.domain.entities import (
     SagaLog,
     WorkflowApproval,
     WorkflowCompensation,

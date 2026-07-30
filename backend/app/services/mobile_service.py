@@ -19,6 +19,8 @@ from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..security.auth import (
     blacklist_token as _blacklist,
+)
+from ..security.auth import (
     build_token_payload,
     create_refresh_token,
     create_token,

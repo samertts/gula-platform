@@ -1,11 +1,11 @@
-from backend.app.integration.healthcare.blood_bank import BloodBankIntegration
-from backend.app.integration.healthcare.hospitals import HospitalIntegration
-from backend.app.integration.healthcare.insurance import InsuranceIntegration
-from backend.app.integration.healthcare.laboratories import LaboratoryIntegration
-from backend.app.integration.healthcare.pharmacies import PharmacyIntegration
-from backend.app.integration.healthcare.primary_care import PrimaryCareIntegration
-from backend.app.integration.healthcare.radiology import RadiologyIntegration
-from backend.app.integration.healthcare.vaccination import VaccinationIntegration
+from app.integration.healthcare.blood_bank import BloodBankIntegration
+from app.integration.healthcare.hospitals import HospitalIntegration
+from app.integration.healthcare.insurance import InsuranceIntegration
+from app.integration.healthcare.laboratories import LaboratoryIntegration
+from app.integration.healthcare.pharmacies import PharmacyIntegration
+from app.integration.healthcare.primary_care import PrimaryCareIntegration
+from app.integration.healthcare.radiology import RadiologyIntegration
+from app.integration.healthcare.vaccination import VaccinationIntegration
 
 __all__ = [
     "BloodBankIntegration",

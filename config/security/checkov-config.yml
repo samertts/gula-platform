@@ -85,21 +85,20 @@ baseline:
 # OUTPUT
 # =============================================================================
 output:
-  - "cli"             # Console output (human-readable)
-  - "json"            # JSON output (machine-readable)
-  - "sarif"           # SARIF output (GitHub Security)
+  - cli
+  - json
+  - sarif
 
-  cli:
-    compact: false
-    # Show only failed checks
-    show_passed: true
+cli:
+  compact: false
+  show_passed: true
 
-  json:
-    path: "reports/checkov/checkov-report.json"
+json:
+  path: "reports/checkov/checkov-report.json"
 
-  sarif:
-    path: "reports/checkov/checkov-report.sarif"
-    upload_to_github: true
+sarif:
+  path: "reports/checkov/checkov-report.sarif"
+  upload_to_github: true
 
 # =============================================================================
 # PASS/FAIL CRITERIA

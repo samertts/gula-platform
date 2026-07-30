@@ -163,3 +163,17 @@ def require_service_account(
         return account
 
     return get_current_user(request, credentials, db)
+
+
+def get_optional_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    db: Session = Depends(get_db),
+) -> LabUser | None:
+    raw_token = _extract_token(credentials, request)
+    if raw_token is None:
+        return None
+    try:
+        return get_current_user(request, credentials, db)
+    except HTTPException:
+        return None

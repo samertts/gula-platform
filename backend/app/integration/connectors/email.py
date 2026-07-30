@@ -7,8 +7,8 @@ from urllib.parse import urljoin
 
 import httpx
 
-from backend.app.integration.connectors import BaseConnector, ConnectorRegistry
-from backend.app.notifications.service import NotificationResult, get_service
+from app.integration.connectors import BaseConnector, ConnectorRegistry
+from app.notifications.service import NotificationResult, get_service
 
 logger = logging.getLogger("gula.integration.connectors.email")
 

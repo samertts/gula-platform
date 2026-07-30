@@ -59,6 +59,27 @@ def _index_exists(name: str) -> bool:
 
 
 def upgrade() -> None:
+    # ── 0. organizations & facilities (prerequisites) ──────────────────────────
+    if not _has_table("organizations"):
+        op.create_table(
+            "organizations",
+            sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+            sa.Column("name", sa.String(length=200), nullable=False),
+            sa.Column("org_type", sa.String(length=50), nullable=True),
+            sa.Column("is_active", sa.Boolean(), nullable=True, server_default=sa.text("true")),
+            sa.PrimaryKeyConstraint("id"),
+        )
+    if not _has_table("facilities"):
+        op.create_table(
+            "facilities",
+            sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+            sa.Column("name", sa.String(length=200), nullable=False),
+            sa.Column("facility_type", sa.String(length=50), nullable=True),
+            sa.Column("organization_id", sa.Integer(), nullable=True),
+            sa.Column("is_active", sa.Boolean(), nullable=True, server_default=sa.text("true")),
+            sa.PrimaryKeyConstraint("id"),
+        )
+
     # ── 1. tenants ────────────────────────────────────────────────────────────
     if not _has_table("tenants"):
         op.create_table(
@@ -94,11 +115,11 @@ def upgrade() -> None:
         op.create_table(
             "permissions",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("permission_id", sa.String(length=100), nullable=False, index=True),
+            sa.Column("permission_id", sa.String(length=100), nullable=False),
             sa.Column("name_en", sa.String(length=200), nullable=False),
             sa.Column("name_ar", sa.String(length=200), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
-            sa.Column("domain", sa.String(length=50), nullable=False, index=True),
+            sa.Column("domain", sa.String(length=50), nullable=False),
             sa.Column("resource", sa.String(length=50), nullable=False),
             sa.Column("action", sa.String(length=50), nullable=False),
             sa.Column(
@@ -117,14 +138,13 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("permission_id"),
         )
-        op.create_index("ix_permissions_domain", "permissions", ["domain"])
 
     # ── 3. roles ──────────────────────────────────────────────────────────────
     if not _has_table("roles"):
         op.create_table(
             "roles",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("role_id", sa.String(length=100), nullable=False, index=True),
+            sa.Column("role_id", sa.String(length=100), nullable=False),
             sa.Column("name_en", sa.String(length=200), nullable=False),
             sa.Column("name_ar", sa.String(length=200), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
@@ -148,7 +168,6 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("role_id"),
         )
-        op.create_index("ix_roles_role_id", "roles", ["role_id"])
         op.create_index("ix_roles_parent", "roles", ["parent_role_id"])
         op.create_index("ix_roles_group", "roles", ["role_group_id"])
 
@@ -179,7 +198,7 @@ def upgrade() -> None:
         op.create_table(
             "role_groups",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("group_id", sa.String(length=100), nullable=False, index=True),
+            sa.Column("group_id", sa.String(length=100), nullable=False),
             sa.Column("name_en", sa.String(length=200), nullable=False),
             sa.Column("name_ar", sa.String(length=200), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
@@ -267,7 +286,7 @@ def upgrade() -> None:
         op.create_table(
             "abac_policies",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("policy_id", sa.String(length=100), nullable=False, index=True),
+            sa.Column("policy_id", sa.String(length=100), nullable=False),
             sa.Column("name_en", sa.String(length=200), nullable=False),
             sa.Column("name_ar", sa.String(length=200), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
@@ -312,8 +331,8 @@ def upgrade() -> None:
         op.create_table(
             "field_security",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("resource_type", sa.String(length=50), nullable=False, index=True),
-            sa.Column("field_name", sa.String(length=100), nullable=False, index=True),
+            sa.Column("resource_type", sa.String(length=50), nullable=False),
+            sa.Column("field_name", sa.String(length=100), nullable=False),
             sa.Column(
                 "default_level",
                 sa.String(length=20),
@@ -420,7 +439,7 @@ def upgrade() -> None:
         op.create_table(
             "authorization_audit",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("decision_id", sa.String(length=100), nullable=False, index=True),
+            sa.Column("decision_id", sa.String(length=100), nullable=False),
             sa.Column(
                 "user_id",
                 sa.Integer(),
@@ -429,9 +448,9 @@ def upgrade() -> None:
                 index=True,
             ),
             sa.Column("user_role", sa.String(length=100), nullable=True),
-            sa.Column("action", sa.String(length=100), nullable=False, index=True),
+            sa.Column("action", sa.String(length=100), nullable=False),
             sa.Column("resource_type", sa.String(length=50), nullable=False),
-            sa.Column("resource_id", sa.String(length=100), nullable=True, index=True),
+            sa.Column("resource_id", sa.String(length=100), nullable=True),
             sa.Column("decision", sa.String(length=20), nullable=False),
             sa.Column("policies_applied", sa.JSON(), nullable=True),
             sa.Column("policy_engine", sa.String(length=20), nullable=True),
@@ -456,7 +475,7 @@ def upgrade() -> None:
     # ── 13. users — add authorization columns ─────────────────────────────────
     if not _has_column("users", "user_type"):
         op.add_column(
-            "users", sa.Column("user_type", sa.String(length=50), nullable=True, index=True)
+            "users", sa.Column("user_type", sa.String(length=50), nullable=True)
         )
         op.create_index("ix_users_user_type", "users", ["user_type"])
     if not _has_column("users", "organization_id"):

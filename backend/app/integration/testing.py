@@ -9,7 +9,7 @@ from typing import Any
 
 import httpx
 
-from backend.app.integration.standards import FHIRService
+from app.integration.standards import FHIRService
 
 logger = logging.getLogger("gula.integration.testing")
 

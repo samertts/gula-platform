@@ -6,7 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.app.platform.sync import SyncChange, SyncService
+from app.platform.sync import SyncChange, SyncService
 
 logger = logging.getLogger("gula.integration.offline")
 

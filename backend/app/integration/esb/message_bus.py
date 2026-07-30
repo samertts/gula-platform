@@ -4,11 +4,11 @@ import asyncio
 import logging
 from collections.abc import Callable
 
-from backend.app.integration.esb.dead_letter import DeadLetterService
-from backend.app.integration.esb.idempotency import IdempotencyService
-from backend.app.integration.esb.priority import PriorityService
-from backend.app.integration.esb.router import ESBRouter
-from backend.app.integration.esb.types import ESBMessage
+from app.integration.esb.dead_letter import DeadLetterService
+from app.integration.esb.idempotency import IdempotencyService
+from app.integration.esb.priority import PriorityService
+from app.integration.esb.router import ESBRouter
+from app.integration.esb.types import ESBMessage
 
 logger = logging.getLogger("gula.integration.esb.message_bus")
 

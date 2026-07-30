@@ -5,16 +5,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from backend.app.national.workflow_runtime.application.service import (
-    WorkflowRuntimeService,
-)
-from backend.app.national.workflow_runtime.domain.entities import (
+from app.national.workflow_runtime.domain.entities import (
     WorkflowDefinition,
     WorkflowStepDefinition,
     WorkflowTemplate,
 )
-from backend.app.national.workflow_runtime.domain.enums import WorkflowTrigger
-from backend.app.national.workflow_runtime.infrastructure.repository import (
+from app.national.workflow_runtime.domain.enums import WorkflowTrigger
+from app.national.workflow_runtime.infrastructure.repository import (
     SQLAlchemyWorkflowApprovalRepository,
     SQLAlchemyWorkflowCompensationRepository,
     SQLAlchemyWorkflowDefinitionRepository,
@@ -23,13 +20,13 @@ from backend.app.national.workflow_runtime.infrastructure.repository import (
     SQLAlchemyWorkflowTemplateRepository,
     SQLAlchemyWorkflowTimerRepository,
 )
-from backend.app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/national/workflows", tags=["National Workflows"])
 
 
-def _get_service() -> WorkflowRuntimeService:
-
+def _get_service():
+    from app.national.workflow_runtime.application.service import WorkflowRuntimeService
     return WorkflowRuntimeService(
         definition_repo=SQLAlchemyWorkflowDefinitionRepository(),
         execution_repo=SQLAlchemyWorkflowExecutionRepository(),
