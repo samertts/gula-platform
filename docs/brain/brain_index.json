@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-07-31T15:11:40.277080+00:00",
+  "generated_at": "2026-07-31T22:58:48.945837+00:00",
   "repo": {
     "name": "gula-platform",
     "root": "/home/samertts/workspace/projects/gula-platform",
-    "git_head": "93f1fcae feat(ops): Grafana-managed alerting provisioning (SLO rules → Alertmanager)"
+    "git_head": "653836a6 fix(integration): full frontend-backend parity scan, service-accounts + kernel runtime workflows (OMEGA-002)"
   },
   "counts": {
     "modules": {
       "backend/app": {
         "python_files": 1787,
-        "lines": 264337
+        "lines": 264608
       },
       "shared": {
         "python_files": 113,
@@ -32,31 +32,31 @@
         "lines": 23417
       },
       "frontend-v3/src": {
-        "python_files": 119,
-        "lines": 28867
+        "python_files": 120,
+        "lines": 33179
       },
       "mobile": {
         "python_files": 0,
         "lines": 0
       }
     },
-    "routes": 2161,
+    "routes": 2167,
     "migrations": 50,
     "migrations_head": "20260723_0002",
     "services": {
       "service_files": 40,
-      "total_lines": 16529
+      "total_lines": 16627
     },
     "models": 28,
     "tests": {
-      "backend/tests": 140,
+      "backend/tests": 141,
       "tests": 0,
       "shared": 0,
       "security/tests": 10,
       "frontend-v3": 4
     },
     "docs": {
-      "docs_markdown_files": 496,
+      "docs_markdown_files": 497,
       "adr_count": 52,
       "constitution_docs": 47
     },
@@ -101,7 +101,7 @@
     "PROGRAM-07M-REPORT"
   ],
   "source_freshness": {
-    "newest_source_mtime": 1785510419.8593235,
-    "brain_mtime": 1785503619.802945
+    "newest_source_mtime": 1785538129.310388,
+    "brain_mtime": 1785533829.2654839
   }
 }
