@@ -11,6 +11,8 @@ const ar = {
     samples: "العينات",
     labs: "المختبرات",
     admin: "الإدارة",
+    pendingLabs: "المختبرات المعلقة",
+    killSwitch: "التحكم والسيطرة",
     ai: "المساعد الذكي",
     stats: "الإحصائيات",
     compliance: "الامتثال",

@@ -197,7 +197,20 @@ export const adminApi = {
   activateLab: (id: number) =>
     api.put<Record<string, unknown>>(`/admin/labs/${id}/activate`).then((r) => r.data),
   pendingLabs: (params?: { skip?: number; limit?: number }) =>
-    api.get<{ total: number; labs: Lab[] }>("/admin/labs/pending", { params }).then((r) => r.data),
+    api
+      .get<{
+        total: number;
+        pending_labs: {
+          id: number;
+          name: string;
+          city: string | null;
+          phone: string | null;
+          created_at: string | null;
+          admin_email: string | null;
+          admin_name: string | null;
+        }[];
+      }>("/admin/labs/pending", { params })
+      .then((r) => r.data),
   users: (params?: { role?: string; lab_id?: number; skip?: number; limit?: number }) =>
     api.get<{ total: number; users: User[] }>("/admin/users", { params }).then((r) => r.data),
   createUser: (data: Record<string, unknown>) =>
@@ -232,16 +245,25 @@ export const adminApi = {
     api.post<Record<string, unknown>>("/admin/kill-switch/deactivate", { reason }).then((r) => r.data),
   controlLayerStats: () =>
     api
-      .get<{ total_requests: number; blocked_requests: number; active_rules: number; rate_limit_hits: number }>(
-        "/admin/control-layer/stats",
-      )
+      .get<{
+        policy: {
+          blocked_total: number;
+          allowed_total: number;
+          enabled: boolean;
+          env: string;
+          recent_decisions: unknown[];
+          frequency_counters: Record<string, { count: number; window_start: string }>;
+        };
+        auto_repair: Record<string, { triggered: boolean; last_at: string | null; cooldown_s: number }>;
+      }>("/admin/control-layer/stats")
       .then((r) => r.data),
 };
 
 // ── Admin Log Level ──
 export const adminLogLevelApi = {
-  get: () => api.get<{ level: string }>("/admin/log-level").then((r) => r.data),
-  set: (level: string) => api.post<Record<string, unknown>>("/admin/log-level", { level }).then((r) => r.data),
+  get: () => api.get<{ root_level: string; effective_level: string }>("/admin/log-level").then((r) => r.data),
+  set: (level: string) =>
+    api.post<{ logger: string; previous_level: string; new_level: string }>("/admin/log-level", { level }).then((r) => r.data),
 };
 
 // ── Notifications ──

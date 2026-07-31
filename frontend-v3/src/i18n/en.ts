@@ -11,6 +11,8 @@ const en = {
     samples: "Samples",
     labs: "Laboratories",
     admin: "Administration",
+    pendingLabs: "Pending Labs",
+    killSwitch: "Control & Safety",
     ai: "AI Assistant",
     stats: "Statistics",
     compliance: "Compliance",

@@ -8,7 +8,7 @@ import {
   Building2, ShieldCheck, BellRing, Shield, BarChart3, FileCheck,
   Brain, CreditCard, Fingerprint, Crown, UserCircle, Settings, Lock, Bell,
   Building, Server, DollarSign, Database,
-  Scale, Globe, Workflow,
+  Scale, Globe, Workflow, Clock, Power,
   ChevronLeft, ChevronRight, LogOut,
   type LucideIcon,
 } from "lucide-react";
@@ -20,7 +20,7 @@ const iconMap: Record<string, LucideIcon> = {
   Building2, ShieldCheck, BellRing, Shield, BarChart3, FileCheck,
   Brain, CreditCard, Fingerprint, Crown, UserCircle, Settings, Lock, Bell,
   Building, Server, DollarSign, Database,
-  Scale, Globe, Workflow,
+  Scale, Globe, Workflow, Clock, Power,
 };
 
 export function Sidebar() {

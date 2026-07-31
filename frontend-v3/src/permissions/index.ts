@@ -117,6 +117,8 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
   ],
   admin: [
     { label: "nav.admin", path: "/admin", icon: "Shield", permissions: ["platform:manage_users"] },
+    { label: "nav.pendingLabs", path: "/admin/pending-labs", icon: "Clock", permissions: ["platform:manage_users"] },
+    { label: "nav.killSwitch", path: "/admin/control", icon: "Power", permissions: ["platform:manage_users"] },
     { label: "nav.labs", path: "/labs", icon: "Building2", permissions: ["lab:read"] },
     { label: "nav.stats", path: "/stats", icon: "BarChart3", permissions: ["dashboard:read"] },
     { label: "nav.compliance", path: "/compliance", icon: "FileCheck", permissions: ["audit:read"] },

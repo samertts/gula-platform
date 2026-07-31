@@ -301,3 +301,103 @@ class TestEhrComposite:
         headers = auth_headers(other_user.id, other_lab.id, other_user.role)
         r = client.get(f"/ehr/patient/{patient.id}", headers=headers)
         assert r.status_code == 404
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Admin workflows contract (frontend AdminPages: pending labs, kill switch,
+# control layer, log level)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestAdminWorkflows:
+    def test_pending_labs_list_and_activate(self, client, db, make_lab, make_lab_user):
+        pending = make_lab(name="Pending Lab", is_active=False)
+        active = make_lab(name="Active Lab", is_active=True)
+        user = make_lab_user(lab_id=active.id, role="master_admin")
+        headers = auth_headers(user.id, active.id, user.role)
+
+        r = client.get("/admin/labs/pending", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["total"] >= 1
+        names = [lab["name"] for lab in body["pending_labs"]]
+        assert "Pending Lab" in names
+        assert "Active Lab" not in names
+        assert body["pending_labs"][0]["id"] == pending.id
+        assert body["pending_labs"][0]["created_at"] is not None
+
+        r = client.put(f"/admin/labs/{pending.id}/activate", headers=headers)
+        assert r.status_code == 200
+        r = client.get("/admin/labs/pending", headers=headers)
+        assert all(lab["id"] != pending.id for lab in r.json()["pending_labs"])
+
+    def test_pending_labs_forbidden_for_technician(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="technician")
+        headers = auth_headers(user.id, lab.id, user.role)
+        r = client.get("/admin/labs/pending", headers=headers)
+        assert r.status_code == 403
+
+    def test_kill_switch_cycle(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="master_admin")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.get("/admin/kill-switch/status", headers=headers)
+        assert r.status_code == 200
+        assert r.json()["active"] is False
+
+        r = client.post("/admin/kill-switch/activate", json={"reason": "test drill"}, headers=headers)
+        assert r.status_code == 200
+        r = client.get("/admin/kill-switch/status", headers=headers)
+        assert r.json()["active"] is True
+        assert r.json().get("reason") == "test drill"
+
+        r = client.post("/admin/kill-switch/deactivate", json={"reason": "all clear"}, headers=headers)
+        assert r.status_code == 200
+        r = client.get("/admin/kill-switch/status", headers=headers)
+        assert r.json()["active"] is False
+
+    def test_kill_switch_forbidden_for_technician(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="technician")
+        headers = auth_headers(user.id, lab.id, user.role)
+        r = client.post("/admin/kill-switch/activate", json={"reason": "x"}, headers=headers)
+        assert r.status_code == 403
+
+    def test_control_layer_stats_shape(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="master_admin")
+        headers = auth_headers(user.id, lab.id, user.role)
+        r = client.get("/admin/control-layer/stats", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert "policy" in body
+        assert isinstance(body["policy"]["blocked_total"], int)
+        assert isinstance(body["policy"]["allowed_total"], int)
+        assert isinstance(body["policy"]["enabled"], bool)
+        assert isinstance(body["auto_repair"], dict)
+
+    def test_log_level_get_set(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="master_admin")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.get("/admin/log-level", headers=headers)
+        assert r.status_code == 200
+        assert "root_level" in r.json()
+        assert "effective_level" in r.json()
+
+        r = client.post("/admin/log-level", json={"level": "DEBUG"}, headers=headers)
+        assert r.status_code == 200
+        assert r.json()["new_level"] == "DEBUG"
+
+        r = client.post("/admin/log-level", json={"level": "BOGUS"}, headers=headers)
+        assert r.status_code == 400
+
+    def test_log_level_forbidden_for_technician(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="technician")
+        headers = auth_headers(user.id, lab.id, user.role)
+        r = client.post("/admin/log-level", json={"level": "DEBUG"}, headers=headers)
+        assert r.status_code == 403

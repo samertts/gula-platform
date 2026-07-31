@@ -29,6 +29,8 @@ const SecurityPage = lazy(() => import("@/pages/security/SecurityPage").then(m =
 const AdminLabsPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminLabsPage })));
 const AdminUsersPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminUsersPage })));
 const AdminAuditPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminAuditPage })));
+const AdminPendingLabsPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminPendingLabsPage })));
+const AdminControlPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminControlPage })));
 const FhirPage = lazy(() => import("@/pages/fhir/FhirPage").then(m => ({ default: m.FhirPage })));
 const FhirExplorerPage = lazy(() => import("@/pages/fhir/FhirExplorerPage").then(m => ({ default: m.FhirExplorerPage })));
 const FhirPatientPage = lazy(() => import("@/pages/fhir/FhirPatientPage").then(m => ({ default: m.FhirPatientPage })));
@@ -142,6 +144,8 @@ export const router = createBrowserRouter([
       { path: "admin/labs", element: <RoleGuard roles={adminRoles}><LazyPage><AdminLabsPage /></LazyPage></RoleGuard> },
       { path: "admin/users", element: <RoleGuard roles={adminRoles}><LazyPage><AdminUsersPage /></LazyPage></RoleGuard> },
       { path: "admin/audit", element: <RoleGuard roles={adminRoles}><LazyPage><AdminAuditPage /></LazyPage></RoleGuard> },
+      { path: "admin/pending-labs", element: <RoleGuard roles={adminRoles}><LazyPage><AdminPendingLabsPage /></LazyPage></RoleGuard> },
+      { path: "admin/control", element: <RoleGuard roles={adminRoles}><LazyPage><AdminControlPage /></LazyPage></RoleGuard> },
       { path: "fhir", element: <RoleGuard roles={adminRoles}><LazyPage><FhirPage /></LazyPage></RoleGuard> },
       { path: "fhir/explorer", element: <RoleGuard roles={adminRoles}><LazyPage><FhirExplorerPage /></LazyPage></RoleGuard> },
       { path: "fhir/patients", element: <RoleGuard roles={adminRoles}><LazyPage><FhirPatientPage /></LazyPage></RoleGuard> },
