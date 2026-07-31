@@ -63,7 +63,6 @@ __all__ = [
     "RuleTrigger",
     "RuleUpdatedEvent",
     "RuleValidationError",
-    "RuleValidationError",
     "RuleVersionError",
     "RuleViolationEvent",
     "RulesEngineService",

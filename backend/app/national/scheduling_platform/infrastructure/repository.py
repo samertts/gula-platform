@@ -320,12 +320,12 @@ class SQLAlchemyResourceRepository(ResourceRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[Resource]:
-        from app.national.scheduling_platform.domain.enums import ResourceType as RT
+        from app.national.scheduling_platform.domain.enums import ResourceType
 
         models = (
             self.db.query(NationalResource)
             .filter(
-                NationalResource.type == RT(type),
+                NationalResource.type == ResourceType(type),
                 ~NationalResource.is_deleted,
             )
             .order_by(NationalResource.name.asc())

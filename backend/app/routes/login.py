@@ -91,8 +91,8 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     # ── Enforce MFA for privileged roles ─────────────────────────────────────
-    PRIVILEGED_ROLES = {"master_admin", "ministry_admin", "province_admin"}
-    if user.role in PRIVILEGED_ROLES:
+    privileged_roles = {"master_admin", "ministry_admin", "province_admin"}
+    if user.role in privileged_roles:
         from ..security.mfa_service import MFAService
 
         mfa = MFAService(db)

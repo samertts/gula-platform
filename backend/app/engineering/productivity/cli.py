@@ -735,11 +735,10 @@ def _validate_cqrs(root: Path) -> None:
         if "test" in py_file.parts or "__pycache__" in py_file.parts:
             continue
         content = py_file.read_text()
-        if "class" in content and "Repository" in content and "Command" in content:
-            if "command" not in py_file.parts:
-                issues.append(
-                    f"{py_file.relative_to(root)}: Repository found outside commands context",
-                )
+        if "class" in content and "Repository" in content and "Command" in content and "command" not in py_file.parts:
+            issues.append(
+                f"{py_file.relative_to(root)}: Repository found outside commands context",
+            )
 
     if not issues:
         print("  ✓ CQRS structure validation passed.")
@@ -914,10 +913,9 @@ def _handle_capability(args: argparse.Namespace) -> None:
         while queue:
             current = queue.pop(0)
             for c in all_caps:
-                if current in c.dependencies and c.name != args.name:
-                    if c.name not in transitive and c.name not in direct:
-                        transitive.add(c.name)
-                        queue.append(c.name)
+                if current in c.dependencies and c.name != args.name and c.name not in transitive and c.name not in direct:
+                    transitive.add(c.name)
+                    queue.append(c.name)
         print(f"\n  Impact Analysis: {args.name}")
         print(f"  {'=' * 50}")
         print(f"  Direct dependents ({len(direct)}):")

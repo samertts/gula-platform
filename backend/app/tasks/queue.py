@@ -20,6 +20,7 @@ import asyncio
 import contextlib
 import json
 import logging
+import threading
 
 from ..config import REDIS_URL
 from .schema import TaskPayload
@@ -163,6 +164,43 @@ def build_queue() -> _InMemoryQueue | _RedisTaskQueue:
         return _InMemoryQueue()
 
 
-# Module-level singleton — created once per process on first import.
-# Tests can replace this with a fresh _InMemoryQueue() in their fixtures.
-task_queue: _InMemoryQueue | _RedisTaskQueue = build_queue()
+# Module-level singleton — created lazily so importing this module never
+# connects to Redis. The first method call triggers _build_queue().
+# Tests can replace task_queue with a fresh _InMemoryQueue() in their fixtures.
+class _LazyTaskQueue:
+    _instance = None
+    _lock = threading.Lock()
+
+    def _ensure(self):
+        if self._instance is None:
+            with self._lock:
+                if self._instance is None:
+                    self._instance = build_queue()
+        return self._instance
+
+    async def enqueue(self, task: TaskPayload) -> None:
+        await self._ensure().enqueue(task)
+
+    async def dequeue(self, timeout: int = 5) -> TaskPayload | None:
+        return await self._ensure().dequeue(timeout)
+
+    async def dead_letter(self, task: TaskPayload, error: str) -> None:
+        await self._ensure().dead_letter(task, error)
+
+    async def ack(self, task_id: str) -> None:
+        await self._ensure().ack(task_id)
+
+    async def mark_running(self, task_id: str) -> None:
+        await self._ensure().mark_running(task_id)
+
+    async def queue_depth(self) -> int:
+        return await self._ensure().queue_depth()
+
+    async def dlq_depth(self) -> int:
+        return await self._ensure().dlq_depth()
+
+    async def close(self) -> None:
+        await self._ensure().close()
+
+
+task_queue: _LazyTaskQueue = _LazyTaskQueue()

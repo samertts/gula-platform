@@ -167,25 +167,23 @@ class KnowledgeGraphGenerator:
                             if isinstance(target, ast.Attribute) and isinstance(
                                 target.value,
                                 ast.Call,
+                            ) and (
+                                hasattr(target.value.func, "attr")
+                                and target.value.func.attr == "get"
                             ):
-                                if (
-                                    hasattr(target.value.func, "attr")
-                                    and target.value.func.attr == "get"
-                                ):
-                                    pass
+                                pass
 
                 for child in ast.walk(node):
-                    if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
-                        if child.func.attr in ("import_module", "__import__"):
-                            for arg in child.args:
-                                if isinstance(arg, ast.Constant):
-                                    self.edges.append(
-                                        KnowledgeEdge(
-                                            source=source,
-                                            target=str(arg.value),
-                                            relationship="imports",
-                                        ),
-                                    )
+                    if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute) and child.func.attr in ("import_module", "__import__"):
+                        for arg in child.args:
+                            if isinstance(arg, ast.Constant):
+                                self.edges.append(
+                                    KnowledgeEdge(
+                                        source=source,
+                                        target=str(arg.value),
+                                        relationship="imports",
+                                    ),
+                                )
                     if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
                         if child.func.attr in ("subscribe", "register", "on", "listen"):
                             for arg in child.args:

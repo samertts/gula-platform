@@ -174,9 +174,8 @@ class TestCoverageEvaluator(DimensionEvaluator):
             try:
                 tree = ast.parse(py_file.read_text())
                 for node in ast.walk(tree):
-                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        if node.name.startswith("test_"):
-                            count += 1
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
+                        count += 1
             except SyntaxError:
                 continue
         for py_file in target.rglob("*_test.py"):
@@ -188,9 +187,8 @@ class TestCoverageEvaluator(DimensionEvaluator):
             try:
                 tree = ast.parse(py_file.read_text())
                 for node in ast.walk(tree):
-                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        if node.name.startswith("test_"):
-                            count += 1
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
+                        count += 1
             except SyntaxError:
                 continue
         return count, test_files
@@ -225,9 +223,8 @@ class TestCoverageEvaluator(DimensionEvaluator):
                 try:
                     tree = ast.parse(py_file.read_text())
                     for node in ast.walk(tree):
-                        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                            if node.name.startswith("test_"):
-                                count += 1
+                        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
+                            count += 1
                 except SyntaxError:
                     continue
         return count

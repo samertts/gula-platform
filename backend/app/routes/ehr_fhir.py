@@ -1449,45 +1449,29 @@ def _extract_encounter_ref(body: dict) -> str | None:
 
 def _fhir_model_class(resource_type: str):
     from ..ehr.models import (
-        AllergyIntolerance as AI,
-    )
-    from ..ehr.models import (
-        CarePlan as CP,
-    )
-    from ..ehr.models import (
-        ClinicalAttachment as CA,
-    )
-    from ..ehr.models import (
-        ClinicalNote as CN,
-    )
-    from ..ehr.models import (
-        ConditionRecord as CR,
-    )
-    from ..ehr.models import (
-        DiagnosisRecord as DR,
-    )
-    from ..ehr.models import (
-        ImmunizationRecord as IR,
-    )
-    from ..ehr.models import (
-        MedicationRequest as MR,
-    )
-    from ..ehr.models import (
-        MedicationStatement as MS,
+        AllergyIntolerance,
+        CarePlan,
+        ClinicalAttachment,
+        ClinicalNote,
+        ConditionRecord,
+        DiagnosisRecord,
+        ImmunizationRecord,
+        MedicationRequest,
+        MedicationStatement,
     )
     from ..national.domain.encounter import Encounter as EncModel
 
     _map: dict[str, Any] = {
-        "AllergyIntolerance": AI,
-        "CarePlan": CP,
-        "Composition": CN,
-        "Condition": CR,
-        "DiagnosisRecord": DR,
-        "DocumentReference": CA,
+        "AllergyIntolerance": AllergyIntolerance,
+        "CarePlan": CarePlan,
+        "Composition": ClinicalNote,
+        "Condition": ConditionRecord,
+        "DiagnosisRecord": DiagnosisRecord,
+        "DocumentReference": ClinicalAttachment,
         "Encounter": EncModel,
-        "Immunization": IR,
-        "MedicationRequest": MR,
-        "MedicationStatement": MS,
+        "Immunization": ImmunizationRecord,
+        "MedicationRequest": MedicationRequest,
+        "MedicationStatement": MedicationStatement,
     }
     return _map.get(resource_type)
 

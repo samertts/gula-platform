@@ -52,26 +52,24 @@ class ClinicalDecisionSupportEngine:
         interactions_b = medication_b.interactions or []
 
         for interaction in interactions_a:
-            if isinstance(interaction, dict):
-                if interaction.get("medication_code") == medication_code_b:
-                    return {
-                        "has_interaction": True,
-                        "severity": interaction.get("severity", "unknown"),
-                        "description": interaction.get("description", ""),
-                        "recommendation": interaction.get("recommendation"),
-                        "mechanism": interaction.get("mechanism"),
-                    }
+            if isinstance(interaction, dict) and interaction.get("medication_code") == medication_code_b:
+                return {
+                    "has_interaction": True,
+                    "severity": interaction.get("severity", "unknown"),
+                    "description": interaction.get("description", ""),
+                    "recommendation": interaction.get("recommendation"),
+                    "mechanism": interaction.get("mechanism"),
+                }
 
         for interaction in interactions_b:
-            if isinstance(interaction, dict):
-                if interaction.get("medication_code") == medication_code_a:
-                    return {
-                        "has_interaction": True,
-                        "severity": interaction.get("severity", "unknown"),
-                        "description": interaction.get("description", ""),
-                        "recommendation": interaction.get("recommendation"),
-                        "mechanism": interaction.get("mechanism"),
-                    }
+            if isinstance(interaction, dict) and interaction.get("medication_code") == medication_code_a:
+                return {
+                    "has_interaction": True,
+                    "severity": interaction.get("severity", "unknown"),
+                    "description": interaction.get("description", ""),
+                    "recommendation": interaction.get("recommendation"),
+                    "mechanism": interaction.get("mechanism"),
+                }
 
         if (
             medication_a.therapeutic_class

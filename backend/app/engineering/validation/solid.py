@@ -76,20 +76,19 @@ class SOLIDValidator:
 
     def _check_liskov(self, file: Path, cls: ast.ClassDef) -> None:
         for node in cls.body:
-            if isinstance(node, ast.FunctionDef):
-                if any(
-                    isinstance(n, ast.Raise) and "NotImplementedError" in ast.dump(n)
-                    for n in ast.walk(node)
-                ):
-                    self.issues.append(
-                        SOLIDIssue(
-                            file=str(file),
-                            line=node.lineno,
-                            principle="LSP",
-                            message=f"'{cls.name}.{node.name}' raises NotImplementedError — may violate Liskov",
-                            severity="info",
-                        ),
-                    )
+            if isinstance(node, ast.FunctionDef) and any(
+                isinstance(n, ast.Raise) and "NotImplementedError" in ast.dump(n)
+                for n in ast.walk(node)
+            ):
+                self.issues.append(
+                    SOLIDIssue(
+                        file=str(file),
+                        line=node.lineno,
+                        principle="LSP",
+                        message=f"'{cls.name}.{node.name}' raises NotImplementedError — may violate Liskov",
+                        severity="info",
+                    ),
+                )
 
     def _check_interface_segregation(self, file: Path, cls: ast.ClassDef) -> None:
         for node in cls.body:
@@ -104,14 +103,13 @@ class SOLIDValidator:
         for node in cls.body:
             if isinstance(node, ast.FunctionDef):
                 for child in ast.walk(node):
-                    if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
-                        if "Session" in ast.dump(child) or "Connection" in ast.dump(child):
-                            self.issues.append(
-                                SOLIDIssue(
-                                    file=str(file),
-                                    line=child.lineno,
-                                    principle="DIP",
-                                    message=f"Direct DB dependency in '{cls.name}.{node.name}' — inject abstraction",
-                                    severity="warning",
-                                ),
-                            )
+                    if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute) and ("Session" in ast.dump(child) or "Connection" in ast.dump(child)):
+                        self.issues.append(
+                            SOLIDIssue(
+                                file=str(file),
+                                line=child.lineno,
+                                principle="DIP",
+                                message=f"Direct DB dependency in '{cls.name}.{node.name}' — inject abstraction",
+                                severity="warning",
+                            ),
+                        )

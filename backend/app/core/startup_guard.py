@@ -807,7 +807,7 @@ async def run_startup_guard() -> None:
 
     # Wrap core validation in a timeout so startup can't block indefinitely.
     # After the timeout, the system starts in partial-readiness mode.
-    STARTUP_TIMEOUT = max(STARTUP_TIMEOUT_SECONDS, 30)
+    startup_timeout = max(STARTUP_TIMEOUT_SECONDS, 30)
 
     async def _run_core_validation() -> None:
         """Core validation: config → DB → Redis → migrations → seeds → kernel."""
@@ -851,13 +851,13 @@ async def run_startup_guard() -> None:
         )
 
     try:
-        await asyncio.wait_for(_run_core_validation(), timeout=STARTUP_TIMEOUT)
+        await asyncio.wait_for(_run_core_validation(), timeout=startup_timeout)
     except TimeoutError:
         elapsed = (time.perf_counter() - t0) * 1000
         logger.warning(
             "[STARTUP GUARD] Startup validation did not complete within %ds (%.0fms elapsed) — "
             "system starts in PARTIAL READY state. Some dependencies may be unavailable.",
-            STARTUP_TIMEOUT,
+            startup_timeout,
             elapsed,
         )
         system_ready = True

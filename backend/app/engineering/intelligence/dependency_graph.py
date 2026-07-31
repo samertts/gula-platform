@@ -56,9 +56,8 @@ class DependencyGraphGenerator:
             for imp in node.imports:
                 imp_path = imp.replace(".", "/") + ".py"
                 for other_name in graph:
-                    if other_name.endswith((imp_path, imp + "/__init__.py")):
-                        if name not in graph[other_name].imported_by:
-                            graph[other_name].imported_by.append(name)
+                    if other_name.endswith((imp_path, imp + "/__init__.py")) and name not in graph[other_name].imported_by:
+                        graph[other_name].imported_by.append(name)
 
         return graph
 

@@ -157,7 +157,7 @@ def activate_lab(lab_id: int, actor: LabUser, db: Session) -> dict:
 
 
 def list_pending_labs(actor: LabUser, db: Session, skip: int = 0, limit: int = 50) -> dict:
-    query = db.query(Lab).filter(not Lab.is_active)
+    query = db.query(Lab).filter(Lab.is_active.is_(False))
     if actor.role == "province_admin" and actor.province_id:
         lab_ids = [
             row[0]

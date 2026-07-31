@@ -185,9 +185,8 @@ class MaintainabilityEvaluator(DimensionEvaluator):
             try:
                 tree = ast.parse(py_file.read_text())
                 for node in ast.walk(tree):
-                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        if node.end_lineno and node.lineno:
-                            lengths.append(node.end_lineno - node.lineno + 1)
+                    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.end_lineno and node.lineno:
+                        lengths.append(node.end_lineno - node.lineno + 1)
             except SyntaxError:
                 continue
         return lengths

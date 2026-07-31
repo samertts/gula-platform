@@ -153,17 +153,15 @@ def validate_schema(data: Any, rules: list[FieldRule], context: str = "") -> Non
                 f"[{context}] field '{rule.name}': value {value!r} not in allowed set",
             )
 
-        if rule.min_value is not None and isinstance(value, (int, float)):
-            if value < rule.min_value:
-                raise ValidationError(
-                    f"[{context}] field '{rule.name}': {value} < min {rule.min_value}",
-                )
+        if rule.min_value is not None and isinstance(value, (int, float)) and value < rule.min_value:
+            raise ValidationError(
+                f"[{context}] field '{rule.name}': {value} < min {rule.min_value}",
+            )
 
-        if rule.max_value is not None and isinstance(value, (int, float)):
-            if value > rule.max_value:
-                raise ValidationError(
-                    f"[{context}] field '{rule.name}': {value} > max {rule.max_value}",
-                )
+        if rule.max_value is not None and isinstance(value, (int, float)) and value > rule.max_value:
+            raise ValidationError(
+                f"[{context}] field '{rule.name}': {value} > max {rule.max_value}",
+            )
 
 
 # ─── Circuit Breaker ──────────────────────────────────────────────────────────

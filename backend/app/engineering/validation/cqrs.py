@@ -41,59 +41,54 @@ class CQRSValidator:
                 name = node.name
                 if "Handler" in name:
                     for child in ast.walk(node):
-                        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                            if child.name in ("handle", "__call__"):
-                                if "Command" in name and "Query" in name:
-                                    self.issues.append(
-                                        CQRSIssue(
-                                            file=str(file.relative_to(self.project_root)),
-                                            line=node.lineno,
-                                            pattern="CQS",
-                                            message=f"Handler '{name}' handles both commands and queries — CQRS requires separation",
-                                        ),
-                                    )
+                        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name in ("handle", "__call__") and "Command" in name and "Query" in name:
+                            self.issues.append(
+                                CQRSIssue(
+                                    file=str(file.relative_to(self.project_root)),
+                                    line=node.lineno,
+                                    pattern="CQS",
+                                    message=f"Handler '{name}' handles both commands and queries — CQRS requires separation",
+                                ),
+                            )
 
     def _check_command_return_type(self, file: Path, tree: ast.AST) -> None:
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef):
-                if "Command" in node.name:
-                    for child in ast.walk(node):
-                        if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                            for decorator in child.decorator_list:
-                                if hasattr(decorator, "attr") and "returns" in decorator.attr:
-                                    pass
-                            returns = child.returns
-                            if returns and child.name in ("handle", "__call__"):
-                                if "Response" in ast.dump(returns) or "Result" in ast.dump(returns):
-                                    self.issues.append(
-                                        CQRSIssue(
-                                            file=str(file.relative_to(self.project_root)),
-                                            line=child.lineno,
-                                            pattern="CMD",
-                                            message=f"Command handler '{node.name}.{child.name}' returns data — commands should return void or success/failure",
-                                        ),
-                                    )
+            if isinstance(node, ast.ClassDef) and "Command" in node.name:
+                for child in ast.walk(node):
+                    if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                        for decorator in child.decorator_list:
+                            if hasattr(decorator, "attr") and "returns" in decorator.attr:
+                                pass
+                        returns = child.returns
+                        if returns and child.name in ("handle", "__call__") and ("Response" in ast.dump(returns) or "Result" in ast.dump(returns)):
+                            self.issues.append(
+                                CQRSIssue(
+                                    file=str(file.relative_to(self.project_root)),
+                                    line=child.lineno,
+                                    pattern="CMD",
+                                    message=f"Command handler '{node.name}.{child.name}' returns data — commands should return void or success/failure",
+                                ),
+                            )
 
     def _check_query_side_effects(self, file: Path, tree: ast.AST) -> None:
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and "Query" in node.name:
                 for child in ast.walk(node):
-                    if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                        if child.name in ("handle", "__call__"):
-                            has_session_commit = any(
-                                "commit" in ast.dump(n)
-                                for n in ast.walk(child)
-                                if isinstance(n, ast.Call)
+                    if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name in ("handle", "__call__"):
+                        has_session_commit = any(
+                            "commit" in ast.dump(n)
+                            for n in ast.walk(child)
+                            if isinstance(n, ast.Call)
+                        )
+                        if has_session_commit:
+                            self.issues.append(
+                                CQRSIssue(
+                                    file=str(file.relative_to(self.project_root)),
+                                    line=child.lineno,
+                                    pattern="QRS",
+                                    message=f"Query handler '{node.name}.{child.name}' performs write operations — queries must be side-effect free",
+                                ),
                             )
-                            if has_session_commit:
-                                self.issues.append(
-                                    CQRSIssue(
-                                        file=str(file.relative_to(self.project_root)),
-                                        line=child.lineno,
-                                        pattern="QRS",
-                                        message=f"Query handler '{node.name}.{child.name}' performs write operations — queries must be side-effect free",
-                                    ),
-                                )
 
     def _check_handler_structure(self, file: Path, tree: ast.AST) -> None:
         for node in ast.walk(tree):

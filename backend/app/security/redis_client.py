@@ -105,7 +105,7 @@ class _RedisWrapper:
         return True
 
 
-# ── Public singleton ──────────────────────────────────────────────────────────
+# ── Public singleton (lazy — no I/O at import time) ──────────────────────────
 
 
 def _build_cache():
@@ -114,9 +114,6 @@ def _build_cache():
             return _RedisWrapper(REDIS_URL)
         except Exception as exc:
             if IS_PRODUCTION:
-                # In production Redis is mandatory for full functionality, but we allow
-                # the system to start in degraded mode if it's unreachable.
-                # The self-healing system will attempt to recover it.
                 logger.critical(
                     "[GULA CRITICAL] Redis is unreachable in production: %s. "
                     "Falling back to in-memory store (degraded mode).",
@@ -133,4 +130,34 @@ def _build_cache():
     return _MemoryStore()
 
 
-cache = _build_cache()
+class _LazyCache:
+    _instance = None
+    _lock = threading.Lock()
+
+    def _ensure(self):
+        if self._instance is None:
+            with self._lock:
+                if self._instance is None:
+                    self._instance = _build_cache()
+        return self._instance
+
+    def set(self, key: str, value, ex: int | None = None) -> None:
+        self._ensure().set(key, value, ex=ex)
+
+    def get(self, key: str) -> str | None:
+        return self._ensure().get(key)
+
+    def delete(self, key: str) -> None:
+        self._ensure().delete(key)
+
+    def incr(self, key: str) -> int:
+        return self._ensure().incr(key)
+
+    def expire(self, key: str, seconds: int) -> None:
+        self._ensure().expire(key, seconds)
+
+    def ping(self) -> bool:
+        return self._ensure().ping()
+
+
+cache = _LazyCache()

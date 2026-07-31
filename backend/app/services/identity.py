@@ -104,9 +104,8 @@ def match_score(
     score = 0.0
 
     # National ID hash is the strongest signal
-    if p1_national_id_hash and p2_national_id_hash:
-        if p1_national_id_hash == p2_national_id_hash:
-            return 1.0  # Definite match
+    if p1_national_id_hash and p2_national_id_hash and p1_national_id_hash == p2_national_id_hash:
+        return 1.0  # Definite match
 
     # Name matching (normalized)
     n1 = normalize_name(p1_name)

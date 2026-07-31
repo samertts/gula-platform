@@ -51,44 +51,42 @@ class DDDValidator:
 
     def _check_value_objects(self, file: Path, tree: ast.AST) -> None:
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef):
-                if "ValueObject" in node.name or "value_object" in file.parts:
-                    has_immutable = any(
-                        isinstance(n, ast.Assign)
-                        and any(
-                            isinstance(t, ast.Attribute) and t.attr == "__hash__"
-                            for t in ast.walk(n)
-                        )
-                        for n in node.body
+            if isinstance(node, ast.ClassDef) and ("ValueObject" in node.name or "value_object" in file.parts):
+                has_immutable = any(
+                    isinstance(n, ast.Assign)
+                    and any(
+                        isinstance(t, ast.Attribute) and t.attr == "__hash__"
+                        for t in ast.walk(n)
                     )
-                    if not has_immutable:
-                        self.issues.append(
-                            DDDIssue(
-                                file=str(file.relative_to(self.project_root)),
-                                line=node.lineno,
-                                principle="VO",
-                                message=f"Value Object '{node.name}' should implement __hash__ for immutability",
-                                severity="info",
-                            ),
-                        )
+                    for n in node.body
+                )
+                if not has_immutable:
+                    self.issues.append(
+                        DDDIssue(
+                            file=str(file.relative_to(self.project_root)),
+                            line=node.lineno,
+                            principle="VO",
+                            message=f"Value Object '{node.name}' should implement __hash__ for immutability",
+                            severity="info",
+                        ),
+                    )
 
     def _check_aggregate_boundaries(self, file: Path, tree: ast.AST) -> None:
         if "aggregate" in file.parts:
             for node in ast.walk(tree):
-                if isinstance(node, ast.ClassDef):
-                    if not any(
-                        isinstance(n, ast.FunctionDef) and n.name.startswith("apply")
-                        for n in node.body
-                    ):
-                        self.issues.append(
-                            DDDIssue(
-                                file=str(file.relative_to(self.project_root)),
-                                line=node.lineno,
-                                principle="AGG",
-                                message=f"Aggregate '{node.name}' should have apply_* methods for event application",
-                                severity="info",
-                            ),
-                        )
+                if isinstance(node, ast.ClassDef) and not any(
+                    isinstance(n, ast.FunctionDef) and n.name.startswith("apply")
+                    for n in node.body
+                ):
+                    self.issues.append(
+                        DDDIssue(
+                            file=str(file.relative_to(self.project_root)),
+                            line=node.lineno,
+                            principle="AGG",
+                            message=f"Aggregate '{node.name}' should have apply_* methods for event application",
+                            severity="info",
+                        ),
+                    )
 
     def _check_repository_abstraction(self, file: Path, tree: ast.AST) -> None:
         if "repository" in file.parts:

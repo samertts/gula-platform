@@ -31,7 +31,6 @@ class BaseMetricCollector(ABC):
 class CodeCoverage(BaseMetricCollector):
     def collect(self) -> MetricResult:
         total_lines = 0
-        covered_lines = 0
         for py_file in self.project_root.rglob("*.py"):
             if "test" in py_file.parts or "__pycache__" in py_file.parts:
                 continue
@@ -44,7 +43,6 @@ class CodeCoverage(BaseMetricCollector):
                 continue
         for _ in self.project_root.rglob(".coverage"):
             total_lines += 1
-            covered_lines += 1
 
         test_count = 0
         for py_file in self.project_root.rglob("test_*.py"):
@@ -167,12 +165,11 @@ class TechnicalDebt(BaseMetricCollector):
             try:
                 tree = ast.parse(py_file.read_text())
                 for node in ast.walk(tree):
-                    if isinstance(node, ast.FunctionDef):
-                        if node.end_lineno and node.lineno:
-                            length = node.end_lineno - node.lineno
-                            if length > 50:
-                                debt_minutes += length
-                                issues_found += 1
+                    if isinstance(node, ast.FunctionDef) and node.end_lineno and node.lineno:
+                        length = node.end_lineno - node.lineno
+                        if length > 50:
+                            debt_minutes += length
+                            issues_found += 1
             except SyntaxError:
                 continue
 
@@ -281,9 +278,8 @@ class PerformanceScore(BaseMetricCollector):
                         sync_defs += 1
                     if isinstance(node, ast.For):
                         for child in ast.walk(node):
-                            if isinstance(child, ast.Call) and hasattr(child.func, "attr"):
-                                if child.func.attr in ("query", "get", "all"):
-                                    n_plus_one += 1
+                            if isinstance(child, ast.Call) and hasattr(child.func, "attr") and child.func.attr in ("query", "get", "all"):
+                                n_plus_one += 1
             except SyntaxError:
                 continue
 
@@ -440,11 +436,10 @@ class DocumentationCoverage(BaseMetricCollector):
                 for node in ast.walk(tree):
                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                         total += 1
-                        if node.body and isinstance(node.body[0], ast.Expr):
-                            if isinstance(node.body[0].value, ast.Constant) and isinstance(
-                                node.body[0].value.value, str,
-                            ):
-                                documented += 1
+                        if node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant) and isinstance(
+                            node.body[0].value.value, str,
+                        ):
+                            documented += 1
             except SyntaxError:
                 continue
 

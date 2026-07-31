@@ -179,16 +179,15 @@ class CodeQualityEvaluator(DimensionEvaluator):
                                 },
                             )
                     if isinstance(node, ast.FunctionDef):
-                        if node.end_lineno and node.lineno:
-                            if node.end_lineno - node.lineno > 100:
-                                smells.append(
-                                    {
-                                        "type": "long_method",
-                                        "file": str(py_file.relative_to(target)),
-                                        "name": node.name,
-                                        "lines": node.end_lineno - node.lineno + 1,
-                                    },
-                                )
+                        if node.end_lineno and node.lineno and node.end_lineno - node.lineno > 100:
+                            smells.append(
+                                {
+                                    "type": "long_method",
+                                    "file": str(py_file.relative_to(target)),
+                                    "name": node.name,
+                                    "lines": node.end_lineno - node.lineno + 1,
+                                },
+                            )
                         params = len(node.args.args) + len(node.args.kwonlyargs)
                         if params > 6:
                             smells.append(
@@ -211,17 +210,14 @@ class CodeQualityEvaluator(DimensionEvaluator):
             try:
                 tree = ast.parse(py_file.read_text())
                 for node in ast.walk(tree):
-                    if isinstance(node, ast.FunctionDef):
-                        if not node.name.startswith("__") and not node.name.startswith("_"):
-                            if (
-                                not node.name.islower()
-                                and "_" not in node.name
-                                and not node.name.isupper()
-                            ):
-                                violations += 1
-                    if isinstance(node, ast.ClassDef):
-                        if not node.name[0].isupper():
-                            violations += 1
+                    if isinstance(node, ast.FunctionDef) and not node.name.startswith("__") and not node.name.startswith("_") and (
+                        not node.name.islower()
+                        and "_" not in node.name
+                        and not node.name.isupper()
+                    ):
+                        violations += 1
+                    if isinstance(node, ast.ClassDef) and not node.name[0].isupper():
+                        violations += 1
             except SyntaxError:
                 continue
         return violations

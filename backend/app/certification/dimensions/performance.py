@@ -158,9 +158,8 @@ class PerformanceEvaluator(DimensionEvaluator):
                         for node in ast.walk(tree):
                             if isinstance(node, ast.For):
                                 for child in ast.walk(node):
-                                    if isinstance(child, ast.Call) and hasattr(child.func, "attr"):
-                                        if child.func.attr in ("query", "get", "all"):
-                                            count += 1
+                                    if isinstance(child, ast.Call) and hasattr(child.func, "attr") and child.func.attr in ("query", "get", "all"):
+                                        count += 1
                     except SyntaxError:
                         continue
             except Exception:

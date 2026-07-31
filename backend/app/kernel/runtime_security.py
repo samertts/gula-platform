@@ -213,18 +213,17 @@ class RuntimeAttestation:
         anomalies = []
         for key, expected in baseline.items():
             actual = current.get(key)
-            if actual is not None and expected is not None:
-                if isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
-                    deviation = abs(actual - expected) / max(abs(expected), 1) * 100
-                    if deviation > 50:
-                        anomalies.append(
-                            {
-                                "key": key,
-                                "expected": expected,
-                                "actual": actual,
-                                "deviation_pct": round(deviation, 1),
-                            },
-                        )
+            if actual is not None and expected is not None and isinstance(expected, (int, float)) and isinstance(actual, (int, float)):
+                deviation = abs(actual - expected) / max(abs(expected), 1) * 100
+                if deviation > 50:
+                    anomalies.append(
+                        {
+                            "key": key,
+                            "expected": expected,
+                            "actual": actual,
+                            "deviation_pct": round(deviation, 1),
+                        },
+                    )
         if anomalies:
             self._violations.append(
                 {"timestamp": time.time(), "component": component, "anomalies": anomalies},

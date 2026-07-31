@@ -341,9 +341,8 @@ class DigitalTwinEngine:
                     for key in set(list(pred_val.keys()) + list(act_val.keys())):
                         pv = pred_val.get(key, 0)
                         av = act_val.get(key, 0)
-                        if isinstance(pv, (int, float)) and isinstance(av, (int, float)):
-                            if av != 0:
-                                errors.append(abs(pv - av) / max(abs(av), 0.01))
+                        if isinstance(pv, (int, float)) and isinstance(av, (int, float)) and av != 0:
+                            errors.append(abs(pv - av) / max(abs(av), 0.01))
                 if errors:
                     mape = mean(errors)
                     accuracy = max(0.0, 1.0 - mape)

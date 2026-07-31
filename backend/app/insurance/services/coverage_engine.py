@@ -211,12 +211,11 @@ class CoverageEngine:
         if patient_responsibility >= total_allowed:
             determination = CoverageDetermination.PARTIAL
 
-        if benefit.max_benefit_per_claim and total_allowed > benefit.max_benefit_per_claim:
-            if total_allowed > benefit.max_benefit_per_claim:
-                messages.append(
-                    f"Service exceeds max per-claim benefit: {benefit.max_benefit_per_claim}"
-                )
-                determination = CoverageDetermination.PARTIAL
+        if benefit.max_benefit_per_claim and total_allowed > benefit.max_benefit_per_claim and total_allowed > benefit.max_benefit_per_claim:
+            messages.append(
+                f"Service exceeds max per-claim benefit: {benefit.max_benefit_per_claim}"
+            )
+            determination = CoverageDetermination.PARTIAL
 
         if benefit.max_visits_per_year:
             messages.append(f"Visit limit: {benefit.max_visits_per_year} per year")
@@ -331,12 +330,11 @@ class CoverageEngine:
             "SELECT gender FROM patients WHERE id = :pid",
             {"pid": patient_id},
         ).first()
-        if patient and patient.gender and benefit.gender_restriction:
-            if patient.gender.lower() != benefit.gender_restriction.lower():
-                return {
-                    "passes": False,
-                    "reason": f"Gender restriction: {benefit.gender_restriction}",
-                }
+        if patient and patient.gender and benefit.gender_restriction and patient.gender.lower() != benefit.gender_restriction.lower():
+            return {
+                "passes": False,
+                "reason": f"Gender restriction: {benefit.gender_restriction}",
+            }
         return {"passes": True, "reason": ""}
 
     def _check_clinical_rules(
@@ -351,12 +349,11 @@ class CoverageEngine:
         if request.diagnosis_code and benefit.exclusions:
             exclusions = benefit.exclusions if isinstance(benefit.exclusions, list) else []
             for exclusion in exclusions:
-                if isinstance(exclusion.get("diagnosis_codes"), list):
-                    if request.diagnosis_code in exclusion["diagnosis_codes"]:
-                        passes = False
-                        reason = exclusion.get("reason", "Diagnosis excluded from coverage")
-                        rules.append({"rule": "diagnosis_exclusion", "detail": reason})
-                        break
+                if isinstance(exclusion.get("diagnosis_codes"), list) and request.diagnosis_code in exclusion["diagnosis_codes"]:
+                    passes = False
+                    reason = exclusion.get("reason", "Diagnosis excluded from coverage")
+                    rules.append({"rule": "diagnosis_exclusion", "detail": reason})
+                    break
 
         return {"passes": passes, "reason": reason, "rules": rules}
 

@@ -112,9 +112,8 @@ class APICompatibilityEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "prefix" in content and ("v1" in content or "v2" in content):
-                    if "APIRouter" in content:
-                        return True
+                if "prefix" in content and ("v1" in content or "v2" in content) and "APIRouter" in content:
+                    return True
             except Exception:
                 continue
         return False
@@ -176,9 +175,8 @@ class APICompatibilityEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "HTTPException" in content or "JSONResponse" in content:
-                    if "detail" in content or "status_code" in content:
-                        return True
+                if ("HTTPException" in content or "JSONResponse" in content) and ("detail" in content or "status_code" in content):
+                    return True
             except Exception:
                 continue
         return False

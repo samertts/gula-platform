@@ -112,10 +112,9 @@ class RiskBasedAuthService:
 
         risk_score += device_factor
 
-        if context.previous_geos and context.geolocation:
-            if not self._is_known_location(context.geolocation, context.previous_geos):
-                risk_score += AdaptiveAuthWeights.NEW_LOCATION
-                factors.append(f"+{AdaptiveAuthWeights.NEW_LOCATION} new location")
+        if context.previous_geos and context.geolocation and not self._is_known_location(context.geolocation, context.previous_geos):
+            risk_score += AdaptiveAuthWeights.NEW_LOCATION
+            factors.append(f"+{AdaptiveAuthWeights.NEW_LOCATION} new location")
 
         if context.hour_of_day < 6 or context.hour_of_day > 23:
             risk_score += AdaptiveAuthWeights.UNUSUAL_HOUR
@@ -187,14 +186,14 @@ class RiskBasedAuthService:
         return False
 
     def _haversine(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-        R = 6371
+        r = 6371
         dlat = math.radians(lat2 - lat1)
         dlon = math.radians(lon2 - lon1)
         a = (
             math.sin(dlat / 2) ** 2
             + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
         )
-        return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        return r * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     def _impossible_travel_check(self, context: AuthContext) -> bool:
         if not context.previous_geos or not context.geolocation:

@@ -126,9 +126,8 @@ class FHIRComplianceEvaluator(DimensionEvaluator):
         files = []
         keywords = ["fhir", "ehr_fhir"]
         for py_file in target.rglob("*.py"):
-            if any(k in str(py_file).lower() for k in keywords):
-                if "test" not in py_file.parts and "__pycache__" not in py_file.parts:
-                    files.append(py_file)
+            if any(k in str(py_file).lower() for k in keywords) and "test" not in py_file.parts and "__pycache__" not in py_file.parts:
+                files.append(py_file)
         return files
 
     def _check_resources(self, files: list[Path]) -> int:

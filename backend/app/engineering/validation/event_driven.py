@@ -40,9 +40,8 @@ class EventDrivenValidator:
             if isinstance(node, ast.ClassDef) and "Event" in node.name:
                 mutable_field = False
                 for child in node.body:
-                    if isinstance(child, ast.AnnAssign) and child.value:
-                        if isinstance(child.value, (ast.List, ast.Dict)):
-                            mutable_field = True
+                    if isinstance(child, ast.AnnAssign) and child.value and isinstance(child.value, (ast.List, ast.Dict)):
+                        mutable_field = True
                     if isinstance(child, ast.Assign):
                         for target in child.targets:
                             if isinstance(target, ast.Name):
@@ -66,32 +65,30 @@ class EventDrivenValidator:
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
                 name = node.name
-                if "Event" in name:
-                    if not (name.endswith(("Event", "ed", "en"))):
-                        if not any(
-                            word in name
-                            for word in [
-                                "Created",
-                                "Updated",
-                                "Deleted",
-                                "Submitted",
-                                "Approved",
-                                "Rejected",
-                                "Completed",
-                                "Failed",
-                                "Started",
-                                "Finished",
-                            ]
-                        ):
-                            self.issues.append(
-                                EventDrivenIssue(
-                                    file=str(file.relative_to(self.project_root)),
-                                    line=node.lineno,
-                                    pattern="NAME",
-                                    message=f"Event '{name}' should use past-tense naming (e.g., {name}Created)",
-                                    severity="info",
-                                ),
-                            )
+                if "Event" in name and not (name.endswith(("Event", "ed", "en"))) and not any(
+                    word in name
+                    for word in [
+                        "Created",
+                        "Updated",
+                        "Deleted",
+                        "Submitted",
+                        "Approved",
+                        "Rejected",
+                        "Completed",
+                        "Failed",
+                        "Started",
+                        "Finished",
+                    ]
+                ):
+                    self.issues.append(
+                        EventDrivenIssue(
+                            file=str(file.relative_to(self.project_root)),
+                            line=node.lineno,
+                            pattern="NAME",
+                            message=f"Event '{name}' should use past-tense naming (e.g., {name}Created)",
+                            severity="info",
+                        ),
+                    )
 
     def _check_event_handler_structure(self, file: Path, tree: ast.AST) -> None:
         for node in ast.walk(tree):
@@ -112,39 +109,37 @@ class EventDrivenValidator:
 
     def _check_event_bus(self, file: Path, tree: ast.AST) -> None:
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef):
-                if "EventBus" in node.name or "EventDispatcher" in node.name:
-                    has_publish = any(
-                        isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-                        and n.name in ("publish", "dispatch", "emit", "send")
-                        for n in node.body
+            if isinstance(node, ast.ClassDef) and ("EventBus" in node.name or "EventDispatcher" in node.name):
+                has_publish = any(
+                    isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and n.name in ("publish", "dispatch", "emit", "send")
+                    for n in node.body
+                )
+                has_subscribe = any(
+                    isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                    and n.name in ("subscribe", "register", "listen", "on")
+                    for n in node.body
+                )
+                if not has_publish:
+                    self.issues.append(
+                        EventDrivenIssue(
+                            file=str(file.relative_to(self.project_root)),
+                            line=node.lineno,
+                            pattern="BUS",
+                            message=f"Event bus '{node.name}' should implement a publish method",
+                        ),
                     )
-                    has_subscribe = any(
-                        isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
-                        and n.name in ("subscribe", "register", "listen", "on")
-                        for n in node.body
+                if not has_subscribe:
+                    self.issues.append(
+                        EventDrivenIssue(
+                            file=str(file.relative_to(self.project_root)),
+                            line=node.lineno,
+                            pattern="BUS",
+                            message=f"Event bus '{node.name}' should implement a subscribe method",
+                        ),
                     )
-                    if not has_publish:
-                        self.issues.append(
-                            EventDrivenIssue(
-                                file=str(file.relative_to(self.project_root)),
-                                line=node.lineno,
-                                pattern="BUS",
-                                message=f"Event bus '{node.name}' should implement a publish method",
-                            ),
-                        )
-                    if not has_subscribe:
-                        self.issues.append(
-                            EventDrivenIssue(
-                                file=str(file.relative_to(self.project_root)),
-                                line=node.lineno,
-                                pattern="BUS",
-                                message=f"Event bus '{node.name}' should implement a subscribe method",
-                            ),
-                        )
 
     def _check_outbox_pattern(self, file: Path, tree: ast.AST) -> None:
         for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and "Event" in node.name:
-                if "outbox" in file.parts or "outbox" in file.read_text().lower():
-                    return
+            if isinstance(node, ast.ClassDef) and "Event" in node.name and ("outbox" in file.parts or "outbox" in file.read_text().lower()):
+                return

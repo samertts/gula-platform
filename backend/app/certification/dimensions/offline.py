@@ -173,9 +173,8 @@ class OfflineEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "delta" in content.lower() or "incremental" in content.lower():
-                    if "sync" in content.lower() or "update" in content.lower():
-                        return True
+                if ("delta" in content.lower() or "incremental" in content.lower()) and ("sync" in content.lower() or "update" in content.lower()):
+                    return True
             except Exception:
                 continue
         return False
@@ -184,9 +183,8 @@ class OfflineEvaluator(DimensionEvaluator):
         for py_file in target.rglob("*.py"):
             try:
                 content = py_file.read_text()
-                if "queue" in content.lower() and "outbox" not in content.lower():
-                    if "offline" in content.lower() or "sync" in content.lower():
-                        return True
+                if "queue" in content.lower() and "outbox" not in content.lower() and ("offline" in content.lower() or "sync" in content.lower()):
+                    return True
                 if "outbox" in content.lower() and "event" in content.lower():
                     return True
             except Exception:

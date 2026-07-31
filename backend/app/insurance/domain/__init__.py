@@ -30,7 +30,6 @@ __all__ = [
     "FraudSeverity",
     "FraudStatus",
     "InsuranceType",
-    "InsuranceType",
     "PaymentStatus",
     "PolicyStatus",
     "ProviderContractStatus",

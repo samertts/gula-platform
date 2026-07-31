@@ -90,7 +90,7 @@ class TestConcurrentInterpretation:
 class TestConcurrentWestgard:
     def test_50_concurrent_westgard_calls(self):
         """50 threads evaluating QC simultaneously."""
-        from app.routes.quality_control import evaluate_westgard
+        from app.services.quality_control_service import evaluate_westgard
 
         errors = []
         results = []
@@ -315,7 +315,7 @@ class TestSustainedLoadPerformance:
 
     def test_westgard_throughput_500_per_second(self):
         """QC engine must handle ≥ 500 evaluations/second."""
-        from app.routes.quality_control import evaluate_westgard
+        from app.services.quality_control_service import evaluate_westgard
 
         count = 0
         start = time.perf_counter()
@@ -359,7 +359,7 @@ class TestSustainedLoadPerformance:
 
     def test_p99_latency_westgard(self):
         """P99 latency for Westgard must be < 1ms."""
-        from app.routes.quality_control import evaluate_westgard
+        from app.services.quality_control_service import evaluate_westgard
 
         times = []
 

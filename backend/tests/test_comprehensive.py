@@ -212,7 +212,7 @@ class TestWestgardRules:
     """Test Westgard multi-rules for QC validation."""
 
     def _eval(self, measured, expected, sd):
-        from app.routes.quality_control import evaluate_westgard
+        from app.services.quality_control_service import evaluate_westgard
 
         return evaluate_westgard(measured, expected, sd)
 
@@ -660,7 +660,7 @@ class TestPerformanceBaseline:
 
     def test_westgard_under_5ms(self):
         """Westgard evaluation must complete in < 5ms."""
-        from app.routes.quality_control import evaluate_westgard
+        from app.services.quality_control_service import evaluate_westgard
 
         times = []
         for _ in range(100):
@@ -902,39 +902,39 @@ class TestMobileRBAC:
 
     def test_admin_has_permissions(self):
         """Admin role must have permissions."""
-        from app.routes.mobile import _get_permissions
+        from app.services.mobile_service import get_permissions
 
-        perms = _get_permissions("admin")
+        perms = get_permissions("admin")
         assert isinstance(perms, list)
         assert len(perms) > 0
 
     def test_staff_has_permissions(self):
         """Staff role must have some permissions."""
-        from app.routes.mobile import _get_permissions
+        from app.services.mobile_service import get_permissions
 
-        perms = _get_permissions("staff")
+        perms = get_permissions("staff")
         assert isinstance(perms, list)
 
     def test_technician_has_permissions(self):
         """Technician must have permissions."""
-        from app.routes.mobile import _get_permissions
+        from app.services.mobile_service import get_permissions
 
-        perms = _get_permissions("technician")
+        perms = get_permissions("technician")
         assert isinstance(perms, list)
 
     def test_unknown_role_returns_limited_or_empty(self):
         """Unknown role should return no or limited permissions."""
-        from app.routes.mobile import _get_permissions
+        from app.services.mobile_service import get_permissions
 
-        perms = _get_permissions("hacker_role_xyz")
+        perms = get_permissions("hacker_role_xyz")
         assert isinstance(perms, list)
 
     def test_arabic_role_names(self):
         """Arabic role translation must be available."""
-        from app.routes.mobile import _role_ar
+        from app.services.mobile_service import role_ar
 
-        result_admin = _role_ar("admin")
-        result_staff = _role_ar("staff")
+        result_admin = role_ar("admin")
+        result_staff = role_ar("staff")
         assert result_admin is not None
         assert result_staff is not None
         assert len(result_admin) > 0

@@ -269,13 +269,12 @@ class OAuth2Policy(BasePolicy):
                     )
 
             issuer = payload.get("iss", "")
-            if issuer in self._token_validators:
-                if not self._token_validators[issuer](token):
-                    return PolicyResult(
-                        PolicyDecision.DENY,
-                        self.name,
-                        f"token validation failed for issuer {issuer}",
-                    )
+            if issuer in self._token_validators and not self._token_validators[issuer](token):
+                return PolicyResult(
+                    PolicyDecision.DENY,
+                    self.name,
+                    f"token validation failed for issuer {issuer}",
+                )
 
             return PolicyResult(PolicyDecision.ALLOW, self.name)
 

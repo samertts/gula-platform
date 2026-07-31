@@ -603,11 +603,10 @@ class SchedulingPlatformService:
         slots = await self.time_slot_repository.find_by_schedule(schedule.id)
         blocked: list[TimeSlot] = []
         for slot in slots:
-            if slot.start_at and slot.end_at:
-                if slot.start_at >= start_at and slot.end_at <= end_at and slot.is_available:
-                    slot.status = SlotStatus.BLOCKED
-                    slot.purpose = purpose
-                    blocked.append(await self.time_slot_repository.save(slot))
+            if slot.start_at and slot.end_at and slot.start_at >= start_at and slot.end_at <= end_at and slot.is_available:
+                slot.status = SlotStatus.BLOCKED
+                slot.purpose = purpose
+                blocked.append(await self.time_slot_repository.save(slot))
         return blocked
 
     async def get_schedule(self, resource_id: str, date: date) -> dict[str, Any]:

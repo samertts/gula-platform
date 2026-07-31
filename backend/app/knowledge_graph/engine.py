@@ -199,9 +199,8 @@ class _ASTScanner:
                 for item in node.body:
                     if isinstance(item, ast.Assign):
                         for target in item.targets:
-                            if isinstance(target, ast.Name) and target.id == "__tablename__":
-                                if isinstance(item.value, ast.Constant):
-                                    tablename = item.value.value
+                            if isinstance(target, ast.Name) and target.id == "__tablename__" and isinstance(item.value, ast.Constant):
+                                tablename = item.value.value
 
                 meta = {}
                 if tablename:

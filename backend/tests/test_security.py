@@ -345,36 +345,36 @@ class TestMobileAPILogic:
 
     def test_role_arabic_translation(self):
         """Roles should have Arabic translations."""
-        from app.routes.mobile import _role_ar
+        from app.services.mobile_service import role_ar
 
-        assert _role_ar("admin") == "مدير المختبر"
-        assert _role_ar("master_admin") == "مدير المنصة"
-        assert _role_ar("staff") == "موظف"
-        assert _role_ar("technician") == "تقني مختبر"
+        assert role_ar("admin") == "مدير المختبر"
+        assert role_ar("master_admin") == "مدير المنصة"
+        assert role_ar("staff") == "موظف"
+        assert role_ar("technician") == "تقني مختبر"
 
     def test_permissions_admin(self):
         """Admin should have extended permissions."""
-        from app.routes.mobile import _get_permissions
+        from app.services.mobile_service import get_permissions
 
-        perms = _get_permissions("admin")
+        perms = get_permissions("admin")
         assert "manage_users" in perms
         assert "view_patients" in perms
         assert "manage_lab" in perms
 
     def test_permissions_staff(self):
         """Staff should have basic permissions."""
-        from app.routes.mobile import _get_permissions
+        from app.services.mobile_service import get_permissions
 
-        perms = _get_permissions("staff")
+        perms = get_permissions("staff")
         assert "view_patients" in perms
         assert "create_order" in perms
         assert "manage_users" not in perms
 
     def test_permissions_technician(self):
         """Technician should have specific lab permissions."""
-        from app.routes.mobile import _get_permissions
+        from app.services.mobile_service import get_permissions
 
-        perms = _get_permissions("technician")
+        perms = get_permissions("technician")
         assert "enter_results" in perms
         assert "view_samples" in perms
 

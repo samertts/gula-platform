@@ -71,17 +71,15 @@ def evaluate_westgard_full(
             hz = (qc.measured_value - qc.expected_value) / qc.sd
             historical_z.append(hz)
 
-    if abs(z_score) >= 2.0:
-        return {"status": "warning", "violation": "1-2s"}
-
     if len(historical_z) >= 1:
         last_z = historical_z[0]
         if (z_score > 2.0 and last_z > 2.0) or (z_score < -2.0 and last_z < -2.0):
             return {"status": "fail", "violation": "2-2s"}
-
-    if len(historical_z) >= 1:
-        if abs(z_score - historical_z[0]) >= 4.0:
+        if abs(z_score - last_z) >= 4.0:
             return {"status": "fail", "violation": "R-4s"}
+
+    if abs(z_score) >= 2.0:
+        return {"status": "warning", "violation": "1-2s"}
 
     if len(historical_z) >= 3:
         recent_four = [z_score, *historical_z[:3]]

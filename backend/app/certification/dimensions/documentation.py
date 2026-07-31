@@ -191,11 +191,10 @@ class DocumentationEvaluator(DimensionEvaluator):
                 for node in ast.walk(tree):
                     if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                         total_functions += 1
-                        if node.body and isinstance(node.body[0], ast.Expr):
-                            if isinstance(node.body[0].value, ast.Constant) and isinstance(
-                                node.body[0].value.value, str,
-                            ):
-                                documented_functions += 1
+                        if node.body and isinstance(node.body[0], ast.Expr) and isinstance(node.body[0].value, ast.Constant) and isinstance(
+                            node.body[0].value.value, str,
+                        ):
+                            documented_functions += 1
             except SyntaxError:
                 continue
         total_functions = max(total_functions, 1)

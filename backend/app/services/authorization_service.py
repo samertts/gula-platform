@@ -312,9 +312,8 @@ class PolicyService:
             return False
         if target.get("user_types") and subject.get("user_type") not in target["user_types"]:
             return False
-        if conditions.get("governorate"):
-            if subject.get("governorate_id") not in conditions["governorate"]:
-                return False
+        if conditions.get("governorate") and subject.get("governorate_id") not in conditions["governorate"]:
+            return False
         if conditions.get("time_of_day"):
             current_hour = datetime.now(UTC).hour
             allowed = conditions["time_of_day"]

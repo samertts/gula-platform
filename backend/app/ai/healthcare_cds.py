@@ -143,21 +143,20 @@ class ClinicalDecisionSupport:
         self, test_name: str, value: float, age: int, gender: str,
     ) -> list[CDSAlert]:
         alerts: list[CDSAlert] = []
-        if "creatinine" in test_name and age > 60 and gender.upper() == "M":
-            if value > 1.2:
-                alerts.append(
-                    self._alert(
-                        "warning",
-                        "age_related",
-                        f"Elevated creatinine ({value}) in {age}-year-old male may indicate age-related GFR decline",
-                        f"ارتفاع الكرياتينين ({value}) لدى رجل عمره {age} قد يشير إلى انخفاض GFR مرتبط بالعمر",
-                        test_name,
-                        value,
-                        "",
-                        "Consider calculating eGFR",
-                        "ينصح بحساب معدل الترشيح الكبيبي (eGFR)",
-                    ),
-                )
+        if "creatinine" in test_name and age > 60 and gender.upper() == "M" and value > 1.2:
+            alerts.append(
+                self._alert(
+                    "warning",
+                    "age_related",
+                    f"Elevated creatinine ({value}) in {age}-year-old male may indicate age-related GFR decline",
+                    f"ارتفاع الكرياتينين ({value}) لدى رجل عمره {age} قد يشير إلى انخفاض GFR مرتبط بالعمر",
+                    test_name,
+                    value,
+                    "",
+                    "Consider calculating eGFR",
+                    "ينصح بحساب معدل الترشيح الكبيبي (eGFR)",
+                ),
+            )
         if "hemoglobin" in test_name and age > 70 and value < 11:
             alerts.append(
                 self._alert(

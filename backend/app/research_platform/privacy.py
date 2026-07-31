@@ -176,9 +176,8 @@ class ConsentEnforcement:
     def check_access(self, patient_ulid: str, project_id: str, data_type: str = "all") -> bool:
         consents = self._consents.get(patient_ulid, [])
         for c in consents:
-            if c["project_id"] == project_id and c["status"] == "granted":
-                if "all" in c["scope"] or data_type in c["scope"]:
-                    return True
+            if c["project_id"] == project_id and c["status"] == "granted" and ("all" in c["scope"] or data_type in c["scope"]):
+                return True
         return False
 
     def revoke_consent(self, patient_ulid: str, project_id: str) -> bool:
