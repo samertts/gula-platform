@@ -2,9 +2,10 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { PageHeader } from "@/components/shared/PageComponents";
-import { DataTable } from "@/components/ui/DataTable";
-import { Card, CardContent } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { DataTable, Card, CardContent, Badge } from "@/components/ui";
+
+
+
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { FileText } from "lucide-react";

@@ -131,7 +131,7 @@ export function FhirExplorerPage() {
             <CardTitle className="flex items-center gap-2">
               <FileJson className="h-5 w-5" />
               <span dir="ltr">{resourceType}/{searchId}</span>
-              <Badge variant="secondary" className="mr-2">
+              <Badge variant="secondary" className="ms-2">
                 {(data as Record<string, unknown>)?.resourceType as string}
               </Badge>
             </CardTitle>

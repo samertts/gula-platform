@@ -140,7 +140,7 @@ export function FhirPatientPage() {
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
               {patient.name?.[0]?.text || patient.name?.[0]?.given?.join(" ") || "مريض"}
-              <Badge variant="outline" className="mr-2 text-xs">
+              <Badge variant="outline" className="ms-2 text-xs">
                 المعرف: {patient.id}
               </Badge>
             </CardTitle>

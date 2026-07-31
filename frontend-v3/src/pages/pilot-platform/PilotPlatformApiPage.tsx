@@ -2,9 +2,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { PageHeader } from "@/components/shared/PageComponents";
-import { DataTable } from "@/components/ui/DataTable";
-import { Card, CardContent } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { DataTable, Card, CardContent, Badge } from "@/components/ui";
+
+
+
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {  FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -39,14 +41,17 @@ export default function PilotPlatformApiPage() {
   });
   const facilities = useQuery({
     queryKey: ["pilotPlatformApi", "facilities"],
+    enabled: false,
     queryFn: () => api.get("/pilot-platform/pilots//facilities").then((r) => r.data),
   });
   const readiness = useQuery({
     queryKey: ["pilotPlatformApi", "readiness"],
+    enabled: false,
     queryFn: () => api.get("/pilot-platform/facilities//readiness").then((r) => r.data),
   });
   const gates = useQuery({
     queryKey: ["pilotPlatformApi", "gates"],
+    enabled: false,
     queryFn: () => api.get("/pilot-platform/pilots//gates").then((r) => r.data),
   });
   const deployments = useQuery({
@@ -55,6 +60,7 @@ export default function PilotPlatformApiPage() {
   });
   const certify = useQuery({
     queryKey: ["pilotPlatformApi", "certify"],
+    enabled: false,
     queryFn: () => api.get("/pilot-platform/certify").then((r) => r.data),
   });
 
@@ -96,12 +102,12 @@ export default function PilotPlatformApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    pilots: { columns: pilotsCols, data: (pilots.data ?? []) as Record<string, unknown>[], loading: pilots.isLoading },
-    facilities: { columns: facilitiesCols, data: (facilities.data ?? []) as Record<string, unknown>[], loading: facilities.isLoading },
-    readiness: { columns: readinessCols, data: (readiness.data ?? []) as Record<string, unknown>[], loading: readiness.isLoading },
-    gates: { columns: gatesCols, data: (gates.data ?? []) as Record<string, unknown>[], loading: gates.isLoading },
-    deployments: { columns: deploymentsCols, data: (deployments.data ?? []) as Record<string, unknown>[], loading: deployments.isLoading },
-    certify: { columns: certifyCols, data: (certify.data ?? []) as Record<string, unknown>[], loading: certify.isLoading },
+    pilots: { columns: pilotsCols, data: asTableData(pilots.data), loading: pilots.isLoading },
+    facilities: { columns: facilitiesCols, data: asTableData(facilities.data), loading: facilities.isLoading },
+    readiness: { columns: readinessCols, data: asTableData(readiness.data), loading: readiness.isLoading },
+    gates: { columns: gatesCols, data: asTableData(gates.data), loading: gates.isLoading },
+    deployments: { columns: deploymentsCols, data: asTableData(deployments.data), loading: deployments.isLoading },
+    certify: { columns: certifyCols, data: asTableData(certify.data), loading: certify.isLoading },
   };
 
   return (
