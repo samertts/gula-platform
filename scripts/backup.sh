@@ -21,6 +21,16 @@ PG_CONTAINER="${PG_CONTAINER:-gula-postgres}"
 DB_USER="${DB_USER:-postgres}"
 DB_NAME="${DB_NAME:-labdb}"
 
+# Optional encryption: set BACKUP_ENCRYPT_KEY to encrypt with AES-256-CBC (openssl).
+# Encrypted backups get the .sql.gz.enc suffix and are decrypted by
+# backup-verification.sh / restore-test.sh using the same key.
+ENC_SUFFIX="sql.gz"
+ENC_CMD=()
+if [[ -n "${BACKUP_ENCRYPT_KEY:-}" ]]; then
+    ENC_SUFFIX="sql.gz.enc"
+    ENC_CMD=(openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -pass "env:BACKUP_ENCRYPT_KEY")
+fi
+
 mkdir -p "${BACKUP_DIR}/daily"
 mkdir -p "${BACKUP_DIR}/hourly"
 mkdir -p "${BACKUP_DIR}/logs"
@@ -46,53 +56,69 @@ _pg_dump() {
     fi
 }
 
-# Dump, compress, and write SHA-256 checksum sidecar
+# Dump, compress, optionally encrypt, and write SHA-256 checksum sidecar
 _do_backup() {
     local dest="$1"
     log "Dumping ${DB_NAME} to ${dest}..."
-    if _pg_dump | gzip > "${dest}"; then
-        sha256sum "${dest}" > "${dest}.sha256"
-        local size
-        size=$(du -h "${dest}" | cut -f1)
-        log "Backup OK: ${dest} (${size})"
-        log "Checksum:  $(cat "${dest}.sha256")"
+    local ok=0
+    if (( ${#ENC_CMD[@]} )); then
+        _pg_dump | gzip | "${ENC_CMD[@]}" > "${dest}" || ok=1
     else
+        _pg_dump | gzip > "${dest}" || ok=1
+    fi
+    if (( ok )); then
         log "ERROR: backup failed"
         rm -f "${dest}"
         exit 1
     fi
+    sha256sum "${dest}" > "${dest}.sha256"
+    local size
+    size=$(du -h "${dest}" | cut -f1)
+    log "Backup OK: ${dest} (${size})"
+    log "Checksum:  $(cat "${dest}.sha256")"
 }
 
 # Verify a backup file using its .sha256 sidecar
 verify_backup() {
-    local file="${1:?usage: verify_backup <file.sql.gz>}"
+    local file="${1:?usage: verify_backup <file.sql.gz[.enc]>}"
     if [[ ! -f "${file}.sha256" ]]; then
         log "WARN: no checksum sidecar for ${file}"
         return 1
     fi
-    if sha256sum -c "${file}.sha256" --quiet; then
-        log "VERIFY OK: ${file}"
-    else
+    if ! sha256sum -c "${file}.sha256" --quiet; then
         log "VERIFY FAILED: ${file} — checksum mismatch (file may be corrupted)"
         return 1
     fi
+    case "${file}" in
+        *.enc)
+            if ! "${ENC_CMD[@]}" -d < "${file}" 2>/dev/null | gunzip -t; then
+                log "VERIFY FAILED: ${file} — decryption/integrity check failed"
+                return 1
+            fi
+            ;;
+        *)
+            if ! gunzip -t "${file}"; then
+                log "VERIFY FAILED: ${file} — gzip integrity check failed"
+                return 1
+            fi
+            ;;
+    esac
+    log "VERIFY OK: ${file}"
 }
 
 log "Starting ${BACKUP_TYPE} backup (container=${PG_CONTAINER}, db=${DB_NAME})..."
 
 case "${BACKUP_TYPE}" in
     daily|full)
-        _do_backup "${BACKUP_DIR}/daily/gula_full_${TIMESTAMP}.sql.gz"
-        find "${BACKUP_DIR}/daily" -name "*.sql.gz" -mtime +"${RETENTION_DAYS}" -delete 2>/dev/null || true
-        find "${BACKUP_DIR}/daily" -name "*.sha256"  -mtime +"${RETENTION_DAYS}" -delete 2>/dev/null || true
+        _do_backup "${BACKUP_DIR}/daily/gula_full_${TIMESTAMP}.${ENC_SUFFIX}"
+        find "${BACKUP_DIR}/daily" \( -name "*.sql.gz" -o -name "*.sql.gz.enc" -o -name "*.sha256" \) -mtime +"${RETENTION_DAYS}" -delete 2>/dev/null || true
         ;;
     hourly|incremental)
-        _do_backup "${BACKUP_DIR}/hourly/gula_hourly_${TIMESTAMP}.sql.gz"
-        find "${BACKUP_DIR}/hourly" -name "*.sql.gz" -mtime +2 -delete 2>/dev/null || true
-        find "${BACKUP_DIR}/hourly" -name "*.sha256"  -mtime +2 -delete 2>/dev/null || true
+        _do_backup "${BACKUP_DIR}/hourly/gula_hourly_${TIMESTAMP}.${ENC_SUFFIX}"
+        find "${BACKUP_DIR}/hourly" \( -name "*.sql.gz" -o -name "*.sql.gz.enc" -o -name "*.sha256" \) -mtime +2 -delete 2>/dev/null || true
         ;;
     verify)
-        LATEST=$(find "${BACKUP_DIR}/daily" -name "*.sql.gz" -printf '%T@ %p\n' 2>/dev/null \
+        LATEST=$(find "${BACKUP_DIR}/daily" \( -name "*.sql.gz" -o -name "*.sql.gz.enc" \) -printf '%T@ %p\n' 2>/dev/null \
             | sort -n | tail -1 | cut -d' ' -f2-)
         if [[ -z "${LATEST}" ]]; then
             log "No backup files found to verify."
@@ -106,4 +132,4 @@ case "${BACKUP_TYPE}" in
         ;;
 esac
 
-log "Done. Total backups: $(find "${BACKUP_DIR}" -name '*.sql.gz' | wc -l) files"
+log "Done. Total backups: $(find "${BACKUP_DIR}" \( -name '*.sql.gz' -o -name '*.sql.gz.enc' \) | wc -l) files"

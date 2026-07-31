@@ -20,7 +20,12 @@ kubectl scale deployment gula-backend -n "$NAMESPACE" --replicas=0
 sleep 5
 
 log "Triggering failover..."
-bash scripts/dr-failover.sh 2>&1 | tee -a "$LOG_FILE" || true
+if bash scripts/dr-failover.sh 2>&1 | tee -a "$LOG_FILE"; then
+    FAILOVER_OK=1
+else
+    FAILOVER_OK=0
+    log "ERROR: failover script failed"
+fi
 FAILOVER_TIME=$(($(date +%s) - START_TIME))
 
 log "Measuring recovery..."
@@ -65,6 +70,7 @@ cat > "$REPORT_FILE" << EOF
 
 | Metric | Value |
 |--------|-------|
+| Failover | $([ "$FAILOVER_OK" = 1 ] && echo "SUCCESS" || echo "**FAILED**") |
 | Failover time | ${FAILOVER_TIME}s |
 | Recovery time | ${RECOVERY_TIME:-TIMEOUT}s |
 | Data integrity | ${INTEGRITY} |
@@ -73,7 +79,7 @@ cat > "$REPORT_FILE" << EOF
 
 ## Verdict
 
-**$([ ${RECOVERY_TIME:-300} -lt 300 ] && echo "PASS" || echo "FAIL")** — RTO target: 5 minutes
+**$([ "$FAILOVER_OK" = 1 ] && [ ${RECOVERY_TIME:-300} -lt 300 ] && echo "PASS" || echo "FAIL")** — RTO target: 5 minutes
 EOF
 
 log "DR test complete. Report: $REPORT_FILE"

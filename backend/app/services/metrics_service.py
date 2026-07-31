@@ -1,4 +1,5 @@
 import os
+import threading
 import time
 from datetime import date, datetime
 
@@ -14,6 +15,14 @@ from app.models.lab_order import LabOrder
 _START = time.time()
 _WIDE_ROLES = {"master_admin", "ministry_admin", "province_admin"}
 _PROM_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8"
+
+_LATENCY_BUCKETS_S = (0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0)
+_METRICS_LOCK = threading.Lock()
+_requests_total: dict[tuple[str, str, str], int] = {}
+_request_errors_total: dict[tuple[str, str], int] = {}
+_latency_buckets: dict[tuple[float, str, str], int] = {}
+_latency_sum: dict[tuple[str, str], float] = {}
+_latency_count: dict[tuple[str, str], int] = {}
 
 
 def get_rss_mb() -> float:
@@ -88,6 +97,76 @@ def get_uptime_s() -> int:
     return int(time.time() - _START)
 
 
+def _escape_label(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def record_request(method: str, route: str, status_code: int, duration_s: float) -> None:
+    """Record a completed request for SLO metrics (thread-safe, in-process)."""
+    status_class = f"{status_code // 100}xx"
+    route_key = (method.upper(), route)
+    with _METRICS_LOCK:
+        _requests_total[(method.upper(), route, status_class)] = (
+            _requests_total.get((method.upper(), route, status_class), 0) + 1
+        )
+        if status_code >= 500:
+            _request_errors_total[route_key] = _request_errors_total.get(route_key, 0) + 1
+        for bucket in _LATENCY_BUCKETS_S:
+            if duration_s <= bucket:
+                bkey = (bucket, *route_key)
+                _latency_buckets[bkey] = _latency_buckets.get(bkey, 0) + 1
+        _latency_sum[route_key] = _latency_sum.get(route_key, 0.0) + duration_s
+        _latency_count[route_key] = _latency_count.get(route_key, 0) + 1
+
+
+def request_metrics_exposition() -> str:
+    """Render request SLO metrics (counters + latency histogram) in Prometheus text format."""
+    with _METRICS_LOCK:
+        if not _latency_count:
+            return ""
+        lines: list[str] = []
+        lines.append("# HELP gula_requests_total Total HTTP requests completed")
+        lines.append("# TYPE gula_requests_total counter")
+        for (method, route, status_class), count in sorted(_requests_total.items()):
+            lines.append(
+                f'gula_requests_total{{method="{_escape_label(method)}",'
+                f'route="{_escape_label(route)}",status="{status_class}"}} {count}'
+            )
+        lines.append("")
+        lines.append("# HELP gula_request_errors_total HTTP requests ending in 5xx")
+        lines.append("# TYPE gula_request_errors_total counter")
+        for (method, route), count in sorted(_request_errors_total.items()):
+            lines.append(
+                f'gula_request_errors_total{{method="{_escape_label(method)}",'
+                f'route="{_escape_label(route)}"}} {count}'
+            )
+        lines.append("")
+        lines.append("# HELP gula_request_duration_seconds Request latency distribution")
+        lines.append("# TYPE gula_request_duration_seconds histogram")
+        for le in _LATENCY_BUCKETS_S:
+            for (method, route) in sorted(_latency_count):
+                count = _latency_buckets.get((le, method, route), 0)
+                lines.append(
+                    f'gula_request_duration_seconds_bucket{{le="{le}",'
+                    f'method="{_escape_label(method)}",route="{_escape_label(route)}"}} {count}'
+                )
+        for (method, route) in sorted(_latency_count):
+            lines.append(
+                f'gula_request_duration_seconds_bucket{{le="+Inf",'
+                f'method="{_escape_label(method)}",route="{_escape_label(route)}"}} {_latency_count[(method, route)]}'
+            )
+        for (method, route) in sorted(_latency_count):
+            lines.append(
+                f'gula_request_duration_seconds_sum{{method="{_escape_label(method)}",'
+                f'route="{_escape_label(route)}"}} {round(_latency_sum[(method, route)], 6)}'
+            )
+            lines.append(
+                f'gula_request_duration_seconds_count{{method="{_escape_label(method)}",'
+                f'route="{_escape_label(route)}"}} {_latency_count[(method, route)]}'
+            )
+        return "\n".join(lines) + "\n"
+
+
 def get_json_metrics(
     db: Session,
     lab_id: int | None,
@@ -145,6 +224,10 @@ def build_prometheus_response(request: Request, db: Session) -> PlainTextRespons
         "# HELP gula_up Platform is operational (1=up, 0=down)",
         "# TYPE gula_up gauge",
         "gula_up 1",
+        "",
+        "# HELP gula_down Platform is down (1=down, 0=up)",
+        "# TYPE gula_down gauge",
+        "gula_down 0",
         "",
         "# HELP gula_uptime_seconds Process uptime in seconds",
         "# TYPE gula_uptime_seconds counter",
@@ -287,5 +370,7 @@ def build_prometheus_response(request: Request, db: Session) -> PlainTextRespons
     except Exception:
         pass
 
+    lines.append("")
+    lines.append(request_metrics_exposition())
     lines.append("")
     return PlainTextResponse("\n".join(lines) + "\n", media_type=_PROM_CONTENT_TYPE)

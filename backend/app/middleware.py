@@ -80,7 +80,13 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+            status = response.status_code
+        except Exception:
+            elapsed_ms = round((time.perf_counter() - start) * 1000)
+            self._record(request, 500, elapsed_ms)
+            raise
         elapsed_ms = round((time.perf_counter() - start) * 1000)
         status = response.status_code
         path = request.url.path
@@ -93,9 +99,20 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
                 status,
                 extra={"path": path, "latency_ms": elapsed_ms, "status": status},
             )
+        self._record(request, status, elapsed_ms)
         response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
         response.headers["X-API-Version"] = APP_VERSION
         return response
+
+    @staticmethod
+    def _record(request: Request, status: int, elapsed_ms: int) -> None:
+        route = getattr(request.scope.get("route"), "path", None) or "unmatched"
+        try:
+            from .services.metrics_service import record_request
+
+            record_request(request.method, route, status, elapsed_ms / 1000.0)
+        except Exception:
+            logger.exception("Failed to record request metrics")
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

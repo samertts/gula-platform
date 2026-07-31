@@ -22,7 +22,10 @@ from .config import APP_NAME, APP_VERSION, IS_PRODUCTION, PLATFORM_NAME_AR
 from .core.logging_config import configure_logging
 from .database import check_db_connection, get_pool_status
 
-configure_logging(is_production=IS_PRODUCTION, log_level="INFO")
+configure_logging(
+    is_production=IS_PRODUCTION,
+    log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
+)
 logger = logging.getLogger("gula")
 
 from .factory import create_app  # noqa: E402
@@ -228,7 +231,7 @@ def health_deep():
         pass
 
     # ── 6. Uptime ────────────────────────────────────────────────────────────
-    from .routes.metrics import _START as PROC_START
+    from .services.metrics_service import _START as PROC_START
 
     uptime_s = int(_t.time() - PROC_START)
 
