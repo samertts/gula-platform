@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-07-31T09:30:22.689564+00:00",
+  "generated_at": "2026-07-31T10:25:39.803654+00:00",
   "repo": {
     "name": "gula-platform",
     "root": "/home/samertts/workspace/projects/gula-platform",
-    "git_head": "59831c28 docs(ai): add PROGRAM-009A final report (API convergence complete)"
+    "git_head": "d0f44f73 fix(governance): fix undefined variable in enterprise certification script"
   },
   "counts": {
     "modules": {
       "backend/app": {
         "python_files": 1786,
-        "lines": 263906
+        "lines": 263988
       },
       "shared": {
         "python_files": 113,
@@ -99,7 +99,7 @@
     "PROGRAM-07M-REPORT"
   ],
   "source_freshness": {
-    "newest_source_mtime": 1785490191.4902127,
-    "brain_mtime": 1785484251.5915248
+    "newest_source_mtime": 1785491895.9627347,
+    "brain_mtime": 1785490232.1416752
   }
 }
