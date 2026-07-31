@@ -185,10 +185,12 @@ class OpsCertification:
         ]
         for name, ok in checks:
             self._result(f"P3 · {name}", PASS if ok else FAIL)
-        self._result("P3 · Outbox-backlog auto-repair", WARN,
-                     "detected + logged in auto_repair.py; repair action not implemented (docstring promise)")
-        self._result("P3 · ASHS restart cooldown", WARN,
-                     "self_heal.py has no per-signal cooldown — restart-loop risk if system stays stuck")
+        self._result("P3 · Outbox-backlog auto-repair", PASS if (
+            self._has_text("backend/app/core/auto_repair.py", "outbox_poll", "set_poll_interval")
+        ) else FAIL, "backlog spike >200 → worker poll 10s→2s; auto-restored when drained")
+        self._result("P3 · ASHS restart cooldown", PASS if (
+            self._has_text("scripts/self_heal.py", "ACTION_COOLDOWN_S", "_action_due")
+        ) else FAIL, "per-signal cooldown persisted to /tmp/gula-ashs-cooldown.json")
 
     # ── Phase 4: Self-Healing ──────────────────────────────────────────────────
 
