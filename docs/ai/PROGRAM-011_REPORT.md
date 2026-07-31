@@ -1,8 +1,8 @@
 # PROGRAM-011 Report — Enterprise Operations, Observability & Self-Healing
 
-**Status:** COMPLETE — **98% PRODUCTION READY** (101 PASS / 5 WARN / 0 FAIL)
+**Status:** COMPLETE — **99% PRODUCTION READY** (103 PASS / 3 WARN / 0 FAIL)
 **Date:** 2026-07-31 · **Certification:** `make ops-cert` → `reports/ops/OPERATIONS_READINESS_REPORT.md`
-**Regression gate:** `make validate` VERDICT PASS (225 unit tests, tsc 0, eslint 0, ruff 379 at baseline)
+**Regression gate:** `make validate` VERDICT PASS (232 unit tests, tsc 0, eslint 0, ruff 379 at baseline)
 
 ## Summary
 
@@ -38,9 +38,11 @@ and certified the result.
 |---|---|---|
 | ASHS restart-loop risk (no per-signal cooldown) | `scripts/self_heal.py`: `ACTION_COOLDOWN_S` (600s default) + file-persisted cooldown map (`/tmp/gula-ashs-cooldown.json`) so cron-invoked ASHS runs cannot restart a service twice inside the window | `test_self_heal_cooldown.py` (8 tests) |
 | Outbox-backlog auto-repair (detected, not repaired) | `auto_repair.py`: `outbox_poll` action — backlog > 200 → `outbox_service.set_poll_interval(2)` (10s→2s); auto-restored to default when queue drains below warn. Policy-gated, idempotent, reversible | `test_outbox_auto_repair.py` (12 tests) |
+| OpenTelemetry export (Jaeger/Tempo provisioned, no sender) | `app/telemetry.py`: OTLP/HTTP span export (opentelemetry-sdk, Apache-2.0, vendor-neutral — any OTLP collector). Env-gated (`OTEL_EXPORTER_OTLP_ENDPOINT`), no-op by default, 5s export timeout, bounded queue. FastAPI + SQLAlchemy instrumentation wired in `factory.py`; compose passes endpoint for backend + worker | `test_telemetry.py` (7 tests) |
+| Grafana alerting provisioning (files missing) | `config/grafana/provisioning/alerting/`: three native Grafana SLO rules (backend down, error ratio >5%, outbox backlog >200) + notifier policy tree forwarding to self-hosted Alertmanager (single delivery path to webhook) | YAML validated; datasource `uid: gula-prometheus` |
 
 ### Verification
-- 225 unit tests (179 → 225: circuit breaker, shared encryption, request metrics, security events, ops certification, ASHS cooldown, outbox repair).
+- 232 unit tests (179 → 232: circuit breaker, shared encryption, request metrics, security events, ops certification, ASHS cooldown, outbox repair, telemetry).
 - 114 resilience/control-layer tests (`test_control_layer`, `test_hard_scenarios`, `test_runtime_isolation`, `test_stability_assertions`) pass with the new auto-repair wiring.
 - Local live drills: plaintext + encrypted backup→verify→restore pipelines (337 tables, audit chain intact).
 - `test_resilience_smoke.py` (22) passes with the new middleware stack.
@@ -50,8 +52,8 @@ and certified the result.
 
 | Phase | PASS | WARN | FAIL |
 |---|---|---|---|
-| 1. Observability | 13 | 1 | 0 |
-| 2. Monitoring | 11 | 1 | 0 |
+| 1. Observability | 14 | 0 | 0 |
+| 2. Monitoring | 12 | 0 | 0 |
 | 3. Self-Diagnostics | 14 | 0 | 0 |
 | 4. Self-Healing | 10 | 0 | 0 |
 | 5. Backup & Recovery | 12 | 1 | 0 |
@@ -62,8 +64,6 @@ and certified the result.
 
 ## Remaining WARNs (next iteration candidates)
 
-1. OpenTelemetry SDK export (Jaeger/Tempo/collector provisioned, no sender)
-2. Grafana alert provisioning files
-3. Cloud snapshot restore unimplemented (documented)
-4. Frontend page consuming `/metrics` (observability page is an API explorer)
-5. ENCRYPTION_KEY rotation re-encryption deferred on-read
+1. Cloud snapshot restore unimplemented (documented)
+2. Frontend page consuming `/metrics` (observability page is an API explorer)
+3. ENCRYPTION_KEY rotation re-encryption deferred on-read
