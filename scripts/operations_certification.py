@@ -160,8 +160,11 @@ class OpsCertification:
         ]
         for name, ok in checks:
             self._result(f"P2 · {name}", PASS if ok else FAIL)
-        self._result("P2 · Grafana alerting provisioning", WARN,
-                     "Alerting via Prometheus rules + Alertmanager webhook; no Grafana alert provisioning files")
+        self._result("P2 · Grafana alerting provisioning", PASS if (
+            self._exists("config/grafana/provisioning/alerting/alert_rules.yml")
+            and self._has_text("config/grafana/provisioning/alerting/notifiers.yml", "alertmanager")
+        ) else FAIL,
+            "Grafana-managed SLO rules (backend down, error ratio, outbox backlog) → Alertmanager")
 
     # ── Phase 3: Self-Diagnostics ──────────────────────────────────────────────
 
