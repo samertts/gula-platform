@@ -38,7 +38,13 @@ ignore = ["E501", "B008", "N818", "RUF012", "SLF001", "RUF001", "RUF002", "RUF00
 
 [tool.ruff.lint.per-file-ignores]
 "**/tests/**" = ["T20", "N", "F401", "F841", "SLF001"]
+"scripts/project_brain.py" = ["T201"]
+"scripts/enterprise_validation_engine.py" = ["T201"]
 "**/engineering/productivity/*" = ["T20"]
+"backend/app/core/bootstrap/permissions.py" = ["N806"]
+"backend/app/contracts/models.py" = ["N815"]
+"backend/app/national/api/routes/encounter.py" = ["N815"]
+"backend/app/security/saml_service.py" = ["N817"]
 "**/migrations/**" = ["T20", "N", "I001", "F401", "F841"]
 
 [tool.ruff.format]

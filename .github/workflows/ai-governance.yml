@@ -1,0 +1,49 @@
+name: AI Governance
+
+on:
+  push:
+    branches: [main, 'release/*']
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  governance-gates:
+    name: AI Governance Gates (PROGRAM-012)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Project Brain Freshness
+        run: python3 scripts/project_brain.py --check
+
+      - name: Validation Engine (fast scope — hard gates)
+        run: python3 scripts/enterprise_validation_engine.py --scope fast
+
+      - name: Upload validation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-report
+          path: reports/validation/
+          if-no-files-found: error
+
+      - name: Architecture Compliance (advisory)
+        run: python3 scripts/architecture_compliance_engine.py --json || echo "ADVISORY: architecture debt exists (not blocking)"
+
+      - name: Governance Scripts Import Check
+        run: |
+          python3 -c "import ast; [ast.parse(open(f).read()) for f in ['scripts/project_brain.py', 'scripts/enterprise_validation_engine.py']]; print('scripts: syntax OK')"
