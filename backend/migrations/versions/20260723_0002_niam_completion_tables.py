@@ -333,9 +333,29 @@ def upgrade() -> None:
             sa.UniqueConstraint("appeal_id"),
         )
 
+    # ── 10. niam_identity_authorities ─────────────────────────────────────────
+    if not _has_table("niam_identity_authorities"):
+        op.create_table(
+            "niam_identity_authorities",
+            sa.Column("id", sa.String(length=26), nullable=False),
+            sa.Column("uuid", sa.String(length=36), nullable=False, index=True),
+            sa.Column("authority_id", sa.String(length=100), nullable=False, index=True),
+            sa.Column("name_en", sa.String(length=300), nullable=False),
+            sa.Column("name_ar", sa.String(length=300), nullable=True),
+            sa.Column("authority_type", sa.String(length=50), nullable=False, index=True),
+            sa.Column("jurisdiction", sa.String(length=30), nullable=False),
+            sa.Column("status", sa.String(length=20), nullable=False, index=True),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("uuid"),
+            sa.UniqueConstraint("authority_id"),
+        )
+
     # ── TRUST ────────────────────────────────────────────────────────────────
 
-    # ── 10. niam_trust_frameworks ────────────────────────────────────────────
+    # ── 11. niam_trust_frameworks ────────────────────────────────────────────
     if not _has_table("niam_trust_frameworks"):
         op.create_table(
             "niam_trust_frameworks",
@@ -1630,7 +1650,7 @@ def upgrade() -> None:
             sa.Column(
                 "session_id",
                 sa.String(length=100),
-                sa.ForeignKey("niam_user_sessions.id", ondelete="SET NULL"),
+                sa.ForeignKey("niam_sessions.id", ondelete="SET NULL"),
                 nullable=True,
                 index=True,
             ),
@@ -2203,6 +2223,7 @@ def downgrade() -> None:
         "niam_trust_assurance_profiles",
         "niam_trust_anchors",
         "niam_trust_frameworks",
+        "niam_identity_authorities",
         "niam_gov_appeals",
         "niam_gov_restorations",
         "niam_gov_certifications",
