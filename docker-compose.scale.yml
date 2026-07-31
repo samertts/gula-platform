@@ -27,9 +27,13 @@ services:
 
   # Override backend to enable multi-instance scaling
   gula-backend:
-    container_name: ""  # remove static name so docker can create backend_1, backend_2...
+    # container_name removed via base file (see docker-compose.yml)
     # In scaled mode the api-gateway is HAProxy, not nginx
     # HAProxy upstream uses service discovery via Docker DNS
+    # mem_limit from the base file must be unset: deploy.resources
+    # is authoritative in scale mode (compose rejects both set together).
+    mem_limit: 0
+    mem_reservation: 0
     deploy:
       replicas: ${BACKEND_REPLICAS:-3}
       restart_policy:

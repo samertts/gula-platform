@@ -9,11 +9,10 @@ from app.database import get_db
 from app.insurance.domain.enums import CoverageStatus
 from app.insurance.domain.models import (
     BenefitPackage,
-    BenefitUtilization,
     Coverage,
-    DeductibleTracking,
     InsurancePolicy,
 )
+from app.insurance.domain.services import BenefitUtilization, DeductibleTracking
 from app.insurance.services.coverage_engine import CoverageValidator
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user

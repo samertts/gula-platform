@@ -93,7 +93,9 @@ services:
     build:
       context: ./backend
       # build is ignored when 'image' resolves to an existing remote image pulled by compose pull
-    container_name: gula-backend
+    # No container_name: compose generates one (gula-platform-backend-1).
+    # `docker compose exec/restart gula-backend` keeps working via service name;
+    # absent container_name is required for --scale/replicas multi-instance mode.
     # Resource limits: cap RSS to prevent OOM from taking down the host.
     # Tune via BACKEND_MEM_LIMIT in .env (default 1.2GB for 4-worker setup).
     mem_limit: ${BACKEND_MEM_LIMIT:-1536m}

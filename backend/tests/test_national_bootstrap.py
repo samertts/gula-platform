@@ -282,17 +282,21 @@ class TestNationalHierarchy:
 
     def test_platform_facilities_seeded(self, db):
         from app.core.bootstrap.facilities import seed_platform_facilities
-        from app.core.bootstrap.models import OrganizationDef
+        from app.core.bootstrap.models import (
+            PLATFORM_DIRECTORATE_NAME_EN,
+            PLATFORM_ORG_NAME_EN,
+            OrganizationDef,
+        )
         from app.core.bootstrap.organizations import seed_organizations
 
         seed_organizations(
             [
                 OrganizationDef(
-                    org_id="pf-org", name_en="Org", name_ar="منظمة", org_type="organization"
+                    org_id="pf-org", name_en=PLATFORM_ORG_NAME_EN, name_ar="منظمة", org_type="organization"
                 ),
                 OrganizationDef(
                     org_id="pf-dir",
-                    name_en="Dir",
+                    name_en=PLATFORM_DIRECTORATE_NAME_EN,
                     name_ar="مديرية",
                     org_type="directorate",
                     parent_org_id="pf-org",

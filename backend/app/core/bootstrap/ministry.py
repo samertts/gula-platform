@@ -33,7 +33,7 @@ def seed_ministry_of_health(db: Session | None = None) -> bool:
         )
         if existing:
             logger.info("Ministry of Health already exists (org_id=%s)", MINISTRY_ORG_ID)
-            return True
+            return False
 
         from .models import OrganizationDef
 
@@ -48,9 +48,7 @@ def seed_ministry_of_health(db: Session | None = None) -> bool:
             is_active=True,
         )
         created = seed_organizations([moh], db=db)
-        if created:
-            logger.info("Ministry of Health created (org_id=%s)", MINISTRY_ORG_ID)
-        return True
+        return bool(created)
     except Exception as exc:
         logger.error("Failed to seed Ministry of Health: %s", exc)
         return False

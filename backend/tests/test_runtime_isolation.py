@@ -63,7 +63,7 @@ def test_assert_worker_runtime_blocks_api_tests():
 
 def test_app_startup_does_not_launch_background_loops(client):
     """Boot the API via TestClient and verify zero loops were spawned."""
-    from app.main import _bg_tasks
+    from app.core.startup import _bg_tasks
 
     # The TestClient context manager already triggered all startup events.
     response = client.get("/health/live")

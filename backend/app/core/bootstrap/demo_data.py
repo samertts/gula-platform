@@ -104,7 +104,7 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
                 full_name=pd["full_name"],
                 phone=pd["phone"],
                 gender=pd["gender"],
-                age=pd["age"],
+                birth_date=(datetime.now(UTC).date() - timedelta(days=365 * pd["age"])),
                 national_id_hash=None,
             )
             db.add(patient)
@@ -147,12 +147,11 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
 
         for i, patient in enumerate(patients):
             test = TEST_TYPES_POOL[i % len(TEST_TYPES_POOL)]
-            order_ref = f"DEMO-ORD-{i + 1:04d}"
 
             existing_order = (
                 db.query(LabOrder)
                 .filter(
-                    LabOrder.order_id == order_ref,
+                    LabOrder.patient_id == patient.id,
                 )
                 .first()
             )
@@ -162,24 +161,18 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
             order = LabOrder(
                 lab_id=lab.id,
                 patient_id=patient.id,
-                order_id=order_ref,
-                test_code=test["code"],
-                test_name=test["name"],
                 status="completed",
                 created_at=now - timedelta(days=i * 2),
-                collection_date=now - timedelta(days=i * 2),
             )
             db.add(order)
             db.flush()
             counts["orders"] += 1
 
             sample = Sample(
-                lab_id=lab.id,
                 order_id=order.id,
-                patient_id=patient.id,
                 sample_type="blood",
                 status="collected",
-                collected_at=now - timedelta(days=i * 2),
+                collection_time=now - timedelta(days=i * 2),
             )
             db.add(sample)
             db.flush()
@@ -192,18 +185,13 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
                 1,
             )
             result = LabResult(
-                lab_id=lab.id,
                 order_id=order.id,
-                patient_id=patient.id,
-                test_code=test["code"],
                 test_name=test["name"],
-                result=str(result_value),
+                value=result_value,
                 unit=test["unit"],
                 normal_range_low=test["low"],
                 normal_range_high=test["high"],
-                status="verified",
-                verified_by="demo_system",
-                verified_at=now - timedelta(days=i * 2, hours=-2),
+                created_at=now - timedelta(days=i * 2),
             )
             db.add(result)
             counts["results"] += 1

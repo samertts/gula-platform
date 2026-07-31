@@ -258,8 +258,8 @@ class TestClinicalExemptionFromConcurrencyLimit:
         """Read backend/app/main.py and assert the exempt prefixes are listed."""
         import pathlib
 
-        main_path = pathlib.Path(__file__).parent.parent / "app" / "main.py"
-        src = main_path.read_text()
+        middleware_path = pathlib.Path(__file__).parent.parent / "app" / "middleware.py"
+        src = middleware_path.read_text()
 
         # The CLAUDE.md-documented exempt prefixes must appear together
         # near the ConcurrencyLimitMiddleware setup.

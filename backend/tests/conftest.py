@@ -29,8 +29,11 @@ os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 os.environ.setdefault("REDIS_URL", "")
 
 import contextlib
+import logging
 import pathlib
 import sys
+
+logger = logging.getLogger("gula.tests.conftest")
 
 # Ensure the repo root is on sys.path so that `shared` package is importable.
 _repo_root = pathlib.Path(__file__).resolve().parent.parent.parent
@@ -101,40 +104,21 @@ def _session_engine():
     # etc.).  Without this, ForeignKey("lab_users.id") in a NationalBase
     # table fails because lab_users lives in Base.metadata.
     import app.main
-    from app.care_continuum.base import CareContinuumBase
-    from app.citizen_platform.base import CitizenPlatformBase
-    from app.clinical.base import ClinicalBase
     from app.ehr.base import EHRBase
     from app.financial.models import FinBase
     from app.governance.base import GovernanceBase
-    from app.health_data.base import HealthDataBase
-    from app.hospital.base import HospitalBase
+    from app.identity.base import IdentityBase
     from app.national.base import NationalBase
-    from app.national_data.base import DataPlatformBase
-    from app.nhdw.base import NHDWBase
-    from app.nursing.base import NursingBase
-    from app.pharmacy.base import PharmacyBase
-    from app.radiology.base import RadiologyBase
-    from app.trust.base import TrustBase
     from sqlalchemy import MetaData as _CombinedMeta
+    from sqlalchemy.sql import ddl as _ddl
 
     _all_metas = [
         Base.metadata,
-        NationalBase.metadata,
         EHRBase.metadata,
-        CareContinuumBase.metadata,
-        CitizenPlatformBase.metadata,
-        ClinicalBase.metadata,
-        GovernanceBase.metadata,
-        HealthDataBase.metadata,
-        HospitalBase.metadata,
-        DataPlatformBase.metadata,
-        NHDWBase.metadata,
-        NursingBase.metadata,
-        PharmacyBase.metadata,
-        RadiologyBase.metadata,
-        TrustBase.metadata,
         FinBase.metadata,
+        GovernanceBase.metadata,
+        IdentityBase.metadata,
+        NationalBase.metadata,
     ]
     _ddl_meta = _CombinedMeta()
     for _meta in _all_metas:
@@ -150,6 +134,29 @@ def _session_engine():
                 _tbl.indexes.discard(_idx)
             else:
                 _seen_idx[_idx.name] = _idx
+
+    # Some models have FK references to tables defined only in Alembic
+    # migrations (not ORM models).  SQLite does not enforce FK constraints
+    # by default, but SQLAlchemy still validates FK targets during
+    # create_all().  We collect all missing FK-referenced tables
+    # by extracting the table name from the FK colspec string, then
+    # create stub empty tables so create_all() can resolve the refs.
+    _missing_fk_targets = set()
+    from sqlalchemy import Column as _StubCol
+    from sqlalchemy import Integer as _StubInt
+    from sqlalchemy import Table as _StubTable
+    for _tbl in list(_ddl_meta.tables.values()):
+        for _col in _tbl.columns:
+            for _fk in _col.foreign_keys:
+                _spec = getattr(_fk, "_colspec", None) or getattr(_fk, "target_fullname", None)
+                if _spec and "." in _spec:
+                    _ref_tname = _spec.rsplit(".", 1)[0]
+                    if _ref_tname not in _ddl_meta.tables:
+                        _missing_fk_targets.add(_ref_tname)
+    if _missing_fk_targets:
+        for _stub_name in sorted(_missing_fk_targets):
+            _StubTable(_stub_name, _ddl_meta, _StubCol("id", _StubInt, primary_key=True))
+        logger.info("Created %d stub FK target tables: %s", len(_missing_fk_targets), sorted(_missing_fk_targets))
 
     _ddl_meta.create_all(engine)
     yield engine
@@ -251,9 +258,12 @@ def _reset_global_caches():
     from app.security.redis_client import cache
 
     def _clear():
-        if hasattr(cache, "_data"):
-            cache._data.clear()
-        client = getattr(cache, "_client", None)
+        inner = getattr(cache, "_instance", None)
+        if inner is None:
+            inner = cache._ensure()
+        if hasattr(inner, "_data"):
+            inner._data.clear()
+        client = getattr(inner, "_client", None)
         if client is not None:
             with contextlib.suppress(Exception):
                 client.flushdb()
