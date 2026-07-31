@@ -39,7 +39,7 @@ Close every Frontend ↔ Backend integration gap in the GULA monorepo:
 
 - 78 pages, all lazy-loaded; 73 import real API modules
 - No mocks / no Firebase / no dead data paths
-- 57 API objects in `endpoints.ts`; 154 calls; **36 API objects not consumed by any page** (documented below)
+- 57 API objects in `endpoints.ts`; 154 calls; **34 API objects not consumed by any page** (documented below; `healthApi`/`metricsApi` retired via OpsMetricsPage readiness tab)
 
 ### 3.3 API parity — frontend calls vs backend routes
 
@@ -102,7 +102,9 @@ Note: full-suite run requires strong env secrets (`SECRET_KEY` ≥32 chars, vali
 | # | Gap | Impact | Suggested next task |
 |---|---|---|---|
 | 1 | `ehrApi` (14 functions) and `canonicalPatientApi` exported but **unused by any page** | National EHR data not surfaced in UI; MPI canonical records invisible | Decide: (a) build an EHR detail panel on `EhrPage` (composite `/ehr/patient/{id}`), or (b) drop the exports. Requires product decision on national-patient identity linking (canonical ↔ national ↔ lab IDs) before wiring `canonicalPatientApi` — do not implement without the identity-matching domain design |
-| 2 | 34 remaining unused API objects (healthApi, metricsApi, aiPlatformApi sub-sets, admin/subscription APIs, etc.) | Dead client surface; risk of drift | Either expose via existing pages (admin console, health status page) or remove exports |
+| 2 | 34 remaining unused API objects (admin/subscription APIs, aiPlatformApi sub-sets, etc.) | Dead client surface; risk of drift | Either expose via existing pages (admin console) or remove exports |
 | 3 | Generated client (`@/api/generated`) is now correct but still unused — pages use hand-written `endpoints.ts` | Two parallel client surfaces | Consolidation: migrate pages to generated client or delete it; needs a naming/decision pass |
 
-**Recommended next task (highest value, no product decision needed):** add a System Health page (or panel in Dashboard) consuming `GET /health/status` + `/health/deep` + `/metrics` via the already-aligned `healthApi`/`metricsApi` objects — completes the observability loop for operators and retires part of gap #2. Then pursue gap #1 with the architecture team.
+**Status update (post-report):** `healthApi` + `metricsApi` are now consumed — `OpsMetricsPage` gained a readiness tab (`/health/status` + `/health/deep`) and uses the `metricsApi` objects (commit `bbb9f0c2`). Gap #2 reduced from 36 → 34 unused objects.
+
+**Recommended next task (highest value, no product decision needed):** admin console workflows — expose the aligned `adminApi` subscription/portal/fhir-connection endpoints in `AdminPages`, retiring more of gap #2. Then pursue gap #1 with the architecture team.
