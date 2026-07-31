@@ -86,8 +86,8 @@ Every page's data flow: page → `@/api/endpoints.ts` → axios `client.ts` (JWT
 
 | Suite | Result |
 |---|---|
-| Backend full pytest (all suites, correct env secrets) | **2557 passed / 0 failed** |
-| `tests/unit/test_integration_parity.py` (new, 16 tests) | pass — health endpoints public/shape/auth, AI stats tenant isolation, export CSV/JSON/403/422, EHR composite + 404 tenancy |
+| Backend full pytest (all suites, correct env secrets) | **2568 passed / 0 failed** |
+| `tests/unit/test_integration_parity.py` (new, 27 tests) | pass — health endpoints public/shape/auth, AI stats tenant isolation, export CSV/JSON/403/422, EHR composite + 404 tenancy, admin workflows, service accounts, governance authorities, mobile app-info |
 | `tests/test_observability_invariants.py` | pass |
 | Frontend `tsc --noEmit` | 0 errors |
 | Frontend eslint (`--max-warnings 0`) | 0 |
@@ -111,4 +111,14 @@ Note: full-suite run requires strong env secrets (`SECRET_KEY` ≥32 chars, vali
 - 3 frontend contract mismatches discovered and fixed by new contract tests: `/admin/labs/pending` → `{total, pending_labs}`; `/admin/control-layer/stats` → `{policy, auto_repair}`; `/admin/log-level` GET → `{root_level, effective_level}`.
 - `test_integration_parity.py` grew 16 → 23 tests (kill-switch cycle, technician 403s, activate flow).
 
-**Remaining 33 unused objects** all map to dormant bounded contexts (clinical/documentation/identity/consent/insurance) or identity-linking decisions — wiring them would activate unfinished functionality, which the project constitution forbids. This is the intentional stopping point for workflow completion; each remaining item needs a product/domain decision.
+**Status updates (final pass, this commit):**
+- **Definitive parity scan** (both quote forms + template params): 543 raw calls → **522 current calls, 1 unmatched** (`GET /metrics/prom`, pre-existing documented exception). The earlier 151/152 & 439/439 scans only covered `${params.x}` templates; the fixed scan caught 24 real mismatches — all resolved.
+- Contract fixes in `endpoints.ts`: `serviceAccountsApi.revoke` → `DELETE /service-accounts/{id}` (was nonexistent POST .../revoke); `mobileApi.info` → `/auth/mobile/app-info`; `createChronicDiseaseRecord` → `/care-continuum/chronic-disease-registry`; removed dead fns for non-existent routes (ehr care-plan goal PUT/DELETE, 8 care-continuum `/{id}` GET/PUT); removed dead `aiApi.safetyFlags` (no route). Generated client: `updateAuthority` (PUT, nonexistent) → `getAuthority` + `activateAuthority`/`suspendAuthority` POSTs; removed dead `listReviewBoards` GET + its hook.
+- `financialApi` kept (routed `FinancialPage` consumes it) — **all 19 `/financial/*` routes are missing in the backend** (dormant Financial Engine, confirmed `gula.financial: routes not registered`). Documented as backend gap, not frontend misalignment.
+- **Dormant-defect fix:** NIAM governance routes awaited an async service with the sync `get_db` session (`await self.session.flush()` → TypeError, every call crashed). Converted `app/identity/governance/routes.py` + `services.py` to sync (25 routes, 45 session awaits) — matches existing sync DB infra; `test_niam_v2.py` service tests updated to sync. Dormant module fixed without activation.
+- New workflows: **SecurityPage service-accounts** (create/rotate/revoke, API key copy, status badges) and **KernelPage "مراقبة النواة" runtime tab** (health/resources auto-refresh, slow-queries table, validation run) — consume `serviceAccountsApi` + `kernelRuntimeApi`.
+- Ops-cert P6 check updated: OpsMetricsPage now consumes `/metrics` via `metricsApi` (literal moved to endpoints.ts) — check greps `metricsApi` + `refetchInterval` instead.
+- `test_integration_parity.py` grew 23 → **27 tests** (+service-accounts cycle/403, governance authority get/activate/suspend + PUT 405, mobile app-info).
+- **Full backend suite: 2568 passed / 0 failed** (2415 main + 126 comprehensive/observability + 27 parity). Frontend: tsc 0, eslint 0, vitest 60/60. Gate VERDICT: PASS.
+
+**Remaining 31 unused objects** all map to dormant bounded contexts (clinical/documentation/identity/consent/insurance) or identity-linking decisions — wiring them would activate unfinished functionality, which the project constitution forbids. This is the intentional stopping point for workflow completion; each remaining item needs a product/domain decision. Next candidates if a decision is made: `canonicalPatientApi` bridge (`/api/v1/canonical-patients/by-patient/{patient_id}`) into `EhrPage`, `labsApi` for lab-admin workflows.

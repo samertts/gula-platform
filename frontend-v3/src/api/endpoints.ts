@@ -440,7 +440,6 @@ export const aiTelemetryApi = {
   logInteraction: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/interactions", data).then((r) => r.data),
   logFeedback: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/feedback", data).then((r) => r.data),
   logUnresolved: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/unresolved", data).then((r) => r.data),
-  safetyFlags: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/api/ai/safety-flags", data).then((r) => r.data),
   export: (format: string) => api.get<Blob>("/api/ai/export", { params: { format } }).then((r) => r.data),
   stats: () =>
     api
@@ -577,19 +576,27 @@ export const mfaApi = {
 };
 
 // ── Service Accounts ──
+export interface ServiceAccount {
+  id: number;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+  last_used_at: string | null;
+  created_by: number | null;
+  created_at: string | null;
+  expires_at: string | null;
+}
+
 export const serviceAccountsApi = {
-  list: () =>
+  list: () => api.get<ServiceAccount[]>("/service-accounts").then((r) => r.data),
+  create: (data: { name: string; description?: string; roles: string[]; scopes?: string[] }) =>
     api
-      .get<{ accounts: { id: string; name: string; role: string; is_active: boolean; created_at: string; last_used?: string }[] }>(
-        "/service-accounts",
-      )
+      .post<{ id: number; name: string; api_key: string; roles: string[]; scopes: string[] }>("/service-accounts", data)
       .then((r) => r.data),
-  create: (data: Record<string, unknown>) =>
-    api.post<Record<string, unknown>>("/service-accounts", data).then((r) => r.data),
-  revoke: (id: string) =>
-    api.post<Record<string, unknown>>(`/service-accounts/${id}/revoke`).then((r) => r.data),
-  rotate: (id: string) =>
-    api.post<Record<string, unknown>>(`/service-accounts/${id}/rotate`).then((r) => r.data),
+  revoke: (id: number) =>
+    api.delete<{ message: string }>(`/service-accounts/${id}`).then((r) => r.data),
+  rotate: (id: number) =>
+    api.post<{ api_key: string }>(`/service-accounts/${id}/rotate`).then((r) => r.data),
 };
 
 type CanonicalPatientEntry = {
@@ -715,10 +722,6 @@ export const ehrApi = {
       .then((r) => r.data),
   addCarePlanGoal: (planId: number, data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>(`/ehr/care-plans/${planId}/goals`, data).then((r) => r.data),
-  updateCarePlanGoal: (planId: number, goalId: number, data: Record<string, unknown>) =>
-    api.put<Record<string, unknown>>(`/ehr/care-plans/${planId}/goals/${goalId}`, data).then((r) => r.data),
-  deleteCarePlanGoal: (planId: number, goalId: number) =>
-    api.delete<Record<string, unknown>>(`/ehr/care-plans/${planId}/goals/${goalId}`).then((r) => r.data),
 
   // Problem List
   createProblemListItem: (data: Record<string, unknown>) =>
@@ -956,11 +959,11 @@ export const careContinuumApi = {
 
   // Family Medicine
   createFamilyMedicineRecord: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/family-medicine-records", data).then((r) => r.data),
-  getFamilyMedicineRecord: (id: number) => api.get<Record<string, unknown>>(`/care-continuum/family-medicine-records/${id}`).then((r) => r.data),
+  listFamilyMedicineRecords: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/care-continuum/family-medicine-records", { params }).then((r) => r.data),
 
   // Community Clinic
   createCommunityClinicRecord: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/community-clinic-records", data).then((r) => r.data),
-  getCommunityClinicRecord: (id: number) => api.get<Record<string, unknown>>(`/care-continuum/community-clinic-records/${id}`).then((r) => r.data),
+  listCommunityClinicRecords: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/care-continuum/community-clinic-records", { params }).then((r) => r.data),
 
   // Health Assessments
   createHealthAssessment: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/health-assessments", data).then((r) => r.data),
@@ -968,15 +971,12 @@ export const careContinuumApi = {
 
   // Preventive Care
   createPreventiveCareRecord: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/preventive-care-records", data).then((r) => r.data),
-  getPreventiveCareRecord: (id: number) => api.get<Record<string, unknown>>(`/care-continuum/preventive-care-records/${id}`).then((r) => r.data),
 
   // Referrals
   createReferral: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/referrals", data).then((r) => r.data),
   acceptReferral: (id: number) => api.put<Record<string, unknown>>(`/care-continuum/referrals/${id}/accept`).then((r) => r.data),
   rejectReferral: (id: number) => api.put<Record<string, unknown>>(`/care-continuum/referrals/${id}/reject`).then((r) => r.data),
-  updateReferral: (id: number, data: Record<string, unknown>) => api.put<Record<string, unknown>>(`/care-continuum/referrals/${id}`, data).then((r) => r.data),
   listReferrals: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/care-continuum/referrals", { params }).then((r) => r.data),
-  getReferral: (id: number) => api.get<Record<string, unknown>>(`/care-continuum/referrals/${id}`).then((r) => r.data),
 
   // Care Journeys
   createCareJourney: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/care-journeys", data).then((r) => r.data),
@@ -1001,7 +1001,7 @@ export const careContinuumApi = {
 
   // Community Care
   createCommunityCareRecord: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/community-care-records", data).then((r) => r.data),
-  getCommunityCareRecord: (id: number) => api.get<Record<string, unknown>>(`/care-continuum/community-care-records/${id}`).then((r) => r.data),
+  listCommunityCareRecords: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/care-continuum/community-care-records", { params }).then((r) => r.data),
 
   // Maternal Health
   createPregnancyRecord: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/pregnancy-records", data).then((r) => r.data),
@@ -1012,11 +1012,10 @@ export const careContinuumApi = {
 
   // Vaccinations
   createVaccinationRecord: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/vaccination-records", data).then((r) => r.data),
-  getVaccinationRecord: (id: number) => api.get<Record<string, unknown>>(`/care-continuum/vaccination-records/${id}`).then((r) => r.data),
+  listVaccinationRecords: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/care-continuum/vaccination-records", { params }).then((r) => r.data),
 
   // Reminders
   createReminderSchedule: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/reminder-schedules", data).then((r) => r.data),
-  getReminderSchedule: (id: number) => api.get<Record<string, unknown>>(`/care-continuum/reminder-schedules/${id}`).then((r) => r.data),
 
   // Health Programs
   createHealthProgram: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/health-programs", data).then((r) => r.data),
@@ -1029,10 +1028,8 @@ export const careContinuumApi = {
   createPatientTask: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/patient-tasks", data).then((r) => r.data),
   listPatientTasks: (params?: Record<string, unknown>) => api.get<Record<string, unknown>>("/care-continuum/patient-tasks", { params }).then((r) => r.data),
 
-  // Population Health
-  createPopulationHealthRecord: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/population-health", data).then((r) => r.data),
-  createChronicDiseaseRecord: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/chronic-disease", data).then((r) => r.data),
-  createMentalHealthRecord: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/mental-health", data).then((r) => r.data),
+  // Chronic Disease Registry
+  createChronicDiseaseRecord: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/care-continuum/chronic-disease-registry", data).then((r) => r.data),
 };
 
 // ── Clinical ──
@@ -1371,7 +1368,7 @@ export const samlApi = {
 export const mobileApi = {
   refresh: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/auth/refresh", data).then((r) => r.data),
   changePassword: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/auth/change-password", data).then((r) => r.data),
-  info: () => api.get<Record<string, unknown>>("/mobile/info").then((r) => r.data),
+  info: () => api.get<Record<string, unknown>>("/auth/mobile/app-info").then((r) => r.data),
 };
 
 // ── Integrations ──
@@ -1386,7 +1383,7 @@ export const optimizerApi = {
   analyze: () => api.get<Record<string, unknown>>("/api/optimizer/analyze").then((r) => r.data),
 };
 
-// ── Financial ──
+// ── Financial (dormant: backend /financial routes not yet implemented) ──
 export const financialApi = {
   billingStatus: () => api.get<Record<string, unknown>>("/financial/billing/status").then((r) => r.data),
   billingRates: () => api.get<Record<string, unknown>>("/financial/billing/rates").then((r) => r.data),

@@ -644,7 +644,7 @@ class TestGovernanceServices:
     @pytest.mark.asyncio
     async def test_governance_service_create_authority(self, mock_session):
         svc = GovernanceService(mock_session)
-        result = await svc.create_authority(
+        result = svc.create_authority(
             authority_id="IA-TEST",
             name_en="Test Authority",
             name_ar="هيئة اختبار",
@@ -657,7 +657,7 @@ class TestGovernanceServices:
     @pytest.mark.asyncio
     async def test_policy_approval_service_submit(self, mock_session):
         svc = PolicyApprovalService(mock_session)
-        result = await svc.submit_policy(
+        result = svc.submit_policy(
             policy_id="POL-001",
             submitted_by="admin",
         )
@@ -666,7 +666,7 @@ class TestGovernanceServices:
     @pytest.mark.asyncio
     async def test_appeal_service_submit(self, mock_session):
         svc = AppealService(mock_session)
-        result = await svc.submit_appeal(
+        result = svc.submit_appeal(
             appeal_id="APL-TEST-001",
             appellant_person_id="p1",
             identity_id="id1",
@@ -678,7 +678,7 @@ class TestGovernanceServices:
     @pytest.mark.asyncio
     async def test_suspension_service_suspend(self, mock_session):
         svc = SuspensionService(mock_session)
-        result = await svc.suspend_identity(
+        result = svc.suspend_identity(
             person_id="p1",
             identity_id="id1",
             reason="Security breach",
@@ -692,7 +692,7 @@ class TestGovernanceServices:
     @pytest.mark.asyncio
     async def test_registry_service_register(self, mock_session):
         svc = RegistryService(mock_session)
-        result = await svc.register_identity(
+        result = svc.register_identity(
             person_id="p1",
             identity_id="id1",
             registry_type="citizen",

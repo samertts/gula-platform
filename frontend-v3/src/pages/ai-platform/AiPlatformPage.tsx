@@ -1,11 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { aiPlatformApi } from "@/api/endpoints";
+import { aiPlatformApi, aiTelemetryApi } from "@/api/endpoints";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Input, Button, Textarea } from "@/components/ui";
 import { PageHeader, LoadingSpinner, ErrorDisplay, EmptyState } from "@/components/shared/PageComponents";
-import { Brain, Search, Share2, Bot, MessageSquare } from "lucide-react";
+import { Brain, Search, Share2, Bot, MessageSquare, Activity, Download } from "lucide-react";
 import { useState, type FormEvent } from "react";
 
-type Tab = "overview" | "search-rag" | "knowledge-graph" | "agent-tools" | "sessions";
+type Tab = "overview" | "search-rag" | "knowledge-graph" | "agent-tools" | "sessions" | "telemetry";
 
 export function AiPlatformPage() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -16,6 +16,7 @@ export function AiPlatformPage() {
     { key: "knowledge-graph", label: "المعرفة البيانية", icon: Share2 },
     { key: "agent-tools", label: "أدوات الوكلاء", icon: Bot },
     { key: "sessions", label: "الجلسات", icon: MessageSquare },
+    { key: "telemetry", label: "التليمترية", icon: Activity },
   ];
 
   return (
@@ -36,6 +37,90 @@ export function AiPlatformPage() {
       {activeTab === "knowledge-graph" && <KnowledgeGraphTab />}
       {activeTab === "agent-tools" && <AgentToolsTab />}
       {activeTab === "sessions" && <SessionsTab />}
+      {activeTab === "telemetry" && <TelemetryTab />}
+    </div>
+  );
+}
+
+function TelemetryTab() {
+  const [downloading, setDownloading] = useState<"csv" | "json" | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const stats = useQuery({
+    queryKey: ["ai-telemetry-stats"],
+    queryFn: () => aiTelemetryApi.stats(),
+    refetchInterval: 30_000,
+  });
+
+  if (stats.isLoading) return <LoadingSpinner />;
+  if (stats.error) return <ErrorDisplay error={stats.error?.toString()} onRetry={() => stats.refetch()} />;
+
+  const download = async (format: "csv" | "json") => {
+    setDownloading(format);
+    setDownloadError(null);
+    try {
+      const blob = await aiTelemetryApi.export(format);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ai_interactions.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(String(err));
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader><CardTitle>التفاعلات</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{stats.data?.total_interactions ?? "—"}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>الملاحظات</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{stats.data?.total_feedback ?? "—"}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>الأسئلة غير المحلولة</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{stats.data?.total_unresolved ?? "—"}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle>أعلام الأمان</CardTitle></CardHeader>
+          <CardContent>
+            <p className="text-3xl font-bold">{stats.data?.total_safety_flags ?? "—"}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader><CardTitle>تصدير السجلات</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-gray-500">
+            تصدير سجلات التفاعل الكاملة بتنسيق CSV أو JSON (يتطلب صلاحية إدارية)
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => download("csv")} disabled={downloading !== null}>
+              <Download className="h-4 w-4" />
+              {downloading === "csv" ? "جاري التصدير…" : "تصدير CSV"}
+            </Button>
+            <Button variant="outline" onClick={() => download("json")} disabled={downloading !== null}>
+              <Download className="h-4 w-4" />
+              {downloading === "json" ? "جاري التصدير…" : "تصدير JSON"}
+            </Button>
+          </div>
+          {downloadError && <p className="text-xs text-red-600">فشل التصدير: {downloadError}</p>}
+        </CardContent>
+      </Card>
     </div>
   );
 }

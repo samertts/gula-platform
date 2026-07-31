@@ -401,3 +401,93 @@ class TestAdminWorkflows:
         headers = auth_headers(user.id, lab.id, user.role)
         r = client.post("/admin/log-level", json={"level": "DEBUG"}, headers=headers)
         assert r.status_code == 403
+
+
+class TestServiceAccounts:
+    def test_create_list_rotate_revoke_cycle(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="master_admin")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.post(
+            "/service-accounts",
+            json={"name": "external-integration", "roles": ["staff"]},
+            headers=headers,
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["name"] == "external-integration"
+        assert body["api_key"]
+        account_id = body["id"]
+
+        r = client.get("/service-accounts", headers=headers)
+        assert r.status_code == 200
+        accounts = r.json()
+        assert isinstance(accounts, list)
+        found = [a for a in accounts if a["id"] == account_id]
+        assert found
+        assert found[0]["name"] == "external-integration"
+        assert found[0]["is_active"] is True
+        assert "api_key" not in found[0]
+
+        r = client.post(f"/service-accounts/{account_id}/rotate", headers=headers)
+        assert r.status_code == 200
+        assert r.json()["api_key"]
+
+        r = client.delete(f"/service-accounts/{account_id}", headers=headers)
+        assert r.status_code == 200
+        r = client.get("/service-accounts", headers=headers)
+        revoked = [a for a in r.json() if a["id"] == account_id]
+        assert revoked and revoked[0]["is_active"] is False
+
+    def test_forbidden_for_technician(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="technician")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.get("/service-accounts", headers=headers)
+        assert r.status_code == 403
+        r = client.post("/service-accounts", json={"name": "x", "roles": ["staff"]}, headers=headers)
+        assert r.status_code == 403
+        r = client.delete("/service-accounts/1", headers=headers)
+        assert r.status_code == 403
+
+
+class TestGovernanceAuthorities:
+    def test_authority_get_activate_suspend(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="master_admin")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.post(
+            "/niam/governance/authorities",
+            params={"authority_id": "AUTH-TEST-1", "name_en": "Author A"},
+            headers=headers,
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["authority_id"] == "AUTH-TEST-1"
+        assert body["status"]
+        authority_id = body["authority_id"]
+
+        r = client.get(f"/niam/governance/authorities/{authority_id}", headers=headers)
+        assert r.status_code == 200
+
+        r = client.post(f"/niam/governance/authorities/{authority_id}/suspend", headers=headers)
+        assert r.status_code == 200
+        r = client.post(f"/niam/governance/authorities/{authority_id}/activate", headers=headers)
+        assert r.status_code == 200
+
+        r = client.put(f"/niam/governance/authorities/{authority_id}", json={}, headers=headers)
+        assert r.status_code == 405
+
+
+class TestMobileAppInfo:
+    def test_mobile_app_info_route(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="staff")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.get("/auth/mobile/app-info", headers=headers)
+        assert r.status_code == 200
+        assert isinstance(r.json(), dict)

@@ -273,9 +273,9 @@ class OpsCertification:
         self._result("P6 · Dedicated frontend metrics dashboard", PASS if (
             self._exists("frontend-v3/src/pages/ops-metrics/OpsMetricsPage.tsx")
             and self._has_text(
-                "frontend-v3/src/pages/ops-metrics/OpsMetricsPage.tsx", '"/metrics"', 'refetchInterval')
+                "frontend-v3/src/pages/ops-metrics/OpsMetricsPage.tsx", "metricsApi", "refetchInterval")
         ) else FAIL,
-            "OpsMetricsPage consumes /metrics (JSON) + /metrics/prom, 30s auto-refresh")
+            "OpsMetricsPage consumes /metrics (JSON) + /metrics/prom via metricsApi, auto-refresh")
 
     # ── Phase 7: Security Operations ───────────────────────────────────────────
 

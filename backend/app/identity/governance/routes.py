@@ -23,7 +23,7 @@ router = APIRouter(prefix="/governance", tags=["NIAM Governance"])
 
 
 @router.post("/authorities")
-async def create_authority(
+def create_authority(
     authority_id: str,
     name_en: str,
     name_ar: str | None = None,
@@ -37,7 +37,7 @@ async def create_authority(
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
-    entity = await service.create_authority(
+    entity = service.create_authority(
         authority_id=authority_id,
         name_en=name_en,
         name_ar=name_ar,
@@ -58,12 +58,12 @@ async def create_authority(
 
 
 @router.get("/authorities")
-async def list_authorities(
+def list_authorities(
     authority_type: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
-    authorities = await service.list_authorities(authority_type=authority_type)
+    authorities = service.list_authorities(authority_type=authority_type)
     return [
         {
             "uuid": a.uuid,
@@ -79,36 +79,36 @@ async def list_authorities(
 
 
 @router.get("/authorities/{authority_id}")
-async def get_authority(
+def get_authority(
     authority_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
-    entity = await service.get_authority(authority_id)
+    entity = service.get_authority(authority_id)
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()
 
 
 @router.post("/authorities/{authority_id}/suspend")
-async def suspend_authority(
+def suspend_authority(
     authority_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
-    entity = await service.suspend_authority(authority_id)
+    entity = service.suspend_authority(authority_id)
     if not entity:
         return {"error": "not_found"}
     return {"uuid": entity.uuid, "authority_id": entity.authority_id, "status": entity.status}
 
 
 @router.post("/authorities/{authority_id}/activate")
-async def activate_authority(
+def activate_authority(
     authority_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
-    entity = await service.activate_authority(authority_id)
+    entity = service.activate_authority(authority_id)
     if not entity:
         return {"error": "not_found"}
     return {"uuid": entity.uuid, "authority_id": entity.authority_id, "status": entity.status}
@@ -118,7 +118,7 @@ async def activate_authority(
 
 
 @router.post("/councils")
-async def create_council(
+def create_council(
     council_id: str,
     name_en: str,
     name_ar: str | None = None,
@@ -132,7 +132,7 @@ async def create_council(
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
-    entity = await service.create_council(
+    entity = service.create_council(
         council_id=council_id,
         name_en=name_en,
         name_ar=name_ar,
@@ -153,12 +153,12 @@ async def create_council(
 
 
 @router.get("/councils")
-async def list_councils(
+def list_councils(
     authority_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
-    councils = await service.list_councils(authority_id=authority_id)
+    councils = service.list_councils(authority_id=authority_id)
     return [
         {
             "uuid": c.uuid,
@@ -173,12 +173,12 @@ async def list_councils(
 
 
 @router.get("/councils/{council_id}")
-async def get_council(
+def get_council(
     council_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
-    entity = await service.get_council(council_id)
+    entity = service.get_council(council_id)
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()
@@ -188,7 +188,7 @@ async def get_council(
 
 
 @router.post("/review-boards")
-async def create_review_board(
+def create_review_board(
     board_id: str,
     name_en: str,
     name_ar: str | None = None,
@@ -201,7 +201,7 @@ async def create_review_board(
     db: AsyncSession = Depends(get_db),
 ):
     service = GovernanceService(db)
-    entity = await service.create_review_board(
+    entity = service.create_review_board(
         board_id=board_id,
         name_en=name_en,
         name_ar=name_ar,
@@ -224,13 +224,13 @@ async def create_review_board(
 
 
 @router.post("/policy-approvals")
-async def submit_policy_approval(
+def submit_policy_approval(
     policy_id: str,
     submitted_by: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = PolicyApprovalService(db)
-    entity = await service.submit_policy(
+    entity = service.submit_policy(
         policy_id=policy_id,
         submitted_by=submitted_by,
     )
@@ -243,12 +243,12 @@ async def submit_policy_approval(
 
 
 @router.get("/policy-approvals/pending/{reviewer_id}")
-async def get_pending_policy_approvals(
+def get_pending_policy_approvals(
     reviewer_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = PolicyApprovalService(db)
-    pending = await service.get_pending_approvals(reviewer_id)
+    pending = service.get_pending_approvals(reviewer_id)
     return [
         {
             "uuid": p.uuid,
@@ -264,13 +264,13 @@ async def get_pending_policy_approvals(
 
 
 @router.post("/policy-approvals/{workflow_id}/approve")
-async def approve_policy(
+def approve_policy(
     workflow_id: str,
     approved_by: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = PolicyApprovalService(db)
-    entity = await service.approve_policy(workflow_id, approved_by)
+    entity = service.approve_policy(workflow_id, approved_by)
     if not entity:
         return {"error": "not_found"}
     return {
@@ -281,14 +281,14 @@ async def approve_policy(
 
 
 @router.post("/policy-approvals/{workflow_id}/reject")
-async def reject_policy(
+def reject_policy(
     workflow_id: str,
     rejected_by: str,
     reason: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = PolicyApprovalService(db)
-    entity = await service.reject_policy(workflow_id, rejected_by, reason)
+    entity = service.reject_policy(workflow_id, rejected_by, reason)
     if not entity:
         return {"error": "not_found"}
     return {
@@ -302,7 +302,7 @@ async def reject_policy(
 
 
 @router.post("/appeals")
-async def submit_appeal(
+def submit_appeal(
     appeal_id: str,
     appellant_person_id: str,
     identity_id: str,
@@ -312,7 +312,7 @@ async def submit_appeal(
     db: AsyncSession = Depends(get_db),
 ):
     service = AppealService(db)
-    entity = await service.submit_appeal(
+    entity = service.submit_appeal(
         appeal_id=appeal_id,
         appellant_person_id=appellant_person_id,
         identity_id=identity_id,
@@ -328,13 +328,13 @@ async def submit_appeal(
 
 
 @router.get("/appeals")
-async def list_appeals(
+def list_appeals(
     status: str | None = None,
     person_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = AppealService(db)
-    appeals = await service.get_appeals(status=status, person_id=person_id)
+    appeals = service.get_appeals(status=status, person_id=person_id)
     return [
         {
             "uuid": a.uuid,
@@ -349,20 +349,20 @@ async def list_appeals(
 
 
 @router.post("/appeals/{appeal_id}/assign")
-async def assign_appeal_to_council(
+def assign_appeal_to_council(
     appeal_id: str,
     council_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = AppealService(db)
-    entity = await service.assign_to_council(appeal_id, council_id)
+    entity = service.assign_to_council(appeal_id, council_id)
     if not entity:
         return {"error": "not_found"}
     return {"appeal_id": entity.appeal_id, "council_id": entity.council_id, "status": entity.status}
 
 
 @router.post("/appeals/{appeal_id}/decide")
-async def decide_appeal(
+def decide_appeal(
     appeal_id: str,
     decision: str,
     decided_by: str,
@@ -370,7 +370,7 @@ async def decide_appeal(
     db: AsyncSession = Depends(get_db),
 ):
     service = AppealService(db)
-    entity = await service.make_decision(appeal_id, decision, decided_by, notes)
+    entity = service.make_decision(appeal_id, decision, decided_by, notes)
     if not entity:
         return {"error": "not_found"}
     return {"appeal_id": entity.appeal_id, "decision": entity.decision, "status": entity.status}
@@ -380,7 +380,7 @@ async def decide_appeal(
 
 
 @router.post("/suspensions")
-async def suspend_identity(
+def suspend_identity(
     person_id: str,
     identity_id: str,
     reason: str,
@@ -390,7 +390,7 @@ async def suspend_identity(
     db: AsyncSession = Depends(get_db),
 ):
     service = SuspensionService(db)
-    entity = await service.suspend_identity(
+    entity = service.suspend_identity(
         person_id=person_id,
         identity_id=identity_id,
         reason=reason,
@@ -407,14 +407,14 @@ async def suspend_identity(
 
 
 @router.post("/suspensions/{suspension_id}/lift")
-async def lift_suspension(
+def lift_suspension(
     suspension_id: str,
     lifted_by: str,
     reason: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     service = SuspensionService(db)
-    entity = await service.lift_suspension(suspension_id, lifted_by, reason)
+    entity = service.lift_suspension(suspension_id, lifted_by, reason)
     if not entity:
         return {"error": "not_found"}
     return {
@@ -425,11 +425,11 @@ async def lift_suspension(
 
 
 @router.get("/suspensions/active")
-async def list_active_suspensions(
+def list_active_suspensions(
     db: AsyncSession = Depends(get_db),
 ):
     service = SuspensionService(db)
-    suspensions = await service.get_active_suspensions()
+    suspensions = service.get_active_suspensions()
     return [
         {
             "uuid": s.uuid,
@@ -445,12 +445,12 @@ async def list_active_suspensions(
 
 
 @router.get("/suspensions/history/{person_id}")
-async def get_suspension_history(
+def get_suspension_history(
     person_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = SuspensionService(db)
-    history = await service.get_suspension_history(person_id)
+    history = service.get_suspension_history(person_id)
     return [
         {
             "uuid": s.uuid,
@@ -469,7 +469,7 @@ async def get_suspension_history(
 
 
 @router.post("/registry")
-async def register_identity(
+def register_identity(
     person_id: str,
     identity_id: str,
     registry_type: str = "citizen",
@@ -477,7 +477,7 @@ async def register_identity(
     db: AsyncSession = Depends(get_db),
 ):
     service = RegistryService(db)
-    entity = await service.register_identity(
+    entity = service.register_identity(
         person_id=person_id,
         identity_id=identity_id,
         registry_type=registry_type,
@@ -492,19 +492,19 @@ async def register_identity(
 
 
 @router.get("/registry/{person_id}")
-async def get_registration(
+def get_registration(
     person_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = RegistryService(db)
-    entity = await service.get_registration(person_id)
+    entity = service.get_registration(person_id)
     if not entity:
         return {"error": "not_found"}
     return entity.to_dict()
 
 
 @router.post("/registry/certify")
-async def certify_identity(
+def certify_identity(
     certification_id: str,
     person_id: str,
     organization_id: str | None = None,
@@ -519,7 +519,7 @@ async def certify_identity(
     db: AsyncSession = Depends(get_db),
 ):
     service = RegistryService(db)
-    entity = await service.certify_identity(
+    entity = service.certify_identity(
         certification_id=certification_id,
         person_id=person_id,
         organization_id=organization_id,
@@ -541,13 +541,13 @@ async def certify_identity(
 
 
 @router.post("/registry/certification/{certification_id}/revoke")
-async def revoke_certification(
+def revoke_certification(
     certification_id: str,
     reason: str,
     db: AsyncSession = Depends(get_db),
 ):
     service = RegistryService(db)
-    entity = await service.revoke_certification(certification_id, reason)
+    entity = service.revoke_certification(certification_id, reason)
     if not entity:
         return {"error": "not_found"}
     return {"certification_id": entity.certification_id, "status": entity.status}

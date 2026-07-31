@@ -522,8 +522,12 @@ export const governanceApi = {
     api.get(`/niam/governance/authorities`).then(r => r.data),
   createAuthority: (data: unknown) =>
     api.post(`/niam/governance/authorities`, data).then(r => r.data),
-  updateAuthority: (data: unknown, params: Record<string, string | number>) =>
-    api.put(`/niam/governance/authorities/${params.authority_id}`, data).then(r => r.data),
+  getAuthority: (params: Record<string, string | number>) =>
+    api.get(`/niam/governance/authorities/${params.authority_id}`).then(r => r.data),
+  activateAuthority: (params: Record<string, string | number>) =>
+    api.post(`/niam/governance/authorities/${params.authority_id}/activate`).then(r => r.data),
+  suspendAuthority: (params: Record<string, string | number>) =>
+    api.post(`/niam/governance/authorities/${params.authority_id}/suspend`).then(r => r.data),
   createCouncil: (data: unknown) =>
     api.post(`/niam/governance/councils`, data).then(r => r.data),
   getCouncils: () =>
@@ -546,8 +550,6 @@ export const governanceApi = {
     api.get(`/niam/governance/registry/${params.person_id}`).then(r => r.data),
   createReviewBoard: (data: unknown) =>
     api.post(`/niam/governance/review-boards`, data).then(r => r.data),
-  listReviewBoards: () =>
-    api.get(`/niam/governance/review-boards`).then(r => r.data),
 };
 
 // ── health_data ──
@@ -2382,13 +2384,6 @@ export function useGovernanceCreateAuthority() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['governance'] }),
   });
 }
-export function useGovernanceUpdateAuthority() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (variables: { data: unknown; params: Record<string, string | number> }) => governanceApi.updateAuthority(variables.data, variables.params),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['governance'] }),
-  });
-}
 export function useGovernanceCreateCouncil() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -2462,12 +2457,6 @@ export function useGovernanceCreateReviewBoard() {
   return useMutation({
     mutationFn: (data: unknown) => governanceApi.createReviewBoard(data),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['governance'] }),
-  });
-}
-export function useGovernanceListReviewBoards() {
-  return useQuery({
-    queryKey: ['governance', 'listReviewBoards'],
-    queryFn: () => governanceApi.listReviewBoards(),
   });
 }
 export function useHealth_dataListCatalog() {
