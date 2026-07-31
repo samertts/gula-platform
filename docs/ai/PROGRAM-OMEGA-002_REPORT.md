@@ -39,7 +39,7 @@ Close every Frontend ↔ Backend integration gap in the GULA monorepo:
 
 - 78 pages, all lazy-loaded; 73 import real API modules
 - No mocks / no Firebase / no dead data paths
-- 57 API objects in `endpoints.ts`; 154 calls; **34 API objects not consumed by any page** (documented below; `healthApi`/`metricsApi` retired via OpsMetricsPage readiness tab)
+- 57 API objects in `endpoints.ts`; 154 calls; **33 API objects not consumed by any page** (all mapped to dormant bounded contexts or identity-linking decisions; `healthApi`/`metricsApi`/`adminLogLevelApi` retired via real pages)
 
 ### 3.3 API parity — frontend calls vs backend routes
 
@@ -102,9 +102,13 @@ Note: full-suite run requires strong env secrets (`SECRET_KEY` ≥32 chars, vali
 | # | Gap | Impact | Suggested next task |
 |---|---|---|---|
 | 1 | `ehrApi` (14 functions) and `canonicalPatientApi` exported but **unused by any page** | National EHR data not surfaced in UI; MPI canonical records invisible | Decide: (a) build an EHR detail panel on `EhrPage` (composite `/ehr/patient/{id}`), or (b) drop the exports. Requires product decision on national-patient identity linking (canonical ↔ national ↔ lab IDs) before wiring `canonicalPatientApi` — do not implement without the identity-matching domain design |
-| 2 | 34 remaining unused API objects (admin/subscription APIs, aiPlatformApi sub-sets, etc.) | Dead client surface; risk of drift | Either expose via existing pages (admin console) or remove exports |
+| 2 | 33 remaining unused API objects (admin/subscription APIs, aiPlatformApi sub-sets, etc.) | Dead client surface; risk of drift | Either expose via existing pages (admin console) or remove exports |
 | 3 | Generated client (`@/api/generated`) is now correct but still unused — pages use hand-written `endpoints.ts` | Two parallel client surfaces | Consolidation: migrate pages to generated client or delete it; needs a naming/decision pass |
 
-**Status update (post-report):** `healthApi` + `metricsApi` are now consumed — `OpsMetricsPage` gained a readiness tab (`/health/status` + `/health/deep`) and uses the `metricsApi` objects (commit `bbb9f0c2`). Gap #2 reduced from 36 → 34 unused objects.
+**Status updates (post-report):**
+- `healthApi` + `metricsApi` consumed — `OpsMetricsPage` readiness tab (`/health/status` + `/health/deep`); commit `bbb9f0c2`.
+- Admin workflows added (commit `103d3581`): `AdminPendingLabsPage` (pending-lab review + activation) and `AdminControlPage` (kill switch, control-layer stats, log level) — `adminLogLevelApi` retired; unused objects 36 → 33.
+- 3 frontend contract mismatches discovered and fixed by new contract tests: `/admin/labs/pending` → `{total, pending_labs}`; `/admin/control-layer/stats` → `{policy, auto_repair}`; `/admin/log-level` GET → `{root_level, effective_level}`.
+- `test_integration_parity.py` grew 16 → 23 tests (kill-switch cycle, technician 403s, activate flow).
 
-**Recommended next task (highest value, no product decision needed):** admin console workflows — expose the aligned `adminApi` subscription/portal/fhir-connection endpoints in `AdminPages`, retiring more of gap #2. Then pursue gap #1 with the architecture team.
+**Remaining 33 unused objects** all map to dormant bounded contexts (clinical/documentation/identity/consent/insurance) or identity-linking decisions — wiring them would activate unfinished functionality, which the project constitution forbids. This is the intentional stopping point for workflow completion; each remaining item needs a product/domain decision.
