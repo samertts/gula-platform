@@ -355,7 +355,7 @@ class OpsCertification:
 
         per_phase: dict[str, tuple[int, int, int]] = {}
         for phase_name, _ in PHASES:
-            prefix = phase_name.split(".")[0] + " ·"
+            prefix = "P" + phase_name.split(".")[0] + " ·"
             phase_results = [r for r in self.results if r["check"].startswith(prefix)]
             p = sum(1 for r in phase_results if r["status"] == PASS)
             w = sum(1 for r in phase_results if r["status"] == WARN)

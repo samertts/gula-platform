@@ -192,7 +192,7 @@ Never remove dormant enterprise modules. Dormant modules are strategic assets. I
 
 # Workspace Anchored Summary (auto-updated)
 
-Last updated: **PROGRAM-012/012A complete + L2 runtime-cycle fix** — Project Brain live (`make brain`), Enterprise Validation Engine with regression gate (`make validate`, PASS), AI Execution Constitution (Article 32), CLAUDE.md v3.0 as Primary AI Operating Manual, governance docs, 29 engine tests, certification 41/50 (0 FAIL), 2 defects fixed (flaky greeting test, cert script NameError), architecture score 7.1→21.4 (0 runtime circular deps).
+Last updated: **PROGRAM-011 complete** — Operations Readiness Certification `make ops-cert`: **97% PRODUCTION READY** (99 PASS / 7 WARN / 0 FAIL); 200 unit tests; SLO request metrics exported (slo.yml rules now fireable); security-event middleware (401/403/429 metrics ground gula-full.yml); circuit-breaker API fixed (notifications crash bug); PG backup verifier + AES-256 backup encryption (drilled live: 337 tables restore OK); CI backup drill in nightly.yml; PITR runbook; docs/ops/OPERATIONS_MANUAL.md; ops crons committed in server-setup.sh.
 
 ## Objective
 Transform the GULA monorepo into a production-grade national healthcare platform by fixing infrastructure, security, architecture, frontend–backend alignment, and code quality across the entire codebase.
@@ -310,7 +310,7 @@ Transform the GULA monorepo into a production-grade national healthcare platform
 10. **Security framework:** `security/` module with 18 sub‑modules.
 
 ### Active
-- Unit test coverage: **150 tests** across 10 service test files. 10 services covered.
+- Unit test coverage: **200 tests** across 14 test files (10 service + governance + architecture + ops).
 - Frontend test coverage: **54 tests** across 3 files (utils, hooks).
 
 ### Blocked
@@ -318,13 +318,15 @@ Transform the GULA monorepo into a production-grade national healthcare platform
 - `mypy` times out on full backend codebase (too many capabilities/ modules).
 - `docker compose` v2 unavailable (no sudo). `docker-compose` v1 broken. Multi-container orchestration uses raw `docker` commands.
 - `test_comprehensive.py` (103 tests) passes in ~2.4s locally; 120s CI timeout sufficient.
+- Constitution enforcer (advisory) fails Rule 1: 52 source files without tests (mostly dormant contexts) — tracked.
 
 ## Next Move
-1. Follow `docs/ai/MASTER_ROADMAP.md`: component-level baselines, Android/DB validators, brain auto-refresh in CI
-2. Reduce architecture debt (32 L1 layer violations, L3 75, L4 375 — L2 circular deps now 0; score 21.4/100) — advisory but tracked
-3. Add frontend tests for UI components (Badge, Button, Card, etc.)
-4. Continue backend test coverage (pricing_service, identity_service)
-5. Fix remaining N999 module naming violations in active code
+1. PROGRAM-011 WARN burn-down: (a) ASHS per-signal cooldown in `scripts/self_heal.py` (restart-loop risk), (b) outbox-backlog repair action in `auto_repair.py` (docstring promise), (c) OpenTelemetry SDK export (Jaeger/Tempo provisioned but unused)
+2. Follow `docs/ai/MASTER_ROADMAP.md`: component-level baselines, Android/DB validators, brain auto-refresh in CI
+3. Reduce architecture debt (32 L1 layer violations, L3 75, L4 375 — L2 circular deps now 0; score 21.4/100) — advisory but tracked
+4. Add frontend tests for UI components (Badge, Button, Card, etc.)
+5. Continue backend test coverage (pricing_service, identity_service)
+6. Fix remaining N999 module naming violations in active code
 
 ## Relevant Files
 

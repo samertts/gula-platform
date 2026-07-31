@@ -358,6 +358,10 @@ validate-baseline:
 	$(Q)echo "=== Recording validation baseline ==="
 	$(Q)$(PY) scripts/enterprise_validation_engine.py --scope fast --update-baseline
 
+ops-cert:
+	$(Q)echo "=== Operations Readiness Certification (PROGRAM-011) ==="
+	$(Q)$(PY) scripts/operations_certification.py --output-dir reports/ops
+
 metrics:
 	$(Q)echo "=== Enterprise Metrics ==="
 	$(Q)python3 scripts/enterprise_metrics.py
