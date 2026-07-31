@@ -366,13 +366,13 @@ def check_status_machine(db: DB) -> None:
     if not db.table_exists("claims"):
         warn("'claims' table not found"); return
 
-    VALID_STATUSES = ("draft", "validated", "submitted", "accepted", "rejected", "paid")
+    valid_statuses = ("draft", "validated", "submitted", "accepted", "rejected", "paid")
 
     # Any invalid status values
     invalid = db.all(f"""
         SELECT DISTINCT status FROM claims
-        WHERE status NOT IN ({','.join('%s' for _ in VALID_STATUSES)})
-    """, VALID_STATUSES)
+        WHERE status NOT IN ({','.join('%s' for _ in valid_statuses)})
+    """, valid_statuses)
     if invalid:
         fail("Invalid status values in claims", str([r[0] for r in invalid]))
     else:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from governance.catalogs.dependency_registry import DependencyRegistry
@@ -27,7 +27,7 @@ class CostDashboard:
                                if t.vendor.lower() not in ("community", "self", "cncf"))
 
         return {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "infrastructure_cost": {
                 "total_annual": total_cost * 12,
                 "monthly": total_cost,
@@ -82,7 +82,7 @@ class SovereigntyDashboard:
         vendor_lock = sum(1 for t in techs if t.status.value == "forbidden")
 
         return {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "self_hosted_percent": round(self_hosted / total * 100, 1),
             "commercial_percent": round(commercial / total * 100, 1),
             "open_source_percent": round(oss / total * 100, 1),

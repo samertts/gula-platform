@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from typing import Any
 
 from governance.catalogs.dependency_registry import DependencyRegistry
 from governance.catalogs.technology_catalog import TechnologyCatalog
@@ -78,27 +77,26 @@ class GovernanceCLI:
 
         if args.command == "constitution":
             return self._handle_constitution(args)
-        elif args.command == "recommend":
+        if args.command == "recommend":
             return self._handle_recommend(args)
-        elif args.command == "dependency":
+        if args.command == "dependency":
             return self._handle_dependency(args)
-        elif args.command == "procurement":
+        if args.command == "procurement":
             return self._handle_procurement(args)
-        elif args.command == "architecture":
+        if args.command == "architecture":
             return self._handle_architecture(args)
-        elif args.command == "technology":
+        if args.command == "technology":
             return self._handle_technology(args)
-        elif args.command == "cost":
+        if args.command == "cost":
             return self._handle_cost(args)
-        elif args.command == "sovereignty":
+        if args.command == "sovereignty":
             return self._handle_sovereignty(args)
-        elif args.command == "compliance":
+        if args.command == "compliance":
             return self._handle_compliance(args)
-        elif args.command == "adr":
+        if args.command == "adr":
             return self._handle_adr(args)
-        else:
-            parser.print_help()
-            return 1
+        parser.print_help()
+        return 1
 
     def _handle_constitution(self, args: argparse.Namespace) -> int:
         if args.action == "check":

@@ -30,15 +30,14 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import re
 import shutil
 import subprocess
 import sys
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logging.basicConfig(
     level=logging.INFO,
@@ -112,13 +111,13 @@ class FileReport:
     packages: list[PackageEntry] = field(default_factory=list)
     unpinned: list[PackageEntry] = field(default_factory=list)
     no_min_bound: list[PackageEntry] = field(default_factory=list)
-    parse_error: Optional[str] = None
+    parse_error: str | None = None
     audit_vulns: list[Vulnerability] = field(default_factory=list)
     audit_skipped: bool = False
-    audit_error: Optional[str] = None
+    audit_error: str | None = None
     outdated: list[OutdatedEntry] = field(default_factory=list)
     outdated_skipped: bool = False
-    outdated_error: Optional[str] = None
+    outdated_error: str | None = None
 
     @property
     def passed(self) -> bool:
@@ -135,12 +134,12 @@ class FileReport:
 class NpmReport:
     path: Path
     vulns: list[Vulnerability] = field(default_factory=list)
-    audit_error: Optional[str] = None
+    audit_error: str | None = None
     audit_skipped: bool = False
     outdated: list[OutdatedEntry] = field(default_factory=list)
-    outdated_error: Optional[str] = None
+    outdated_error: str | None = None
     packages: list[NpmPackageEntry] = field(default_factory=list)
-    parse_error: Optional[str] = None
+    parse_error: str | None = None
 
     @property
     def passed(self) -> bool:
@@ -154,19 +153,19 @@ class NpmReport:
 @dataclass
 class Conflict:
     package: str
-    specifiers: list[Tuple[str, str]]  # (file_label, specifier)
+    specifiers: list[tuple[str, str]]  # (file_label, specifier)
 
 
 @dataclass
 class GuardReport:
     python_reports: list[FileReport] = field(default_factory=list)
-    npm_report: Optional[NpmReport] = None
+    npm_report: NpmReport | None = None
     conflicts: list[Conflict] = field(default_factory=list)
     timestamp: str = ""
 
     def __post_init__(self):
         if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc).isoformat()
+            self.timestamp = datetime.now(UTC).isoformat()
 
     @property
     def has_issues(self) -> bool:
@@ -284,9 +283,9 @@ def _classify_packages(report: FileReport) -> None:
 # pyproject.toml parser (dependency subset)
 # ═══════════════════════════════════════════════════════════════════════════
 
-def parse_pyproject_deps(filepath: Path) -> Dict[str, str]:
+def parse_pyproject_deps(filepath: Path) -> dict[str, str]:
     """Extract dependency specs from pyproject.toml (project.dependencies)."""
-    deps: Dict[str, str] = {}
+    deps: dict[str, str] = {}
     if not filepath.exists():
         return deps
 
@@ -329,7 +328,7 @@ def parse_pyproject_deps(filepath: Path) -> Dict[str, str]:
 # pip-audit
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _find_tool(name: str) -> Optional[str]:
+def _find_tool(name: str) -> str | None:
     return shutil.which(name)
 
 
@@ -554,7 +553,7 @@ def _parse_npm_packages(report: NpmReport) -> None:
 # Cross-manifest conflict detection
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _extract_bounds(specifier: str) -> list[Tuple[str, str]]:
+def _extract_bounds(specifier: str) -> list[tuple[str, str]]:
     parts = [s.strip() for s in specifier.split(",")]
     result = []
     for part in parts:
@@ -567,7 +566,7 @@ def _extract_bounds(specifier: str) -> list[Tuple[str, str]]:
 def detect_conflicts(python_reports: list[FileReport]) -> list[Conflict]:
     pyproject_deps = parse_pyproject_deps(PYPROJECT)
 
-    package_map: Dict[str, list[Tuple[str, str]]] = {}  # name -> [(label, spec)]
+    package_map: dict[str, list[tuple[str, str]]] = {}  # name -> [(label, spec)]
 
     for report in python_reports:
         if report.parse_error:
@@ -602,7 +601,7 @@ def detect_conflicts(python_reports: list[FileReport]) -> list[Conflict]:
 # --fix mode: upgrade branches
 # ═══════════════════════════════════════════════════════════════════════════
 
-def _run_git(args: list[str], dry_run: bool = False) -> Tuple[int, str]:
+def _run_git(args: list[str], dry_run: bool = False) -> tuple[int, str]:
     if dry_run:
         logger.info("[DRY-RUN] git %s", " ".join(args))
         return 0, ""
@@ -633,7 +632,7 @@ def apply_fix(report: GuardReport, dry_run: bool = True) -> int:
 
     branch_name = (
         f"upgrade/dependency-guardian-"
-        f"{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}"
+        f"{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
     )
 
     ret, _ = _run_git(
@@ -652,12 +651,12 @@ def apply_fix(report: GuardReport, dry_run: bool = True) -> int:
         )
 
     commit_msg = (
-        f"chore: dependency upgrades from guardian scan\n\n"
-        f"Upgrades:\n"
+        "chore: dependency upgrades from guardian scan\n\n"
+        "Upgrades:\n"
     )
     for entry in all_outdated:
         commit_msg += f"- {entry.package}: {entry.installed} -> {entry.latest}\n"
-    commit_msg += f"\nAuto-generated by dependency_guardian.py --fix\n"
+    commit_msg += "\nAuto-generated by dependency_guardian.py --fix\n"
 
     if dry_run:
         ret, _ = _run_git(["diff", "--stat"], dry_run=True)
@@ -850,7 +849,7 @@ def print_human_report(guard: GuardReport) -> int:
     return 1 if (total_vulns > 0 or total_errors > 0 or guard.conflicts or total_outdated > 0) else 0
 
 
-def build_json_report(guard: GuardReport) -> Dict[str, Any]:
+def build_json_report(guard: GuardReport) -> dict[str, Any]:
     python_reports_json = []
     for r in guard.python_reports:
         python_reports_json.append({
@@ -1040,7 +1039,7 @@ def write_markdown_report(guard: GuardReport) -> None:
     lines.append(f"- **Cross-manifest conflicts:** {len(guard.conflicts)}")
     lines.append("")
     lines.append("---")
-    lines.append(f"*Report auto-generated by `scripts/dependency_guardian.py`*")
+    lines.append("*Report auto-generated by `scripts/dependency_guardian.py`*")
 
     REPORT_FILE.write_text("\n".join(lines) + "\n", encoding="utf-8")
     logger.info("Markdown report written to %s", REPORT_FILE)

@@ -22,14 +22,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import logging
-import os
 import pathlib
 import re
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -907,7 +905,7 @@ class IdentityCertification:
 
         return f"""# GULA Identity Platform — Architecture Document
 
-> Generated: {datetime.now(timezone.utc).isoformat()}
+> Generated: {datetime.now(UTC).isoformat()}
 > Program: PROGRAM-IDENTITY-ENTERPRISE-001
 
 ## Overview
@@ -1058,7 +1056,7 @@ Break Glass: Emergency → Justification → Time-limited access → Audit → R
         lines = [
             "# GULA Identity Platform — Role Catalog",
             "",
-            "> Generated: " + datetime.now(timezone.utc).isoformat(),
+            "> Generated: " + datetime.now(UTC).isoformat(),
             "> Program: PROGRAM-IDENTITY-ENTERPRISE-001",
             "",
             "## Role Hierarchy",
@@ -1094,7 +1092,7 @@ Break Glass: Emergency → Justification → Time-limited access → Audit → R
         lines.append("- Platform roles (`master_admin`, `ministry_admin`, `province_admin`) bypass lab-scoped access control.")
         lines.append("- Lab roles (`admin` through `citizen`) are strictly scoped to their lab.")
         lines.append("- All roles are defined in `backend/app/models/authorization.py` with DB-backed `Role` model.")
-        lines.append("- Role groups enable template-based role assignment (e.g., \"Lab Technician\" group).")
+        lines.append('- Role groups enable template-based role assignment (e.g., "Lab Technician" group).')
         lines.append("")
         lines.append("## Role Assignment Model")
         lines.append("")
@@ -1119,7 +1117,7 @@ Break Glass: Emergency → Justification → Time-limited access → Audit → R
 
         return f"""# GULA Identity Platform — Permission Catalog
 
-> Generated: {datetime.now(timezone.utc).isoformat()}
+> Generated: {datetime.now(UTC).isoformat()}
 > Program: PROGRAM-IDENTITY-ENTERPRISE-001
 
 ## Extended Permission Model (16 permissions)
@@ -1195,7 +1193,7 @@ The `permissions` table stores granular permission definitions with:
     def _build_tenant_model(self) -> str:
         return f"""# GULA Identity Platform — Tenant Model
 
-> Generated: {datetime.now(timezone.utc).isoformat()}
+> Generated: {datetime.now(UTC).isoformat()}
 > Program: PROGRAM-IDENTITY-ENTERPRISE-001
 
 ## Tenant Hierarchy
@@ -1285,7 +1283,7 @@ The `User` model carries 5 hierarchy fields:
     def _build_auth_flow(self) -> str:
         return f"""# GULA Identity Platform — Authentication Flow
 
-> Generated: {datetime.now(timezone.utc).isoformat()}
+> Generated: {datetime.now(UTC).isoformat()}
 > Program: PROGRAM-IDENTITY-ENTERPRISE-001
 
 ## Authentication Mechanisms
@@ -1436,7 +1434,7 @@ Session invalidation triggers:
     def _build_security_model(self) -> str:
         return f"""# GULA Identity Platform — Security Model
 
-> Generated: {datetime.now(timezone.utc).isoformat()}
+> Generated: {datetime.now(UTC).isoformat()}
 > Program: PROGRAM-IDENTITY-ENTERPRISE-001
 
 ## Security Controls by Layer
@@ -1539,7 +1537,7 @@ Session invalidation triggers:
 
         return f"""# GULA Identity Platform — Audit Model
 
-> Generated: {datetime.now(timezone.utc).isoformat()}
+> Generated: {datetime.now(UTC).isoformat()}
 > Program: PROGRAM-IDENTITY-ENTERPRISE-001
 
 ## Audit Principles
@@ -1674,7 +1672,7 @@ chain recomputation.
 
         return f"""# GULA Identity Platform — Enterprise Certification Report
 
-> Generated: {datetime.now(timezone.utc).isoformat()}
+> Generated: {datetime.now(UTC).isoformat()}
 > Program: PROGRAM-IDENTITY-ENTERPRISE-001
 > Total Checks: {total}
 > Passed: {passed} | Warnings: {warned} | Failed: {failed}

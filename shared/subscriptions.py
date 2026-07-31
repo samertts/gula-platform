@@ -5,8 +5,6 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from datetime import UTC
-
 logger = logging.getLogger("gula.subscriptions")
 
 

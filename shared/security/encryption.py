@@ -20,10 +20,15 @@ def encrypt_value(value: str, key: str) -> str:
 
 
 def decrypt_value(token: str, key: str) -> str:
+    from cryptography.fernet import InvalidToken
+
     f = _get_fernet(key)
     if f is None:
         raise ValueError("Encryption key is required")
-    return f.decrypt(token.encode()).decode()
+    try:
+        return f.decrypt(token.encode()).decode()
+    except InvalidToken as exc:
+        raise ValueError(f"Invalid or corrupted ciphertext: {exc}") from exc
 
 
 def encrypt_national_id(nid: str, encryption_key: str, hmac_key: str) -> str:

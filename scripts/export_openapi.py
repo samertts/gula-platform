@@ -71,7 +71,7 @@ def _enrich_spec(spec: dict) -> dict:
     spec["security"] = [{"BearerAuth": []}]
 
     # Tag descriptions (maps to frontend screens/sections)
-    _TAG_DESCRIPTIONS = {
+    _tag_descriptions = {
         "auth":          {"description": "Authentication — login, registration, token refresh"},
         "labs":          {"description": "Lab management — info, employees, settings"},
         "patients":      {"description": "Patient registry — create, search, view records"},
@@ -91,7 +91,7 @@ def _enrich_spec(spec: dict) -> dict:
     }
 
     existing_tags = {t["name"]: t for t in spec.get("tags", [])}
-    for name, meta in _TAG_DESCRIPTIONS.items():
+    for name, meta in _tag_descriptions.items():
         if name not in existing_tags:
             spec.setdefault("tags", []).append({"name": name, **meta})
         else:
@@ -110,11 +110,11 @@ def _enrich_spec(spec: dict) -> dict:
     ]
 
     # Remove internal paths that are not meant for frontend consumers
-    _INTERNAL = {"/metrics/prom", "/health/deep", "/health/status"}
+    _internal = {"/metrics/prom", "/health/deep", "/health/status"}
     spec["paths"] = {
         path: ops
         for path, ops in spec.get("paths", {}).items()
-        if path not in _INTERNAL
+        if path not in _internal
     }
 
     return spec

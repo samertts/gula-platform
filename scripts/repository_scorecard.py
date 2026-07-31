@@ -501,7 +501,7 @@ def _score_security() -> AxisResult:
     jwt_weak_alg = False
     if auth_path.exists():
         auth_content = auth_path.read_text()
-        if "algorithm=\"none\"" in auth_content or "algorithm='none'" in auth_content:
+        if 'algorithm="none"' in auth_content or "algorithm='none'" in auth_content:
             jwt_weak_alg = True
     ax.add_check("JWT algorithm secure", not jwt_weak_alg, "No insecure JWT algorithm detected")
 
@@ -594,7 +594,7 @@ def _score_architecture() -> AxisResult:
         for p in _walk_py("backend/app")[:100]:
             content = p.read_text(errors="replace")
             rel = p.relative_to(REPO_ROOT / "backend" / "app").with_suffix("").as_posix().replace("/", ".")
-            for m in re.finditer(r'^from\s+app\.(\S+)\s+import', content, re.MULTILINE):
+            for m in re.finditer(r"^from\s+app\.(\S+)\s+import", content, re.MULTILINE):
                 import_graph[rel].add(m.group(1))
 
         self_imports = sum(1 for k, v in import_graph.items() if k in v)
@@ -833,7 +833,7 @@ def _score_git_hygiene() -> AxisResult:
         branch_result = _run(["git", "branch", "--show-current"], cwd=REPO_ROOT)
         current_branch = branch_result.stdout.strip()
         if current_branch:
-            valid_pattern = re.match(r'^(main|develop|feature/|fix/|hotfix/|release/|chore/|docs/)', current_branch)
+            valid_pattern = re.match(r"^(main|develop|feature/|fix/|hotfix/|release/|chore/|docs/)", current_branch)
             ax.add_check("Branch naming convention", bool(valid_pattern), f"Current branch: {current_branch}")
         else:
             ax.add_check("Branch naming convention", False, "Detached HEAD or no branch")
@@ -856,7 +856,7 @@ def _score_git_hygiene() -> AxisResult:
     if git_dir.exists():
         branch_result = _run(["git", "branch", "--show-current"], cwd=REPO_ROOT)
         current_branch = branch_result.stdout.strip()
-        if current_branch and not re.match(r'^(main|develop|feature/|fix/|hotfix/|release/)', current_branch):
+        if current_branch and not re.match(r"^(main|develop|feature/|fix/|hotfix/|release/)", current_branch):
             base -= 10
 
     ax.set_score(max(0, base))
@@ -873,7 +873,7 @@ def _score_git_hygiene() -> AxisResult:
         if git_dir.exists():
             branch_result = _run(["git", "branch", "--show-current"], cwd=REPO_ROOT)
             current_branch = branch_result.stdout.strip()
-            if current_branch and not re.match(r'^(main|develop|feature/|fix/|hotfix/|release/)', current_branch):
+            if current_branch and not re.match(r"^(main|develop|feature/|fix/|hotfix/|release/)", current_branch):
                 ax.add_recommendation("Use branch naming convention: feature/, fix/, hotfix/, release/, chore/")
 
     return ax

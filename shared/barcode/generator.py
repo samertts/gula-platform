@@ -29,8 +29,8 @@ def generate_barcode_image(
 
     import barcode
     try:
-        Code128 = barcode.get_barcode_class("code128")
-        b = Code128(code, writer=ImageWriter())
+        code128_cls = barcode.get_barcode_class("code128")
+        b = code128_cls(code, writer=ImageWriter())
         buf = io.BytesIO()
         b.write(buf, options={"module_width": 0.5, "module_height": 15.0})
         return buf.getvalue()

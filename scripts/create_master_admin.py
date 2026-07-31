@@ -49,8 +49,8 @@ def main():
 
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     engine = create_engine(database_url)
-    Session = sessionmaker(bind=engine)
-    db = Session()
+    session_local = sessionmaker(bind=engine)
+    db = session_local()
 
     try:
         # Ensure platform lab exists

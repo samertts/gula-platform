@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +28,7 @@ class ContinuousComplianceMonitor:
         self._check_architecture()
 
         return {
-            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "checked_at": datetime.now(UTC).isoformat(),
             "total_alerts": len(self.alerts),
             "blocker_alerts": sum(1 for a in self.alerts if a["severity"] == "BLOCKER"),
             "high_alerts": sum(1 for a in self.alerts if a["severity"] == "HIGH"),

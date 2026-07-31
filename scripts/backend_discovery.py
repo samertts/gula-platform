@@ -6,14 +6,12 @@ and modules. Used by the frontend code generator to produce typed clients.
 
 from __future__ import annotations
 
-import ast
 import json
 import os
 import re
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
-
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent / "backend" / "app"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "docs" / "api"
@@ -51,7 +49,7 @@ def discover_endpoints() -> dict[str, BackendModule]:
     )
     func_pattern = re.compile(r"async def (\w+)\s*\(")
     router_prefix = re.compile(r'APIRouter\(.*prefix\s*=\s*"([^"]+)"')
-    tag_pattern = re.compile(r'tags\s*=\s*\[([^\]]+)\]')
+    tag_pattern = re.compile(r"tags\s*=\s*\[([^\]]+)\]")
 
     for root, dirs, files in os.walk(BACKEND_DIR):
         for fname in files:

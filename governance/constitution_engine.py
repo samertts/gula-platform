@@ -1,17 +1,12 @@
 from __future__ import annotations
 
-import json
-import re
-from datetime import datetime, timezone
-from pathlib import Path
+from datetime import UTC, datetime
 from typing import Any
 
 from governance.compiler.constitution_compiler import ConstitutionCompiler
 from governance.compiler.models import (
     CompiledConstitution,
     ConstitutionalRule,
-    ProcurementDecision,
-    Recommendation,
     RuleCategory,
     RuleEvaluationReport,
     RuleEvaluationResult,
@@ -61,7 +56,7 @@ class ConstitutionEngine:
         score = (passed / total * 100) if total > 0 else 100.0
 
         return RuleEvaluationReport(
-            evaluated_at=datetime.now(timezone.utc).isoformat(),
+            evaluated_at=datetime.now(UTC).isoformat(),
             total_rules=total,
             passed=passed,
             failed=failed,
@@ -269,7 +264,7 @@ class ConstitutionEngine:
     def generate_audit_trail(self, request_type: str, context: dict[str, Any]) -> dict[str, Any]:
         report = self.evaluate_request(request_type, context)
         return {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "request_type": request_type,
             "context_summary": {k: v for k, v in context.items() if k != "password"},
             "score": report.score,
@@ -288,7 +283,7 @@ class ConstitutionEngine:
     def generate_compliance_report(self, scope: str = "full") -> dict[str, Any]:
         report = self.evaluate_request("architecture_decision", {"scope": scope})
         return {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "scope": scope,
             "constitution_version": self.constitution.version if self.constitution else "unknown",
             "total_rules": self.constitution.rule_count if self.constitution else 0,

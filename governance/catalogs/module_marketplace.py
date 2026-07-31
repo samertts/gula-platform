@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from governance.catalogs.component_registry import NationalComponentRegistry
@@ -83,7 +83,7 @@ class ModuleMarketplace:
                 "maintenance": self.get_maintenance_score(comp.name),
             }
         return {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "total_components": len(self.registry.components),
             "scores": scores,
         }

@@ -2,10 +2,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from enum import Enum
-
-from datetime import UTC
 
 
 class Gender(Enum):

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from governance.catalogs.technology_catalog import TechnologyCatalog
 from governance.catalogs.dependency_registry import DependencyRegistry
+from governance.catalogs.technology_catalog import TechnologyCatalog
 from governance.compiler.models import Recommendation
 from governance.constitution_engine import ConstitutionEngine
 
@@ -35,7 +35,7 @@ class AIRecommendationEngine:
             ranked=ranked[:max_results],
             explanation=explanation,
             total_evaluated=len(evaluated),
-            timestamp=datetime.now(timezone.utc).isoformat(),
+            timestamp=datetime.now(UTC).isoformat(),
         )
 
     def _search_existing_platform(self, query: str) -> list[dict[str, Any]]:

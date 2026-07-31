@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
-import os
 import json
 import logging
-import requests
+import os
 import subprocess
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
+
+import requests
 
 # Configure logging
 logging.basicConfig(
@@ -38,10 +39,10 @@ def _run_command(command: list[str]) -> tuple[bool, str]:
         logger.error(f"Command not found: {command[0]}")
         return False, "Command not found"
     except subprocess.TimeoutExpired:
-        logger.error('Command timed out: %s', ' '.join(command))
+        logger.error("Command timed out: %s", " ".join(command))
         return False, "Command timed out"
     except subprocess.CalledProcessError as e:
-        logger.warning('Command failed: %s\nError: %s', ' '.join(command), e.stderr.strip())
+        logger.warning("Command failed: %s\nError: %s", " ".join(command), e.stderr.strip())
         return False, e.stderr.strip()
 
 def get_backend_metrics():
@@ -63,7 +64,7 @@ def get_system_resources() -> dict:
         "sh", "-c",
         "top -bn1 | grep 'Cpu(s)' | sed 's/.*, *\\([0-9.]*\\)%* id.*/\\1/' | awk '{print 100 - $1}'",
     ])
-    if success and output.strip().replace('.', '', 1).isdigit():
+    if success and output.strip().replace(".", "", 1).isdigit():
         resources["cpu_percent"] = float(output.strip())
 
     # Get Memory usage (using free -m)
@@ -71,7 +72,7 @@ def get_system_resources() -> dict:
         "sh", "-c",
         "free -m | awk '/Mem:/ {print $3/$2 * 100}'",
     ])
-    if success and output.strip().replace('.', '', 1).isdigit():
+    if success and output.strip().replace(".", "", 1).isdigit():
         resources["memory_percent"] = float(output.strip())
 
     # Get Disk usage (using df -h for root partition)
@@ -102,7 +103,7 @@ def trigger_autofix(reason: str):
 def generate_daily_report():
     """Generates a daily system status report."""
     report = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "report_type": "daily",
         "system_status": "UNKNOWN",
         "backend_metrics": {},
@@ -120,29 +121,29 @@ def generate_daily_report():
             report["system_status"] = "UP"
         else:
             report["system_status"] = "DEGRADED"
-            send_alert('System is DEGRADED: DB=%s, Redis=%s' % (metrics['db']['ok'], metrics['redis']['ok']), "CRITICAL")
+            send_alert("System is DEGRADED: DB=%s, Redis=%s" % (metrics["db"]["ok"], metrics["redis"]["ok"]), "CRITICAL")
             trigger_autofix("Backend services degraded (DB/Redis issues)")
 
         # Detect slow operations (threshold 200ms for ping)
         if metrics["db"]["ping_ms"] > 200:
             report["slow_operations"].append("Database ping is slow")
-            send_alert('Slow Database: %sms' % metrics['db']['ping_ms'], "WARNING")
+            send_alert("Slow Database: %sms" % metrics["db"]["ping_ms"], "WARNING")
         if metrics["redis"]["ping_ms"] > 200:
             report["slow_operations"].append("Redis ping is slow")
-            send_alert('Slow Redis: %sms' % metrics['redis']['ping_ms'], "WARNING")
+            send_alert("Slow Redis: %sms" % metrics["redis"]["ping_ms"], "WARNING")
 
     # Fetch System Resources
     system_resources = get_system_resources()
     report["system_resources"] = system_resources
 
     if system_resources["cpu_percent"] is not None and system_resources["cpu_percent"] > CPU_THRESHOLD:
-        send_alert('High CPU Usage: %.2f%%' % system_resources['cpu_percent'], "CRITICAL")
+        send_alert("High CPU Usage: %.2f%%" % system_resources["cpu_percent"], "CRITICAL")
         trigger_autofix("High CPU usage detected")
     if system_resources["memory_percent"] is not None and system_resources["memory_percent"] > MEMORY_THRESHOLD:
-        send_alert('High Memory Usage: %.2f%%' % system_resources['memory_percent'], "CRITICAL")
+        send_alert("High Memory Usage: %.2f%%" % system_resources["memory_percent"], "CRITICAL")
         trigger_autofix("High Memory usage detected")
     if system_resources["disk_percent"] is not None and system_resources["disk_percent"] > DISK_THRESHOLD:
-        send_alert('High Disk Usage: %s%%' % system_resources['disk_percent'])
+        send_alert("High Disk Usage: %s%%" % system_resources["disk_percent"])
         trigger_autofix("High Disk usage detected")
 
     # Save report
@@ -155,7 +156,7 @@ def generate_daily_report():
 def generate_weekly_report():
     """Generates a weekly deep dive report (placeholder)."""
     report = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "report_type": "weekly",
         "performance_summary": "N/A",
         "security_summary": "N/A",

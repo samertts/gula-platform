@@ -12,11 +12,10 @@ Returns exit code 0 on success, 1 on failure.
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -232,7 +231,7 @@ def scan_all_package_json() -> list[dict[str, Any]]:
 
 def build_spdx_document(packages: list[dict[str, Any]]) -> dict[str, Any]:
     """Build an SPDX 2.3 JSON document from the package list."""
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     doc_namespace = f"{DOCUMENT_NAMESPACE_BASE}/{now}"
 
     unique_packages: dict[str, dict[str, Any]] = {}

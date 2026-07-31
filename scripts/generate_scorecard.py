@@ -2,7 +2,6 @@
 """Generate verified enterprise scorecard and executive report."""
 
 import json
-import os
 import pathlib
 import sys
 

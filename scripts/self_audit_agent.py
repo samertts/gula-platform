@@ -37,10 +37,8 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-
-from datetime import UTC
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 REPO_ROOT   = Path(__file__).parent.parent.resolve()

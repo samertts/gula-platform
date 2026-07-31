@@ -6,8 +6,6 @@ from enum import Enum
 from typing import Any
 from uuid import uuid4
 
-from datetime import UTC
-
 
 class AppointmentStatus(Enum):
     PENDING = "pending"

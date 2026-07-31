@@ -10,12 +10,12 @@ The primary implementation lives in threat_detection/ module:
 - dashboard.py — Security metrics and dashboard
 """
 
+from security.modules.threat_detection.dashboard import SecurityMetricsCollector
 from security.modules.threat_detection.engine import ThreatDetectionEngine
 from security.modules.threat_detection.risk_engine import RiskEngine
-from security.modules.threat_detection.dashboard import SecurityMetricsCollector
 
 __all__ = [
-    "ThreatDetectionEngine",
     "RiskEngine",
     "SecurityMetricsCollector",
+    "ThreatDetectionEngine",
 ]

@@ -67,6 +67,6 @@ def sanitize_html(html: str) -> str:
     return _html.escape(html)
 
 
-def chunks(lst: list[Any], size: int) -> Generator[list[Any], None, None]:
+def chunks(lst: list[Any], size: int) -> Generator[list[Any]]:
     for i in range(0, len(lst), size):
         yield lst[i : i + size]

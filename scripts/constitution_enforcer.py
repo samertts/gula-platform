@@ -69,9 +69,8 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger("constitution_enforcer")
@@ -693,7 +692,7 @@ def rule11_architecture_score() -> RuleResult:
 
     try:
         baseline["architecture_score"] = score
-        baseline["timestamp"] = datetime.now(timezone.utc).isoformat()
+        baseline["timestamp"] = datetime.now(UTC).isoformat()
         SCORE_BASELINE_FILE.write_text(json.dumps(baseline, indent=2), encoding="utf-8")
     except OSError:
         pass
@@ -801,9 +800,7 @@ def rule15_dead_code(changed_py_files: list[str]) -> RuleResult:
         defined = set()
         used = set()
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                defined.add(node.name)
-            elif isinstance(node, ast.ClassDef):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) or isinstance(node, ast.ClassDef):
                 defined.add(node.name)
             elif isinstance(node, ast.Name) and not isinstance(node.ctx, (ast.Store, ast.Del)):
                 used.add(node.id)
@@ -1280,16 +1277,15 @@ def _rule_label(rule: RuleResult) -> str:
     status = rule["status"]
     if status == PASS:
         return f"[{_green('PASS')}]"
-    elif status == WARNING:
+    if status == WARNING:
         return f"[{_yellow('WARN')}]"
-    else:
-        return f"[{_red('FAIL')}]"
+    return f"[{_red('FAIL')}]"
 
 
 def print_report(results: list[RuleResult], score: float, json_output: bool) -> None:
     if json_output:
         report = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "repository": str(REPO_ROOT),
             "compliance_score": round(score, 1),
             "passed": score >= 100.0,
@@ -1303,7 +1299,7 @@ def print_report(results: list[RuleResult], score: float, json_output: bool) -> 
     print(_bold("  GULA — Engineering Constitution Compliance Report"))
     print(_bold("═" * 72))
     print()
-    print(f"  Timestamp: {datetime.now(timezone.utc).isoformat()}")
+    print(f"  Timestamp: {datetime.now(UTC).isoformat()}")
     print(f"  Repository: {REPO_ROOT}")
     print()
 

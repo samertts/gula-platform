@@ -3,8 +3,6 @@ from __future__ import annotations
 import hashlib
 import hmac
 import struct
-import time
-from typing import Any
 
 import pyotp
 

@@ -1,0 +1,159 @@
+apiVersion: 1
+
+# GULA-managed alert rules (Grafana unified alerting).
+# Mirrors the Prometheus rules in config/prometheus/rules/ but runs natively
+# in Grafana, so alerts surface in the Grafana UI with annotations, silence
+# support, and routing through the notification policy tree.
+#
+# Requires the Prometheus datasource to have uid `gula-prometheus` — see
+# config/grafana/provisioning/datasources/datasources.yml.
+
+groups:
+  - orgId: 1
+    name: gula-slo
+    folder: GULA Alerts
+    interval: 1m
+    rules:
+      - uid: gula_backend_down
+        title: GULA Backend Down
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: gula-prometheus
+            model:
+              expr: gula_up
+              refId: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource:
+                type: prometheus
+                uid: gula-prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: lt
+                    params: [0.5]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              refId: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource:
+                type: __expr__
+                uid: __expr__
+        noDataState: Alerting
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: critical
+          team: ops
+        annotations:
+          summary: GULA backend is down (gula_up=0)
+
+      - uid: gula_request_error_ratio
+        title: GULA Request Error Ratio High
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: gula-prometheus
+            model:
+              expr: sum(rate(gula_request_errors_total[5m])) / sum(rate(gula_requests_total[5m]))
+              refId: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource:
+                type: prometheus
+                uid: gula-prometheus
+            relativeTimeRange:
+              from: 600
+              to: 0
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.05]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              refId: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource:
+                type: __expr__
+                uid: __expr__
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: HTTP 5xx error ratio above 5% over 5m
+
+      - uid: gula_outbox_backlog
+        title: GULA Outbox Backlog High
+        condition: B
+        data:
+          - refId: A
+            datasourceUid: gula-prometheus
+            model:
+              expr: gula_queue_backlog
+              refId: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource:
+                type: prometheus
+                uid: gula-prometheus
+            relativeTimeRange:
+              from: 600
+              to: 0
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [200]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                  type: query
+              refId: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              datasource:
+                type: __expr__
+                uid: __expr__
+        noDataState: NoData
+        execErrState: Error
+        for: 10m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: Outbox backlog above 200 pending events

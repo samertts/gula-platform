@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from joserfc import jwt as jose_jwt
 from joserfc import jwk
+from joserfc import jwt as jose_jwt
 from joserfc.jwt import JWTClaimsRegistry
 
 logger = logging.getLogger("gula.auth.jwt")
@@ -36,8 +36,8 @@ def create_access_token(
     extra_claims: dict[str, Any] | None = None,
 ) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=expire_minutes)
-    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc)})
+    expire = datetime.now(UTC) + timedelta(minutes=expire_minutes)
+    to_encode.update({"exp": expire, "iat": datetime.now(UTC)})
     if extra_claims:
         to_encode.update(extra_claims)
     key = _make_key(secret_key)
@@ -51,8 +51,8 @@ def create_refresh_token(
     expire_days: int = 30,
 ) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(days=expire_days)
-    to_encode.update({"exp": expire, "iat": datetime.now(timezone.utc), "type": "refresh"})
+    expire = datetime.now(UTC) + timedelta(days=expire_days)
+    to_encode.update({"exp": expire, "iat": datetime.now(UTC), "type": "refresh"})
     key = _make_key(refresh_secret)
     return jose_jwt.encode({"alg": algorithm}, to_encode, key)
 

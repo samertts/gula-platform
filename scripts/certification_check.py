@@ -40,10 +40,9 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
-import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -131,7 +130,7 @@ class CertificationResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "repository": str(REPO_ROOT),
             "certification": {
                 "level": self.certification_level,
@@ -328,7 +327,7 @@ def format_certification_report(result: CertificationResult) -> str:
     lines.append(f"  {_c('bold', '╚════════════════════════════════════════════════════════════════╝')}")
     lines.append("")
 
-    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    now_str = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     lines.append(f"  Timestamp:  {now_str}")
     lines.append(f"  Repository: {REPO_ROOT.name}")
     lines.append("")
@@ -414,9 +413,9 @@ def format_certification_report(result: CertificationResult) -> str:
     if result.certification_level == "NOT CERTIFIED":
         lines.append(f"  {_c('red', '✖ NOT CERTIFIED')} — The platform does not meet minimum certification criteria.")
         lines.append(f"  {_c('bold', 'Minimum Requirements:')}")
-        lines.append(f"    - Quality Index >= 600")
-        lines.append(f"    - Zero P0 debt items")
-        lines.append(f"    - Quality Gate must pass")
+        lines.append("    - Quality Index >= 600")
+        lines.append("    - Zero P0 debt items")
+        lines.append("    - Quality Gate must pass")
     elif result.certification_level == "BRONZE":
         lines.append(f"  {_c('cyan', '✔ BRONZE')} — Foundation established, governance frameworks operational.")
         lines.append(f"  {_c('bold', 'Path to SILVER:')}")

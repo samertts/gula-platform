@@ -28,15 +28,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import pathlib
 import re
 import shutil
 import subprocess
 import sys
 import time
-from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -154,7 +152,7 @@ def run_compliance_engine() -> dict[str, Any]:
         return {"score": 0, "results": []}
     try:
         return json.loads(result.stdout)
-    except (json.JSONDecodeError, ValueError) as e:
+    except (json.JSONDecodeError, ValueError):
         return {"score": 0, "results": []}
 
 
@@ -529,7 +527,7 @@ def load_history() -> list[dict[str, Any]]:
 def save_snapshot(metrics: dict[str, Any]) -> list[dict[str, Any]]:
     history = load_history()
     snapshot = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "quality_index": metrics["quality_index"]["total"],
         "quality_grade": metrics["quality_index"]["grade"],
         "debt_items": metrics["debt_kpis"]["total_items"],
@@ -646,7 +644,7 @@ def render_multi_chart(history: list[dict[str, Any]]) -> list[str]:
 # ── Report Renderer ──────────────────────────────────────────────────────
 
 def render_report(metrics: dict[str, Any], history: list[dict[str, Any]], show_chart: bool) -> str:
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
     qi = metrics["quality_index"]
     debt = metrics["debt_kpis"]
     test = metrics["test_kpis"]
@@ -748,7 +746,7 @@ def render_report(metrics: dict[str, Any], history: list[dict[str, Any]], show_c
     lines.append(f"    {'Total Commits':<28} {vel['total_commits']}")
     lines.append(f"    {'PR Merge Time':<28} ~{vel['pr_merge_time_hours']}h")
     lines.append(f"    {'Build Success':<28} {vel['build_success_rate']}%")
-    mttr_val = "N/A" if vel['mttr_hours'] == 0 else f"{vel['mttr_hours']}h"
+    mttr_val = "N/A" if vel["mttr_hours"] == 0 else f"{vel['mttr_hours']}h"
     lines.append(f"    {'MTTR':<28} {mttr_val}")
     lines.append("")
 
@@ -776,7 +774,7 @@ def render_json(metrics: dict[str, Any], history: list[dict[str, Any]]) -> str:
     vel = metrics["velocity_kpis"]
 
     output = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "repository": str(REPO_ROOT),
         "quality_index": {
             "total": qi["total"],

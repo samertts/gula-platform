@@ -38,11 +38,11 @@ def main() -> int:
     check(not has_local_state, "No local filesystem state in API handlers")
 
     print("\n2. Checking connection pool formula...")
-    WEB_CONCURRENCY = int(os.environ.get('WEB_CONCURRENCY', '3'))
-    DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE', '6'))
-    DB_MAX_OVERFLOW = int(os.environ.get('DB_MAX_OVERFLOW', '12'))
+    web_concurrency = int(os.environ.get('WEB_CONCURRENCY', '3'))
+    db_pool_size = int(os.environ.get('DB_POOL_SIZE', '6'))
+    db_max_overflow = int(os.environ.get('DB_MAX_OVERFLOW', '12'))
     max_connections = int(os.environ.get('POSTGRES_MAX_CONNECTIONS', '100'))
-    budget = WEB_CONCURRENCY * (DB_POOL_SIZE + DB_MAX_OVERFLOW)
+    budget = web_concurrency * (db_pool_size + db_max_overflow)
     check(budget < max_connections,
           f"Connection budget ({budget}) < max_connections ({max_connections})")
 

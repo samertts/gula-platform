@@ -25,12 +25,10 @@ import argparse
 import ast
 import json
 import logging
-import os
 import pathlib
 import re
 import sys
-from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger("architecture_guardian")
@@ -649,7 +647,7 @@ def check_unused_imports(root: pathlib.Path) -> list[dict[str, Any]]:
             for node in ast.walk(tree):
                 if isinstance(node, ast.Name) and node.id == name and not isinstance(node.ctx, (ast.Store, ast.Del)):
                     # Make sure this isn't the import statement itself
-                    if hasattr(node, 'col_offset') and hasattr(node, 'lineno'):
+                    if hasattr(node, "col_offset") and hasattr(node, "lineno"):
                         usage_count += 1
                 elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == name:
                     usage_count += 1
@@ -679,9 +677,7 @@ def check_unused_imports(root: pathlib.Path) -> list[dict[str, Any]]:
             # Check: is the module name used as an attribute access target?
             usage_count = 0
             for node in ast.walk(tree):
-                if isinstance(node, ast.Name) and node.id == module_name.split(".")[0]:
-                    usage_count += 1
-                elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == module_name.split(".")[0]:
+                if (isinstance(node, ast.Name) and node.id == module_name.split(".")[0]) or (isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == module_name.split(".")[0]):
                     usage_count += 1
 
             if usage_count <= 1:
@@ -717,7 +713,7 @@ def _load_violation_history() -> dict[str, Any]:
 def _save_violation_history(violations: list[dict[str, Any]]) -> None:
     """Save current violations as the new baseline."""
     history = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "violations": violations,
     }
     try:
@@ -816,7 +812,7 @@ def _print_report(
     """Print the report to stdout."""
     if json_output:
         report = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "summary": {
                 "total": len(all_violations),
                 "new": len(new_violations),

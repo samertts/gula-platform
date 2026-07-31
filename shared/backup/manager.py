@@ -7,8 +7,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from datetime import UTC
-
 logger = logging.getLogger("gula.backup")
 
 

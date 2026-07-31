@@ -11,11 +11,8 @@ Output:
 
 from __future__ import annotations
 
-import json
 import re
-import uuid
 from pathlib import Path
-from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_DIR = PROJECT_ROOT / "backend" / "app"
@@ -104,11 +101,11 @@ def extract_model_fields(content: str, class_name: str) -> list[dict[str, str]]:
     fields: list[dict[str, str]] = []
     # Match lines like: field_name: type = Column(...)
     col_pattern = re.compile(
-        r'^\s+(\w+)\s*[=:]\s*(?:Column|association_proxy)\(.*$', re.MULTILINE
+        r"^\s+(\w+)\s*[=:]\s*(?:Column|association_proxy)\(.*$", re.MULTILINE
     )
     # Match annotated fields: field_name: type
     annot_pattern = re.compile(
-        r'^\s+(\w+)\s*:\s*([^=#]+?)(?:\s*=|#|$)', re.MULTILINE
+        r"^\s+(\w+)\s*:\s*([^=#]+?)(?:\s*=|#|$)", re.MULTILINE
     )
 
     # Find the class definition
@@ -143,7 +140,7 @@ def extract_model_fields(content: str, class_name: str) -> list[dict[str, str]]:
     body = "\n".join(class_lines)
 
     # Strip docstrings to avoid matching docstring sections like "Examples:"
-    body = re.sub(r'""".*?"""', '', body, flags=re.DOTALL)
+    body = re.sub(r'""".*?"""', "", body, flags=re.DOTALL)
 
     # Extract Column fields
     skip_fields = {"uuid", "id", "is_active", "created_at", "updated_at", "tenant_id", "deleted_at", "deleted"}
@@ -180,7 +177,7 @@ def generate_types() -> str:
     lines: list[str] = [
         "// AUTO-GENERATED — DO NOT EDIT",
         "// Generated from backend/ models",
-        '// Run: python scripts/generate_frontend_client.py',
+        "// Run: python scripts/generate_frontend_client.py",
         "",
         "// =============================================================================",
         "// Domain Enums",
@@ -248,7 +245,7 @@ def generate_types() -> str:
 
                 lines.append(f"// backend model: {class_name}" + (f"  (table: {table_name})" if table_name else ""))
                 lines.append(f"export interface {class_name} {{")
-                lines.append(f'  uuid: string;')
+                lines.append("  uuid: string;")
                 for f in fields:
                     ts_type = f.get("ts_type", "unknown")
                     lines.append(f"  {snake_to_camel(f['name'])}?: {ts_type};")
@@ -263,7 +260,7 @@ def generate_api_client() -> str:
     lines: list[str] = [
         "// AUTO-GENERATED API CLIENT — DO NOT EDIT",
         "// Generated from backend/ route files",
-        '// Run: python scripts/generate_frontend_client.py',
+        "// Run: python scripts/generate_frontend_client.py",
         "",
         'import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";',
         'import { api } from "../client";',
@@ -1225,7 +1222,7 @@ export * from "./types";
 export * from "./client";
 """
     (FRONTEND_DIR / "index.ts").write_text(index_content)
-    print(f"Generated index.ts")
+    print("Generated index.ts")
     print(f"\nAll outputs in {FRONTEND_DIR}")
 
 

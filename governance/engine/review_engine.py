@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
@@ -184,7 +185,7 @@ class AutonomousReviewEngine:
                 })
 
     def get_report(self) -> dict[str, Any]:
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         blocker = sum(1 for f in self.findings if f["severity"] == "BLOCKER")
         high = sum(1 for f in self.findings if f["severity"] == "HIGH")
@@ -201,7 +202,7 @@ class AutonomousReviewEngine:
             types[t]["severities"].append(f["severity"])
 
         return {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "total_findings": len(self.findings),
             "severity_summary": {
                 "blocker": blocker,

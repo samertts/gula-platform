@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -87,7 +87,7 @@ class ConstitutionCompiler:
             rules=self.rules,
             checksum=checksum,
             version="1.0.0",
-            compiled_at=datetime.now(timezone.utc).isoformat(),
+            compiled_at=datetime.now(UTC).isoformat(),
             rule_count=len(self.rules),
             document_count=len(self.documents),
             conflict_count=len(self.conflicts),
@@ -117,7 +117,7 @@ class ConstitutionCompiler:
             checksum=checksum,
             rules=rules,
             articles=articles,
-            compiled_at=datetime.now(timezone.utc).isoformat(),
+            compiled_at=datetime.now(UTC).isoformat(),
         )
 
     def _extract_rules(self, text: str, source: str) -> list[ConstitutionalRule]:
@@ -335,7 +335,7 @@ class ConstitutionCompiler:
         for parent, children in compiled.inheritance_tree.items():
             for child in children:
                 edges.append(f'  "{parent}" -> "{child}"')
-        dot = f"digraph Constitution {{\n  rankdir=LR;\n  node [shape=box, style=rounded];\n" + "\n".join(nodes) + "\n" + "\n".join(edges) + "\n}"
+        dot = "digraph Constitution {\n  rankdir=LR;\n  node [shape=box, style=rounded];\n" + "\n".join(nodes) + "\n" + "\n".join(edges) + "\n}"
         if output_path:
             Path(output_path).write_text(dot, encoding="utf-8")
         return dot

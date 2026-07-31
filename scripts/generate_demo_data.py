@@ -28,7 +28,6 @@ import logging
 import os
 import random
 import secrets
-import sys
 import time
 from datetime import datetime, timedelta
 from typing import Any
@@ -274,7 +273,7 @@ TEST_PANELS: list[dict[str, Any]] = [
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 def hash_nid(nid: str) -> str:
-    key = "DEMO_NID_HMAC_KEY_PLACEHOLDER".encode()
+    key = b"DEMO_NID_HMAC_KEY_PLACEHOLDER"
     return _hmac.new(key, nid.strip().encode(), hashlib.sha256).hexdigest()
 
 def gen_password() -> str:
@@ -357,7 +356,7 @@ class DemoDataGenerator:
             logger.info(f"  {k}: {v}")
         logger.info("=" * 60)
         logger.info(f"Output directory: {self.output_dir}")
-        logger.info(f"Admin credentials: admin@demo.gula.iq / Demo@ADMIN!")
+        logger.info("Admin credentials: admin@demo.gula.iq / Demo@ADMIN!")
         logger.info("=" * 60)
 
     def _step(self, name: str, fn) -> None:
@@ -472,8 +471,8 @@ class DemoDataGenerator:
         self.stats["Facilities"] = len(facilities)
 
     def _create_departments(self) -> None:
-        from app.models.organization import Facility
         from app.models.lab import Lab
+        from app.models.organization import Facility
         facilities = self.db.query(Facility).filter(
             Facility.facility_id.like(f"{DEMO_PREFIX}-%")
         ).all()
@@ -670,9 +669,9 @@ class DemoDataGenerator:
         self.stats["Patients"] = created
 
     def _create_clinical_data(self) -> None:
-        from app.models.patient import Patient
         from app.models.lab_order import LabOrder
         from app.models.lab_result import LabResult
+        from app.models.patient import Patient
         from app.models.sample import Sample
 
         if not self.demo_lab_id:
@@ -799,7 +798,7 @@ class DemoDataGenerator:
             f.write("|----------|----------|------|\n")
             for p in self.demo_passwords:
                 f.write(f"| `{p['username']}` | `{p['password']}` | {p['role']} |\n")
-            f.write(f"\nAdmin: `admin@demo.gula.iq` / `Demo@ADMIN!`\n")
+            f.write("\nAdmin: `admin@demo.gula.iq` / `Demo@ADMIN!`\n")
 
         # DEMO_ORGANIZATIONS.md
         with open(os.path.join(self.output_dir, "DEMO_ORGANIZATIONS.md"), "w") as f:
@@ -826,10 +825,10 @@ class DemoDataGenerator:
             f.write("    National Administration\n")
             for code, en, ar, _ in GOVERNORATES:
                 f.write(f"    ├── {en} Governorate\n")
-                f.write(f"    │   ├── Health Directorate\n")
-                f.write(f"    │   │   ├── Hospitals (3)\n")
-                f.write(f"    │   │   ├── PHC Centers (2)\n")
-                f.write(f"    │   │   └── Laboratories (2)\n")
+                f.write("    │   ├── Health Directorate\n")
+                f.write("    │   │   ├── Hospitals (3)\n")
+                f.write("    │   │   ├── PHC Centers (2)\n")
+                f.write("    │   │   └── Laboratories (2)\n")
             f.write("```\n\n")
             f.write("## Counts\n\n")
             for k, v in sorted(self.stats.items()):
@@ -924,10 +923,10 @@ class DemoDataGenerator:
             f.write("## Summary\n\n")
             for k, v in sorted(self.stats.items()):
                 f.write(f"- **{k}**: {v}\n")
-            f.write(f"\n## Accounts Created\n\n")
+            f.write("\n## Accounts Created\n\n")
             f.write(f"- Total users: {len(self.user_accounts)}\n")
             f.write(f"- Total roles: {len(ROLE_DEFINITIONS)}\n")
-            f.write(f"- Admin: `admin@demo.gula.iq` / `Demo@ADMIN!`\n\n")
+            f.write("- Admin: `admin@demo.gula.iq` / `Demo@ADMIN!`\n\n")
             f.write("## Hierarchy\n\n")
             f.write("1. Country: Republic of Iraq\n")
             f.write("2. Ministry: Ministry of Health\n")
@@ -948,10 +947,10 @@ class DemoDataGenerator:
         path = os.path.join(self.output_dir, "ENTERPRISE_DEMO_CERTIFICATION.md")
         with open(path, "w") as f:
             f.write("# GULA Platform — Enterprise Demo Certification Report\n\n")
-            f.write(f"**Program**: PROGRAM-DEMO-NATIONAL-001\n")
-            f.write(f"**Version**: 1.0\n")
+            f.write("**Program**: PROGRAM-DEMO-NATIONAL-001\n")
+            f.write("**Version**: 1.0\n")
             f.write(f"**Date**: {datetime.utcnow().isoformat()}\n")
-            f.write(f"**Status**: COMPLETED\n\n")
+            f.write("**Status**: COMPLETED\n\n")
             f.write("## Objectives\n\n")
             f.write("- [x] Generate complete National Demo Environment\n")
             f.write("- [x] Create organization hierarchy (18 governorates)\n")
@@ -982,6 +981,7 @@ class DemoDataGenerator:
 
     def _export_fhir(self) -> None:
         import json
+
         from app.models.patient import Patient
         fhir_dir = os.path.join(self.output_dir, "FHIR_EXPORT")
         os.makedirs(fhir_dir, exist_ok=True)
@@ -1102,7 +1102,6 @@ class DemoDataGenerator:
         self.stats["PerformanceBenchmarks"] = len(results)
 
     def _generate_twin_reports(self) -> None:
-        import json
         # NATIONAL_HIERARCHY.md
         with open(os.path.join(self.output_dir, "NATIONAL_HIERARCHY.md"), "w") as f:
             f.write("# Republic of Iraq — National Health Digital Twin\n\n")
@@ -1111,12 +1110,12 @@ class DemoDataGenerator:
             f.write("  MINISTRY: Ministry of Health (وزارة الصحة)\n")
             for code, en, ar, _ in GOVERNORATES:
                 f.write(f"    ├── GOV: {en} ({ar})\n")
-                f.write(f"    │   ├── Health Directorate\n")
-                f.write(f"    │   │   ├── General Hospital\n")
-                f.write(f"    │   │   ├── Teaching Hospital\n")
-                f.write(f"    │   │   ├── PHC Centers (2)\n")
-                f.write(f"    │   │   ├── Central Laboratory\n")
-                f.write(f"    │   │   └── Blood Bank\n")
+                f.write("    │   ├── Health Directorate\n")
+                f.write("    │   │   ├── General Hospital\n")
+                f.write("    │   │   ├── Teaching Hospital\n")
+                f.write("    │   │   ├── PHC Centers (2)\n")
+                f.write("    │   │   ├── Central Laboratory\n")
+                f.write("    │   │   └── Blood Bank\n")
             f.write("```\n\n")
             for k, v in sorted(self.stats.items()):
                 f.write(f"- {k}: {v:,}\n")
@@ -1186,7 +1185,7 @@ class DemoDataGenerator:
         # ENTERPRISE_READINESS_REPORT.md
         with open(os.path.join(self.output_dir, "ENTERPRISE_READINESS_REPORT.md"), "w") as f:
             f.write("# GULA Platform — National Digital Twin Certification\n\n")
-            f.write(f"**Program**: PROGRAM-NATIONAL-DIGITAL-TWIN-001\n")
+            f.write("**Program**: PROGRAM-NATIONAL-DIGITAL-TWIN-001\n")
             f.write(f"**Date**: {datetime.utcnow().isoformat()}\n")
             f.write(f"**Mode**: {self.mode.upper()} (Scale: {self.scale_factor}x)\n\n")
             f.write("## Verification\n\n")
@@ -1219,9 +1218,9 @@ def main():
 
     db_url = args.db_url or os.getenv("DATABASE_URL", "postgresql://gula:gula@localhost:5432/gula_demo")
     engine = create_engine(db_url)
-    SessionLocal = sessionmaker(bind=engine)
+    session_maker = sessionmaker(bind=engine)
 
-    db = SessionLocal()
+    db = session_maker()
     try:
         generator = DemoDataGenerator(db, args.output_dir, mode=args.mode)
         generator.run()

@@ -6,8 +6,6 @@ import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from datetime import UTC
-
 logger = logging.getLogger("gula.audit")
 
 

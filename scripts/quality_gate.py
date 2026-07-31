@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import pathlib
 import re
 import subprocess
@@ -96,7 +95,7 @@ def _check_git_staged_secrets() -> tuple[str, list[str]]:
             for pattern, desc in secret_patterns:
                 if re.search(pattern, content):
                     findings.append(f"{sf}: found {desc}")
-        except (OSError, IOError):
+        except OSError:
             pass
 
     if findings:

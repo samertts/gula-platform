@@ -19,7 +19,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import shutil
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -230,7 +229,7 @@ def load_inventory() -> dict[str, Any]:
     if not INVENTORY_PATH.exists():
         print(f"ERROR: Inventory not found at {INVENTORY_PATH}")
         sys.exit(1)
-    with open(INVENTORY_PATH, "r", encoding="utf-8") as f:
+    with open(INVENTORY_PATH, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -284,7 +283,7 @@ def scan_frontend() -> dict[str, Any]:
 def _page_template(module_name: str, title: str, description: str, pascal_name: str,
                    tabs_str: str, queries_str: str, col_defs_str: str, tables_str: str,
                    first_tab_id: str, icons_str: str) -> str:
-    return '''import { useState } from "react";
+    return """import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/api/client";
 import { PageHeader } from "@/components/shared/PageComponents";
@@ -293,10 +292,10 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import { ''' + icons_str + ''' } from "lucide-react";
+import { """ + icons_str + """ } from "lucide-react";
 
 const tabs = [
-''' + tabs_str + '''
+""" + tabs_str + """
 ] as const;
 
 type TabId = (typeof tabs)[number]["id"];
@@ -310,21 +309,21 @@ const badgeVariant = (s: string) => {
   return m[s?.toLowerCase()] ?? "default";
 };
 
-export default function ''' + pascal_name + '''Page() {
-  const [activeTab, setActiveTab] = useState<TabId>("''' + first_tab_id + '''");
+export default function """ + pascal_name + '''Page() {
+  const [activeTab, setActiveTab] = useState<TabId>("''' + first_tab_id + """");
   const col = createColumnHelper<Record<string, unknown>>();
 
-''' + queries_str + '''
+""" + queries_str + """
 
-''' + col_defs_str + '''
+""" + col_defs_str + """
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-''' + tables_str + '''
+""" + tables_str + '''
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="''' + title + '''" description="''' + description + '''" />
+      <PageHeader title="''' + title + '''" description="''' + description + """" />
       <Card>
         <CardContent className="p-0">
           <div className="flex border-b flex-wrap">
@@ -346,7 +345,7 @@ export default function ''' + pascal_name + '''Page() {
     </div>
   );
 }
-'''
+"""
 
 
 def generate_page_content(module_name: str, endpoints: list[dict[str, Any]]) -> str:
@@ -376,7 +375,7 @@ def generate_page_content(module_name: str, endpoints: list[dict[str, Any]]) -> 
     tabs_lines = []
     for tab in tabs_list:
         icon_name = tab.get("icon", "FileText")
-        tabs_lines.append('  { id: "' + tab["id"] + '", label: "' + tab["label"] + '", icon: ' + icon_name + ' },')
+        tabs_lines.append('  { id: "' + tab["id"] + '", label: "' + tab["label"] + '", icon: ' + icon_name + " },")
 
     tabs_str = "\n".join(tabs_lines)
 
@@ -385,8 +384,8 @@ def generate_page_content(module_name: str, endpoints: list[dict[str, Any]]) -> 
         tid = tab["id"]
         query_key = '["' + camel_name + '", "' + tid + '"]'
         endpoint = tab.get("endpoint", api_prefix + "/" + tid)
-        query_calls.append('  const ' + tid + ' = useQuery({\n'
-                           '    queryKey: ' + query_key + ',\n'
+        query_calls.append("  const " + tid + " = useQuery({\n"
+                           "    queryKey: " + query_key + ',\n'
                            '    queryFn: () => api.get("' + endpoint + '").then((r) => r.data),\n'
                            '  });')
 
@@ -395,14 +394,14 @@ def generate_page_content(module_name: str, endpoints: list[dict[str, Any]]) -> 
     table_entries = []
     for tab in tabs_list:
         tid = tab["id"]
-        table_entries.append('    ' + tid + ': { columns: ' + tid + 'Cols, data: (' + tid + '.data ?? []) as Record<string, unknown>[], loading: ' + tid + '.isLoading },')
+        table_entries.append("    " + tid + ": { columns: " + tid + "Cols, data: (" + tid + ".data ?? []) as Record<string, unknown>[], loading: " + tid + ".isLoading },")
 
     tables_str = "\n".join(table_entries)
 
     col_defs = []
     for tab in tabs_list:
         tid = tab["id"]
-        col_defs.append('  const ' + tid + 'Cols: ColumnDef<Record<string, unknown>, unknown>[] = [\n'
+        col_defs.append("  const " + tid + 'Cols: ColumnDef<Record<string, unknown>, unknown>[] = [\n'
                         '    col.accessor("id", { header: "\u0627\u0644\u0645\u0639\u0631\u0641" }),\n'
                         '    col.accessor("name", { header: "\u0627\u0644\u0627\u0633\u0645" }),\n'
                         '    col.accessor("status", { header: "\u0627\u0644\u062d\u0627\u0644\u0629", cell: ({ getValue }) => <Badge variant={badgeVariant(getValue() as string)}>{getValue() as string}</Badge> }),\n'
@@ -719,7 +718,7 @@ def update_client_generator(inventory: dict[str, Any]) -> list[dict[str, Any]]:
     if insert_marker in content:
         content = content.replace(insert_marker, new_section)
         CLIENT_GEN_FILE.write_text(content)
-        num_new = len([m for m in modules if m.split('.')[0].replace('-', '_') not in existing_modules_in_gen])
+        num_new = len([m for m in modules if m.split(".")[0].replace("-", "_") not in existing_modules_in_gen])
         print(f"  ✨ Updated client generator with {num_new} new modules")
         generated.append({"module": "generate_frontend_client.py", "path": "scripts/generate_frontend_client.py", "type": "client_gen"})
     else:
@@ -812,7 +811,7 @@ def update_sidebar(inventory: dict[str, Any]) -> list[dict[str, Any]]:
     modules = inventory.get("modules", {})
 
     # Check which sections exist in sidebar
-    existing_section_labels = set(re.findall(r'<p[^>]*>([^<]+)</p>', content))
+    existing_section_labels = set(re.findall(r"<p[^>]*>([^<]+)</p>", content))
 
     # Determine sections that need to be added
     sections_needed: dict[str, list[str]] = {}
@@ -1267,22 +1266,22 @@ def main() -> None:
     # Coverage report
     coverage_report = generate_coverage_report(inventory, frontend, generated)
     (CERT_DIR / "frontend_coverage_report.md").write_text(coverage_report)
-    print(f"  📄 Generated: frontend_coverage_report.md")
+    print("  📄 Generated: frontend_coverage_report.md")
 
     # Backend coverage (copy summary)
     backend_report = generate_coverage_report(inventory, frontend, generated)
     (CERT_DIR / "backend_coverage_report.md").write_text(backend_report)
-    print(f"  📄 Generated: backend_coverage_report.md")
+    print("  📄 Generated: backend_coverage_report.md")
 
     # Mock data report
     mock_report = generate_mock_data_report(frontend)
     (CERT_DIR / "mock_data_report.md").write_text(mock_report)
-    print(f"  📄 Generated: mock_data_report.md")
+    print("  📄 Generated: mock_data_report.md")
 
     # Zero drift report
     drift_report = generate_drift_report(inventory, frontend, generated)
     (CERT_DIR / "zero_drift_report.md").write_text(drift_report)
-    print(f"  📄 Generated: zero_drift_report.md")
+    print("  📄 Generated: zero_drift_report.md")
 
     # 30 certification reports
     generated["cert_reports"] = generate_certification_reports()
@@ -1305,12 +1304,12 @@ def main() -> None:
     print()
     print(f"  ✅ {page_count} new pages created")
     print(f"  ✅ {route_count} new routes added")
-    print(f"  ✅ Permissions updated")
-    print(f"  ✅ Sidebar updated")
-    print(f"  ✅ Client generator updated")
+    print("  ✅ Permissions updated")
+    print("  ✅ Sidebar updated")
+    print("  ✅ Client generator updated")
     print(f"  ✅ {report_count} certification reports generated")
     print()
-    print(f"  📁 All reports in docs/certification/")
+    print("  📁 All reports in docs/certification/")
     print("=" * 60)
 
 

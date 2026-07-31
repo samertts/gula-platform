@@ -27,13 +27,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import pathlib
 import re
 import subprocess
 import sys
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -129,9 +128,20 @@ CONSTITUTION_EFFORT: dict[str, int] = {
 
 class DebtItem:
     __slots__ = (
-        "id", "priority", "category", "category_key", "description",
-        "file", "lines", "est_hours", "status", "owner", "source",
-        "created_at", "updated_at", "extra",
+        "category",
+        "category_key",
+        "created_at",
+        "description",
+        "est_hours",
+        "extra",
+        "file",
+        "id",
+        "lines",
+        "owner",
+        "priority",
+        "source",
+        "status",
+        "updated_at",
     )
 
     def __init__(
@@ -148,7 +158,7 @@ class DebtItem:
         source: str = "",
         extra: dict | None = None,
     ):
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         self.id = debt_id
         self.priority = priority
         self.category_key = category_key
@@ -656,7 +666,7 @@ def _write_registry_json(items: list[DebtItem]) -> None:
     registry = {
         "meta": {
             "title": "GULA Technical Debt Registry",
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "repo_root": str(REPO_ROOT),
             "total_items": len(items),
             "total_est_hours": round(total_effort, 1),
@@ -677,7 +687,7 @@ def _write_registry_md(items: list[DebtItem]) -> None:
     """Write human-readable markdown registry table."""
     REGISTRY_DIR.mkdir(parents=True, exist_ok=True)
 
-    now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     counts = Counter(i.priority for i in items)
     status_counts = Counter(i.status for i in items)
     total_effort = sum(i.est_hours for i in items)
@@ -794,7 +804,7 @@ def _print_full_report(items: list[DebtItem]) -> None:
     print(f"  {_c('bold', '╔══════════════════════════════════════════════════════════════╗')}")
     print(f"  {_c('bold', '║          GULA Technical Debt Classification Registry          ║')}")
     print(f"  {_c('bold', '╚══════════════════════════════════════════════════════════════╝')}")
-    print(f"  Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+    print(f"  Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M UTC')}")
     print(f"  Items: {len(items)}  |  Total est. effort: {_c('yellow', f'{total_effort:.1f}h')}")
     print()
 
@@ -883,7 +893,7 @@ def _print_full_report(items: list[DebtItem]) -> None:
     print()
 
     print(f"  {_c('bold', '┄' * 60)}")
-    print(f"  Registry files:")
+    print("  Registry files:")
     print(f"    MD :  {REGISTRY_MD}")
     print(f"    JSON: {REGISTRY_JSON}")
     print()
@@ -945,7 +955,7 @@ def _print_summary(items: list[DebtItem]) -> None:
     if open_items:
         open_items.sort(key=lambda x: (0 if x.priority == "P0" else 1 if x.priority == "P1" else 2, x.est_hours), reverse=True)
         top5 = open_items[:5]
-        print(f"  Top 5 open (by priority then effort):")
+        print("  Top 5 open (by priority then effort):")
         for item in top5:
             color = _PRIORITY_COLORS.get(item.priority, _RESET)
             desc = item.description[:80]
@@ -1076,7 +1086,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         registry_data = {
             "meta": {
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
                 "total_items": len(all_items),
                 "by_priority": dict(Counter(i.priority for i in all_items)),
                 "by_status": dict(Counter(i.status for i in all_items)),
