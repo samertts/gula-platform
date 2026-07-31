@@ -70,6 +70,7 @@ const IntegrationPageLazy = lazy(() => import("@/pages/integration/IntegrationPa
 const IntegrationConnectorsPageLazy = lazy(() => import("@/pages/integration/connectors/IntegrationConnectorsPage"));
 const KernelPageLazy = lazy(() => import("@/pages/kernel/KernelPage"));
 const LifecyclePlatformApiPageLazy = lazy(() => import("@/pages/lifecycle-platform/LifecyclePlatformApiPage"));
+const OpsMetricsPageLazy = lazy(() => import("@/pages/ops-metrics/OpsMetricsPage"));
 const NationalBackgroundPlatformApiPageLazy = lazy(() => import("@/pages/national/background-platform/NationalBackgroundPlatformApiPage"));
 const NationalDocumentPlatformApiPageLazy = lazy(() => import("@/pages/national/document-platform/NationalDocumentPlatformApiPage"));
 const NationalEcosystemPageLazy = lazy(() => import("@/pages/national/ecosystem/NationalEcosystemPage"));
@@ -188,6 +189,7 @@ export const router = createBrowserRouter([
       { path: "national/ecosystem/gateway", element: <RoleGuard roles={adminRoles}><LazyPage><NationalEcosystemGatewayPageLazy /></LazyPage></RoleGuard> },
       { path: "national/notification-platform", element: <RoleGuard roles={adminRoles}><LazyPage><NationalNotificationPlatformApiPageLazy /></LazyPage></RoleGuard> },
       { path: "national/observability", element: <RoleGuard roles={adminRoles}><LazyPage><NationalObservabilityApiPageLazy /></LazyPage></RoleGuard> },
+      { path: "ops-metrics", element: <RoleGuard roles={adminRoles}><LazyPage><OpsMetricsPageLazy /></LazyPage></RoleGuard> },
       { path: "national/rules-engine", element: <RoleGuard roles={adminRoles}><LazyPage><NationalRulesEngineApiPageLazy /></LazyPage></RoleGuard> },
       { path: "national/scheduling-platform", element: <RoleGuard roles={adminRoles}><LazyPage><NationalSchedulingPlatformApiPageLazy /></LazyPage></RoleGuard> },
       { path: "national/search-platform", element: <RoleGuard roles={adminRoles}><LazyPage><NationalSearchPlatformApiPageLazy /></LazyPage></RoleGuard> },

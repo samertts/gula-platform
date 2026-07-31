@@ -270,8 +270,12 @@ class OpsCertification:
         ]
         for name, ok in checks:
             self._result(f"P6 · {name}", PASS if ok else FAIL)
-        self._result("P6 · Dedicated frontend metrics dashboard", WARN,
-                     "no page consumes /metrics; observability page is an API explorer")
+        self._result("P6 · Dedicated frontend metrics dashboard", PASS if (
+            self._exists("frontend-v3/src/pages/ops-metrics/OpsMetricsPage.tsx")
+            and self._has_text(
+                "frontend-v3/src/pages/ops-metrics/OpsMetricsPage.tsx", '"/metrics"', 'refetchInterval')
+        ) else FAIL,
+            "OpsMetricsPage consumes /metrics (JSON) + /metrics/prom, 30s auto-refresh")
 
     # ── Phase 7: Security Operations ───────────────────────────────────────────
 
