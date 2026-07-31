@@ -148,10 +148,43 @@ def get_file_package(filepath: pathlib.Path, root: pathlib.Path) -> str | None:
 # ── AST-based import extraction ──────────────────────────────────────────
 
 class ImportVisitor(ast.NodeVisitor):
-    """Collects all import statements from an AST."""
+    """Collects all import statements from an AST.
+
+    Tracks the scope of each import:
+      - "module": top-level module import (executes at import time)
+      - "function": deferred import inside a function body (executes lazily)
+      - "type_checking": import under ``if TYPE_CHECKING:`` (annotation-only,
+        never executed at runtime)
+    """
 
     def __init__(self) -> None:
         self.imports: list[dict[str, Any]] = []
+        self._function_depth = 0
+        self._type_checking = False
+
+    def _scope(self) -> str:
+        if self._type_checking:
+            return "type_checking"
+        if self._function_depth > 0:
+            return "function"
+        return "module"
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        self._function_depth += 1
+        self.generic_visit(node)
+        self._function_depth -= 1
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        self._function_depth += 1
+        self.generic_visit(node)
+        self._function_depth -= 1
+
+    def visit_If(self, node: ast.If) -> None:
+        in_guard = self._type_checking
+        if isinstance(node.test, ast.Name) and node.test.id == "TYPE_CHECKING":
+            self._type_checking = True
+        self.generic_visit(node)
+        self._type_checking = in_guard
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
@@ -160,6 +193,7 @@ class ImportVisitor(ast.NodeVisitor):
                 "module": alias.name,
                 "alias": alias.asname,
                 "lineno": node.lineno,
+                "scope": self._scope(),
             })
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
@@ -171,6 +205,7 @@ class ImportVisitor(ast.NodeVisitor):
                 "name": alias.name,
                 "alias": alias.asname,
                 "lineno": node.lineno,
+                "scope": self._scope(),
             })
 
 
@@ -374,13 +409,24 @@ def check_layer_violations(
 def build_import_graph(
     root: pathlib.Path,
     exclude_dirs: set[str],
+    runtime_only: bool = True,
 ) -> dict[str, set[str]]:
+    """Build the module import graph.
+
+    With ``runtime_only=True`` (default) only module-scope imports form
+    edges — imports under ``if TYPE_CHECKING:`` and deferred imports inside
+    function bodies are excluded. Those constructs exist precisely to break
+    cycles at runtime, so only execution-time cycles are genuine architecture
+    debt. Layer/forbidden-import checks (L1/L3) still consider every import.
+    """
     graph: dict[str, set[str]] = defaultdict(set)
     files = discover_python_files(root, exclude_dirs)
     for fp in files:
         src_module = module_path(fp, root)
         imports = parse_imports(fp)
         for imp in imports:
+            if runtime_only and imp.get("scope") != "module":
+                continue
             mod = imp["module"]
             target_module = mod.lstrip(".")
             if target_module.startswith("app."):
@@ -832,7 +878,7 @@ class NamingVisitor(ast.NodeVisitor):
         self.violations: list[str] = []
 
     def visit_ClassDef(self, node: ast.ClassDef) -> None:
-        if not re.match(r'^[A-Z][a-zA-Z0-9]*$', node.name):
+        if not re.match(r"^[A-Z][a-zA-Z0-9]*$", node.name):
             self.violations.append(
                 f"{self.module_path}:{node.lineno} Class '{node.name}' "
                 f"should be PascalCase"
@@ -843,13 +889,13 @@ class NamingVisitor(ast.NodeVisitor):
         if node.name.startswith("__") and node.name.endswith("__"):
             pass
         elif node.name.startswith("_"):
-            if not re.match(r'^_[a-z_][a-z0-9_]*$', node.name):
+            if not re.match(r"^_[a-z_][a-z0-9_]*$", node.name):
                 self.violations.append(
                     f"{self.module_path}:{node.lineno} Function '{node.name}' "
                     f"should be _snake_case for private"
                 )
         else:
-            if not re.match(r'^[a-z_][a-z0-9_]*$', node.name):
+            if not re.match(r"^[a-z_][a-z0-9_]*$", node.name):
                 self.violations.append(
                     f"{self.module_path}:{node.lineno} Function '{node.name}' "
                     f"should be snake_case"
@@ -861,13 +907,13 @@ class NamingVisitor(ast.NodeVisitor):
             if isinstance(target, ast.Name):
                 name = target.id
                 if name.isupper() and len(name) > 1:
-                    if not re.match(r'^[A-Z][A-Z0-9_]*$', name):
+                    if not re.match(r"^[A-Z][A-Z0-9_]*$", name):
                         self.violations.append(
                             f"{self.module_path}:{node.lineno} Constant '{name}' "
                             f"should be UPPER_CASE"
                         )
                 elif name.islower() and len(name) > 1:
-                    if not re.match(r'^[a-z_][a-z0-9_]*$', name):
+                    if not re.match(r"^[a-z_][a-z0-9_]*$", name):
                         self.violations.append(
                             f"{self.module_path}:{node.lineno} Variable '{name}' "
                             f"should be snake_case"
@@ -893,7 +939,7 @@ def check_naming_conventions(
         rel = fp.relative_to(root)
         for part in rel.parts[:-1]:
             if part != part.lower() and not part.startswith("."):
-                is_snake = bool(re.match(r'^[a-z][a-z0-9_]*$', part))
+                is_snake = bool(re.match(r"^[a-z][a-z0-9_]*$", part))
                 if not is_snake:
                     pkg_violations.append(
                         f"Package directory '{part}' is not snake_case (in {module_str})"
@@ -985,7 +1031,7 @@ def check_documentation(
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 decorator_names = set()
                 for dec in node.decorator_list:
-                    if isinstance(dec, ast.Attribute) and hasattr(dec, 'attr'):
+                    if isinstance(dec, ast.Attribute) and hasattr(dec, "attr"):
                         decorator_names.add(dec.attr)
                     elif isinstance(dec, ast.Call) and isinstance(dec.func, ast.Attribute):
                         decorator_names.add(dec.func.attr)
