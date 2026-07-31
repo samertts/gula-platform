@@ -1956,6 +1956,31 @@ export interface AccountStatus {
 // backend model: Account  (table: niam_accounts)
 export interface Account {
   uuid: string;
+  identityId?: unknown;
+  accountType?: unknown;
+  status?: unknown;
+  email?: unknown;
+  phone?: unknown;
+  username?: unknown;
+  passwordHash?: unknown;
+  passwordChangedAt?: unknown;
+  passwordExpiresAt?: unknown;
+  mfaEnabled?: unknown;
+  mfaMethods?: unknown;
+  mfaSecret?: unknown;
+  isLocked?: unknown;
+  lockedUntil?: unknown;
+  lockReason?: unknown;
+  failedLoginAttempts?: unknown;
+  lastFailedLogin?: unknown;
+  lastLogin?: unknown;
+  lastLoginIp?: unknown;
+  emailVerified?: unknown;
+  phoneVerified?: unknown;
+  identityVerified?: unknown;
+  activatedAt?: unknown;
+  deactivatedAt?: unknown;
+  deactivationReason?: unknown;
 }
 
 // backend model: AssignmentStatus  (table: niam_assignments)
@@ -1966,6 +1991,31 @@ export interface AssignmentStatus {
 // backend model: Assignment  (table: niam_assignments)
 export interface Assignment {
   uuid: string;
+  employmentId?: unknown;
+  personId?: unknown;
+  organizationId?: unknown;
+  facilityId?: unknown;
+  departmentId?: unknown;
+  unit?: unknown;
+  committee?: unknown;
+  taskForce?: unknown;
+  roleId?: unknown;
+  assignmentType?: unknown;
+  isPrimary?: unknown;
+  status?: unknown;
+  startDate?: unknown;
+  endDate?: unknown;
+  expectedEndDate?: unknown;
+  isTemporary?: unknown;
+  isEmergency?: unknown;
+  isDelegated?: unknown;
+  delegatedFrom?: unknown;
+  delegatedBy?: unknown;
+  maxDurationHours?: unknown;
+  requiresMfa?: unknown;
+  assignedBy?: unknown;
+  assignedAt?: unknown;
+  notes?: unknown;
 }
 
 // backend model: AuditAction  (table: niam_audit_entries)
@@ -2003,6 +2053,19 @@ export interface CredentialType {
 // backend model: Credential  (table: niam_credentials)
 export interface Credential {
   uuid: string;
+  accountId?: unknown;
+  credentialType?: unknown;
+  credentialValue?: unknown;
+  credentialIdentifier?: unknown;
+  isPrimary?: unknown;
+  isRevoked?: unknown;
+  revokedAt?: unknown;
+  revocationReason?: unknown;
+  expiresAt?: unknown;
+  lastUsedAt?: unknown;
+  deviceInfo?: unknown;
+  ipAddress?: unknown;
+  userAgent?: unknown;
 }
 
 // backend model: Device  (table: niam_devices)
@@ -2037,6 +2100,26 @@ export interface EmploymentStatus {
 // backend model: Employment  (table: niam_employments)
 export interface Employment {
   uuid: string;
+  personId?: unknown;
+  organizationId?: unknown;
+  employeeId?: unknown;
+  employmentType?: unknown;
+  status?: unknown;
+  position?: unknown;
+  department?: unknown;
+  title?: unknown;
+  startDate?: unknown;
+  endDate?: unknown;
+  contractType?: unknown;
+  contractEndDate?: unknown;
+  supervisorPersonId?: unknown;
+  isPrimaryEmployment?: unknown;
+  terminationReason?: unknown;
+  terminationDate?: unknown;
+  transferFromEmployment?: unknown;
+  transferToOrganization?: unknown;
+  transferDate?: unknown;
+  notes?: unknown;
 }
 
 // backend model: EnterpriseAccount  (table: niam_enterprise_accounts)
@@ -5911,6 +5994,16 @@ export interface DigitalTwin {
 // backend model: Simulation  (table: digital_twins)
 export interface Simulation {
   uuid: string;
+  twinId?: unknown;
+  name?: unknown;
+  simulationType?: unknown;
+  parameters?: unknown;
+  status?: unknown;
+  result?: unknown;
+  startedAt?: unknown;
+  completedAt?: unknown;
+  error?: unknown;
+  triggeredBy?: unknown;
 }
 
 // backend model: SimulationSnapshot  (table: simulation_snapshots)
@@ -6919,17 +7012,23 @@ export interface InstrumentModel {
 // backend model: Instrument  (table: lims_instrument_models)
 export interface Instrument {
   uuid: string;
-  manufacturerId?: unknown;
-  modelCode?: unknown;
-  modelName?: unknown;
-  category?: unknown;
-  interfaceType?: unknown;
-  supportsAstm?: unknown;
-  supportsHl7?: unknown;
-  supportsFhir?: unknown;
-  testMenuCapacity?: unknown;
-  throughputPerHour?: unknown;
+  labId?: unknown;
+  modelId?: unknown;
+  workstationId?: unknown;
+  instrumentCode?: unknown;
+  serialNumber?: unknown;
+  assetNumber?: unknown;
+  status?: unknown;
+  softwareVersion?: unknown;
+  installedAt?: unknown;
+  lastConnectedAt?: unknown;
+  ipAddress?: unknown;
+  port?: unknown;
+  connectionParams?: unknown;
+  isOfflineCapable?: unknown;
   syncId?: unknown;
+  fhirId?: unknown;
+  fhirResourceType?: unknown;
   createdBy?: unknown;
   updatedBy?: unknown;
   version?: unknown;
@@ -6939,11 +7038,43 @@ export interface Instrument {
 // backend model: Maintenance  (table: lims_departments)
 export interface Maintenance {
   uuid: string;
+  instrumentId?: unknown;
+  maintenanceType?: unknown;
+  title?: unknown;
+  description?: unknown;
+  performedBy?: unknown;
+  performedAt?: unknown;
+  completedAt?: unknown;
+  nextDueAt?: unknown;
+  cost?: unknown;
+  partsReplaced?: unknown;
+  result?: unknown;
+  notes?: unknown;
+  syncId?: unknown;
+  createdBy?: unknown;
+  updatedBy?: unknown;
+  version?: unknown;
+  isDeleted?: unknown;
 }
 
 // backend model: Calibration  (table: lims_departments)
 export interface Calibration {
   uuid: string;
+  instrumentId?: unknown;
+  calibrationType?: unknown;
+  performedBy?: unknown;
+  performedAt?: unknown;
+  nextDueAt?: unknown;
+  calibratorLot?: unknown;
+  calibratorExpiry?: unknown;
+  results?: unknown;
+  passed?: unknown;
+  notes?: unknown;
+  syncId?: unknown;
+  createdBy?: unknown;
+  updatedBy?: unknown;
+  version?: unknown;
+  isDeleted?: unknown;
 }
 
 // backend model: QCProgram  (table: lims_qc_programs)
@@ -7173,16 +7304,84 @@ export interface SpecimenCatalog {
 // backend model: Container  (table: lims_departments)
 export interface Container {
   uuid: string;
+  code?: unknown;
+  name?: unknown;
+  nameAr?: unknown;
+  containerType?: unknown;
+  volumeMl?: unknown;
+  additive?: unknown;
+  colorCode?: unknown;
+  syncId?: unknown;
+  version?: unknown;
 }
 
 // backend model: Specimen  (table: lims_departments)
 export interface Specimen {
   uuid: string;
+  labId?: unknown;
+  orderId?: unknown;
+  parentSpecimenId?: unknown;
+  barcode?: unknown;
+  qrCode?: unknown;
+  specimenType?: unknown;
+  containerType?: unknown;
+  volumeMl?: unknown;
+  status?: unknown;
+  collectionTime?: unknown;
+  collectedBy?: unknown;
+  collectionSite?: unknown;
+  collectionNotes?: unknown;
+  receivedAt?: unknown;
+  receivedBy?: unknown;
+  acceptedAt?: unknown;
+  acceptedBy?: unknown;
+  rejectionReason?: unknown;
+  rejectedAt?: unknown;
+  rejectedBy?: unknown;
+  storageId?: unknown;
+  storagePosition?: unknown;
+  analyzedAt?: unknown;
+  verifiedAt?: unknown;
+  verifiedBy?: unknown;
+  validatedAt?: unknown;
+  validatedBy?: unknown;
+  releasedAt?: unknown;
+  releasedBy?: unknown;
+  archivedAt?: unknown;
+  disposedAt?: unknown;
+  disposalMethod?: unknown;
+  clinicalInfo?: unknown;
+  isControl?: unknown;
+  controlSpecimenId?: unknown;
+  syncId?: unknown;
+  fhirId?: unknown;
+  fhirResourceType?: unknown;
+  createdBy?: unknown;
+  updatedBy?: unknown;
+  version?: unknown;
+  isDeleted?: unknown;
 }
 
 // backend model: Transportation  (table: lims_departments)
 export interface Transportation {
   uuid: string;
+  labId?: unknown;
+  specimenId?: unknown;
+  fromLocation?: unknown;
+  toLocation?: unknown;
+  condition?: unknown;
+  courierName?: unknown;
+  courierPhone?: unknown;
+  dispatchedAt?: unknown;
+  receivedAt?: unknown;
+  temperatureMin?: unknown;
+  temperatureMax?: unknown;
+  chainClosed?: unknown;
+  notes?: unknown;
+  syncId?: unknown;
+  createdBy?: unknown;
+  updatedBy?: unknown;
+  version?: unknown;
 }
 
 // backend model: ChainOfCustody  (table: lims_chain_of_custody)
@@ -7205,6 +7404,31 @@ export interface ChainOfCustody {
 // backend model: Order  (table: lims_departments)
 export interface Order {
   uuid: string;
+  orderId?: unknown;
+  labId?: unknown;
+  accessionNumber?: unknown;
+  priority?: unknown;
+  orderStatus?: unknown;
+  orderedBy?: unknown;
+  orderedAt?: unknown;
+  requestedCompletion?: unknown;
+  clinicalNote?: unknown;
+  diagnosisCode?: unknown;
+  icdCode?: unknown;
+  isReferral?: unknown;
+  referringLabId?: unknown;
+  referringPhysician?: unknown;
+  isPrinted?: unknown;
+  isCorrected?: unknown;
+  correctionReason?: unknown;
+  originalOrderId?: unknown;
+  syncId?: unknown;
+  fhirId?: unknown;
+  fhirResourceType?: unknown;
+  createdBy?: unknown;
+  updatedBy?: unknown;
+  version?: unknown;
+  isDeleted?: unknown;
 }
 
 // backend model: Panel  (table: lims_panels)
@@ -7240,6 +7464,49 @@ export interface PanelTest {
 // backend model: Result  (table: lims_departments)
 export interface Result {
   uuid: string;
+  labId?: unknown;
+  specimenId?: unknown;
+  orderId?: unknown;
+  testCode?: unknown;
+  testName?: unknown;
+  testNameAr?: unknown;
+  category?: unknown;
+  valueNumeric?: unknown;
+  valueText?: unknown;
+  valueCoded?: unknown;
+  unit?: unknown;
+  refRangeLow?: unknown;
+  refRangeHigh?: unknown;
+  refRangeText?: unknown;
+  criticalLow?: unknown;
+  criticalHigh?: unknown;
+  flag?: unknown;
+  isCritical?: unknown;
+  isAbnormal?: unknown;
+  isPanic?: unknown;
+  instrumentId?: unknown;
+  instrumentResultId?: unknown;
+  qcStatus?: unknown;
+  deltaCheckStatus?: unknown;
+  deltaPercent?: unknown;
+  validationStatus?: unknown;
+  autoValidated?: unknown;
+  autoValidatedAt?: unknown;
+  validatedBy?: unknown;
+  validatedAt?: unknown;
+  validationNote?: unknown;
+  loincCode?: unknown;
+  snomedCode?: unknown;
+  performedAt?: unknown;
+  performedBy?: unknown;
+  resultStatus?: unknown;
+  syncId?: unknown;
+  fhirId?: unknown;
+  fhirResourceType?: unknown;
+  createdBy?: unknown;
+  updatedBy?: unknown;
+  version?: unknown;
+  isDeleted?: unknown;
 }
 
 // backend model: ReferenceRangeDef  (table: lims_reference_ranges)
@@ -7408,6 +7675,11 @@ export interface SituationRoomStatus {
 // backend model: SituationRoom  (table: situation_rooms)
 export interface SituationRoom {
   uuid: string;
+  name?: unknown;
+  status?: unknown;
+  metrics?: unknown;
+  alerts?: unknown;
+  region?: unknown;
 }
 
 // backend model: NationalKPI  (table: national_kpis)
@@ -8647,7 +8919,7 @@ export interface AIKnowledgeEdge {
   uuid: string;
   sourceId?: unknown;
   targetId?: unknown;
-  relationship?: unknown;
+  relationshipType?: unknown;
   weight?: unknown;
   properties?: unknown;
 }
@@ -9583,16 +9855,47 @@ export interface RiskLevel {
 // backend model: Program  (table: roadmap_programs)
 export interface Program {
   uuid: string;
+  name?: unknown;
+  code?: unknown;
+  description?: unknown;
+  status?: unknown;
+  version?: unknown;
+  startDate?: unknown;
+  targetDate?: unknown;
+  completedDate?: unknown;
+  owner?: unknown;
+  budget?: unknown;
+  metadataJson?: unknown;
 }
 
 // backend model: Mission  (table: roadmap_programs)
 export interface Mission {
   uuid: string;
+  programId?: unknown;
+  name?: unknown;
+  code?: unknown;
+  description?: unknown;
+  status?: unknown;
+  priority?: unknown;
+  startDate?: unknown;
+  targetDate?: unknown;
+  completedDate?: unknown;
+  owner?: unknown;
+  riskLevel?: unknown;
+  metadataJson?: unknown;
 }
 
 // backend model: Epic  (table: roadmap_programs)
 export interface Epic {
   uuid: string;
+  missionId?: unknown;
+  name?: unknown;
+  code?: unknown;
+  description?: unknown;
+  status?: unknown;
+  priority?: unknown;
+  storyPoints?: unknown;
+  metadataJson?: unknown;
 }
 
 // backend model: RoadmapTask  (table: roadmap_tasks)
@@ -9627,6 +9930,14 @@ export interface Milestone {
 // backend model: Risk  (table: roadmap_programs)
 export interface Risk {
   uuid: string;
+  missionId?: unknown;
+  description?: unknown;
+  riskLevel?: unknown;
+  probability?: unknown;
+  impact?: unknown;
+  mitigation?: unknown;
+  status?: unknown;
+  owner?: unknown;
 }
 
 // backend model: TechnicalDebt  (table: roadmap_technical_debt)

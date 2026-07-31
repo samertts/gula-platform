@@ -11,6 +11,7 @@ Output:
 
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path
 
@@ -97,73 +98,30 @@ def py_type_to_ts(py_type: str) -> str:
 
 
 def extract_model_fields(content: str, class_name: str) -> list[dict[str, str]]:
-    """Extract typed fields from a SQLAlchemy model class."""
+    """Extract typed fields from a SQLAlchemy model class using AST parsing."""
     fields: list[dict[str, str]] = []
-    # Match lines like: field_name: type = Column(...)
-    col_pattern = re.compile(
-        r"^\s+(\w+)\s*[=:]\s*(?:Column|association_proxy)\(.*$", re.MULTILINE
-    )
-    # Match annotated fields: field_name: type
-    annot_pattern = re.compile(
-        r"^\s+(\w+)\s*:\s*([^=#]+?)(?:\s*=|#|$)", re.MULTILINE
-    )
-
-    # Find the class definition
-    class_start = content.find(f"class {class_name}")
-    if class_start == -1:
-        return fields
-
-    # Find class body
-    body_start = content.find(":", class_start) + 1
-    # Find next class definition (same indent level)
-    rest = content[body_start:]
-    # Get lines until next top-level class or EOF
-    class_lines = []
-    indent = None
-    for line in rest.splitlines():
-        if not line.strip() or line.strip().startswith("#") or line.strip().startswith(
-            "@"
-        ):
-            continue
-        stripped = line.lstrip()
-        if indent is None:
-            if stripped:
-                indent = len(line) - len(stripped)
-        if stripped and not stripped.startswith("class "):
-            if line and (len(line) - len(line.lstrip())) >= (indent or 0):
-                class_lines.append(line)
-            else:
-                break
-        elif stripped.startswith("class "):
-            break
-
-    body = "\n".join(class_lines)
-
-    # Strip docstrings to avoid matching docstring sections like "Examples:"
-    body = re.sub(r'""".*?"""', "", body, flags=re.DOTALL)
-
-    # Extract Column fields
     skip_fields = {"uuid", "id", "is_active", "created_at", "updated_at", "tenant_id", "deleted_at", "deleted"}
-    for match in col_pattern.finditer(body):
-        field_name = match.group(1)
-        if field_name.startswith("_") or field_name in skip_fields:
+    try:
+        tree = ast.parse(content)
+    except SyntaxError:
+        return fields
+    for node in tree.body:
+        if not isinstance(node, ast.ClassDef) or node.name != class_name:
             continue
-        fields.append({"name": field_name, "ts_type": "unknown"})
-
-    # Extract annotation-only fields (no assignment)
-    ann_fields: set[str] = set()
-    for match in annot_pattern.finditer(body):
-        field_name = match.group(1)
-        py_type = match.group(2).strip()
-        if field_name.startswith("_") or field_name in skip_fields:
-            continue
-        ts_type = py_type_to_ts(py_type)
-        if field_name not in ann_fields:
-            existing = [f for f in fields if f["name"] == field_name]
-            if not existing:
-                fields.append({"name": field_name, "ts_type": ts_type})
-                ann_fields.add(field_name)
-
+        for stmt in node.body:
+            name: str | None = None
+            ts_type = "unknown"
+            if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+                name = stmt.target.id
+                ts_type = py_type_to_ts(ast.unparse(stmt.annotation))
+            elif isinstance(stmt, ast.Assign) and isinstance(stmt.targets[0], ast.Name):
+                value = stmt.value
+                if isinstance(value, ast.Call) and isinstance(value.func, ast.Name) and value.func.id in {"Column", "association_proxy"}:
+                    name = stmt.targets[0].id
+            if not name or name.startswith("_") or name in skip_fields:
+                continue
+            if not any(f["name"] == name for f in fields):
+                fields.append({"name": name, "ts_type": ts_type})
     return fields
 
 
@@ -277,17 +235,16 @@ def generate_api_client() -> str:
                 ("PUT", "/authorities/{authority_id}", "updateAuthority", "detail"),
                 ("POST", "/councils", "createCouncil", "detail"),
                 ("GET", "/councils", "getCouncils", "list"),
-                ("POST", "/policies/submit", "submitPolicy", "detail"),
-                ("POST", "/policies/{workflow_id}/approve", "approvePolicy", "detail"),
+                ("POST", "/policy-approvals", "submitPolicy", "detail"),
+                ("POST", "/policy-approvals/{workflow_id}/approve", "approvePolicy", "detail"),
                 ("POST", "/appeals", "submitAppeal", "detail"),
-                ("POST", "/appeals/{appeal_id}/review", "reviewAppeal", "detail"),
+                ("POST", "/appeals/{appeal_id}/decide", "reviewAppeal", "detail"),
                 ("POST", "/suspensions", "suspendIdentity", "detail"),
                 ("POST", "/suspensions/{suspension_id}/lift", "liftSuspension", "detail"),
-                ("POST", "/restorations", "restoreIdentity", "detail"),
-                ("POST", "/registries", "registerEntity", "detail"),
-                ("GET", "/registries/{registry_type}", "getRegistry", "detail"),
-                ("POST", "/review-board", "createReviewBoard", "detail"),
-                ("GET", "/review-board/{board_id}", "getReviewBoard", "detail"),
+                ("POST", "/registry", "registerEntity", "detail"),
+                ("GET", "/registry/{person_id}", "getRegistry", "detail"),
+                ("POST", "/review-boards", "createReviewBoard", "detail"),
+                ("GET", "/review-boards", "listReviewBoards", "list"),
             ],
         },
         "trust": {
@@ -298,10 +255,10 @@ def generate_api_client() -> str:
                 ("GET", "/frameworks/{framework_id}", "getFramework", "detail"),
                 ("POST", "/assurance-profiles", "createProfile", "detail"),
                 ("GET", "/assurance-profiles", "listProfiles", "list"),
-                ("POST", "/trust-anchors", "registerAnchor", "detail"),
-                ("GET", "/trust-anchors", "listAnchors", "list"),
-                ("POST", "/evaluate", "evaluateTrust", "detail"),
-                ("POST", "/identity-proofing", "submitProofing", "detail"),
+                ("POST", "/anchors", "registerAnchor", "detail"),
+                ("GET", "/anchors", "listAnchors", "list"),
+                ("POST", "/evaluations", "evaluateTrust", "detail"),
+                ("POST", "/proofing", "submitProofing", "detail"),
             ],
         },
         "lifecycle": {
@@ -363,6 +320,8 @@ def generate_api_client() -> str:
                 ("POST", "/instances", "startInstance", "detail"),
                 ("GET", "/instances/{instance_id}", "getInstance", "detail"),
                 ("POST", "/instances/{instance_id}/approve", "submitApproval", "detail"),
+                ("POST", "/instances/{instance_id}/cancel", "cancelInstance", "detail"),
+                ("GET", "/approvals/pending/{approver_id}", "getPendingApprovals", "detail"),
             ],
         },
         "notifications": {
@@ -372,6 +331,9 @@ def generate_api_client() -> str:
                 ("POST", "/templates", "createTemplate", "detail"),
                 ("GET", "/templates", "listTemplates", "list"),
                 ("GET", "/queue/{recipient_id}", "getQueue", "list"),
+                ("POST", "/queue/{queue_id}/read", "markNotificationRead", "detail"),
+                ("POST", "/queue/{queue_id}/sent", "markNotificationSent", "detail"),
+                ("POST", "/queue/{queue_id}/delivered", "markNotificationDelivered", "detail"),
                 ("GET", "/preferences/{recipient_id}", "getPreferences", "list"),
                 ("PUT", "/preferences/{recipient_id}", "updatePreferences", "detail"),
             ],
@@ -486,115 +448,115 @@ def generate_api_client() -> str:
     "capabilities.clinical_foundation": {
         "prefix": "/clinical-foundation",
         "endpoints": [
-            ("GET", "/clinical-foundation/", "listClinicalFoundation", "list"),
-            ("GET", "/clinical-foundation/{id}", "getClinicalFoundation", "detail"),
-            ("POST", "/clinical-foundation/", "createClinicalFoundation", "detail"),
-            ("PUT", "/clinical-foundation/{id}", "updateClinicalFoundation", "detail"),
-            ("DELETE", "/clinical-foundation/{id}", "deleteClinicalFoundation", "detail"),
+            ("GET", "/", "listClinicalFoundation", "list"),
+            ("GET", "/{id}", "getClinicalFoundation", "detail"),
+            ("POST", "/", "createClinicalFoundation", "detail"),
+            ("PUT", "/{id}", "updateClinicalFoundation", "detail"),
+            ("DELETE", "/{id}", "deleteClinicalFoundation", "detail"),
         ],
     },
     "capabilities.document_management": {
         "prefix": "/document-management",
         "endpoints": [
-            ("GET", "/document-management/", "listDocumentManagement", "list"),
-            ("GET", "/document-management/{id}", "getDocumentManagement", "detail"),
-            ("POST", "/document-management/", "createDocumentManagement", "detail"),
-            ("PUT", "/document-management/{id}", "updateDocumentManagement", "detail"),
-            ("DELETE", "/document-management/{id}", "deleteDocumentManagement", "detail"),
+            ("GET", "/", "listDocumentManagement", "list"),
+            ("GET", "/{id}", "getDocumentManagement", "detail"),
+            ("POST", "/", "createDocumentManagement", "detail"),
+            ("PUT", "/{id}", "updateDocumentManagement", "detail"),
+            ("DELETE", "/{id}", "deleteDocumentManagement", "detail"),
         ],
     },
     "capabilities.encounter_management": {
         "prefix": "/encounter-management",
         "endpoints": [
-            ("GET", "/encounter-management/", "listEncounterManagement", "list"),
-            ("GET", "/encounter-management/{id}", "getEncounterManagement", "detail"),
-            ("POST", "/encounter-management/", "createEncounterManagement", "detail"),
-            ("PUT", "/encounter-management/{id}", "updateEncounterManagement", "detail"),
-            ("DELETE", "/encounter-management/{id}", "deleteEncounterManagement", "detail"),
+            ("GET", "/", "listEncounterManagement", "list"),
+            ("GET", "/{id}", "getEncounterManagement", "detail"),
+            ("POST", "/", "createEncounterManagement", "detail"),
+            ("PUT", "/{id}", "updateEncounterManagement", "detail"),
+            ("DELETE", "/{id}", "deleteEncounterManagement", "detail"),
         ],
     },
     "capabilities.fhir_interoperability": {
         "prefix": "/fhir-interoperability",
         "endpoints": [
-            ("GET", "/fhir-interoperability/", "listFhirInteroperability", "list"),
-            ("GET", "/fhir-interoperability/{id}", "getFhirInteroperability", "detail"),
-            ("POST", "/fhir-interoperability/", "createFhirInteroperability", "detail"),
-            ("PUT", "/fhir-interoperability/{id}", "updateFhirInteroperability", "detail"),
-            ("DELETE", "/fhir-interoperability/{id}", "deleteFhirInteroperability", "detail"),
+            ("GET", "/", "listFhirInteroperability", "list"),
+            ("GET", "/{id}", "getFhirInteroperability", "detail"),
+            ("POST", "/", "createFhirInteroperability", "detail"),
+            ("PUT", "/{id}", "updateFhirInteroperability", "detail"),
+            ("DELETE", "/{id}", "deleteFhirInteroperability", "detail"),
         ],
     },
     "capabilities.healthcare_consent": {
         "prefix": "/healthcare-consent",
         "endpoints": [
-            ("GET", "/healthcare-consent/", "listHealthcareConsent", "list"),
-            ("GET", "/healthcare-consent/{id}", "getHealthcareConsent", "detail"),
-            ("POST", "/healthcare-consent/", "createHealthcareConsent", "detail"),
-            ("PUT", "/healthcare-consent/{id}", "updateHealthcareConsent", "detail"),
-            ("DELETE", "/healthcare-consent/{id}", "deleteHealthcareConsent", "detail"),
+            ("GET", "/", "listHealthcareConsent", "list"),
+            ("GET", "/{id}", "getHealthcareConsent", "detail"),
+            ("POST", "/", "createHealthcareConsent", "detail"),
+            ("PUT", "/{id}", "updateHealthcareConsent", "detail"),
+            ("DELETE", "/{id}", "deleteHealthcareConsent", "detail"),
         ],
     },
     "capabilities.provider_management": {
         "prefix": "/provider-management",
         "endpoints": [
-            ("GET", "/provider-management/", "listProviderManagement", "list"),
-            ("GET", "/provider-management/{id}", "getProviderManagement", "detail"),
-            ("POST", "/provider-management/", "createProviderManagement", "detail"),
-            ("PUT", "/provider-management/{id}", "updateProviderManagement", "detail"),
-            ("DELETE", "/provider-management/{id}", "deleteProviderManagement", "detail"),
+            ("GET", "/", "listProviderManagement", "list"),
+            ("GET", "/{id}", "getProviderManagement", "detail"),
+            ("POST", "/", "createProviderManagement", "detail"),
+            ("PUT", "/{id}", "updateProviderManagement", "detail"),
+            ("DELETE", "/{id}", "deleteProviderManagement", "detail"),
         ],
     },
     "capabilities.reporting_service": {
         "prefix": "/reporting-service",
         "endpoints": [
-            ("GET", "/reporting-service/", "listReportingService", "list"),
-            ("GET", "/reporting-service/{id}", "getReportingService", "detail"),
-            ("POST", "/reporting-service/", "createReportingService", "detail"),
-            ("PUT", "/reporting-service/{id}", "updateReportingService", "detail"),
-            ("DELETE", "/reporting-service/{id}", "deleteReportingService", "detail"),
+            ("GET", "/", "listReportingService", "list"),
+            ("GET", "/{id}", "getReportingService", "detail"),
+            ("POST", "/", "createReportingService", "detail"),
+            ("PUT", "/{id}", "updateReportingService", "detail"),
+            ("DELETE", "/{id}", "deleteReportingService", "detail"),
         ],
     },
     "capabilities.search_service": {
         "prefix": "/search-service",
         "endpoints": [
-            ("GET", "/search-service/", "listSearchService", "list"),
-            ("GET", "/search-service/{id}", "getSearchService", "detail"),
-            ("POST", "/search-service/", "createSearchService", "detail"),
-            ("PUT", "/search-service/{id}", "updateSearchService", "detail"),
-            ("DELETE", "/search-service/{id}", "deleteSearchService", "detail"),
+            ("GET", "/", "listSearchService", "list"),
+            ("GET", "/{id}", "getSearchService", "detail"),
+            ("POST", "/", "createSearchService", "detail"),
+            ("PUT", "/{id}", "updateSearchService", "detail"),
+            ("DELETE", "/{id}", "deleteSearchService", "detail"),
         ],
     },
     "capabilities.storage_service": {
         "prefix": "/storage-service",
         "endpoints": [
-            ("GET", "/storage-service/", "listStorageService", "list"),
-            ("GET", "/storage-service/{id}", "getStorageService", "detail"),
-            ("POST", "/storage-service/", "createStorageService", "detail"),
-            ("PUT", "/storage-service/{id}", "updateStorageService", "detail"),
-            ("DELETE", "/storage-service/{id}", "deleteStorageService", "detail"),
+            ("GET", "/", "listStorageService", "list"),
+            ("GET", "/{id}", "getStorageService", "detail"),
+            ("POST", "/", "createStorageService", "detail"),
+            ("PUT", "/{id}", "updateStorageService", "detail"),
+            ("DELETE", "/{id}", "deleteStorageService", "detail"),
         ],
     },
     "capabilities.workflow_engine": {
         "prefix": "/workflow-engine",
         "endpoints": [
-            ("GET", "/workflow-engine/", "listWorkflowEngine", "list"),
-            ("GET", "/workflow-engine/{id}", "getWorkflowEngine", "detail"),
-            ("POST", "/workflow-engine/", "createWorkflowEngine", "detail"),
-            ("PUT", "/workflow-engine/{id}", "updateWorkflowEngine", "detail"),
-            ("DELETE", "/workflow-engine/{id}", "deleteWorkflowEngine", "detail"),
+            ("GET", "/", "listWorkflowEngine", "list"),
+            ("GET", "/{id}", "getWorkflowEngine", "detail"),
+            ("POST", "/", "createWorkflowEngine", "detail"),
+            ("PUT", "/{id}", "updateWorkflowEngine", "detail"),
+            ("DELETE", "/{id}", "deleteWorkflowEngine", "detail"),
         ],
     },
     "certification": {
-        "prefix": "/certification/dimensions",
+        "prefix": "/certification",
         "endpoints": [
-            ("POST", "/certification/evaluate/{module_path:path}", "evaluateModule", "detail"),
-            ("GET", "/certification/level/{module_path:path}", "getCertificationLevel", "detail"),
-            ("GET", "/certification/report/{module_path:path}", "getReport", "detail"),
-            ("GET", "/certification/metrics", "getAllMetrics", "list"),
-            ("GET", "/certification/metrics/{category}", "getMetricsByCategory", "detail"),
-            ("POST", "/certification/release/check", "checkReleaseGates", "detail"),
-            ("POST", "/certification/release/validate", "validateRelease", "detail"),
-            ("GET", "/certification/dimensions", "listDimensions", "list"),
-            ("GET", "/certification/dimensions/{dimension}/checks", "getDimensionChecks", "detail"),
+            ("POST", "/evaluate/{module_path}", "evaluateModule", "detail"),
+            ("GET", "/level/{module_path}", "getCertificationLevel", "detail"),
+            ("GET", "/report/{module_path}", "getReport", "detail"),
+            ("GET", "/metrics", "getAllMetrics", "list"),
+            ("GET", "/metrics/{category}", "getMetricsByCategory", "detail"),
+            ("POST", "/release/check", "checkReleaseGates", "detail"),
+            ("POST", "/release/validate", "validateRelease", "detail"),
+            ("GET", "/dimensions", "listDimensions", "list"),
+            ("GET", "/dimensions/{dimension}/checks", "getDimensionChecks", "detail"),
         ],
     },
     "citizen_platform": {
@@ -699,152 +661,6 @@ def generate_api_client() -> str:
             ("GET", "/health-data/event-store/events", "queryEventStore", "list"),
             ("GET", "/health-data/warehouse/query", "runWarehouseQuery", "list"),
             ("POST", "/health-data/canonical/map-patient", "mapFhirPatient", "detail"),
-        ],
-    },
-    "identity.adaptive_auth": {
-        "prefix": "/niam/adaptive-auth",
-        "endpoints": [
-            ("POST", "/niam/adaptive-auth/evaluate", "evaluateRisk", "detail"),
-            ("GET", "/niam/adaptive-auth/risk-history/{account_id}", "getRiskHistory", "detail"),
-            ("POST", "/niam/adaptive-auth/mfa/challenge", "createMfaChallenge", "detail"),
-            ("POST", "/niam/adaptive-auth/mfa/verify", "verifyMfaChallenge", "detail"),
-            ("GET", "/niam/adaptive-auth/policies", "listRiskPolicies", "list"),
-            ("POST", "/niam/adaptive-auth/policies", "createRiskPolicy", "detail"),
-            ("POST", "/niam/adaptive-auth/policies/{policy_id}", "updateRiskPolicy", "detail"),
-            ("GET", "/niam/adaptive-auth/session-policies", "listSessionPolicies", "list"),
-            ("POST", "/niam/adaptive-auth/session-policies", "createSessionPolicy", "detail"),
-            ("PUT", "/niam/adaptive-auth/session-policies/{policy_id}", "updateSessionPolicy", "detail"),
-        ],
-    },
-    "identity.admin": {
-        "prefix": "/admin/fhir-connections",
-        "endpoints": [
-            ("POST", "/admin/portals", "createPortal", "detail"),
-            ("GET", "/admin/portals/organization/{org_id}", "listOrgPortals", "detail"),
-            ("POST", "/admin/portals/{portal_id}/branches", "addBranch", "detail"),
-            ("POST", "/admin/branches/{branch_id}/facilities", "addFacility", "detail"),
-            ("POST", "/admin/facilities/{facility_id}/departments", "addDepartment", "detail"),
-            ("GET", "/admin/subscriptions/{org_id}", "getSubscription", "detail"),
-            ("POST", "/admin/subscriptions", "createSubscription", "detail"),
-            ("PUT", "/admin/subscriptions/{sub_id}", "updateSubscription", "detail"),
-            ("POST", "/admin/fhir-connections", "createFhirConnection", "detail"),
-            ("GET", "/admin/fhir-connections/organization/{org_id}", "listFhirConnections", "detail"),
-        ],
-    },
-    "identity.certificates": {
-        "prefix": "/certificates/organization",
-        "endpoints": [
-            ("POST", "/certificates/issue", "issueCertificate", "detail"),
-            ("POST", "/certificates/{certificate_id}/revoke", "revokeCertificate", "detail"),
-            ("POST", "/certificates/{certificate_id}/rotate", "rotateCertificate", "detail"),
-            ("GET", "/certificates/{thumbprint}", "getCertificate", "detail"),
-            ("GET", "/certificates/organization/{org_id}", "listOrgCertificates", "detail"),
-            ("GET", "/certificates/expiring", "listExpiringCertificates", "list"),
-            ("POST", "/certificates/authorities", "registerCa", "detail"),
-            ("GET", "/certificates/authorities", "listCas", "list"),
-            ("POST", "/certificates/authorities/{ca_id}/crl", "generateCrl", "detail"),
-            ("POST", "/certificates/api-keys", "generateApiKey", "detail"),
-        ],
-    },
-    "identity.compliance": {
-        "prefix": "/compliance/frameworks",
-        "endpoints": [
-            ("POST", "/compliance/frameworks", "registerFramework", "detail"),
-            ("GET", "/compliance/frameworks", "listFrameworks", "list"),
-            ("GET", "/compliance/frameworks/{framework_id}", "getFramework", "detail"),
-            ("POST", "/compliance/checks", "runCheck", "detail"),
-            ("GET", "/compliance/checks/{target_type}/{target_id}", "listChecks", "detail"),
-            ("POST", "/compliance/reports", "generateReport", "detail"),
-            ("GET", "/compliance/reports/{report_id}", "getReport", "detail"),
-            ("GET", "/compliance/status/{org_id}", "getOrgComplianceStatus", "detail"),
-        ],
-    },
-    "identity.federation": {
-        "prefix": "/federation/identities",
-        "endpoints": [
-            ("POST", "/federation/providers", "registerProvider", "detail"),
-            ("GET", "/federation/providers", "listProviders", "list"),
-            ("GET", "/federation/providers/{provider_id}", "getProvider", "detail"),
-            ("PUT", "/federation/providers/{provider_id}", "updateProvider", "detail"),
-            ("POST", "/federation/identities/link", "linkIdentity", "detail"),
-            ("POST", "/federation/identities/unlink", "unlinkIdentity", "detail"),
-            ("GET", "/federation/identities/{person_id}", "getPersonIdentities", "detail"),
-            ("POST", "/federation/trust", "establishTrust", "detail"),
-            ("GET", "/federation/trust/{org_id}", "getTrustRelationships", "detail"),
-            ("POST", "/federation/agreements", "createAgreement", "detail"),
-        ],
-    },
-    "identity.governance": {
-        "prefix": "/niam/governance",
-        "endpoints": [
-            ("POST", "/niam/governance/authorities", "createAuthority", "detail"),
-            ("GET", "/niam/governance/authorities", "listAuthorities", "list"),
-            ("GET", "/niam/governance/authorities/{authority_id}", "getAuthority", "detail"),
-            ("POST", "/niam/governance/authorities/{authority_id}/suspend", "suspendAuthority", "detail"),
-            ("POST", "/niam/governance/authorities/{authority_id}/activate", "activateAuthority", "detail"),
-            ("POST", "/niam/governance/councils", "createCouncil", "detail"),
-            ("GET", "/niam/governance/councils", "listCouncils", "list"),
-            ("GET", "/niam/governance/councils/{council_id}", "getCouncil", "detail"),
-            ("POST", "/niam/governance/review-boards", "createReviewBoard", "detail"),
-            ("POST", "/niam/governance/policy-approvals", "submitPolicyApproval", "detail"),
-        ],
-    },
-    "identity.lifecycle": {
-        "prefix": "/lifecycle/enterprise",
-        "endpoints": [
-            ("POST", "/lifecycle/enterprise/register", "startEnterpriseRegistration", "detail"),
-            ("POST", "/lifecycle/enterprise/{reg_id}/validate-license", "validateEnterpriseLicense", "detail"),
-            ("POST", "/lifecycle/enterprise/{reg_id}/inspect", "submitEnterpriseInspection", "detail"),
-            ("POST", "/lifecycle/enterprise/{reg_id}/assess-risk", "assessEnterpriseRisk", "detail"),
-            ("POST", "/lifecycle/enterprise/{reg_id}/approve", "approveEnterpriseRegistration", "detail"),
-            ("POST", "/lifecycle/enterprise/{reg_id}/reject", "rejectEnterpriseRegistration", "detail"),
-            ("GET", "/lifecycle/enterprise/{org_id}", "getEnterpriseStatus", "detail"),
-            ("POST", "/lifecycle/workforce/request", "requestEmployee", "detail"),
-            ("POST", "/lifecycle/workforce/{request_id}/validate-national-id", "validateWorkforceNationalId", "detail"),
-            ("POST", "/lifecycle/workforce/{request_id}/validate-license", "validateWorkforceLicense", "detail"),
-        ],
-    },
-    "identity.notifications": {
-        "prefix": "/notifications/send-template",
-        "endpoints": [
-            ("POST", "/notifications/send", "sendNotification", "detail"),
-            ("POST", "/notifications/templates", "createTemplate", "detail"),
-            ("GET", "/notifications/templates", "listTemplates", "list"),
-            ("GET", "/notifications/queue/{recipient_id}", "getQueue", "detail"),
-            ("POST", "/notifications/queue/{queue_id}/read", "markRead", "detail"),
-            ("GET", "/notifications/preferences/{recipient_id}", "getPreferences", "detail"),
-            ("PUT", "/notifications/preferences/{recipient_id}", "updatePreferences", "detail"),
-            ("POST", "/notifications/send-template", "sendTemplateNotification", "detail"),
-            ("POST", "/notifications/queue/{queue_id}/sent", "markNotificationSent", "detail"),
-            ("POST", "/notifications/queue/{queue_id}/delivered", "markNotificationDelivered", "detail"),
-        ],
-    },
-    "identity.trust": {
-        "prefix": "/niam/trust",
-        "endpoints": [
-            ("POST", "/niam/trust/frameworks", "createFramework", "detail"),
-            ("GET", "/niam/trust/frameworks", "listFrameworks", "list"),
-            ("GET", "/niam/trust/frameworks/{framework_id}", "getFramework", "detail"),
-            ("PUT", "/niam/trust/frameworks/{framework_id}", "updateFramework", "detail"),
-            ("POST", "/niam/trust/frameworks/{framework_id}/activate", "activateFramework", "detail"),
-            ("POST", "/niam/trust/assurance-profiles", "createAssuranceProfile", "detail"),
-            ("GET", "/niam/trust/assurance-profiles", "listAssuranceProfiles", "list"),
-            ("GET", "/niam/trust/assurance-profiles/{profile_uuid}", "getAssuranceProfile", "detail"),
-            ("GET", "/niam/trust/assurance-profiles/identity/{identity_id}", "getProfilesForIdentity", "detail"),
-            ("POST", "/niam/trust/assurance-profiles/{profile_uuid}/revoke", "revokeAssuranceProfile", "detail"),
-        ],
-    },
-    "identity.workflows": {
-        "prefix": "/workflows/definitions",
-        "endpoints": [
-            ("POST", "/workflows/definitions", "createDefinition", "detail"),
-            ("GET", "/workflows/definitions", "listDefinitions", "list"),
-            ("GET", "/workflows/definitions/{def_id}", "getDefinition", "detail"),
-            ("POST", "/workflows/instances", "startInstance", "detail"),
-            ("GET", "/workflows/instances/{instance_id}", "getInstance", "detail"),
-            ("POST", "/workflows/instances/{instance_id}/approve", "submitApproval", "detail"),
-            ("POST", "/workflows/instances/{instance_id}/cancel", "cancelInstance", "detail"),
-            ("GET", "/workflows/approvals/pending/{approver_id}", "getPendingApprovals", "detail"),
         ],
     },
     "integration": {
@@ -1126,15 +942,20 @@ def generate_api_client() -> str:
     functions: list[str] = []
 
     for mod_name, mod in sorted(all_modules.items()):
-        ns = mod_name.replace("-", "_")
+        ns = re.sub(r"[^A-Za-z0-9_]", "_", mod_name.replace("-", "_"))
         prefix = mod["prefix"]
         lines.append(f"// ── {mod_name} ──")
         lines.append("")
         lines.append(f"export const {ns}Api = {{")
 
         for method, route, func_name, _category in mod["endpoints"]:
-            # Build the full path
-            full_path = prefix + route
+            # Build the full path. Route entries are either full paths or
+            # relative to the module prefix; detect and de-duplicate.
+            first_segment = "/" + prefix.strip("/").split("/")[0] if prefix else "/"
+            if route.startswith(first_segment) and route != "/":
+                full_path = route
+            else:
+                full_path = prefix + route
             path_params = re.findall(r"\{(\w+)\}", full_path)
             has_path_params = bool(path_params)
             if has_path_params:
@@ -1167,11 +988,18 @@ def generate_api_client() -> str:
                     f"}}"
                 )
             else:
+                is_delete = method == "DELETE"
                 if has_path_params:
-                    sig = "data: unknown, params: Record<string, string | number>"
-                    call = f"  {func_name}: ({sig}) =>\n    api.{method.lower()}(`{clean_path}`, data).then(r => r.data),"
-                    mutation_call = "(variables: { data: unknown; params: Record<string, string | number> }) =>" + \
-                                    f" {ns}Api.{func_name}(variables.data, variables.params)"
+                    if is_delete:
+                        sig = "params: Record<string, string | number>"
+                        call = f"  {func_name}: ({sig}) =>\n    api.{method.lower()}(`{clean_path}`).then(r => r.data),"
+                        mutation_call = "(params: Record<string, string | number>) =>" + \
+                                        f" {ns}Api.{func_name}(params)"
+                    else:
+                        sig = "data: unknown, params: Record<string, string | number>"
+                        call = f"  {func_name}: ({sig}) =>\n    api.{method.lower()}(`{clean_path}`, data).then(r => r.data),"
+                        mutation_call = "(variables: { data: unknown; params: Record<string, string | number> }) =>" + \
+                                        f" {ns}Api.{func_name}(variables.data, variables.params)"
                 else:
                     sig = "data: unknown"
                     call = f"  {func_name}: ({sig}) =>\n    api.{method.lower()}(`{clean_path}`, data).then(r => r.data),"
