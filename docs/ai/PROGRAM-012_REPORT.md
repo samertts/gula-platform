@@ -55,15 +55,15 @@ session deterministic, governed, reproducible, and nationally scalable.
 | Ruff violations (backend/app) | 379 (known debt: E402 ×167, N801 ×141, N999 ×71) |
 | TypeScript errors | 0 |
 | ESLint errors | 0 |
-| Backend unit tests | 150 passing |
+| Backend unit tests | 168 passing (150 + 18 governance + 11 architecture lazy-cycle) |
 | Repository scorecard | 73/100 (grade C) |
-| Architecture compliance | 7.1/100 (L1 32 layer violations — top debt) |
+| Architecture compliance | 21.4/100 (L2 circular deps: 0 after runtime-aware detection; L1 32 layer violations — top debt) |
 
 ## 6. Remaining Risks (top 3)
 
-1. Architecture debt: 32 layer violations (score 7.1/100) — advisory, tracked, must not regress.
+1. Architecture debt: 32 L1 layer violations + 75 L3 forbidden imports (score 21.4/100) — advisory, tracked, must not regress.
 2. Scorecard 73/100 — improvement roadmap in `docs/ai/MASTER_ROADMAP.md`.
-3. Governance scripts ran without tests historically — 18 tests added; engine coverage to grow.
+3. Governance scripts ran without tests historically — 29 tests added; engine coverage to grow.
 
 ## 7. Next Steps (per `docs/ai/MASTER_ROADMAP.md`)
 

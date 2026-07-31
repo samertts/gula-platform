@@ -192,7 +192,7 @@ Never remove dormant enterprise modules. Dormant modules are strategic assets. I
 
 # Workspace Anchored Summary (auto-updated)
 
-Last updated: **PROGRAM-012/012A complete** — Project Brain live (`make brain`), Enterprise Validation Engine with regression gate (`make validate`, PASS), AI Execution Constitution (Article 32), CLAUDE.md v3.0 as Primary AI Operating Manual, governance docs, 18 new engine tests, certification 41/50 (0 FAIL), 2 defects fixed (flaky greeting test, cert script NameError).
+Last updated: **PROGRAM-012/012A complete + L2 runtime-cycle fix** — Project Brain live (`make brain`), Enterprise Validation Engine with regression gate (`make validate`, PASS), AI Execution Constitution (Article 32), CLAUDE.md v3.0 as Primary AI Operating Manual, governance docs, 29 engine tests, certification 41/50 (0 FAIL), 2 defects fixed (flaky greeting test, cert script NameError), architecture score 7.1→21.4 (0 runtime circular deps).
 
 ## Objective
 Transform the GULA monorepo into a production-grade national healthcare platform by fixing infrastructure, security, architecture, frontend–backend alignment, and code quality across the entire codebase.
@@ -321,7 +321,7 @@ Transform the GULA monorepo into a production-grade national healthcare platform
 
 ## Next Move
 1. Follow `docs/ai/MASTER_ROADMAP.md`: component-level baselines, Android/DB validators, brain auto-refresh in CI
-2. Reduce architecture debt (32 layer violations, L1 score 7.1/100) — advisory but tracked
+2. Reduce architecture debt (32 L1 layer violations, L3 75, L4 375 — L2 circular deps now 0; score 21.4/100) — advisory but tracked
 3. Add frontend tests for UI components (Badge, Button, Card, etc.)
 4. Continue backend test coverage (pricing_service, identity_service)
 5. Fix remaining N999 module naming violations in active code
