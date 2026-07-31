@@ -1,8 +1,8 @@
 # PROGRAM-011 Report — Enterprise Operations, Observability & Self-Healing
 
-**Status:** COMPLETE — **97% PRODUCTION READY** (99 PASS / 7 WARN / 0 FAIL)
+**Status:** COMPLETE — **98% PRODUCTION READY** (101 PASS / 5 WARN / 0 FAIL)
 **Date:** 2026-07-31 · **Certification:** `make ops-cert` → `reports/ops/OPERATIONS_READINESS_REPORT.md`
-**Regression gate:** `make validate` VERDICT PASS (200 unit tests, tsc 0, eslint 0, ruff 379 at baseline)
+**Regression gate:** `make validate` VERDICT PASS (225 unit tests, tsc 0, eslint 0, ruff 379 at baseline)
 
 ## Summary
 
@@ -33,8 +33,15 @@ and certified the result.
 - **`LOG_LEVEL` env-driven** (was hardcoded INFO).
 - **Certification engine:** `scripts/operations_certification.py` — 9 phases, 106 evidence-based checks → phase reports + `overall_health.json`.
 
+### WARN burn-down (post-certification)
+| WARN | Fix | Evidence |
+|---|---|---|
+| ASHS restart-loop risk (no per-signal cooldown) | `scripts/self_heal.py`: `ACTION_COOLDOWN_S` (600s default) + file-persisted cooldown map (`/tmp/gula-ashs-cooldown.json`) so cron-invoked ASHS runs cannot restart a service twice inside the window | `test_self_heal_cooldown.py` (8 tests) |
+| Outbox-backlog auto-repair (detected, not repaired) | `auto_repair.py`: `outbox_poll` action — backlog > 200 → `outbox_service.set_poll_interval(2)` (10s→2s); auto-restored to default when queue drains below warn. Policy-gated, idempotent, reversible | `test_outbox_auto_repair.py` (12 tests) |
+
 ### Verification
-- 200 unit tests (179 → 200: circuit breaker, shared encryption, request metrics, security events, ops certification).
+- 225 unit tests (179 → 225: circuit breaker, shared encryption, request metrics, security events, ops certification, ASHS cooldown, outbox repair).
+- 114 resilience/control-layer tests (`test_control_layer`, `test_hard_scenarios`, `test_runtime_isolation`, `test_stability_assertions`) pass with the new auto-repair wiring.
 - Local live drills: plaintext + encrypted backup→verify→restore pipelines (337 tables, audit chain intact).
 - `test_resilience_smoke.py` (22) passes with the new middleware stack.
 - Ruff clean on all touched files; shellcheck clean on all touched shell scripts.
@@ -45,7 +52,7 @@ and certified the result.
 |---|---|---|---|
 | 1. Observability | 13 | 1 | 0 |
 | 2. Monitoring | 11 | 1 | 0 |
-| 3. Self-Diagnostics | 12 | 2 | 0 |
+| 3. Self-Diagnostics | 14 | 0 | 0 |
 | 4. Self-Healing | 10 | 0 | 0 |
 | 5. Backup & Recovery | 12 | 1 | 0 |
 | 6. Operations Dashboard | 8 | 1 | 0 |
@@ -57,8 +64,6 @@ and certified the result.
 
 1. OpenTelemetry SDK export (Jaeger/Tempo/collector provisioned, no sender)
 2. Grafana alert provisioning files
-3. Outbox-backlog auto-repair action (detected, not repaired)
-4. ASHS per-signal restart cooldown (restart-loop risk)
-5. Cloud snapshot restore unimplemented (documented)
-6. Frontend page consuming `/metrics` (observability page is an API explorer)
-7. ENCRYPTION_KEY rotation re-encryption deferred on-read
+3. Cloud snapshot restore unimplemented (documented)
+4. Frontend page consuming `/metrics` (observability page is an API explorer)
+5. ENCRYPTION_KEY rotation re-encryption deferred on-read

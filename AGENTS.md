@@ -192,7 +192,7 @@ Never remove dormant enterprise modules. Dormant modules are strategic assets. I
 
 # Workspace Anchored Summary (auto-updated)
 
-Last updated: **PROGRAM-011 complete** — Operations Readiness Certification `make ops-cert`: **97% PRODUCTION READY** (99 PASS / 7 WARN / 0 FAIL); 200 unit tests; SLO request metrics exported (slo.yml rules now fireable); security-event middleware (401/403/429 metrics ground gula-full.yml); circuit-breaker API fixed (notifications crash bug); PG backup verifier + AES-256 backup encryption (drilled live: 337 tables restore OK); CI backup drill in nightly.yml; PITR runbook; docs/ops/OPERATIONS_MANUAL.md; ops crons committed in server-setup.sh.
+Last updated: **PROGRAM-011 complete** — Operations Readiness Certification `make ops-cert`: **98% PRODUCTION READY** (101 PASS / 5 WARN / 0 FAIL); 225 unit tests; SLO request metrics exported (slo.yml rules now fireable); security-event middleware (401/403/429 metrics ground gula-full.yml); circuit-breaker API fixed (notifications crash bug); PG backup verifier + AES-256 backup encryption (drilled live: 337 tables restore OK); CI backup drill in nightly.yml; PITR runbook; docs/ops/OPERATIONS_MANUAL.md; ops crons committed in server-setup.sh; ASHS per-signal restart cooldown (file-persisted, cron-safe); outbox backlog auto-repair (poll 10s→2s on >200 backlog, auto-restore).
 
 ## Objective
 Transform the GULA monorepo into a production-grade national healthcare platform by fixing infrastructure, security, architecture, frontend–backend alignment, and code quality across the entire codebase.
