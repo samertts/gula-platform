@@ -19,7 +19,7 @@ import pathlib
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -224,8 +224,8 @@ class GovernanceCertification:
         pct = (authed_endpoints / total_endpoints * 100) if total_endpoints else 0
         self._result("Auth: Endpoint authentication", PASS if pct >= 90 else WARN,
                      f"{authed_endpoints}/{total_endpoints} endpoints ({pct:.0f}%) authenticated")
-        if public:
-            self._result("Auth: Unauthenticated route files", WARN, ", ".join(public[:5]))
+        if unauth_files:
+            self._result("Auth: Unauthenticated route files", WARN, ", ".join(unauth_files[:5]))
 
         # RBAC model check
         rbac_path = REPO_ROOT / "backend/app/security/rbac.py"
@@ -429,9 +429,9 @@ class GovernanceCertification:
 
         path = os.path.join(self.output_dir, "NATIONAL_CERTIFICATION_REPORT.md")
         with open(path, "w") as f:
-            f.write(f"# GULA Platform — National Enterprise Certification\n\n")
-            f.write(f"**Program**: PROGRAM-ENTERPRISE-GOVERNANCE-001\n")
-            f.write(f"**Date**: {datetime.now(timezone.utc).isoformat()}\n")
+            f.write("# GULA Platform — National Enterprise Certification\n\n")
+            f.write("**Program**: PROGRAM-ENTERPRISE-GOVERNANCE-001\n")
+            f.write(f"**Date**: {datetime.now(UTC).isoformat()}\n")
             f.write(f"**Classification**: {cert_level[0]}\n")
             f.write(f"**Score**: {score}% ({passed}/{total} checks passed)\n\n")
             f.write("## Certification Level\n\n")
@@ -439,8 +439,8 @@ class GovernanceCertification:
                 mark = "✓" if order <= cert_level[1] else " "
                 f.write(f"- [{mark}] {level}\n")
             f.write("\n## Results Summary\n\n")
-            f.write(f"| Result | Count |\n")
-            f.write(f"|--------|-------|\n")
+            f.write("| Result | Count |\n")
+            f.write("|--------|-------|\n")
             f.write(f"| PASS | {passed} |\n")
             f.write(f"| WARNING | {warned} |\n")
             f.write(f"| FAIL | {failed} |\n")
@@ -479,7 +479,7 @@ class GovernanceCertification:
             else:
                 f.write("**CONDITIONAL.** ")
                 f.write("Address warnings and re-certify before production deployment.\n")
-            f.write(f"\n## Engineering Tasks\n\n")
+            f.write("\n## Engineering Tasks\n\n")
             for b in self.blockers:
                 f.write(f"- [ ] {b}\n")
 
@@ -491,7 +491,7 @@ class GovernanceCertification:
         with open(jpath, "w") as f:
             json.dump({
                 "program": "PROGRAM-ENTERPRISE-GOVERNANCE-001",
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "classification": cert_level[0],
                 "score": score,
                 "passed": passed,
