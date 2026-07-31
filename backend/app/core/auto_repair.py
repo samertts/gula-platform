@@ -169,6 +169,42 @@ class RepairEngine:
             self._record("redis_reconnect", str(e), False)
             return False
 
+    def _repair_outbox_backlog(self, queue: int) -> bool:
+        """Speed up the outbox worker poll rate during a backlog spike."""
+        if not _guard_repair("outbox_poll"):
+            return False
+        try:
+            from app.services.outbox_service import get_poll_interval, set_poll_interval
+
+            previous = get_poll_interval()
+            if previous <= 2:
+                self._record("outbox_poll", f"queue={queue} poll already at {previous}s", True)
+                return True
+            set_poll_interval(2)  # 10s → 2s until the backlog clears
+            self._record(
+                "outbox_poll", f"queue={queue} poll interval {previous}s → 2s", True,
+            )
+            return True
+        except Exception as e:
+            self._record("outbox_poll", str(e), False)
+            return False
+
+    def _normalize_outbox_poll(self, queue: int) -> None:
+        """Restore the default poll interval once the backlog has cleared."""
+        try:
+            from app.services.outbox_service import _POLL_SECS as _OUTBOX_DEFAULT_SECS
+            from app.services.outbox_service import get_poll_interval, set_poll_interval
+
+            if get_poll_interval() < _OUTBOX_DEFAULT_SECS and queue <= _QUEUE_WARN:
+                set_poll_interval(_OUTBOX_DEFAULT_SECS)
+                self._record(
+                    "outbox_poll",
+                    f"queue={queue} poll interval restored to {_OUTBOX_DEFAULT_SECS}s",
+                    True,
+                )
+        except Exception:
+            pass
+
     # ── Metrics collection ───────────────────────────────────────────────────
 
     def _rss_mb(self) -> float:
@@ -235,6 +271,11 @@ class RepairEngine:
         self._register(
             RepairAction("redis_reconnect", "Force Redis reconnect", "critical", cooldown_s=30),
         )
+        self._register(
+            RepairAction(
+                "outbox_poll", "Speed up outbox worker poll on backlog spike", "warn", cooldown_s=60,
+            ),
+        )
 
         while True:
             await asyncio.sleep(_POLL_SECS)
@@ -297,6 +338,18 @@ class RepairEngine:
         if redis_ms > 9000 and self._can_trigger("redis_reconnect"):
             self._repair_redis_reconnect()
             self._mark_triggered("redis_reconnect")
+
+        # ── Outbox backlog spike → speed up worker poll ─────────────────────
+        if queue > _QUEUE_CRITICAL and self._can_trigger("outbox_poll"):
+            logger.warning(
+                "[AUTO-REPAIR] Outbox backlog: %d events > %d → speeding up worker poll",
+                queue,
+                _QUEUE_CRITICAL,
+            )
+            self._repair_outbox_backlog(queue)
+            self._mark_triggered("outbox_poll")
+        else:
+            self._normalize_outbox_poll(queue)
 
         # ── Persist sliding window to Redis (survives container restarts) ────
         try:

@@ -72,17 +72,17 @@ class CircuitBreaker:
 
     def _get_state(self) -> CircuitState:
         """Internal state reader — call with lock held."""
-        if self._state == CircuitState.OPEN:
+        if (
+            self._state == CircuitState.OPEN
+            and self._last_failure_time is not None
+            and (time.monotonic() - self._last_failure_time) >= self.recovery_timeout
+        ):
             # Auto-transition to HALF_OPEN after recovery timeout
-            if (
-                self._last_failure_time is not None
-                and (time.monotonic() - self._last_failure_time) >= self.recovery_timeout
-            ):
-                self._state = CircuitState.HALF_OPEN
-                logger.info(
-                    "[CIRCUIT BREAKER] %s: OPEN → HALF_OPEN (probing recovery)",
-                    self.name,
-                )
+            self._state = CircuitState.HALF_OPEN
+            logger.info(
+                "[CIRCUIT BREAKER] %s: OPEN → HALF_OPEN (probing recovery)",
+                self.name,
+            )
         return self._state
 
     def record_success(self) -> None:

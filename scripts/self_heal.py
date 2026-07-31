@@ -37,14 +37,12 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 
 import requests
 import urllib3
-
-from datetime import UTC
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -303,6 +301,43 @@ def diagnose(signals: list[Signal]) -> list[Decision]:
 
 SAFE_MODE_ALREADY_ACTIVE = False
 
+# Per-signal action cooldown (seconds): an action is not re-executed for the
+# same signal until the cooldown expires. Prevents restart loops when a system
+# stays stuck (cron invokes ASHS every 60s). File-based so it persists across
+# cron invocations (in-memory state dies with the process).
+ACTION_COOLDOWN_S = int(os.getenv("ASHS_ACTION_COOLDOWN", "600"))
+COOLDOWN_FILE = Path(os.getenv("ASHS_COOLDOWN_FILE", "/tmp/gula-ashs-cooldown.json"))
+
+
+def _load_cooldowns() -> dict[str, float]:
+    try:
+        data = json.loads(COOLDOWN_FILE.read_text(encoding="utf-8"))
+        return {k: float(v) for k, v in data.items()} if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_cooldowns(cooldowns: dict[str, float]) -> None:
+    try:
+        COOLDOWN_FILE.write_text(json.dumps(cooldowns), encoding="utf-8")
+    except OSError as exc:
+        log.warning("Could not persist ASHS cooldown state: %s", exc)
+
+
+def _action_due(signal: str, action: str) -> bool:
+    """True if `action` for `signal` may run (respecting the cooldown window)."""
+    now = time.time()
+    cooldowns = _load_cooldowns()
+    key = f"{signal}:{action}"
+    last = cooldowns.get(key, 0.0)
+    if now - last < ACTION_COOLDOWN_S:
+        log.info("COOLDOWN: skipping '%s' for signal '%s' (executed %ds ago)",
+                 action, signal, int(now - last))
+        return False
+    cooldowns[key] = now
+    _save_cooldowns(cooldowns)
+    return True
+
 
 def execute(decision: Decision, dry_run: bool = False) -> list[str]:
     """Execute runbook actions. Returns list of actions taken."""
@@ -312,6 +347,9 @@ def execute(decision: Decision, dry_run: bool = False) -> list[str]:
         if dry_run:
             log.info("DRY-RUN: would execute '%s' (risk=%s)", action, decision.risk.value)
             taken.append(f"dry:{action}")
+            continue
+
+        if action.startswith("restart_") and not _action_due(decision.signal.name, action):
             continue
 
         if action == "restart_backend":
@@ -431,10 +469,7 @@ def run_cycle(dry_run: bool = False) -> int:
 
         actions_taken = execute(dec, dry_run=dry_run)
 
-        if actions_taken:
-            verified = verify_recovery(actions_taken)
-        else:
-            verified = True  # monitor-only decision
+        verified = verify_recovery(actions_taken) if actions_taken else True
 
         inc = Incident(
             ts=ts,

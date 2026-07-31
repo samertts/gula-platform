@@ -43,6 +43,21 @@ logger = logging.getLogger("gula.outbox")
 
 _BATCH_SIZE = 50  # events per worker cycle
 _POLL_SECS = 10  # seconds between worker polls
+_poll_interval_s = _POLL_SECS  # dynamic — auto-repair can shorten it on backlog spikes
+
+
+def set_poll_interval(seconds: int) -> None:
+    """Adjust the worker poll interval (clamped to >= 1s).
+
+    Used by the auto-repair engine to speed up drain during outbox backlog
+    spikes. Idempotent and reversible.
+    """
+    global _poll_interval_s
+    _poll_interval_s = max(1, int(seconds))
+
+
+def get_poll_interval() -> int:
+    return _poll_interval_s
 
 
 # ─── Writer (called inside business transaction) ──────────────────────────────
@@ -186,12 +201,12 @@ class OutboxWorker:
             logger.error("[OUTBOX] Could not verify outbox_events table: %s — worker aborted", exc)
             return
 
-        logger.info("[OUTBOX] Worker started (poll_interval=%ds)", _POLL_SECS)
+        logger.info("[OUTBOX] Worker started (poll_interval=%ds)", get_poll_interval())
         _last_purge = _t.monotonic()
         _purge_interval = 86_400  # 24 hours
 
         while True:
-            await asyncio.sleep(_POLL_SECS)
+            await asyncio.sleep(get_poll_interval())
 
             def _run_outbox_cycle(last_purge: float):
                 db = SessionLocal()
