@@ -176,6 +176,11 @@ def log_action(
 ):
     """Log an action to the tamper-evident audit trail. Delegates chain hash
     computation to shared.audit while maintaining backend anchor files.
+
+    Append-only compliance: on PostgreSQL the audit_logs table is protected
+    by a no-UPDATE trigger, so the chain hash must be computed before the
+    INSERT. The id is pre-assigned from the sequence so the same hash input
+    (id included) is used as in the historical contract.
     """
     entry = AuditLog(
         user_id=user_id,
@@ -187,11 +192,20 @@ def log_action(
         ip_address=ip_address,
         created_at=datetime.now(UTC),
     )
-    db.add(entry)
-    db.flush()
+
+    dialect = db.get_bind().dialect.name
+    if dialect == "postgresql":
+        from sqlalchemy import text
+
+        entry.id = db.execute(
+            text("SELECT nextval('audit_logs_id_seq')"),
+        ).scalar()
 
     prev_hash = _get_last_chain_hash(db)
     entry.chain_hash = _compute_chain_hash(prev_hash, entry)
+
+    db.add(entry)
+    db.flush()
 
     # Write anchor checkpoint every N entries
     if entry.id % _ANCHOR_INTERVAL == 0:
