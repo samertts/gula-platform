@@ -451,8 +451,25 @@ export const healthApi = {
   status: () => api.get<HealthStatus>("/health/status").then((r) => r.data),
 };
 
+export interface MetricsSummary {
+  uptime_s: number;
+  uptime_h: number;
+  memory_mb: number;
+  db: { status: string; ok: boolean; ping_ms: number };
+  redis: { ok: boolean; ping_ms: number };
+  stats: {
+    orders_total: number;
+    orders_today: number;
+    validated_total: number;
+    validated_today: number;
+    pending: number;
+  };
+  scope: string;
+  timestamp: string;
+}
+
 export const metricsApi = {
-  get: () => api.get<Record<string, number>>("/metrics").then((r) => r.data),
+  get: () => api.get<MetricsSummary>("/metrics").then((r) => r.data),
   prom: () => api.get<string>("/metrics/prom").then((r) => r.data),
 };
 

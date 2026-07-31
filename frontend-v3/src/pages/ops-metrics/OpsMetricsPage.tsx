@@ -1,26 +1,10 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/api/client";
+import { healthApi, metricsApi, type MetricsSummary } from "@/api/endpoints";
+import type { HealthStatus, DeepHealth } from "@/types";
 import { PageHeader } from "@/components/shared/PageComponents";
 import { Card, CardContent, Badge } from "@/components/ui";
-import { Activity, Gauge, Database, Boxes, List } from "lucide-react";
-
-interface MetricsJson {
-  uptime_s: number;
-  uptime_h: number;
-  memory_mb: number;
-  db: { status: string; ok: boolean; ping_ms: number };
-  redis: { ok: boolean; ping_ms: number };
-  stats: {
-    orders_total: number;
-    orders_today: number;
-    validated_total: number;
-    validated_today: number;
-    pending: number;
-  };
-  scope: string;
-  timestamp: string;
-}
+import { Activity, Gauge, Database, Boxes, List, HeartPulse, ShieldCheck, AlertTriangle } from "lucide-react";
 
 interface PromSample {
   name: string;
@@ -30,6 +14,7 @@ interface PromSample {
 
 const tabs = [
   { id: "summary", label: "الملخص", icon: Gauge },
+  { id: "readiness", label: "الجاهزية", icon: ShieldCheck },
   { id: "prometheus", label: "Prometheus", icon: Activity },
 ] as const;
 
@@ -73,22 +58,126 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
+function ReadinessPanel({ status, deep }: { status: HealthStatus; deep: DeepHealth }) {
+  const gradeVariant: "success" | "destructive" | "default" =
+    deep.grade === "healthy" ? "success" : deep.grade === "degraded" ? "default" : "destructive";
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard
+          label="حالة النظام"
+          value={status.status}
+          sub={status.platform_ar}
+        />
+        <StatCard
+          label="جاهزية النظام"
+          value={status.system_ready ? "جاهز" : "غير جاهز"}
+        />
+        <StatCard
+          label="وضع الأداء"
+          value={status.degraded_mode ? "متدهور" : "طبيعي"}
+          sub={status.degradation_level}
+        />
+        <StatCard label="قاعدة البيانات" value={status.database} />
+      </div>
+
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <HeartPulse className="h-4 w-4" /> تقييم الصحة العميق
+            </div>
+            <Badge variant={gradeVariant}>{deep.grade}</Badge>
+          </div>
+          {deep.issues.length > 0 ? (
+            <ul className="text-xs text-red-600 space-y-1">
+              {deep.issues.map((issue, i) => (
+                <li key={i} className="flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> {issue}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="text-xs text-gray-500">لا توجد مشكلات مسجلة</div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Database className="h-4 w-4" /> قاعدة البيانات
+            </div>
+            <ComponentRow ok={deep.components.database.ok} detail={deep.components.database.error ?? `${deep.components.database.latency_ms} ms`} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Boxes className="h-4 w-4" /> Redis
+            </div>
+            <ComponentRow ok={deep.components.redis.ok} detail={deep.components.redis.error ?? `${deep.components.redis.latency_ms} ms`} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <List className="h-4 w-4" /> قائمة الانتظار
+            </div>
+            <ComponentRow ok={(deep.components.queue.backlog ?? 0) === 0} detail={deep.components.queue.error ?? `الطلبات المعلقة: ${deep.components.queue.backlog ?? 0}`} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Gauge className="h-4 w-4" /> العملية
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>الذاكرة: {deep.process.memory_rss_mb} MB</div>
+              <div>الطلبات النشطة: {deep.process.active_requests}</div>
+              <div>مدة التشغيل: {deep.process.uptime_h} ساعة</div>
+              <div>وضع الأداء: {deep.process.degraded_mode ? "متدهور" : "طبيعي"}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function ComponentRow({ ok, detail }: { ok: boolean; detail: string }) {
+  return (
+    <div className="flex items-center justify-between">
+      <Badge variant={statusBadge(ok)}>{ok ? "متصل" : "معطل"}</Badge>
+      <span className="text-xs text-gray-500">{detail}</span>
+    </div>
+  );
+}
+
 export default function OpsMetricsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("summary");
 
   const metrics = useQuery({
     queryKey: ["opsMetrics", "json"],
-    queryFn: () => api.get<MetricsJson>("/metrics").then((r) => r.data),
+    queryFn: metricsApi.get,
     refetchInterval: 30_000,
   });
 
   const prom = useQuery({
     queryKey: ["opsMetrics", "prom"],
-    queryFn: () => api.get<string>("/metrics/prom").then((r) => r.data),
+    queryFn: metricsApi.prom,
     refetchInterval: 60_000,
   });
 
-  const data = metrics.data;
+  const readiness = useQuery({
+    queryKey: ["opsMetrics", "readiness"],
+    queryFn: () =>
+      Promise.all([healthApi.status(), healthApi.deep()]).then(([status, deep]) => ({ status, deep })),
+    refetchInterval: 30_000,
+  });
+
+  const data: MetricsSummary | undefined = metrics.data;
 
   return (
     <div className="space-y-6">
@@ -209,6 +298,24 @@ export default function OpsMetricsPage() {
                 </CardContent>
               </Card>
             </>
+          )}
+        </div>
+      )}
+
+      {activeTab === "readiness" && (
+        <div className="space-y-6">
+          {readiness.error ? (
+            <Card>
+              <CardContent className="p-4 text-red-600">
+                تعذر جلب بيانات الجاهزية: {String(readiness.error)}
+              </CardContent>
+            </Card>
+          ) : readiness.data ? (
+            <ReadinessPanel status={readiness.data.status} deep={readiness.data.deep} />
+          ) : (
+            <Card>
+              <CardContent className="p-4 text-gray-500">جاري التحميل…</CardContent>
+            </Card>
           )}
         </div>
       )}
