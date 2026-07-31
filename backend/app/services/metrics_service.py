@@ -23,6 +23,7 @@ _request_errors_total: dict[tuple[str, str], int] = {}
 _latency_buckets: dict[tuple[float, str, str], int] = {}
 _latency_sum: dict[tuple[str, str], float] = {}
 _latency_count: dict[tuple[str, str], int] = {}
+_security_events: dict[tuple[str, str, str], int] = {}
 
 
 def get_rss_mb() -> float:
@@ -117,6 +118,35 @@ def record_request(method: str, route: str, status_code: int, duration_s: float)
                 _latency_buckets[bkey] = _latency_buckets.get(bkey, 0) + 1
         _latency_sum[route_key] = _latency_sum.get(route_key, 0.0) + duration_s
         _latency_count[route_key] = _latency_count.get(route_key, 0) + 1
+
+
+def record_security_event(event_type: str, method: str, route: str) -> None:
+    """Record a security-relevant event (auth_failure/permission_denied/rate_limit_block)."""
+    with _METRICS_LOCK:
+        key = (event_type, method.upper(), route)
+        _security_events[key] = _security_events.get(key, 0) + 1
+
+
+def security_metrics_exposition() -> str:
+    """Render security event counters consumed by gula-full.yml alert rules."""
+    with _METRICS_LOCK:
+        if not _security_events:
+            return ""
+        names = {
+            "auth_failure": "gula_auth_failures_total",
+            "permission_denied": "gula_permission_denied_total",
+            "rate_limit_block": "gula_rate_limit_blocks_total",
+        }
+        lines: list[str] = []
+        for event_type in names:
+            lines.append(f"# HELP {names[event_type]} Security events by type")
+            lines.append(f"# TYPE {names[event_type]} counter")
+        for (event_type, method, route), count in sorted(_security_events.items()):
+            lines.append(
+                f'{names[event_type]}{{method="{_escape_label(method)}",'
+                f'route="{_escape_label(route)}"}} {count}'
+            )
+        return "\n".join(lines) + "\n"
 
 
 def request_metrics_exposition() -> str:
@@ -372,5 +402,6 @@ def build_prometheus_response(request: Request, db: Session) -> PlainTextRespons
 
     lines.append("")
     lines.append(request_metrics_exposition())
+    lines.append(security_metrics_exposition())
     lines.append("")
     return PlainTextResponse("\n".join(lines) + "\n", media_type=_PROM_CONTENT_TYPE)

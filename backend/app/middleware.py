@@ -75,6 +75,50 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
 _SILENT_PATHS: frozenset[str] = frozenset({"/health", "/health/ready", "/health/live"})
 
 
+class SecurityEventMiddleware(BaseHTTPMiddleware):
+    """Record security-relevant HTTP outcomes (401/403/429) for audit + metrics.
+
+    Observation only: never alters responses. Feeds gula_auth_failures_total,
+    gula_permission_denied_total and gula_rate_limit_blocks_total, which the
+    Prometheus alert rules (gula-full.yml) evaluate.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        try:
+            response = await call_next(request)
+        except Exception:
+            raise
+        if response.status_code in (401, 403, 429):
+            self._record(request, response.status_code)
+        return response
+
+    @staticmethod
+    def _record(request: Request, status: int) -> None:
+        route = getattr(request.scope.get("route"), "path", None) or "unmatched"
+        event = {
+            401: ("auth_failure", "Authentication failed"),
+            403: ("permission_denied", "Permission denied"),
+            429: ("rate_limit_block", "Rate limit exceeded"),
+        }.get(status)
+        if event is None:
+            return
+        event_type, message = event
+        logger.warning(
+            "%s: %s %s (%s)",
+            event_type,
+            request.method,
+            request.url.path,
+            message,
+            extra={"path": request.url.path, "status": status, "event": event_type},
+        )
+        try:
+            from .services.metrics_service import record_security_event
+
+            record_security_event(event_type, request.method, route)
+        except Exception:
+            logger.exception("Failed to record security event")
+
+
 class RequestTimingMiddleware(BaseHTTPMiddleware):
     """Emit a structured access-log line per request."""
 

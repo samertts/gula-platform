@@ -20,6 +20,7 @@ def setup_function() -> None:
     metrics_service._latency_buckets.clear()
     metrics_service._latency_sum.clear()
     metrics_service._latency_count.clear()
+    metrics_service._security_events.clear()
 
 
 def test_empty_exposition() -> None:
@@ -73,3 +74,18 @@ def test_concurrent_recording_is_safe() -> None:
         t.join()
     assert not errors
     assert metrics_service._latency_count[("GET", "/x")] == 800
+
+
+def test_security_events_exposition() -> None:
+    metrics_service.record_security_event("auth_failure", "POST", "/login")
+    metrics_service.record_security_event("auth_failure", "POST", "/login")
+    metrics_service.record_security_event("permission_denied", "GET", "/admin/users")
+    metrics_service.record_security_event("rate_limit_block", "GET", "/orders")
+    exp = metrics_service.security_metrics_exposition()
+    assert 'gula_auth_failures_total{method="POST",route="/login"} 2' in exp
+    assert 'gula_permission_denied_total{method="GET",route="/admin/users"} 1' in exp
+    assert 'gula_rate_limit_blocks_total{method="GET",route="/orders"} 1' in exp
+
+
+def test_security_events_empty() -> None:
+    assert metrics_service.security_metrics_exposition() == ""

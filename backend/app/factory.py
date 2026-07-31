@@ -375,6 +375,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
         ReadinessMiddleware,
         RequestIDMiddleware,
         RequestTimingMiddleware,
+        SecurityEventMiddleware,
         SecurityHeadersMiddleware,
     )
 
@@ -421,6 +422,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
     )
 
     app.add_middleware(RequestTimingMiddleware)
+    app.add_middleware(SecurityEventMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
