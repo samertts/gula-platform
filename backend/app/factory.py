@@ -958,6 +958,10 @@ def create_app(override_mode: str | None = None) -> FastAPI:
     if _should_init_sentry():
         configure_sentry()
 
+    from .telemetry import init_tracing
+
+    init_tracing()
+
     import_all_models()
 
     _docs_url = None
@@ -1000,5 +1004,9 @@ def create_app(override_mode: str | None = None) -> FastAPI:
     _register_routes(app)
     if _is_openapi_mode():
         logger.info("OpenAPI mode — routes registered for schema generation only")
+
+    from .telemetry import instrument_app
+
+    instrument_app(app)
 
     return app

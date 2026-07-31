@@ -126,8 +126,11 @@ class OpsCertification:
         ]
         for name, ok in checks:
             self._result(f"P1 · {name}", PASS if ok else FAIL)
-        self._result("P1 · Distributed tracing export (OTel)", WARN,
-                     "tracer.py debug-logs spans; Jaeger/Tempo provisioned but no SDK export")
+        self._result("P1 · Distributed tracing export (OTel)", PASS if (
+            self._has_text("backend/app/telemetry.py", "OTLPSpanExporter", "instrument_app")
+            and self._has_text("backend/app/factory.py", "init_tracing")
+        ) else FAIL,
+            "OTLP/HTTP exporter (env-gated, no-op by default) + FastAPI/SQLAlchemy instrumentation")
 
     # ── Phase 2: Monitoring ────────────────────────────────────────────────────
 

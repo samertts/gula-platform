@@ -156,6 +156,10 @@ services:
       # Prometheus scrape token
       METRICS_BEARER_TOKEN: ${METRICS_BEARER_TOKEN:-}
       RATE_LIMIT_BLOCK_DURATION_SECONDS: ${RATE_LIMIT_BLOCK_DURATION_SECONDS:-3600}
+      # OpenTelemetry tracing: enable by setting OTEL_EXPORTER_OTLP_ENDPOINT
+      # (e.g. http://jaeger:4318 — Jaeger service ships in docker-compose.full.yml)
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: gula-backend
       PYTHONPATH: /app
     volumes:
       # Canonical shared library (mounted for hot-reload)
@@ -224,6 +228,8 @@ services:
       HEALTH_ALERT_INTERVAL_SECONDS: ${HEALTH_ALERT_INTERVAL_SECONDS:-60}
       DB_POOL_SIZE: ${WORKER_DB_POOL_SIZE:-3}
       DB_MAX_OVERFLOW: ${WORKER_DB_MAX_OVERFLOW:-5}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      OTEL_SERVICE_NAME: gula-worker
       PYTHONPATH: /app
     volumes:
       - ./shared:/app/shared:ro

@@ -8,9 +8,17 @@ import types
 
 os.environ.setdefault("ENV", "test")
 
+# scripts/self_heal.py imports `requests`/`urllib3`. When they are not
+# installed (lean CI environments), fall back to stub modules so the
+# import chain still resolves. When they ARE installed (opentelemetry
+# dependency), leave them alone — stubbing would shadow the real packages
+# and poison later tests (e.g. OTel exporter imports requests.exceptions).
 for _dep in ("requests", "urllib3"):
     if _dep not in sys.modules:
-        sys.modules[_dep] = types.ModuleType(_dep)
+        try:
+            __import__(_dep)
+        except ImportError:
+            sys.modules[_dep] = types.ModuleType(_dep)
 
 if "urllib3" in sys.modules:
     _u3 = sys.modules["urllib3"]
