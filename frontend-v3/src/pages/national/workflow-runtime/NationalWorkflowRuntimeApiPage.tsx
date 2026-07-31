@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {  FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -43,10 +44,12 @@ export default function NationalWorkflowRuntimeApiPage() {
   });
   const steps = useQuery({
     queryKey: ["nationalWorkflowRuntimeApi", "steps"],
+    enabled: false,
     queryFn: () => api.get("/national/workflows/executions//steps").then((r) => r.data),
   });
   const approvals = useQuery({
     queryKey: ["nationalWorkflowRuntimeApi", "approvals"],
+    enabled: false,
     queryFn: () => api.get("/national/workflows/executions//approvals").then((r) => r.data),
   });
   const pending = useQuery({
@@ -96,12 +99,12 @@ export default function NationalWorkflowRuntimeApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    definitions: { columns: definitionsCols, data: (definitions.data ?? []) as Record<string, unknown>[], loading: definitions.isLoading },
-    executions: { columns: executionsCols, data: (executions.data ?? []) as Record<string, unknown>[], loading: executions.isLoading },
-    steps: { columns: stepsCols, data: (steps.data ?? []) as Record<string, unknown>[], loading: steps.isLoading },
-    approvals: { columns: approvalsCols, data: (approvals.data ?? []) as Record<string, unknown>[], loading: approvals.isLoading },
-    pending: { columns: pendingCols, data: (pending.data ?? []) as Record<string, unknown>[], loading: pending.isLoading },
-    templates: { columns: templatesCols, data: (templates.data ?? []) as Record<string, unknown>[], loading: templates.isLoading },
+    definitions: { columns: definitionsCols, data: asTableData(definitions.data), loading: definitions.isLoading },
+    executions: { columns: executionsCols, data: asTableData(executions.data), loading: executions.isLoading },
+    steps: { columns: stepsCols, data: asTableData(steps.data), loading: steps.isLoading },
+    approvals: { columns: approvalsCols, data: asTableData(approvals.data), loading: approvals.isLoading },
+    pending: { columns: pendingCols, data: asTableData(pending.data), loading: pending.isLoading },
+    templates: { columns: templatesCols, data: asTableData(templates.data), loading: templates.isLoading },
   };
 
   return (

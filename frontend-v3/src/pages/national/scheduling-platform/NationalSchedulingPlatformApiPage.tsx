@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -47,6 +48,7 @@ export default function NationalSchedulingPlatformApiPage() {
   });
   const schedules = useQuery({
     queryKey: ["nationalSchedulingPlatformApi", "schedules"],
+    enabled: false,
     queryFn: () => api.get("/national/scheduling/schedules").then((r) => r.data),
   });
   const waitingList = useQuery({
@@ -96,12 +98,12 @@ export default function NationalSchedulingPlatformApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    appointments: { columns: appointmentsCols, data: (appointments.data ?? []) as Record<string, unknown>[], loading: appointments.isLoading },
-    slots: { columns: slotsCols, data: (slots.data ?? []) as Record<string, unknown>[], loading: slots.isLoading },
-    resources: { columns: resourcesCols, data: (resources.data ?? []) as Record<string, unknown>[], loading: resources.isLoading },
-    schedules: { columns: schedulesCols, data: (schedules.data ?? []) as Record<string, unknown>[], loading: schedules.isLoading },
-    "waiting-list": { columns: waitingListCols, data: (waitingList.data ?? []) as Record<string, unknown>[], loading: waitingList.isLoading },
-    calendars: { columns: calendarsCols, data: (calendars.data ?? []) as Record<string, unknown>[], loading: calendars.isLoading },
+    appointments: { columns: appointmentsCols, data: asTableData(appointments.data), loading: appointments.isLoading },
+    slots: { columns: slotsCols, data: asTableData(slots.data), loading: slots.isLoading },
+    resources: { columns: resourcesCols, data: asTableData(resources.data), loading: resources.isLoading },
+    schedules: { columns: schedulesCols, data: asTableData(schedules.data), loading: schedules.isLoading },
+    "waiting-list": { columns: waitingListCols, data: asTableData(waitingList.data), loading: waitingList.isLoading },
+    calendars: { columns: calendarsCols, data: asTableData(calendars.data), loading: calendars.isLoading },
   };
 
   return (

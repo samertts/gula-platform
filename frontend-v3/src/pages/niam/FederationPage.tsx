@@ -9,6 +9,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Globe, Link, Handshake, FileText } from "lucide-react";
@@ -35,12 +36,13 @@ export default function FederationPage() {
 
   const identities = useQuery({
     queryKey: ["federation", "identities"],
+    enabled: false,
     queryFn: () => api.get("/niam/federation/identities").then((r) => r.data),
   });
 
   const trustList = useQuery({
     queryKey: ["federation", "trust"],
-    queryFn: () => api.get("/niam/federation/trust").then((r) => r.data),
+    queryFn: () => api.get("/niam/trust/federation").then((r) => r.data),
   });
 
   const agreements = useQuery({
@@ -85,10 +87,10 @@ export default function FederationPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    providers: { columns: providerCols, data: (providers.data ?? []) as Record<string, unknown>[], loading: providers.isLoading },
-    identities: { columns: identityCols, data: (identities.data ?? []) as Record<string, unknown>[], loading: identities.isLoading },
-    trust: { columns: trustCols, data: (trustList.data ?? []) as Record<string, unknown>[], loading: trustList.isLoading },
-    agreements: { columns: agreementCols, data: (agreements.data ?? []) as Record<string, unknown>[], loading: agreements.isLoading },
+    providers: { columns: providerCols, data: asTableData(providers.data), loading: providers.isLoading },
+    identities: { columns: identityCols, data: asTableData(identities.data), loading: identities.isLoading },
+    trust: { columns: trustCols, data: asTableData(trustList.data), loading: trustList.isLoading },
+    agreements: { columns: agreementCols, data: asTableData(agreements.data), loading: agreements.isLoading },
   };
 
   return (

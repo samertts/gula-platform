@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {  FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -39,6 +40,7 @@ export default function HealthDataPage() {
   });
   const lineage = useQuery({
     queryKey: ["healthData", "lineage"],
+    enabled: false,
     queryFn: () => api.get("/health-data/lineage").then((r) => r.data),
   });
   const policies = useQuery({
@@ -96,12 +98,12 @@ export default function HealthDataPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    catalog: { columns: catalogCols, data: (catalog.data ?? []) as Record<string, unknown>[], loading: catalog.isLoading },
-    lineage: { columns: lineageCols, data: (lineage.data ?? []) as Record<string, unknown>[], loading: lineage.isLoading },
-    policies: { columns: policiesCols, data: (policies.data ?? []) as Record<string, unknown>[], loading: policies.isLoading },
-    metrics: { columns: metricsCols, data: (metrics.data ?? []) as Record<string, unknown>[], loading: metrics.isLoading },
-    events: { columns: eventsCols, data: (events.data ?? []) as Record<string, unknown>[], loading: events.isLoading },
-    query: { columns: queryCols, data: (query.data ?? []) as Record<string, unknown>[], loading: query.isLoading },
+    catalog: { columns: catalogCols, data: asTableData(catalog.data), loading: catalog.isLoading },
+    lineage: { columns: lineageCols, data: asTableData(lineage.data), loading: lineage.isLoading },
+    policies: { columns: policiesCols, data: asTableData(policies.data), loading: policies.isLoading },
+    metrics: { columns: metricsCols, data: asTableData(metrics.data), loading: metrics.isLoading },
+    events: { columns: eventsCols, data: asTableData(events.data), loading: events.isLoading },
+    query: { columns: queryCols, data: asTableData(query.data), loading: query.isLoading },
   };
 
   return (

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {  FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -47,6 +48,7 @@ export default function EmsApiPage() {
   });
   const triage = useQuery({
     queryKey: ["emsApi", "triage"],
+    enabled: false,
     queryFn: () => api.get("/ems/triage").then((r) => r.data),
   });
   const epcr = useQuery({
@@ -96,12 +98,12 @@ export default function EmsApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    incidents: { columns: incidentsCols, data: (incidents.data ?? []) as Record<string, unknown>[], loading: incidents.isLoading },
-    ambulances: { columns: ambulancesCols, data: (ambulances.data ?? []) as Record<string, unknown>[], loading: ambulances.isLoading },
-    crew: { columns: crewCols, data: (crew.data ?? []) as Record<string, unknown>[], loading: crew.isLoading },
-    triage: { columns: triageCols, data: (triage.data ?? []) as Record<string, unknown>[], loading: triage.isLoading },
-    epcr: { columns: epcrCols, data: (epcr.data ?? []) as Record<string, unknown>[], loading: epcr.isLoading },
-    nearby: { columns: nearbyCols, data: (nearby.data ?? []) as Record<string, unknown>[], loading: nearby.isLoading },
+    incidents: { columns: incidentsCols, data: asTableData(incidents.data), loading: incidents.isLoading },
+    ambulances: { columns: ambulancesCols, data: asTableData(ambulances.data), loading: ambulances.isLoading },
+    crew: { columns: crewCols, data: asTableData(crew.data), loading: crew.isLoading },
+    triage: { columns: triageCols, data: asTableData(triage.data), loading: triage.isLoading },
+    epcr: { columns: epcrCols, data: asTableData(epcr.data), loading: epcr.isLoading },
+    nearby: { columns: nearbyCols, data: asTableData(nearby.data), loading: nearby.isLoading },
   };
 
   return (

@@ -17,7 +17,7 @@ from .services import (
     TrustFrameworkService,
 )
 
-router = APIRouter(prefix="/niam/trust", tags=["NIAM Trust"])
+router = APIRouter(prefix="/trust", tags=["NIAM Trust"])
 
 
 # ── Trust Frameworks ──────────────────────────────────────────────────────────

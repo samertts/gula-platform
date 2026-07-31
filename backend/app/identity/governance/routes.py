@@ -16,7 +16,7 @@ from .services import (
     SuspensionService,
 )
 
-router = APIRouter(prefix="/niam/governance", tags=["NIAM Governance"])
+router = APIRouter(prefix="/governance", tags=["NIAM Governance"])
 
 
 # ── Authorities ────────────────────────────────────────────────────────────────

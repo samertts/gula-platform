@@ -348,7 +348,7 @@ async def platform_status():
 # ═══════════════════════════════════════════════════════════════════
 
 gov_router = APIRouter(
-    prefix="/document-intelligence/government",
+    prefix="/government",
     tags=["Government Records"],
 )
 
@@ -415,7 +415,7 @@ router.include_router(gov_router)
 # ═══════════════════════════════════════════════════════════════════
 
 collab_router = APIRouter(
-    prefix="/document-intelligence/collaboration",
+    prefix="/collaboration",
     tags=["Collaboration"],
 )
 
@@ -491,7 +491,7 @@ router.include_router(collab_router)
 # ═══════════════════════════════════════════════════════════════════
 
 gov_router2 = APIRouter(
-    prefix="/document-intelligence/governance",
+    prefix="/governance",
     tags=["Governance"],
 )
 
@@ -565,7 +565,7 @@ router.include_router(gov_router2)
 # ═══════════════════════════════════════════════════════════════════
 
 archive_router = APIRouter(
-    prefix="/document-intelligence/archive",
+    prefix="/archive",
     tags=["Digital Archive"],
 )
 
@@ -633,7 +633,7 @@ router.include_router(archive_router)
 # ═══════════════════════════════════════════════════════════════════
 
 kg_router = APIRouter(
-    prefix="/document-intelligence/knowledge-graph",
+    prefix="/knowledge-graph",
     tags=["Knowledge Graph"],
 )
 
@@ -679,7 +679,7 @@ router.include_router(kg_router)
 # ═══════════════════════════════════════════════════════════════════
 
 webhook_router = APIRouter(
-    prefix="/document-intelligence/webhooks",
+    prefix="/webhooks",
     tags=["Webhooks"],
 )
 
@@ -712,7 +712,7 @@ router.include_router(webhook_router)
 # ═══════════════════════════════════════════════════════════════════
 
 obs_router = APIRouter(
-    prefix="/document-intelligence/observability",
+    prefix="/observability",
     tags=["Observability"],
 )
 
@@ -753,7 +753,7 @@ router.include_router(obs_router)
 # ═══════════════════════════════════════════════════════════════════
 
 access_router = APIRouter(
-    prefix="/document-intelligence/access",
+    prefix="/access",
     tags=["Access Control"],
 )
 
@@ -797,7 +797,7 @@ router.include_router(access_router)
 # ═══════════════════════════════════════════════════════════════════
 
 semantic_router = APIRouter(
-    prefix="/document-intelligence/semantic-search",
+    prefix="/semantic-search",
     tags=["Semantic Search"],
 )
 
@@ -840,7 +840,7 @@ router.include_router(semantic_router)
 # ═══════════════════════════════════════════════════════════════════
 
 lifecycle_router = APIRouter(
-    prefix="/document-intelligence/lifecycle",
+    prefix="/lifecycle",
     tags=["Document Lifecycle"],
 )
 

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {  FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -43,10 +44,12 @@ export default function CriticalCareApiPage() {
   });
   const vitals = useQuery({
     queryKey: ["criticalCareApi", "vitals"],
+    enabled: false,
     queryFn: () => api.get("/critical-care/vitals").then((r) => r.data),
   });
   const ventilator = useQuery({
     queryKey: ["criticalCareApi", "ventilator"],
+    enabled: false,
     queryFn: () => api.get("/critical-care/ventilator").then((r) => r.data),
   });
   const dashboard = useQuery({
@@ -96,12 +99,12 @@ export default function CriticalCareApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    admissions: { columns: admissionsCols, data: (admissions.data ?? []) as Record<string, unknown>[], loading: admissions.isLoading },
-    availability: { columns: availabilityCols, data: (availability.data ?? []) as Record<string, unknown>[], loading: availability.isLoading },
-    vitals: { columns: vitalsCols, data: (vitals.data ?? []) as Record<string, unknown>[], loading: vitals.isLoading },
-    ventilator: { columns: ventilatorCols, data: (ventilator.data ?? []) as Record<string, unknown>[], loading: ventilator.isLoading },
-    dashboard: { columns: dashboardCols, data: (dashboard.data ?? []) as Record<string, unknown>[], loading: dashboard.isLoading },
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
+    admissions: { columns: admissionsCols, data: asTableData(admissions.data), loading: admissions.isLoading },
+    availability: { columns: availabilityCols, data: asTableData(availability.data), loading: availability.isLoading },
+    vitals: { columns: vitalsCols, data: asTableData(vitals.data), loading: vitals.isLoading },
+    ventilator: { columns: ventilatorCols, data: asTableData(ventilator.data), loading: ventilator.isLoading },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
   };
 
   return (

@@ -7,6 +7,6 @@ Layer: application
 Version: 1.0.0
 """
 
-from workflow_engine.capability import Workflow_engineCapability
+from .capability import Workflow_engineCapability
 
 __all__ = ["Workflow_engineCapability"]

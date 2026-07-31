@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Activity, FileText, List } from "lucide-react";
@@ -40,6 +41,7 @@ export default function IntegrationConnectorsPage() {
   });
   const health = useQuery({
     queryKey: ["integrationConnectors", "health"],
+    enabled: false,
     queryFn: () => api.get("/integration/connectors//health").then((r) => r.data),
   });
 
@@ -63,9 +65,9 @@ export default function IntegrationConnectorsPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    status: { columns: statusCols, data: (status.data ?? []) as Record<string, unknown>[], loading: status.isLoading },
-    connectors: { columns: connectorsCols, data: (connectors.data ?? []) as Record<string, unknown>[], loading: connectors.isLoading },
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
+    status: { columns: statusCols, data: asTableData(status.data), loading: status.isLoading },
+    connectors: { columns: connectorsCols, data: asTableData(connectors.data), loading: connectors.isLoading },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
   };
 
   return (

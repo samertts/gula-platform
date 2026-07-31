@@ -9,6 +9,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { ScrollText, Key, Shield, ShieldCheck } from "lucide-react";
@@ -34,7 +35,7 @@ export default function CertificatesPage() {
 
   const certificates = useQuery({
     queryKey: ["certificates", "list"],
-    queryFn: () => api.get("/niam/certificates").then((r) => r.data),
+    queryFn: () => api.get("/niam/certificates/expiring", { params: { days: 365 } }).then((r) => r.data),
   });
 
   const authorities = useQuery({
@@ -44,6 +45,7 @@ export default function CertificatesPage() {
 
   const apiKeys = useQuery({
     queryKey: ["certificates", "apikeys"],
+    enabled: false,
     queryFn: () => api.get("/niam/certificates/api-keys").then((r) => r.data),
   });
 
@@ -82,10 +84,10 @@ export default function CertificatesPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    certificates: { columns: certCols, data: (certificates.data ?? []) as Record<string, unknown>[], loading: certificates.isLoading },
-    authorities: { columns: caCols, data: (authorities.data ?? []) as Record<string, unknown>[], loading: authorities.isLoading },
-    apikeys: { columns: keyCols, data: (apiKeys.data ?? []) as Record<string, unknown>[], loading: apiKeys.isLoading },
-    expiring: { columns: certCols, data: (expiring.data ?? []) as Record<string, unknown>[], loading: expiring.isLoading },
+    certificates: { columns: certCols, data: asTableData(certificates.data), loading: certificates.isLoading },
+    authorities: { columns: caCols, data: asTableData(authorities.data), loading: authorities.isLoading },
+    apikeys: { columns: keyCols, data: asTableData(apiKeys.data), loading: apiKeys.isLoading },
+    expiring: { columns: certCols, data: asTableData(expiring.data), loading: expiring.isLoading },
   };
 
   return (

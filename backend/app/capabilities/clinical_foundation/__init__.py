@@ -7,6 +7,6 @@ Layer: application
 Version: 1.0.0
 """
 
-from clinical_foundation.capability import Clinical_foundationCapability
+from .capability import Clinical_foundationCapability
 
 __all__ = ["Clinical_foundationCapability"]

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {  FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -39,10 +40,12 @@ export default function NationalBackgroundPlatformApiPage() {
   });
   const executions = useQuery({
     queryKey: ["nationalBackgroundPlatformApi", "executions"],
+    enabled: false,
     queryFn: () => api.get("/national/jobs//executions").then((r) => r.data),
   });
   const schedules = useQuery({
     queryKey: ["nationalBackgroundPlatformApi", "schedules"],
+    enabled: false,
     queryFn: () => api.get("/national/jobs//schedules").then((r) => r.data),
   });
   const stats = useQuery({
@@ -96,12 +99,12 @@ export default function NationalBackgroundPlatformApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    jobs: { columns: jobsCols, data: (jobs.data ?? []) as Record<string, unknown>[], loading: jobs.isLoading },
-    executions: { columns: executionsCols, data: (executions.data ?? []) as Record<string, unknown>[], loading: executions.isLoading },
-    schedules: { columns: schedulesCols, data: (schedules.data ?? []) as Record<string, unknown>[], loading: schedules.isLoading },
-    stats: { columns: statsCols, data: (stats.data ?? []) as Record<string, unknown>[], loading: stats.isLoading },
-    due: { columns: dueCols, data: (due.data ?? []) as Record<string, unknown>[], loading: due.isLoading },
-    dashboard: { columns: dashboardCols, data: (dashboard.data ?? []) as Record<string, unknown>[], loading: dashboard.isLoading },
+    jobs: { columns: jobsCols, data: asTableData(jobs.data), loading: jobs.isLoading },
+    executions: { columns: executionsCols, data: asTableData(executions.data), loading: executions.isLoading },
+    schedules: { columns: schedulesCols, data: asTableData(schedules.data), loading: schedules.isLoading },
+    stats: { columns: statsCols, data: asTableData(stats.data), loading: stats.isLoading },
+    due: { columns: dueCols, data: asTableData(due.data), loading: due.isLoading },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
   };
 
   return (

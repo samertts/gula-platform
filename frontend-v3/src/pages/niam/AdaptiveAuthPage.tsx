@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Shield, AlertTriangle, Key, Activity } from "lucide-react";
@@ -40,6 +41,7 @@ export default function AdaptiveAuthPage() {
 
   const events = useQuery({
     queryKey: ["adaptive-auth", "events"],
+    enabled: false,
     queryFn: () => api.get("/niam/adaptive-auth/risk-history").then((r) => r.data),
   });
 
@@ -79,9 +81,9 @@ export default function AdaptiveAuthPage() {
   ];
 
   const tables = {
-    policies: { columns: policyCols, data: (riskPolicies.data ?? []) as Record<string, unknown>[], loading: riskPolicies.isLoading },
-    events: { columns: eventCols, data: (events.data ?? []) as Record<string, unknown>[], loading: events.isLoading },
-    sessions: { columns: sessionPolicyCols, data: (sessionPolicies.data ?? []) as Record<string, unknown>[], loading: sessionPolicies.isLoading },
+    policies: { columns: policyCols, data: asTableData(riskPolicies.data), loading: riskPolicies.isLoading },
+    events: { columns: eventCols, data: asTableData(events.data), loading: events.isLoading },
+    sessions: { columns: sessionPolicyCols, data: asTableData(sessionPolicies.data), loading: sessionPolicies.isLoading },
     travel: { columns: eventCols, data: [] as Record<string, unknown>[], loading: false },
   };
 

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -43,6 +44,7 @@ export default function CommandIntelligencePage() {
   });
   const trend = useQuery({
     queryKey: ["commandIntelligence", "trend"],
+    enabled: false,
     queryFn: () => api.get("/intelligence/kpis//trend").then((r) => r.data),
   });
   const incidents = useQuery({
@@ -96,12 +98,12 @@ export default function CommandIntelligencePage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    "situation-room": { columns: situationRoomCols, data: (situationRoom.data ?? []) as Record<string, unknown>[], loading: situationRoom.isLoading },
-    kpis: { columns: kpisCols, data: (kpis.data ?? []) as Record<string, unknown>[], loading: kpis.isLoading },
-    trend: { columns: trendCols, data: (trend.data ?? []) as Record<string, unknown>[], loading: trend.isLoading },
-    incidents: { columns: incidentsCols, data: (incidents.data ?? []) as Record<string, unknown>[], loading: incidents.isLoading },
-    capacity: { columns: capacityCols, data: (capacity.data ?? []) as Record<string, unknown>[], loading: capacity.isLoading },
-    "executive-dashboard": { columns: executiveDashboardCols, data: (executiveDashboard.data ?? []) as Record<string, unknown>[], loading: executiveDashboard.isLoading },
+    "situation-room": { columns: situationRoomCols, data: asTableData(situationRoom.data), loading: situationRoom.isLoading },
+    kpis: { columns: kpisCols, data: asTableData(kpis.data), loading: kpis.isLoading },
+    trend: { columns: trendCols, data: asTableData(trend.data), loading: trend.isLoading },
+    incidents: { columns: incidentsCols, data: asTableData(incidents.data), loading: incidents.isLoading },
+    capacity: { columns: capacityCols, data: asTableData(capacity.data), loading: capacity.isLoading },
+    "executive-dashboard": { columns: executiveDashboardCols, data: asTableData(executiveDashboard.data), loading: executiveDashboard.isLoading },
   };
 
   return (

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -35,26 +36,32 @@ export default function CitizenPlatformPage() {
 
   const dashboard = useQuery({
     queryKey: ["citizenPlatform", "dashboard"],
+    enabled: false,
     queryFn: () => api.get("/citizen-platform/dashboard").then((r) => r.data),
   });
   const profile = useQuery({
     queryKey: ["citizenPlatform", "profile"],
+    enabled: false,
     queryFn: () => api.get("/citizen-platform/profile").then((r) => r.data),
   });
   const healthSummary = useQuery({
     queryKey: ["citizenPlatform", "health-summary"],
+    enabled: false,
     queryFn: () => api.get("/citizen-platform/health-summary").then((r) => r.data),
   });
   const appointments = useQuery({
     queryKey: ["citizenPlatform", "appointments"],
+    enabled: false,
     queryFn: () => api.get("/citizen-platform/appointments").then((r) => r.data),
   });
   const medications = useQuery({
     queryKey: ["citizenPlatform", "medications"],
+    enabled: false,
     queryFn: () => api.get("/citizen-platform/medications").then((r) => r.data),
   });
   const labResults = useQuery({
     queryKey: ["citizenPlatform", "lab-results"],
+    enabled: false,
     queryFn: () => api.get("/citizen-platform/lab-results").then((r) => r.data),
   });
 
@@ -96,12 +103,12 @@ export default function CitizenPlatformPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    dashboard: { columns: dashboardCols, data: (dashboard.data ?? []) as Record<string, unknown>[], loading: dashboard.isLoading },
-    profile: { columns: profileCols, data: (profile.data ?? []) as Record<string, unknown>[], loading: profile.isLoading },
-    "health-summary": { columns: healthSummaryCols, data: (healthSummary.data ?? []) as Record<string, unknown>[], loading: healthSummary.isLoading },
-    appointments: { columns: appointmentsCols, data: (appointments.data ?? []) as Record<string, unknown>[], loading: appointments.isLoading },
-    medications: { columns: medicationsCols, data: (medications.data ?? []) as Record<string, unknown>[], loading: medications.isLoading },
-    "lab-results": { columns: labResultsCols, data: (labResults.data ?? []) as Record<string, unknown>[], loading: labResults.isLoading },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
+    profile: { columns: profileCols, data: asTableData(profile.data), loading: profile.isLoading },
+    "health-summary": { columns: healthSummaryCols, data: asTableData(healthSummary.data), loading: healthSummary.isLoading },
+    appointments: { columns: appointmentsCols, data: asTableData(appointments.data), loading: appointments.isLoading },
+    medications: { columns: medicationsCols, data: asTableData(medications.data), loading: medications.isLoading },
+    "lab-results": { columns: labResultsCols, data: asTableData(labResults.data), loading: labResults.isLoading },
   };
 
   return (

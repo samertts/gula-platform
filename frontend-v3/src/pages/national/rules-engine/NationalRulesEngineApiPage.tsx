@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -38,10 +39,12 @@ export default function NationalRulesEngineApiPage() {
   });
   const versions = useQuery({
     queryKey: ["nationalRulesEngineApi", "versions"],
+    enabled: false,
     queryFn: () => api.get("/national/rules//versions").then((r) => r.data),
   });
   const evaluations = useQuery({
     queryKey: ["nationalRulesEngineApi", "evaluations"],
+    enabled: false,
     queryFn: () => api.get("/national/rules//evaluations").then((r) => r.data),
   });
   const categories = useQuery({
@@ -85,11 +88,11 @@ export default function NationalRulesEngineApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    rules: { columns: rulesCols, data: (rules.data ?? []) as Record<string, unknown>[], loading: rules.isLoading },
-    versions: { columns: versionsCols, data: (versions.data ?? []) as Record<string, unknown>[], loading: versions.isLoading },
-    evaluations: { columns: evaluationsCols, data: (evaluations.data ?? []) as Record<string, unknown>[], loading: evaluations.isLoading },
-    categories: { columns: categoriesCols, data: (categories.data ?? []) as Record<string, unknown>[], loading: categories.isLoading },
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
+    rules: { columns: rulesCols, data: asTableData(rules.data), loading: rules.isLoading },
+    versions: { columns: versionsCols, data: asTableData(versions.data), loading: versions.isLoading },
+    evaluations: { columns: evaluationsCols, data: asTableData(evaluations.data), loading: evaluations.isLoading },
+    categories: { columns: categoriesCols, data: asTableData(categories.data), loading: categories.isLoading },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
   };
 
   return (

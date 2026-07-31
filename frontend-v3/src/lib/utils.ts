@@ -129,3 +129,16 @@ export function getTierColor(tier: string): string {
   };
   return map[tier] ?? "bg-gray-100 text-gray-700";
 }
+
+const COLLECTION_KEYS = ["items", "data", "results", "records", "logs", "metrics", "traces", "jobs", "schedules", "tasks", "documents", "rules", "notifications", "suspensions", "certificates", "identities", "providers", "agreements", "frameworks", "profiles", "anchors", "definitions", "instances", "policies"] as const;
+
+export function asTableData<T = Record<string, unknown>>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === "object") {
+    for (const key of COLLECTION_KEYS) {
+      const candidate = (value as Record<string, unknown>)[key];
+      if (Array.isArray(candidate)) return candidate as T[];
+    }
+  }
+  return [];
+}

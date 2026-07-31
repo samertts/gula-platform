@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -39,6 +40,7 @@ export default function LifecyclePlatformApiPage() {
   });
   const name = useQuery({
     queryKey: ["lifecyclePlatformApi", "name"],
+    enabled: false,
     queryFn: () => api.get("/lifecycle/components/name").then((r) => r.data),
   });
   const releases = useQuery({
@@ -96,12 +98,12 @@ export default function LifecyclePlatformApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    components: { columns: componentsCols, data: (components.data ?? []) as Record<string, unknown>[], loading: components.isLoading },
-    name: { columns: nameCols, data: (name.data ?? []) as Record<string, unknown>[], loading: name.isLoading },
-    releases: { columns: releasesCols, data: (releases.data ?? []) as Record<string, unknown>[], loading: releases.isLoading },
-    check: { columns: checkCols, data: (check.data ?? []) as Record<string, unknown>[], loading: check.isLoading },
-    compatibility: { columns: compatibilityCols, data: (compatibility.data ?? []) as Record<string, unknown>[], loading: compatibility.isLoading },
-    "upgrade-paths": { columns: upgradePathsCols, data: (upgradePaths.data ?? []) as Record<string, unknown>[], loading: upgradePaths.isLoading },
+    components: { columns: componentsCols, data: asTableData(components.data), loading: components.isLoading },
+    name: { columns: nameCols, data: asTableData(name.data), loading: name.isLoading },
+    releases: { columns: releasesCols, data: asTableData(releases.data), loading: releases.isLoading },
+    check: { columns: checkCols, data: asTableData(check.data), loading: check.isLoading },
+    compatibility: { columns: compatibilityCols, data: asTableData(compatibility.data), loading: compatibility.isLoading },
+    "upgrade-paths": { columns: upgradePathsCols, data: asTableData(upgradePaths.data), loading: upgradePaths.isLoading },
   };
 
   return (

@@ -9,6 +9,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Building2, Scale, Gavel, FileCheck, Ban } from "lucide-react";
@@ -72,11 +73,12 @@ export default function GovernancePage() {
 
   const suspensions = useQuery({
     queryKey: ["governance", "suspensions"],
-    queryFn: () => api.get("/niam/governance/suspensions").then((r) => r.data),
+    queryFn: () => api.get("/niam/governance/suspensions/active").then((r) => r.data),
   });
 
   const registries = useQuery({
     queryKey: ["governance", "registries"],
+    enabled: false,
     queryFn: () => api.get("/niam/governance/registries").then((r) => r.data),
   });
 
@@ -150,27 +152,27 @@ export default function GovernancePage() {
   const tables: Record<TabId, { columns: ColumnDef<unknown, unknown>[]; data: unknown[]; loading: boolean }> = {
     authorities: {
       columns: authorityColumns as ColumnDef<unknown, unknown>[],
-      data: (authorities.data ?? []) as unknown[],
+      data: asTableData(authorities.data),
       loading: authorities.isLoading,
     },
     councils: {
       columns: councilColumns as ColumnDef<unknown, unknown>[],
-      data: (councils.data ?? []) as unknown[],
+      data: asTableData(councils.data),
       loading: councils.isLoading,
     },
     appeals: {
       columns: appealColumns as ColumnDef<unknown, unknown>[],
-      data: (appeals.data ?? []) as unknown[],
+      data: asTableData(appeals.data),
       loading: appeals.isLoading,
     },
     suspensions: {
       columns: suspensionColumns as ColumnDef<unknown, unknown>[],
-      data: (suspensions.data ?? []) as unknown[],
+      data: asTableData(suspensions.data),
       loading: suspensions.isLoading,
     },
     registries: {
       columns: registryColumns as ColumnDef<unknown, unknown>[],
-      data: (registries.data ?? []) as unknown[],
+      data: asTableData(registries.data),
       loading: registries.isLoading,
     },
   };

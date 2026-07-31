@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -43,10 +44,12 @@ export default function NationalTaskEngineApiPage() {
   });
   const comments = useQuery({
     queryKey: ["nationalTaskEngineApi", "comments"],
+    enabled: false,
     queryFn: () => api.get("/national/tasks//comments").then((r) => r.data),
   });
   const history = useQuery({
     queryKey: ["nationalTaskEngineApi", "history"],
+    enabled: false,
     queryFn: () => api.get("/national/tasks//history").then((r) => r.data),
   });
   const queues = useQuery({
@@ -96,12 +99,12 @@ export default function NationalTaskEngineApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    tasks: { columns: tasksCols, data: (tasks.data ?? []) as Record<string, unknown>[], loading: tasks.isLoading },
-    dashboard: { columns: dashboardCols, data: (dashboard.data ?? []) as Record<string, unknown>[], loading: dashboard.isLoading },
-    comments: { columns: commentsCols, data: (comments.data ?? []) as Record<string, unknown>[], loading: comments.isLoading },
-    history: { columns: historyCols, data: (history.data ?? []) as Record<string, unknown>[], loading: history.isLoading },
-    queues: { columns: queuesCols, data: (queues.data ?? []) as Record<string, unknown>[], loading: queues.isLoading },
-    "sla-definitions": { columns: slaDefinitionsCols, data: (slaDefinitions.data ?? []) as Record<string, unknown>[], loading: slaDefinitions.isLoading },
+    tasks: { columns: tasksCols, data: asTableData(tasks.data), loading: tasks.isLoading },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
+    comments: { columns: commentsCols, data: asTableData(comments.data), loading: comments.isLoading },
+    history: { columns: historyCols, data: asTableData(history.data), loading: history.isLoading },
+    queues: { columns: queuesCols, data: asTableData(queues.data), loading: queues.isLoading },
+    "sla-definitions": { columns: slaDefinitionsCols, data: asTableData(slaDefinitions.data), loading: slaDefinitions.isLoading },
   };
 
   return (

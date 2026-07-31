@@ -10,7 +10,7 @@ from app.database import get_db
 from .models import ImpossibleTravelEvent, RiskPolicy, SessionPolicy
 from .services import AdaptiveAuthService, SessionGovernanceService
 
-router = APIRouter(prefix="/niam/adaptive-auth", tags=["NIAM Adaptive Auth"])
+router = APIRouter(prefix="/adaptive-auth", tags=["NIAM Adaptive Auth"])
 
 
 @router.post("/evaluate")

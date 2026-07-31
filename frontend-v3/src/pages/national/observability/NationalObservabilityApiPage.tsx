@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {  FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -39,7 +40,7 @@ export default function NationalObservabilityApiPage() {
   });
   const traces = useQuery({
     queryKey: ["nationalObservabilityApi", "traces"],
-    queryFn: () => api.get("/national/observability/traces").then((r) => r.data),
+    queryFn: () => api.get("/national/observability/traces/search").then((r) => r.data),
   });
   const search = useQuery({
     queryKey: ["nationalObservabilityApi", "search"],
@@ -96,12 +97,12 @@ export default function NationalObservabilityApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    query: { columns: queryCols, data: (query.data ?? []) as Record<string, unknown>[], loading: query.isLoading },
-    traces: { columns: tracesCols, data: (traces.data ?? []) as Record<string, unknown>[], loading: traces.isLoading },
-    search: { columns: searchCols, data: (search.data ?? []) as Record<string, unknown>[], loading: search.isLoading },
-    checks: { columns: checksCols, data: (checks.data ?? []) as Record<string, unknown>[], loading: checks.isLoading },
-    status: { columns: statusCols, data: (status.data ?? []) as Record<string, unknown>[], loading: status.isLoading },
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
+    query: { columns: queryCols, data: asTableData(query.data), loading: query.isLoading },
+    traces: { columns: tracesCols, data: asTableData(traces.data), loading: traces.isLoading },
+    search: { columns: searchCols, data: asTableData(search.data), loading: search.isLoading },
+    checks: { columns: checksCols, data: asTableData(checks.data), loading: checks.isLoading },
+    status: { columns: statusCols, data: asTableData(status.data), loading: status.isLoading },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
   };
 
   return (

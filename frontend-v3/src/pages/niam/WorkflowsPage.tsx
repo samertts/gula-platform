@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Workflow, PlayCircle, CheckCircle2 } from "lucide-react";
@@ -40,6 +41,7 @@ export default function WorkflowsPage() {
 
   const instances = useQuery({
     queryKey: ["workflows", "instances"],
+    enabled: false,
     queryFn: () => api.get("/niam/workflows/instances").then((r) => r.data),
   });
 
@@ -65,8 +67,8 @@ export default function WorkflowsPage() {
   ];
 
   const tables = {
-    definitions: { columns: defCols, data: (definitions.data ?? []) as Record<string, unknown>[], loading: definitions.isLoading },
-    instances: { columns: instanceCols, data: (instances.data ?? []) as Record<string, unknown>[], loading: instances.isLoading },
+    definitions: { columns: defCols, data: asTableData(definitions.data), loading: definitions.isLoading },
+    instances: { columns: instanceCols, data: asTableData(instances.data), loading: instances.isLoading },
     approvals: { columns: instanceCols, data: [], loading: false },
   };
 

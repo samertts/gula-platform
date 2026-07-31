@@ -17,6 +17,7 @@ from ..services.test_result_service import (
     create_result,
     get_result,
     list_citizen_results,
+    list_results,
     verify_result,
 )
 from ..services.test_result_service import (
@@ -95,6 +96,31 @@ def validate_test_result(
         normal_high=data.normal_range_high,
         test_code=data.test_code,
         db=db,
+    )
+
+
+@router.get("", summary="List lab test results")
+def list_test_results(
+    health_id: str | None = Query(None, max_length=20),
+    category: str | None = Query(None, max_length=50),
+    date_from: date | None = Query(None),
+    date_to: date | None = Query(None),
+    is_abnormal: bool | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return list_results(
+        current_user,
+        db,
+        health_id=health_id,
+        category=category,
+        date_from=date_from,
+        date_to=date_to,
+        is_abnormal=is_abnormal,
+        skip=skip,
+        limit=limit,
     )
 
 

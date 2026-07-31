@@ -9,6 +9,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Shield, Fingerprint, Anchor, Scale } from "lucide-react";
@@ -39,7 +40,7 @@ export default function TrustPage() {
 
   const anchors = useQuery({
     queryKey: ["trust", "anchors"],
-    queryFn: () => api.get("/niam/trust/trust-anchors").then((r) => r.data),
+    queryFn: () => api.get("/niam/trust/anchors").then((r) => r.data),
   });
 
   const createFramework = useMutation({
@@ -92,9 +93,9 @@ export default function TrustPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    frameworks: { columns: frameworkColumns, data: (frameworks.data ?? []) as Record<string, unknown>[], loading: frameworks.isLoading },
-    profiles: { columns: profileColumns, data: (profiles.data ?? []) as Record<string, unknown>[], loading: profiles.isLoading },
-    anchors: { columns: anchorColumns, data: (anchors.data ?? []) as Record<string, unknown>[], loading: anchors.isLoading },
+    frameworks: { columns: frameworkColumns, data: asTableData(frameworks.data), loading: frameworks.isLoading },
+    profiles: { columns: profileColumns, data: asTableData(profiles.data), loading: profiles.isLoading },
+    anchors: { columns: anchorColumns, data: asTableData(anchors.data), loading: anchors.isLoading },
     evaluate: { columns: frameworkColumns, data: [], loading: false },
   };
 

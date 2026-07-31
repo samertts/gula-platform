@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -47,6 +48,7 @@ export default function BloodBankApiPage() {
   });
   const compatibleGroups = useQuery({
     queryKey: ["bloodBankApi", "compatible-groups"],
+    enabled: false,
     queryFn: () => api.get("/blood-bank/crossmatch/compatible-groups").then((r) => r.data),
   });
   const dashboard = useQuery({
@@ -96,12 +98,12 @@ export default function BloodBankApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    donors: { columns: donorsCols, data: (donors.data ?? []) as Record<string, unknown>[], loading: donors.isLoading },
-    inventory: { columns: inventoryCols, data: (inventory.data ?? []) as Record<string, unknown>[], loading: inventory.isLoading },
-    critical: { columns: criticalCols, data: (critical.data ?? []) as Record<string, unknown>[], loading: critical.isLoading },
-    "compatible-groups": { columns: compatibleGroupsCols, data: (compatibleGroups.data ?? []) as Record<string, unknown>[], loading: compatibleGroups.isLoading },
-    dashboard: { columns: dashboardCols, data: (dashboard.data ?? []) as Record<string, unknown>[], loading: dashboard.isLoading },
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
+    donors: { columns: donorsCols, data: asTableData(donors.data), loading: donors.isLoading },
+    inventory: { columns: inventoryCols, data: asTableData(inventory.data), loading: inventory.isLoading },
+    critical: { columns: criticalCols, data: asTableData(critical.data), loading: critical.isLoading },
+    "compatible-groups": { columns: compatibleGroupsCols, data: asTableData(compatibleGroups.data), loading: compatibleGroups.isLoading },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
   };
 
   return (

@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {  FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -39,22 +40,27 @@ export default function NationalDocumentPlatformApiPage() {
   });
   const versions = useQuery({
     queryKey: ["nationalDocumentPlatformApi", "versions"],
+    enabled: false,
     queryFn: () => api.get("/national/documents//versions").then((r) => r.data),
   });
   const signatures = useQuery({
     queryKey: ["nationalDocumentPlatformApi", "signatures"],
+    enabled: false,
     queryFn: () => api.get("/national/documents//signatures").then((r) => r.data),
   });
   const qrcode = useQuery({
     queryKey: ["nationalDocumentPlatformApi", "qrcode"],
+    enabled: false,
     queryFn: () => api.get("/national/documents//qrcode").then((r) => r.data),
   });
   const attachments = useQuery({
     queryKey: ["nationalDocumentPlatformApi", "attachments"],
+    enabled: false,
     queryFn: () => api.get("/national/documents//attachments").then((r) => r.data),
   });
   const history = useQuery({
     queryKey: ["nationalDocumentPlatformApi", "history"],
+    enabled: false,
     queryFn: () => api.get("/national/documents//history").then((r) => r.data),
   });
 
@@ -96,12 +102,12 @@ export default function NationalDocumentPlatformApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    documents: { columns: documentsCols, data: (documents.data ?? []) as Record<string, unknown>[], loading: documents.isLoading },
-    versions: { columns: versionsCols, data: (versions.data ?? []) as Record<string, unknown>[], loading: versions.isLoading },
-    signatures: { columns: signaturesCols, data: (signatures.data ?? []) as Record<string, unknown>[], loading: signatures.isLoading },
-    qrcode: { columns: qrcodeCols, data: (qrcode.data ?? []) as Record<string, unknown>[], loading: qrcode.isLoading },
-    attachments: { columns: attachmentsCols, data: (attachments.data ?? []) as Record<string, unknown>[], loading: attachments.isLoading },
-    history: { columns: historyCols, data: (history.data ?? []) as Record<string, unknown>[], loading: history.isLoading },
+    documents: { columns: documentsCols, data: asTableData(documents.data), loading: documents.isLoading },
+    versions: { columns: versionsCols, data: asTableData(versions.data), loading: versions.isLoading },
+    signatures: { columns: signaturesCols, data: asTableData(signatures.data), loading: signatures.isLoading },
+    qrcode: { columns: qrcodeCols, data: asTableData(qrcode.data), loading: qrcode.isLoading },
+    attachments: { columns: attachmentsCols, data: asTableData(attachments.data), loading: attachments.isLoading },
+    history: { columns: historyCols, data: asTableData(history.data), loading: history.isLoading },
   };
 
   return (

@@ -342,6 +342,59 @@ def list_citizen_results(
     }
 
 
+def list_results(
+    current_user: LabUser,
+    db: Session,
+    *,
+    health_id: str | None = None,
+    category: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    is_abnormal: bool | None = None,
+    skip: int = 0,
+    limit: int = 50,
+) -> dict:
+    """List test results scoped to the current user's laboratory.
+
+    Mirrors ``list_citizen_results`` but the health_id filter is optional so
+    the lab can browse all results (used by the frontend ResultsPage).
+    """
+    patient = None
+    q = (
+        db.query(LabResult)
+        .join(LabOrder, LabResult.order_id == LabOrder.id)
+        .outerjoin(TestType, LabResult.test_type_id == TestType.id)
+        .options(
+            joinedload(LabResult.order).joinedload(LabOrder.patient),
+            joinedload(LabResult.order).joinedload(LabOrder.samples),
+            joinedload(LabResult.test_type),
+        )
+        .filter(LabOrder.lab_id == current_user.lab_id)
+    )
+
+    if health_id:
+        patient = get_patient_scoped(db, current_user, health_id)
+        q = q.filter(LabOrder.patient_id == patient.id)
+    if category:
+        q = q.filter(TestType.category == category)
+    if date_from:
+        q = q.filter(LabResult.created_at >= datetime.combine(date_from, datetime.min.time(), tzinfo=UTC))
+    if date_to:
+        q = q.filter(LabResult.created_at < datetime.combine(date_to, datetime.max.time(), tzinfo=UTC))
+    if is_abnormal is True:
+        q = q.filter(LabResult.flag.in_(("critical", "H", "L")))
+    elif is_abnormal is False:
+        q = q.filter(sa.or_(LabResult.flag == "normal", LabResult.flag.is_(None)))
+
+    total = q.count()
+    rows = q.order_by(LabResult.created_at.desc()).offset(skip).limit(limit).all()
+
+    return {
+        "total": total, "skip": skip, "limit": limit,
+        "results": [result_dict(r, patient or r.order.patient) for r in rows],
+    }
+
+
 def citizen_timeline(
     health_id: str, category: str | None,
     current_user: LabUser, db: Session,

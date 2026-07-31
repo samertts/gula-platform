@@ -7,6 +7,6 @@ Layer: application
 Version: 1.0.0
 """
 
-from encounter_management.capability import Encounter_managementCapability
+from .capability import Encounter_managementCapability
 
 __all__ = ["Encounter_managementCapability"]

@@ -74,8 +74,8 @@ def _should_init_sentry() -> bool:
 def configure_sentry() -> None:
     import logging
 
-    _SENTRY_DSN = os.getenv("SENTRY_DSN")
-    if _SENTRY_DSN:
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
         try:
             import sentry_sdk
             from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -83,7 +83,7 @@ def configure_sentry() -> None:
             from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
             sentry_sdk.init(
-                dsn=_SENTRY_DSN,
+                dsn=sentry_dsn,
                 environment=os.getenv("ENVIRONMENT", "production"),
                 release=os.getenv("APP_VERSION", "unknown"),
                 integrations=[
@@ -796,6 +796,31 @@ def _register_routes(app: FastAPI) -> None:
     from .routes.authorization import router as authorization_router
 
     app.include_router(authorization_router)
+
+    from .capabilities.clinical_foundation.routes import router as clinical_foundation_router
+    from .capabilities.document_management.routes import router as document_management_router
+    from .capabilities.encounter_management.routes import router as encounter_management_router
+    from .capabilities.fhir_interoperability.routes import router as fhir_interoperability_router
+    from .capabilities.healthcare_consent.routes import router as healthcare_consent_router
+    from .capabilities.provider_management.routes import router as provider_management_router
+    from .capabilities.reporting_service.routes import router as reporting_service_router
+    from .capabilities.search_service.routes import router as search_service_router
+    from .capabilities.storage_service.routes import router as storage_service_router
+    from .capabilities.workflow_engine.routes import router as workflow_engine_router
+
+    for _capability_router in (
+        clinical_foundation_router,
+        document_management_router,
+        encounter_management_router,
+        fhir_interoperability_router,
+        healthcare_consent_router,
+        provider_management_router,
+        reporting_service_router,
+        search_service_router,
+        storage_service_router,
+        workflow_engine_router,
+    ):
+        app.include_router(_capability_router)
 
     logger.info("All platform routes registered")
 

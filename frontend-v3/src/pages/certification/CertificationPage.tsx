@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -34,10 +35,12 @@ export default function CertificationPage() {
 
   const level = useQuery({
     queryKey: ["certification", "level"],
+    enabled: false,
     queryFn: () => api.get("/certification/level").then((r) => r.data),
   });
   const report = useQuery({
     queryKey: ["certification", "report"],
+    enabled: false,
     queryFn: () => api.get("/certification/report").then((r) => r.data),
   });
   const metrics = useQuery({
@@ -50,6 +53,7 @@ export default function CertificationPage() {
   });
   const checks = useQuery({
     queryKey: ["certification", "checks"],
+    enabled: false,
     queryFn: () => api.get("/certification/dimensions//checks").then((r) => r.data),
   });
 
@@ -85,11 +89,11 @@ export default function CertificationPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    level: { columns: levelCols, data: (level.data ?? []) as Record<string, unknown>[], loading: level.isLoading },
-    report: { columns: reportCols, data: (report.data ?? []) as Record<string, unknown>[], loading: report.isLoading },
-    metrics: { columns: metricsCols, data: (metrics.data ?? []) as Record<string, unknown>[], loading: metrics.isLoading },
-    dimensions: { columns: dimensionsCols, data: (dimensions.data ?? []) as Record<string, unknown>[], loading: dimensions.isLoading },
-    checks: { columns: checksCols, data: (checks.data ?? []) as Record<string, unknown>[], loading: checks.isLoading },
+    level: { columns: levelCols, data: asTableData(level.data), loading: level.isLoading },
+    report: { columns: reportCols, data: asTableData(report.data), loading: report.isLoading },
+    metrics: { columns: metricsCols, data: asTableData(metrics.data), loading: metrics.isLoading },
+    dimensions: { columns: dimensionsCols, data: asTableData(dimensions.data), loading: dimensions.isLoading },
+    checks: { columns: checksCols, data: asTableData(checks.data), loading: checks.isLoading },
   };
 
   return (

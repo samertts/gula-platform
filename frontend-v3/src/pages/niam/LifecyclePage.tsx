@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Building2, Users, Building, UserCircle, Shield } from "lucide-react";
@@ -34,26 +35,31 @@ export default function LifecyclePage() {
 
   const enterprise = useQuery({
     queryKey: ["lifecycle", "enterprise"],
+    enabled: false,
     queryFn: () => api.get("/niam/lifecycle/enterprise").then((r) => r.data),
   });
 
   const workforce = useQuery({
     queryKey: ["lifecycle", "workforce"],
+    enabled: false,
     queryFn: () => api.get("/niam/lifecycle/workforce").then((r) => r.data),
   });
 
   const appointments = useQuery({
     queryKey: ["lifecycle", "government"],
+    enabled: false,
     queryFn: () => api.get("/niam/lifecycle/government/appointments").then((r) => r.data),
   });
 
   const citizens = useQuery({
     queryKey: ["lifecycle", "citizen"],
+    enabled: false,
     queryFn: () => api.get("/niam/lifecycle/citizen").then((r) => r.data),
   });
 
   const guardians = useQuery({
     queryKey: ["lifecycle", "guardian"],
+    enabled: false,
     queryFn: () => api.get("/niam/lifecycle/guardians").then((r) => r.data),
   });
 
@@ -97,11 +103,11 @@ export default function LifecyclePage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    enterprise: { columns: enterpriseCols, data: (enterprise.data ?? []) as Record<string, unknown>[], loading: enterprise.isLoading },
-    workforce: { columns: workforceCols, data: (workforce.data ?? []) as Record<string, unknown>[], loading: workforce.isLoading },
-    government: { columns: govCols, data: (appointments.data ?? []) as Record<string, unknown>[], loading: appointments.isLoading },
-    citizen: { columns: citizenCols, data: (citizens.data ?? []) as Record<string, unknown>[], loading: citizens.isLoading },
-    guardian: { columns: guardianCols, data: (guardians.data ?? []) as Record<string, unknown>[], loading: guardians.isLoading },
+    enterprise: { columns: enterpriseCols, data: asTableData(enterprise.data), loading: enterprise.isLoading },
+    workforce: { columns: workforceCols, data: asTableData(workforce.data), loading: workforce.isLoading },
+    government: { columns: govCols, data: asTableData(appointments.data), loading: appointments.isLoading },
+    citizen: { columns: citizenCols, data: asTableData(citizens.data), loading: citizens.isLoading },
+    guardian: { columns: guardianCols, data: asTableData(guardians.data), loading: guardians.isLoading },
   };
 
   return (

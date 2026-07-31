@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {  FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -47,6 +48,7 @@ export default function ControlPlanePage() {
   });
   const config = useQuery({
     queryKey: ["controlPlane", "config"],
+    enabled: false,
     queryFn: () => api.get("/control-plane/config").then((r) => r.data),
   });
   const policies = useQuery({
@@ -96,12 +98,12 @@ export default function ControlPlanePage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    components: { columns: componentsCols, data: (components.data ?? []) as Record<string, unknown>[], loading: components.isLoading },
-    topology: { columns: topologyCols, data: (topology.data ?? []) as Record<string, unknown>[], loading: topology.isLoading },
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
-    config: { columns: configCols, data: (config.data ?? []) as Record<string, unknown>[], loading: config.isLoading },
-    policies: { columns: policiesCols, data: (policies.data ?? []) as Record<string, unknown>[], loading: policies.isLoading },
-    nodes: { columns: nodesCols, data: (nodes.data ?? []) as Record<string, unknown>[], loading: nodes.isLoading },
+    components: { columns: componentsCols, data: asTableData(components.data), loading: components.isLoading },
+    topology: { columns: topologyCols, data: asTableData(topology.data), loading: topology.isLoading },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
+    config: { columns: configCols, data: asTableData(config.data), loading: config.isLoading },
+    policies: { columns: policiesCols, data: asTableData(policies.data), loading: policies.isLoading },
+    nodes: { columns: nodesCols, data: asTableData(nodes.data), loading: nodes.isLoading },
   };
 
   return (

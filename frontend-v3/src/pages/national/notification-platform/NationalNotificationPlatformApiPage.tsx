@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import {  FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -47,6 +48,7 @@ export default function NationalNotificationPlatformApiPage() {
   });
   const delivery = useQuery({
     queryKey: ["nationalNotificationPlatformApi", "delivery"],
+    enabled: false,
     queryFn: () => api.get("/national/notifications/delivery").then((r) => r.data),
   });
   const preferences = useQuery({
@@ -96,12 +98,12 @@ export default function NationalNotificationPlatformApiPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    notifications: { columns: notificationsCols, data: (notifications.data ?? []) as Record<string, unknown>[], loading: notifications.isLoading },
-    dashboard: { columns: dashboardCols, data: (dashboard.data ?? []) as Record<string, unknown>[], loading: dashboard.isLoading },
-    templates: { columns: templatesCols, data: (templates.data ?? []) as Record<string, unknown>[], loading: templates.isLoading },
-    delivery: { columns: deliveryCols, data: (delivery.data ?? []) as Record<string, unknown>[], loading: delivery.isLoading },
-    preferences: { columns: preferencesCols, data: (preferences.data ?? []) as Record<string, unknown>[], loading: preferences.isLoading },
-    channels: { columns: channelsCols, data: (channels.data ?? []) as Record<string, unknown>[], loading: channels.isLoading },
+    notifications: { columns: notificationsCols, data: asTableData(notifications.data), loading: notifications.isLoading },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
+    templates: { columns: templatesCols, data: asTableData(templates.data), loading: templates.isLoading },
+    delivery: { columns: deliveryCols, data: asTableData(delivery.data), loading: delivery.isLoading },
+    preferences: { columns: preferencesCols, data: asTableData(preferences.data), loading: preferences.isLoading },
+    channels: { columns: channelsCols, data: asTableData(channels.data), loading: channels.isLoading },
   };
 
   return (

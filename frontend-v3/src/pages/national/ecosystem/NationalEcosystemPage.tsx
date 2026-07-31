@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/shared/PageComponents";
 import { DataTable } from "@/components/ui/DataTable";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { asTableData } from "@/lib/utils";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
@@ -38,6 +39,7 @@ export default function NationalEcosystemPage() {
   });
   const health = useQuery({
     queryKey: ["nationalEcosystem", "health"],
+    enabled: false,
     queryFn: () => api.get("/ecosystem/connectors//health").then((r) => r.data),
   });
   const schemas = useQuery({
@@ -50,6 +52,7 @@ export default function NationalEcosystemPage() {
   });
   const audit = useQuery({
     queryKey: ["nationalEcosystem", "audit"],
+    enabled: false,
     queryFn: () => api.get("/ecosystem/partners//audit").then((r) => r.data),
   });
 
@@ -85,11 +88,11 @@ export default function NationalEcosystemPage() {
   ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    connectors: { columns: connectorsCols, data: (connectors.data ?? []) as Record<string, unknown>[], loading: connectors.isLoading },
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
-    schemas: { columns: schemasCols, data: (schemas.data ?? []) as Record<string, unknown>[], loading: schemas.isLoading },
-    partners: { columns: partnersCols, data: (partners.data ?? []) as Record<string, unknown>[], loading: partners.isLoading },
-    audit: { columns: auditCols, data: (audit.data ?? []) as Record<string, unknown>[], loading: audit.isLoading },
+    connectors: { columns: connectorsCols, data: asTableData(connectors.data), loading: connectors.isLoading },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
+    schemas: { columns: schemasCols, data: asTableData(schemas.data), loading: schemas.isLoading },
+    partners: { columns: partnersCols, data: asTableData(partners.data), loading: partners.isLoading },
+    audit: { columns: auditCols, data: asTableData(audit.data), loading: audit.isLoading },
   };
 
   return (
