@@ -394,21 +394,39 @@ SUDOEOF
 chmod 440 "$SUDOERS_FILE"
 
 # Install cron for deploy user
-# auto_heal.sh   — bash watchdog (every 5 min): checks containers, restarts if down
-# self_heal.py   — Python ASHS (every 1 min):  checks API health, triggers repair actions
+# auto_heal.sh      — bash watchdog (every 5 min): checks containers, restarts if down
+# self_heal.py      — Python ASHS (every 1 min):  checks API health, triggers repair actions
+# monitor.sh        — uptime monitor (every 5 min): /health/ready check + Telegram alert
+# backup.sh         — DB backup (daily 02:00 + hourly 00:00 Baghdad time UTC+3)
+# backup-verification.sh — restore test (daily 06:00)
+# cert-renew.sh     — TLS certificate expiry check + renewal (daily 03:00)
 CRON_HEAL="*/5 * * * * GULA_DIR=${REPO_DIR} ${REPO_DIR}/scripts/auto_heal.sh >> /var/log/gula-heal.log 2>&1"
 CRON_ASHS="* * * * * cd ${REPO_DIR} && python3 scripts/self_heal.py >> /var/log/gula-ashs.log 2>&1"
+CRON_MONITOR="*/5 * * * * ${REPO_DIR}/scripts/monitor.sh >> /var/log/gula/monitor.log 2>&1"
+CRON_BACKUP="0 2 * * * ${REPO_DIR}/scripts/backup.sh daily >> /var/log/gula/backup.log 2>&1"
+CRON_BACKUP_HOURLY="0 * * * * ${REPO_DIR}/scripts/backup.sh hourly >> /var/log/gula/backup.log 2>&1"
+CRON_BACKUP_VERIFY="0 6 * * * ${REPO_DIR}/scripts/backup-verification.sh >> /var/log/gula-backup-verification.log 2>&1"
+CRON_CERT="0 3 * * * ${REPO_DIR}/scripts/cert-renew.sh >> /var/log/cert-renew.log 2>&1"
 (
     crontab -u "$DEPLOY_USER" -l 2>/dev/null \
         | grep -v "auto_heal" \
-        | grep -v "self_heal"
+        | grep -v "self_heal" \
+        | grep -v "monitor.sh" \
+        | grep -v "backup.sh" \
+        | grep -v "backup-verification" \
+        | grep -v "cert-renew"
     echo "$CRON_HEAL"
     echo "$CRON_ASHS"
+    echo "$CRON_MONITOR"
+    echo "$CRON_BACKUP"
+    echo "$CRON_BACKUP_HOURLY"
+    echo "$CRON_BACKUP_VERIFY"
+    echo "$CRON_CERT"
 ) | crontab -u "$DEPLOY_USER" -
 
-touch /var/log/gula-heal.log /var/log/gula-ashs.log
-chown "${DEPLOY_USER}:${DEPLOY_USER}" /var/log/gula-heal.log /var/log/gula-ashs.log
-ok "Watchdog crons installed (auto_heal every 5 min, ASHS every 1 min)"
+touch /var/log/gula-heal.log /var/log/gula-ashs.log /var/log/gula/monitor.log /var/log/gula/backup.log /var/log/gula-backup-verification.log /var/log/cert-renew.log
+chown "${DEPLOY_USER}:${DEPLOY_USER}" /var/log/gula-heal.log /var/log/gula-ashs.log /var/log/gula/monitor.log /var/log/gula/backup.log /var/log/gula-backup-verification.log /var/log/cert-renew.log
+ok "Ops crons installed (auto_heal 5min, ASHS 1min, monitor 5min, backup daily+hourly, backup-verify daily, cert-renew daily)"
 
 # ── 14. Run nginx-ensure.sh now to start nginx correctly ─────────────────────
 log "Starting nginx with correct config..."

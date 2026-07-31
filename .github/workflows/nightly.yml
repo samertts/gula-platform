@@ -307,9 +307,80 @@ jobs:
           path: trivy-report.txt
           retention-days: 30
 
+  backup-drill:
+    name: Backup & Restore Drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: labdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install PostgreSQL client + openssl
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client openssl >/dev/null
+
+      - name: Seed test data
+        env:
+          PGPASSWORD: test_password
+        run: |
+          psql -h localhost -U postgres -d labdb -c \
+            "CREATE TABLE patients(id serial primary key, name text);"
+          psql -h localhost -U postgres -d labdb -c \
+            "INSERT INTO patients(name) SELECT 'seed' FROM generate_series(1,10);"
+          psql -h localhost -U postgres -d labdb -c \
+            "CREATE TABLE audit_logs(id serial primary key, chain_hash text);"
+          psql -h localhost -U postgres -d labdb -c \
+            "INSERT INTO audit_logs(chain_hash) VALUES ('abc');"
+
+      - name: Run plaintext backup pipeline (backup → checksum → restore-verify)
+        env:
+          BACKUP_DIR: /tmp/gula-backups
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: test_password
+          PGPASSWORD: test_password
+          DB_NAME: labdb
+        run: |
+          bash scripts/backup.sh daily
+          bash scripts/backup.sh verify
+          bash scripts/backup-verification.sh
+
+      - name: Run encrypted backup pipeline (AES-256 round trip)
+        env:
+          BACKUP_DIR: /tmp/gula-backups-enc
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_USER: postgres
+          DB_PASSWORD: test_password
+          PGPASSWORD: test_password
+          DB_NAME: labdb
+          BACKUP_ENCRYPT_KEY: ci-drill-encryption-key-not-for-production
+        run: |
+          bash scripts/backup.sh daily
+          test -n "$(find /tmp/gula-backups-enc -name '*.sql.gz.enc' | head -1)"
+          bash scripts/backup.sh verify
+          bash scripts/backup-verification.sh
+
   report:
     name: Nightly Report
-    needs: [android-nightly, ios-nightly, desktop-nightly, backend-integration, chaos-tests, performance-benchmarks, container-security]
+    needs: [android-nightly, ios-nightly, desktop-nightly, backend-integration, chaos-tests, performance-benchmarks, container-security, backup-drill]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -333,7 +404,8 @@ jobs:
           echo "| Backend Integration | ${{ needs.backend-integration.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Chaos Tests | ${{ needs.chaos-tests.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Performance Benchmarks | ${{ needs.performance-benchmarks.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Container Security | ${{ needs.container-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Container Security | ${{ needs.container-security.result }} |"
+          echo "| Backup & Restore Drill | ${{ needs.backup-drill.result }} |" >> $GITHUB_STEP_SUMMARY
 
       - name: Create issue on failure
         if: failure()
@@ -353,7 +425,8 @@ jobs:
                 `- Backend Integration: ${{ needs.backend-integration.result }}\n` +
                 `- Chaos Tests: ${{ needs.chaos-tests.result }}\n` +
                 `- Performance: ${{ needs.performance-benchmarks.result }}\n` +
-                `- Security: ${{ needs.container-security.result }}\n\n` +
+                `- Security: ${{ needs.container-security.result }}\n` +
+                `- Backup Drill: ${{ needs.backup-drill.result }}\n\n` +
                 `Please investigate and fix.`,
               labels: ['nightly', 'bug']
             })
@@ -367,7 +440,7 @@ jobs:
               "channel": "#nightly-builds",
               "username": "GULA Nightly Bot",
               "icon_emoji": ":night_with_stars:",
-              "text": "🌙 Nightly Build Report - $(date -u +'%Y-%m-%d')\nAndroid: ${{ needs.android-nightly.result }}\niOS: ${{ needs.ios-nightly.result }}\nDesktop: ${{ needs.desktop-nightly.result }}\nBackend: ${{ needs.backend-integration.result }}\nChaos: ${{ needs.chaos-tests.result }}\nPerf: ${{ needs.performance-benchmarks.result }}\nSecurity: ${{ needs.container-security.result }}"
+              "text": "🌙 Nightly Build Report - $(date -u +'%Y-%m-%d')\nAndroid: ${{ needs.android-nightly.result }}\niOS: ${{ needs.ios-nightly.result }}\nDesktop: ${{ needs.desktop-nightly.result }}\nBackend: ${{ needs.backend-integration.result }}\nChaos: ${{ needs.chaos-tests.result }}\nPerf: ${{ needs.performance-benchmarks.result }}\nSecurity: ${{ needs.container-security.result }}\nBackup: ${{ needs.backup-drill.result }}"
             }
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}

@@ -55,7 +55,7 @@ _psql() {
 
 # Step 1: Check if backups exist
 log "Step 1: Checking for existing backups..."
-BACKUP_COUNT=$(find "$BACKUP_DIR" -name "db_*.sql.gz" 2>/dev/null | wc -l)
+BACKUP_COUNT=$(find "$BACKUP_DIR" \( -name "gula_*.sql.gz" -o -name "gula_*.sql.gz.enc" \) 2>/dev/null | wc -l)
 if [ "$BACKUP_COUNT" -eq 0 ]; then
     log_error "No backups found in $BACKUP_DIR"
     exit 1
@@ -64,7 +64,7 @@ log_success "Found $BACKUP_COUNT backups"
 
 # Step 2: Get the latest backup (plain or encrypted)
 log "Step 2: Finding latest backup..."
-LATEST_BACKUP=$(find "$BACKUP_DIR" \( -name "db_*.sql.gz" -o -name "db_*.sql.gz.enc" \) -printf '%T@ %p\n' 2>/dev/null \
+LATEST_BACKUP=$(find "$BACKUP_DIR" \( -name "gula_*.sql.gz" -o -name "gula_*.sql.gz.enc" \) -printf '%T@ %p\n' 2>/dev/null \
     | sort -n | tail -1 | cut -d' ' -f2-)
 if [ -z "$LATEST_BACKUP" ]; then
     log_error "Could not find latest backup"
