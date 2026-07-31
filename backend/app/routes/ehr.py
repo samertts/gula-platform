@@ -2070,11 +2070,26 @@ def get_patient_ehr(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _get_patient(db, patient_id, current_user.lab_id)
-    timeline = ehr_service.build_live_timeline(db, patient_id, max_per_type=5)
+    patient = _get_patient(db, patient_id, current_user.lab_id)
+    notes = ehr_service.list_clinical_notes_by_patient(db, patient_id, limit=50)
+    conditions = ehr_service.list_conditions_by_patient(db, patient_id, limit=50)
+    medications = ehr_service.list_medication_statements_by_patient(db, patient_id, limit=50)
+    allergies = ehr_service.list_allergies_by_patient(db, patient_id, limit=50)
+    immunizations = ehr_service.list_immunizations_by_patient(db, patient_id, limit=50)
     return {
-        "patient_id": patient_id,
-        "timeline": timeline,
+        "patient": {
+            "id": patient.id,
+            "full_name": patient.full_name,
+            "health_id": patient.health_number,
+            "date_of_birth": patient.date_of_birth.isoformat() if patient.date_of_birth else None,
+            "gender": patient.gender.value if patient.gender else None,
+            "phone": patient.phone,
+        },
+        "clinical_notes": [n.to_dict() for n in notes],
+        "conditions": [c.to_dict() for c in conditions],
+        "medications": [m.to_dict() for m in medications],
+        "allergies": [a.to_dict() for a in allergies],
+        "immunizations": [i.to_dict() for i in immunizations],
     }
 
 
@@ -2084,14 +2099,21 @@ def get_patient_summary(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _get_patient(db, patient_id, current_user.lab_id)
+    patient = _get_patient(db, patient_id, current_user.lab_id)
     allergies = ehr_service.list_allergies_by_patient(db, patient_id, limit=5)
     conditions = ehr_service.list_conditions_by_patient(db, patient_id, limit=5)
     diagnoses = ehr_service.list_diagnoses_by_patient(db, patient_id, limit=5)
     medications = ehr_service.list_medication_statements_by_patient(db, patient_id, limit=5)
     immunizations = ehr_service.list_immunizations_by_patient(db, patient_id, limit=5)
+    age = None
+    if patient.date_of_birth:
+        age = (date.today() - patient.date_of_birth).days // 365
     return {
         "patient_id": patient_id,
+        "patient_name": patient.full_name,
+        "health_id": patient.health_number,
+        "age": age,
+        "gender": patient.gender.value if patient.gender else None,
         "active_allergies": [a.to_dict() for a in allergies if a.status == AllergyStatus.ACTIVE],
         "active_conditions": [c.to_dict() for c in conditions if c.clinical_status == "active"],
         "active_diagnoses": [d.to_dict() for d in diagnoses if d.is_active],

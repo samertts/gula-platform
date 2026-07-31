@@ -8,6 +8,8 @@ Routes
   POST /api/ai/unresolved                  — flag a question the AI could not answer
   GET  /api/ai/dataset/summary             — aggregate counters (lab-scoped)
   GET  /api/ai/dataset/status              — flag status (always visible)
+  GET  /api/ai/stats                       — telemetry counters (frontend contract)
+  GET  /api/ai/export                      — CSV/JSON export (admin-gated)
 
 All write endpoints require an authenticated ``LabUser`` and enforce tenant
 isolation by stamping ``lab_id`` from the JWT (never trusting the request body).
@@ -32,11 +34,12 @@ reachable so operators can inspect the flag state.
 
 from __future__ import annotations
 
+import json
 import logging
 import uuid
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -561,3 +564,122 @@ def dataset_status():
         # Surface for orchestrator dashboards.
         "phase": "production_launch_2026_05_11",
     }
+
+
+# ── GET /api/ai/stats (frontend telemetry contract) ─────────────────────────
+
+
+@router.get(
+    "/stats",
+    summary="Aggregate telemetry counters for the calling lab",
+)
+def telemetry_stats(
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    lab_id = current_user.lab_id
+    total_interactions = (
+        db.query(func.count(AIInteraction.id)).filter(AIInteraction.lab_id == lab_id).scalar()
+        or 0
+    )
+    total_feedback = (
+        db.query(func.count(AIFeedback.id)).filter(AIFeedback.lab_id == lab_id).scalar() or 0
+    )
+    total_unresolved = (
+        db.query(func.count(AIUnresolvedQuestion.id))
+        .filter(AIUnresolvedQuestion.lab_id == lab_id, AIUnresolvedQuestion.status == "open")
+        .scalar()
+        or 0
+    )
+    flagged_rows = (
+        db.query(AIInteraction.safety_flags)
+        .filter(AIInteraction.lab_id == lab_id)
+        .all()
+    )
+    total_safety_flags = sum(1 for (flags,) in flagged_rows if flags)
+    return {
+        "total_interactions": total_interactions,
+        "total_feedback": total_feedback,
+        "total_unresolved": total_unresolved,
+        "total_safety_flags": total_safety_flags,
+    }
+
+
+# ── GET /api/ai/export (frontend telemetry contract) ────────────────────────
+
+
+@router.get(
+    "/export",
+    summary="Export the lab's AI interactions (CSV or JSON)",
+)
+def telemetry_export(
+    format: str = Query("json", pattern="^(json|csv)$"),
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role not in ("admin", "master_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "EXPORT_FORBIDDEN", "message": "Only admin or master_admin can export AI telemetry"},
+        )
+
+    lab_id = current_user.lab_id
+    rows = (
+        db.query(AIInteraction)
+        .filter(AIInteraction.lab_id == lab_id)
+        .order_by(AIInteraction.created_at.desc())
+        .limit(10_000)
+        .all()
+    )
+    records = [
+        {
+            "id": str(r.id),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "anonymous_session_id": r.anonymous_session_id,
+            "language": r.language,
+            "region": r.region,
+            "intent": r.intent,
+            "status": r.status,
+            "error_code": r.error_code,
+            "response_model": r.response_model,
+            "retrieval_strategy": r.retrieval_strategy,
+            "latency_ms": r.latency_ms,
+            "confidence_score": r.confidence_score,
+            "risk_level": r.risk_level,
+            "escalation_recommended": r.escalation_recommended,
+            "retrieval_used": r.retrieval_used,
+            "fallback_generation": r.fallback_generation,
+            "safety_flags": r.safety_flags or [],
+        }
+        for r in rows
+    ]
+
+    if format == "csv":
+        import csv
+        import io
+
+        if not records:
+            buf = io.StringIO()
+            return Response(
+                content="id,created_at,anonymous_session_id,intent,status,risk_level,latency_ms\n",
+                media_type="text/csv",
+                headers={"Content-Disposition": 'attachment; filename="ai_interactions.csv"'},
+            )
+        buf = io.StringIO()
+        writer = csv.DictWriter(buf, fieldnames=list(records[0].keys()))
+        writer.writeheader()
+        for rec in records:
+            rec = dict(rec)
+            rec["safety_flags"] = "|".join(rec["safety_flags"] or [])
+            writer.writerow(rec)
+        return Response(
+            content=buf.getvalue(),
+            media_type="text/csv",
+            headers={"Content-Disposition": 'attachment; filename="ai_interactions.csv"'},
+        )
+
+    return Response(
+        content=json.dumps({"lab_id": lab_id, "count": len(records), "records": records}),
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="ai_interactions.json"'},
+    )

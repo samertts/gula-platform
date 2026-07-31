@@ -4,11 +4,40 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
-from ..services.metrics_service import build_prometheus_response, get_json_metrics
+from ..services.metrics_service import (
+    build_deep_health,
+    build_health_status,
+    build_prometheus_response,
+    get_json_metrics,
+)
 
 router = APIRouter(tags=["metrics"])
 
 _WIDE_ROLES = {"master_admin", "ministry_admin", "province_admin"}
+
+
+@router.get("/health")
+def liveness_health():
+    """Liveness probe — the process is up and serving requests."""
+    return build_health_status()
+
+
+@router.get("/health/ready")
+def readiness_health():
+    """Readiness probe — DB, Redis and degradation state."""
+    return build_health_status()
+
+
+@router.get("/health/status")
+def detailed_health():
+    """Detailed health status — always visible so operators can diagnose startup failures."""
+    return build_health_status()
+
+
+@router.get("/health/deep")
+def deep_health():
+    """Deep health — component latencies, queue backlog, process state."""
+    return build_deep_health()
 
 
 @router.get("/metrics")

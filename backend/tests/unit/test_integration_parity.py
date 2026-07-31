@@ -1,0 +1,303 @@
+"""PROGRAM-INTEGRATION-OMEGA-002 — Frontend↔Backend contract parity tests.
+
+Covers the endpoints added/aligned to close the frontend integration gaps:
+  1. GET /health, /health/ready (public), /health/status, /health/deep (auth)
+  2. GET /api/ai/stats + /api/ai/export (AI telemetry contract)
+  3. GET /ehr/patient/{id} + /ehr/patient/{id}/summary (EHR composite contract)
+
+Each test asserts the exact response shape the frontend types expect, so a
+backend refactor that breaks the frontend contract fails CI.
+"""
+
+from __future__ import annotations
+
+import uuid
+from datetime import date, datetime, timedelta
+
+import pytest
+from app._compat import UTC
+from tests.conftest import auth_headers
+
+
+@pytest.fixture()
+def now_utc():
+    return datetime.now(UTC)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Health endpoints (frontend HealthStatus / DeepHealth contract)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestHealthEndpoints:
+    def test_health_liveness_public_and_shape(self, client):
+        r = client.get("/health")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] in ("ok", "degraded")
+        assert body["platform"] == "GULA Platform"
+        assert body["platform_ar"]
+        assert body["version"]
+        assert body["environment"]
+        assert isinstance(body["system_ready"], bool)
+        assert body["database"]
+        assert isinstance(body["degraded_mode"], bool)
+        assert isinstance(body["degradation_level"], int)
+
+    def test_health_ready_public(self, client):
+        r = client.get("/health/ready")
+        assert r.status_code == 200
+        body = r.json()
+        assert isinstance(body["system_ready"], bool)
+        assert "database" in body
+
+    def test_health_status_public(self, client):
+        r = client.get("/health/status")
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] in ("ok", "degraded")
+        assert isinstance(body["system_ready"], bool)
+
+    def test_health_deep_public(self, client):
+        r = client.get("/health/deep")
+        assert r.status_code == 200
+
+    def test_health_status_authenticated_shape(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id)
+        headers = auth_headers(user.id, lab.id, user.role)
+        r = client.get("/health/status", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["status"] in ("ok", "degraded")
+        assert isinstance(body["system_ready"], bool)
+
+    def test_health_deep_shape(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id)
+        headers = auth_headers(user.id, lab.id, user.role)
+        r = client.get("/health/deep", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["grade"] in ("A", "B", "C", "F")
+        assert isinstance(body["issues"], list)
+        comps = body["components"]
+        assert set(comps) == {"database", "redis", "queue"}
+        assert comps["database"]["ok"] is True
+        assert isinstance(comps["database"]["latency_ms"], float)
+        assert isinstance(comps["queue"]["backlog"], int)
+        proc = body["process"]
+        assert isinstance(proc["memory_rss_mb"], float)
+        assert isinstance(proc["uptime_s"], int)
+        assert isinstance(proc["uptime_h"], float)
+        assert isinstance(proc["active_requests"], int)
+        assert isinstance(proc["degraded_mode"], bool)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# AI telemetry contract (frontend aiTelemetryApi)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@pytest.fixture()
+def seeded_ai_data(db, make_lab, make_lab_user):
+    from app.models.ai_interaction import AIFeedback, AIInteraction, AIUnresolvedQuestion
+
+    lab = make_lab()
+    user = make_lab_user(lab_id=lab.id)
+    other_lab = make_lab()
+    other_user = make_lab_user(lab_id=other_lab.id)
+
+    _now = datetime.now(UTC)
+    db.add(
+        AIInteraction(
+            id=uuid.uuid4(),
+            lab_id=lab.id,
+            anonymous_session_id="session-a",
+            prompt="interpret glucose",
+            response="ok",
+            status="ok",
+            safety_flags=["pii_detected"],
+            created_at=_now,
+        )
+    )
+    db.add(
+        AIInteraction(
+            id=uuid.uuid4(),
+            lab_id=lab.id,
+            anonymous_session_id="session-b",
+            status="error",
+            error_code="provider_timeout",
+            safety_flags=None,
+            created_at=_now,
+        )
+    )
+    db.add(
+        AIInteraction(
+            id=uuid.uuid4(),
+            lab_id=other_lab.id,
+            anonymous_session_id="session-other",
+            status="ok",
+            safety_flags=["policy_violation"],
+            created_at=_now,
+        )
+    )
+    db.add(
+        AIUnresolvedQuestion(
+            id=uuid.uuid4(),
+            lab_id=lab.id,
+            anonymous_session_id="session-a",
+            question="what is CRP?",
+            status="open",
+            created_at=_now,
+        )
+    )
+    db.commit()
+
+
+    db.add(
+        AIFeedback(
+            id=uuid.uuid4(),
+            interaction_id=db.query(AIInteraction.id).filter(AIInteraction.lab_id == lab.id).first()[0],
+            lab_id=lab.id,
+            anonymous_session_id="session-a",
+            signal="helpful",
+            created_at=_now,
+        )
+    )
+    db.commit()
+    return lab, user, other_lab, other_user
+
+
+class TestAiTelemetryStats:
+    def test_stats_tenant_scoped(self, client, seeded_ai_data):
+        lab, user, _other_lab, _other_user = seeded_ai_data
+        headers = auth_headers(user.id, lab.id, user.role)
+        r = client.get("/api/ai/stats", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert body == {
+            "total_interactions": 2,
+            "total_feedback": 1,
+            "total_unresolved": 1,
+            "total_safety_flags": 1,
+        }
+
+    def test_stats_isolated_lab(self, client, seeded_ai_data):
+        _lab, _user, other_lab, other_user = seeded_ai_data
+        headers = auth_headers(other_user.id, other_lab.id, other_user.role)
+        r = client.get("/api/ai/stats", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["total_interactions"] == 1
+        assert body["total_feedback"] == 0
+        assert body["total_unresolved"] == 0
+        assert body["total_safety_flags"] == 1
+
+    def test_stats_requires_auth(self, client):
+        r = client.get("/api/ai/stats")
+        assert r.status_code in (401, 403)
+
+
+class TestAiTelemetryExport:
+    def test_export_csv(self, client, seeded_ai_data):
+        lab, user, _other_lab, _other_user = seeded_ai_data
+        headers = auth_headers(user.id, lab.id, "admin")
+        r = client.get("/api/ai/export", params={"format": "csv"}, headers=headers)
+        assert r.status_code == 200
+        assert "text/csv" in r.headers["content-type"]
+        assert "id," in r.text
+        assert "session-a" in r.text
+        assert "session-other" not in r.text
+
+    def test_export_json(self, client, seeded_ai_data):
+        lab, user, _other_lab, _other_user = seeded_ai_data
+        headers = auth_headers(user.id, lab.id, "admin")
+        r = client.get("/api/ai/export", params={"format": "json"}, headers=headers)
+        assert r.status_code == 200
+        assert "application/json" in r.headers["content-type"]
+        body = r.json()
+        assert body["count"] == 2
+        assert body["lab_id"] == lab.id
+
+    def test_export_forbidden_for_technician(self, client, db, make_lab, make_lab_user, seeded_ai_data):
+        lab, _user, _other_lab, _other_user = seeded_ai_data
+        tech_user = make_lab_user(lab_id=lab.id, role="technician")
+        headers = auth_headers(tech_user.id, lab.id, "technician")
+        r = client.get("/api/ai/export", headers=headers)
+        assert r.status_code == 403
+
+    def test_export_invalid_format_rejected(self, client, seeded_ai_data):
+        lab, user, _other_lab, _other_user = seeded_ai_data
+        headers = auth_headers(user.id, lab.id, "admin")
+        r = client.get("/api/ai/export", params={"format": "xml"}, headers=headers)
+        assert r.status_code == 422
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# EHR composite contract (frontend ehrApi getPatientEhr / getPatientSummary)
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+@pytest.fixture()
+def national_patient(db, make_lab, make_lab_user):
+    from app.national.domain.patient import Patient
+    from app.national.enums import Gender
+
+    lab = make_lab()
+    user = make_lab_user(lab_id=lab.id)
+    patient = Patient(
+        lab_id=lab.id,
+        health_number="HN-TEST-001",
+        first_name="Ali",
+        last_name="Ahmed",
+        full_name="Ali Ahmed",
+        date_of_birth=date(1990, 1, 1),
+        gender=Gender.MALE,
+        phone="07701234567",
+    )
+    db.add(patient)
+    db.commit()
+    db.refresh(patient)
+    return lab, user, patient
+
+
+class TestEhrComposite:
+    def test_get_patient_ehr_shape(self, client, db, national_patient):
+        lab, user, patient = national_patient
+        headers = auth_headers(user.id, lab.id, user.role)
+        r = client.get(f"/ehr/patient/{patient.id}", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["patient"]["id"] == patient.id
+        assert body["patient"]["full_name"] == "Ali Ahmed"
+        assert body["patient"]["health_id"] == "HN-TEST-001"
+        assert body["patient"]["gender"] == "male"
+        assert isinstance(body["clinical_notes"], list)
+        assert isinstance(body["conditions"], list)
+        assert isinstance(body["medications"], list)
+        assert isinstance(body["allergies"], list)
+        assert isinstance(body["immunizations"], list)
+
+    def test_get_patient_summary_shape(self, client, db, national_patient):
+        lab, user, patient = national_patient
+        headers = auth_headers(user.id, lab.id, user.role)
+        r = client.get(f"/ehr/patient/{patient.id}/summary", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["patient_id"] == patient.id
+        assert body["patient_name"] == "Ali Ahmed"
+        assert body["health_id"] == "HN-TEST-001"
+        assert body["age"] is not None
+        assert body["gender"] == "male"
+        assert isinstance(body["active_allergies"], list)
+        assert isinstance(body["active_conditions"], list)
+        assert isinstance(body["current_medications"], list)
+
+    def test_patient_tenancy_enforced(self, client, db, make_lab, make_lab_user, national_patient):
+        _lab, _user, patient = national_patient
+        other_lab = make_lab()
+        other_user = make_lab_user(lab_id=other_lab.id)
+        headers = auth_headers(other_user.id, other_lab.id, other_user.role)
+        r = client.get(f"/ehr/patient/{patient.id}", headers=headers)
+        assert r.status_code == 404

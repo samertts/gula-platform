@@ -98,6 +98,118 @@ def get_uptime_s() -> int:
     return int(time.time() - _START)
 
 
+def get_queue_backlog() -> int:
+    """Count outbox events pending delivery (best-effort, never raises)."""
+    try:
+        from ..database import SessionLocal
+        from ..models.outbox import OutboxEvent
+
+        _db = SessionLocal()
+        try:
+            return (
+                _db.query(OutboxEvent).filter(OutboxEvent.processed_at.is_(None)).count()
+            )
+        finally:
+            _db.close()
+    except Exception:
+        return 0
+
+
+def get_degradation_level() -> int:
+    try:
+        from ..core.self_healing import health as _sh
+
+        return _sh.degradation_level.value
+    except Exception:
+        return 0
+
+
+def build_health_status() -> dict:
+    """Liveness/readiness payload matching the frontend HealthStatus contract."""
+    from ..config import APP_NAME, APP_VERSION, PLATFORM_NAME_AR, RUNTIME_MODE
+
+    db_status, _db_ms = ping_db_detail()
+    red_ok, _red_ms = ping_redis()
+    db_ok = db_status == "ok"
+    degradation = get_degradation_level()
+    system_ready = db_ok and red_ok and degradation == 0
+    return {
+        "status": "ok" if system_ready else "degraded",
+        "platform": APP_NAME,
+        "platform_ar": PLATFORM_NAME_AR,
+        "version": APP_VERSION,
+        "environment": RUNTIME_MODE,
+        "system_ready": system_ready,
+        "database": db_status,
+        "degraded_mode": degradation > 0,
+        "degradation_level": degradation,
+    }
+
+
+def build_deep_health() -> dict:
+    """Deep health payload matching the frontend DeepHealth contract."""
+    db_status, db_ms = ping_db_detail()
+    db_ok = db_status == "ok"
+    red_ok, red_ms = ping_redis()
+    backlog = get_queue_backlog()
+    uptime_s = get_uptime_s()
+    degradation = get_degradation_level()
+
+    issues: list[str] = []
+    if not db_ok:
+        issues.append("database_unreachable")
+    elif db_ms > 200:
+        issues.append("database_slow")
+    if not red_ok:
+        issues.append("redis_unreachable")
+    if backlog > 1000:
+        issues.append("queue_backlog_high")
+    if degradation > 0:
+        issues.append(f"degraded_mode_l{degradation}")
+
+    if not db_ok or not red_ok:
+        grade = "F"
+    elif degradation > 0 or db_ms > 500:
+        grade = "C"
+    elif backlog > 1000 or db_ms > 200 or red_ms > 50:
+        grade = "B"
+    else:
+        grade = "A"
+
+    active_requests = 0
+    try:
+        from ..middleware import ConcurrencyLimitMiddleware
+
+        active_requests = ConcurrencyLimitMiddleware._active
+    except Exception:
+        pass
+
+    return {
+        "grade": grade,
+        "issues": issues,
+        "components": {
+            "database": {
+                "ok": db_ok,
+                "latency_ms": db_ms,
+                "error": None if db_ok else "unreachable",
+            },
+            "redis": {
+                "ok": red_ok,
+                "latency_ms": red_ms,
+                "error": None if red_ok else "unreachable",
+            },
+            "queue": {"backlog": backlog, "error": None},
+        },
+        "process": {
+            "memory_rss_mb": get_rss_mb(),
+            "uptime_s": uptime_s,
+            "uptime_h": round(uptime_s / 3600, 2),
+            "active_requests": active_requests,
+            "degraded_mode": degradation > 0,
+        },
+    }
+
+
 def _escape_label(value: str) -> str:
     return value.replace("\\", "\\\\").replace('"', '\\"')
 
@@ -235,20 +347,7 @@ def build_prometheus_response(request: Request, db: Session) -> PlainTextRespons
     except Exception:
         stats = {}
 
-    queue_backlog = 0
-    try:
-        from ..database import SessionLocal
-        from ..models.outbox import OutboxEvent
-
-        _db2 = SessionLocal()
-        try:
-            queue_backlog = (
-                _db2.query(OutboxEvent).filter(OutboxEvent.processed_at.is_(None)).count()
-            )
-        finally:
-            _db2.close()
-    except Exception:
-        pass
+    queue_backlog = get_queue_backlog()
 
     lines = [
         "# HELP gula_up Platform is operational (1=up, 0=down)",
@@ -385,7 +484,6 @@ def build_prometheus_response(request: Request, db: Session) -> PlainTextRespons
 
     try:
         from ..core.kill_switch import is_kill_switch_active
-        from ..core.self_healing import health as _sh
 
         lines += [
             "",
@@ -395,7 +493,7 @@ def build_prometheus_response(request: Request, db: Session) -> PlainTextRespons
             "",
             "# HELP gula_degradation_level Current degradation level (0=NONE 1=L1 2=L2 3=L3)",
             "# TYPE gula_degradation_level gauge",
-            f"gula_degradation_level {_sh.degradation_level.value}",
+            f"gula_degradation_level {get_degradation_level()}",
         ]
     except Exception:
         pass

@@ -596,10 +596,8 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/clinical-notes/${id}`, data).then((r) => r.data),
   deleteClinicalNote: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/clinical-notes/${id}`).then((r) => r.data),
-  listClinicalNotes: (params?: Record<string, unknown>) =>
-    api.get<{ total: number; notes: EHRNote[] }>("/ehr/clinical-notes", { params }).then((r) => r.data),
-  searchClinicalNotes: (params?: Record<string, unknown>) =>
-    api.get<{ total: number; notes: EHRNote[] }>("/ehr/clinical-notes/search", { params }).then((r) => r.data),
+  listClinicalNotes: (patientId: string, params?: { skip?: number; limit?: number }) =>
+    api.get<EHRNote[]>(`/ehr/patients/${patientId}/clinical-notes`, { params }).then((r) => r.data),
 
   // Allergies
   createAllergy: (data: Record<string, unknown>) =>
@@ -610,8 +608,8 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/allergies/${id}`, data).then((r) => r.data),
   deleteAllergy: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/allergies/${id}`).then((r) => r.data),
-  listAllergies: (params?: Record<string, unknown>) =>
-    api.get<{ total: number; allergies: EHRAllergy[] }>("/ehr/allergies", { params }).then((r) => r.data),
+  listAllergies: (patientId: string, params?: { skip?: number; limit?: number }) =>
+    api.get<EHRAllergy[]>(`/ehr/patients/${patientId}/allergies`, { params }).then((r) => r.data),
 
   // Medication Statements
   createMedicationStatement: (data: Record<string, unknown>) =>
@@ -622,8 +620,8 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/medication-statements/${id}`, data).then((r) => r.data),
   deleteMedicationStatement: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/medication-statements/${id}`).then((r) => r.data),
-  listMedicationStatements: (params?: Record<string, unknown>) =>
-    api.get<{ total: number; medications: EHRMedication[] }>("/ehr/medication-statements", { params }).then((r) => r.data),
+  listMedicationStatements: (patientId: string, params?: { skip?: number; limit?: number }) =>
+    api.get<EHRMedication[]>(`/ehr/patients/${patientId}/medication-statements`, { params }).then((r) => r.data),
 
   // Medication Requests
   createMedicationRequest: (data: Record<string, unknown>) =>
@@ -634,8 +632,8 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/medication-requests/${id}`, data).then((r) => r.data),
   deleteMedicationRequest: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/medication-requests/${id}`).then((r) => r.data),
-  listMedicationRequests: (params?: Record<string, unknown>) =>
-    api.get<{ total: number; orders: ClinicalOrder[] }>("/ehr/medication-requests", { params }).then((r) => r.data),
+  listMedicationRequests: (patientId: string, params?: { skip?: number; limit?: number }) =>
+    api.get<ClinicalOrder[]>(`/ehr/patients/${patientId}/medication-requests`, { params }).then((r) => r.data),
 
   // Medication Dispenses
   createMedicationDispense: (data: Record<string, unknown>) =>
@@ -650,9 +648,9 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/medication-dispenses/${id}`, data).then((r) => r.data),
   deleteMedicationDispense: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/medication-dispenses/${id}`).then((r) => r.data),
-  listMedicationDispenses: (params?: Record<string, unknown>) =>
-    api.get<{ total: number; dispenses: { id: number; medication_name: string; dosage?: string; dispensed_date: string; status: string }[] }>(
-      "/ehr/medication-dispenses",
+  listMedicationDispenses: (patientId: string, params?: { skip?: number; limit?: number }) =>
+    api.get<{ id: number; medication_name: string; dosage?: string; dispensed_date: string; status: string }[]>(
+      `/ehr/patients/${patientId}/medication-dispenses`,
       { params },
     ).then((r) => r.data),
 
@@ -669,10 +667,10 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/care-plans/${id}`, data).then((r) => r.data),
   deleteCarePlan: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/care-plans/${id}`).then((r) => r.data),
-  listCarePlans: (params?: Record<string, unknown>) =>
+  listCarePlans: (patientId: string, params?: { skip?: number; limit?: number }) =>
     api
-      .get<{ total: number; care_plans: { id: number; patient_id: number; plan_name: string; status: string }[] }>(
-        "/ehr/care-plans",
+      .get<{ id: number; patient_id: number; plan_name: string; status: string }[]>(
+        `/ehr/patients/${patientId}/care-plans`,
         { params },
       )
       .then((r) => r.data),
@@ -696,10 +694,10 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/problem-list/${id}`, data).then((r) => r.data),
   deleteProblemListItem: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/problem-list/${id}`).then((r) => r.data),
-  listProblemList: (params?: Record<string, unknown>) =>
+  listProblemList: (patientId: string, params?: { skip?: number; limit?: number }) =>
     api
-      .get<{ total: number; items: { id: number; patient_id: number; problem: string; onset_date?: string; status: string }[] }>(
-        "/ehr/problem-list",
+      .get<{ id: number; patient_id: number; problem: string; onset_date?: string; status: string }[]>(
+        `/ehr/patients/${patientId}/problem-list`,
         { params },
       )
       .then((r) => r.data),
@@ -713,8 +711,8 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/conditions/${id}`, data).then((r) => r.data),
   deleteCondition: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/conditions/${id}`).then((r) => r.data),
-  listConditions: (params?: Record<string, unknown>) =>
-    api.get<{ total: number; conditions: EHRCondition[] }>("/ehr/conditions", { params }).then((r) => r.data),
+  listConditions: (patientId: string, params?: { skip?: number; limit?: number }) =>
+    api.get<EHRCondition[]>(`/ehr/patients/${patientId}/conditions`, { params }).then((r) => r.data),
 
   // Diagnoses
   createDiagnosis: (data: Record<string, unknown>) =>
@@ -725,8 +723,8 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/diagnoses/${id}`, data).then((r) => r.data),
   deleteDiagnosis: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/diagnoses/${id}`).then((r) => r.data),
-  listDiagnoses: (params?: Record<string, unknown>) =>
-    api.get<{ total: number; diagnoses: EHRCondition[] }>("/ehr/diagnoses", { params }).then((r) => r.data),
+  listDiagnoses: (patientId: string, params?: { skip?: number; limit?: number }) =>
+    api.get<EHRCondition[]>(`/ehr/patients/${patientId}/diagnoses`, { params }).then((r) => r.data),
 
   // Family History
   createFamilyHistory: (data: Record<string, unknown>) =>
@@ -741,10 +739,10 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/family-history/${id}`, data).then((r) => r.data),
   deleteFamilyHistory: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/family-history/${id}`).then((r) => r.data),
-  listFamilyHistory: (params?: Record<string, unknown>) =>
+  listFamilyHistory: (patientId: string, params?: { skip?: number; limit?: number }) =>
     api
-      .get<{ total: number; history: { id: number; patient_id: number; relation: string; condition: string; notes?: string }[] }>(
-        "/ehr/family-history",
+      .get<{ id: number; patient_id: number; relation: string; condition: string; notes?: string }[]>(
+        `/ehr/patients/${patientId}/family-history`,
         { params },
       )
       .then((r) => r.data),
@@ -762,10 +760,10 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/social-history/${id}`, data).then((r) => r.data),
   deleteSocialHistory: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/social-history/${id}`).then((r) => r.data),
-  listSocialHistory: (params?: Record<string, unknown>) =>
+  listSocialHistory: (patientId: string, params?: { skip?: number; limit?: number }) =>
     api
-      .get<{ total: number; history: { id: number; patient_id: number; habit: string; status: string; notes?: string }[] }>(
-        "/ehr/social-history",
+      .get<{ id: number; patient_id: number; habit: string; status: string; notes?: string }[]>(
+        `/ehr/patients/${patientId}/social-history`,
         { params },
       )
       .then((r) => r.data),
@@ -783,10 +781,10 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/risk-factors/${id}`, data).then((r) => r.data),
   deleteRiskFactor: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/risk-factors/${id}`).then((r) => r.data),
-  listRiskFactors: (params?: Record<string, unknown>) =>
+  listRiskFactors: (patientId: string, params?: { skip?: number; limit?: number }) =>
     api
-      .get<{ total: number; factors: { id: number; patient_id: number; factor: string; severity: string; notes?: string }[] }>(
-        "/ehr/risk-factors",
+      .get<{ id: number; patient_id: number; factor: string; severity: string; notes?: string }[]>(
+        `/ehr/patients/${patientId}/risk-factors`,
         { params },
       )
       .then((r) => r.data),
@@ -800,9 +798,9 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/immunizations/${id}`, data).then((r) => r.data),
   deleteImmunization: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/immunizations/${id}`).then((r) => r.data),
-  listImmunizations: (params?: Record<string, unknown>) =>
+  listImmunizations: (patientId: string, params?: { skip?: number; limit?: number }) =>
     api
-      .get<{ total: number; immunizations: EHRImmunization[] }>("/ehr/immunizations", { params })
+      .get<EHRImmunization[]>(`/ehr/patients/${patientId}/immunizations`, { params })
       .then((r) => r.data),
 
   // Attachments
@@ -818,21 +816,26 @@ export const ehrApi = {
     api.put<Record<string, unknown>>(`/ehr/attachments/${id}`, data).then((r) => r.data),
   deleteAttachment: (id: number) =>
     api.delete<Record<string, unknown>>(`/ehr/attachments/${id}`).then((r) => r.data),
-  listAttachments: (params?: Record<string, unknown>) =>
+  listAttachments: (patientId: string, params?: { skip?: number; limit?: number }) =>
     api
-      .get<{ total: number; attachments: { id: number; file_name: string; mime_type: string; file_size: number }[] }>(
-        "/ehr/attachments",
+      .get<{ id: number; file_name: string; mime_type: string; file_size: number }[]>(
+        `/ehr/patients/${patientId}/attachments`,
         { params },
       )
       .then((r) => r.data),
-  downloadAttachment: (id: number) =>
-    api.get<Blob>(`/ehr/attachments/${id}/download`, { responseType: "blob" }).then((r) => r.data),
 
   // Patient Summary
-  getPatientEhr: (patientId: number) =>
+  getPatientEhr: (patientId: string) =>
     api
       .get<{
-        patient: Patient;
+        patient: {
+          id: string;
+          full_name: string | null;
+          health_id: string;
+          date_of_birth: string | null;
+          gender: string | null;
+          phone: string | null;
+        };
         clinical_notes: EHRNote[];
         conditions: EHRCondition[];
         medications: EHRMedication[];
@@ -840,16 +843,19 @@ export const ehrApi = {
         immunizations: EHRImmunization[];
       }>(`/ehr/patient/${patientId}`)
       .then((r) => r.data),
-  getPatientSummary: (patientId: number) =>
+  getPatientSummary: (patientId: string) =>
     api
       .get<{
-        patient_name: string;
+        patient_id: string;
+        patient_name: string | null;
         health_id: string;
-        age: number;
-        gender: string;
-        recent_results: LabResult[];
-        active_conditions: string[];
-        active_medications: string[];
+        age: number | null;
+        gender: string | null;
+        active_allergies: unknown[];
+        active_conditions: unknown[];
+        active_diagnoses: unknown[];
+        current_medications: unknown[];
+        immunizations: unknown[];
       }>(`/ehr/patient/${patientId}/summary`)
       .then((r) => r.data),
 };
