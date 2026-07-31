@@ -91,6 +91,13 @@ help:
 	@echo "    make foundation-check      Run all foundation tools sequentially"
 	@echo "    make foundation-ci         Run all foundation tools (CI output)"
 	@echo ""
+	@echo "  ── AI Governance (PROGRAM-012) ────────────────────────────────────"
+	@echo "    make brain                 Regenerate Project Brain (knowledge index)"
+	@echo "    make brain-check           Verify brain freshness (exit 1 if stale)"
+	@echo "    make validate              Enterprise validation engine (fast scope)"
+	@echo "    make validate-full         Enterprise validation engine (full scope)"
+	@echo "    make validate-baseline     Update regression baseline after improvement"
+	@echo ""
 	@echo "  ── Monitoring (optional profile) ─────────────────────────────────"
 	@echo "    make monitoring       Start Prometheus + Grafana"
 	@echo "    make monitoring-down  Stop monitoring stack"
@@ -327,6 +334,29 @@ scorecard:
 debt:
 	$(Q)echo "=== Technical Debt Registry ==="
 	$(Q)python3 scripts/technical_debt_registry.py --summary
+
+# ── AI Governance (PROGRAM-012) ──────────────────────────────────────────────
+PY := $(shell test -x backend/.venv/bin/python && echo backend/.venv/bin/python || echo python3)
+
+brain:
+	$(Q)echo "=== Regenerating Project Brain ==="
+	$(Q)$(PY) scripts/project_brain.py --json
+
+brain-check:
+	$(Q)echo "=== Checking Project Brain freshness ==="
+	$(Q)$(PY) scripts/project_brain.py --check
+
+validate:
+	$(Q)echo "=== Enterprise Validation Engine (fast) ==="
+	$(Q)$(PY) scripts/enterprise_validation_engine.py --scope fast
+
+validate-full:
+	$(Q)echo "=== Enterprise Validation Engine (full) ==="
+	$(Q)$(PY) scripts/enterprise_validation_engine.py --scope full
+
+validate-baseline:
+	$(Q)echo "=== Recording validation baseline ==="
+	$(Q)$(PY) scripts/enterprise_validation_engine.py --scope fast --update-baseline
 
 metrics:
 	$(Q)echo "=== Enterprise Metrics ==="
