@@ -88,12 +88,12 @@ export default function NationalRulesEngineApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    rules: { columns: rulesCols, data: asTableData(rules.data), loading: rules.isLoading },
-    versions: { columns: versionsCols, data: asTableData(versions.data), loading: versions.isLoading },
-    evaluations: { columns: evaluationsCols, data: asTableData(evaluations.data), loading: evaluations.isLoading },
-    categories: { columns: categoriesCols, data: asTableData(categories.data), loading: categories.isLoading },
-    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    rules: { columns: rulesCols, data: asTableData(rules.data), loading: rules.isLoading, error: rules.error, onRetry: () => rules.refetch() },
+    versions: { columns: versionsCols, data: asTableData(versions.data), loading: versions.isLoading, error: versions.error, onRetry: () => versions.refetch() },
+    evaluations: { columns: evaluationsCols, data: asTableData(evaluations.data), loading: evaluations.isLoading, error: evaluations.error, onRetry: () => evaluations.refetch() },
+    categories: { columns: categoriesCols, data: asTableData(categories.data), loading: categories.isLoading, error: categories.error, onRetry: () => categories.refetch() },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
   };
 
   return (
@@ -113,7 +113,7 @@ export default function NationalRulesEngineApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

@@ -99,13 +99,13 @@ export default function NationalTaskEngineApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    tasks: { columns: tasksCols, data: asTableData(tasks.data), loading: tasks.isLoading },
-    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
-    comments: { columns: commentsCols, data: asTableData(comments.data), loading: comments.isLoading },
-    history: { columns: historyCols, data: asTableData(history.data), loading: history.isLoading },
-    queues: { columns: queuesCols, data: asTableData(queues.data), loading: queues.isLoading },
-    "sla-definitions": { columns: slaDefinitionsCols, data: asTableData(slaDefinitions.data), loading: slaDefinitions.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    tasks: { columns: tasksCols, data: asTableData(tasks.data), loading: tasks.isLoading, error: tasks.error, onRetry: () => tasks.refetch() },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading, error: dashboard.error, onRetry: () => dashboard.refetch() },
+    comments: { columns: commentsCols, data: asTableData(comments.data), loading: comments.isLoading, error: comments.error, onRetry: () => comments.refetch() },
+    history: { columns: historyCols, data: asTableData(history.data), loading: history.isLoading, error: history.error, onRetry: () => history.refetch() },
+    queues: { columns: queuesCols, data: asTableData(queues.data), loading: queues.isLoading, error: queues.error, onRetry: () => queues.refetch() },
+    "sla-definitions": { columns: slaDefinitionsCols, data: asTableData(slaDefinitions.data), loading: slaDefinitions.isLoading, error: slaDefinitions.error, onRetry: () => slaDefinitions.refetch() },
   };
 
   return (
@@ -125,7 +125,7 @@ export default function NationalTaskEngineApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

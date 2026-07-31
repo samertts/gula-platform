@@ -99,13 +99,13 @@ export default function CriticalCareApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    admissions: { columns: admissionsCols, data: asTableData(admissions.data), loading: admissions.isLoading },
-    availability: { columns: availabilityCols, data: asTableData(availability.data), loading: availability.isLoading },
-    vitals: { columns: vitalsCols, data: asTableData(vitals.data), loading: vitals.isLoading },
-    ventilator: { columns: ventilatorCols, data: asTableData(ventilator.data), loading: ventilator.isLoading },
-    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
-    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    admissions: { columns: admissionsCols, data: asTableData(admissions.data), loading: admissions.isLoading, error: admissions.error, onRetry: () => admissions.refetch() },
+    availability: { columns: availabilityCols, data: asTableData(availability.data), loading: availability.isLoading, error: availability.error, onRetry: () => availability.refetch() },
+    vitals: { columns: vitalsCols, data: asTableData(vitals.data), loading: vitals.isLoading, error: vitals.error, onRetry: () => vitals.refetch() },
+    ventilator: { columns: ventilatorCols, data: asTableData(ventilator.data), loading: ventilator.isLoading, error: ventilator.error, onRetry: () => ventilator.refetch() },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading, error: dashboard.error, onRetry: () => dashboard.refetch() },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
   };
 
   return (
@@ -125,7 +125,7 @@ export default function CriticalCareApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

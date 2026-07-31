@@ -96,13 +96,13 @@ export default function NationalSearchPlatformApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    search: { columns: searchCols, data: (search.data ?? []) as Record<string, unknown>[], loading: search.isLoading },
-    suggest: { columns: suggestCols, data: (suggest.data ?? []) as Record<string, unknown>[], loading: suggest.isLoading },
-    facets: { columns: facetsCols, data: (facets.data ?? []) as Record<string, unknown>[], loading: facets.isLoading },
-    saved: { columns: savedCols, data: (saved.data ?? []) as Record<string, unknown>[], loading: saved.isLoading },
-    stats: { columns: statsCols, data: (stats.data ?? []) as Record<string, unknown>[], loading: stats.isLoading },
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    search: { columns: searchCols, data: (search.data ?? []) as Record<string, unknown>[], loading: search.isLoading, error: search.error, onRetry: () => search.refetch() },
+    suggest: { columns: suggestCols, data: (suggest.data ?? []) as Record<string, unknown>[], loading: suggest.isLoading, error: suggest.error, onRetry: () => suggest.refetch() },
+    facets: { columns: facetsCols, data: (facets.data ?? []) as Record<string, unknown>[], loading: facets.isLoading, error: facets.error, onRetry: () => facets.refetch() },
+    saved: { columns: savedCols, data: (saved.data ?? []) as Record<string, unknown>[], loading: saved.isLoading, error: saved.error, onRetry: () => saved.refetch() },
+    stats: { columns: statsCols, data: (stats.data ?? []) as Record<string, unknown>[], loading: stats.isLoading, error: stats.error, onRetry: () => stats.refetch() },
+    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
   };
 
   return (
@@ -122,7 +122,7 @@ export default function NationalSearchPlatformApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

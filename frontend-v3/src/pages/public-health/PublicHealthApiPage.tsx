@@ -96,13 +96,13 @@ export default function PublicHealthApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    "disease-cases": { columns: diseaseCasesCols, data: (diseaseCases.data ?? []) as Record<string, unknown>[], loading: diseaseCases.isLoading },
-    stats: { columns: statsCols, data: (stats.data ?? []) as Record<string, unknown>[], loading: stats.isLoading },
-    "outbreak-alerts": { columns: outbreakAlertsCols, data: (outbreakAlerts.data ?? []) as Record<string, unknown>[], loading: outbreakAlerts.isLoading },
-    "surveillance-signals": { columns: surveillanceSignalsCols, data: (surveillanceSignals.data ?? []) as Record<string, unknown>[], loading: surveillanceSignals.isLoading },
-    vaccinations: { columns: vaccinationsCols, data: (vaccinations.data ?? []) as Record<string, unknown>[], loading: vaccinations.isLoading },
-    coverage: { columns: coverageCols, data: (coverage.data ?? []) as Record<string, unknown>[], loading: coverage.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    "disease-cases": { columns: diseaseCasesCols, data: (diseaseCases.data ?? []) as Record<string, unknown>[], loading: diseaseCases.isLoading, error: diseaseCases.error, onRetry: () => diseaseCases.refetch() },
+    stats: { columns: statsCols, data: (stats.data ?? []) as Record<string, unknown>[], loading: stats.isLoading, error: stats.error, onRetry: () => stats.refetch() },
+    "outbreak-alerts": { columns: outbreakAlertsCols, data: (outbreakAlerts.data ?? []) as Record<string, unknown>[], loading: outbreakAlerts.isLoading, error: outbreakAlerts.error, onRetry: () => outbreakAlerts.refetch() },
+    "surveillance-signals": { columns: surveillanceSignalsCols, data: (surveillanceSignals.data ?? []) as Record<string, unknown>[], loading: surveillanceSignals.isLoading, error: surveillanceSignals.error, onRetry: () => surveillanceSignals.refetch() },
+    vaccinations: { columns: vaccinationsCols, data: (vaccinations.data ?? []) as Record<string, unknown>[], loading: vaccinations.isLoading, error: vaccinations.error, onRetry: () => vaccinations.refetch() },
+    coverage: { columns: coverageCols, data: (coverage.data ?? []) as Record<string, unknown>[], loading: coverage.isLoading, error: coverage.error, onRetry: () => coverage.refetch() },
   };
 
   return (
@@ -122,7 +122,7 @@ export default function PublicHealthApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

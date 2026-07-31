@@ -98,13 +98,13 @@ export default function EmsApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    incidents: { columns: incidentsCols, data: asTableData(incidents.data), loading: incidents.isLoading },
-    ambulances: { columns: ambulancesCols, data: asTableData(ambulances.data), loading: ambulances.isLoading },
-    crew: { columns: crewCols, data: asTableData(crew.data), loading: crew.isLoading },
-    triage: { columns: triageCols, data: asTableData(triage.data), loading: triage.isLoading },
-    epcr: { columns: epcrCols, data: asTableData(epcr.data), loading: epcr.isLoading },
-    nearby: { columns: nearbyCols, data: asTableData(nearby.data), loading: nearby.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    incidents: { columns: incidentsCols, data: asTableData(incidents.data), loading: incidents.isLoading, error: incidents.error, onRetry: () => incidents.refetch() },
+    ambulances: { columns: ambulancesCols, data: asTableData(ambulances.data), loading: ambulances.isLoading, error: ambulances.error, onRetry: () => ambulances.refetch() },
+    crew: { columns: crewCols, data: asTableData(crew.data), loading: crew.isLoading, error: crew.error, onRetry: () => crew.refetch() },
+    triage: { columns: triageCols, data: asTableData(triage.data), loading: triage.isLoading, error: triage.error, onRetry: () => triage.refetch() },
+    epcr: { columns: epcrCols, data: asTableData(epcr.data), loading: epcr.isLoading, error: epcr.error, onRetry: () => epcr.refetch() },
+    nearby: { columns: nearbyCols, data: asTableData(nearby.data), loading: nearby.isLoading, error: nearby.error, onRetry: () => nearby.refetch() },
   };
 
   return (
@@ -124,7 +124,7 @@ export default function EmsApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

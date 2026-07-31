@@ -41,8 +41,8 @@ export default function CapabilitiesWorkflowEnginePage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    "workflow-engine": { columns: workflowEngineCols, data: (workflowEngine.data ?? []) as Record<string, unknown>[], loading: workflowEngine.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    "workflow-engine": { columns: workflowEngineCols, data: (workflowEngine.data ?? []) as Record<string, unknown>[], loading: workflowEngine.isLoading, error: workflowEngine.error, onRetry: () => workflowEngine.refetch() },
   };
 
   return (
@@ -62,7 +62,7 @@ export default function CapabilitiesWorkflowEnginePage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

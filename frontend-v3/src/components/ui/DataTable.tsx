@@ -18,6 +18,8 @@ interface DataTableProps<TData> {
   columns: ColumnDef<TData>[];
   data: TData[];
   loading?: boolean;
+  error?: Error | null;
+  onRetry?: () => void;
   pageSize?: number;
   toolbar?: ReactNode;
   onRowClick?: (row: TData) => void;
@@ -27,6 +29,8 @@ export function DataTable<TData>({
   columns,
   data,
   loading,
+  error,
+  onRetry,
   pageSize = 10,
   toolbar,
   onRowClick,
@@ -85,6 +89,19 @@ export function DataTable<TData>({
                 <tr>
                   <td colSpan={columns.length} className="h-32 text-center text-muted-foreground">
                     جاري التحميل...
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan={columns.length} className="h-32 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <span className="text-destructive text-sm">تعذر تحميل البيانات</span>
+                      {onRetry && (
+                        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+                          إعادة المحاولة
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : table.getRowModel().rows.length === 0 ? (

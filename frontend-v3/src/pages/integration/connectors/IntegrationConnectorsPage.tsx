@@ -65,10 +65,10 @@ export default function IntegrationConnectorsPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    status: { columns: statusCols, data: asTableData(status.data), loading: status.isLoading },
-    connectors: { columns: connectorsCols, data: asTableData(connectors.data), loading: connectors.isLoading },
-    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    status: { columns: statusCols, data: asTableData(status.data), loading: status.isLoading, error: status.error, onRetry: () => status.refetch() },
+    connectors: { columns: connectorsCols, data: asTableData(connectors.data), loading: connectors.isLoading, error: connectors.error, onRetry: () => connectors.refetch() },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
   };
 
   return (
@@ -88,7 +88,7 @@ export default function IntegrationConnectorsPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

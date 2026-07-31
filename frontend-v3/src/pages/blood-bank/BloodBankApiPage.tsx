@@ -98,13 +98,13 @@ export default function BloodBankApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    donors: { columns: donorsCols, data: asTableData(donors.data), loading: donors.isLoading },
-    inventory: { columns: inventoryCols, data: asTableData(inventory.data), loading: inventory.isLoading },
-    critical: { columns: criticalCols, data: asTableData(critical.data), loading: critical.isLoading },
-    "compatible-groups": { columns: compatibleGroupsCols, data: asTableData(compatibleGroups.data), loading: compatibleGroups.isLoading },
-    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
-    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    donors: { columns: donorsCols, data: asTableData(donors.data), loading: donors.isLoading, error: donors.error, onRetry: () => donors.refetch() },
+    inventory: { columns: inventoryCols, data: asTableData(inventory.data), loading: inventory.isLoading, error: inventory.error, onRetry: () => inventory.refetch() },
+    critical: { columns: criticalCols, data: asTableData(critical.data), loading: critical.isLoading, error: critical.error, onRetry: () => critical.refetch() },
+    "compatible-groups": { columns: compatibleGroupsCols, data: asTableData(compatibleGroups.data), loading: compatibleGroups.isLoading, error: compatibleGroups.error, onRetry: () => compatibleGroups.refetch() },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading, error: dashboard.error, onRetry: () => dashboard.refetch() },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
   };
 
   return (
@@ -124,7 +124,7 @@ export default function BloodBankApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

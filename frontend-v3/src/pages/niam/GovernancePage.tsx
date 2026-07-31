@@ -150,31 +150,41 @@ export default function GovernancePage() {
     }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<unknown, unknown>[]; data: unknown[]; loading: boolean }> = {
+  const tables: Record<TabId, { columns: ColumnDef<unknown, unknown>[]; data: unknown[]; loading: boolean; error: Error | null; onRetry?: () => void }> = {
     authorities: {
       columns: authorityColumns as ColumnDef<unknown, unknown>[],
       data: asTableData(authorities.data),
       loading: authorities.isLoading,
+      error: authorities.error,
+      onRetry: () => authorities.refetch(),
     },
     councils: {
       columns: councilColumns as ColumnDef<unknown, unknown>[],
       data: asTableData(councils.data),
       loading: councils.isLoading,
+      error: councils.error,
+      onRetry: () => councils.refetch(),
     },
     appeals: {
       columns: appealColumns as ColumnDef<unknown, unknown>[],
       data: asTableData(appeals.data),
       loading: appeals.isLoading,
+      error: appeals.error,
+      onRetry: () => appeals.refetch(),
     },
     suspensions: {
       columns: suspensionColumns as ColumnDef<unknown, unknown>[],
       data: asTableData(suspensions.data),
       loading: suspensions.isLoading,
+      error: suspensions.error,
+      onRetry: () => suspensions.refetch(),
     },
     registries: {
       columns: registryColumns as ColumnDef<unknown, unknown>[],
       data: asTableData(registries.data),
       loading: registries.isLoading,
+      error: registries.error,
+      onRetry: () => registries.refetch(),
     },
   };
 
@@ -213,7 +223,7 @@ export default function GovernancePage() {
             <DataTable
               columns={tables[activeTab].columns}
               data={tables[activeTab].data as Record<string, unknown>[]}
-              loading={tables[activeTab].loading}
+              loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry}
             />
           </div>
         </CardContent>

@@ -96,13 +96,13 @@ export default function CommandCenterApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    emergencies: { columns: emergenciesCols, data: (emergencies.data ?? []) as Record<string, unknown>[], loading: emergencies.isLoading },
-    "resource-requests": { columns: resourceRequestsCols, data: (resourceRequests.data ?? []) as Record<string, unknown>[], loading: resourceRequests.isLoading },
-    "situation-reports": { columns: situationReportsCols, data: (situationReports.data ?? []) as Record<string, unknown>[], loading: situationReports.isLoading },
-    "after-action-reports": { columns: afterActionReportsCols, data: (afterActionReports.data ?? []) as Record<string, unknown>[], loading: afterActionReports.isLoading },
-    dashboard: { columns: dashboardCols, data: (dashboard.data ?? []) as Record<string, unknown>[], loading: dashboard.isLoading },
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    emergencies: { columns: emergenciesCols, data: (emergencies.data ?? []) as Record<string, unknown>[], loading: emergencies.isLoading, error: emergencies.error, onRetry: () => emergencies.refetch() },
+    "resource-requests": { columns: resourceRequestsCols, data: (resourceRequests.data ?? []) as Record<string, unknown>[], loading: resourceRequests.isLoading, error: resourceRequests.error, onRetry: () => resourceRequests.refetch() },
+    "situation-reports": { columns: situationReportsCols, data: (situationReports.data ?? []) as Record<string, unknown>[], loading: situationReports.isLoading, error: situationReports.error, onRetry: () => situationReports.refetch() },
+    "after-action-reports": { columns: afterActionReportsCols, data: (afterActionReports.data ?? []) as Record<string, unknown>[], loading: afterActionReports.isLoading, error: afterActionReports.error, onRetry: () => afterActionReports.refetch() },
+    dashboard: { columns: dashboardCols, data: (dashboard.data ?? []) as Record<string, unknown>[], loading: dashboard.isLoading, error: dashboard.error, onRetry: () => dashboard.refetch() },
+    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
   };
 
   return (
@@ -122,7 +122,7 @@ export default function CommandCenterApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

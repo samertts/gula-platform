@@ -98,13 +98,13 @@ export default function NationalNotificationPlatformApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    notifications: { columns: notificationsCols, data: asTableData(notifications.data), loading: notifications.isLoading },
-    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
-    templates: { columns: templatesCols, data: asTableData(templates.data), loading: templates.isLoading },
-    delivery: { columns: deliveryCols, data: asTableData(delivery.data), loading: delivery.isLoading },
-    preferences: { columns: preferencesCols, data: asTableData(preferences.data), loading: preferences.isLoading },
-    channels: { columns: channelsCols, data: asTableData(channels.data), loading: channels.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    notifications: { columns: notificationsCols, data: asTableData(notifications.data), loading: notifications.isLoading, error: notifications.error, onRetry: () => notifications.refetch() },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading, error: dashboard.error, onRetry: () => dashboard.refetch() },
+    templates: { columns: templatesCols, data: asTableData(templates.data), loading: templates.isLoading, error: templates.error, onRetry: () => templates.refetch() },
+    delivery: { columns: deliveryCols, data: asTableData(delivery.data), loading: delivery.isLoading, error: delivery.error, onRetry: () => delivery.refetch() },
+    preferences: { columns: preferencesCols, data: asTableData(preferences.data), loading: preferences.isLoading, error: preferences.error, onRetry: () => preferences.refetch() },
+    channels: { columns: channelsCols, data: asTableData(channels.data), loading: channels.isLoading, error: channels.error, onRetry: () => channels.refetch() },
   };
 
   return (
@@ -124,7 +124,7 @@ export default function NationalNotificationPlatformApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

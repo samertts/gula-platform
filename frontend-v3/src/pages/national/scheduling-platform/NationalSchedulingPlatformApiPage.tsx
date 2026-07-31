@@ -98,13 +98,13 @@ export default function NationalSchedulingPlatformApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    appointments: { columns: appointmentsCols, data: asTableData(appointments.data), loading: appointments.isLoading },
-    slots: { columns: slotsCols, data: asTableData(slots.data), loading: slots.isLoading },
-    resources: { columns: resourcesCols, data: asTableData(resources.data), loading: resources.isLoading },
-    schedules: { columns: schedulesCols, data: asTableData(schedules.data), loading: schedules.isLoading },
-    "waiting-list": { columns: waitingListCols, data: asTableData(waitingList.data), loading: waitingList.isLoading },
-    calendars: { columns: calendarsCols, data: asTableData(calendars.data), loading: calendars.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    appointments: { columns: appointmentsCols, data: asTableData(appointments.data), loading: appointments.isLoading, error: appointments.error, onRetry: () => appointments.refetch() },
+    slots: { columns: slotsCols, data: asTableData(slots.data), loading: slots.isLoading, error: slots.error, onRetry: () => slots.refetch() },
+    resources: { columns: resourcesCols, data: asTableData(resources.data), loading: resources.isLoading, error: resources.error, onRetry: () => resources.refetch() },
+    schedules: { columns: schedulesCols, data: asTableData(schedules.data), loading: schedules.isLoading, error: schedules.error, onRetry: () => schedules.refetch() },
+    "waiting-list": { columns: waitingListCols, data: asTableData(waitingList.data), loading: waitingList.isLoading, error: waitingList.error, onRetry: () => waitingList.refetch() },
+    calendars: { columns: calendarsCols, data: asTableData(calendars.data), loading: calendars.isLoading, error: calendars.error, onRetry: () => calendars.refetch() },
   };
 
   return (
@@ -124,7 +124,7 @@ export default function NationalSchedulingPlatformApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

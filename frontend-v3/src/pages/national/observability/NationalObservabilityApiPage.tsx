@@ -97,13 +97,13 @@ export default function NationalObservabilityApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    query: { columns: queryCols, data: asTableData(query.data), loading: query.isLoading },
-    traces: { columns: tracesCols, data: asTableData(traces.data), loading: traces.isLoading },
-    search: { columns: searchCols, data: asTableData(search.data), loading: search.isLoading },
-    checks: { columns: checksCols, data: asTableData(checks.data), loading: checks.isLoading },
-    status: { columns: statusCols, data: asTableData(status.data), loading: status.isLoading },
-    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    query: { columns: queryCols, data: asTableData(query.data), loading: query.isLoading, error: query.error, onRetry: () => query.refetch() },
+    traces: { columns: tracesCols, data: asTableData(traces.data), loading: traces.isLoading, error: traces.error, onRetry: () => traces.refetch() },
+    search: { columns: searchCols, data: asTableData(search.data), loading: search.isLoading, error: search.error, onRetry: () => search.refetch() },
+    checks: { columns: checksCols, data: asTableData(checks.data), loading: checks.isLoading, error: checks.error, onRetry: () => checks.refetch() },
+    status: { columns: statusCols, data: asTableData(status.data), loading: status.isLoading, error: status.error, onRetry: () => status.refetch() },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
   };
 
   return (
@@ -123,7 +123,7 @@ export default function NationalObservabilityApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

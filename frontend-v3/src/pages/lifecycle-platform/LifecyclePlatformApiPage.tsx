@@ -98,13 +98,13 @@ export default function LifecyclePlatformApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    components: { columns: componentsCols, data: asTableData(components.data), loading: components.isLoading },
-    name: { columns: nameCols, data: asTableData(name.data), loading: name.isLoading },
-    releases: { columns: releasesCols, data: asTableData(releases.data), loading: releases.isLoading },
-    check: { columns: checkCols, data: asTableData(check.data), loading: check.isLoading },
-    compatibility: { columns: compatibilityCols, data: asTableData(compatibility.data), loading: compatibility.isLoading },
-    "upgrade-paths": { columns: upgradePathsCols, data: asTableData(upgradePaths.data), loading: upgradePaths.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    components: { columns: componentsCols, data: asTableData(components.data), loading: components.isLoading, error: components.error, onRetry: () => components.refetch() },
+    name: { columns: nameCols, data: asTableData(name.data), loading: name.isLoading, error: name.error, onRetry: () => name.refetch() },
+    releases: { columns: releasesCols, data: asTableData(releases.data), loading: releases.isLoading, error: releases.error, onRetry: () => releases.refetch() },
+    check: { columns: checkCols, data: asTableData(check.data), loading: check.isLoading, error: check.error, onRetry: () => check.refetch() },
+    compatibility: { columns: compatibilityCols, data: asTableData(compatibility.data), loading: compatibility.isLoading, error: compatibility.error, onRetry: () => compatibility.refetch() },
+    "upgrade-paths": { columns: upgradePathsCols, data: asTableData(upgradePaths.data), loading: upgradePaths.isLoading, error: upgradePaths.error, onRetry: () => upgradePaths.refetch() },
   };
 
   return (
@@ -124,7 +124,7 @@ export default function LifecyclePlatformApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

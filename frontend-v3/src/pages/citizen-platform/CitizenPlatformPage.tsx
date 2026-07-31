@@ -103,13 +103,13 @@ export default function CitizenPlatformPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
-    profile: { columns: profileCols, data: asTableData(profile.data), loading: profile.isLoading },
-    "health-summary": { columns: healthSummaryCols, data: asTableData(healthSummary.data), loading: healthSummary.isLoading },
-    appointments: { columns: appointmentsCols, data: asTableData(appointments.data), loading: appointments.isLoading },
-    medications: { columns: medicationsCols, data: asTableData(medications.data), loading: medications.isLoading },
-    "lab-results": { columns: labResultsCols, data: asTableData(labResults.data), loading: labResults.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading, error: dashboard.error, onRetry: () => dashboard.refetch() },
+    profile: { columns: profileCols, data: asTableData(profile.data), loading: profile.isLoading, error: profile.error, onRetry: () => profile.refetch() },
+    "health-summary": { columns: healthSummaryCols, data: asTableData(healthSummary.data), loading: healthSummary.isLoading, error: healthSummary.error, onRetry: () => healthSummary.refetch() },
+    appointments: { columns: appointmentsCols, data: asTableData(appointments.data), loading: appointments.isLoading, error: appointments.error, onRetry: () => appointments.refetch() },
+    medications: { columns: medicationsCols, data: asTableData(medications.data), loading: medications.isLoading, error: medications.error, onRetry: () => medications.refetch() },
+    "lab-results": { columns: labResultsCols, data: asTableData(labResults.data), loading: labResults.isLoading, error: labResults.error, onRetry: () => labResults.refetch() },
   };
 
   return (
@@ -129,7 +129,7 @@ export default function CitizenPlatformPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

@@ -99,13 +99,13 @@ export default function NationalBackgroundPlatformApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    jobs: { columns: jobsCols, data: asTableData(jobs.data), loading: jobs.isLoading },
-    executions: { columns: executionsCols, data: asTableData(executions.data), loading: executions.isLoading },
-    schedules: { columns: schedulesCols, data: asTableData(schedules.data), loading: schedules.isLoading },
-    stats: { columns: statsCols, data: asTableData(stats.data), loading: stats.isLoading },
-    due: { columns: dueCols, data: asTableData(due.data), loading: due.isLoading },
-    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    jobs: { columns: jobsCols, data: asTableData(jobs.data), loading: jobs.isLoading, error: jobs.error, onRetry: () => jobs.refetch() },
+    executions: { columns: executionsCols, data: asTableData(executions.data), loading: executions.isLoading, error: executions.error, onRetry: () => executions.refetch() },
+    schedules: { columns: schedulesCols, data: asTableData(schedules.data), loading: schedules.isLoading, error: schedules.error, onRetry: () => schedules.refetch() },
+    stats: { columns: statsCols, data: asTableData(stats.data), loading: stats.isLoading, error: stats.error, onRetry: () => stats.refetch() },
+    due: { columns: dueCols, data: asTableData(due.data), loading: due.isLoading, error: due.error, onRetry: () => due.refetch() },
+    dashboard: { columns: dashboardCols, data: asTableData(dashboard.data), loading: dashboard.isLoading, error: dashboard.error, onRetry: () => dashboard.refetch() },
   };
 
   return (
@@ -125,7 +125,7 @@ export default function NationalBackgroundPlatformApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

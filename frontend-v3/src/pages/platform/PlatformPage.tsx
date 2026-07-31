@@ -63,10 +63,10 @@ export default function PlatformPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
-    modules: { columns: modulesCols, data: (modules.data ?? []) as Record<string, unknown>[], loading: modules.isLoading },
-    capabilities: { columns: capabilitiesCols, data: (capabilities.data ?? []) as Record<string, unknown>[], loading: capabilities.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
+    modules: { columns: modulesCols, data: (modules.data ?? []) as Record<string, unknown>[], loading: modules.isLoading, error: modules.error, onRetry: () => modules.refetch() },
+    capabilities: { columns: capabilitiesCols, data: (capabilities.data ?? []) as Record<string, unknown>[], loading: capabilities.isLoading, error: capabilities.error, onRetry: () => capabilities.refetch() },
   };
 
   return (
@@ -86,7 +86,7 @@ export default function PlatformPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

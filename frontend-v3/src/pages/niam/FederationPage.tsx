@@ -87,11 +87,11 @@ export default function FederationPage() {
     col.accessor("status", { header: "الحالة", cell: ({ getValue }) => <Badge variant={(getValue() as string) === "active" ? "success" : "default"}>{getValue() as string}</Badge> }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    providers: { columns: providerCols, data: asTableData(providers.data), loading: providers.isLoading },
-    identities: { columns: identityCols, data: asTableData(identities.data), loading: identities.isLoading },
-    trust: { columns: trustCols, data: asTableData(trustList.data), loading: trustList.isLoading },
-    agreements: { columns: agreementCols, data: asTableData(agreements.data), loading: agreements.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    providers: { columns: providerCols, data: asTableData(providers.data), loading: providers.isLoading, error: providers.error, onRetry: () => providers.refetch() },
+    identities: { columns: identityCols, data: asTableData(identities.data), loading: identities.isLoading, error: identities.error, onRetry: () => identities.refetch() },
+    trust: { columns: trustCols, data: asTableData(trustList.data), loading: trustList.isLoading, error: trustList.error, onRetry: () => trustList.refetch() },
+    agreements: { columns: agreementCols, data: asTableData(agreements.data), loading: agreements.isLoading, error: agreements.error, onRetry: () => agreements.refetch() },
   };
 
   return (
@@ -112,7 +112,7 @@ export default function FederationPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

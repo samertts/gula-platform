@@ -98,13 +98,13 @@ export default function CommandIntelligencePage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    "situation-room": { columns: situationRoomCols, data: asTableData(situationRoom.data), loading: situationRoom.isLoading },
-    kpis: { columns: kpisCols, data: asTableData(kpis.data), loading: kpis.isLoading },
-    trend: { columns: trendCols, data: asTableData(trend.data), loading: trend.isLoading },
-    incidents: { columns: incidentsCols, data: asTableData(incidents.data), loading: incidents.isLoading },
-    capacity: { columns: capacityCols, data: asTableData(capacity.data), loading: capacity.isLoading },
-    "executive-dashboard": { columns: executiveDashboardCols, data: asTableData(executiveDashboard.data), loading: executiveDashboard.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    "situation-room": { columns: situationRoomCols, data: asTableData(situationRoom.data), loading: situationRoom.isLoading, error: situationRoom.error, onRetry: () => situationRoom.refetch() },
+    kpis: { columns: kpisCols, data: asTableData(kpis.data), loading: kpis.isLoading, error: kpis.error, onRetry: () => kpis.refetch() },
+    trend: { columns: trendCols, data: asTableData(trend.data), loading: trend.isLoading, error: trend.error, onRetry: () => trend.refetch() },
+    incidents: { columns: incidentsCols, data: asTableData(incidents.data), loading: incidents.isLoading, error: incidents.error, onRetry: () => incidents.refetch() },
+    capacity: { columns: capacityCols, data: asTableData(capacity.data), loading: capacity.isLoading, error: capacity.error, onRetry: () => capacity.refetch() },
+    "executive-dashboard": { columns: executiveDashboardCols, data: asTableData(executiveDashboard.data), loading: executiveDashboard.isLoading, error: executiveDashboard.error, onRetry: () => executiveDashboard.refetch() },
   };
 
   return (
@@ -124,7 +124,7 @@ export default function CommandIntelligencePage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

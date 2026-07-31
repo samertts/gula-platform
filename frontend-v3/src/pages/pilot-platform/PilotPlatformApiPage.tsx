@@ -101,13 +101,13 @@ export default function PilotPlatformApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    pilots: { columns: pilotsCols, data: asTableData(pilots.data), loading: pilots.isLoading },
-    facilities: { columns: facilitiesCols, data: asTableData(facilities.data), loading: facilities.isLoading },
-    readiness: { columns: readinessCols, data: asTableData(readiness.data), loading: readiness.isLoading },
-    gates: { columns: gatesCols, data: asTableData(gates.data), loading: gates.isLoading },
-    deployments: { columns: deploymentsCols, data: asTableData(deployments.data), loading: deployments.isLoading },
-    certify: { columns: certifyCols, data: asTableData(certify.data), loading: certify.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    pilots: { columns: pilotsCols, data: asTableData(pilots.data), loading: pilots.isLoading, error: pilots.error, onRetry: () => pilots.refetch() },
+    facilities: { columns: facilitiesCols, data: asTableData(facilities.data), loading: facilities.isLoading, error: facilities.error, onRetry: () => facilities.refetch() },
+    readiness: { columns: readinessCols, data: asTableData(readiness.data), loading: readiness.isLoading, error: readiness.error, onRetry: () => readiness.refetch() },
+    gates: { columns: gatesCols, data: asTableData(gates.data), loading: gates.isLoading, error: gates.error, onRetry: () => gates.refetch() },
+    deployments: { columns: deploymentsCols, data: asTableData(deployments.data), loading: deployments.isLoading, error: deployments.error, onRetry: () => deployments.refetch() },
+    certify: { columns: certifyCols, data: asTableData(certify.data), loading: certify.isLoading, error: certify.error, onRetry: () => certify.refetch() },
   };
 
   return (
@@ -127,7 +127,7 @@ export default function PilotPlatformApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

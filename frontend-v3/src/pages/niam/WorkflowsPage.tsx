@@ -68,9 +68,9 @@ export default function WorkflowsPage() {
   ];
 
   const tables = {
-    definitions: { columns: defCols, data: asTableData(definitions.data), loading: definitions.isLoading },
-    instances: { columns: instanceCols, data: asTableData(instances.data), loading: instances.isLoading },
-    approvals: { columns: instanceCols, data: [], loading: false },
+    definitions: { columns: defCols, data: asTableData(definitions.data), loading: definitions.isLoading, error: definitions.error, onRetry: () => definitions.refetch() },
+    instances: { columns: instanceCols, data: asTableData(instances.data), loading: instances.isLoading, error: instances.error, onRetry: () => instances.refetch() },
+    approvals: { columns: instanceCols, data: [], loading: false, error: null, onRetry: undefined },
   };
 
   return (
@@ -91,7 +91,7 @@ export default function WorkflowsPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

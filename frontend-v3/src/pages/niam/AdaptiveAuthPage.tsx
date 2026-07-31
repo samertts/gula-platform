@@ -82,10 +82,10 @@ export default function AdaptiveAuthPage() {
   ];
 
   const tables = {
-    policies: { columns: policyCols, data: asTableData(riskPolicies.data), loading: riskPolicies.isLoading },
-    events: { columns: eventCols, data: asTableData(events.data), loading: events.isLoading },
-    sessions: { columns: sessionPolicyCols, data: asTableData(sessionPolicies.data), loading: sessionPolicies.isLoading },
-    travel: { columns: eventCols, data: [] as Record<string, unknown>[], loading: false },
+    policies: { columns: policyCols, data: asTableData(riskPolicies.data), loading: riskPolicies.isLoading, error: riskPolicies.error, onRetry: () => riskPolicies.refetch() },
+    events: { columns: eventCols, data: asTableData(events.data), loading: events.isLoading, error: events.error, onRetry: () => events.refetch() },
+    sessions: { columns: sessionPolicyCols, data: asTableData(sessionPolicies.data), loading: sessionPolicies.isLoading, error: sessionPolicies.error, onRetry: () => sessionPolicies.refetch() },
+    travel: { columns: eventCols, data: [] as Record<string, unknown>[], loading: false, error: null, onRetry: undefined },
   };
 
   return (
@@ -106,7 +106,7 @@ export default function AdaptiveAuthPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

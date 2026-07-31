@@ -41,8 +41,8 @@ export default function CapabilitiesClinicalFoundationPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    "clinical-foundation": { columns: clinicalFoundationCols, data: (clinicalFoundation.data ?? []) as Record<string, unknown>[], loading: clinicalFoundation.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    "clinical-foundation": { columns: clinicalFoundationCols, data: (clinicalFoundation.data ?? []) as Record<string, unknown>[], loading: clinicalFoundation.isLoading, error: clinicalFoundation.error, onRetry: () => clinicalFoundation.refetch() },
   };
 
   return (
@@ -62,7 +62,7 @@ export default function CapabilitiesClinicalFoundationPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

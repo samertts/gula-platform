@@ -96,13 +96,13 @@ export default function KernelPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    status: { columns: statusCols, data: (status.data ?? []) as Record<string, unknown>[], loading: status.isLoading },
-    services: { columns: servicesCols, data: (services.data ?? []) as Record<string, unknown>[], loading: services.isLoading },
-    capabilities: { columns: capabilitiesCols, data: (capabilities.data ?? []) as Record<string, unknown>[], loading: capabilities.isLoading },
-    plugins: { columns: pluginsCols, data: (plugins.data ?? []) as Record<string, unknown>[], loading: plugins.isLoading },
-    modules: { columns: modulesCols, data: (modules.data ?? []) as Record<string, unknown>[], loading: modules.isLoading },
-    config: { columns: configCols, data: (config.data ?? []) as Record<string, unknown>[], loading: config.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    status: { columns: statusCols, data: (status.data ?? []) as Record<string, unknown>[], loading: status.isLoading, error: status.error, onRetry: () => status.refetch() },
+    services: { columns: servicesCols, data: (services.data ?? []) as Record<string, unknown>[], loading: services.isLoading, error: services.error, onRetry: () => services.refetch() },
+    capabilities: { columns: capabilitiesCols, data: (capabilities.data ?? []) as Record<string, unknown>[], loading: capabilities.isLoading, error: capabilities.error, onRetry: () => capabilities.refetch() },
+    plugins: { columns: pluginsCols, data: (plugins.data ?? []) as Record<string, unknown>[], loading: plugins.isLoading, error: plugins.error, onRetry: () => plugins.refetch() },
+    modules: { columns: modulesCols, data: (modules.data ?? []) as Record<string, unknown>[], loading: modules.isLoading, error: modules.error, onRetry: () => modules.refetch() },
+    config: { columns: configCols, data: (config.data ?? []) as Record<string, unknown>[], loading: config.isLoading, error: config.error, onRetry: () => config.refetch() },
   };
 
   return (
@@ -122,7 +122,7 @@ export default function KernelPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

@@ -96,13 +96,13 @@ export default function PharmacyPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    "dispense-queue": { columns: dispenseQueueCols, data: (dispenseQueue.data ?? []) as Record<string, unknown>[], loading: dispenseQueue.isLoading },
-    guidelines: { columns: guidelinesCols, data: (guidelines.data ?? []) as Record<string, unknown>[], loading: guidelines.isLoading },
-    "stock-levels": { columns: stockLevelsCols, data: (stockLevels.data ?? []) as Record<string, unknown>[], loading: stockLevels.isLoading },
-    alerts: { columns: alertsCols, data: (alerts.data ?? []) as Record<string, unknown>[], loading: alerts.isLoading },
-    movements: { columns: movementsCols, data: (movements.data ?? []) as Record<string, unknown>[], loading: movements.isLoading },
-    transfers: { columns: transfersCols, data: (transfers.data ?? []) as Record<string, unknown>[], loading: transfers.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    "dispense-queue": { columns: dispenseQueueCols, data: (dispenseQueue.data ?? []) as Record<string, unknown>[], loading: dispenseQueue.isLoading, error: dispenseQueue.error, onRetry: () => dispenseQueue.refetch() },
+    guidelines: { columns: guidelinesCols, data: (guidelines.data ?? []) as Record<string, unknown>[], loading: guidelines.isLoading, error: guidelines.error, onRetry: () => guidelines.refetch() },
+    "stock-levels": { columns: stockLevelsCols, data: (stockLevels.data ?? []) as Record<string, unknown>[], loading: stockLevels.isLoading, error: stockLevels.error, onRetry: () => stockLevels.refetch() },
+    alerts: { columns: alertsCols, data: (alerts.data ?? []) as Record<string, unknown>[], loading: alerts.isLoading, error: alerts.error, onRetry: () => alerts.refetch() },
+    movements: { columns: movementsCols, data: (movements.data ?? []) as Record<string, unknown>[], loading: movements.isLoading, error: movements.error, onRetry: () => movements.refetch() },
+    transfers: { columns: transfersCols, data: (transfers.data ?? []) as Record<string, unknown>[], loading: transfers.isLoading, error: transfers.error, onRetry: () => transfers.refetch() },
   };
 
   return (
@@ -122,7 +122,7 @@ export default function PharmacyPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

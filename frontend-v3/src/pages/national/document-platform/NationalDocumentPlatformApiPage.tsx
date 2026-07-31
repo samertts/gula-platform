@@ -102,13 +102,13 @@ export default function NationalDocumentPlatformApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    documents: { columns: documentsCols, data: asTableData(documents.data), loading: documents.isLoading },
-    versions: { columns: versionsCols, data: asTableData(versions.data), loading: versions.isLoading },
-    signatures: { columns: signaturesCols, data: asTableData(signatures.data), loading: signatures.isLoading },
-    qrcode: { columns: qrcodeCols, data: asTableData(qrcode.data), loading: qrcode.isLoading },
-    attachments: { columns: attachmentsCols, data: asTableData(attachments.data), loading: attachments.isLoading },
-    history: { columns: historyCols, data: asTableData(history.data), loading: history.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    documents: { columns: documentsCols, data: asTableData(documents.data), loading: documents.isLoading, error: documents.error, onRetry: () => documents.refetch() },
+    versions: { columns: versionsCols, data: asTableData(versions.data), loading: versions.isLoading, error: versions.error, onRetry: () => versions.refetch() },
+    signatures: { columns: signaturesCols, data: asTableData(signatures.data), loading: signatures.isLoading, error: signatures.error, onRetry: () => signatures.refetch() },
+    qrcode: { columns: qrcodeCols, data: asTableData(qrcode.data), loading: qrcode.isLoading, error: qrcode.error, onRetry: () => qrcode.refetch() },
+    attachments: { columns: attachmentsCols, data: asTableData(attachments.data), loading: attachments.isLoading, error: attachments.error, onRetry: () => attachments.refetch() },
+    history: { columns: historyCols, data: asTableData(history.data), loading: history.isLoading, error: history.error, onRetry: () => history.refetch() },
   };
 
   return (
@@ -128,7 +128,7 @@ export default function NationalDocumentPlatformApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

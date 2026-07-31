@@ -93,11 +93,11 @@ export default function TrustPage() {
     }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    frameworks: { columns: frameworkColumns, data: asTableData(frameworks.data), loading: frameworks.isLoading },
-    profiles: { columns: profileColumns, data: asTableData(profiles.data), loading: profiles.isLoading },
-    anchors: { columns: anchorColumns, data: asTableData(anchors.data), loading: anchors.isLoading },
-    evaluate: { columns: frameworkColumns, data: [], loading: false },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry?: () => void }> = {
+    frameworks: { columns: frameworkColumns, data: asTableData(frameworks.data), loading: frameworks.isLoading, error: frameworks.error, onRetry: () => frameworks.refetch() },
+    profiles: { columns: profileColumns, data: asTableData(profiles.data), loading: profiles.isLoading, error: profiles.error, onRetry: () => profiles.refetch() },
+    anchors: { columns: anchorColumns, data: asTableData(anchors.data), loading: anchors.isLoading, error: anchors.error, onRetry: () => anchors.refetch() },
+    evaluate: { columns: frameworkColumns, data: [], loading: false, error: null, onRetry: undefined },
   };
 
   return (
@@ -135,7 +135,7 @@ export default function TrustPage() {
             <DataTable
               columns={tables[activeTab].columns}
               data={tables[activeTab].data}
-              loading={tables[activeTab].loading}
+              loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry}
             />
           </div>
         </CardContent>

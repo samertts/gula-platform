@@ -96,13 +96,13 @@ export default function BiomedicalApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    devices: { columns: devicesCols, data: (devices.data ?? []) as Record<string, unknown>[], loading: devices.isLoading },
-    pm: { columns: pmCols, data: (pm.data ?? []) as Record<string, unknown>[], loading: pm.isLoading },
-    calibration: { columns: calibrationCols, data: (calibration.data ?? []) as Record<string, unknown>[], loading: calibration.isLoading },
-    "work-orders": { columns: workOrdersCols, data: (workOrders.data ?? []) as Record<string, unknown>[], loading: workOrders.isLoading },
-    incidents: { columns: incidentsCols, data: (incidents.data ?? []) as Record<string, unknown>[], loading: incidents.isLoading },
-    technicians: { columns: techniciansCols, data: (technicians.data ?? []) as Record<string, unknown>[], loading: technicians.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    devices: { columns: devicesCols, data: (devices.data ?? []) as Record<string, unknown>[], loading: devices.isLoading, error: devices.error, onRetry: () => devices.refetch() },
+    pm: { columns: pmCols, data: (pm.data ?? []) as Record<string, unknown>[], loading: pm.isLoading, error: pm.error, onRetry: () => pm.refetch() },
+    calibration: { columns: calibrationCols, data: (calibration.data ?? []) as Record<string, unknown>[], loading: calibration.isLoading, error: calibration.error, onRetry: () => calibration.refetch() },
+    "work-orders": { columns: workOrdersCols, data: (workOrders.data ?? []) as Record<string, unknown>[], loading: workOrders.isLoading, error: workOrders.error, onRetry: () => workOrders.refetch() },
+    incidents: { columns: incidentsCols, data: (incidents.data ?? []) as Record<string, unknown>[], loading: incidents.isLoading, error: incidents.error, onRetry: () => incidents.refetch() },
+    technicians: { columns: techniciansCols, data: (technicians.data ?? []) as Record<string, unknown>[], loading: technicians.isLoading, error: technicians.error, onRetry: () => technicians.refetch() },
   };
 
   return (
@@ -122,7 +122,7 @@ export default function BiomedicalApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

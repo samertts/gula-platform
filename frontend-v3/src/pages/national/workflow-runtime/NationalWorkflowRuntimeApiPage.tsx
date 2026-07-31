@@ -99,13 +99,13 @@ export default function NationalWorkflowRuntimeApiPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    definitions: { columns: definitionsCols, data: asTableData(definitions.data), loading: definitions.isLoading },
-    executions: { columns: executionsCols, data: asTableData(executions.data), loading: executions.isLoading },
-    steps: { columns: stepsCols, data: asTableData(steps.data), loading: steps.isLoading },
-    approvals: { columns: approvalsCols, data: asTableData(approvals.data), loading: approvals.isLoading },
-    pending: { columns: pendingCols, data: asTableData(pending.data), loading: pending.isLoading },
-    templates: { columns: templatesCols, data: asTableData(templates.data), loading: templates.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    definitions: { columns: definitionsCols, data: asTableData(definitions.data), loading: definitions.isLoading, error: definitions.error, onRetry: () => definitions.refetch() },
+    executions: { columns: executionsCols, data: asTableData(executions.data), loading: executions.isLoading, error: executions.error, onRetry: () => executions.refetch() },
+    steps: { columns: stepsCols, data: asTableData(steps.data), loading: steps.isLoading, error: steps.error, onRetry: () => steps.refetch() },
+    approvals: { columns: approvalsCols, data: asTableData(approvals.data), loading: approvals.isLoading, error: approvals.error, onRetry: () => approvals.refetch() },
+    pending: { columns: pendingCols, data: asTableData(pending.data), loading: pending.isLoading, error: pending.error, onRetry: () => pending.refetch() },
+    templates: { columns: templatesCols, data: asTableData(templates.data), loading: templates.isLoading, error: templates.error, onRetry: () => templates.refetch() },
   };
 
   return (
@@ -125,7 +125,7 @@ export default function NationalWorkflowRuntimeApiPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

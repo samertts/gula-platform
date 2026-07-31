@@ -88,12 +88,12 @@ export default function NationalEcosystemPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    connectors: { columns: connectorsCols, data: asTableData(connectors.data), loading: connectors.isLoading },
-    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
-    schemas: { columns: schemasCols, data: asTableData(schemas.data), loading: schemas.isLoading },
-    partners: { columns: partnersCols, data: asTableData(partners.data), loading: partners.isLoading },
-    audit: { columns: auditCols, data: asTableData(audit.data), loading: audit.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    connectors: { columns: connectorsCols, data: asTableData(connectors.data), loading: connectors.isLoading, error: connectors.error, onRetry: () => connectors.refetch() },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
+    schemas: { columns: schemasCols, data: asTableData(schemas.data), loading: schemas.isLoading, error: schemas.error, onRetry: () => schemas.refetch() },
+    partners: { columns: partnersCols, data: asTableData(partners.data), loading: partners.isLoading, error: partners.error, onRetry: () => partners.refetch() },
+    audit: { columns: auditCols, data: asTableData(audit.data), loading: audit.isLoading, error: audit.error, onRetry: () => audit.refetch() },
   };
 
   return (
@@ -113,7 +113,7 @@ export default function NationalEcosystemPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

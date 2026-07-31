@@ -98,13 +98,13 @@ export default function ControlPlanePage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    components: { columns: componentsCols, data: asTableData(components.data), loading: components.isLoading },
-    topology: { columns: topologyCols, data: asTableData(topology.data), loading: topology.isLoading },
-    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading },
-    config: { columns: configCols, data: asTableData(config.data), loading: config.isLoading },
-    policies: { columns: policiesCols, data: asTableData(policies.data), loading: policies.isLoading },
-    nodes: { columns: nodesCols, data: asTableData(nodes.data), loading: nodes.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    components: { columns: componentsCols, data: asTableData(components.data), loading: components.isLoading, error: components.error, onRetry: () => components.refetch() },
+    topology: { columns: topologyCols, data: asTableData(topology.data), loading: topology.isLoading, error: topology.error, onRetry: () => topology.refetch() },
+    health: { columns: healthCols, data: asTableData(health.data), loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
+    config: { columns: configCols, data: asTableData(config.data), loading: config.isLoading, error: config.error, onRetry: () => config.refetch() },
+    policies: { columns: policiesCols, data: asTableData(policies.data), loading: policies.isLoading, error: policies.error, onRetry: () => policies.refetch() },
+    nodes: { columns: nodesCols, data: asTableData(nodes.data), loading: nodes.isLoading, error: nodes.error, onRetry: () => nodes.refetch() },
   };
 
   return (
@@ -124,7 +124,7 @@ export default function ControlPlanePage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

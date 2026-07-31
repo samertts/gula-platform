@@ -103,12 +103,12 @@ export default function LifecyclePage() {
     col.accessor("status", { header: "الحالة", cell: ({ getValue }) => <Badge variant={badgeVariant(getValue() as string)}>{getValue() as string}</Badge> }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    enterprise: { columns: enterpriseCols, data: asTableData(enterprise.data), loading: enterprise.isLoading },
-    workforce: { columns: workforceCols, data: asTableData(workforce.data), loading: workforce.isLoading },
-    government: { columns: govCols, data: asTableData(appointments.data), loading: appointments.isLoading },
-    citizen: { columns: citizenCols, data: asTableData(citizens.data), loading: citizens.isLoading },
-    guardian: { columns: guardianCols, data: asTableData(guardians.data), loading: guardians.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    enterprise: { columns: enterpriseCols, data: asTableData(enterprise.data), loading: enterprise.isLoading, error: enterprise.error, onRetry: () => enterprise.refetch() },
+    workforce: { columns: workforceCols, data: asTableData(workforce.data), loading: workforce.isLoading, error: workforce.error, onRetry: () => workforce.refetch() },
+    government: { columns: govCols, data: asTableData(appointments.data), loading: appointments.isLoading, error: appointments.error, onRetry: () => appointments.refetch() },
+    citizen: { columns: citizenCols, data: asTableData(citizens.data), loading: citizens.isLoading, error: citizens.error, onRetry: () => citizens.refetch() },
+    guardian: { columns: guardianCols, data: asTableData(guardians.data), loading: guardians.isLoading, error: guardians.error, onRetry: () => guardians.refetch() },
   };
 
   return (
@@ -130,7 +130,7 @@ export default function LifecyclePage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

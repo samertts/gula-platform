@@ -96,13 +96,13 @@ export default function AiFabricPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading },
-    providers: { columns: providersCols, data: (providers.data ?? []) as Record<string, unknown>[], loading: providers.isLoading },
-    cost: { columns: costCols, data: (cost.data ?? []) as Record<string, unknown>[], loading: cost.isLoading },
-    status: { columns: statusCols, data: (status.data ?? []) as Record<string, unknown>[], loading: status.isLoading },
-    entity: { columns: entityCols, data: (entity.data ?? []) as Record<string, unknown>[], loading: entity.isLoading },
-    related: { columns: relatedCols, data: (related.data ?? []) as Record<string, unknown>[], loading: related.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    health: { columns: healthCols, data: (health.data ?? []) as Record<string, unknown>[], loading: health.isLoading, error: health.error, onRetry: () => health.refetch() },
+    providers: { columns: providersCols, data: (providers.data ?? []) as Record<string, unknown>[], loading: providers.isLoading, error: providers.error, onRetry: () => providers.refetch() },
+    cost: { columns: costCols, data: (cost.data ?? []) as Record<string, unknown>[], loading: cost.isLoading, error: cost.error, onRetry: () => cost.refetch() },
+    status: { columns: statusCols, data: (status.data ?? []) as Record<string, unknown>[], loading: status.isLoading, error: status.error, onRetry: () => status.refetch() },
+    entity: { columns: entityCols, data: (entity.data ?? []) as Record<string, unknown>[], loading: entity.isLoading, error: entity.error, onRetry: () => entity.refetch() },
+    related: { columns: relatedCols, data: (related.data ?? []) as Record<string, unknown>[], loading: related.isLoading, error: related.error, onRetry: () => related.refetch() },
   };
 
   return (
@@ -122,7 +122,7 @@ export default function AiFabricPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

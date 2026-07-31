@@ -98,13 +98,13 @@ export default function HealthDataPage() {
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    catalog: { columns: catalogCols, data: asTableData(catalog.data), loading: catalog.isLoading },
-    lineage: { columns: lineageCols, data: asTableData(lineage.data), loading: lineage.isLoading },
-    policies: { columns: policiesCols, data: asTableData(policies.data), loading: policies.isLoading },
-    metrics: { columns: metricsCols, data: asTableData(metrics.data), loading: metrics.isLoading },
-    events: { columns: eventsCols, data: asTableData(events.data), loading: events.isLoading },
-    query: { columns: queryCols, data: asTableData(query.data), loading: query.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    catalog: { columns: catalogCols, data: asTableData(catalog.data), loading: catalog.isLoading, error: catalog.error, onRetry: () => catalog.refetch() },
+    lineage: { columns: lineageCols, data: asTableData(lineage.data), loading: lineage.isLoading, error: lineage.error, onRetry: () => lineage.refetch() },
+    policies: { columns: policiesCols, data: asTableData(policies.data), loading: policies.isLoading, error: policies.error, onRetry: () => policies.refetch() },
+    metrics: { columns: metricsCols, data: asTableData(metrics.data), loading: metrics.isLoading, error: metrics.error, onRetry: () => metrics.refetch() },
+    events: { columns: eventsCols, data: asTableData(events.data), loading: events.isLoading, error: events.error, onRetry: () => events.refetch() },
+    query: { columns: queryCols, data: asTableData(query.data), loading: query.isLoading, error: query.error, onRetry: () => query.refetch() },
   };
 
   return (
@@ -124,7 +124,7 @@ export default function HealthDataPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>

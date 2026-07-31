@@ -84,11 +84,11 @@ export default function CertificatesPage() {
     col.accessor("created_at", { header: "تاريخ الإنشاء", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
 
-  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
-    certificates: { columns: certCols, data: asTableData(certificates.data), loading: certificates.isLoading },
-    authorities: { columns: caCols, data: asTableData(authorities.data), loading: authorities.isLoading },
-    apikeys: { columns: keyCols, data: asTableData(apiKeys.data), loading: apiKeys.isLoading },
-    expiring: { columns: certCols, data: asTableData(expiring.data), loading: expiring.isLoading },
+  const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean; error: Error | null; onRetry: () => void }> = {
+    certificates: { columns: certCols, data: asTableData(certificates.data), loading: certificates.isLoading, error: certificates.error, onRetry: () => certificates.refetch() },
+    authorities: { columns: caCols, data: asTableData(authorities.data), loading: authorities.isLoading, error: authorities.error, onRetry: () => authorities.refetch() },
+    apikeys: { columns: keyCols, data: asTableData(apiKeys.data), loading: apiKeys.isLoading, error: apiKeys.error, onRetry: () => apiKeys.refetch() },
+    expiring: { columns: certCols, data: asTableData(expiring.data), loading: expiring.isLoading, error: expiring.error, onRetry: () => expiring.refetch() },
   };
 
   return (
@@ -109,7 +109,7 @@ export default function CertificatesPage() {
             })}
           </div>
           <div className="p-4">
-            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} />
+            <DataTable columns={tables[activeTab].columns} data={tables[activeTab].data} loading={tables[activeTab].loading} error={tables[activeTab].error} onRetry={tables[activeTab].onRetry} />
           </div>
         </CardContent>
       </Card>
