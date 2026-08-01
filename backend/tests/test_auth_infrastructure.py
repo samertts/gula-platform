@@ -425,3 +425,108 @@ def test_mfa_endpoints_require_auth(client):
 def test_password_reset_endpoints_require_auth(client):
     resp = client.post("/auth/change-password", json={"current_password": "x", "new_password": "y"})
     assert resp.status_code == 401
+
+
+# ── MFA: privileged login challenge (ASVS 2.4) ──
+
+
+def _create_privileged_with_mfa(db, email="boss@mfa.gula", role="master_admin"):
+    """Create a privileged lab user, enroll a TOTP device, return (user, secret)."""
+    from app.models.lab import Lab
+    from app.models.lab_user import LabUser
+    from app.models.mfa_device import MFADevice
+
+    from shared.auth.mfa import generate_totp_secret
+
+    lab = db.query(Lab).filter(Lab.id == 1).first()
+    if not lab:
+        lab = Lab(
+            id=1,
+            name="Test Lab",
+            license_number="LIC-0001",
+            lab_type="private",
+            city="Baghdad",
+            is_active=True,
+        )
+        db.add(lab)
+        db.flush()
+    user = db.query(LabUser).filter(LabUser.email == email).first()
+    if not user:
+        user = LabUser(
+            lab_id=lab.id,
+            email=email,
+            name="Privileged User",
+            password_hash=hash_password("password123"),
+            role=role,
+            is_active=True,
+        )
+        db.add(user)
+        db.flush()
+    secret = generate_totp_secret()
+    device = MFADevice(
+        user_id=user.id,
+        device_type="totp",
+        device_name="Test Auth",
+        secret=secret,
+        is_active=True,
+        is_primary=True,
+    )
+    db.add(device)
+    db.commit()
+    return user, secret
+
+
+def test_privileged_login_issues_mfa_challenge(client, db):
+    from app.models.lab_user import LabUser
+
+    _create_privileged_with_mfa(db)
+    resp = client.post("/login", json={"email": "boss@mfa.gula", "password": "password123"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["mfa_pending"] is True
+    assert body["mfa_session"]
+    assert "token" not in body
+    assert "refresh_token" not in body
+
+
+def test_privileged_mfa_challenge_completes_login(client, db):
+    from pyotp import TOTP
+
+    _user, secret = _create_privileged_with_mfa(db)
+    resp = client.post("/login", json={"email": "boss@mfa.gula", "password": "password123"})
+    session = resp.json()["mfa_session"]
+    code = TOTP(secret).now()
+    resp2 = client.post("/mfa-verify", json={"mfa_session": session, "code": code})
+    assert resp2.status_code == 200, resp2.text
+    body = resp2.json()
+    assert body["token"]
+    assert body["refresh_token"]
+    assert body["user"]["role"] == "master_admin"
+
+
+def test_privileged_mfa_challenge_rejects_wrong_code(client, db):
+    _user, _secret = _create_privileged_with_mfa(db)
+    resp = client.post("/login", json={"email": "boss@mfa.gula", "password": "password123"})
+    session = resp.json()["mfa_session"]
+    resp2 = client.post("/mfa-verify", json={"mfa_session": session, "code": "000000"})
+    assert resp2.status_code == 400, resp2.text
+
+
+def test_privileged_mfa_challenge_rejects_bogus_session(client, db):
+    resp = client.post(
+        "/mfa-verify", json={"mfa_session": "not-a-real-session", "code": "123456"}
+    )
+    assert resp.status_code == 401, resp.text
+
+
+def test_privileged_mfa_session_is_single_use(client, db):
+    from pyotp import TOTP
+
+    _user, secret = _create_privileged_with_mfa(db)
+    resp = client.post("/login", json={"email": "boss@mfa.gula", "password": "password123"})
+    session = resp.json()["mfa_session"]
+    code = TOTP(secret).now()
+    assert client.post("/mfa-verify", json={"mfa_session": session, "code": code}).status_code == 200
+    assert (
+        client.post("/mfa-verify", json={"mfa_session": session, "code": code}).status_code == 401
+    )

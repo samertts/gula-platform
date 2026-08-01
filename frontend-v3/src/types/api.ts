@@ -41,6 +41,12 @@ export interface LoginResponse {
   user: UserInfo;
 }
 
+export interface MFAChallengeResponse {
+  mfa_pending: boolean;
+  mfa_session: string;
+  user: Omit<UserInfo, "lab_name">;
+}
+
 export interface UserInfo {
   id: number;
   name: string;

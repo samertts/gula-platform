@@ -38,6 +38,104 @@ class LoginRequest(BaseModel):
         return v.strip().lower()
 
 
+class MFAVerifyRequest(BaseModel):
+    mfa_session: str
+    code: str
+
+
+def _issue_session(
+    db: Session,
+    response: Response,
+    lab_user: LabUser | None,
+    user: LabUser | User,
+    client_ip: str,
+) -> dict:
+    """Build token pair, set cookies and audit-log a successful login.
+
+    Shared by the regular /login flow and the MFA challenge completion so
+    both paths produce byte-identical session semantics.
+    """
+    lab = None
+    if lab_user:
+        from ..models.lab import Lab
+
+        lab = db.query(Lab).filter(Lab.id == lab_user.lab_id, Lab.is_active).first()
+        if not lab and lab_user.role != "master_admin":
+            log_action(
+                db,
+                action="login_denied",
+                resource_type="auth",
+                user_id=lab_user.id,
+                user_role=lab_user.role,
+                details="Login denied: laboratory deactivated",
+                ip_address=client_ip,
+            )
+            db.commit()
+            raise HTTPException(status_code=403, detail="Your laboratory account is deactivated")
+
+        warm_perm_version(lab_user)
+        base_payload = build_token_payload(lab_user)
+        user_name = lab_user.name
+        lab_name = lab.name if lab else None
+    else:
+        base_payload = {
+            "user_id": user.id,
+            "lab_id": None,
+            "role": "citizen",
+            "perm_ver": 1,
+        }
+        user_name = user.full_name
+        lab_name = None
+
+    token = create_token(base_payload)
+    refresh_token = create_refresh_token(base_payload)
+
+    log_action(
+        db,
+        action="login",
+        resource_type="auth",
+        user_id=user.id,
+        user_role=user.role,
+        details="User logged in successfully",
+        ip_address=client_ip,
+    )
+    db.commit()
+
+    cookie_kwargs = {
+        "httponly": True,
+        "samesite": "strict",
+        "secure": IS_PRODUCTION,
+    }
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        max_age=JWT_EXPIRE_MINUTES * 60,
+        path="/",
+        **cookie_kwargs,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
+        path="/",
+        **cookie_kwargs,
+    )
+
+    return {
+        "token": token,
+        "refresh_token": refresh_token,
+        "token_type": "Bearer",
+        "user": {
+            "id": user.id,
+            "name": user_name,
+            "email": user.email,
+            "role": user.role,
+            "lab_id": user.lab_id,
+            "lab_name": lab_name,
+        },
+    }
+
+
 @router.post("/login")
 def login(data: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     rate_limit_auth(request)
@@ -97,103 +195,103 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
         mfa = MFAService(db)
         if not mfa.has_mfa_enabled(user.id):
+            # Bootstrap exception: the FIRST privileged account (the only active
+            # privileged user in the platform) may log in once without MFA so it
+            # can enroll via /security. Without this, a fresh deployment is
+            # permanently locked out — enrollment requires an authenticated
+            # session that cannot be obtained. Once any second privileged user
+            # exists, this exception no longer applies.
+            privileged_count = (
+                db.query(LabUser)
+                .filter(
+                    LabUser.role.in_(privileged_roles),
+                    LabUser.is_active,
+                )
+                .count()
+            )
+            if privileged_count > 1:
+                log_action(
+                    db,
+                    action="login_denied_mfa_required",
+                    resource_type="auth",
+                    user_id=user.id,
+                    user_role=user.role,
+                    details="Login denied: MFA required for privileged role",
+                    ip_address=client_ip,
+                )
+                db.commit()
+                raise HTTPException(
+                    status_code=403,
+                    detail="MFA enrollment required for privileged accounts. Please set up MFA before logging in.",
+                )
+        else:
+            # MFA is enrolled: require a TOTP/backup-code challenge before
+            # any privileged session token is issued (ASVS 2.4 enforcement).
+            mfa_session_token = mfa.create_mfa_session(user.id, "totp")
             log_action(
                 db,
-                action="login_denied_mfa_required",
+                action="login_mfa_challenge_issued",
                 resource_type="auth",
                 user_id=user.id,
                 user_role=user.role,
-                details="Login denied: MFA required for privileged role",
+                details="MFA challenge issued for privileged login",
                 ip_address=client_ip,
             )
             db.commit()
-            raise HTTPException(
-                status_code=403,
-                detail="MFA enrollment required for privileged accounts. Please set up MFA before logging in.",
-            )
+            return {
+                "mfa_pending": True,
+                "mfa_session": mfa_session_token,
+                "user": {
+                    "id": user.id,
+                    "name": user.name,
+                    "email": user.email,
+                    "role": user.role,
+                    "lab_id": user.lab_id,
+                },
+            }
 
-    # ── Lab-user: check lab is still active ───────────────────────────────────
-    lab = None
-    if lab_user:
-        from ..models.lab import Lab
+    return _issue_session(db, response, lab_user, user, client_ip)
 
-        lab = db.query(Lab).filter(Lab.id == lab_user.lab_id, Lab.is_active).first()
-        if not lab and lab_user.role != "master_admin":
-            log_action(
-                db,
-                action="login_denied",
-                resource_type="auth",
-                user_id=lab_user.id,
-                user_role=lab_user.role,
-                details="Login denied: laboratory deactivated",
-                ip_address=client_ip,
-            )
-            db.commit()
-            raise HTTPException(status_code=403, detail="Your laboratory account is deactivated")
 
-        # Warm Redis perm_version cache (lab users only)
-        warm_perm_version(lab_user)
-        base_payload = build_token_payload(lab_user)
-        user_name = lab_user.name
-        lab_name = lab.name if lab else None
-    else:
-        # Citizen token payload (no perm_version needed)
-        base_payload = {
-            "user_id": citizen.id,
-            "lab_id": None,
-            "role": "citizen",
-            "perm_ver": 1,
-        }
-        user_name = citizen.full_name
-        lab_name = None
+@router.post("/mfa-verify")
+def mfa_verify(data: MFAVerifyRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    """Complete a privileged login by proving possession of an enrolled MFA
+    device. The mfa_session token was issued by /login (mfa_pending) and is
+    single-use: it is consumed on the first attempt, whether the code is
+    correct or not, which bounds brute-force attempts to one per login.
+    """
+    rate_limit_auth(request)
 
-    token = create_token(base_payload)
-    refresh_token = create_refresh_token(base_payload)
+    from ..security.mfa_service import MFAService
 
-    log_action(
-        db,
-        action="login",
-        resource_type="auth",
-        user_id=user.id,
-        user_role=user.role,
-        details="User logged in successfully",
-        ip_address=client_ip,
-    )
-    db.commit()
+    client_ip = get_client_ip(request)
+    mfa = MFAService(db)
 
-    cookie_kwargs = {
-        "httponly": True,
-        "samesite": "strict",
-        "secure": IS_PRODUCTION,
-    }
-    response.set_cookie(
-        key="access_token",
-        value=token,
-        max_age=JWT_EXPIRE_MINUTES * 60,
-        path="/",
-        **cookie_kwargs,
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
-        path="/",
-        **cookie_kwargs,
-    )
+    user_id = mfa.verify_mfa_session(data.mfa_session)
+    if not user_id:
+        raise HTTPException(
+            status_code=401,
+            detail="MFA session is invalid or expired. Please log in again.",
+        )
 
-    return {
-        "token": token,
-        "refresh_token": refresh_token,
-        "token_type": "Bearer",
-        "user": {
-            "id": user.id,
-            "name": user_name,
-            "email": user.email,
-            "role": user.role,
-            "lab_id": user.lab_id,
-            "lab_name": lab_name,
-        },
-    }
+    user = db.query(LabUser).filter(LabUser.id == user_id, LabUser.is_active).first()
+    if not user:
+        raise HTTPException(status_code=401, detail="Account is no longer active")
+
+    if not mfa.verify_totp(user.id, data.code.strip()):
+        log_action(
+            db,
+            action="login_failed_mfa_code",
+            resource_type="auth",
+            user_id=user.id,
+            user_role=user.role,
+            details="MFA code verification failed",
+            ip_address=client_ip,
+        )
+        db.commit()
+        raise HTTPException(status_code=400, detail="Invalid TOTP code")
+
+    return _issue_session(db, response, user, user, client_ip)
 
 
 @router.post("/logout")

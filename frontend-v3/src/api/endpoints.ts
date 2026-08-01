@@ -2,6 +2,7 @@ import { api } from "./client";
 import type {
   LoginRequest,
   LoginResponse,
+  MFAChallengeResponse,
   Patient,
   PaginatedResponse,
   LabOrder,
@@ -45,7 +46,9 @@ type PatientListResponse = PaginatedResponse<Patient>;
 // ── Auth ──
 export const authApi = {
   login: (data: LoginRequest) =>
-    api.post<LoginResponse>("/login", data).then((r) => r.data),
+    api.post<LoginResponse | MFAChallengeResponse>("/login", data).then((r) => r.data),
+  mfaVerify: (mfaSession: string, code: string) =>
+    api.post<LoginResponse>("/mfa-verify", { mfa_session: mfaSession, code }).then((r) => r.data),
   logout: () => api.post<Record<string, unknown>>("/logout").then((r) => r.data),
   register: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/register", data).then((r) => r.data),
@@ -91,8 +94,15 @@ export const patientsApi = {
 };
 
 // ── Orders ──
+export interface TestProfileEntry {
+  test_name: string;
+  unit?: string;
+  normal_range_low?: number | null;
+  normal_range_high?: number | null;
+}
+
 export const ordersApi = {
-  testProfiles: () => api.get<Record<string, unknown[]>>("/test-profiles").then((r) => r.data),
+  testProfiles: () => api.get<Record<string, TestProfileEntry[]>>("/test-profiles").then((r) => r.data),
   list: (params?: { skip?: number; limit?: number; search?: string }) =>
     api.get<LabOrder[]>("/orders", { params }).then((r) => r.data),
   get: (id: number) =>
