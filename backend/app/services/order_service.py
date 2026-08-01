@@ -618,8 +618,12 @@ def get_public_result(db: Session, token: str, ip_address: str | None = None) ->
     if not result:
         return {"error": "Result not found", "status_code": 404}
 
-    if result.expires_at and result.expires_at < datetime.now(UTC):
-        return {"error": "Result link has expired", "status_code": 410}
+    if result.expires_at:
+        expires_at = result.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if expires_at < datetime.now(UTC):
+            return {"error": "Result link has expired", "status_code": 410}
 
     order = (
         db.query(LabOrder)
@@ -699,8 +703,12 @@ def download_result_pdf(db: Session, token: str, ip_address: str | None = None) 
     if not result:
         return {"error": "Result not found", "status_code": 404}
 
-    if result.expires_at and result.expires_at < datetime.now(UTC):
-        return {"error": "Result link has expired", "status_code": 410}
+    if result.expires_at:
+        expires_at = result.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=UTC)
+        if expires_at < datetime.now(UTC):
+            return {"error": "Result link has expired", "status_code": 410}
 
     order = (
         db.query(LabOrder)
