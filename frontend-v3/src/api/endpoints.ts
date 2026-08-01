@@ -43,6 +43,121 @@ import type {
 
 type PatientListResponse = PaginatedResponse<Patient>;
 
+// ── LIMS (National Laboratory Information Management System) ──
+export interface LimsResultRow {
+  id: number;
+  specimen_id: number;
+  order_id: number;
+  test_code: string;
+  test_name: string;
+  value_numeric: number | null;
+  value_text: string | null;
+  unit: string | null;
+  validation_status: string;
+  result_status: string;
+  qc_status: string | null;
+  flag: string | null;
+  created_at: string;
+  instrument_code?: string;
+}
+
+export interface LimsInstrument {
+  id: number;
+  instrument_code: string;
+  name: string;
+  model: string | null;
+  status: string;
+  location: string | null;
+  created_at?: string;
+}
+
+export interface LimsQcProgram {
+  id: number;
+  code: string;
+  name: string;
+  program_type: string;
+  test_code: string | null;
+  instrument_id: number | null;
+  frequency: string | null;
+  created_at?: string;
+}
+
+export interface LimsQcResult {
+  id: number;
+  program_id: number | null;
+  test_code: string;
+  measured_value: number;
+  expected_value: number;
+  sd: number;
+  level: string;
+  evaluation: string | null;
+  performed_at: string;
+  lot_number: string | null;
+  instrument_id: number | null;
+}
+
+export interface LimsReportRow {
+  id: number;
+  order_id: number;
+  report_number: string;
+  status: string;
+  locale: string;
+  title: string | null;
+  title_ar: string | null;
+  created_at?: string;
+  finalized_at?: string | null;
+}
+
+export const limsApi = {
+  // Results worklist
+  listResults: (params?: { specimen_id?: number; order_id?: number; test_code?: string; validation_status?: string; skip?: number; limit?: number }) =>
+    api.get<{ total: number; results: LimsResultRow[] }>("/lims/results", { params }).then((r) => r.data),
+  validateResult: (resultId: number, data: { notes?: string; action?: "validate" | "reject" | "flag" }) =>
+    api.post<LimsResultRow>(`/lims/results/${resultId}/validate`, data).then((r) => r.data),
+  releaseResult: (resultId: number) =>
+    api.post<{ id: number; validation_status: string }>(`/lims/results/${resultId}/release`).then((r) => r.data),
+  // QC
+  qcRun: (data: { program_id: number; test_code: string; measured_value: number; expected_value: number; sd: number; level?: string; lot_number?: string; instrument_id?: number | null; notes?: string }) =>
+    api.post<LimsQcResult>("/lims/qc/run", data).then((r) => r.data),
+  qcResults: (params?: { test_code?: string; days?: number }) =>
+    api.get<{ total: number; results: LimsQcResult[] }>("/lims/qc/results", { params }).then((r) => r.data),
+  qcPrograms: () => api.get<LimsQcProgram[]>("/lims/qc/programs").then((r) => r.data),
+  createQcProgram: (data: Record<string, unknown>) =>
+    api.post<LimsQcProgram>("/lims/qc/programs", data).then((r) => r.data),
+  qcStatistics: (testCode: string, params?: { instrument_id?: number; days?: number }) =>
+    api.get<{ test_code: string; statistics: Record<string, unknown>; limits: Record<string, unknown>; data_points: { value: number; performed_at: string }[] }>(`/lims/qc/statistics/${testCode}`, { params }).then((r) => r.data),
+  // Instruments / analyzer queue
+  instruments: () => api.get<LimsInstrument[]>("/lims/instruments").then((r) => r.data),
+  createInstrument: (data: Record<string, unknown>) =>
+    api.post<LimsInstrument>("/lims/instruments", data).then((r) => r.data),
+  instrumentOnline: (id: number) =>
+    api.post<Record<string, unknown>>(`/lims/instruments/${id}/online`).then((r) => r.data),
+  instrumentOffline: (id: number) =>
+    api.post<Record<string, unknown>>(`/lims/instruments/${id}/offline`).then((r) => r.data),
+  instrumentMaintenance: (id: number, data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>(`/lims/instruments/${id}/maintenance`, data).then((r) => r.data),
+  instrumentCalibration: (id: number, data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>(`/lims/instruments/${id}/calibrations`, data).then((r) => r.data),
+  // Analyzer import (ASTM / HL7)
+  astmReceive: (data: { instrument_id: number; raw_message: string }) =>
+    api.post<{ status: string; results: unknown[] }>("/lims/integration/astm/receive", data).then((r) => r.data),
+  hl7Receive: (data: { instrument_id: number; raw_message: string }) =>
+    api.post<{ status: string; results: unknown[] }>("/lims/integration/hl7/receive", data).then((r) => r.data),
+  // Reports
+  reports: (params?: { status?: string; skip?: number; limit?: number }) =>
+    api.get<{ total: number; reports: LimsReportRow[] }>("/lims/reports", { params }).then((r) => r.data),
+  generateReport: (data: { order_id: number; report_number: string; locale?: string; title?: string; title_ar?: string }) =>
+    api.post<LimsReportRow>("/lims/reports", data).then((r) => r.data),
+  finalizeReport: (reportId: number) =>
+    api.post<LimsReportRow>(`/lims/reports/${reportId}/finalize`).then((r) => r.data),
+  correctReport: (reportId: number, data: { reason: string; corrections?: string }) =>
+    api.post<LimsReportRow>(`/lims/reports/${reportId}/correct`, data).then((r) => r.data),
+  // Storage
+  storage: () => api.get<{ storage: unknown[] }>("/lims/storage").then((r) => r.data),
+  storageTemperature: (data: Record<string, unknown>) =>
+    api.post<Record<string, unknown>>("/lims/storage/temperature", data).then((r) => r.data),
+};
+
 // ── Auth ──
 export const authApi = {
   login: (data: LoginRequest) =>

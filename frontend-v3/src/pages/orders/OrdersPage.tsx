@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ordersApi, patientsApi } from "@/api/endpoints";
-import { Card, CardContent, Badge, DataTable, Input, Button, Dialog } from "@/components/ui";
+import { ordersApi, patientsApi, batchApi, notificationsApi } from "@/api/endpoints";
+import { Card, CardContent, Badge, DataTable, Input, Button, Dialog, Textarea } from "@/components/ui";
 import { PageHeader } from "@/components/shared/PageComponents";
-import { Search, Plus, Eye, CheckCircle2, XCircle, BrainCircuit, Loader2 } from "lucide-react";
+import { Search, Plus, Eye, CheckCircle2, XCircle, BrainCircuit, Loader2, Layers, BellRing } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { LabOrder, Patient } from "@/types";
@@ -41,6 +41,7 @@ export function OrdersPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [createOpen, setCreateOpen] = useState(false);
+  const [batchOpen, setBatchOpen] = useState(false);
   const [detailOrder, setDetailOrder] = useState<LabOrder | null>(null);
   const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
@@ -166,10 +167,16 @@ export function OrdersPage() {
                     className="ps-9 w-80"
                   />
                 </div>
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  {t("order.newOrder")}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    {t("order.newOrder")}
+                  </Button>
+                  <Button variant="outline" onClick={() => setBatchOpen(true)} title={t("order.batchOrders")}>
+                    <Layers className="h-4 w-4" />
+                    {t("order.batchOrders")}
+                  </Button>
+                </div>
               </div>
             }
           />
@@ -177,6 +184,8 @@ export function OrdersPage() {
       </Card>
 
       <CreateOrderDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => showToast("success", t("order.created"))} />
+
+      <BatchOrdersDialog open={batchOpen} onClose={() => setBatchOpen(false)} onCreated={() => showToast("success", t("order.batchCreated"))} />
 
       <OrderDetailDialog
         order={detailOrder}
@@ -437,7 +446,11 @@ function OrderDetailDialog({
   analyzing: boolean;
 }) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const orderId = order?.id;
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [channel, setChannel] = useState("sms");
+  const [phone, setPhone] = useState("");
 
   const { data: detail, isLoading } = useQuery({
     queryKey: ["order", orderId],
@@ -445,9 +458,28 @@ function OrderDetailDialog({
     enabled: !!orderId,
   });
 
+  const { data: notifyHistory } = useQuery({
+    queryKey: ["notify-history", orderId],
+    queryFn: () => notificationsApi.history(orderId as number),
+    enabled: !!orderId,
+  });
+
+  const notifyMutation = useMutation({
+    mutationFn: () => notificationsApi.send({ order_id: orderId as number, channel }),
+    onSuccess: () => {
+      setNotifyOpen(false);
+      queryClient.invalidateQueries({ queryKey: ["notify-history", orderId] });
+    },
+  });
+
   const orderData = detail || order;
   const isLocked = !!orderData?.locked_at || orderData?.status === "validated";
   const isCancelled = orderData?.status === "cancelled";
+
+  const timeline: { label: string; at?: string | null }[] = [
+    { label: t("order.timelineCreated"), at: orderData?.created_at },
+    { label: t("order.timelineValidated"), at: orderData?.validated_at },
+  ].filter((item) => item.at != null || item.label === t("order.timelineCreated"));
 
   return (
     <Dialog
@@ -472,6 +504,10 @@ function OrderDetailDialog({
             {analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <BrainCircuit className="h-4 w-4" />}
             {t("order.analyzeIntelligence")}
           </Button>
+          <Button variant="outline" onClick={() => setNotifyOpen(true)} disabled={!orderId}>
+            <BellRing className="h-4 w-4" />
+            {t("order.notify")}
+          </Button>
         </div>
       }
     >
@@ -486,6 +522,27 @@ function OrderDetailDialog({
             <InfoRow label={t("order.doctorName")} value={orderData?.doctor_name || "—"} />
             <InfoRow label={t("order.createdAt")} value={formatDateTime(orderData?.created_at)} />
             <InfoRow label={t("order.validatedAt")} value={formatDateTime(orderData?.validated_at)} />
+          </div>
+
+          <div>
+            <h3 className="mb-2 text-sm font-semibold">{t("order.timeline")}</h3>
+            <ol className="space-y-1 rounded-md border p-3 text-sm">
+              {timeline.map((step, i) => (
+                <li key={i} className="flex items-center justify-between">
+                  <span>{step.label}</span>
+                  <span className="text-xs text-muted-foreground">{step.at ? formatDateTime(step.at) : "—"}</span>
+                </li>
+              ))}
+              {notifyHistory?.total_views != null && (
+                <li className="flex items-center justify-between">
+                  <span>{t("order.notifyViews")}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {notifyHistory.total_views}
+                    {notifyHistory.last_viewed ? ` — ${formatDateTime(notifyHistory.last_viewed)}` : ""}
+                  </span>
+                </li>
+              )}
+            </ol>
           </div>
 
           <div>
@@ -528,6 +585,43 @@ function OrderDetailDialog({
           </div>
         </div>
       )}
+
+      <Dialog
+        open={notifyOpen}
+        onClose={() => setNotifyOpen(false)}
+        title={t("order.notify")}
+        className="max-w-md"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setNotifyOpen(false)}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={() => notifyMutation.mutate()} loading={notifyMutation.isPending}>
+              <BellRing className="h-4 w-4" />
+              {t("order.notifySend")}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("order.notifyChannel")}</label>
+            <select
+              value={channel}
+              onChange={(e) => setChannel(e.target.value)}
+              className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+            >
+              <option value="sms">SMS</option>
+              <option value="email">Email</option>
+              <option value="push">Push</option>
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">{t("order.notifyPhone")}</label>
+            <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07XXXXXXXXX" />
+          </div>
+        </div>
+      </Dialog>
     </Dialog>
   );
 }
@@ -539,4 +633,200 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
       <p className="text-sm font-medium">{value ?? "—"}</p>
     </div>
   );
+}
+
+function BatchOrdersDialog({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [entries, setEntries] = useState<BatchEntry[]>([
+    { key: crypto.randomUUID(), patient: null, doctorName: "", testsText: "" },
+  ]);
+  const [patientSearch, setPatientSearch] = useState("");
+  const debouncedPatientSearch = useDebounce(patientSearch, 300);
+  const [searchTarget, setSearchTarget] = useState<string>("");
+  const [error, setError] = useState("");
+
+  const { data: patients } = useQuery({
+    queryKey: ["patients-search", debouncedPatientSearch],
+    queryFn: () => patientsApi.list({ search: debouncedPatientSearch || undefined, limit: 8 }),
+    enabled: open && debouncedPatientSearch.length > 0,
+  });
+
+  const patientOptions =
+    ((patients as { patients?: Patient[] } | undefined)?.patients || []).map((p) => ({
+      value: String(p.id),
+      label: `${p.full_name} — ${p.health_id || p.phone || ""}`,
+    })) || [];
+
+  const mutation = useMutation({
+    mutationFn: () =>
+      batchApi.orders({
+        orders: entries
+          .filter((e) => e.patient)
+          .map((e) => ({
+            patient_id: e.patient!.id,
+            doctor_name: e.doctorName.trim() || undefined,
+            results: e.testsText
+              .split(/[,،\n]/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((test_name) => ({ test_name })),
+          })),
+      }),
+    onSuccess: () => {
+      setEntries([{ key: crypto.randomUUID(), patient: null, doctorName: "", testsText: "" }]);
+      setError("");
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      onCreated();
+      onClose();
+    },
+    onError: (err) => setError(getErrorMessage(err)),
+  });
+
+  const validEntries = entries.filter((e) => e.patient && e.testsText.trim());
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={t("order.batchOrders")}
+      description={t("order.batchOrdersHint")}
+      className="max-w-3xl"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            onClick={() => mutation.mutate()}
+            loading={mutation.isPending}
+            disabled={validEntries.length === 0}
+          >
+            <Layers className="h-4 w-4" />
+            {t("order.batchSubmit")} ({validEntries.length})
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+        <div className="space-y-3">
+          {entries.map((entry) => (
+            <div key={entry.key} className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium">{t("order.patient")}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEntries((prev) => prev.filter((e) => e.key !== entry.key))}
+                  disabled={entries.length === 1}
+                >
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </div>
+              {!entry.patient ? (
+                <div className="space-y-2">
+                  <Input
+                    placeholder={t("order.searchPatient")}
+                    value={searchTarget === entry.key ? patientSearch : ""}
+                    onChange={(e) => {
+                      setSearchTarget(entry.key);
+                      setPatientSearch(e.target.value);
+                    }}
+                  />
+                  {searchTarget === entry.key && patientOptions.length > 0 && (
+                    <div className="max-h-40 overflow-y-auto rounded-md border">
+                      {patientOptions.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          className="block w-full px-3 py-2 text-start text-sm hover:bg-accent"
+                          onClick={() => {
+                            const p = ((patients as { patients?: Patient[] } | undefined)?.patients || []).find(
+                              (x) => String(x.id) === opt.value,
+                            );
+                            if (p) {
+                              setEntries((prev) =>
+                                prev.map((e) => (e.key === entry.key ? { ...e, patient: p } : e)),
+                              );
+                              setPatientSearch("");
+                              setSearchTarget("");
+                            }
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                  <span>
+                    {entry.patient.full_name} — {entry.patient.health_id || entry.patient.phone}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      setEntries((prev) => prev.map((e) => (e.key === entry.key ? { ...e, patient: null } : e)))
+                    }
+                  >
+                    {t("common.clear")}
+                  </Button>
+                </div>
+              )}
+              <Input
+                placeholder={t("order.doctorName")}
+                value={entry.doctorName}
+                onChange={(e) =>
+                  setEntries((prev) =>
+                    prev.map((x) => (x.key === entry.key ? { ...x, doctorName: e.target.value } : x)),
+                  )
+                }
+              />
+              <Textarea
+                placeholder={t("order.batchTestsHint")}
+                rows={2}
+                value={entry.testsText}
+                onChange={(e) =>
+                  setEntries((prev) =>
+                    prev.map((x) => (x.key === entry.key ? { ...x, testsText: e.target.value } : x)),
+                  )
+                }
+              />
+            </div>
+          ))}
+        </div>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() =>
+            setEntries((prev) => [
+              ...prev,
+              { key: crypto.randomUUID(), patient: null, doctorName: "", testsText: "" },
+            ])
+          }
+        >
+          <Plus className="h-4 w-4" />
+          {t("order.batchAddPatient")}
+        </Button>
+      </div>
+    </Dialog>
+  );
+}
+
+interface BatchEntry {
+  key: string;
+  patient: Patient | null;
+  doctorName: string;
+  testsText: string;
 }

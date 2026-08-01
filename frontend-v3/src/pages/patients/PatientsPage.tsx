@@ -1,13 +1,13 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { patientsApi } from "@/api/endpoints";
+import { patientsApi, canonicalPatientApi, patientHistoryApi, resultsApi, patientCardApi } from "@/api/endpoints";
 import { Card, CardContent, Input, Badge, DataTable, Button, Dialog, Select } from "@/components/ui";
 import { PageHeader } from "@/components/shared/PageComponents";
-import { Search, Plus, Pencil } from "lucide-react";
+import { Search, Plus, Pencil, QrCode, GitMerge, Download, History } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { Patient } from "@/types";
-import { formatDate, getErrorMessage, getGenderLabel } from "@/lib/utils";
+import type { Patient, LabOrder } from "@/types";
+import { formatDate, formatDateTime, getErrorMessage, getGenderLabel, downloadBlob } from "@/lib/utils";
 import { useDebounce } from "@/hooks/useDebounce";
 
 interface PatientFormState {
@@ -37,6 +37,8 @@ export function PatientsPage() {
   const debouncedSearch = useDebounce(search, 300);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Patient | null>(null);
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [detailPatient, setDetailPatient] = useState<Patient | null>(null);
   const [toast, setToast] = useState<{ kind: "success" | "error"; message: string } | null>(null);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
@@ -70,6 +72,30 @@ export function PatientsPage() {
       header: t("common.actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            title={t("patient.history")}
+            onClick={() => setDetailPatient(row.original)}
+          >
+            <History className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            title={t("patient.qrCard")}
+            onClick={async () => {
+              try {
+                const blob = await patientCardApi.qr(row.original.id);
+                downloadBlob(blob, `patient-${row.original.id}-qr.png`);
+                showToast("success", t("patient.qrDownloaded"));
+              } catch (err) {
+                showToast("error", getErrorMessage(err));
+              }
+            }}
+          >
+            <QrCode className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
@@ -131,6 +157,10 @@ export function PatientsPage() {
                   <Plus className="h-4 w-4" />
                   {t("patient.newPatient")}
                 </Button>
+                <Button variant="outline" onClick={() => setMergeOpen(true)} title={t("patient.mergePatients")}>
+                  <GitMerge className="h-4 w-4" />
+                  {t("patient.mergePatients")}
+                </Button>
               </div>
             }
           />
@@ -145,6 +175,22 @@ export function PatientsPage() {
           queryClient.invalidateQueries({ queryKey: ["patients"] });
           showToast("success", message);
         }}
+        onError={(message) => showToast("error", message)}
+      />
+
+      <MergePatientsDialog
+        open={mergeOpen}
+        onClose={() => setMergeOpen(false)}
+        onMerged={(message) => {
+          queryClient.invalidateQueries({ queryKey: ["patients"] });
+          showToast("success", message);
+        }}
+        onError={(message) => showToast("error", message)}
+      />
+
+      <PatientDetailDrawer
+        patient={detailPatient}
+        onClose={() => setDetailPatient(null)}
         onError={(message) => showToast("error", message)}
       />
     </div>
@@ -318,5 +364,300 @@ function Field({ label, required, children }: { label: string; required?: boolea
       </label>
       {children}
     </div>
+  );
+}
+
+function MergePatientsDialog({
+  open,
+  onClose,
+  onMerged,
+  onError,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onMerged: (message: string) => void;
+  onError: (message: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [targetSearch, setTargetSearch] = useState("");
+  const targetDebounced = useDebounce(targetSearch, 300);
+  const [sourceSearch, setSourceSearch] = useState("");
+  const sourceDebounced = useDebounce(sourceSearch, 300);
+  const [target, setTarget] = useState<Patient | null>(null);
+  const [source, setSource] = useState<Patient | null>(null);
+  const [error, setError] = useState("");
+
+  const { data: targetResults } = useQuery({
+    queryKey: ["patients-search", targetDebounced],
+    queryFn: () => patientsApi.list({ search: targetDebounced || undefined, limit: 8 }),
+    enabled: open && targetDebounced.length > 0,
+  });
+  const { data: sourceResults } = useQuery({
+    queryKey: ["patients-search", sourceDebounced],
+    queryFn: () => patientsApi.list({ search: sourceDebounced || undefined, limit: 8 }),
+    enabled: open && sourceDebounced.length > 0,
+  });
+
+  const targetPatients = (targetResults as { patients?: Patient[] } | undefined)?.patients || [];
+  const sourcePatients = (sourceResults as { patients?: Patient[] } | undefined)?.patients || [];
+
+  const mutation = useMutation({
+    mutationFn: () => canonicalPatientApi.merge({ target_id: target!.id, source_id: source!.id }),
+    onSuccess: () => {
+      setTarget(null);
+      setSource(null);
+      setTargetSearch("");
+      setSourceSearch("");
+      onMerged(t("patient.merged"));
+      onClose();
+    },
+    onError: (err) => {
+      const msg = getErrorMessage(err);
+      setError(msg);
+      onError(msg);
+    },
+  });
+
+  const picker = (
+    selected: Patient | null,
+    setSelected: (p: Patient | null) => void,
+    searchValue: string,
+    setSearchValue: (v: string) => void,
+    results: Patient[],
+    placeholder: string,
+  ) => (
+    <div className="space-y-2">
+      {!selected ? (
+        <>
+          <Input placeholder={placeholder} value={searchValue} onChange={(e) => setSearchValue(e.target.value)} />
+          {results.length > 0 && (
+            <div className="max-h-44 overflow-y-auto rounded-md border">
+              {results.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className="block w-full px-3 py-2 text-start text-sm hover:bg-accent"
+                  onClick={() => setSelected(p)}
+                >
+                  {p.full_name} — {p.health_id || p.phone || `#${p.id}`}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex items-center justify-between rounded-md border bg-muted/50 px-3 py-2 text-sm">
+          <span>
+            {selected.full_name} — {selected.health_id || selected.phone || `#${selected.id}`}
+          </span>
+          <Button variant="ghost" size="sm" onClick={() => setSelected(null)}>
+            {t("common.clear")}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={t("patient.mergePatients")}
+      description={t("patient.mergeHint")}
+      className="max-w-lg"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            {t("common.cancel")}
+          </Button>
+          <Button
+            onClick={() => mutation.mutate()}
+            loading={mutation.isPending}
+            disabled={!target || !source || target.id === source.id}
+          >
+            <GitMerge className="h-4 w-4" />
+            {t("patient.mergeConfirm")}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        {error && <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+        <div>
+          <p className="mb-2 text-sm font-medium">
+            {t("patient.mergeTarget")} <span className="text-destructive">*</span>
+          </p>
+          {picker(target, setTarget, targetSearch, setTargetSearch, targetPatients, t("patient.search"))}
+        </div>
+        <div>
+          <p className="mb-2 text-sm font-medium">
+            {t("patient.mergeSource")} <span className="text-destructive">*</span>
+          </p>
+          {picker(source, setSource, sourceSearch, setSourceSearch, sourcePatients, t("patient.search"))}
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+function PatientDetailDrawer({
+  patient,
+  onClose,
+  onError,
+}: {
+  patient: Patient | null;
+  onClose: () => void;
+  onError: (message: string) => void;
+}) {
+  const { t } = useTranslation();
+  const patientId = patient?.id;
+  const healthId = patient?.health_id;
+
+  const { data: history, isLoading } = useQuery({
+    queryKey: ["patient-history", patientId],
+    queryFn: () => patientHistoryApi.byId(patientId as number),
+    enabled: !!patientId,
+  });
+
+  const { data: timelineData } = useQuery({
+    queryKey: ["patient-timeline", healthId],
+    queryFn: () => resultsApi.citizenTimeline(healthId as string),
+    enabled: !!healthId,
+  });
+
+  const { data: children } = useQuery({
+    queryKey: ["patient-children", patientId],
+    queryFn: () => patientsApi.getChildren(patientId as number),
+    enabled: !!patientId,
+  });
+
+  const orders = history?.orders || [];
+  const results = history?.results || [];
+  const timeline = timelineData?.timeline || [];
+  const familyMembers = Array.isArray(children) ? children : [];
+
+  return (
+    <Dialog
+      open={!!patient}
+      onClose={onClose}
+      title={patient?.full_name}
+      description={patient ? `${patient.health_id || ""} — ${formatDate(patient.birth_date)}` : undefined}
+      className="max-w-3xl"
+      footer={
+        <div className="flex items-center gap-2">
+          {patient && (
+            <>
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const blob = await patientCardApi.qr(patient.id);
+                    downloadBlob(blob, `patient-${patient.id}-qr.png`);
+                  } catch (err) {
+                    onError(getErrorMessage(err));
+                  }
+                }}
+              >
+                <Download className="h-4 w-4" />
+                {t("patient.qrDownload")}
+              </Button>
+              <Button variant="outline" onClick={() => window.open(`/api/patient-card/${patient.id}/print`, "_blank")}>
+                {t("patient.cardPrint")}
+              </Button>
+            </>
+          )}
+          <Button variant="outline" onClick={onClose}>
+            {t("common.close")}
+          </Button>
+        </div>
+      }
+    >
+      {isLoading ? (
+        <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">{t("common.loading")}</div>
+      ) : (
+        <div className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-md border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground">{t("patient.ordersCount")}</p>
+              <p className="text-lg font-semibold">{orders.length}</p>
+            </div>
+            <div className="rounded-md border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground">{t("patient.resultsCount")}</p>
+              <p className="text-lg font-semibold">{results.length}</p>
+            </div>
+          </div>
+
+          {timeline.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">{t("patient.timeline")}</h3>
+              <div className="space-y-2">
+                {timeline.map((group) => (
+                  <div key={group.category} className="rounded-md border p-3">
+                    <p className="mb-1 text-sm font-medium text-muted-foreground">{group.category}</p>
+                    <div className="space-y-1 text-sm">
+                      {group.results.map((r) => (
+                        <div key={r.id} className="flex items-center justify-between">
+                          <span>
+                            {r.test_name}: <strong>{r.value ?? r.value_text ?? "—"}</strong> {r.unit || ""}
+                          </span>
+                          <span className="text-xs text-muted-foreground">{formatDateTime(r.created_at)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {orders.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">{t("patient.orders")}</h3>
+              <div className="rounded-md border">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50 text-muted-foreground">
+                      <th className="px-3 py-2 text-start font-medium">{t("order.orderId")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("order.testsCount")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("order.status")}</th>
+                      <th className="px-3 py-2 text-start font-medium">{t("order.createdAt")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((o: LabOrder) => (
+                      <tr key={o.id} className="border-b">
+                        <td className="px-3 py-2">#{o.id}</td>
+                        <td className="px-3 py-2">{o.results_count ?? o.results?.length ?? "-"}</td>
+                        <td className="px-3 py-2">{o.status}</td>
+                        <td className="px-3 py-2">{formatDate(o.created_at)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {familyMembers.length > 0 && (
+            <div>
+              <h3 className="mb-2 text-sm font-semibold">{t("patient.children")}</h3>
+              <div className="flex flex-wrap gap-2">
+                {familyMembers.map((f: Patient) => (
+                  <Badge key={f.id} variant="secondary">
+                    {f.full_name}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {orders.length === 0 && results.length === 0 && (
+            <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+              {t("patient.noHistory")}
+            </p>
+          )}
+        </div>
+      )}
+    </Dialog>
   );
 }
