@@ -17,7 +17,7 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -965,12 +965,14 @@ def system_status(
     # Failed logins in last 24h (security indicator)
     from sqlalchemy import text as sql_text
 
+    _failed_since = datetime.now(UTC) - timedelta(hours=24)
     failed_24h = (
         db.execute(
             sql_text(
                 "SELECT COUNT(*) FROM audit_logs "
-                "WHERE action='login_failed' AND created_at >= NOW() - INTERVAL '24 hours'",
+                "WHERE action='login_failed' AND created_at >= :since",
             ),
+            {"since": _failed_since},
         ).scalar()
         or 0
     )

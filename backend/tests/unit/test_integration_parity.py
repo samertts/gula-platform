@@ -491,3 +491,89 @@ class TestMobileAppInfo:
         r = client.get("/auth/mobile/app-info", headers=headers)
         assert r.status_code == 200
         assert isinstance(r.json(), dict)
+
+
+class TestMfaWorkflow:
+    def test_mfa_status_and_devices_shape(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="staff")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.get("/mfa/status", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert set(body.keys()) == {"mfa_enabled", "devices"}
+        assert body["mfa_enabled"] is False
+        assert body["devices"] == []
+
+        r = client.get("/mfa/devices", headers=headers)
+        assert r.status_code == 200
+        assert r.json() == body
+
+    def test_totp_setup_verify_cycle(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="staff")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.post("/mfa/totp/setup", json={"device_name": "Phone"}, headers=headers)
+        assert r.status_code == 200
+        setup = r.json()
+        assert setup["secret"]
+        assert setup["uri"].startswith("otpauth://")
+        assert len(setup["backup_codes"]) > 0
+        assert setup["device_id"] > 0
+
+        r = client.post("/mfa/totp/verify", json={"token": "123456"}, headers=headers)
+        assert r.status_code in (400, 200)
+
+        r = client.get("/mfa/status", headers=headers)
+        assert r.json()["devices"][0]["device_name"] == "Phone"
+        assert r.json()["devices"][0]["device_type"] == "totp"
+
+        r = client.delete(f"/mfa/devices/{setup['device_id']}", headers=headers)
+        assert r.status_code == 200
+        assert r.json() == {"success": True}
+        r = client.get("/mfa/status", headers=headers)
+        assert r.json()["devices"] == []
+
+    def test_mfa_requires_auth(self, client):
+        r = client.get("/mfa/status")
+        assert r.status_code == 401
+
+
+class TestComplianceShapes:
+    def test_audit_summary_shape(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="staff")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.get("/compliance/audit-summary", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert "lab_id" in body
+        assert "total_audit_events" in body
+        assert isinstance(body["actions_breakdown"], dict)
+        assert "report_generated_at" in body
+
+    def test_system_status_admin_shape(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="admin")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.get("/compliance/system-status", headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert body["dashboard"] == "GULA System Status"
+        assert body["environment"] in ("production", "development")
+        assert body["services"]["database"]["status"] in ("pass", "fail", "unknown")
+        assert body["services"]["api"]["status"] in ("pass", "fail", "unknown")
+        assert isinstance(body["compliance_checklist"], dict)
+        assert isinstance(body["alerts"], list)
+
+    def test_system_status_forbidden_for_technician(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="technician")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.get("/compliance/system-status", headers=headers)
+        assert r.status_code == 403

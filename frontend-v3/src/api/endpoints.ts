@@ -509,9 +509,14 @@ export const complianceApi = {
       .then((r) => r.data),
   auditSummary: () =>
     api
-      .get<{ total_audits: number; passed: number; failed: number; in_progress: number; last_audit_date: string }>(
-        "/compliance/audit-summary",
-      )
+      .get<{
+        lab_id: number;
+        total_audit_events: number;
+        actions_breakdown: Record<string, number>;
+        report_generated_at: string;
+        note: string;
+        note_ar: string;
+      }>("/compliance/audit-summary")
       .then((r) => r.data),
   fhirPatient: (patientId: number) =>
     api.get<FHIRResource>(`/compliance/fhir/patient/${patientId}`).then((r) => r.data),
@@ -540,16 +545,49 @@ export const complianceApi = {
       .then((r) => r.data),
   systemStatus: () =>
     api
-      .get<{ status: string; components: { name: string; status: string; latency_ms?: number }[] }>("/compliance/system-status")
+      .get<{
+        dashboard: string;
+        generated_at: string;
+        platform_version: string;
+        environment: string;
+        services: {
+          database: { status: string; label: string; latency_ms?: number | null };
+          api: { status: string; label: string };
+        };
+        compliance_checklist: Record<string, string>;
+        alerts: string[];
+      }>("/compliance/system-status")
       .then((r) => r.data),
 };
 
 // ── MFA ──
+export interface MFADevice {
+  id: number;
+  device_type: string;
+  device_name: string;
+  is_active: boolean;
+  is_primary: boolean;
+  last_used_at: string | null;
+  created_at: string;
+}
+
+export interface MFAStatus {
+  mfa_enabled: boolean;
+  devices: MFADevice[];
+}
+
+export interface TOTPSetupResult {
+  secret: string;
+  uri: string;
+  backup_codes: string[];
+  device_id: number;
+}
+
 export const mfaApi = {
   setupTotp: (deviceName?: string) =>
-    api.post<Record<string, unknown>>("/mfa/totp/setup", { device_name: deviceName }).then((r) => r.data),
+    api.post<TOTPSetupResult>("/mfa/totp/setup", { device_name: deviceName }).then((r) => r.data),
   verifyTotp: (token: string) =>
-    api.post<Record<string, unknown>>("/mfa/totp/verify", { token }).then((r) => r.data),
+    api.post<{ verified: boolean }>("/mfa/totp/verify", { token }).then((r) => r.data),
   webauthnRegisterBegin: () => api.post<Record<string, unknown>>("/mfa/webauthn/register/begin").then((r) => r.data),
   webauthnRegisterComplete: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/mfa/webauthn/register/complete", data).then((r) => r.data),
@@ -558,20 +596,13 @@ export const mfaApi = {
     api.post<Record<string, unknown>>("/mfa/webauthn/authenticate/complete", data).then((r) => r.data),
   devices: () =>
     api
-      .get<{ devices: { id: number; type: string; name: string; created_at: string; last_used?: string }[] }>(
-        "/mfa/devices",
-      )
+      .get<MFAStatus>("/mfa/devices")
       .then((r) => r.data),
   removeDevice: (deviceId: number) =>
-    api.delete<Record<string, unknown>>(`/mfa/devices/${deviceId}`).then((r) => r.data),
+    api.delete<{ success: boolean }>(`/mfa/devices/${deviceId}`).then((r) => r.data),
   status: () =>
     api
-      .get<{
-        mfa_enabled: boolean;
-        totp_configured: boolean;
-        webauthn_configured: boolean;
-        recommended_method: string;
-      }>("/mfa/status")
+      .get<MFAStatus>("/mfa/status")
       .then((r) => r.data),
 };
 
