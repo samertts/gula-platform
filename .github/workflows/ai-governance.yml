@@ -42,8 +42,39 @@ jobs:
           if-no-files-found: error
 
       - name: Architecture Compliance (advisory)
-        run: python3 scripts/architecture_compliance_engine.py --json || echo "ADVISORY: architecture debt exists (not blocking)"
+        run: 'python3 scripts/architecture_compliance_engine.py --json || echo "ADVISORY: architecture debt exists (not blocking)"'
 
       - name: Governance Scripts Import Check
         run: |
           python3 -c "import ast; [ast.parse(open(f).read()) for f in ['scripts/project_brain.py', 'scripts/enterprise_validation_engine.py']]; print('scripts: syntax OK')"
+
+  brain-refresh:
+    name: Brain Auto-Refresh (post-merge)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: governance-gates
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Regenerate Project Brain
+        run: python3 scripts/project_brain.py
+
+      - name: Commit brain refresh if changed
+        run: |
+          git config user.name "gula-brain-bot"
+          git config user.email "actions@users.noreply.github.com"
+          if ! git diff --quiet -- docs/brain/; then
+            git add docs/brain/
+            git commit -m "docs(brain): auto-refresh project brain after merge"
+            git push origin main
+            echo "brain refreshed"
+          else
+            echo "brain up to date"
+          fi
