@@ -58,7 +58,7 @@ def order(db_session, patient):
 
 
 def _result(order, token, value=5.2, flag="normal"):
-    r = LabResult(
+    return LabResult(
         order_id=order.id,
         test_name="CBC",
         value=value,
@@ -69,7 +69,6 @@ def _result(order, token, value=5.2, flag="normal"):
         token=token,
         token_hash=hash_token(token),
     )
-    return r
 
 
 class TestResultDict:
