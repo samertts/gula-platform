@@ -1135,12 +1135,22 @@ class QualityService:
 
 class ResearchService:
     @staticmethod
+    def _research_models():
+        try:
+            from app.clinical.research import models as research_models
+
+            return research_models
+        except ImportError:
+            return None
+
+    @staticmethod
     def create_registry(
         db: Session,
         data: dict[str, Any],
     ) -> dict[str, Any]:
-        from app.clinical.research import models as research_models
-
+        research_models = ResearchService._research_models()
+        if research_models is None:
+            return {"id": None, **data}
         cls = getattr(research_models, "ClinicalRegistry", None)
         if cls is None:
 
@@ -1170,8 +1180,9 @@ class ResearchService:
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[Any], int]:
-        from app.clinical.research import models as research_models
-
+        research_models = ResearchService._research_models()
+        if research_models is None:
+            return [], 0
         cls = getattr(research_models, "ClinicalRegistry", None)
         if cls is None:
             return [], 0
@@ -1187,8 +1198,9 @@ class ResearchService:
         db: Session,
         data: dict[str, Any],
     ) -> dict[str, Any]:
-        from app.clinical.research import models as research_models
-
+        research_models = ResearchService._research_models()
+        if research_models is None:
+            return {"id": None, **data}
         cls = getattr(research_models, "ResearchCohort", None)
         if cls is None:
 
@@ -1215,8 +1227,9 @@ class ResearchService:
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[Any], int]:
-        from app.clinical.research import models as research_models
-
+        research_models = ResearchService._research_models()
+        if research_models is None:
+            return [], 0
         cls = getattr(research_models, "ResearchCohort", None)
         if cls is None:
             return [], 0
