@@ -1,0 +1,52 @@
+domain,requirement,backend,endpoint,frontend_page,status,notes
+patient,register,POST /patients,frontend-v3/src/pages/patients/PatientsPage.tsx,complete,
+patient,update,PUT /patients/{id},frontend-v3/src/pages/patients/PatientsPage.tsx,complete,
+patient,search,GET /patients?search=,frontend-v3/src/pages/patients/PatientsPage.tsx,complete,debounced
+patient,merge,POST /api/v1/canonical-patients/merge,frontend-v3/src/pages/patients/PatientsPage.tsx,complete,MergePatientsDialog
+patient,history,GET /patient-history/{id},frontend-v3/src/pages/patients/PatientsPage.tsx,complete,PatientDetailDrawer
+patient,timeline,GET /test-results/citizen/{health_id}/timeline,frontend-v3/src/pages/patients/PatientsPage.tsx,complete,
+patient,children,GET /patients/{id}/children,frontend-v3/src/pages/patients/PatientsPage.tsx,complete,
+patient,QR card,GET /patient-card/{id}/qr.png,frontend-v3/src/pages/patients/PatientsPage.tsx,complete,downloadBlob
+patient,card print,GET /patient-card/{id}/print,frontend-v3/src/pages/patients/PatientsPage.tsx,complete,new tab
+patient,MPI review,POST /mpi/review/{id}/decide,frontend-v3/src/pages/patients/PatientsPage.tsx,deferred,needs Postgres MPI tables
+order,create,POST /orders,frontend-v3/src/pages/orders/OrdersPage.tsx,complete,
+order,bulk create,POST /batch/orders,frontend-v3/src/pages/orders/OrdersPage.tsx,complete,BatchOrdersDialog
+order,approve,POST /orders/{id}/validate,frontend-v3/src/pages/orders/OrdersPage.tsx,complete,
+order,cancel,POST /orders/{id}/cancel,frontend-v3/src/pages/orders/OrdersPage.tsx,complete,
+order,tracking,GET /orders/{id},frontend-v3/src/pages/orders/OrdersPage.tsx,complete,OrderDetailDialog
+order,timeline,GET /orders/{id} + audit,frontend-v3/src/pages/orders/OrdersPage.tsx,complete,
+order,notify share,POST /notify/send,frontend-v3/src/pages/orders/OrdersPage.tsx,complete,NotifyDialog
+order,notify history,GET /notify/history/{id},frontend-v3/src/pages/orders/OrdersPage.tsx,complete,total_views
+order,edit,PUT /orders,deferred,backend has no core PUT /orders
+order,priority,column add,deferred,backend extension
+specimen,collection,POST /samples,frontend-v3/src/pages/samples/SamplesPage.tsx,complete,
+specimen,barcode copy,clipboard,frontend-v3/src/pages/samples/SamplesPage.tsx,complete,
+specimen,reception,PUT /samples/{barcode} status=received,frontend-v3/src/pages/samples/SamplesPage.tsx,complete,
+specimen,rejection,PUT /samples/{barcode} status=rejected+reason,frontend-v3/src/pages/samples/SamplesPage.tsx,complete,
+specimen,tracking,GET /samples,frontend-v3/src/pages/samples/SamplesPage.tsx,complete,
+specimen,storage,GET /lims/storage + POST /lims/storage/temperature,frontend-v3/src/pages/lims/LimsPage.tsx,complete,storage tab
+lab,analyzer queue,GET /lims/instruments + online/offline,frontend-v3/src/pages/lims/LimsPage.tsx,complete,
+lab,instrument CRUD,POST /lims/instruments,frontend-v3/src/pages/lims/LimsPage.tsx,complete,
+lab,maintenance,POST /lims/instruments/{id}/maintenance,frontend-v3/src/pages/lims/LimsPage.tsx,complete,
+lab,calibration,POST /lims/instruments/{id}/calibrations,frontend-v3/src/pages/lims/LimsPage.tsx,complete,
+lab,ASTM import,POST /lims/integration/astm/receive,frontend-v3/src/pages/lims/LimsPage.tsx,complete,import tab
+lab,HL7 import,POST /lims/integration/hl7/receive,frontend-v3/src/pages/lims/LimsPage.tsx,complete,import tab
+lab,device results,POST /device/results,frontend-v3/src/pages/results/ResultsPage.tsx,complete,ManualEntryDialog
+lab,manual result entry,POST /test-results/,frontend-v3/src/pages/results/ResultsPage.tsx,complete,
+lab,result validate,POST /lims/results/{id}/validate,frontend-v3/src/pages/results/ResultsPage.tsx,complete,
+lab,result release,POST /lims/results/{id}/release,frontend-v3/src/pages/results/ResultsPage.tsx,complete,
+lab,senior verify,PUT /test-results/{id}/verify,frontend-v3/src/pages/results/ResultsPage.tsx,complete,
+lab,result worklist,GET /lims/results?validation_status=,frontend-v3/src/pages/results/ResultsPage.tsx,complete,
+lab,QC core,POST /qc,frontend-v3/src/pages/qc/QCPage.tsx,complete,
+lab,QC summary,GET /qc/summary,frontend-v3/src/pages/qc/QCPage.tsx,complete,
+lab,LIMS QC programs,GET/POST /lims/qc/programs,frontend-v3/src/pages/qc/QCPage.tsx,complete,
+lab,IQC run,POST /lims/qc/run,frontend-v3/src/pages/qc/QCPage.tsx,complete,
+lab,QC results history,GET /lims/qc/results,frontend-v3/src/pages/qc/QCPage.tsx,complete,
+reporting,generate report,POST /lims/reports,frontend-v3/src/pages/results/ResultsPage.tsx,complete,reports tab
+reporting,finalize report,POST /lims/reports/{id}/finalize,frontend-v3/src/pages/results/ResultsPage.tsx,complete,
+reporting,correct report,POST /lims/reports/{id}/correct,frontend-v3/src/pages/results/ResultsPage.tsx,complete,
+reporting,reports history,GET /lims/reports,frontend-v3/src/pages/results/ResultsPage.tsx,complete,
+reporting,print,window.print,frontend-v3/src/pages/results/ResultsPage.tsx,complete,
+reporting,export CSV,client-side BOM,frontend-v3/src/pages/results/ResultsPage.tsx,complete,
+reporting,public PDF,GET /r/{token}/pdf,frontend-v3/src/pages/public-result/PublicResultPage.tsx,complete,
+reporting,mark-read queue,POST /notifications/queue/{id}/read,deferred,NIAM MPI tables pending

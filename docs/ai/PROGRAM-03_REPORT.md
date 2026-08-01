@@ -1,8 +1,8 @@
-# PROGRAM-03 v2.0 — Workflow Activation & Clinical Operation Completion
+# PROGRAM-03 v3.0 — Core Clinical Activation & Full LIMS Integration
 
 **Status:** COMPLETE
 **Date:** 2026-08-01
-**Scope:** Backend ↔ Frontend integration completion; every clinical workflow page is a fully operational client of the FastAPI backend; MFA enforcement for privileged logins (ASVS 2.4).
+**Scope:** Backend ↔ Frontend integration completion; every clinical workflow page is a fully operational client of the FastAPI backend; LIMS module fully activated (results lifecycle, QC programs/IQC, instruments/analyzer queue, ASTM/HL7 import, reports, storage); patient merge/history, batch orders, notify share; MFA enforcement for privileged logins (ASVS 2.4).
 
 ---
 

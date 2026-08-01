@@ -1,0 +1,16 @@
+entity,create,read,update,delete,frontend_page,notes
+patient,POST /patients,GET /patients,PUT /patients/{id},,PatientsPage,merge/history/children/QR added
+canonical_patient,,GET /patients,,,PatientsPage,merge POST added
+order,POST /orders,GET /orders,POST /orders/{id}/validate,,OrdersPage,batch create + timeline + notify
+sample,POST /samples,GET /samples,PUT /samples/{barcode},,SamplesPage,barcode copy action
+test_result,POST /test-results/,GET /test-results,PUT /test-results/{id}/verify,,ResultsPage,manual entry added
+lims_result,POST /lims/results,GET /lims/results,POST /lims/results/{id}/validate|release,,ResultsPage,worklist by status
+qc_entry,POST /qc,GET /qc,,,QCPage,summary
+lims_qc,POST /lims/qc/run,GET /lims/qc/results,,,QCPage,LIMS tab
+qc_program,POST /lims/qc/programs,GET /lims/qc/programs,,,QCPage,create dialog
+instrument,POST /lims/instruments,GET /lims/instruments,POST online/offline/maintenance/calibrations,,LimsPage,analyzer queue
+lims_report,POST /lims/reports,GET /lims/reports,POST finalize|correct,,ResultsPage,reports tab
+device_result,POST /device/results,,, ,ResultsPage,manual device entry
+notification,POST /notify/send,GET /notify/history/{id},,,OrdersPage,share dialog
+storage,POST /lims/storage/temperature,GET /lims/storage,,,LimsPage,storage tab
+document,POST /document-intelligence/documents,,,DELETE /document-intelligence/documents/{id},template pages,not core clinical
