@@ -69,7 +69,7 @@ class Citizen(Base):
     birth_year = Column(SmallInteger, nullable=True)
     birth_month = Column(SmallInteger, nullable=True)
     birth_day = Column(SmallInteger, nullable=True)
-    gender = Column(String(1), nullable=True)  # 'M' / 'F'
+    gender = Column(String(10), nullable=True)  # 'male' / 'female' / 'M' / 'F'
 
     # Name (normalized — never the raw submitted form)
     name_canonical = Column(String(255), nullable=False)

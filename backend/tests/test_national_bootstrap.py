@@ -509,7 +509,9 @@ class TestOrchestrator:
         run_bootstrap(db=db)
         counts = run_bootstrap(db=db)
         for key, val in counts.items():
-            if key != "master_admin":
+            if key in ("master_admin", "ministry"):
+                assert val >= 1, f"{key} was {val}, expected present"
+            else:
                 assert val == 0, f"{key} was {val}, expected 0"
 
     def test_bootstrap_without_national(self, db):

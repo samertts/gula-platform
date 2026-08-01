@@ -33,7 +33,7 @@ def seed_ministry_of_health(db: Session | None = None) -> bool:
         )
         if existing:
             logger.info("Ministry of Health already exists (org_id=%s)", MINISTRY_ORG_ID)
-            return False
+            return True
 
         from .models import OrganizationDef
 

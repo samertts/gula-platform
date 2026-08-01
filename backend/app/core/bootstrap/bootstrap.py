@@ -15,6 +15,7 @@ from .laboratories import seed_laboratory_types
 from .master_admin import _ensure_master_admin
 from .ministry import seed_ministry_of_health
 from .permissions import seed_permissions
+from .platform_orgs import seed_platform_organizations
 from .roles import seed_roles
 from .subscriptions import seed_subscriptions
 from .users import seed_national_admin_accounts
@@ -66,6 +67,11 @@ def run_bootstrap(db: Session | None = None) -> dict[str, int]:
             counts["directorates"] = dir_count
             results["directorates"] = True
             logger.info("Step 5/10: Health Directorates — %d created", dir_count)
+
+            platform_org_count = seed_platform_organizations(db=db)
+            counts["platform_organizations"] = platform_org_count
+            results["platform_organizations"] = True
+            logger.info("Step 5.5/10: Platform Organizations — %d created", platform_org_count)
 
             fac_count = seed_platform_facilities(db=db)
             counts["platform_facilities"] = fac_count

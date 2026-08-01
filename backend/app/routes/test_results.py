@@ -28,7 +28,7 @@ router = APIRouter(prefix="/test-results", tags=["test-results"])
 
 
 class TestResultCreate(BaseModel):
-    health_id: str = Field(..., min_length=3, max_length=20)
+    health_id: str = Field(..., min_length=3, max_length=32)
     test_name: str = Field(..., min_length=1, max_length=200)
     test_code: str | None = Field(None, max_length=50)
     value: float | None = None
@@ -101,7 +101,7 @@ def validate_test_result(
 
 @router.get("", summary="List lab test results")
 def list_test_results(
-    health_id: str | None = Query(None, max_length=20),
+    health_id: str | None = Query(None, max_length=32),
     category: str | None = Query(None, max_length=50),
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
