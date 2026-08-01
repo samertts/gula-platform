@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-07-31T22:58:48.945837+00:00",
+  "generated_at": "2026-08-01T08:43:33.575011+00:00",
   "repo": {
     "name": "gula-platform",
     "root": "/home/samertts/workspace/projects/gula-platform",
-    "git_head": "653836a6 fix(integration): full frontend-backend parity scan, service-accounts + kernel runtime workflows (OMEGA-002)"
+    "git_head": "cbc7c6d6 feat(integration): MFA + compliance workflows, portability fix (OMEGA-002)"
   },
   "counts": {
     "modules": {
       "backend/app": {
         "python_files": 1787,
-        "lines": 264608
+        "lines": 264610
       },
       "shared": {
         "python_files": 113,
@@ -33,7 +33,7 @@
       },
       "frontend-v3/src": {
         "python_files": 120,
-        "lines": 33179
+        "lines": 33366
       },
       "mobile": {
         "python_files": 0,
@@ -101,7 +101,7 @@
     "PROGRAM-07M-REPORT"
   ],
   "source_freshness": {
-    "newest_source_mtime": 1785538129.310388,
-    "brain_mtime": 1785533829.2654839
+    "newest_source_mtime": 1785573179.3658118,
+    "brain_mtime": 1785538733.9216242
   }
 }
