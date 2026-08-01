@@ -326,6 +326,9 @@ const en = {
     transition: "Change Status",
     statusUpdated: "Sample status updated",
     registered: "Sample registered successfully",
+    copyBarcode: "Copy barcode",
+    barcodeCopied: "Barcode copied to clipboard",
+    copyFailed: "Failed to copy barcode",
   },
   lab: {
     title: "Laboratory",

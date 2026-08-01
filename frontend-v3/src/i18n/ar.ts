@@ -326,6 +326,9 @@ const ar = {
     transition: "تغيير الحالة",
     statusUpdated: "تم تحديث حالة العينة",
     registered: "تم تسجيل العينة بنجاح",
+    copyBarcode: "نسخ الباركود",
+    barcodeCopied: "تم نسخ الباركود إلى الحافظة",
+    copyFailed: "فشل نسخ الباركود",
   },
   lab: {
     title: "المختبر",

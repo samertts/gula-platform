@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { samplesApi, ordersApi } from "@/api/endpoints";
 import { Card, CardContent, Badge, DataTable, Input, Button, Dialog, Select, Textarea } from "@/components/ui";
 import { PageHeader } from "@/components/shared/PageComponents";
-import { Search, Plus, ArrowRight } from "lucide-react";
+import { Search, Plus, ArrowRight, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { Sample } from "@/types";
@@ -82,6 +82,21 @@ export function SamplesPage() {
       header: t("common.actions"),
       cell: ({ row }) => (
         <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            title={t("sample.copyBarcode")}
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(row.original.barcode);
+                showToast("success", t("sample.barcodeCopied"));
+              } catch {
+                showToast("error", t("sample.copyFailed"));
+              }
+            }}
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
           <Button
             variant="ghost"
             size="icon"
