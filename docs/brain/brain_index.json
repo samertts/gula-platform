@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-01T08:43:33.575011+00:00",
+  "generated_at": "2026-08-01T08:50:23.239821+00:00",
   "repo": {
     "name": "gula-platform",
     "root": "/home/samertts/workspace/projects/gula-platform",
-    "git_head": "cbc7c6d6 feat(integration): MFA + compliance workflows, portability fix (OMEGA-002)"
+    "git_head": "16993121 feat(integration): stats charts + security audit log, placeholder sweep complete (OMEGA-002)"
   },
   "counts": {
     "modules": {
@@ -33,7 +33,7 @@
       },
       "frontend-v3/src": {
         "python_files": 120,
-        "lines": 33366
+        "lines": 33455
       },
       "mobile": {
         "python_files": 0,
@@ -102,6 +102,6 @@
   ],
   "source_freshness": {
     "newest_source_mtime": 1785573179.3658118,
-    "brain_mtime": 1785538733.9216242
+    "brain_mtime": 1785573816.7867427
   }
 }
