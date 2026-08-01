@@ -194,18 +194,29 @@ def log_action(
     )
 
     dialect = db.get_bind().dialect.name
+    prev_hash = _get_last_chain_hash(db)
+
     if dialect == "postgresql":
+        # The audit_logs table is protected by a no-UPDATE trigger, so the
+        # chain hash must be computed before the INSERT. The id is
+        # pre-assigned from the sequence so the same hash input (id included)
+        # is used as in the historical contract.
         from sqlalchemy import text
 
         entry.id = db.execute(
             text("SELECT nextval('audit_logs_id_seq')"),
         ).scalar()
-
-    prev_hash = _get_last_chain_hash(db)
-    entry.chain_hash = _compute_chain_hash(prev_hash, entry)
-
-    db.add(entry)
-    db.flush()
+        entry.chain_hash = _compute_chain_hash(prev_hash, entry)
+        db.add(entry)
+        db.flush()
+    else:
+        # Other dialects (e.g. SQLite) assign the id at INSERT time. Flush
+        # first so the chain hash includes the real id, matching what
+        # verify_audit_chain recomputes from the stored row.
+        db.add(entry)
+        db.flush()
+        entry.chain_hash = _compute_chain_hash(prev_hash, entry)
+        db.flush()
 
     # Write anchor checkpoint every N entries
     if entry.id % _ANCHOR_INTERVAL == 0:
@@ -225,6 +236,11 @@ def verify_audit_chain(db: Session, limit: int = 1000) -> dict:
         if entry.chain_hash is None:
             prev_hash = entry.chain_hash or prev_hash
             continue
+        # SQLite does not preserve tzinfo on round-trip (Postgres TIMESTAMPTZ
+        # does). Normalize so chain recomputation matches the hash computed at
+        # write time regardless of dialect.
+        if entry.created_at is not None and entry.created_at.tzinfo is None:
+            entry.created_at = entry.created_at.replace(tzinfo=UTC)
         expected = _compute_chain_hash(prev_hash, entry)
         if entry.chain_hash != expected:
             broken_at.append(

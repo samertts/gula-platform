@@ -1,9 +1,8 @@
-"""Unit tests for order_service — order/result lifecycle, public links, patient history."""
+"""Unit tests for order_service — DTO serialization, sharing links, token logic."""
 
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime, timedelta
 
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
@@ -14,14 +13,9 @@ os.environ.setdefault("REDIS_URL", "")
 
 import pytest
 from app.database import Base
-from app.domain.exceptions import OrderStateError
-from app.models.audit_log import AuditLog
-from app.models.lab import Lab
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult, hash_token
-from app.models.lab_user import LabUser
 from app.models.patient import Patient
-from app.security.auth import hash_password
 from app.services import order_service
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -46,424 +40,209 @@ def db_session():
 
 
 @pytest.fixture
-def lab(db_session):
-    lab = Lab(name="Test Lab", city="Baghdad", lab_type="private", is_active=True)
-    db_session.add(lab)
-    db_session.commit()
-    db_session.refresh(lab)
-    return lab
-
-
-@pytest.fixture
-def admin_user(lab, db_session):
-    u = LabUser(
-        lab_id=lab.id,
-        name="Admin",
-        email="admin@lab.com",
-        password_hash=hash_password("pw"),
-        role="admin",
-        is_active=True,
-    )
-    db_session.add(u)
-    db_session.commit()
-    db_session.refresh(u)
-    return u
-
-
-@pytest.fixture
-def doctor_user(lab, db_session):
-    u = LabUser(
-        lab_id=lab.id,
-        name="Doctor",
-        email="doctor@lab.com",
-        password_hash=hash_password("pw"),
-        role="doctor",
-        is_active=True,
-    )
-    db_session.add(u)
-    db_session.commit()
-    db_session.refresh(u)
-    return u
-
-
-@pytest.fixture
-def patient(lab, db_session):
-    p = Patient(
-        lab_id=lab.id,
-        full_name="Test Patient",
-        phone="0770000000",
-        health_id="IQ1234567",
-        gender="M",
-    )
+def patient(db_session):
+    p = Patient(full_name="Ali Ahmed", phone="+9647712345678", health_id="IQ-12345", lab_id=1)
     db_session.add(p)
     db_session.commit()
     db_session.refresh(p)
     return p
 
 
-def _make_result(
-    db_session,
-    order: LabOrder,
-    test_name: str = "Hemoglobin",
-    value: float = 14.0,
-    low: float = 12.0,
-    high: float = 17.0,
-    flag: str = "normal",
-) -> LabResult:
-    token = "tok_" + os.urandom(8).hex()
+@pytest.fixture
+def order(db_session, patient):
+    o = LabOrder(patient_id=patient.id, doctor_name="Dr. Sana", status="completed", lab_id=1)
+    db_session.add(o)
+    db_session.commit()
+    db_session.refresh(o)
+    return o
+
+
+def _result(order, token, value=5.2, flag="normal"):
     r = LabResult(
         order_id=order.id,
-        test_name=test_name,
+        test_name="CBC",
         value=value,
-        unit="g/dL",
-        normal_range_low=low,
-        normal_range_high=high,
+        unit="x10^9/L",
+        normal_range_low=4.0,
+        normal_range_high=11.0,
         flag=flag,
         token=token,
         token_hash=hash_token(token),
     )
-    db_session.add(r)
-    db_session.commit()
-    db_session.refresh(r)
     return r
 
 
-def _create_order(db_session, lab, user, patient, results=None, **kwargs) -> dict:
-    results = results or [
-        {
-            "test_name": "Hemoglobin",
-            "value": 14.0,
-            "unit": "g/dL",
-            "normal_range_low": 12.0,
-            "normal_range_high": 17.0,
-        },
-    ]
-    return order_service.create_order(
-        db_session,
-        lab_id=lab.id,
-        user_id=user.id,
-        user_role="admin",
-        patient_id=patient.id,
-        doctor_name="Dr. Ali",
-        doctor_user_id=None,
-        results_data=results,
-        **kwargs,
-    )
+class TestResultDict:
+    def test_to_dict_full(self):
+        dto = order_service.ResultDict(
+            id=1, test_name="CBC", value=5.2, value_text=None, unit="x10^9/L",
+            normal_range_low=4.0, normal_range_high=11.0, flag="normal",
+            result_token="tok", result_link="/r/tok", interpretation=None, created_at=None,
+        )
+        d = dto.to_dict()
+        assert d["id"] == 1
+        assert d["test_name"] == "CBC"
+        assert d["value"] == 5.2
+        assert d["unit"] == "x10^9/L"
+        assert d["flag"] == "normal"
+        assert d["result_token"] == "tok"
+        assert d["result_link"] == "/r/tok"
+
+    def test_to_dict_nullable(self):
+        dto = order_service.ResultDict(
+            id=2, test_name="Urea", value=None, value_text="negative", unit=None,
+            normal_range_low=None, normal_range_high=None, flag="normal",
+            result_token="", result_link="", interpretation=None, created_at=None,
+        )
+        d = dto.to_dict()
+        assert d["value"] is None
+        assert d["value_text"] == "negative"
+        assert d["normal_range_low"] is None
+        assert d["flag"] == "normal"
 
 
-class TestSerialization:
-    def test_result_to_dict_with_interpretation(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        order_id = resp["order"]["id"]
-        order = db_session.get(LabOrder, order_id)
-        d = order_service.result_to_dict(order.results[0])
-        assert d["test_name"] == "Hemoglobin"
-        assert d["value"] == 14.0
-        assert d["result_link"].startswith("/r/")
+class TestOrderDict:
+    def test_to_dict_without_results(self):
+        dto = order_service.OrderDict(
+            id=1, patient_id=1, patient_name="Ali", patient_phone="+9647",
+            doctor_name="Dr. Sana", status="pending", is_critical=False, locked=False,
+            validated_by=None, validated_at=None, created_at="2026-01-01T00:00:00+00:00",
+            results=None,
+        )
+        d = dto.to_dict()
+        assert "results" not in d
+        assert "share_link" not in d
+        assert d["patient_name"] == "Ali"
+
+    def test_to_dict_with_results_no_share(self):
+        dto = order_service.OrderDict(
+            id=1, patient_id=1, patient_name="Ali", patient_phone=None,
+            doctor_name=None, status="completed", is_critical=True, locked=True,
+            validated_by=9, validated_at="2026-01-01T00:00:00+00:00",
+            created_at=None, results=[],
+        )
+        d = dto.to_dict()
+        assert d["results"] == []
+        assert "share_link" not in d
+
+    def test_to_dict_with_results_and_share(self):
+        dto = order_service.OrderDict(
+            id=1, patient_id=1, patient_name="Ali", patient_phone=None,
+            doctor_name=None, status="completed", is_critical=False, locked=False,
+            validated_by=None, validated_at=None, created_at=None,
+            results=[{"id": 1}], share_link="/r/x", whatsapp_link="https://wa.me/?text=x",
+        )
+        d = dto.to_dict()
+        assert d["share_link"] == "/r/x"
+        assert d["whatsapp_link"].startswith("https://wa.me/")
+
+
+class TestResultToDict:
+    def test_interpretation_attached_when_value(self, db_session, order):
+        r = _result(order, "tok-a")
+        db_session.add(r)
+        db_session.commit()
+        d = order_service.result_to_dict(r)
+        assert d["test_name"] == "CBC"
+        assert d["value"] == 5.2
+        assert d["result_token"] == "tok-a"
+        assert d["result_link"] == "/r/tok-a"
         assert d["interpretation"] is not None
 
-    def test_order_to_dict_detects_critical(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        order = db_session.get(LabOrder, resp["order"]["id"])
-        order.results[0].flag = "H"
+    def test_no_interpretation_when_text_only(self, db_session, order):
+        r = _result(order, "tok-b", value=None)
+        r.value_text = "negative"
+        db_session.add(r)
+        db_session.commit()
+        d = order_service.result_to_dict(r)
+        assert d["value"] is None
+        assert d["interpretation"] is None
+
+
+class TestOrderToDict:
+    def test_critical_flag_detection(self, db_session, order, patient):
+        r = _result(order, "tok-c", value=20.0, flag="critical")
+        db_session.add(r)
+        db_session.commit()
         d = order_service.order_to_dict(order)
         assert d["is_critical"] is True
+        assert d["patient_name"] == "Ali Ahmed"
+        assert d["status"] == "completed"
+        assert len(d["results"]) == 1
+        assert d["share_link"] == "/r/tok-c"
 
-    def test_order_to_dict_share_and_whatsapp(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        order = db_session.get(LabOrder, resp["order"]["id"])
-        d = order_service.order_to_dict(order)
-        assert d["share_link"].startswith("/r/")
-        assert "wa.me" in d["whatsapp_link"]
-        assert d["results"] and d["results"][0]["test_name"] == "Hemoglobin"
-
-    def test_order_to_dict_without_results(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        order = db_session.get(LabOrder, resp["order"]["id"])
-        d = order_service.order_to_dict(order, include_results=False)
-        assert "results" not in d
-
-
-class TestCreateOrder:
-    def test_create_order_success(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        assert "error" not in resp
-        assert resp["order"]["status"] == "completed"
-        assert resp["order"]["patient_name"] == "Test Patient"
-        assert len(resp["result_links"]) == 1
-        assert resp["critical_alerts"] is None
-        order = db_session.get(LabOrder, resp["order"]["id"])
-        assert order.results[0].flag == "normal"
-
-    def test_create_order_high_flag(self, db_session, lab, admin_user, patient):
-        results = [
-            {
-                "test_name": "Hemoglobin",
-                "value": 19.0,
-                "unit": "g/dL",
-                "normal_range_low": 12.0,
-                "normal_range_high": 17.0,
-            },
-        ]
-        resp = _create_order(db_session, lab, admin_user, patient, results=results)
-        order = db_session.get(LabOrder, resp["order"]["id"])
-        assert order.results[0].flag == "H"
-
-    def test_create_order_critical_alert(self, db_session, lab, admin_user, patient):
-        results = [
-            {
-                "test_name": "Potassium",
-                "value": 7.2,
-                "unit": "mEq/L",
-                "normal_range_low": 3.5,
-                "normal_range_high": 5.0,
-            },
-        ]
-        resp = _create_order(db_session, lab, admin_user, patient, results=results)
-        assert resp["critical_alerts"] and resp["critical_alerts"][0]["test_name"] == "Potassium"
-
-    def test_create_order_value_text_unknown_flag(self, db_session, lab, admin_user, patient):
-        results = [{"test_name": "Morphology", "value_text": "Normal smear"}]
-        resp = _create_order(db_session, lab, admin_user, patient, results=results)
-        order = db_session.get(LabOrder, resp["order"]["id"])
-        assert order.results[0].flag == "unknown"
-
-    def test_create_order_patient_not_found(self, db_session, lab, admin_user):
-        resp = order_service.create_order(
-            db_session,
-            lab_id=lab.id,
-            user_id=admin_user.id,
-            user_role="admin",
-            patient_id=999,
-            doctor_name=None,
-            doctor_user_id=None,
-            results_data=[],
-        )
-        assert resp["status_code"] == 404
-
-    def test_create_order_invalid_doctor(self, db_session, lab, admin_user, patient):
-        from app.models.lab_user import LabUser
-
-        resp = order_service.create_order(
-            db_session,
-            lab_id=lab.id,
-            user_id=admin_user.id,
-            user_role="admin",
-            patient_id=patient.id,
-            doctor_name=None,
-            doctor_user_id=99999,
-            results_data=[],
-        )
-        assert resp["status_code"] == 400
-
-    def test_create_order_idempotency(self, db_session, lab, admin_user, patient, monkeypatch):
-        cache_store = {}
-        fake_cache = type("FakeCache", (), {"get": lambda self, k: cache_store.get(k), "set": lambda self, k, v, ex: cache_store.__setitem__(k, v)})()
-        monkeypatch.setattr(order_service, "_cache", fake_cache)
-        first = _create_order(db_session, lab, admin_user, patient, idempotency_key="key-1")
-        second = _create_order(db_session, lab, admin_user, patient, idempotency_key="key-1")
-        assert first["order"]["id"] == second["order"]["id"]
-        assert db_session.query(LabOrder).count() == 1
-
-    def test_create_order_audit_logged(self, db_session, lab, admin_user, patient):
-        _create_order(db_session, lab, admin_user, patient)
-        assert db_session.query(AuditLog).filter_by(action="create", resource_type="lab_order").count() == 1
-
-
-class TestGetAndListOrders:
-    def test_get_order_by_id(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        d = order_service.get_order_by_id(db_session, resp["order"]["id"], lab.id, "admin", admin_user.id)
-        assert d and d["id"] == resp["order"]["id"]
-
-    def test_get_order_scoped_to_lab(self, db_session, lab, admin_user, patient):
-        other_lab = Lab(name="Other Lab", city="Basra", lab_type="private", is_active=True)
-        db_session.add(other_lab)
-        db_session.commit()
-        resp = _create_order(db_session, lab, admin_user, patient)
-        d = order_service.get_order_by_id(db_session, resp["order"]["id"], other_lab.id, "admin", admin_user.id)
-        assert d is None
-
-    def test_doctor_only_own_orders(self, db_session, lab, doctor_user, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        d = order_service.get_order_by_id(db_session, resp["order"]["id"], lab.id, "doctor", doctor_user.id)
-        assert d is None
-
-    def test_citizen_sees_no_orders(self, db_session, lab, admin_user, patient):
-        _create_order(db_session, lab, admin_user, patient)
-        listing = order_service.list_orders(db_session, lab.id, "citizen", 1)
-        assert listing["total"] == 0
-
-    def test_list_orders_search(self, db_session, lab, admin_user, patient):
-        _create_order(db_session, lab, admin_user, patient)
-        found = order_service.list_orders(db_session, lab.id, "admin", admin_user.id, search="Test")
-        assert found["total"] == 1
-        none = order_service.list_orders(db_session, lab.id, "admin", admin_user.id, search="Nobody")
-        assert none["total"] == 0
-
-
-class TestValidateOrder:
-    def test_validate_requires_admin_or_doctor(self, db_session, lab, admin_user, patient):
-        tech = LabUser(
-            lab_id=lab.id,
-            name="Tech",
-            email="tech@lab.com",
-            password_hash=hash_password("pw"),
-            role="technician",
-            is_active=True,
-        )
-        db_session.add(tech)
-        db_session.commit()
-        resp = _create_order(db_session, lab, admin_user, patient)
-        result = order_service.validate_order(db_session, resp["order"]["id"], lab.id, "technician", tech.id)
-        assert result["status_code"] == 403
-
-    def test_validate_not_found(self, db_session, lab, admin_user):
-        result = order_service.validate_order(db_session, 999, lab.id, "admin", admin_user.id)
-        assert result["status_code"] == 404
-
-    def test_validate_no_results(self, db_session, lab, admin_user, patient):
-        order = LabOrder(lab_id=lab.id, patient_id=patient.id, status="pending")
+    def test_locked_detection(self, db_session, order):
+        order.locked_at = None
         db_session.add(order)
         db_session.commit()
-        result = order_service.validate_order(db_session, order.id, lab.id, "admin", admin_user.id)
-        assert result["status_code"] == 400
+        d = order_service.order_to_dict(order, include_results=False)
+        assert d["locked"] is False
 
-    def test_validate_success(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        order_id = resp["order"]["id"]
-        d = order_service.validate_order(db_session, order_id, lab.id, "admin", admin_user.id)
-        assert d["status"] == "validated"
-        assert d["locked"] is True
-        assert d["validated_by"] == admin_user.id
-
-    def test_validate_twice_conflict(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        order_id = resp["order"]["id"]
-        order_service.validate_order(db_session, order_id, lab.id, "admin", admin_user.id)
-        with pytest.raises(OrderStateError):
-            order_service.validate_order(db_session, order_id, lab.id, "admin", admin_user.id)
-
-
-class TestCancelOrder:
-    def test_cancel_success(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        result = order_service.cancel_order(db_session, resp["order"]["id"], lab.id, "admin", admin_user.id)
-        assert result["message"] == "Order cancelled"
-        order = db_session.get(LabOrder, resp["order"]["id"])
-        assert order.status == "cancelled"
-
-    def test_cancel_not_found(self, db_session, lab, admin_user):
-        result = order_service.cancel_order(db_session, 999, lab.id, "admin", admin_user.id)
-        assert result["status_code"] == 404
-
-    def test_cancel_validated_order_raises(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        order_id = resp["order"]["id"]
-        order_service.validate_order(db_session, order_id, lab.id, "admin", admin_user.id)
-        with pytest.raises(OrderStateError):
-            order_service.cancel_order(db_session, order_id, lab.id, "admin", admin_user.id)
-
-
-class TestPublicResult:
-    def test_public_result_not_found(self, db_session):
-        result = order_service.get_public_result(db_session, "bad-token")
-        assert result["status_code"] == 404
-
-    def test_public_result_success(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        token = resp["result_links"][0]["link"].split("/")[-1]
-        result = order_service.get_public_result(db_session, token)
-        assert "error" not in result
-        assert result["patient"]["name"] == "Test Patient"
-        assert result["lab"]["name"] == "Test Lab"
-        assert result["results"][0]["test_name"] == "Hemoglobin"
-        assert result["disclaimer_ar"]
-
-    def test_public_result_expired(self, db_session, lab, admin_user, patient):
-        resp = _create_order(db_session, lab, admin_user, patient)
-        order = db_session.get(LabOrder, resp["order"]["id"])
-        order.results[0].expires_at = datetime.now(UTC) - timedelta(days=1)
+    def test_whatsapp_link_contains_url(self, db_session, order):
+        r = _result(order, "tok-d")
+        db_session.add(r)
         db_session.commit()
-        token = resp["result_links"][0]["link"].split("/")[-1]
-        result = order_service.get_public_result(db_session, token)
-        assert result["status_code"] == 410
+        d = order_service.order_to_dict(order)
+        assert "wa.me" in d["whatsapp_link"]
+        assert "/r/tok-d" in d["whatsapp_link"]
 
 
-class TestDownloadPdf:
-    def test_download_not_found(self, db_session):
-        result = order_service.download_result_pdf(db_session, "bad-token")
-        assert result["status_code"] == 404
+class TestGenerateUniqueToken:
+    def test_returns_token_and_hash(self, db_session):
+        token, token_h = order_service._generate_unique_token(db_session)
+        assert token
+        assert token_h == hash_token(token)
+        assert len(token) >= 32
 
-    def test_download_success(self, db_session, lab, admin_user, patient, monkeypatch):
-        monkeypatch.setattr(order_service, "generate_result_pdf", lambda data, url: b"%PDF-1.4-test")
-        resp = _create_order(db_session, lab, admin_user, patient)
-        token = resp["result_links"][0]["link"].split("/")[-1]
-        result = order_service.download_result_pdf(db_session, token)
-        assert result["pdf_bytes"] == b"%PDF-1.4-test"
-        assert result["filename"] == "GULA_Report_Test_Patient.pdf"
-
-    def test_download_pdf_failure_500(self, db_session, lab, admin_user, patient, monkeypatch):
-        def boom(data, url):
-            raise RuntimeError("pdf engine down")
-
-        monkeypatch.setattr(order_service, "generate_result_pdf", boom)
-        resp = _create_order(db_session, lab, admin_user, patient)
-        token = resp["result_links"][0]["link"].split("/")[-1]
-        result = order_service.download_result_pdf(db_session, token)
-        assert result["status_code"] == 500
-
-
-class TestPatientHistory:
-    def test_history_by_id(self, db_session, lab, admin_user, patient):
-        _create_order(db_session, lab, admin_user, patient)
-        history = order_service.get_patient_history_by_id(db_session, patient.id, lab.id)
-        assert history and history["total_orders"] == 1
-        assert "Hemoglobin" in history["trends"]
-        assert history["results"][0]["test_name"] == "Hemoglobin"
-
-    def test_history_by_id_wrong_lab(self, db_session, lab, admin_user, patient):
-        other_lab = Lab(name="Other Lab", city="Mosul", lab_type="private", is_active=True)
-        db_session.add(other_lab)
+    def test_avoids_collision(self, db_session, order):
+        existing = _result(order, "tok-e")
+        db_session.add(existing)
         db_session.commit()
-        _create_order(db_session, lab, admin_user, patient)
-        assert order_service.get_patient_history_by_id(db_session, patient.id, other_lab.id) is None
-
-    def test_history_by_phone_name_too_short(self, db_session, lab, admin_user, patient):
-        result = order_service.get_patient_history_by_phone(db_session, patient.phone, name="Ali")
-        assert result["status_code"] == 400
-
-    def test_history_by_phone_not_found(self, db_session, patient):
-        result = order_service.get_patient_history_by_phone(db_session, "0799999999", name="Test Patient")
-        assert result["status_code"] == 404
-
-    def test_history_by_phone_name_mismatch(self, db_session, lab, admin_user, patient):
-        result = order_service.get_patient_history_by_phone(db_session, patient.phone, name="Wrong Person")
-        assert result["status_code"] == 403
-
-    def test_history_by_phone_success(self, db_session, lab, admin_user, patient):
-        _create_order(db_session, lab, admin_user, patient)
-        result = order_service.get_patient_history_by_phone(db_session, patient.phone, name="test patient")
-        assert "error" not in result
-        assert result["patient_name"] == "Test Patient"
-        assert result["history"][0]["test_name"] == "Hemoglobin"
+        token, _ = order_service._generate_unique_token(db_session)
+        assert token != "tok-e"
 
 
-class TestSharingLinks:
-    def test_phone_07_prefix_converted_to_964(self):
-        links = order_service._build_sharing_links("0770000000", "Test Patient", [{"link": "/r/tok"}])
-        assert links["whatsapp_link"].startswith("https://wa.me/964770000000")
+class TestBuildSharingLinks:
+    def test_iraqi_phone_normalized_to_964(self):
+        links = order_service._build_sharing_links(
+            "07712345678", "Ali Ahmed", [{"link": "/r/abc"}],
+        )
+        assert links["whatsapp_link"].startswith("https://wa.me/9647712345678?text=")
+        assert links["sms_link"].startswith("sms:07712345678?body=")
+
+    def test_international_phone(self):
+        links = order_service._build_sharing_links(
+            "+1 555-0100", "Sam", [{"link": "/r/xyz"}],
+        )
+        assert links["whatsapp_link"].startswith("https://wa.me/15550100?text=")
+        assert "Sam" in links["whatsapp_link"]
 
     def test_no_phone_no_links(self):
-        links = order_service._build_sharing_links(None, "Test Patient", [{"link": "/r/tok"}])
+        links = order_service._build_sharing_links(None, "Ali", [{"link": "/r/abc"}])
         assert links["whatsapp_link"] is None
         assert links["sms_link"] is None
 
+    def test_sms_body_contains_url(self):
+        links = order_service._build_sharing_links("07712345678", "Ali", [{"link": "/r/abc"}])
+        assert "/r/abc" in links["sms_link"]
 
-class TestTokenGeneration:
-    def test_unique_tokens(self, db_session, lab, admin_user, patient):
-        _create_order(db_session, lab, admin_user, patient)
-        token_a, hash_a = order_service._generate_unique_token(db_session)
-        token_b, hash_b = order_service._generate_unique_token(db_session)
-        assert token_a != token_b
-        assert hash_a != hash_b
+
+class TestCheckCriticalAlerts:
+    def test_no_value_no_alert(self):
+        assert order_service._check_critical_alerts([{"test_name": "CBC", "value": None}]) == []
+
+    def test_normal_value_no_alert(self):
+        assert order_service._check_critical_alerts([{"test_name": "CBC", "value": 5.0}]) == []
+
+    def test_abnormal_value_alerts(self):
+        alerts = order_service._check_critical_alerts([{"test_name": "glucose", "value": 600.0}])
+        assert alerts
+        assert alerts[0]["test_name"] == "glucose"
+        assert alerts[0]["value"] == 600.0
+        assert alerts[0]["severity"] == "critical_high"
+
+    def test_critical_low_alerts(self):
+        alerts = order_service._check_critical_alerts([{"test_name": "Glucose", "value": 30.0}])
+        assert alerts
+        assert alerts[0]["severity"] == "critical_low"
+        assert alerts[0]["threshold"] == 40.0

@@ -24,7 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 os.environ["RUNTIME_MODE"] = "test"
 os.environ["FEATURE_BACKGROUND_TASKS"] = "false"
@@ -56,19 +56,22 @@ def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _tz_normalized(entry):
+    """Restore UTC tzinfo lost by SQLite round-trip (Postgres keeps it)."""
+    from copy import copy
+
+    clone = copy(entry)
+    if clone.created_at is not None and clone.created_at.tzinfo is None:
+        clone.created_at = clone.created_at.replace(tzinfo=UTC)
+    return clone
+
+
 def _seed_chain_persisted(db, n: int = 1, **kwargs) -> list:
-    """Append `n` audit entries through the public log_action API, then
-    re-stitch their chain_hash values against the **persisted** (post-commit)
-    record state.
+    """Append `n` audit entries through the public log_action API.
 
-    Why: on SQLite, ``DateTime(timezone=True)`` strips tz info on disk, so the
-    in-memory datetime that ``log_action`` hashes differs from the value
-    re-fetched by ``verify_audit_chain``.  Production runs on PostgreSQL,
-    which preserves tz, so this divergence is a *test-environment artifact*.
-    Re-stitching against persisted form gives a deterministic baseline for
-    integrity tests on either dialect.
-
-    Returns the list of persisted AuditLog rows.
+    log_action computes the chain hash itself (including the real row id
+    and normalized timestamps), so no re-stitching is required. Returns the
+    list of persisted AuditLog rows.
     """
     base = {"user_id": 1, "user_role": "admin"}
     base.update(kwargs)
@@ -76,12 +79,6 @@ def _seed_chain_persisted(db, n: int = 1, **kwargs) -> list:
         log_action(db, action=f"seed_{i}", resource_type="patient", resource_id=i, **base)
         db.commit()
 
-    entries = db.query(AuditLog).order_by(AuditLog.id.asc()).all()
-    prev = _GENESIS_HASH
-    for e in entries:
-        e.chain_hash = _compute_chain_hash(prev, e)
-        prev = e.chain_hash
-    db.commit()
     db.expire_all()
     return db.query(AuditLog).order_by(AuditLog.id.asc()).all()
 
@@ -156,7 +153,7 @@ class TestAuditHashChain:
         """The first entry's chain_hash must be H(genesis + record)."""
         entries = _seed_chain_persisted(db, n=1)
         assert len(entries) == 1
-        expected = _compute_chain_hash(_GENESIS_HASH, entries[0])
+        expected = _compute_chain_hash(_GENESIS_HASH, _tz_normalized(entries[0]))
         assert entries[0].chain_hash == expected
 
     def test_chain_links_subsequent_entries(self, db):
@@ -164,7 +161,7 @@ class TestAuditHashChain:
         entries = _seed_chain_persisted(db, n=3)
         prev = _GENESIS_HASH
         for e in entries:
-            assert e.chain_hash == _compute_chain_hash(prev, e)
+            assert e.chain_hash == _compute_chain_hash(prev, _tz_normalized(e))
             prev = e.chain_hash
 
     def test_verify_chain_reports_intact(self, db):
