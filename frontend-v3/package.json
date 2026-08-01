@@ -1,7 +1,7 @@
 {
   "name": "gula-frontend-v3",
   "private": true,
-  "version": "2.5.0",
+  "version": "1.0.0-RC2",
   "type": "module",
   "scripts": {
     "dev": "vite --port=5173 --host=0.0.0.0",

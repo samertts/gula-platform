@@ -62,7 +62,7 @@ def background_tasks_enabled() -> bool:
 
 # ─── App Info ────────────────────────────────────────────────────────────────
 APP_NAME = "GULA Platform"
-APP_VERSION = "2.5.0"
+APP_VERSION = "1.0.0-RC2"
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 PLATFORM_NAME_AR = "منصة غولا الصحية"
 

@@ -1,36 +1,36 @@
 {
-  "version": "2.5.0",
-  "versionCode": 20500,
+  "version": "1.0.0-RC2",
+  "versionCode": 20502,
   "buildNumber": 1745280000,
   "releaseDate": "2026-07-15T10:00:00Z",
   "minimumOSVersion": "16.0",
   "minimumAndroidSDK": 26,
   "android": {
     "applicationId": "io.gula.android",
-    "versionName": "2.5.0",
-    "versionCode": 20500,
+    "versionName": "1.0.0-RC2",
+    "versionCode": 20502,
     "minSdk": 26,
     "targetSdk": 35,
     "compileSdk": 35
   },
   "ios": {
     "bundleId": "io.gula.ios",
-    "versionName": "2.5.0",
-    "buildNumber": 20500,
+    "versionName": "1.0.0-RC2",
+    "buildNumber": 20502,
     "minimumOSVersion": "16.0",
     "swiftVersion": "6.0"
   },
   "desktop": {
     "windows": {
-      "version": "2.5.0",
+      "version": "1.0.0-RC2",
       "minimumOS": "10.0.17763"
     },
     "macos": {
-      "version": "2.5.0",
+      "version": "1.0.0-RC2",
       "minimumOS": "14.0"
     },
     "linux": {
-      "version": "2.5.0",
+      "version": "1.0.0-RC2",
       "minimumDistro": "ubuntu-22.04"
     }
   },
@@ -40,18 +40,18 @@
     "dartSdk": "3.6.0"
   },
   "backend": {
-    "version": "2.5.0",
+    "version": "1.0.0-RC2",
     "apiVersion": "v1"
   },
   "pwa": {
-    "version": "2.5.0",
+    "version": "1.0.0-RC2",
     "nodeVersion": "20",
     "firebaseVersion": "10.14"
   },
   "sdks": {
-    "typescript": "2.5.0",
-    "python": "2.5.0",
-    "dart": "2.5.0",
-    "kotlin": "2.5.0"
+    "typescript": "1.0.0-RC2",
+    "python": "1.0.0-RC2",
+    "dart": "1.0.0-RC2",
+    "kotlin": "1.0.0-RC2"
   }
 }
