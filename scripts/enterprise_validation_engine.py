@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -173,12 +174,87 @@ def _validator_tech_debt() -> dict[str, Any]:
     return {"status": "pass" if exists else "fail", "detail": f"tech-debt registry {'present' if exists else 'MISSING'}"}
 
 
+def _validator_android_consistency() -> dict[str, Any]:
+    """Android release metadata consistency (version.json vs build.gradle.kts)."""
+    problems: list[str] = []
+    version_json = REPO_ROOT / "mobile" / "version.json"
+    build_gradle = REPO_ROOT / "mobile" / "android" / "app" / "build.gradle.kts"
+    workflow = REPO_ROOT / ".github" / "workflows" / "mobile-android.yml"
+    gradlew = REPO_ROOT / "mobile" / "android" / "gradlew"
+
+    if not version_json.exists():
+        return {"status": "fail", "detail": "mobile/version.json MISSING"}
+    if not build_gradle.exists():
+        return {"status": "fail", "detail": "mobile/android/app/build.gradle.kts MISSING"}
+
+    try:
+        vj = json.loads(version_json.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {"status": "fail", "detail": "mobile/version.json is not valid JSON"}
+
+    gradle_text = build_gradle.read_text(encoding="utf-8")
+    version_name = vj.get("android", {}).get("versionName")
+    version_code = vj.get("android", {}).get("versionCode")
+    m_name = re.search(r'versionName\s*=\s*"([^"]+)"', gradle_text)
+    m_code = re.search(r"versionCode\s*=\s*(\d+)", gradle_text)
+
+    if m_name and version_name and m_name.group(1) != version_name:
+        problems.append(f"versionName mismatch: version.json={version_name} build.gradle.kts={m_name.group(1)}")
+    if m_code and version_code is not None and int(m_code.group(1)) != int(version_code):
+        problems.append(f"versionCode mismatch: version.json={version_code} build.gradle.kts={m_code.group(1)}")
+    if not gradlew.exists():
+        problems.append("gradlew wrapper MISSING")
+    if not workflow.exists():
+        problems.append("mobile-android.yml CI workflow MISSING")
+
+    if problems:
+        return {"status": "fail", "detail": "; ".join(problems)}
+    return {"status": "pass", "detail": f"android v{version_name} (code {version_code}) consistent, wrapper + CI present"}
+
+
+def _validator_db_migrations() -> dict[str, Any]:
+    """Migration chain integrity (single root, no dangling down_revisions)."""
+    versions_dir = REPO_ROOT / "backend" / "migrations" / "versions"
+    if not versions_dir.is_dir():
+        return {"status": "fail", "detail": "backend/migrations/versions MISSING"}
+
+    revisions: list[tuple[str, str | None]] = []
+    for path in versions_dir.glob("*.py"):
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        rev = re.search(r'^revision\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
+        down = re.search(r'^down_revision\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
+        down = None if down is None or down.group(1).lower() in ("none", "null") else down.group(1)
+        if rev:
+            revisions.append((rev.group(1), down))
+
+    if not revisions:
+        return {"status": "fail", "detail": "no migrations found"}
+    ids = [r for r, _ in revisions]
+    dupes = [rid for rid in set(ids) if ids.count(rid) > 1]
+    roots = [rid for rid, down in revisions if down is None]
+    dangling = [d for _, d in revisions if d is not None and d not in ids]
+
+    problems: list[str] = []
+    if len(roots) != 1:
+        problems.append(f"expected exactly 1 root migration, found {len(roots)}: {roots}")
+    if dupes:
+        problems.append(f"duplicate revision ids: {dupes}")
+    if dangling:
+        problems.append(f"dangling down_revision refs: {dangling}")
+
+    if problems:
+        return {"status": "fail", "detail": "; ".join(problems)}
+    return {"status": "pass", "detail": f"{len(revisions)} migrations, single root, chain intact"}
+
+
 VALIDATORS: dict[str, tuple[Callable[[], dict[str, Any]], str, set[str]]] = {
     "ruff": (_validator_ruff, "hard", {"fast", "full"}),
     "tsc": (_validator_tsc, "hard", {"fast", "full"}),
     "eslint": (_validator_eslint, "hard", {"fast", "full"}),
     "brain-freshness": (_validator_brain, "hard", {"fast", "full"}),
     "unit-tests": (_validator_unit_tests, "hard", {"full"}),
+    "android-consistency": (_validator_android_consistency, "advisory", {"fast", "full"}),
+    "db-migrations": (_validator_db_migrations, "advisory", {"fast", "full"}),
     "architecture-compliance": (_validator_architecture, "advisory", {"full"}),
     "scorecard": (_validator_scorecard, "advisory", {"full"}),
     "constitution": (_validator_constitution, "advisory", {"full"}),
