@@ -28,7 +28,7 @@ set -euo pipefail
 readonly SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 readonly TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S %Z')"
-readonly LOG_FILE="/var/log/gula/secret-rotation.log"
+readonly LOG_FILE="${GULA_LOG_DIR:-/var/log/gula}/secret-rotation.log"
 readonly ENV_FILE="${ENV_FILE:-${SCRIPT_DIR}/../.env}"
 readonly ENV_BACKUP_DIR="${ENV_BACKUP_DIR:-/opt/gula/env-backups}"
 readonly ROTATION_LOCK_FILE="/tmp/gula-secret-rotation.lock"
@@ -403,27 +403,22 @@ rotate_encryption_key() {
 
   log_info "Step 1: Generated new Fernet key"
 
-  log_info "Step 2: Re-encrypting sensitive fields in database..."
-  if [[ "${DEPLOY_MODE}" == "kubernetes" ]]; then
-    local pg_host
-    pg_host=$(kubectl get service gula-postgres -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "gula-postgres")
-    local pg_user
-    pg_user=$(kubectl get secret gula-postgres-secret -o jsonpath='{.data.POSTGRES_USER}' | base64 -d 2>/dev/null || echo "gula")
-    local pg_password
-    pg_password=$(kubectl get secret gula-postgres-secret -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d 2>/dev/null || echo "")
-    PGPASSWORD="${pg_password}" psql -h "${pg_host}" -U "${pg_user}" -d gula -c "
-      -- Re-encryption will be handled by the application on read
-      -- Mark all encrypted fields as needing re-encryption
-      UPDATE patients SET encryption_key_version = encryption_key_version + 1;
-      UPDATE lab_results SET encryption_key_version = encryption_key_version + 1;
-    " 2>/dev/null || log_warn "Could not mark fields for re-encryption (may not exist)"
-  else
-    docker compose -p "${COMPOSE_PROJECT}" exec -T gula-postgres \
-      psql -U "${POSTGRES_USER:-gula}" -d gula -c "
-      UPDATE patients SET encryption_key_version = encryption_key_version + 1;
-      UPDATE lab_results SET encryption_key_version = encryption_key_version + 1;
-    " 2>/dev/null || log_warn "Could not mark fields for re-encryption (may not exist)"
+  log_info "Step 2: Re-encrypting encrypted fields with new key..."
+  local db_url
+  db_url=$(read_env "DATABASE_URL")
+  if [[ -z "${db_url}" ]]; then
+    log_error "DATABASE_URL is required for re-encryption — rotation aborted"
+    log_audit "rotate" "encryption_key" "failed" "DATABASE_URL missing, rotation aborted"
+    return 1
   fi
+  if ! DATABASE_URL="${db_url}" python3 scripts/reencrypt_encryption_key.py \
+      --old-key "${old_key}" --new-key "${new_key}" \
+      --table national_citizens --column national_id_hash; then
+    log_error "Re-encryption failed — ENCRYPTION_KEY rotation aborted (no changes made)"
+    log_audit "rotate" "encryption_key" "failed" "Re-encryption failed, rotation aborted"
+    return 1
+  fi
+  log_info "Encrypted fields re-encrypted with new key"
 
   log_info "Step 3: Updating ENCRYPTION_KEY in environment..."
   update_env "ENCRYPTION_KEY" "${new_key}"
@@ -544,7 +539,7 @@ main() {
       *) log_error "Unknown option: $1"; usage ;;
     esac
     shift
-  fi
+  done
 
   if [[ "${do_status}" == true ]]; then
     show_status

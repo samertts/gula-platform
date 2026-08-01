@@ -306,8 +306,15 @@ class OpsCertification:
         ]
         for name, ok in checks:
             self._result(f"P7 · {name}", PASS if ok else FAIL)
-        self._result("P7 · Encryption key rotation re-encryption", WARN,
-                     "rotate-secrets.sh bumps encryption_key_version; re-encryption deferred on read")
+        reencrypt_wired = self._has_text(
+            "scripts/rotate-secrets.sh", "reencrypt_encryption_key.py") and self._exists(
+            "scripts/reencrypt_encryption_key.py")
+        self._result(
+            "P7 · Encryption key rotation re-encryption",
+            PASS if reencrypt_wired else WARN,
+            ("rotate-secrets.sh re-encrypts Fernet-encrypted fields "
+             "(scripts/reencrypt_encryption_key.py) before key swap") if reencrypt_wired
+            else "rotate-secrets.sh bumps encryption_key_version; re-encryption deferred on read")
 
     # ── Phase 8: Automation ────────────────────────────────────────────────────
 

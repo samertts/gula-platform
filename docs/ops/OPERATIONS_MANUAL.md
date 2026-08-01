@@ -128,7 +128,10 @@ restore verified nightly in CI (`backup-drill` job) and locally by
 
 ### Routine maintenance
 - **Secrets rotation:** `scripts/rotate-secrets.sh` (PG/Redis/RabbitMQ/APP keys,
-  verified + rollback per secret; log in `/var/log/gula/secret-rotation.log`).
+  verified + rollback per secret; log in `${GULA_LOG_DIR:-/var/log/gula}/secret-rotation.log`).
+  `ENCRYPTION_KEY` rotation re-encrypts Fernet-encrypted fields first via
+  `scripts/reencrypt_encryption_key.py` (batch, dry-run capable, abort on failure)
+  — the key is only swapped after re-encryption succeeds.
 - **Certificate rotation:** `scripts/cert-renew.sh` (alert at 30 d, renew at threshold).
 - **Cache:** L1/L2 cache self-managed; `kill_switch` and degradation modes handle pressure.
 - **Migrations:** always `alembic upgrade head` via `preflight.sh` before deploy;
