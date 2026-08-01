@@ -577,3 +577,26 @@ class TestComplianceShapes:
 
         r = client.get("/compliance/system-status", headers=headers)
         assert r.status_code == 403
+
+
+class TestAuditLogs:
+    def test_audit_logs_shape(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="admin")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.get("/admin/audit-logs", params={"limit": 10}, headers=headers)
+        assert r.status_code == 200
+        body = r.json()
+        assert "total" in body
+        assert isinstance(body["logs"], list)
+        for log in body["logs"]:
+            assert set(log.keys()) >= {"id", "action", "resource_type", "user_id", "created_at"}
+
+    def test_audit_logs_forbidden_for_technician(self, client, db, make_lab, make_lab_user):
+        lab = make_lab()
+        user = make_lab_user(lab_id=lab.id, role="technician")
+        headers = auth_headers(user.id, lab.id, user.role)
+
+        r = client.get("/admin/audit-logs", headers=headers)
+        assert r.status_code == 403

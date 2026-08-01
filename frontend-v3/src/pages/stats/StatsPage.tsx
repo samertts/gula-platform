@@ -9,9 +9,27 @@ export function StatsPage() {
     queryKey: ["stats"],
     queryFn: () => statsApi.summary(),
   });
+  const { data: daily } = useQuery({
+    queryKey: ["stats", "daily"],
+    queryFn: () => statsApi.dailyTrends({ days: 14 }),
+  });
+  const { data: tests } = useQuery({
+    queryKey: ["stats", "tests"],
+    queryFn: () => statsApi.testFrequency({ days: 14, limit: 8 }),
+  });
+  const { data: flags } = useQuery({
+    queryKey: ["stats", "flags"],
+    queryFn: () => statsApi.flagDistribution({ days: 14 }),
+  });
 
   if (isLoading) return <LoadingSpinner />;
   if (error) return <ErrorDisplay onRetry={refetch} />;
+
+  const series = daily?.series ?? [];
+  const maxOrders = Math.max(...series.map((p) => p.orders ?? 0), 1);
+  const testSeries = tests?.series ?? [];
+  const maxTests = Math.max(...testSeries.map((t) => t.count), 1);
+  const flagEntries = Object.entries(flags?.distribution ?? {});
 
   return (
     <div className="space-y-6">
@@ -68,13 +86,62 @@ export function StatsPage() {
         <Card>
           <CardHeader><CardTitle>الاتجاهات اليومية</CardTitle></CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">سيتم عرض الرسم البياني للاتجاهات اليومية هنا</p>
+            {series.length > 0 ? (
+              <div className="space-y-2">
+                {series.slice(-14).map((p) => (
+                  <div key={p.date} className="flex items-center gap-2">
+                    <span className="w-16 shrink-0 text-xs text-muted-foreground" dir="ltr">{p.date}</span>
+                    <div className="h-4 flex-1 rounded bg-muted" dir="ltr">
+                      <div
+                        className="h-4 rounded bg-indigo-500"
+                        style={{ width: `${Math.max(((p.orders ?? 0) / maxOrders) * 100, 2)}%` }}
+                      />
+                    </div>
+                    <span className="w-8 shrink-0 text-end text-xs font-medium" dir="ltr">{p.orders ?? 0}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">لا توجد بيانات اتجاهات بعد</p>
+            )}
           </CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>توزيع الفحوصات</CardTitle></CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">سيتم عرض الرسم البياني لتوزيع الفحوصات هنا</p>
+          <CardContent className="space-y-4">
+            {testSeries.length > 0 ? (
+              <div className="space-y-2">
+                {testSeries.map((t) => (
+                  <div key={t.test_name} className="flex items-center gap-2">
+                    <span className="w-32 shrink-0 truncate text-xs" dir="ltr">{t.test_name}</span>
+                    <div className="h-4 flex-1 rounded bg-muted" dir="ltr">
+                      <div
+                        className="h-4 rounded bg-emerald-500"
+                        style={{ width: `${Math.max((t.count / maxTests) * 100, 2)}%` }}
+                      />
+                    </div>
+                    <span className="w-8 shrink-0 text-end text-xs font-medium" dir="ltr">{t.count}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">لا توجد بيانات توزيع بعد</p>
+            )}
+            {flagEntries.length > 0 && (
+              <div className="border-t pt-3">
+                <p className="mb-2 text-sm font-medium">توزيع العلامات (Westgard)</p>
+                <div className="space-y-1">
+                  {flagEntries.map(([flag, info]) => (
+                    <div key={flag} className="flex items-center justify-between text-sm">
+                      <span dir="ltr" className="font-mono text-xs">{flag}</span>
+                      <span className="text-xs text-muted-foreground" dir="ltr">
+                        {info.count} ({info.percentage}%)
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

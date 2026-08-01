@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { mfaApi, securityApi, serviceAccountsApi } from "@/api/endpoints";
+import { mfaApi, securityApi, serviceAccountsApi, adminApi } from "@/api/endpoints";
 import type { ServiceAccount } from "@/api/endpoints";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Button, Input } from "@/components/ui";
 import { PageHeader, LoadingSpinner, ErrorDisplay } from "@/components/shared/PageComponents";
@@ -19,6 +19,10 @@ export function SecurityPage() {
   const { data: accounts, isLoading: loadingAccounts } = useQuery({
     queryKey: ["service-accounts"],
     queryFn: () => serviceAccountsApi.list(),
+  });
+  const { data: audit, isLoading: loadingAudit, refetch: refetchAudit } = useQuery({
+    queryKey: ["audit-logs"],
+    queryFn: () => adminApi.auditLogs({ limit: 20 }),
   });
   const [name, setName] = useState("");
   const [createdKey, setCreatedKey] = useState<string | null>(null);
@@ -205,9 +209,27 @@ export function SecurityPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5" /> سجل الأمان</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="flex items-center justify-between"><span className="flex items-center gap-2"><AlertTriangle className="h-5 w-5" /> سجل الأمان</span><Button size="sm" variant="outline" onClick={() => refetchAudit()}>تحديث</Button></CardTitle></CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">سيتم عرض سجل الأمان هنا</p>
+            {loadingAudit ? (
+              <LoadingSpinner />
+            ) : (audit?.logs ?? []).length > 0 ? (
+              <div className="max-h-64 space-y-1 overflow-y-auto">
+                {(audit?.logs ?? []).slice(0, 20).map((log) => (
+                  <div key={log.id} className="flex items-center justify-between gap-2 rounded border p-2 text-sm">
+                    <div className="min-w-0">
+                      <span dir="ltr"><Badge variant="secondary" className="mr-2">{log.action}</Badge></span>
+                      <span className="text-xs text-muted-foreground">{log.resource_type}</span>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground" dir="ltr">
+                      {log.created_at ? new Date(log.created_at).toLocaleString("ar-IQ") : "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">لا توجد أحداث أمنية مسجلة</p>
+            )}
           </CardContent>
         </Card>
       </div>

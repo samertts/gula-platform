@@ -128,3 +128,9 @@ Note: full-suite run requires strong env secrets (`SECRET_KEY` ≥32 chars, vali
 - **Mocks/Firebase inventory:** zero Firebase references, zero mock/fake service code in production frontend (only vitest test files use Mock).
 - `test_integration_parity.py` grew 27 → **33 tests** (MFA status/shape/setup/verify/remove/401, compliance audit-summary shape, system-status admin shape + technician 403).
 - **Full backend suite: 2574 passed / 0 failed** (2415 main + 126 comprehensive/observability + 33 parity). Frontend: tsc 0, eslint 0, vitest 60/60. Gate VERDICT: PASS.
+
+**Status updates (final placeholder sweep):**
+- **StatsPage charts completed** (dependency-free CSS bars): daily trends (`statsApi.dailyTrends`), test frequency (`testFrequency`), Westgard flag distribution (`flagDistribution`) — replaces 2 placeholder cards.
+- **SecurityPage security log completed**: consumes `adminApi.auditLogs` (last 20 events, action badges, timestamps) — replaces placeholder card. Last placeholder in the app: none remaining in active pages (QC EmptyState is a legitimate empty-data state).
+- `test_integration_parity.py` grew 33 → **35 tests** (audit-logs shape + technician 403).
+- **Full backend suite: 2576 passed / 0 failed** (2415 main + 126 comprehensive/observability + 35 parity). Frontend: tsc 0, eslint 0, vitest 60/60. Gate VERDICT: PASS.
