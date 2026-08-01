@@ -51,7 +51,7 @@ VENV_PY = REPO_ROOT / "backend" / ".venv" / "bin" / "python"
 def _python() -> str:
     return str(VENV_PY) if VENV_PY.exists() else "python3"
 
-HARD_VALIDATORS = {"ruff", "tsc", "eslint", "unit-tests", "brain-freshness"}
+HARD_VALIDATORS = {"ruff", "tsc", "eslint", "unit-tests", "frontend-unit-tests", "brain-freshness"}
 ADVISORY_VALIDATORS = {"architecture-compliance", "scorecard", "constitution", "tech-debt"}
 
 BASELINE_METRICS = {
@@ -61,6 +61,8 @@ BASELINE_METRICS = {
     "eslint_errors": ("eslint", "eslint_errors", True),
     "unit_test_count": ("unit-tests", "unit_test_count", False),
     "unit_test_failures": ("unit-tests", "unit_test_failures", True),
+    "frontend_test_count": ("frontend-unit-tests", "frontend_test_count", False),
+    "frontend_test_failures": ("frontend-unit-tests", "frontend_test_failures", True),
     "scorecard_score": ("scorecard", "scorecard_score", False),
     "architecture_score": ("architecture-compliance", "architecture_score", False),
 }
@@ -133,6 +135,46 @@ def _validator_unit_tests() -> dict[str, Any]:
         "detail": f"unit: {passed} passed, {failed} failed",
         "unit_test_count": passed,
         "unit_test_failures": failed,
+    }
+
+
+def _validator_frontend_unit_tests() -> dict[str, Any]:
+    """Frontend component/hook unit tests (vitest)."""
+    if not (REPO_ROOT / "frontend-v3" / "node_modules").exists():
+        return {"status": "pass", "detail": "skipped (node_modules missing)", "frontend_test_count": 0, "frontend_test_failures": 0}
+    try:
+        proc = subprocess.run(
+            ["npx", "vitest", "run", "--reporter=json"],
+            cwd=str(REPO_ROOT / "frontend-v3"),
+            capture_output=True,
+            text=True,
+            timeout=900,
+            check=False,
+        )
+        code = proc.returncode
+        out = proc.stdout.strip()
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"status": "fail", "detail": f"frontend tests failed to run: {exc}", "frontend_test_count": 0, "frontend_test_failures": 0}
+    passed = failed = 0
+    try:
+        data = json.loads(out.splitlines()[-1] if out.splitlines() else "{}")
+        if data.get("numTotalTests") is not None:
+            passed = int(data.get("numPassedTests", 0))
+            failed = int(data.get("numFailedTests", 0))
+        else:
+            stats = data.get("stats", {})
+            passed, failed = int(stats.get("passed", 0)), int(stats.get("failed", 0))
+    except (json.JSONDecodeError, IndexError, TypeError):
+        tail = out.splitlines()[-1] if out.splitlines() else ""
+        if "passed" in tail:
+            passed = int(tail.split("passed")[0].strip().split()[-1].rstrip(","))
+            if "failed" in tail:
+                failed = int(tail.split("failed")[0].strip().split()[-1].rstrip(","))
+    return {
+        "status": "pass" if code == 0 else "fail",
+        "detail": f"frontend: {passed} passed, {failed} failed",
+        "frontend_test_count": passed,
+        "frontend_test_failures": failed,
     }
 
 
@@ -253,6 +295,7 @@ VALIDATORS: dict[str, tuple[Callable[[], dict[str, Any]], str, set[str]]] = {
     "eslint": (_validator_eslint, "hard", {"fast", "full"}),
     "brain-freshness": (_validator_brain, "hard", {"fast", "full"}),
     "unit-tests": (_validator_unit_tests, "hard", {"full"}),
+    "frontend-unit-tests": (_validator_frontend_unit_tests, "hard", {"full"}),
     "android-consistency": (_validator_android_consistency, "advisory", {"fast", "full"}),
     "db-migrations": (_validator_db_migrations, "advisory", {"fast", "full"}),
     "architecture-compliance": (_validator_architecture, "advisory", {"full"}),
@@ -387,11 +430,35 @@ def main(argv: list[str] | None = None) -> int:
     if args.update_baseline:
         baseline: dict[str, Any] = {
             "_generated_at": datetime.now(UTC).isoformat(),
+            "_schema": "v2",
+            "_components": ["backend", "frontend-v3", "android"],
+            "components": {
+                "backend": {
+                    "lint": "ruff_errors",
+                    "typecheck": None,
+                    "unit_test_count": "unit_test_count",
+                    "unit_test_failures": "unit_test_failures",
+                },
+                "frontend-v3": {
+                    "lint": "eslint_errors",
+                    "typecheck": "tsc_errors",
+                    "unit_test_count": "frontend_test_count",
+                    "unit_test_failures": "frontend_test_failures",
+                },
+                "android": {"consistency": "android_consistency", "version": "android_version"},
+            },
         }
         for metric, (validator, key, _worse) in BASELINE_METRICS.items():
             value = results.get(validator, {}).get(key)
             if value is not None:
                 baseline[metric] = value
+        android = results.get("android-consistency", {})
+        android_version = None
+        m_ver = re.search(r"android v([\d.]+)", android.get("detail", ""))
+        if m_ver:
+            android_version = m_ver.group(1)
+        if android_version is not None:
+            baseline["android_version"] = android_version
         BASELINE.write_text(json.dumps(baseline, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
         print(f"Baseline updated: {BASELINE.relative_to(REPO_ROOT)}")
 

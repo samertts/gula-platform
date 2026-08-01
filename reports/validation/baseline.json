@@ -1,6 +1,37 @@
 {
-  "_generated_at": "2026-07-31T07:32:18.897099+00:00",
+  "_generated_at": "2026-08-01T20:56:16.259133+00:00",
+  "_schema": "v2",
+  "_components": [
+    "backend",
+    "frontend-v3",
+    "android"
+  ],
+  "components": {
+    "backend": {
+      "lint": "ruff_errors",
+      "typecheck": null,
+      "unit_test_count": "unit_test_count",
+      "unit_test_failures": "unit_test_failures"
+    },
+    "frontend-v3": {
+      "lint": "eslint_errors",
+      "typecheck": "tsc_errors",
+      "unit_test_count": "frontend_test_count",
+      "unit_test_failures": "frontend_test_failures"
+    },
+    "android": {
+      "consistency": "android_consistency",
+      "version": "android_version"
+    }
+  },
   "ruff_errors": 379,
   "tsc_errors": 0,
-  "eslint_errors": 0
+  "eslint_errors": 0,
+  "unit_test_count": 448,
+  "unit_test_failures": 0,
+  "frontend_test_count": 117,
+  "frontend_test_failures": 0,
+  "scorecard_score": 76,
+  "architecture_score": 21.4,
+  "android_version": "1.0.0"
 }
