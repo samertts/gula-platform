@@ -13,7 +13,6 @@ os.environ.setdefault("REDIS_URL", "")
 from datetime import date, datetime, timedelta
 
 import pytest
-
 from app.database import Base
 from app.models.lab import Lab
 from app.models.lab_order import LabOrder

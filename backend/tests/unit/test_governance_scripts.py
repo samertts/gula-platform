@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import json
 import os
-import sys
 import pathlib
+import sys
 
 import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3]))
 
-from scripts import enterprise_validation_engine as eve  # noqa: E402
-from scripts import project_brain as pb  # noqa: E402
+from scripts import enterprise_validation_engine as eve
+from scripts import project_brain as pb
 
 
 class TestCheckRegressions:
