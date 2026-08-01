@@ -113,6 +113,7 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
   ],
   lab: [
     { label: "nav.qc", path: "/qc", icon: "ShieldCheck", permissions: ["results:read"] },
+    { label: "nav.lims", path: "/lims", icon: "Workflow", permissions: ["results:read"] },
     { label: "nav.alerts", path: "/alerts", icon: "BellRing", permissions: ["results:read"] },
   ],
   admin: [

@@ -20,6 +20,7 @@ const AIPage = lazy(() => import("@/pages/ai/AIPage").then(m => ({ default: m.AI
 const AiPlatformPage = lazy(() => import("@/pages/ai-platform/AiPlatformPage").then(m => ({ default: m.AiPlatformPage })));
 const StatsPage = lazy(() => import("@/pages/stats/StatsPage").then(m => ({ default: m.StatsPage })));
 const QCPage = lazy(() => import("@/pages/qc/QCPage").then(m => ({ default: m.QCPage })));
+const LimsPage = lazy(() => import("@/pages/lims/LimsPage").then(m => ({ default: m.LimsPage })));
 const PatientCardPage = lazy(() => import("@/pages/patient-card/PatientCardPage").then(m => ({ default: m.PatientCardPage })));
 const IdentityPage = lazy(() => import("@/pages/identity/IdentityPage").then(m => ({ default: m.IdentityPage })));
 const TiersPage = lazy(() => import("@/pages/tiers/TiersPage").then(m => ({ default: m.TiersPage })));
@@ -136,6 +137,7 @@ export const router = createBrowserRouter([
       { path: "ai-platform", element: <RoleGuard roles={readonlyRoles}><LazyPage><AiPlatformPage /></LazyPage></RoleGuard> },
       { path: "stats", element: <RoleGuard roles={readonlyRoles}><LazyPage><StatsPage /></LazyPage></RoleGuard> },
       { path: "qc", element: <RoleGuard roles={readonlyRoles}><LazyPage><QCPage /></LazyPage></RoleGuard> },
+      { path: "lims", element: <RoleGuard roles={labRoles}><LazyPage><LimsPage /></LazyPage></RoleGuard> },
       { path: "patient-card", element: <RoleGuard roles={staffRoles}><LazyPage><PatientCardPage /></LazyPage></RoleGuard> },
       { path: "identity", element: <RoleGuard roles={staffRoles}><LazyPage><IdentityPage /></LazyPage></RoleGuard> },
       { path: "tiers", element: <RoleGuard roles={readonlyRoles}><LazyPage><TiersPage /></LazyPage></RoleGuard> },
