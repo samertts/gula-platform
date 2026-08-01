@@ -1,0 +1,661 @@
+{
+ "catalog_version": "1.0",
+ "program": "PROGRAM-01",
+ "workflows": [
+  {
+   "name": "Order creation with results",
+   "trigger": "POST /orders or POST /batch/orders",
+   "status": "complete",
+   "steps": [
+    "idempotency check (Redis 24h)",
+    "patient scoped to lab",
+    "doctor validation",
+    "LabOrder(status=completed)",
+    "LabResult per test with flag",
+    "public token + hash per result",
+    "audit log_action",
+    "sharing links",
+    "critical alert",
+    "events order.created/result.critical"
+   ],
+   "entities": [
+    "LabOrder",
+    "LabResult",
+    "Patient",
+    "LabUser",
+    "AuditLog"
+   ],
+   "apis": [
+    "POST /orders",
+    "GET /orders",
+    "GET /orders/{id}",
+    "POST /batch/orders"
+   ]
+  },
+  {
+   "name": "Sample workflow",
+   "trigger": "technician registers sample / analyzer submission",
+   "status": "complete",
+   "steps": [
+    "create_sample (barcode)",
+    "status transitions collected\u2192received\u2192processing\u2192analyzed (or rejected with reason)",
+    "audit"
+   ],
+   "entities": [
+    "Sample"
+   ],
+   "apis": [
+    "POST /samples",
+    "GET /samples",
+    "GET /samples/{barcode}",
+    "PUT /samples/{barcode}"
+   ]
+  },
+  {
+   "name": "Analyzer device result ingestion",
+   "trigger": "POST /device/results",
+   "status": "complete",
+   "steps": [
+    "rate limit 100/min/IP",
+    "sample lookup",
+    "assert_not_locked(423)/assert_not_cancelled(409)",
+    "enforce_transition(order,'completed')",
+    "create results",
+    "sample status analyzed",
+    "result.critical event"
+   ],
+   "entities": [
+    "Sample",
+    "LabOrder",
+    "LabResult",
+    "DeviceSubmission"
+   ],
+   "apis": [
+    "POST /device/results"
+   ]
+  },
+  {
+   "name": "Result verification / order validation (locking)",
+   "trigger": "POST /orders/{id}/validate or PUT /test-results/{id}/verify",
+   "status": "complete",
+   "steps": [
+    "role check (admin/master_admin/doctor, doctor scoped)",
+    "order must have results",
+    "enforce_transition\u2192validated",
+    "atomic conditional UPDATE locked_at IS NULL",
+    "validated/validated_by/validated_at/locked_at",
+    "audit",
+    "order.validated event"
+   ],
+   "entities": [
+    "LabOrder",
+    "LabResult"
+   ],
+   "apis": [
+    "POST /orders/{id}/validate",
+    "POST /orders/{id}/cancel",
+    "PUT /test-results/{id}/verify",
+    "POST /test-results/validate"
+   ]
+  },
+  {
+   "name": "Public result delivery (token-based)",
+   "trigger": "GET /r/{token} or /r/{token}/pdf or /qr/qr/{token}",
+   "status": "complete",
+   "steps": [
+    "token lookup by hash",
+    "IP rate limit",
+    "optional phone+name verification",
+    "result + interpretation EN/AR",
+    "PDF (Hijri+Gregorian, Arabic RTL)"
+   ],
+   "entities": [
+    "LabResult",
+    "Patient"
+   ],
+   "apis": [
+    "GET /results/r/{token}",
+    "GET /results/r/{token}/pdf",
+    "GET /qr/qr/{token}",
+    "GET /qr/qr-medical/{token}"
+   ]
+  },
+  {
+   "name": "Quality control (Westgard)",
+   "trigger": "POST /qc or POST /qc/batch",
+   "status": "complete",
+   "steps": [
+    "evaluate_westgard_full 6-rule engine (1-2s, 2-2s before 1-2s, R-4s, 4-1s, 10-xbar, 1-3s)",
+    "prior QC history from DB",
+    "rule violation persisted",
+    "summary per test/level"
+   ],
+   "entities": [
+    "QualityControl"
+   ],
+   "apis": [
+    "POST /qc",
+    "POST /qc/batch",
+    "GET /qc",
+    "GET /qc/summary"
+   ]
+  },
+  {
+   "name": "Referral workflow",
+   "trigger": "POST /care-continuum/referrals",
+   "status": "complete",
+   "steps": [
+    "create (draft/sent)",
+    "timeline event appended",
+    "accept/reject/complete transitions",
+    "timeline entries per transition",
+    "analytics (avg completion hours, status distribution)",
+    "cross-org variant + response decision",
+    "outbox event on referral_response"
+   ],
+   "entities": [
+    "ReferralRequest",
+    "ReferralResponse",
+    "ReferralTimeline"
+   ],
+   "apis": [
+    "POST /care-continuum/referrals",
+    "PUT .../accept|reject|complete",
+    "GET .../timeline",
+    "GET .../analytics",
+    "POST .../cross-org",
+    "POST .../response"
+   ]
+  },
+  {
+   "name": "EHR care continuum",
+   "trigger": "clinical staff CRUD",
+   "status": "complete",
+   "steps": [
+    "clinical notes",
+    "allergies",
+    "medications (statement/request/dispense/administration)",
+    "care plans + goals/activities",
+    "problems/conditions/diagnoses",
+    "family/social history, risk factors",
+    "immunizations",
+    "clinical attachments",
+    "unified patient timeline"
+   ],
+   "entities": [
+    "ClinicalNote",
+    "AllergyIntolerance",
+    "CarePlan",
+    "ConditionRecord",
+    "DiagnosisRecord",
+    "ImmunizationRecord"
+   ],
+   "apis": [
+    "/ehr/* (~35 endpoints)"
+   ]
+  },
+  {
+   "name": "Care continuum (community/public health)",
+   "trigger": "provider records encounters/screenings",
+   "status": "complete",
+   "steps": [
+    "primary care encounters",
+    "family medicine/community clinics",
+    "health assessments, preventive care",
+    "care journeys, follow-up plans, coordination",
+    "transitions, handovers, home care",
+    "chronic disease registry + risk stratification",
+    "maternal (pregnancy/ANC/delivery/postnatal)",
+    "child growth/development/breastfeeding",
+    "vaccination + schedules + missed detection + coverage",
+    "cold chain",
+    "programs/enrollments/campaigns/school/occupational",
+    "patient tasks",
+    "detect_care_gaps"
+   ],
+   "entities": [
+    "~30 cc_* registry models"
+   ],
+   "apis": [
+    "/care-continuum/* (~60 endpoints)"
+   ]
+  },
+  {
+   "name": "Identity & registration",
+   "trigger": "lab/citizen/staff/doctor registration",
+   "status": "complete",
+   "steps": [
+    "lab register \u2192 pending + master_admin \u2192 admin activate",
+    "citizen register: NID validation, MPI blocking-key, canonical citizen link",
+    "staff/doctor register; doctor needs admin approval"
+   ],
+   "entities": [
+    "Lab",
+    "LabUser",
+    "User",
+    "Citizen",
+    "CanonicalPatient"
+   ],
+   "apis": [
+    "POST /register*",
+    "PUT /admin/labs/{id}/activate",
+    "PUT /admin/doctors/{id}/approve"
+   ]
+  },
+  {
+   "name": "Login / MFA",
+   "trigger": "POST /login",
+   "status": "complete",
+   "steps": [
+    "rate limit",
+    "lab_user lookup + citizen fallback",
+    "constant-time password verify (dummy hash)",
+    "privileged roles require MFA enrolled (403 otherwise)",
+    "lab active check",
+    "token issue",
+    "TOTP/WebAuthn MFA enrollment + verification"
+   ],
+   "entities": [
+    "LabUser",
+    "User",
+    "MFA devices/credentials"
+   ],
+   "apis": [
+    "POST /login",
+    "POST /logout",
+    "/mfa/*",
+    "POST /citizen/login",
+    "POST /auth/refresh-token",
+    "POST /auth/change-password",
+    "password_reset",
+    "oauth2",
+    "saml"
+   ]
+  },
+  {
+   "name": "Consent workflow",
+   "trigger": "patient grants access",
+   "status": "complete",
+   "steps": [
+    "scope whitelist",
+    "72h hard expiry cap",
+    "auto-revoke prior active grant (unique constraint)",
+    "insert active row",
+    "audit consent_grant",
+    "revoke (idempotent)",
+    "check_active_consent gates access"
+   ],
+   "entities": [
+    "Consent"
+   ],
+   "apis": [
+    "POST /consent/grant",
+    "POST /consent/revoke",
+    "GET /consent/check"
+   ]
+  },
+  {
+   "name": "Claims / insurance",
+   "trigger": "POST /claims",
+   "status": "partial",
+   "steps": [
+    "create (draft)",
+    "validate (draft\u2192validated)",
+    "submit (validated\u2192submitted, claim_submitted outbox event)"
+   ],
+   "entities": [
+    "Claim"
+   ],
+   "apis": [
+    "POST /claims",
+    "POST /claims/{id}/validate",
+    "POST /claims/{id}/submit",
+    "GET /claims/{id}"
+   ],
+   "gap": "no adjudication/payment/denial workflow; no outbox consumer"
+  },
+  {
+   "name": "FHIR export / import",
+   "trigger": "external system or frontend",
+   "status": "complete",
+   "steps": [
+    "read/search 16 resource types",
+    "patient-everything Bundle",
+    "create/update/delete (lab-scoped)",
+    "batch/transaction bundles",
+    "audit-logged writes"
+   ],
+   "entities": [
+    "FHIR-mapped EHR tables"
+   ],
+   "apis": [
+    "/fhir/*"
+   ]
+  },
+  {
+   "name": "FHIR/HL7/CDC streaming ingestion \u2192 outbox",
+   "trigger": "POST /national-data/streaming/*",
+   "status": "complete-producer",
+   "steps": [
+    "permission patients:write",
+    "event_type fhir.{resource}.{event}/hl7.{type}/CDC",
+    "data_platform event store",
+    "emit_to_outbox",
+    "commit"
+   ],
+   "entities": [
+    "OutboxEvent"
+   ],
+   "apis": [
+    "/national-data/streaming/fhir",
+    "/national-data/streaming/hl7"
+   ],
+   "gap": "consumer side has zero registered subscribers"
+  },
+  {
+   "name": "MPI / identity matching",
+   "trigger": "registration or manual review",
+   "status": "complete",
+   "steps": [
+    "blocking keys",
+    "profile scoring + classify",
+    "resolve_identity (auto-match / pending-review)",
+    "manual_merge / decide_pending_review",
+    "merge_citizens (audit-chained, merge.completed event)",
+    "canonical patient link"
+   ],
+   "entities": [
+    "Citizen",
+    "CanonicalPatient"
+   ],
+   "apis": [
+    "/mpi/resolve",
+    "/mpi/citizens/{id}",
+    "/mpi/merge",
+    "/mpi/pending-review",
+    "/mpi/pending-review/{id}/decide"
+   ]
+  },
+  {
+   "name": "Identity governance (national registry)",
+   "trigger": "registrar registers",
+   "status": "complete-service-no-routes",
+   "steps": [
+    "register citizen/newborn/foreigner/resident/visitor/unknown",
+    "link birth certificate/passport/visa",
+    "document verification (expiry)",
+    "identity history",
+    "healthcare view",
+    "family registry (families/guardians/dependents)",
+    "merge engine"
+   ],
+   "entities": [
+    "IdentityRecord",
+    "IdentityDocument",
+    "FamilyRecord"
+   ],
+   "apis": [],
+   "gap": "backend-only library; no route exposure found"
+  },
+  {
+   "name": "Hospital hierarchy & bed management",
+   "trigger": "hospital admin",
+   "status": "complete",
+   "steps": [
+    "hospital\u2192campus\u2192building\u2192floor\u2192department\u2192clinic\u2192room\u2192bed",
+    "bed assignment/transfer/discharge",
+    "occupancy stats",
+    "units, operation theaters, equipment"
+   ],
+   "entities": [
+    "HospitalMaster",
+    "Campus",
+    "Building",
+    "Floor",
+    "Department",
+    "Clinic",
+    "Room",
+    "Bed",
+    "Unit",
+    "OT",
+    "Equipment"
+   ],
+   "apis": [
+    "/hospital/*"
+   ]
+  },
+  {
+   "name": "Offline sync / edge",
+   "trigger": "POST /integration/offline/sync or edge heartbeat",
+   "status": "partial",
+   "steps": [
+    "offline ops enqueued (StoreForwardEngine)",
+    "conflict resolution (last-write-wins)",
+    "delta sync push/pull",
+    "edge node registration + sync (AES encrypted store)"
+   ],
+   "entities": [
+    "SyncOperation",
+    "ConflictRecord"
+   ],
+   "apis": [
+    "POST /integration/offline/sync",
+    "POST /edge/agent/heartbeat"
+   ],
+   "gap": "offline_sync_service.py has no route consumers; edge flows are in-memory queues"
+  },
+  {
+   "name": "Clinical intelligence & result release gating",
+   "trigger": "result entry or batch analysis",
+   "status": "partial",
+   "steps": [
+    "clinical_engine.evaluate_result/evaluate_order",
+    "clinical_state.compute_patient_state",
+    "can_release_results / requires_physician_ack (hard stops)",
+    "clinical_intelligence.analyze_results (sepsis/DKA/renal-failure)",
+    "interpretation EN/AR"
+   ],
+   "entities": [],
+   "apis": [
+    "POST /orders/analyze",
+    "GET /orders/{id}/intelligence"
+   ],
+   "gap": "state gating functions not wired into result-release endpoints"
+  },
+  {
+   "name": "National notification delivery",
+   "trigger": "POST /national/notifications/send",
+   "status": "complete",
+   "steps": [
+    "template render (Jinja2)",
+    "save batch",
+    "enqueue TaskPayload national_notification_deliver per notification",
+    "TaskWorker handler",
+    "dispatch per channel email/sms/push/whatsapp",
+    "delivery report + batch counters"
+   ],
+   "entities": [
+    "Notification",
+    "NotificationTemplate",
+    "NotificationBatch",
+    "DeliveryReport",
+    "NotificationPreference"
+   ],
+   "apis": [
+    "/national/notifications/send",
+    "/send/batch",
+    "/templates/*",
+    "/delivery/{id}",
+    "/preferences"
+   ]
+  },
+  {
+   "name": "Workflow runtime & task engine (national)",
+   "trigger": "POST /workflows/definitions/{id}/execute",
+   "status": "stub",
+   "steps": [
+    "definitions with ordered steps",
+    "executions state machine (pending/running/paused/suspended/failed/timed_out/completed/cancelled/compensated/rolled_back)",
+    "step statuses",
+    "saga engine (execute/complete/fail/compensate/rollback)",
+    "cancel/pause/resume"
+   ],
+   "entities": [
+    "WorkflowDefinition",
+    "WorkflowExecution",
+    "WorkflowStep",
+    "SagaLog"
+   ],
+   "apis": [
+    "/workflows/*"
+   ],
+   "gap": "application/service.py is 0 lines - persistence + state machine only, no business workflows"
+  },
+  {
+   "name": "Capabilities workflow_engine",
+   "trigger": "API",
+   "status": "stub",
+   "steps": [
+    "generic CRUD + commands create/transition/escalate/cancel",
+    "capability.json declares events"
+   ],
+   "entities": [],
+   "apis": [
+    "/workflow-engine/*"
+   ],
+   "gap": "CRUD-only service, no real workflow semantics"
+  }
+ ],
+ "state_machines": {
+  "order": "pending \u2192 completed \u2192 validated (terminal, locked) | cancelled (terminal); enforce_transition 409, assert_not_locked 423, assert_not_cancelled 409",
+  "sample": "collected \u2192 received \u2192 processing \u2192 analyzed | rejected (reason required); free transitions within set",
+  "referral": "draft \u2192 sent \u2192 accepted | rejected | cancelled \u2192 completed (only from accepted)",
+  "claim": "draft \u2192 validated \u2192 submitted (terminal, service-enforced)",
+  "consent": "active \u2192 revoked (auto-revoke on regrant; \u226472h expiry)",
+  "workflow_execution": "pending \u2192 running \u2192 completed|failed|paused|cancelled|suspended|timed_out; failed/timed_out \u2192 running|compensated|rolled_back",
+  "clinical_state": "computed not persisted: can_release_results / requires_physician_ack (not wired)"
+ },
+ "events_outbox": {
+  "constants": [
+   "order.created",
+   "order.validated",
+   "order.cancelled",
+   "result.critical",
+   "sample.rejected",
+   "patient.created",
+   "result.updated",
+   "result.validated",
+   "alert.triggered",
+   "sample.collected"
+  ],
+  "producers": {
+   "order_service": [
+    "order.created",
+    "result.critical",
+    "order.validated",
+    "order.cancelled"
+   ],
+   "test_result_service": [
+    "result.critical"
+   ],
+   "national_streaming": [
+    "fhir.*",
+    "hl7.*",
+    "table.*"
+   ],
+   "claims_service": [
+    "claim_submitted"
+   ],
+   "care_continuum": [
+    "referral timeline"
+   ],
+   "data_platform_service": [
+    "data_platform.golden_record.created",
+    "data_platform.merge.completed"
+   ],
+   "mpi_resolver": [
+    "create/manual_merge"
+   ],
+   "document_intelligence": [
+    "retention/legal-hold/deletion"
+   ]
+  },
+  "consumers": "NONE - zero events.on/subscribe registrations in app code"
+ },
+ "background_jobs": {
+  "in_process": [
+   {
+    "name": "OutboxWorker.background_loop",
+    "cadence": "10s (2s on backlog)",
+    "purpose": "drain outbox \u2192 EventBus; purge >30d daily"
+   },
+   {
+    "name": "RecoveryWorker.background_loop",
+    "cadence": "continuous",
+    "purpose": "circuit-breaker recovery probes"
+   },
+   {
+    "name": "_health_alert_loop",
+    "cadence": "60s",
+    "purpose": "health watchdog alerting (GREEN/YELLOW/RED)"
+   },
+   {
+    "name": "_adaptive_concurrency_loop",
+    "cadence": "30s",
+    "purpose": "adaptive concurrency cap"
+   },
+   {
+    "name": "auto_repair.run",
+    "cadence": "30s (actions 30-300s cooldown)",
+    "purpose": "memory GC, circuit probe, pool recycle, Redis reconnect, outbox poll normalization"
+   },
+   {
+    "name": "edge_maintenance_loop",
+    "cadence": "continuous",
+    "purpose": "edge device maintenance"
+   },
+   {
+    "name": "TaskWorker",
+    "cadence": "5s",
+    "purpose": "drain task queue; handlers: national_notification_deliver"
+   }
+  ],
+  "os_cron": [
+   {
+    "name": "auto_heal.sh",
+    "cron": "*/5 * * * *",
+    "purpose": "container watchdog/restart"
+   },
+   {
+    "name": "self_heal.py ASHS",
+    "cron": "* * * * *",
+    "purpose": "API health signals \u2192 repair (per-signal file cooldown)"
+   },
+   {
+    "name": "monitor.sh",
+    "cron": "*/5 * * * *",
+    "purpose": "/health/ready check + Telegram alert"
+   },
+   {
+    "name": "backup.sh daily",
+    "cron": "0 2 * * *",
+    "purpose": "PG backup AES-256 encrypted"
+   },
+   {
+    "name": "backup.sh hourly",
+    "cron": "0 * * * *",
+    "purpose": "hourly incremental backup"
+   },
+   {
+    "name": "backup-verification.sh",
+    "cron": "0 6 * * *",
+    "purpose": "restore drill / backup verify (337 tables)"
+   },
+   {
+    "name": "cert-renew.sh",
+    "cron": "0 3 * * *",
+    "purpose": "Let's Encrypt renewal"
+   }
+  ]
+ }
+}

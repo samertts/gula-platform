@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LocaleProvider } from "@/contexts/LocaleContext";
 import { ToastContainer } from "@/components/shared/ToastContainer";
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,7 +25,9 @@ export function App() {
       <ThemeProvider>
         <LocaleProvider>
           <AuthProvider>
-            <RouterProvider router={router} />
+            <ErrorBoundary>
+              <RouterProvider router={router} />
+            </ErrorBoundary>
             <ToastContainer />
           </AuthProvider>
         </LocaleProvider>

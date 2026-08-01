@@ -1,0 +1,17 @@
+entity,page,read,create,update,approve,status
+order,orders/OrdersPage,ok,ok,,validate_cancel_analyze,operational
+patient,patients/PatientsPage,ok,ok,ok,,operational
+sample,samples/SamplesPage,ok,ok,ok,,operational
+test_result,results/ResultsPage,ok,,,,operational
+qc_entry,qc/QCPage,ok,ok,,,operational
+public_result,public-result/PublicResultPage,ok,,,,operational
+profile,profile/ProfilePage,ok,,password_change,,operational
+settings,settings/SettingsPage,ok,,language_theme,,operational
+identity_nid,identity/IdentityPage,ok,link_operation,,,operational
+login_mfa,auth/LoginPage,,challenge_verify,,,operational
+labs,labs/LabsPage,ok,,,,read_only_by_design
+admin,admin/AdminPages,ok,,,,read_only_by_design
+edge,edge/EdgePage,ok,,,,read_only_by_design
+hospital,hospital/HospitalPage,ok,,,,read_only_by_design
+notifications,notifications/NotificationsPage,ok,,,,read_only_by_design
+security,security/SecurityPage,ok,enrollment,,,read_only_by_design

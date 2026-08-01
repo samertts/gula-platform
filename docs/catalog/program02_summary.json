@@ -1,0 +1,27 @@
+{
+ "total_pages": 78,
+ "connected_pages": 70,
+ "production_ready_pages": 4,
+ "partially_connected_pages": 1,
+ "disconnected_pages": 3,
+ "placeholder_pages": 0,
+ "mock_pages": 0,
+ "firebase_dependencies": 0,
+ "backend_apis_covered": 553,
+ "backend_apis_total": 1986,
+ "backend_apis_missing": 1431,
+ "fe_call_resolution_pct": 96.8,
+ "workflow_coverage": {
+  "total": 22,
+  "complete_in_ui": 0,
+  "interrupted": 12,
+  "missing": 10
+ },
+ "role_coverage": {
+  "roles_with_clean_experience": 1,
+  "roles_with_issues": 10
+ },
+ "frontend_completion_pct": 96.2,
+ "api_parity_pct": 27.8,
+ "workflow_parity_pct": 0.0
+}

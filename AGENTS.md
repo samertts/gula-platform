@@ -192,7 +192,7 @@ Never remove dormant enterprise modules. Dormant modules are strategic assets. I
 
 # Workspace Anchored Summary (auto-updated)
 
-Last updated: **PROGRAM-011 complete** — Operations Readiness Certification `make ops-cert`: **99% PRODUCTION READY** (103 PASS / 3 WARN / 0 FAIL); 232 unit tests; SLO request metrics exported (slo.yml rules now fireable); security-event middleware (401/403/429 metrics ground gula-full.yml); circuit-breaker API fixed (notifications crash bug); PG backup verifier + AES-256 backup encryption (drilled live: 337 tables restore OK); CI backup drill in nightly.yml; PITR runbook; docs/ops/OPERATIONS_MANUAL.md; ops crons committed in server-setup.sh; ASHS per-signal restart cooldown (file-persisted, cron-safe); outbox backlog auto-repair (poll 10s→2s on >200 backlog, auto-restore); OTel OTLP/HTTP trace export (env-gated no-op, Jaeger/Tempo-ready, FastAPI+SQLAlchemy instrumented); Grafana-managed alerting provisioning (3 SLO rules → Alertmanager).
+Last updated: **PROGRAM-03 v2.0 complete** — Workflow Activation & Clinical Operation Completion: all 9 production workflow pages operational (Orders/Patients/Samples/Results/QC/Profile/Settings/Identity + new PublicResultPage `/r/:token` with PDF); privileged-login MFA challenge enforced (ASVS 2.4: `POST /login` → `mfa_pending` → `POST /mfa-verify`, single-use session + rate limit, bootstrap exception for first admin); global ErrorBoundary; i18n parity 354 keys ar↔en; **backend 2764 tests pass / 0 fail** (incl. 5 new MFA tests); frontend 84 vitest tests; tsc/eslint/build green; SemVer test fixes for `APP_VERSION=1.0.0-RC2`. Prior: PROGRAM-011 ops readiness 99% (103 PASS/3 WARN); PG backup verifier + AES-256 encryption; OTel OTLP trace export; Grafana alerting (3 SLO rules); 232 unit tests.
 
 ## Objective
 Transform the GULA monorepo into a production-grade national healthcare platform by fixing infrastructure, security, architecture, frontend–backend alignment, and code quality across the entire codebase.
@@ -201,7 +201,7 @@ Transform the GULA monorepo into a production-grade national healthcare platform
 - Python 3.12 is the fixed target (all Dockerfiles, CI, mypy config `python_version = "3.12"`, `requires-python = ">=3.12"`). **System `python3` may be 3.10 — use `backend/.venv/bin/python` for repo scripts.**
 - `_compat.py` simplified to direct stdlib imports (no more Python 3.10/3.11 fallback).
 - Arabic is the primary language; `frontend-v3` is Arabic‑first with `dir="rtl"` in `index.html`.
-| Backend integration tests require PostgreSQL (no local PG); **417 tests pass** across all suites (399 + 18 governance script tests).
+- Backend integration tests require PostgreSQL (available via `backend/.venv/bin/python -m pytest tests/` with `ENV=test PYTHONPATH=..`); **2764 tests pass** across all suites (integration + unit + governance).
 - Ruff target = `py312`; all E9, F, UP violations: **zero**. SIM simplifications: **zero**. N806/N815/N817 naming violations: **zero**. Remaining violations: E402 (167, intentional cond-imports), N801 (141, capabilities pattern), N999 (71) = 379 total.
 - TypeScript compiles with zero errors (`tsc --noEmit` exit 0). Vite production build succeeds in ~5s. ESLint passes.
 - Docker container requires `shared/` volume mount (`-v /path/to/shared:/app/shared:ro`) and `REDIS_URL` with password.

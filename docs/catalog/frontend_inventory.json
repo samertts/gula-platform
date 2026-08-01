@@ -1,0 +1,5408 @@
+{
+ "catalog_version": "1.0",
+ "program": "PROGRAM-02",
+ "generated": "2026-08-01",
+ "stats": {
+  "page_files": 78,
+  "page_directories": 49,
+  "routes": 85,
+  "routes_guarded": 77,
+  "components": 14,
+  "hooks": 2,
+  "contexts": 3,
+  "layouts": 3,
+  "api_groups": 57,
+  "api_calls_total": 567,
+  "api_calls_resolve_to_backend": 549,
+  "api_call_resolution_pct": 96.8,
+  "backend_routes_connected": 553,
+  "backend_routes_not_connected": 1431,
+  "backend_routes_internal": 2,
+  "backend_route_coverage_pct": 27.8,
+  "classification_counts": {
+   "CONNECTED": 70,
+   "PARTIALLY-CONNECTED": 1,
+   "PRODUCTION-READY": 4,
+   "DISCONNECTED": 3
+  },
+  "firebase_dependencies": 0,
+  "mock_files": 0,
+  "i18n_keys": 240,
+  "pages_using_i18n": 8
+ },
+ "tech_stack": [
+  "react",
+  "react-router-dom",
+  "@tanstack/react-query",
+  "@tanstack/react-table",
+  "axios",
+  "i18next",
+  "lucide-react",
+  "tailwindcss (v4, oklch tokens)",
+  "clsx + tailwind-merge",
+  "vite",
+  "vitest"
+ ],
+ "state_management": "no redux/zustand/jotai; 3 React contexts (Auth, Locale, Theme) + react-query server state",
+ "routes": [
+  {
+   "path": "react-router-dom",
+   "component": "?",
+   "guarded": false,
+   "roles": null
+  },
+  {
+   "path": "login",
+   "component": "LoginPage",
+   "guarded": false,
+   "roles": null
+  },
+  {
+   "path": "dashboard",
+   "component": "DashboardPage",
+   "guarded": false,
+   "roles": null
+  },
+  {
+   "path": "patients",
+   "component": "PatientsPage",
+   "guarded": true,
+   "roles": "staffRoles"
+  },
+  {
+   "path": "orders",
+   "component": "OrdersPage",
+   "guarded": true,
+   "roles": "staffRoles"
+  },
+  {
+   "path": "results",
+   "component": "ResultsPage",
+   "guarded": true,
+   "roles": "staffRoles"
+  },
+  {
+   "path": "samples",
+   "component": "SamplesPage",
+   "guarded": true,
+   "roles": "labRoles"
+  },
+  {
+   "path": "labs",
+   "component": "LabsPage",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "alerts",
+   "component": "CriticalAlertsPage",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "notifications",
+   "component": "NotificationsPage",
+   "guarded": false,
+   "roles": null
+  },
+  {
+   "path": "ai",
+   "component": "AIPage",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "ai-platform",
+   "component": "AiPlatformPage",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "stats",
+   "component": "StatsPage",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "qc",
+   "component": "QCPage",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "patient-card",
+   "component": "PatientCardPage",
+   "guarded": true,
+   "roles": "staffRoles"
+  },
+  {
+   "path": "identity",
+   "component": "IdentityPage",
+   "guarded": true,
+   "roles": "staffRoles"
+  },
+  {
+   "path": "tiers",
+   "component": "TiersPage",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "compliance",
+   "component": "CompliancePage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "settings",
+   "component": "SettingsPage",
+   "guarded": false,
+   "roles": null
+  },
+  {
+   "path": "profile",
+   "component": "ProfilePage",
+   "guarded": false,
+   "roles": null
+  },
+  {
+   "path": "security",
+   "component": "SecurityPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "admin/labs",
+   "component": "AdminLabsPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "admin/users",
+   "component": "AdminUsersPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "admin/audit",
+   "component": "AdminAuditPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "admin/pending-labs",
+   "component": "AdminPendingLabsPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "admin/control",
+   "component": "AdminControlPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "fhir",
+   "component": "FhirPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "fhir/explorer",
+   "component": "FhirExplorerPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "fhir/patients",
+   "component": "FhirPatientPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "fhir/observations",
+   "component": "FhirObservationPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "fhir/reports",
+   "component": "FhirReportPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "ehr",
+   "component": "EhrPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "hospital",
+   "component": "HospitalPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "edge",
+   "component": "EdgePage",
+   "guarded": true,
+   "roles": "['master_admin', 'admin']"
+  },
+  {
+   "path": "financial",
+   "component": "FinancialPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national-data",
+   "component": "NationalDataPage",
+   "guarded": true,
+   "roles": "['master_admin', 'ministry_admin', 'province_admin']"
+  },
+  {
+   "path": "niam/governance",
+   "component": "NiamGovernancePage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "niam/trust",
+   "component": "NiamTrustPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "niam/lifecycle",
+   "component": "NiamLifecyclePage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "niam/federation",
+   "component": "NiamFederationPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "niam/certificates",
+   "component": "NiamCertificatesPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "niam/workflows",
+   "component": "NiamWorkflowsPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "niam/adaptive-auth",
+   "component": "NiamAdaptiveAuthPage",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "ai-fabric",
+   "component": "AiFabricPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "biomedical",
+   "component": "BiomedicalApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "blood-bank",
+   "component": "BloodBankApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "capabilities/clinical-foundation",
+   "component": "CapabilitiesClinicalFoundationPageLazy",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "capabilities/document-management",
+   "component": "CapabilitiesDocumentManagementPageLazy",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "capabilities/encounter-management",
+   "component": "CapabilitiesEncounterManagementPageLazy",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "capabilities/healthcare-consent",
+   "component": "CapabilitiesHealthcareConsentPageLazy",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "capabilities/provider-management",
+   "component": "CapabilitiesProviderManagementPageLazy",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "capabilities/reporting-service",
+   "component": "CapabilitiesReportingServicePageLazy",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "capabilities/search-service",
+   "component": "CapabilitiesSearchServicePageLazy",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "capabilities/storage-service",
+   "component": "CapabilitiesStorageServicePageLazy",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "capabilities/workflow-engine",
+   "component": "CapabilitiesWorkflowEnginePageLazy",
+   "guarded": true,
+   "roles": "readonlyRoles"
+  },
+  {
+   "path": "certification",
+   "component": "CertificationPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "citizen-platform",
+   "component": "CitizenPlatformPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "command-center",
+   "component": "CommandCenterApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "command-intelligence",
+   "component": "CommandIntelligencePageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "control-plane",
+   "component": "ControlPlanePageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "critical-care",
+   "component": "CriticalCareApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "ems",
+   "component": "EmsApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "health-data",
+   "component": "HealthDataPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "integration",
+   "component": "IntegrationPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "integration/connectors",
+   "component": "IntegrationConnectorsPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "kernel",
+   "component": "KernelPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "lifecycle-platform",
+   "component": "LifecyclePlatformApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/background-platform",
+   "component": "NationalBackgroundPlatformApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/document-platform",
+   "component": "NationalDocumentPlatformApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/ecosystem",
+   "component": "NationalEcosystemPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/ecosystem/gateway",
+   "component": "NationalEcosystemGatewayPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/notification-platform",
+   "component": "NationalNotificationPlatformApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/observability",
+   "component": "NationalObservabilityApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "ops-metrics",
+   "component": "OpsMetricsPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/rules-engine",
+   "component": "NationalRulesEngineApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/scheduling-platform",
+   "component": "NationalSchedulingPlatformApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/search-platform",
+   "component": "NationalSearchPlatformApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/task-engine",
+   "component": "NationalTaskEngineApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "national/workflow-runtime",
+   "component": "NationalWorkflowRuntimeApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "pharmacy",
+   "component": "PharmacyPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "pilot-platform",
+   "component": "PilotPlatformApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "platform",
+   "component": "PlatformPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "public-health",
+   "component": "PublicHealthApiPageLazy",
+   "guarded": true,
+   "roles": "adminRoles"
+  },
+  {
+   "path": "admin",
+   "component": "NAV",
+   "guarded": false,
+   "roles": null
+  },
+  {
+   "path": "*",
+   "component": "NAV",
+   "guarded": false,
+   "roles": null
+  }
+ ],
+ "pages": [
+  {
+   "file": "pages/admin/AdminPages.tsx",
+   "lines": 392,
+   "apis_imported": [
+    "adminLogLevelApi",
+    "useMutation",
+    "useQuery",
+    "useQueryClient } from \"@tanstack/react-query\";\nimport { adminApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/ai/AIPage.tsx",
+   "lines": 101,
+   "apis_imported": [
+    "useQuery } from \"@tanstack/react-query\";\nimport { aiApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "PARTIALLY-CONNECTED"
+  },
+  {
+   "file": "pages/ai-fabric/AiFabricPage.tsx",
+   "lines": 131,
+   "apis_imported": [],
+   "api_calls": [
+    "/ai/fabric/health",
+    "/ai/fabric/gateway/providers",
+    "/ai/fabric/gateway/cost",
+    "/ai/fabric/local-ai/status",
+    "/ai/fabric/knowledge-graph/entity",
+    "/ai/fabric/knowledge-graph/related"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/ai-platform/AiPlatformPage.tsx",
+   "lines": 598,
+   "apis_imported": [
+    "aiTelemetryApi",
+    "useQuery } from \"@tanstack/react-query\";\nimport { aiPlatformApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": true,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/alerts/CriticalAlertsPage.tsx",
+   "lines": 56,
+   "apis_imported": [
+    "useQuery } from \"@tanstack/react-query\";\nimport { criticalAlertsApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/auth/LoginPage.tsx",
+   "lines": 81,
+   "apis_imported": [],
+   "api_calls": [],
+   "uses_react_query": false,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": true,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": true,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/biomedical/BiomedicalApiPage.tsx",
+   "lines": 131,
+   "apis_imported": [],
+   "api_calls": [
+    "/biomedical/devices",
+    "/biomedical/devices/due/pm",
+    "/biomedical/devices/due/calibration",
+    "/biomedical/work-orders",
+    "/biomedical/incidents",
+    "/biomedical/technicians"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/blood-bank/BloodBankApiPage.tsx",
+   "lines": 133,
+   "apis_imported": [],
+   "api_calls": [
+    "/blood-bank/donors",
+    "/blood-bank/inventory",
+    "/blood-bank/inventory/critical",
+    "/blood-bank/crossmatch/compatible-groups",
+    "/blood-bank/dashboard",
+    "/blood-bank/health"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/capabilities/clinical-foundation/CapabilitiesClinicalFoundationPage.tsx",
+   "lines": 71,
+   "apis_imported": [],
+   "api_calls": [
+    "/clinical-foundation"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/capabilities/document-management/CapabilitiesDocumentManagementPage.tsx",
+   "lines": 71,
+   "apis_imported": [],
+   "api_calls": [
+    "/document-management"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/capabilities/encounter-management/CapabilitiesEncounterManagementPage.tsx",
+   "lines": 71,
+   "apis_imported": [],
+   "api_calls": [
+    "/encounter-management"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/capabilities/healthcare-consent/CapabilitiesHealthcareConsentPage.tsx",
+   "lines": 71,
+   "apis_imported": [],
+   "api_calls": [
+    "/healthcare-consent"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/capabilities/provider-management/CapabilitiesProviderManagementPage.tsx",
+   "lines": 71,
+   "apis_imported": [],
+   "api_calls": [
+    "/provider-management"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/capabilities/reporting-service/CapabilitiesReportingServicePage.tsx",
+   "lines": 71,
+   "apis_imported": [],
+   "api_calls": [
+    "/reporting-service"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/capabilities/search-service/CapabilitiesSearchServicePage.tsx",
+   "lines": 71,
+   "apis_imported": [],
+   "api_calls": [
+    "/search-service"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/capabilities/storage-service/CapabilitiesStorageServicePage.tsx",
+   "lines": 71,
+   "apis_imported": [],
+   "api_calls": [
+    "/storage-service"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/capabilities/workflow-engine/CapabilitiesWorkflowEnginePage.tsx",
+   "lines": 71,
+   "apis_imported": [],
+   "api_calls": [
+    "/workflow-engine"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/certification/CertificationPage.tsx",
+   "lines": 123,
+   "apis_imported": [],
+   "api_calls": [
+    "/certification/level",
+    "/certification/report",
+    "/certification/metrics",
+    "/certification/dimensions",
+    "/certification/dimensions//checks"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/citizen-platform/CitizenPlatformPage.tsx",
+   "lines": 138,
+   "apis_imported": [],
+   "api_calls": [
+    "/citizen-platform/dashboard",
+    "/citizen-platform/profile",
+    "/citizen-platform/health-summary",
+    "/citizen-platform/appointments",
+    "/citizen-platform/medications",
+    "/citizen-platform/lab-results"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/command-center/CommandCenterApiPage.tsx",
+   "lines": 131,
+   "apis_imported": [],
+   "api_calls": [
+    "/command-center/emergencies",
+    "/command-center/resource-requests",
+    "/command-center/situation-reports",
+    "/command-center/after-action-reports",
+    "/command-center/dashboard",
+    "/command-center/health"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/command-intelligence/CommandIntelligencePage.tsx",
+   "lines": 133,
+   "apis_imported": [],
+   "api_calls": [
+    "/intelligence/situation-room",
+    "/intelligence/kpis",
+    "/intelligence/kpis//trend",
+    "/intelligence/incidents",
+    "/intelligence/capacity",
+    "/intelligence/executive-dashboard"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/compliance/CompliancePage.tsx",
+   "lines": 100,
+   "apis_imported": [
+    "useQuery } from \"@tanstack/react-query\";\nimport { complianceApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/control-plane/ControlPlanePage.tsx",
+   "lines": 133,
+   "apis_imported": [],
+   "api_calls": [
+    "/control-plane/registry/components",
+    "/control-plane/registry/topology",
+    "/control-plane/health",
+    "/control-plane/config",
+    "/control-plane/policies",
+    "/control-plane/fleet/nodes"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/critical-care/CriticalCareApiPage.tsx",
+   "lines": 134,
+   "apis_imported": [],
+   "api_calls": [
+    "/critical-care/admissions",
+    "/critical-care/beds/availability",
+    "/critical-care/vitals",
+    "/critical-care/ventilator",
+    "/critical-care/dashboard",
+    "/critical-care/health"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/dashboard/DashboardPage.tsx",
+   "lines": 66,
+   "apis_imported": [
+    "useQuery } from \"@tanstack/react-query\";\nimport { useTranslation } from \"react-i18next\";\nimport { dashboardApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": true,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/edge/EdgePage.tsx",
+   "lines": 283,
+   "apis_imported": [
+    "useMutation",
+    "useQueryClient } from \"@tanstack/react-query\";\nimport { edgeApi",
+    "useState } from \"react\";\nimport { useQuery"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "PRODUCTION-READY"
+  },
+  {
+   "file": "pages/ehr/EhrPage.tsx",
+   "lines": 548,
+   "apis_imported": [
+    "ordersApi",
+    "resultsApi",
+    "useMemo } from \"react\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { patientsApi",
+    "useState"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/ems/EmsApiPage.tsx",
+   "lines": 133,
+   "apis_imported": [],
+   "api_calls": [
+    "/ems/incidents",
+    "/ems/ambulances",
+    "/ems/crew",
+    "/ems/triage",
+    "/ems/epcr",
+    "/ems/hospitals/nearby"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/fhir/FhirExplorerPage.tsx",
+   "lines": 151,
+   "apis_imported": [
+    "useCallback } from \"react\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { complianceApi",
+    "useState"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/fhir/FhirObservationPage.tsx",
+   "lines": 221,
+   "apis_imported": [
+    "useState } from \"react\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { complianceApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/fhir/FhirPage.tsx",
+   "lines": 62,
+   "apis_imported": [],
+   "api_calls": [],
+   "uses_react_query": false,
+   "has_loading": false,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/fhir/FhirPatientPage.tsx",
+   "lines": 212,
+   "apis_imported": [
+    "useState } from \"react\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { complianceApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/fhir/FhirReportPage.tsx",
+   "lines": 263,
+   "apis_imported": [
+    "useState } from \"react\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { complianceApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/financial/FinancialPage.tsx",
+   "lines": 286,
+   "apis_imported": [
+    "type ReactElement } from \"react\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { financialApi",
+    "useState"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/health-data/HealthDataPage.tsx",
+   "lines": 133,
+   "apis_imported": [],
+   "api_calls": [
+    "/health-data/catalog",
+    "/health-data/lineage",
+    "/health-data/governance/policies",
+    "/health-data/quality/metrics",
+    "/health-data/event-store/events",
+    "/health-data/warehouse/query"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/hospital/HospitalPage.tsx",
+   "lines": 648,
+   "apis_imported": [
+    "useMutation",
+    "useQueryClient } from \"@tanstack/react-query\";\nimport type { ColumnDef } from \"@tanstack/react-table\";\nimport { hospitalApi",
+    "useState } from \"react\";\nimport { useQuery"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": true,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "PRODUCTION-READY"
+  },
+  {
+   "file": "pages/identity/IdentityPage.tsx",
+   "lines": 50,
+   "apis_imported": [],
+   "api_calls": [],
+   "uses_react_query": false,
+   "has_loading": false,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": true,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "DISCONNECTED"
+  },
+  {
+   "file": "pages/integration/IntegrationPage.tsx",
+   "lines": 131,
+   "apis_imported": [],
+   "api_calls": [
+    "/integration/gateways",
+    "/integration/gateways",
+    "/integration/catalog",
+    "/integration/connectors",
+    "/integration/standards",
+    "/integration/monitoring/dashboard"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/integration/connectors/IntegrationConnectorsPage.tsx",
+   "lines": 97,
+   "apis_imported": [],
+   "api_calls": [
+    "/integration/connectors/status",
+    "/integration/connectors/status",
+    "/integration/connectors//health"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/kernel/KernelPage.tsx",
+   "lines": 222,
+   "apis_imported": [
+    "useQuery",
+    "useQueryClient } from \"@tanstack/react-query\";\nimport { api } from \"@/api/client\";\nimport { kernelRuntimeApi",
+    "useState } from \"react\";\nimport { useMutation"
+   ],
+   "api_calls": [
+    "/kernel/status",
+    "/kernel/services",
+    "/kernel/capabilities",
+    "/kernel/plugins",
+    "/kernel/modules",
+    "/kernel/config"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/labs/LabsPage.tsx",
+   "lines": 65,
+   "apis_imported": [
+    "useTranslation } from \"react-i18next\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { adminApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": true,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/lifecycle-platform/LifecyclePlatformApiPage.tsx",
+   "lines": 133,
+   "apis_imported": [],
+   "api_calls": [
+    "/lifecycle/components",
+    "/lifecycle/components/name",
+    "/lifecycle/releases",
+    "/lifecycle/compatibility/check",
+    "/lifecycle/compatibility/check",
+    "/lifecycle/upgrade-paths"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/background-platform/NationalBackgroundPlatformApiPage.tsx",
+   "lines": 134,
+   "apis_imported": [],
+   "api_calls": [
+    "/national/jobs",
+    "/national/jobs//executions",
+    "/national/jobs//schedules",
+    "/national/jobs/stats",
+    "/national/jobs/due",
+    "/national/jobs/dashboard"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/document-platform/NationalDocumentPlatformApiPage.tsx",
+   "lines": 137,
+   "apis_imported": [],
+   "api_calls": [
+    "/national/documents",
+    "/national/documents//versions",
+    "/national/documents//signatures",
+    "/national/documents//qrcode",
+    "/national/documents//attachments",
+    "/national/documents//history"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/ecosystem/NationalEcosystemPage.tsx",
+   "lines": 122,
+   "apis_imported": [],
+   "api_calls": [
+    "/ecosystem/connectors",
+    "/ecosystem/connectors//health",
+    "/ecosystem/schemas",
+    "/ecosystem/partners",
+    "/ecosystem/partners//audit"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/ecosystem/gateway/NationalEcosystemGatewayPage.tsx",
+   "lines": 95,
+   "apis_imported": [],
+   "api_calls": [
+    "/gateway/status",
+    "/gateway/policies",
+    "/gateway/catalog"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/notification-platform/NationalNotificationPlatformApiPage.tsx",
+   "lines": 133,
+   "apis_imported": [],
+   "api_calls": [
+    "/national/notifications",
+    "/national/notifications/dashboard",
+    "/national/notifications/templates",
+    "/national/notifications/delivery",
+    "/national/notifications/preferences",
+    "/national/notifications/channels"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/observability/NationalObservabilityApiPage.tsx",
+   "lines": 132,
+   "apis_imported": [],
+   "api_calls": [
+    "/national/observability/metrics/query",
+    "/national/observability/traces/search",
+    "/national/observability/traces/search",
+    "/national/observability/health/checks",
+    "/national/observability/health/status",
+    "/national/observability/health/checks"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/rules-engine/NationalRulesEngineApiPage.tsx",
+   "lines": 122,
+   "apis_imported": [],
+   "api_calls": [
+    "/national/rules",
+    "/national/rules//versions",
+    "/national/rules//evaluations",
+    "/national/rules/categories",
+    "/national/rules/health"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/scheduling-platform/NationalSchedulingPlatformApiPage.tsx",
+   "lines": 133,
+   "apis_imported": [],
+   "api_calls": [
+    "/national/scheduling/appointments",
+    "/national/scheduling/availability/slots",
+    "/national/scheduling/resources",
+    "/national/scheduling/schedules",
+    "/national/scheduling/waiting-list",
+    "/national/scheduling/calendars"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/search-platform/NationalSearchPlatformApiPage.tsx",
+   "lines": 131,
+   "apis_imported": [],
+   "api_calls": [
+    "/national/search/search",
+    "/national/search/suggest",
+    "/national/search/facets",
+    "/national/search/saved",
+    "/national/search/stats",
+    "/national/search/health"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/task-engine/NationalTaskEngineApiPage.tsx",
+   "lines": 134,
+   "apis_imported": [],
+   "api_calls": [
+    "/national/tasks",
+    "/national/tasks/dashboard",
+    "/national/tasks//comments",
+    "/national/tasks//history",
+    "/national/tasks/queues",
+    "/national/tasks/sla-definitions"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national/workflow-runtime/NationalWorkflowRuntimeApiPage.tsx",
+   "lines": 134,
+   "apis_imported": [],
+   "api_calls": [
+    "/national/workflows/definitions",
+    "/national/workflows/executions",
+    "/national/workflows/executions//steps",
+    "/national/workflows/executions//approvals",
+    "/national/workflows/approvals/pending",
+    "/national/workflows/templates"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/national-data/NationalDataPage.tsx",
+   "lines": 405,
+   "apis_imported": [
+    "useState } from \"react\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { nationalDataApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/niam/AdaptiveAuthPage.tsx",
+   "lines": 129,
+   "apis_imported": [],
+   "api_calls": [
+    "/niam/adaptive-auth/policies",
+    "/niam/adaptive-auth/risk-history",
+    "/niam/adaptive-auth/session-policies",
+    "/niam/adaptive-auth/policies"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": true,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": true,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/niam/CertificatesPage.tsx",
+   "lines": 129,
+   "apis_imported": [],
+   "api_calls": [
+    "/niam/certificates/expiring",
+    "/niam/certificates/authorities",
+    "/niam/certificates/api-keys",
+    "/niam/certificates/expiring",
+    "/niam/certificates/issue"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": true,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": true,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/niam/FederationPage.tsx",
+   "lines": 133,
+   "apis_imported": [],
+   "api_calls": [
+    "/niam/federation/providers",
+    "/niam/federation/identities",
+    "/niam/trust/federation",
+    "/niam/federation/agreements",
+    "/niam/federation/providers"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": true,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": true,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/niam/GovernancePage.tsx",
+   "lines": 264,
+   "apis_imported": [],
+   "api_calls": [
+    "/niam/governance/authorities",
+    "/niam/governance/authorities",
+    "/niam/governance/councils",
+    "/niam/governance/appeals",
+    "/niam/governance/suspensions/active",
+    "/niam/governance/registries"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": true,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": true,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/niam/LifecyclePage.tsx",
+   "lines": 139,
+   "apis_imported": [],
+   "api_calls": [
+    "/niam/lifecycle/enterprise",
+    "/niam/lifecycle/workforce",
+    "/niam/lifecycle/government/appointments",
+    "/niam/lifecycle/citizen",
+    "/niam/lifecycle/guardians"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/niam/TrustPage.tsx",
+   "lines": 169,
+   "apis_imported": [],
+   "api_calls": [
+    "/niam/trust/frameworks",
+    "/niam/trust/assurance-profiles",
+    "/niam/trust/anchors",
+    "/niam/trust/frameworks"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": true,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": true,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/niam/WorkflowsPage.tsx",
+   "lines": 111,
+   "apis_imported": [],
+   "api_calls": [
+    "/niam/workflows/definitions",
+    "/niam/workflows/instances",
+    "/niam/workflows/definitions"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": true,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": true,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/notifications/NotificationsPage.tsx",
+   "lines": 171,
+   "apis_imported": [
+    "CardContent",
+    "CardHeader",
+    "CardTitle } from \"@/components/ui\";\nimport { PageHeader",
+    "ErrorDisplay",
+    "LoadingSpinner } from \"@/components/shared/PageComponents\";\nimport { Button } from \"@/components/ui\";\nimport { Input } from \"@/components/ui\";\nimport { Badge } from \"@/components/ui\";\nimport { notificationsApi",
+    "useMutation } from \"@tanstack/react-query\";\nimport { Card",
+    "useState } from \"react\";\nimport { useQuery"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "PRODUCTION-READY"
+  },
+  {
+   "file": "pages/ops-metrics/OpsMetricsPage.tsx",
+   "lines": 356,
+   "apis_imported": [
+    "metricsApi",
+    "type MetricsSummary",
+    "useState } from \"react\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { healthApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": false,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": true,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/orders/OrdersPage.tsx",
+   "lines": 81,
+   "apis_imported": [
+    "useTranslation } from \"react-i18next\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { ordersApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": true,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/patient-card/PatientCardPage.tsx",
+   "lines": 98,
+   "apis_imported": [
+    "Button } from \"@/components/ui\";\nimport { PageHeader",
+    "CardContent",
+    "CardHeader",
+    "CardTitle",
+    "EmptyState",
+    "ErrorDisplay } from \"@/components/shared/PageComponents\";\nimport { patientCardApi",
+    "Input",
+    "LoadingSpinner",
+    "useState } from \"react\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { Card"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/patients/PatientsPage.tsx",
+   "lines": 66,
+   "apis_imported": [
+    "useQuery } from \"@tanstack/react-query\";\nimport { useTranslation } from \"react-i18next\";\nimport { patientsApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": true,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/pharmacy/PharmacyPage.tsx",
+   "lines": 131,
+   "apis_imported": [],
+   "api_calls": [
+    "/pharmacy/dispense-queue",
+    "/pharmacy/clinical/guidelines",
+    "/pharmacy/inventory/stock-levels",
+    "/pharmacy/inventory/stock-levels/alerts",
+    "/pharmacy/inventory/movements",
+    "/pharmacy/inventory/transfers"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/pilot-platform/PilotPlatformApiPage.tsx",
+   "lines": 136,
+   "apis_imported": [],
+   "api_calls": [
+    "/pilot-platform/pilots",
+    "/pilot-platform/pilots//facilities",
+    "/pilot-platform/facilities//readiness",
+    "/pilot-platform/pilots//gates",
+    "/pilot-platform/deployments",
+    "/pilot-platform/certify"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/platform/PlatformPage.tsx",
+   "lines": 95,
+   "apis_imported": [],
+   "api_calls": [
+    "/platform/health",
+    "/platform/modules",
+    "/platform/capabilities"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/profile/ProfilePage.tsx",
+   "lines": 54,
+   "apis_imported": [],
+   "api_calls": [],
+   "uses_react_query": false,
+   "has_loading": false,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "DISCONNECTED"
+  },
+  {
+   "file": "pages/public-health/PublicHealthApiPage.tsx",
+   "lines": 131,
+   "apis_imported": [],
+   "api_calls": [
+    "/public-health/disease-cases",
+    "/public-health/disease-cases/stats",
+    "/public-health/outbreak-alerts",
+    "/public-health/surveillance-signals",
+    "/public-health/vaccinations",
+    "/public-health/vaccinations/coverage"
+   ],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/qc/QCPage.tsx",
+   "lines": 58,
+   "apis_imported": [
+    "useQuery } from \"@tanstack/react-query\";\nimport { qcApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/results/ResultsPage.tsx",
+   "lines": 77,
+   "apis_imported": [
+    "useQuery } from \"@tanstack/react-query\";\nimport { resultsApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/samples/SamplesPage.tsx",
+   "lines": 65,
+   "apis_imported": [
+    "useTranslation } from \"react-i18next\";\nimport { useQuery } from \"@tanstack/react-query\";\nimport { samplesApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": true,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/security/SecurityPage.tsx",
+   "lines": 309,
+   "apis_imported": [
+    "adminApi",
+    "securityApi",
+    "serviceAccountsApi",
+    "useQuery",
+    "useQueryClient } from \"@tanstack/react-query\";\nimport { mfaApi",
+    "useState } from \"react\";\nimport { useMutation"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": true,
+   "classification": "PRODUCTION-READY"
+  },
+  {
+   "file": "pages/settings/SettingsPage.tsx",
+   "lines": 38,
+   "apis_imported": [],
+   "api_calls": [],
+   "uses_react_query": false,
+   "has_loading": false,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": true,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "DISCONNECTED"
+  },
+  {
+   "file": "pages/stats/StatsPage.tsx",
+   "lines": 150,
+   "apis_imported": [
+    "useQuery } from \"@tanstack/react-query\";\nimport { statsApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": true,
+   "has_empty": true,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  },
+  {
+   "file": "pages/tiers/TiersPage.tsx",
+   "lines": 78,
+   "apis_imported": [
+    "useQuery } from \"@tanstack/react-query\";\nimport { tiersApi"
+   ],
+   "api_calls": [],
+   "uses_react_query": true,
+   "has_loading": true,
+   "has_error": false,
+   "has_empty": false,
+   "has_form": false,
+   "has_table": false,
+   "has_chart": false,
+   "uses_i18n": false,
+   "has_modal": false,
+   "has_mock": false,
+   "has_placeholder": false,
+   "classification": "CONNECTED"
+  }
+ ],
+ "components": [
+  {
+   "file": "components/__tests__/DataTable.test.tsx",
+   "lines": 40,
+   "apis_imported": [],
+   "api_calls": 7,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/__tests__/ui-components.test.tsx",
+   "lines": 198,
+   "apis_imported": [],
+   "api_calls": 23,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/auth/RoleGuard.tsx",
+   "lines": 25,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/shared/PageComponents.tsx",
+   "lines": 77,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/shared/ToastContainer.tsx",
+   "lines": 42,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/ui/Badge.tsx",
+   "lines": 30,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/ui/Button.tsx",
+   "lines": 51,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/ui/Card.tsx",
+   "lines": 34,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/ui/DataTable.tsx",
+   "lines": 160,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/ui/Dialog.tsx",
+   "lines": 63,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/ui/Input.tsx",
+   "lines": 27,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/ui/Select.tsx",
+   "lines": 35,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/ui/Textarea.tsx",
+   "lines": 26,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  },
+  {
+   "file": "components/ui/index.ts",
+   "lines": 8,
+   "apis_imported": [],
+   "api_calls": 0,
+   "uses_react_query": false,
+   "has_mock": false
+  }
+ ],
+ "hooks": [
+  {
+   "file": "hooks/useDebounce.ts",
+   "lines": 10,
+   "exports": [
+    "useDebounce"
+   ]
+  },
+  {
+   "file": "hooks/useToast.ts",
+   "lines": 42,
+   "exports": [
+    "toast",
+    "useToast"
+   ]
+  }
+ ],
+ "contexts": [
+  {
+   "file": "contexts/AuthContext.tsx",
+   "lines": 62,
+   "exports": [
+    "AuthProvider",
+    "useAuth"
+   ]
+  },
+  {
+   "file": "contexts/LocaleContext.tsx",
+   "lines": 46,
+   "exports": [
+    "LocaleProvider",
+    "useLocale"
+   ]
+  },
+  {
+   "file": "contexts/ThemeContext.tsx",
+   "lines": 57,
+   "exports": [
+    "ThemeProvider",
+    "useTheme"
+   ]
+  }
+ ],
+ "layouts": [
+  "layouts/AuthLayout.tsx",
+  "layouts/DashboardLayout.tsx",
+  "layouts/Sidebar.tsx"
+ ],
+ "api_groups": [
+  "authApi",
+  "setupApi",
+  "dashboardApi",
+  "patientsApi",
+  "ordersApi",
+  "resultsApi",
+  "publicResultsApi",
+  "qrApi",
+  "patientHistoryApi",
+  "clinicalApi",
+  "samplesApi",
+  "labsApi",
+  "adminApi",
+  "adminLogLevelApi",
+  "notificationsApi",
+  "criticalAlertsApi",
+  "qcApi",
+  "batchApi",
+  "patientCardApi",
+  "idScanApi",
+  "deviceApi",
+  "identityApi",
+  "nationalIdentityApi",
+  "tiersApi",
+  "aiApi",
+  "aiPlatformApi",
+  "aiTelemetryApi",
+  "statsApi",
+  "healthApi",
+  "metricsApi",
+  "securityApi",
+  "complianceApi",
+  "mfaApi",
+  "serviceAccountsApi",
+  "canonicalPatientApi",
+  "ehrApi",
+  "ehrFhirApi",
+  "careContinuumApi",
+  "clinicalFullApi",
+  "clinicalDocumentationApi",
+  "clinicalOrdersApi",
+  "clinicalQualityApi",
+  "hospitalApi",
+  "nationalDataApi",
+  "nationalStreamingApi",
+  "edgeApi",
+  "consentApi",
+  "claimsApi",
+  "insuranceApi",
+  "citizenPortalApi",
+  "oauth2Api",
+  "samlApi",
+  "mobileApi",
+  "integrationsApi",
+  "optimizerApi",
+  "financialApi",
+  "kernelRuntimeApi"
+ ],
+ "api_calls": [
+  {
+   "method": "POST",
+   "path": "/login",
+   "original": "/login"
+  },
+  {
+   "method": "POST",
+   "path": "/logout",
+   "original": "/logout"
+  },
+  {
+   "method": "POST",
+   "path": "/register",
+   "original": "/register"
+  },
+  {
+   "method": "POST",
+   "path": "/register/citizen",
+   "original": "/register/citizen"
+  },
+  {
+   "method": "POST",
+   "path": "/register/staff",
+   "original": "/register/staff"
+  },
+  {
+   "method": "POST",
+   "path": "/register/doctor",
+   "original": "/register/doctor"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/forgot-password",
+   "original": "/auth/forgot-password"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/reset-password",
+   "original": "/auth/reset-password"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/change-password",
+   "original": "/auth/change-password"
+  },
+  {
+   "method": "GET",
+   "path": "/setup/status",
+   "original": "/setup/status"
+  },
+  {
+   "method": "GET",
+   "path": "/greeting",
+   "original": "/greeting"
+  },
+  {
+   "method": "GET",
+   "path": "/dashboard",
+   "original": "/dashboard"
+  },
+  {
+   "method": "GET",
+   "path": "/patients",
+   "original": "/patients"
+  },
+  {
+   "method": "POST",
+   "path": "/patients",
+   "original": "/patients"
+  },
+  {
+   "method": "GET",
+   "path": "/patients/{id}",
+   "original": "/patients/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/patients/{id}",
+   "original": "/patients/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/patients/family/{id}",
+   "original": "/patients/family/${familyId}"
+  },
+  {
+   "method": "GET",
+   "path": "/patients/{id}/children",
+   "original": "/patients/${patientId}/children"
+  },
+  {
+   "method": "GET",
+   "path": "/test-profiles",
+   "original": "/test-profiles"
+  },
+  {
+   "method": "GET",
+   "path": "/orders",
+   "original": "/orders"
+  },
+  {
+   "method": "GET",
+   "path": "/orders/{id}",
+   "original": "/orders/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/orders",
+   "original": "/orders"
+  },
+  {
+   "method": "POST",
+   "path": "/orders/{id}/validate",
+   "original": "/orders/${id}/validate"
+  },
+  {
+   "method": "POST",
+   "path": "/orders/{id}/cancel",
+   "original": "/orders/${id}/cancel"
+  },
+  {
+   "method": "GET",
+   "path": "/orders/{id}/intelligence",
+   "original": "/orders/${id}/intelligence"
+  },
+  {
+   "method": "GET",
+   "path": "/test-results",
+   "original": "/test-results"
+  },
+  {
+   "method": "GET",
+   "path": "/test-results/{id}",
+   "original": "/test-results/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/test-results/",
+   "original": "/test-results/"
+  },
+  {
+   "method": "PUT",
+   "path": "/test-results/{id}/verify",
+   "original": "/test-results/${id}/verify"
+  },
+  {
+   "method": "POST",
+   "path": "/test-results/validate",
+   "original": "/test-results/validate"
+  },
+  {
+   "method": "GET",
+   "path": "/test-results/citizen/{id}",
+   "original": "/test-results/citizen/${healthId}"
+  },
+  {
+   "method": "GET",
+   "path": "/test-results/citizen/{id}/timeline",
+   "original": "/test-results/citizen/${healthId}/timeline"
+  },
+  {
+   "method": "GET",
+   "path": "/r/{id}",
+   "original": "/r/${token}"
+  },
+  {
+   "method": "GET",
+   "path": "/r/{id}/pdf",
+   "original": "/r/${token}/pdf"
+  },
+  {
+   "method": "GET",
+   "path": "/qr/{id}",
+   "original": "/qr/${token}"
+  },
+  {
+   "method": "GET",
+   "path": "/qr-medical/{id}",
+   "original": "/qr-medical/${token}"
+  },
+  {
+   "method": "GET",
+   "path": "/patient-history/{id}",
+   "original": "/patient-history/${patientId}"
+  },
+  {
+   "method": "GET",
+   "path": "/history/{id}",
+   "original": "/history/${phone}"
+  },
+  {
+   "method": "POST",
+   "path": "/analyze",
+   "original": "/analyze"
+  },
+  {
+   "method": "GET",
+   "path": "/samples",
+   "original": "/samples"
+  },
+  {
+   "method": "POST",
+   "path": "/samples",
+   "original": "/samples"
+  },
+  {
+   "method": "GET",
+   "path": "/samples/{id}",
+   "original": "/samples/${barcode}"
+  },
+  {
+   "method": "PUT",
+   "path": "/samples/{id}",
+   "original": "/samples/${barcode}"
+  },
+  {
+   "method": "GET",
+   "path": "/labs/me",
+   "original": "/labs/me"
+  },
+  {
+   "method": "PUT",
+   "path": "/labs/me",
+   "original": "/labs/me"
+  },
+  {
+   "method": "GET",
+   "path": "/labs/me/employees",
+   "original": "/labs/me/employees"
+  },
+  {
+   "method": "POST",
+   "path": "/labs/me/employees",
+   "original": "/labs/me/employees"
+  },
+  {
+   "method": "PUT",
+   "path": "/labs/me/employees/{id}",
+   "original": "/labs/me/employees/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/stats",
+   "original": "/admin/stats"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/labs",
+   "original": "/admin/labs"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/labs",
+   "original": "/admin/labs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/labs/{id}",
+   "original": "/admin/labs/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/labs/{id}/toggle",
+   "original": "/admin/labs/${id}/toggle"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/labs/{id}/activate",
+   "original": "/admin/labs/${id}/activate"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/users",
+   "original": "/admin/users"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/users",
+   "original": "/admin/users"
+  },
+  {
+   "method": "PATCH",
+   "path": "/admin/users/{id}/role",
+   "original": "/admin/users/${userId}/role"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/users/{id}/toggle",
+   "original": "/admin/users/${userId}/toggle"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/doctors",
+   "original": "/admin/doctors"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/doctors/{id}/approve",
+   "original": "/admin/doctors/${id}/approve"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/doctors/{id}/revoke",
+   "original": "/admin/doctors/${id}/revoke"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/citizens",
+   "original": "/admin/citizens"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/citizens/{id}/toggle",
+   "original": "/admin/citizens/${id}/toggle"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/citizens/{id}/verify",
+   "original": "/admin/citizens/${id}/verify"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/audit-logs",
+   "original": "/admin/audit-logs"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/kill-switch/status",
+   "original": "/admin/kill-switch/status"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/kill-switch/activate",
+   "original": "/admin/kill-switch/activate"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/kill-switch/deactivate",
+   "original": "/admin/kill-switch/deactivate"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/log-level",
+   "original": "/admin/log-level"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/log-level",
+   "original": "/admin/log-level"
+  },
+  {
+   "method": "POST",
+   "path": "/notify/send",
+   "original": "/notify/send"
+  },
+  {
+   "method": "GET",
+   "path": "/notify/history/{id}",
+   "original": "/notify/history/${orderId}"
+  },
+  {
+   "method": "GET",
+   "path": "/alerts",
+   "original": "/alerts"
+  },
+  {
+   "method": "GET",
+   "path": "/alerts/stats",
+   "original": "/alerts/stats"
+  },
+  {
+   "method": "GET",
+   "path": "/qc",
+   "original": "/qc"
+  },
+  {
+   "method": "POST",
+   "path": "/qc",
+   "original": "/qc"
+  },
+  {
+   "method": "POST",
+   "path": "/qc/batch",
+   "original": "/qc/batch"
+  },
+  {
+   "method": "GET",
+   "path": "/qc/summary",
+   "original": "/qc/summary"
+  },
+  {
+   "method": "POST",
+   "path": "/batch/orders",
+   "original": "/batch/orders"
+  },
+  {
+   "method": "GET",
+   "path": "/patient-card/{id}",
+   "original": "/patient-card/${patientId}"
+  },
+  {
+   "method": "GET",
+   "path": "/patient-card/{id}/qr.png",
+   "original": "/patient-card/${patientId}/qr.png"
+  },
+  {
+   "method": "POST",
+   "path": "/patient-card/scan",
+   "original": "/patient-card/scan"
+  },
+  {
+   "method": "GET",
+   "path": "/patient-card/{id}/history",
+   "original": "/patient-card/${patientId}/history"
+  },
+  {
+   "method": "GET",
+   "path": "/patient-card/{id}/print",
+   "original": "/patient-card/${patientId}/print"
+  },
+  {
+   "method": "POST",
+   "path": "/id-scan/scan",
+   "original": "/id-scan/scan"
+  },
+  {
+   "method": "POST",
+   "path": "/device/results",
+   "original": "/device/results"
+  },
+  {
+   "method": "POST",
+   "path": "/identity/link",
+   "original": "/identity/link"
+  },
+  {
+   "method": "GET",
+   "path": "/identity/lookup",
+   "original": "/identity/lookup"
+  },
+  {
+   "method": "POST",
+   "path": "/national-id/verify",
+   "original": "/national-id/verify"
+  },
+  {
+   "method": "GET",
+   "path": "/tiers",
+   "original": "/tiers"
+  },
+  {
+   "method": "GET",
+   "path": "/tiers/my",
+   "original": "/tiers/my"
+  },
+  {
+   "method": "POST",
+   "path": "/tiers/upgrade",
+   "original": "/tiers/upgrade"
+  },
+  {
+   "method": "POST",
+   "path": "/tiers/upgrade-demand",
+   "original": "/tiers/upgrade-demand"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/tiers/demands",
+   "original": "/admin/tiers/demands"
+  },
+  {
+   "method": "PUT",
+   "path": "/admin/tiers/{id}",
+   "original": "/admin/tiers/${labId}"
+  },
+  {
+   "method": "POST",
+   "path": "/admin/tiers/flags/{id}",
+   "original": "/admin/tiers/flags/${labId}"
+  },
+  {
+   "method": "GET",
+   "path": "/admin/tiers/flags/{id}",
+   "original": "/admin/tiers/flags/${labId}"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/suggest",
+   "original": "/api/ai/suggest"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/approve/{id}",
+   "original": "/api/ai/approve/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/reject/{id}",
+   "original": "/api/ai/reject/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/execute/{id}",
+   "original": "/api/ai/execute/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/analyze-order/{id}",
+   "original": "/api/ai/analyze-order/${orderId}"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/operations",
+   "original": "/api/ai/operations"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/providers",
+   "original": "/api/ai/providers"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/critical-alerts",
+   "original": "/api/ai/critical-alerts"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/interpret/{id}",
+   "original": "/api/ai/interpret/${token}"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/chat",
+   "original": "/api/ai/chat"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/search",
+   "original": "/api/ai/v2/search"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/index",
+   "original": "/api/ai/v2/index"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/embedding-info",
+   "original": "/api/ai/v2/embedding-info"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/rag/query",
+   "original": "/api/ai/v2/rag/query"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/knowledge-graph/info",
+   "original": "/api/ai/v2/knowledge-graph/info"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/knowledge-graph/search",
+   "original": "/api/ai/v2/knowledge-graph/search"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/knowledge-graph/node/{id}",
+   "original": "/api/ai/v2/knowledge-graph/node/${nodeId}"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/knowledge-graph/path",
+   "original": "/api/ai/v2/knowledge-graph/path"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/agents/tools",
+   "original": "/api/ai/v2/agents/tools"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/agents/execute",
+   "original": "/api/ai/v2/agents/execute"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/orchestrate",
+   "original": "/api/ai/v2/orchestrate"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/orchestrate/tasks",
+   "original": "/api/ai/v2/orchestrate/tasks"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/sessions",
+   "original": "/api/ai/v2/sessions"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/sessions/message",
+   "original": "/api/ai/v2/sessions/message"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/sessions/{id}",
+   "original": "/api/ai/v2/sessions/${sessionId}"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/cds/evaluate",
+   "original": "/api/ai/v2/cds/evaluate"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/cds/evaluate-order",
+   "original": "/api/ai/v2/cds/evaluate-order"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/governance/models",
+   "original": "/api/ai/v2/governance/models"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/governance/prompts",
+   "original": "/api/ai/v2/governance/prompts"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/governance/evaluations",
+   "original": "/api/ai/v2/governance/evaluations"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/v2/security/scan",
+   "original": "/api/ai/v2/security/scan"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/metrics",
+   "original": "/api/ai/v2/metrics"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/v2/metrics/prometheus",
+   "original": "/api/ai/v2/metrics/prometheus"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/interactions",
+   "original": "/api/ai/interactions"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/feedback",
+   "original": "/api/ai/feedback"
+  },
+  {
+   "method": "POST",
+   "path": "/api/ai/unresolved",
+   "original": "/api/ai/unresolved"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/export",
+   "original": "/api/ai/export"
+  },
+  {
+   "method": "GET",
+   "path": "/api/ai/stats",
+   "original": "/api/ai/stats"
+  },
+  {
+   "method": "GET",
+   "path": "/stats/trends/daily",
+   "original": "/stats/trends/daily"
+  },
+  {
+   "method": "GET",
+   "path": "/stats/trends/tests",
+   "original": "/stats/trends/tests"
+  },
+  {
+   "method": "GET",
+   "path": "/stats/trends/flags",
+   "original": "/stats/trends/flags"
+  },
+  {
+   "method": "GET",
+   "path": "/stats/trends/patients",
+   "original": "/stats/trends/patients"
+  },
+  {
+   "method": "GET",
+   "path": "/stats/summary",
+   "original": "/stats/summary"
+  },
+  {
+   "method": "GET",
+   "path": "/stats/turnaround",
+   "original": "/stats/turnaround"
+  },
+  {
+   "method": "GET",
+   "path": "/health",
+   "original": "/health"
+  },
+  {
+   "method": "GET",
+   "path": "/health/ready",
+   "original": "/health/ready"
+  },
+  {
+   "method": "GET",
+   "path": "/health/deep",
+   "original": "/health/deep"
+  },
+  {
+   "method": "GET",
+   "path": "/health/status",
+   "original": "/health/status"
+  },
+  {
+   "method": "GET",
+   "path": "/metrics",
+   "original": "/metrics"
+  },
+  {
+   "method": "GET",
+   "path": "/metrics/prom",
+   "original": "/metrics/prom"
+  },
+  {
+   "method": "GET",
+   "path": "/security/status",
+   "original": "/security/status"
+  },
+  {
+   "method": "GET",
+   "path": "/compliance/info",
+   "original": "/compliance/info"
+  },
+  {
+   "method": "GET",
+   "path": "/compliance/fhir/patient/{id}",
+   "original": "/compliance/fhir/patient/${patientId}"
+  },
+  {
+   "method": "GET",
+   "path": "/compliance/fhir/observation/{id}",
+   "original": "/compliance/fhir/observation/${orderId}"
+  },
+  {
+   "method": "GET",
+   "path": "/compliance/fhir/diagnostic-report/{id}",
+   "original": "/compliance/fhir/diagnostic-report/${orderId}"
+  },
+  {
+   "method": "GET",
+   "path": "/compliance/fhir/service-request/{id}",
+   "original": "/compliance/fhir/service-request/${orderId}"
+  },
+  {
+   "method": "GET",
+   "path": "/compliance/dhis2/aggregate",
+   "original": "/compliance/dhis2/aggregate"
+  },
+  {
+   "method": "GET",
+   "path": "/compliance/audit-integrity",
+   "original": "/compliance/audit-integrity"
+  },
+  {
+   "method": "GET",
+   "path": "/compliance/security-report",
+   "original": "/compliance/security-report"
+  },
+  {
+   "method": "GET",
+   "path": "/compliance/time-sync",
+   "original": "/compliance/time-sync"
+  },
+  {
+   "method": "POST",
+   "path": "/mfa/totp/setup",
+   "original": "/mfa/totp/setup"
+  },
+  {
+   "method": "POST",
+   "path": "/mfa/totp/verify",
+   "original": "/mfa/totp/verify"
+  },
+  {
+   "method": "POST",
+   "path": "/mfa/webauthn/register/begin",
+   "original": "/mfa/webauthn/register/begin"
+  },
+  {
+   "method": "POST",
+   "path": "/mfa/webauthn/register/complete",
+   "original": "/mfa/webauthn/register/complete"
+  },
+  {
+   "method": "POST",
+   "path": "/mfa/webauthn/authenticate/begin",
+   "original": "/mfa/webauthn/authenticate/begin"
+  },
+  {
+   "method": "POST",
+   "path": "/mfa/webauthn/authenticate/complete",
+   "original": "/mfa/webauthn/authenticate/complete"
+  },
+  {
+   "method": "GET",
+   "path": "/mfa/devices",
+   "original": "/mfa/devices"
+  },
+  {
+   "method": "DELETE",
+   "path": "/mfa/devices/{id}",
+   "original": "/mfa/devices/${deviceId}"
+  },
+  {
+   "method": "GET",
+   "path": "/mfa/status",
+   "original": "/mfa/status"
+  },
+  {
+   "method": "GET",
+   "path": "/service-accounts",
+   "original": "/service-accounts"
+  },
+  {
+   "method": "POST",
+   "path": "/service-accounts",
+   "original": "/service-accounts"
+  },
+  {
+   "method": "DELETE",
+   "path": "/service-accounts/{id}",
+   "original": "/service-accounts/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/service-accounts/{id}/rotate",
+   "original": "/service-accounts/${id}/rotate"
+  },
+  {
+   "method": "POST",
+   "path": "/api/v1/canonical-patients",
+   "original": "/api/v1/canonical-patients"
+  },
+  {
+   "method": "GET",
+   "path": "/api/v1/canonical-patients/{id}",
+   "original": "/api/v1/canonical-patients/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/api/v1/canonical-patients/merge",
+   "original": "/api/v1/canonical-patients/merge"
+  },
+  {
+   "method": "GET",
+   "path": "/api/v1/canonical-patients/by-patient/{id}",
+   "original": "/api/v1/canonical-patients/by-patient/${patientId}"
+  },
+  {
+   "method": "GET",
+   "path": "/api/v1/canonical-patients/by-citizen/{id}",
+   "original": "/api/v1/canonical-patients/by-citizen/${citizenId}"
+  },
+  {
+   "method": "GET",
+   "path": "/api/v1/canonical-patients",
+   "original": "/api/v1/canonical-patients"
+  },
+  {
+   "method": "POST",
+   "path": "/api/v1/canonical-patients/link-patient",
+   "original": "/api/v1/canonical-patients/link-patient"
+  },
+  {
+   "method": "POST",
+   "path": "/api/v1/canonical-patients/link-citizen",
+   "original": "/api/v1/canonical-patients/link-citizen"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/clinical-notes",
+   "original": "/ehr/clinical-notes"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/clinical-notes/{id}",
+   "original": "/ehr/clinical-notes/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/clinical-notes/{id}",
+   "original": "/ehr/clinical-notes/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/clinical-notes/{id}",
+   "original": "/ehr/clinical-notes/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/clinical-notes",
+   "original": "/ehr/patients/${patientId}/clinical-notes"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/allergies",
+   "original": "/ehr/allergies"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/allergies/{id}",
+   "original": "/ehr/allergies/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/allergies/{id}",
+   "original": "/ehr/allergies/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/allergies/{id}",
+   "original": "/ehr/allergies/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/allergies",
+   "original": "/ehr/patients/${patientId}/allergies"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/medication-statements",
+   "original": "/ehr/medication-statements"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/medication-statements/{id}",
+   "original": "/ehr/medication-statements/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/medication-statements/{id}",
+   "original": "/ehr/medication-statements/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/medication-statements/{id}",
+   "original": "/ehr/medication-statements/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/medication-statements",
+   "original": "/ehr/patients/${patientId}/medication-statements"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/medication-requests",
+   "original": "/ehr/medication-requests"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/medication-requests/{id}",
+   "original": "/ehr/medication-requests/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/medication-requests/{id}",
+   "original": "/ehr/medication-requests/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/medication-requests/{id}",
+   "original": "/ehr/medication-requests/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/medication-requests",
+   "original": "/ehr/patients/${patientId}/medication-requests"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/medication-dispenses",
+   "original": "/ehr/medication-dispenses"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/medication-dispenses/{id}",
+   "original": "/ehr/medication-dispenses/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/medication-dispenses/{id}",
+   "original": "/ehr/medication-dispenses/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/medication-dispenses/{id}",
+   "original": "/ehr/medication-dispenses/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/medication-dispenses",
+   "original": "/ehr/patients/${patientId}/medication-dispenses"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/care-plans",
+   "original": "/ehr/care-plans"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/care-plans/{id}",
+   "original": "/ehr/care-plans/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/care-plans/{id}",
+   "original": "/ehr/care-plans/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/care-plans/{id}",
+   "original": "/ehr/care-plans/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/care-plans",
+   "original": "/ehr/patients/${patientId}/care-plans"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/care-plans/{id}/goals",
+   "original": "/ehr/care-plans/${planId}/goals"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/problem-list",
+   "original": "/ehr/problem-list"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/problem-list/{id}",
+   "original": "/ehr/problem-list/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/problem-list/{id}",
+   "original": "/ehr/problem-list/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/problem-list/{id}",
+   "original": "/ehr/problem-list/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/problem-list",
+   "original": "/ehr/patients/${patientId}/problem-list"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/conditions",
+   "original": "/ehr/conditions"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/conditions/{id}",
+   "original": "/ehr/conditions/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/conditions/{id}",
+   "original": "/ehr/conditions/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/conditions/{id}",
+   "original": "/ehr/conditions/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/conditions",
+   "original": "/ehr/patients/${patientId}/conditions"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/diagnoses",
+   "original": "/ehr/diagnoses"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/diagnoses/{id}",
+   "original": "/ehr/diagnoses/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/diagnoses/{id}",
+   "original": "/ehr/diagnoses/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/diagnoses/{id}",
+   "original": "/ehr/diagnoses/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/diagnoses",
+   "original": "/ehr/patients/${patientId}/diagnoses"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/family-history",
+   "original": "/ehr/family-history"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/family-history/{id}",
+   "original": "/ehr/family-history/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/family-history/{id}",
+   "original": "/ehr/family-history/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/family-history/{id}",
+   "original": "/ehr/family-history/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/family-history",
+   "original": "/ehr/patients/${patientId}/family-history"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/social-history",
+   "original": "/ehr/social-history"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/social-history/{id}",
+   "original": "/ehr/social-history/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/social-history/{id}",
+   "original": "/ehr/social-history/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/social-history/{id}",
+   "original": "/ehr/social-history/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/social-history",
+   "original": "/ehr/patients/${patientId}/social-history"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/risk-factors",
+   "original": "/ehr/risk-factors"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/risk-factors/{id}",
+   "original": "/ehr/risk-factors/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/risk-factors/{id}",
+   "original": "/ehr/risk-factors/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/risk-factors/{id}",
+   "original": "/ehr/risk-factors/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/risk-factors",
+   "original": "/ehr/patients/${patientId}/risk-factors"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/immunizations",
+   "original": "/ehr/immunizations"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/immunizations/{id}",
+   "original": "/ehr/immunizations/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/immunizations/{id}",
+   "original": "/ehr/immunizations/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/immunizations/{id}",
+   "original": "/ehr/immunizations/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/immunizations",
+   "original": "/ehr/patients/${patientId}/immunizations"
+  },
+  {
+   "method": "POST",
+   "path": "/ehr/attachments",
+   "original": "/ehr/attachments"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/attachments/{id}",
+   "original": "/ehr/attachments/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/ehr/attachments/{id}",
+   "original": "/ehr/attachments/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/ehr/attachments/{id}",
+   "original": "/ehr/attachments/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/ehr/patients/{id}/attachments",
+   "original": "/ehr/patients/${patientId}/attachments"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Patient/{id}",
+   "original": "/fhir/Patient/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Encounter/{id}",
+   "original": "/fhir/Encounter/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Condition/{id}",
+   "original": "/fhir/Condition/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Condition",
+   "original": "/fhir/Condition"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Observation/{id}",
+   "original": "/fhir/Observation/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Observation",
+   "original": "/fhir/Observation"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/MedicationRequest/{id}",
+   "original": "/fhir/MedicationRequest/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/MedicationRequest",
+   "original": "/fhir/MedicationRequest"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/MedicationStatement/{id}",
+   "original": "/fhir/MedicationStatement/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/CarePlan/{id}",
+   "original": "/fhir/CarePlan/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Procedure/{id}",
+   "original": "/fhir/Procedure/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Procedure",
+   "original": "/fhir/Procedure"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/AllergyIntolerance/{id}",
+   "original": "/fhir/AllergyIntolerance/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/AllergyIntolerance",
+   "original": "/fhir/AllergyIntolerance"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Immunization/{id}",
+   "original": "/fhir/Immunization/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Immunization",
+   "original": "/fhir/Immunization"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/DocumentReference/{id}",
+   "original": "/fhir/DocumentReference/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/DocumentReference",
+   "original": "/fhir/DocumentReference"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Composition/{id}",
+   "original": "/fhir/Composition/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Composition",
+   "original": "/fhir/Composition"
+  },
+  {
+   "method": "GET",
+   "path": "/fhir/Bundle/{id}",
+   "original": "/fhir/Bundle/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/fhir/{id}",
+   "original": "/fhir/${resourceType}"
+  },
+  {
+   "method": "PUT",
+   "path": "/fhir/{id}/{id}",
+   "original": "/fhir/${resourceType}/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/fhir/{id}/{id}",
+   "original": "/fhir/${resourceType}/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/fhir",
+   "original": "/fhir"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/primary-care-encounters",
+   "original": "/care-continuum/primary-care-encounters"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/primary-care-encounters/{id}",
+   "original": "/care-continuum/primary-care-encounters/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/primary-care-encounters",
+   "original": "/care-continuum/primary-care-encounters"
+  },
+  {
+   "method": "PUT",
+   "path": "/care-continuum/primary-care-encounters/{id}",
+   "original": "/care-continuum/primary-care-encounters/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/family-medicine-records",
+   "original": "/care-continuum/family-medicine-records"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/family-medicine-records",
+   "original": "/care-continuum/family-medicine-records"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/community-clinic-records",
+   "original": "/care-continuum/community-clinic-records"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/community-clinic-records",
+   "original": "/care-continuum/community-clinic-records"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/health-assessments",
+   "original": "/care-continuum/health-assessments"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/health-assessments",
+   "original": "/care-continuum/health-assessments"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/preventive-care-records",
+   "original": "/care-continuum/preventive-care-records"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/referrals",
+   "original": "/care-continuum/referrals"
+  },
+  {
+   "method": "PUT",
+   "path": "/care-continuum/referrals/{id}/accept",
+   "original": "/care-continuum/referrals/${id}/accept"
+  },
+  {
+   "method": "PUT",
+   "path": "/care-continuum/referrals/{id}/reject",
+   "original": "/care-continuum/referrals/${id}/reject"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/referrals",
+   "original": "/care-continuum/referrals"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/care-journeys",
+   "original": "/care-continuum/care-journeys"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/care-journeys/{id}",
+   "original": "/care-continuum/care-journeys/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/care-journeys",
+   "original": "/care-continuum/care-journeys"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/follow-up-plans",
+   "original": "/care-continuum/follow-up-plans"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/follow-up-plans",
+   "original": "/care-continuum/follow-up-plans"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/care-coordination",
+   "original": "/care-continuum/care-coordination"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/care-coordination",
+   "original": "/care-continuum/care-coordination"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/transitions-of-care",
+   "original": "/care-continuum/transitions-of-care"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/clinical-handovers",
+   "original": "/care-continuum/clinical-handovers"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/home-care-plans",
+   "original": "/care-continuum/home-care-plans"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/home-care-plans",
+   "original": "/care-continuum/home-care-plans"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/community-care-records",
+   "original": "/care-continuum/community-care-records"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/community-care-records",
+   "original": "/care-continuum/community-care-records"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/pregnancy-records",
+   "original": "/care-continuum/pregnancy-records"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/pregnancy-records/{id}",
+   "original": "/care-continuum/pregnancy-records/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/pregnancy-records",
+   "original": "/care-continuum/pregnancy-records"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/delivery-records",
+   "original": "/care-continuum/delivery-records"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/growth-monitoring",
+   "original": "/care-continuum/growth-monitoring"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/vaccination-records",
+   "original": "/care-continuum/vaccination-records"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/vaccination-records",
+   "original": "/care-continuum/vaccination-records"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/reminder-schedules",
+   "original": "/care-continuum/reminder-schedules"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/health-programs",
+   "original": "/care-continuum/health-programs"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/health-programs",
+   "original": "/care-continuum/health-programs"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/community-visits",
+   "original": "/care-continuum/community-visits"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/patient-tasks",
+   "original": "/care-continuum/patient-tasks"
+  },
+  {
+   "method": "GET",
+   "path": "/care-continuum/patient-tasks",
+   "original": "/care-continuum/patient-tasks"
+  },
+  {
+   "method": "POST",
+   "path": "/care-continuum/chronic-disease-registry",
+   "original": "/care-continuum/chronic-disease-registry"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/terminology/codes",
+   "original": "/clinical/terminology/codes"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/terminology/codes",
+   "original": "/clinical/terminology/codes"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/terminology/codes/{id}",
+   "original": "/clinical/terminology/codes/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/clinical/terminology/codes/{id}",
+   "original": "/clinical/terminology/codes/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/clinical/terminology/codes/{id}",
+   "original": "/clinical/terminology/codes/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/terminology/versions",
+   "original": "/clinical/terminology/versions"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/terminology/versions",
+   "original": "/clinical/terminology/versions"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/terminology/mappings",
+   "original": "/clinical/terminology/mappings"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/terminology/value-sets",
+   "original": "/clinical/terminology/value-sets"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/terminology/value-sets",
+   "original": "/clinical/terminology/value-sets"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/terminology/value-set-members",
+   "original": "/clinical/terminology/value-set-members"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/terminology/code-systems",
+   "original": "/clinical/terminology/code-systems"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/terminology/code-systems",
+   "original": "/clinical/terminology/code-systems"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/terminology/icd10",
+   "original": "/clinical/terminology/icd10"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/terminology/loinc",
+   "original": "/clinical/terminology/loinc"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/terminology/snomed",
+   "original": "/clinical/terminology/snomed"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/terminology/fhir/$expand",
+   "original": "/clinical/terminology/fhir/$expand"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/terminology/fhir/$lookup",
+   "original": "/clinical/terminology/fhir/$lookup"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/knowledge/guidelines",
+   "original": "/clinical/knowledge/guidelines"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/knowledge/guidelines",
+   "original": "/clinical/knowledge/guidelines"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/knowledge/guidelines/{id}",
+   "original": "/clinical/knowledge/guidelines/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/clinical/knowledge/guidelines/{id}",
+   "original": "/clinical/knowledge/guidelines/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/knowledge/protocols",
+   "original": "/clinical/knowledge/protocols"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/knowledge/protocols",
+   "original": "/clinical/knowledge/protocols"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/knowledge/protocols/{id}",
+   "original": "/clinical/knowledge/protocols/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/clinical/knowledge/protocols/{id}",
+   "original": "/clinical/knowledge/protocols/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/knowledge/pathways",
+   "original": "/clinical/knowledge/pathways"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/knowledge/pathways",
+   "original": "/clinical/knowledge/pathways"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/knowledge/pathways/{id}",
+   "original": "/clinical/knowledge/pathways/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/clinical/knowledge/pathways/{id}",
+   "original": "/clinical/knowledge/pathways/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/knowledge/guidelines/{id}/approvals",
+   "original": "/clinical/knowledge/guidelines/${id}/approvals"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/knowledge/standing-orders",
+   "original": "/clinical/knowledge/standing-orders"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/knowledge/standing-orders",
+   "original": "/clinical/knowledge/standing-orders"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/knowledge/recommendations",
+   "original": "/clinical/knowledge/recommendations"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/cds/order-set-recommendations",
+   "original": "/clinical/cds/order-set-recommendations"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/cds/contraindication-check",
+   "original": "/clinical/cds/contraindication-check"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/cds/duplicate-order-check",
+   "original": "/clinical/cds/duplicate-order-check"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/cds/drug-interaction-check",
+   "original": "/clinical/cds/drug-interaction-check"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/cds/alerts",
+   "original": "/clinical/cds/alerts"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/cds/alerts",
+   "original": "/clinical/cds/alerts"
+  },
+  {
+   "method": "PUT",
+   "path": "/clinical/cds/alerts/{id}/acknowledge",
+   "original": "/clinical/cds/alerts/${id}/acknowledge"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/cds/reminders",
+   "original": "/clinical/cds/reminders"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/cds/care-bundle-compliance",
+   "original": "/clinical/cds/care-bundle-compliance"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/quality/indicators",
+   "original": "/clinical/quality/indicators"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/quality/indicators",
+   "original": "/clinical/quality/indicators"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/quality/measurements",
+   "original": "/clinical/quality/measurements"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/quality/audit-records",
+   "original": "/clinical/quality/audit-records"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/quality/audit-records",
+   "original": "/clinical/quality/audit-records"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/quality/compliance-checks",
+   "original": "/clinical/quality/compliance-checks"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/quality/compliance-checks",
+   "original": "/clinical/quality/compliance-checks"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/quality/benchmarks",
+   "original": "/clinical/quality/benchmarks"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/quality/mortality-reviews",
+   "original": "/clinical/quality/mortality-reviews"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/quality/incident-reports",
+   "original": "/clinical/quality/incident-reports"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/quality/safety-events",
+   "original": "/clinical/quality/safety-events"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/quality/dashboard",
+   "original": "/clinical/quality/dashboard"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/research/registries",
+   "original": "/clinical/research/registries"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/research/registries",
+   "original": "/clinical/research/registries"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/research/cohorts",
+   "original": "/clinical/research/cohorts"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/research/cohorts",
+   "original": "/clinical/research/cohorts"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/research/export-deidentified",
+   "original": "/clinical/research/export-deidentified"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/ai/copilot",
+   "original": "/clinical/ai/copilot"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/ai/risk-prediction",
+   "original": "/clinical/ai/risk-prediction"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/ai/care-gaps",
+   "original": "/clinical/ai/care-gaps"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/ai/diagnostic-assistant",
+   "original": "/clinical/ai/diagnostic-assistant"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/ai/explain",
+   "original": "/clinical/ai/explain"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/documentation/soap-notes",
+   "original": "/clinical/documentation/soap-notes"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/documentation/progress-notes",
+   "original": "/clinical/documentation/progress-notes"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/documentation/nursing-notes",
+   "original": "/clinical/documentation/nursing-notes"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/documentation/consultation-notes",
+   "original": "/clinical/documentation/consultation-notes"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/documentation/operation-notes",
+   "original": "/clinical/documentation/operation-notes"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/documentation/emergency-notes",
+   "original": "/clinical/documentation/emergency-notes"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/documentation",
+   "original": "/clinical/documentation"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/documentation/{id}",
+   "original": "/clinical/documentation/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/documentation/templates",
+   "original": "/clinical/documentation/templates"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/documentation/templates",
+   "original": "/clinical/documentation/templates"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/documentation/sign",
+   "original": "/clinical/documentation/sign"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/documentation/{id}/versions",
+   "original": "/clinical/documentation/${id}/versions"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/orders",
+   "original": "/clinical/orders"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/orders",
+   "original": "/clinical/orders"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/orders/{id}",
+   "original": "/clinical/orders/${id}"
+  },
+  {
+   "method": "PUT",
+   "path": "/clinical/orders/{id}/cancel",
+   "original": "/clinical/orders/${id}/cancel"
+  },
+  {
+   "method": "PUT",
+   "path": "/clinical/orders/{id}/complete",
+   "original": "/clinical/orders/${id}/complete"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/orders/templates",
+   "original": "/clinical/orders/templates"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/orders/templates",
+   "original": "/clinical/orders/templates"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/orders/recurring",
+   "original": "/clinical/orders/recurring"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/orders/recurring",
+   "original": "/clinical/orders/recurring"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/orders/standing",
+   "original": "/clinical/orders/standing"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/quality/kpis",
+   "original": "/clinical/quality/kpis"
+  },
+  {
+   "method": "POST",
+   "path": "/clinical/quality/measurements",
+   "original": "/clinical/quality/measurements"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/quality/compliance-dashboard",
+   "original": "/clinical/quality/compliance-dashboard"
+  },
+  {
+   "method": "GET",
+   "path": "/clinical/quality/benchmarks",
+   "original": "/clinical/quality/benchmarks"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital",
+   "original": "/hospital"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/{id}",
+   "original": "/hospital/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital",
+   "original": "/hospital"
+  },
+  {
+   "method": "PUT",
+   "path": "/hospital/{id}",
+   "original": "/hospital/${id}"
+  },
+  {
+   "method": "DELETE",
+   "path": "/hospital/{id}",
+   "original": "/hospital/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/{id}/campuses",
+   "original": "/hospital/${hospitalId}/campuses"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/{id}/campuses",
+   "original": "/hospital/${hospitalId}/campuses"
+  },
+  {
+   "method": "PUT",
+   "path": "/hospital/campuses/{id}",
+   "original": "/hospital/campuses/${campusId}"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/campuses/{id}/buildings",
+   "original": "/hospital/campuses/${campusId}/buildings"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/campuses/{id}/buildings",
+   "original": "/hospital/campuses/${campusId}/buildings"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/buildings/{id}/floors",
+   "original": "/hospital/buildings/${buildingId}/floors"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/buildings/{id}/floors",
+   "original": "/hospital/buildings/${buildingId}/floors"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/{id}/departments",
+   "original": "/hospital/${hospitalId}/departments"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/{id}/departments",
+   "original": "/hospital/${hospitalId}/departments"
+  },
+  {
+   "method": "PUT",
+   "path": "/hospital/departments/{id}",
+   "original": "/hospital/departments/${deptId}"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/departments/{id}/clinics",
+   "original": "/hospital/departments/${deptId}/clinics"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/departments/{id}/clinics",
+   "original": "/hospital/departments/${deptId}/clinics"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/departments/{id}/rooms",
+   "original": "/hospital/departments/${deptId}/rooms"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/departments/{id}/rooms",
+   "original": "/hospital/departments/${deptId}/rooms"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/rooms/{id}/beds",
+   "original": "/hospital/rooms/${roomId}/beds"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/rooms/{id}/beds",
+   "original": "/hospital/rooms/${roomId}/beds"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/beds/{id}/assign",
+   "original": "/hospital/beds/${bedId}/assign"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/beds/{id}/discharge",
+   "original": "/hospital/beds/${bedId}/discharge"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/beds/{id}/transfer",
+   "original": "/hospital/beds/${bedId}/transfer"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/beds/{id}/assignments",
+   "original": "/hospital/beds/${bedId}/assignments"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/occupancy",
+   "original": "/hospital/occupancy"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/{id}/units",
+   "original": "/hospital/${hospitalId}/units"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/{id}/units",
+   "original": "/hospital/${hospitalId}/units"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/{id}/operation-theaters",
+   "original": "/hospital/${hospitalId}/operation-theaters"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/{id}/operation-theaters",
+   "original": "/hospital/${hospitalId}/operation-theaters"
+  },
+  {
+   "method": "PUT",
+   "path": "/hospital/operation-theaters/{id}/status",
+   "original": "/hospital/operation-theaters/${otId}/status"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/{id}/equipment",
+   "original": "/hospital/${hospitalId}/equipment"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/{id}/equipment",
+   "original": "/hospital/${hospitalId}/equipment"
+  },
+  {
+   "method": "PUT",
+   "path": "/hospital/equipment/{id}",
+   "original": "/hospital/equipment/${equipId}"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/{id}/cost-centers",
+   "original": "/hospital/${hospitalId}/cost-centers"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/{id}/cost-centers",
+   "original": "/hospital/${hospitalId}/cost-centers"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/appointments",
+   "original": "/hospital/appointments"
+  },
+  {
+   "method": "POST",
+   "path": "/hospital/appointments",
+   "original": "/hospital/appointments"
+  },
+  {
+   "method": "GET",
+   "path": "/hospital/{id}/dashboard",
+   "original": "/hospital/${hospitalId}/dashboard"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/patients",
+   "original": "/national-data/patients"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/patients/{id}",
+   "original": "/national-data/patients/${id}"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/encounters",
+   "original": "/national-data/encounters"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/encounters/{id}",
+   "original": "/national-data/encounters/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/encounters",
+   "original": "/national-data/encounters"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/observations",
+   "original": "/national-data/observations"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/observations/{id}",
+   "original": "/national-data/observations/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/observations",
+   "original": "/national-data/observations"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/golden-records",
+   "original": "/national-data/golden-records"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/golden-records",
+   "original": "/national-data/golden-records"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/golden-records/{id}/resolve",
+   "original": "/national-data/golden-records/${id}/resolve"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/duplicate-check",
+   "original": "/national-data/duplicate-check"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/merge",
+   "original": "/national-data/merge"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/events",
+   "original": "/national-data/events"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/events/replay",
+   "original": "/national-data/events/replay"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/data-catalog",
+   "original": "/national-data/data-catalog"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/data-catalog",
+   "original": "/national-data/data-catalog"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/data-quality-checks",
+   "original": "/national-data/data-quality-checks"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/data-lineage",
+   "original": "/national-data/data-lineage"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/data-lineage",
+   "original": "/national-data/data-lineage"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/retention-policies",
+   "original": "/national-data/retention-policies"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/retention-policies",
+   "original": "/national-data/retention-policies"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/consent-directives",
+   "original": "/national-data/consent-directives"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/consent-directives",
+   "original": "/national-data/consent-directives"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/deidentification-jobs",
+   "original": "/national-data/deidentification-jobs"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/deidentification-jobs",
+   "original": "/national-data/deidentification-jobs"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/features",
+   "original": "/national-data/features"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/features",
+   "original": "/national-data/features"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/feature-values",
+   "original": "/national-data/feature-values"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/feature-values",
+   "original": "/national-data/feature-values"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/training-datasets",
+   "original": "/national-data/training-datasets"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/training-datasets",
+   "original": "/national-data/training-datasets"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/vector-embeddings",
+   "original": "/national-data/vector-embeddings"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/vector-embeddings",
+   "original": "/national-data/vector-embeddings"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/streaming/fhir",
+   "original": "/national-data/streaming/fhir"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/streaming/hl7",
+   "original": "/national-data/streaming/hl7"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/streaming/events",
+   "original": "/national-data/streaming/events"
+  },
+  {
+   "method": "GET",
+   "path": "/national-data/streaming/cdc",
+   "original": "/national-data/streaming/cdc"
+  },
+  {
+   "method": "POST",
+   "path": "/national-data/streaming/cdc",
+   "original": "/national-data/streaming/cdc"
+  },
+  {
+   "method": "GET",
+   "path": "/edge/devices",
+   "original": "/edge/devices"
+  },
+  {
+   "method": "GET",
+   "path": "/edge/devices/{id}",
+   "original": "/edge/devices/${deviceId}"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/devices/{id}/quarantine",
+   "original": "/edge/devices/${deviceId}/quarantine"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/devices/{id}/revoke",
+   "original": "/edge/devices/${deviceId}/revoke"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/devices/{id}/reinstate",
+   "original": "/edge/devices/${deviceId}/reinstate"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/devices/{id}/kill_switch",
+   "original": "/edge/devices/${deviceId}/kill_switch"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/tasks",
+   "original": "/edge/tasks"
+  },
+  {
+   "method": "GET",
+   "path": "/edge/tasks",
+   "original": "/edge/tasks"
+  },
+  {
+   "method": "GET",
+   "path": "/edge/tasks/{id}",
+   "original": "/edge/tasks/${taskUid}"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/tasks/{id}/cancel",
+   "original": "/edge/tasks/${taskUid}/cancel"
+  },
+  {
+   "method": "GET",
+   "path": "/edge/policy",
+   "original": "/edge/policy"
+  },
+  {
+   "method": "PUT",
+   "path": "/edge/policy",
+   "original": "/edge/policy"
+  },
+  {
+   "method": "GET",
+   "path": "/edge/fleet/summary",
+   "original": "/edge/fleet/summary"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/models",
+   "original": "/edge/models"
+  },
+  {
+   "method": "GET",
+   "path": "/edge/models",
+   "original": "/edge/models"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/models/{id}/status",
+   "original": "/edge/models/${modelUid}/status"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/models/{id}/assign",
+   "original": "/edge/models/${modelUid}/assign"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/agent/heartbeat",
+   "original": "/edge/agent/heartbeat"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/agent/tasks/{id}/result",
+   "original": "/edge/agent/tasks/${taskUid}/result"
+  },
+  {
+   "method": "POST",
+   "path": "/edge/agent/telemetry",
+   "original": "/edge/agent/telemetry"
+  },
+  {
+   "method": "GET",
+   "path": "/edge/health",
+   "original": "/edge/health"
+  },
+  {
+   "method": "POST",
+   "path": "/consent/grant",
+   "original": "/consent/grant"
+  },
+  {
+   "method": "POST",
+   "path": "/consent/revoke",
+   "original": "/consent/revoke"
+  },
+  {
+   "method": "GET",
+   "path": "/consent/check",
+   "original": "/consent/check"
+  },
+  {
+   "method": "POST",
+   "path": "/claims",
+   "original": "/claims"
+  },
+  {
+   "method": "POST",
+   "path": "/claims/{id}/validate",
+   "original": "/claims/${claimId}/validate"
+  },
+  {
+   "method": "POST",
+   "path": "/claims/{id}/submit",
+   "original": "/claims/${claimId}/submit"
+  },
+  {
+   "method": "GET",
+   "path": "/claims/{id}",
+   "original": "/claims/${claimId}"
+  },
+  {
+   "method": "GET",
+   "path": "/insurance/{id}",
+   "original": "/insurance/${insuranceId}"
+  },
+  {
+   "method": "POST",
+   "path": "/citizen/login",
+   "original": "/citizen/login"
+  },
+  {
+   "method": "POST",
+   "path": "/citizen/logout",
+   "original": "/citizen/logout"
+  },
+  {
+   "method": "GET",
+   "path": "/citizen/profile",
+   "original": "/citizen/profile"
+  },
+  {
+   "method": "GET",
+   "path": "/citizen/results",
+   "original": "/citizen/results"
+  },
+  {
+   "method": "GET",
+   "path": "/citizen/orders",
+   "original": "/citizen/orders"
+  },
+  {
+   "method": "GET",
+   "path": "/citizen/health-record",
+   "original": "/citizen/health-record"
+  },
+  {
+   "method": "POST",
+   "path": "/oauth2/register",
+   "original": "/oauth2/register"
+  },
+  {
+   "method": "GET",
+   "path": "/oauth2/authorize",
+   "original": "/oauth2/authorize"
+  },
+  {
+   "method": "POST",
+   "path": "/oauth2/token",
+   "original": "/oauth2/token"
+  },
+  {
+   "method": "POST",
+   "path": "/oauth2/introspect",
+   "original": "/oauth2/introspect"
+  },
+  {
+   "method": "POST",
+   "path": "/oauth2/revoke",
+   "original": "/oauth2/revoke"
+  },
+  {
+   "method": "GET",
+   "path": "/oauth2/.well-known/openid-configuration",
+   "original": "/oauth2/.well-known/openid-configuration"
+  },
+  {
+   "method": "GET",
+   "path": "/oauth2/jwks.json",
+   "original": "/oauth2/jwks.json"
+  },
+  {
+   "method": "GET",
+   "path": "/auth/saml/metadata",
+   "original": "/auth/saml/metadata"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/saml/acs",
+   "original": "/auth/saml/acs"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/refresh",
+   "original": "/auth/refresh"
+  },
+  {
+   "method": "POST",
+   "path": "/auth/change-password",
+   "original": "/auth/change-password"
+  },
+  {
+   "method": "GET",
+   "path": "/auth/mobile/app-info",
+   "original": "/auth/mobile/app-info"
+  },
+  {
+   "method": "GET",
+   "path": "/integrations/status",
+   "original": "/integrations/status"
+  },
+  {
+   "method": "POST",
+   "path": "/integrations/{id}/probe",
+   "original": "/integrations/${name}/probe"
+  },
+  {
+   "method": "GET",
+   "path": "/api/optimizer/metrics",
+   "original": "/api/optimizer/metrics"
+  },
+  {
+   "method": "GET",
+   "path": "/api/optimizer/analyze",
+   "original": "/api/optimizer/analyze"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/billing/status",
+   "original": "/financial/billing/status"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/billing/rates",
+   "original": "/financial/billing/rates"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/invoices",
+   "original": "/financial/invoices"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/invoices/{id}",
+   "original": "/financial/invoices/${id}"
+  },
+  {
+   "method": "POST",
+   "path": "/financial/invoices",
+   "original": "/financial/invoices"
+  },
+  {
+   "method": "POST",
+   "path": "/financial/payments",
+   "original": "/financial/payments"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/payments",
+   "original": "/financial/payments"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/receivables",
+   "original": "/financial/receivables"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/receivables/aging",
+   "original": "/financial/receivables/aging"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/payables",
+   "original": "/financial/payables"
+  },
+  {
+   "method": "POST",
+   "path": "/financial/pricing/calculate",
+   "original": "/financial/pricing/calculate"
+  },
+  {
+   "method": "POST",
+   "path": "/financial/pricing/rules",
+   "original": "/financial/pricing/rules"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/pricing/rules",
+   "original": "/financial/pricing/rules"
+  },
+  {
+   "method": "POST",
+   "path": "/financial/transactions",
+   "original": "/financial/transactions"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/transactions",
+   "original": "/financial/transactions"
+  },
+  {
+   "method": "POST",
+   "path": "/financial/billing/run-cycle",
+   "original": "/financial/billing/run-cycle"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/reports/summary",
+   "original": "/financial/reports/summary"
+  },
+  {
+   "method": "GET",
+   "path": "/financial/subscriptions",
+   "original": "/financial/subscriptions"
+  },
+  {
+   "method": "GET",
+   "path": "/kernel/runtime/health",
+   "original": "/kernel/runtime/health"
+  },
+  {
+   "method": "GET",
+   "path": "/kernel/runtime/metrics",
+   "original": "/kernel/runtime/metrics"
+  },
+  {
+   "method": "GET",
+   "path": "/kernel/runtime/digital-twin",
+   "original": "/kernel/runtime/digital-twin"
+  },
+  {
+   "method": "GET",
+   "path": "/kernel/runtime/topology",
+   "original": "/kernel/runtime/topology"
+  },
+  {
+   "method": "GET",
+   "path": "/kernel/runtime/resources",
+   "original": "/kernel/runtime/resources"
+  },
+  {
+   "method": "POST",
+   "path": "/kernel/runtime/optimize",
+   "original": "/kernel/runtime/optimize"
+  },
+  {
+   "method": "GET",
+   "path": "/kernel/runtime/observability/slow-queries",
+   "original": "/kernel/runtime/observability/slow-queries"
+  },
+  {
+   "method": "GET",
+   "path": "/kernel/runtime/validation/report",
+   "original": "/kernel/runtime/validation/report"
+  },
+  {
+   "method": "POST",
+   "path": "/kernel/runtime/validation/run",
+   "original": "/kernel/runtime/validation/run"
+  },
+  {
+   "method": "GET",
+   "path": "/kernel/runtime/ai/models",
+   "original": "/kernel/runtime/ai/models"
+  },
+  {
+   "method": "POST",
+   "path": "/kernel/runtime/ai/infer",
+   "original": "/kernel/runtime/ai/infer"
+  },
+  {
+   "method": "GET",
+   "path": "/kernel/runtime/rules",
+   "original": "/kernel/runtime/rules"
+  },
+  {
+   "method": "GET",
+   "path": "/kernel/runtime/policies",
+   "original": "/kernel/runtime/policies"
+  }
+ ],
+ "permission_exports": [
+  "ROLE_LEVELS",
+  "ROLE_PERMISSIONS",
+  "hasPermission",
+  "hasAnyPermission",
+  "hasAllPermissions",
+  "canManageRole",
+  "getRoleLevel",
+  "isPlatformRole",
+  "getVisiblePermissions",
+  "NAV_ITEMS"
+ ],
+ "findings": [
+  "Entire write-side of the lab domain is absent: no page calls order create/validate/cancel, result create/verify, sample create/update, QC submit, batch orders, or device result submission - all core lab pages are searchable read-only tables.",
+  "10 of 22 backend workflows have NO frontend UI at all (device ingestion, public result links, referrals, care continuum community, consent, claims, MPI, streaming ingestion, identity governance, offline sync).",
+  "0/22 workflows are complete in the UI; 12/22 interrupted.",
+  "Registration is impossible from the UI: register endpoints defined, zero forms.",
+  "No MFA challenge at login although backend denies privileged roles without enrolled MFA.",
+  "Citizen role lands on the lab KPI dashboard (wrong content); no citizen self-service UI in v3.",
+  "Technician role effectively unusable: ~30 menu items render but routes bounce (excluded from labRoles and readonlyRoles).",
+  "Menu (permission-based) and routes (role-based) gating drift: national-data, national/*, samples, hospital, security menus visible for roles whose routes deny access.",
+  "70/78 pages hardcode Arabic; en.ts (240 keys) effectively unused; only 8 pages use i18n.",
+  "No client-side validation library; unused Input/Select error prop; unused validation i18n namespace.",
+  "Accessibility: 1 aria attribute in entire app; Dialog has no role/aria-modal/focus trap; no aria-live on toasts; no a11y tests.",
+  "No ErrorBoundary, no global error handler; render errors crash the app.",
+  "52/78 pages have no error/retry UI - API failures display 'no data'.",
+  "No pagination anywhere (all lists cap at limit:50); search is not sent to API on Results and Samples pages (query-key bug).",
+  "No mobile navigation: fixed w-64 sidebar, no drawer; unusable below ~640px.",
+  "Dead buttons: labs '+ add lab', admin '+ add lab/user', profile 'edit', tiers 'upgrade'.",
+  "28 of 54 sidebar icons fall back to a generic icon (iconMap covers 29).",
+  "EHR page is a misnomer: /ehr implements a lab orders/results timeline viewer; the real EHR workflow has no UI (35 ehrApi endpoints unused).",
+  "IntegrationConnectorsPage calls /integration/connectors//health (double slash).",
+  "18 financialApi calls target a dormant backend module not registered in factory.py - all 5 used calls will 500/404 at runtime.",
+  "35 'ApiPage' template pages (biomedical, blood-bank, national/*, capabilities/*, etc.) are read-only GET tables with no mutations, forms, search, pagination, or export.",
+  "Two dead CSS files (App.css, theme.css) with RTL chevron fixes never imported.",
+  "Generated src/api/generated client (openapi) is not imported anywhere.",
+  "receptionist role exists in types/permissions but is dead in routes/menus."
+ ]
+}

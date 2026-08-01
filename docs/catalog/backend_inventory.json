@@ -1,0 +1,7949 @@
+{
+ "catalog_version": "1.0",
+ "program": "PROGRAM-01",
+ "generated": "2026-08-01",
+ "source_of_truth": "introspection.json (runtime) + source review",
+ "stats": {
+  "total_route_entries": 1986,
+  "unique_paths": 1648,
+  "route_modules": 100,
+  "total_entities_tables": 521,
+  "total_services": 40,
+  "total_route_files": 55,
+  "schema_files_with_models": 80,
+  "pydantic_classes": 520,
+  "method_distribution": {
+   "GET": 966,
+   "PUT": 131,
+   "POST": 823,
+   "PATCH": 4,
+   "DELETE": 58,
+   "GET,HEAD": 4
+  },
+  "public_routes": 52,
+  "auth_protected_routes": 1934,
+  "internal_only_routes": 34,
+  "frontend_used": 844,
+  "frontend_unused": 36,
+  "frontend_unknown": 1106,
+  "entity_bases": {
+   "Base": 111,
+   "NationalBase": 187,
+   "CareContinuumBase": 45,
+   "ClinicalBase": 39,
+   "FinBase": 9,
+   "GovernanceBase": 61,
+   "IdentityBase": 69
+  },
+  "entities_soft_delete": 288,
+  "entities_audited": 167,
+  "entities_tenant_scoped": 188,
+  "dangling_fks": 3
+ },
+ "subsystems": {
+  "kernel": "Permanent runtime foundation: bootloader, lifecycle, DI container, plugins, event bus (outbox/inbox/DLQ/replay/snapshot), scheduler+cron, feature flags, config engine, multi-tenant, internal gateway",
+  "control_plane": "Platform component registry + policy engine + release channels + fleet ops + digital twin + audit/analytics",
+  "command_center": "National Health Command Center: emergency declarations, situation reports, resource requests (event-bus wired)",
+  "nhdw": "Hospital operations & KPI engine (admissions, discharges, transfers, queue, ward rounds, telemedicine) - not a warehouse",
+  "national_data": "National data platform: canonical records, MDM, data governance, event store, AI datasets, star-schema warehouse",
+  "edge": "Edge-AI device control plane (opt-in registration, scheduling, mTLS trust, telemetry, 30s maintenance loop)",
+  "firewall": "API firewall: Redis-backed IP blocklist, fail-closed local fallback (TTL eviction, 5000-entry cap)",
+  "capabilities": "10 capability modules (clinical_foundation, document_management, encounter_management, fhir_interoperability, healthcare_consent, provider_management, reporting_service, search_service, storage_service, workflow_engine)",
+  "contracts": "Contract generation: OpenAPI 3.1, AsyncAPI 2.6, JSON Schema, FHIR R4 profiles, GraphQL",
+  "simulation": "Digital twin engine (HOSPITAL/LABORATORY/DIRECTORATE/NATIONAL_HEALTH twins, predictions, capacity planning)",
+  "identity": "Identity platform: national registry governance, adaptive MFA (TOTP/WebAuthn), OAuth2/SAML, service accounts",
+  "governance": "Governance platform: policies (17 actions), analytics, identity governance, family registry, merge engine",
+  "financial": "Financial engine (routes/financial/) - dormant, not registered in factory",
+  "clinical": "Clinical bounded context: knowledge, CDS, quality, care plans",
+  "care_continuum": "Care continuum: primary care, referrals, care journeys, chronic disease, maternal/child, immunisation, public health, patient tasks",
+  "lims": "LIMS: integration (HL7 ORU^R01, ASTM), FHIR mappers, device protocols",
+  "interoperability": "Interop scaffolding (AdapterBase, TrustDomain, InteropAuditEvent, manifest) - not wired, gated for ENABLE_INTEROP",
+  "security": "Security framework: dependencies, RBAC, ABAC, rate limiting, encryption, MFA",
+  "audit": "Tamper-evident audit: SHA-256 hash chain, HMAC anchor checkpoints, PG no-update trigger, verify_audit_chain",
+  "notifications": "Notification service: email/sms/whatsapp/push/telegram, circuit breaker, 4 built-in templates",
+  "tasks": "Redis-list task queue with DLQ, exponential backoff, TaskWorker, outbox worker",
+  "mpi": "Master patient index: blocking keys, profile scoring, merge engine, canonical patient",
+  "fhir": "FHIR R4: 16 resource types implemented, 9 profiles, mappers, batch/transaction bundles",
+  "hospital": "Hospital hierarchy: hospital/campus/building/floor/department/clinic/room/bed, occupancy, OT, equipment"
+ },
+ "services": [
+  {
+   "file": "__init__.py",
+   "lines": 0,
+   "functions": [],
+   "classes": [],
+   "docstring": ""
+  },
+  {
+   "file": "admin_service.py",
+   "lines": 480,
+   "functions": [
+    "get_platform_stats",
+    "list_labs",
+    "toggle_lab",
+    "activate_lab",
+    "list_pending_labs",
+    "get_lab_detail",
+    "user_dict",
+    "create_lab",
+    "list_users",
+    "create_user",
+    "change_user_role",
+    "toggle_user",
+    "get_audit_logs"
+   ],
+   "classes": [],
+   "docstring": ""
+  },
+  {
+   "file": "ali_reza.py",
+   "lines": 5,
+   "functions": [],
+   "classes": [],
+   "docstring": "ali_reza.py \u2014 thin compatibility shim."
+  },
+  {
+   "file": "ali_reza_engine.py",
+   "lines": 173,
+   "functions": [
+    "_glucose_rules",
+    "analyze"
+   ],
+   "classes": [],
+   "docstring": "Ali Reza Analysis Engine \u2014 GULA Platform"
+  },
+  {
+   "file": "audit_service.py",
+   "lines": 247,
+   "functions": [
+    "_current_anchor_file",
+    "_all_anchor_files",
+    "_anchor_hmac",
+    "_verify_anchor_hmac",
+    "_compute_chain_hash",
+    "_get_last_chain_hash",
+    "_write_anchor",
+    "get_latest_anchor",
+    "log_action",
+    "verify_audit_chain"
+   ],
+   "classes": [],
+   "docstring": "Audit logging service \u2014 canonical shared.audit with backend-specific extensions."
+  },
+  {
+   "file": "authorization_service.py",
+   "lines": 1250,
+   "functions": [],
+   "classes": [],
+   "docstring": ""
+  },
+  {
+   "file": "care_continuum_service.py",
+   "lines": 1215,
+   "functions": [
+    "_now",
+    "_today",
+    "_paginated_query",
+    "_apply_lab_filter",
+    "create_primary_care_encounter",
+    "get_primary_care_encounter",
+    "list_primary_care_encounters",
+    "create_family_medicine_record",
+    "list_family_medicine_records",
+    "create_community_clinic_record",
+    "list_community_clinic_records",
+    "create_health_assessment",
+    "list_health_assessments",
+    "create_preventive_care_record",
+    "list_preventive_care_records",
+    "create_referral_request",
+    "accept_referral",
+    "reject_referral",
+    "complete_referral",
+    "list_referrals",
+    "get_referral_timeline",
+    "_add_referral_timeline",
+    "create_cross_org_referral",
+    "create_referral_response",
+    "get_referral_analytics",
+    "create_care_journey",
+    "get_care_journey",
+    "list_care_journeys",
+    "create_follow_up_plan",
+    "list_follow_up_plans",
+    "create_care_coordination",
+    "list_care_coordination",
+    "create_transition_of_care",
+    "create_clinical_handover",
+    "create_home_care_plan",
+    "list_home_care_plans",
+    "create_community_care_record",
+    "list_community_care_records",
+    "create_chronic_disease_registry",
+    "list_chronic_disease_registry",
+    "get_disease_specific_registry",
+    "create_disease_management_plan",
+    "list_disease_management_plans",
+    "create_risk_stratification",
+    "list_risk_stratifications",
+    "create_self_monitoring_record",
+    "create_pregnancy_record",
+    "get_pregnancy_record",
+    "list_pregnancy_records",
+    "create_antenatal_care_visit",
+    "create_delivery_record",
+    "create_postnatal_care_visit",
+    "create_growth_monitoring",
+    "create_breastfeeding_record",
+    "create_child_development_record",
+    "create_vaccination_record",
+    "list_vaccination_records",
+    "create_immunization_schedule",
+    "list_immunization_schedules",
+    "get_missed_vaccinations",
+    "create_reminder_schedule",
+    "get_immunization_coverage",
+    "create_cold_chain_monitor",
+    "create_health_program",
+    "list_health_programs",
+    "create_program_enrollment",
+    "create_screening_campaign",
+    "list_screening_campaigns",
+    "create_community_visit",
+    "create_school_health_visit",
+    "create_occupational_health_record",
+    "create_health_promotion_activity",
+    "create_patient_task",
+    "list_patient_tasks",
+    "create_self_follow_up_task",
+    "create_educational_material_assignment",
+    "detect_care_gaps",
+    "coordinate_ehr_immunization"
+   ],
+   "classes": [],
+   "docstring": "Care Continuum Service \u2014 National Care Continuum Platform business logic."
+  },
+  {
+   "file": "claims_service.py",
+   "lines": 239,
+   "functions": [
+    "create_claim",
+    "validate_claim",
+    "submit_claim",
+    "get_claim",
+    "_get_claim_or_raise"
+   ],
+   "classes": [],
+   "docstring": "Claims Service \u2014 Insurance/Billing module."
+  },
+  {
+   "file": "clinical_engine.py",
+   "lines": 313,
+   "functions": [
+    "_max_severity",
+    "_resolve_severity",
+    "_safe_analyze",
+    "_safe_multi_pattern",
+    "_safe_guidance",
+    "_safe_outbreak",
+    "evaluate_result",
+    "evaluate_order"
+   ],
+   "classes": [],
+   "docstring": "Clinical Engine \u2014 GULA Platform  v2.1"
+  },
+  {
+   "file": "clinical_intelligence.py",
+   "lines": 300,
+   "functions": [
+    "_key",
+    "analyze_results",
+    "quick_flag_summary"
+   ],
+   "classes": [],
+   "docstring": "GULA Clinical Intelligence Layer"
+  },
+  {
+   "file": "clinical_service.py",
+   "lines": 1375,
+   "functions": [],
+   "classes": [],
+   "docstring": ""
+  },
+  {
+   "file": "clinical_state.py",
+   "lines": 270,
+   "functions": [
+    "_values_map",
+    "_check_emergency_rules",
+    "_hard_stops_for_state",
+    "_required_actions_for_state",
+    "compute_patient_state",
+    "can_release_results",
+    "requires_physician_ack"
+   ],
+   "classes": [],
+   "docstring": "Clinical State Engine \u2014 GULA Platform"
+  },
+  {
+   "file": "consent_service.py",
+   "lines": 243,
+   "functions": [
+    "_ulid",
+    "check_active_consent",
+    "grant_consent",
+    "revoke_consent",
+    "log_access_decision"
+   ],
+   "classes": [
+    "ConsentError"
+   ],
+   "docstring": "Consent service \u2014 grant, revoke, and check active consent."
+  },
+  {
+   "file": "critical_alerts.py",
+   "lines": 188,
+   "functions": [
+    "check_critical",
+    "get_critical_alerts",
+    "alert_statistics",
+    "_top_critical_tests"
+   ],
+   "classes": [],
+   "docstring": "Critical result alerts service - immediate notification system for dangerous values."
+  },
+  {
+   "file": "dashboard_service.py",
+   "lines": 167,
+   "functions": [
+    "_iraq_hour",
+    "arabic_greeting",
+    "get_greeting",
+    "get_dashboard"
+   ],
+   "classes": [],
+   "docstring": ""
+  },
+  {
+   "file": "data_platform_service.py",
+   "lines": 643,
+   "functions": [
+    "_month_name_ar"
+   ],
+   "classes": [],
+   "docstring": ""
+  },
+  {
+   "file": "device_trust_service.py",
+   "lines": 284,
+   "functions": [
+    "compute_device_fingerprint",
+    "_extract_browser",
+    "_extract_browser_version"
+   ],
+   "classes": [
+    "TrustLevel",
+    "DevicePlatform"
+   ],
+   "docstring": ""
+  },
+  {
+   "file": "ehr_service.py",
+   "lines": 1389,
+   "functions": [
+    "get_national_patient_or_404",
+    "_fmt_ts",
+    "_fmt_date",
+    "_to_dict",
+    "get_care_plan_goals",
+    "get_care_plan_activities",
+    "create_clinical_note",
+    "get_clinical_note",
+    "update_clinical_note",
+    "soft_delete_clinical_note",
+    "list_clinical_notes_by_patient",
+    "list_clinical_notes_by_encounter",
+    "create_allergy",
+    "get_allergy",
+    "update_allergy",
+    "soft_delete_allergy",
+    "list_allergies_by_patient",
+    "create_medication_statement",
+    "get_medication_statement",
+    "update_medication_statement",
+    "soft_delete_medication_statement",
+    "list_medication_statements_by_patient",
+    "create_medication_request",
+    "get_medication_request",
+    "update_medication_request",
+    "soft_delete_medication_request",
+    "list_medication_requests_by_patient",
+    "create_medication_dispense",
+    "get_medication_dispense",
+    "update_medication_dispense",
+    "soft_delete_medication_dispense",
+    "list_medication_dispenses_by_patient",
+    "create_medication_administration",
+    "get_medication_administration",
+    "update_medication_administration",
+    "soft_delete_medication_administration",
+    "list_medication_administrations_by_patient",
+    "create_care_plan",
+    "get_care_plan",
+    "update_care_plan",
+    "soft_delete_care_plan",
+    "list_care_plans_by_patient",
+    "create_care_plan_goal",
+    "get_care_plan_goal",
+    "update_care_plan_goal",
+    "soft_delete_care_plan_goal",
+    "create_care_plan_activity",
+    "get_care_plan_activity",
+    "update_care_plan_activity",
+    "soft_delete_care_plan_activity",
+    "create_problem_list_item",
+    "get_problem_list_item",
+    "update_problem_list_item",
+    "soft_delete_problem_list_item",
+    "list_problem_list_items_by_patient",
+    "create_condition",
+    "get_condition",
+    "update_condition",
+    "soft_delete_condition",
+    "list_conditions_by_patient",
+    "create_diagnosis",
+    "get_diagnosis",
+    "update_diagnosis",
+    "soft_delete_diagnosis",
+    "list_diagnoses_by_patient",
+    "create_family_history_record",
+    "get_family_history_record",
+    "update_family_history_record",
+    "soft_delete_family_history_record",
+    "list_family_history_by_patient",
+    "create_social_history_record",
+    "get_social_history_record",
+    "update_social_history_record",
+    "soft_delete_social_history_record",
+    "list_social_history_by_patient",
+    "create_risk_factor_record",
+    "get_risk_factor_record",
+    "update_risk_factor_record",
+    "soft_delete_risk_factor_record",
+    "list_risk_factors_by_patient",
+    "create_immunization_record",
+    "get_immunization_record",
+    "update_immunization_record",
+    "soft_delete_immunization_record",
+    "list_immunizations_by_patient",
+    "create_clinical_attachment",
+    "get_clinical_attachment",
+    "update_clinical_attachment",
+    "soft_delete_clinical_attachment",
+    "list_attachments_by_patient",
+    "list_attachments_by_source",
+    "get_patient_timeline",
+    "build_live_timeline"
+   ],
+   "classes": [],
+   "docstring": "Aggregate events from multiple EHR tables into a unified timeline."
+  },
+  {
+   "file": "epidemiology.py",
+   "lines": 153,
+   "functions": [
+    "_count_abnormal",
+    "detect_outbreak"
+   ],
+   "classes": [],
+   "docstring": "Epidemiology Service \u2014 GULA Platform"
+  },
+  {
+   "file": "hospital_service.py",
+   "lines": 717,
+   "functions": [],
+   "classes": [],
+   "docstring": "Hospital service \u2014 business logic for the National HIS Platform."
+  },
+  {
+   "file": "identity.py",
+   "lines": 240,
+   "functions": [
+    "normalize_arabic",
+    "normalize_name",
+    "match_score",
+    "_name_similarity",
+    "jaro_similarity",
+    "jaro_winkler",
+    "hash_national_id",
+    "hash_family_id"
+   ],
+   "classes": [],
+   "docstring": "Arabic and multilingual name normalization for patient identity matching."
+  },
+  {
+   "file": "identity_matching.py",
+   "lines": 335,
+   "functions": [
+    "normalize_arabic_name",
+    "_clean_national_id",
+    "_hid_checksum",
+    "generate_health_id",
+    "verify_health_id",
+    "_get",
+    "_as_date",
+    "_name_similarity",
+    "_dob_score",
+    "_equal_score",
+    "calculate_match_score",
+    "find_duplicates"
+   ],
+   "classes": [],
+   "docstring": "\u062e\u062f\u0645\u0629 \u0645\u0637\u0627\u0628\u0642\u0629 \u0627\u0644\u0647\u0648\u064a\u0627\u062a - Identity Matching Service."
+  },
+  {
+   "file": "interpretation.py",
+   "lines": 1279,
+   "functions": [
+    "interpret_result",
+    "_interpret_with_rules",
+    "_interpret_generic",
+    "get_flag"
+   ],
+   "classes": [],
+   "docstring": "GULA Smart Interpretation Engine"
+  },
+  {
+   "file": "lab_service.py",
+   "lines": 201,
+   "functions": [
+    "lab_to_dict",
+    "employee_to_dict",
+    "get_lab",
+    "update_lab",
+    "list_employees",
+    "create_employee",
+    "update_employee"
+   ],
+   "classes": [],
+   "docstring": ""
+  },
+  {
+   "file": "metrics_service.py",
+   "lines": 505,
+   "functions": [
+    "get_rss_mb",
+    "ping_db",
+    "ping_db_detail",
+    "ping_redis",
+    "get_order_stats",
+    "get_uptime_s",
+    "get_queue_backlog",
+    "get_degradation_level",
+    "build_health_status",
+    "build_deep_health",
+    "_escape_label",
+    "record_request",
+    "record_security_event",
+    "security_metrics_exposition",
+    "request_metrics_exposition",
+    "get_json_metrics",
+    "build_prometheus_response"
+   ],
+   "classes": [],
+   "docstring": "Count outbox events pending delivery (best-effort, never raises)."
+  },
+  {
+   "file": "mobile_service.py",
+   "lines": 185,
+   "functions": [
+    "refresh_token",
+    "change_user_password",
+    "role_ar",
+    "get_permissions",
+    "get_mobile_stats"
+   ],
+   "classes": [],
+   "docstring": ""
+  },
+  {
+   "file": "national_id.py",
+   "lines": 20,
+   "functions": [
+    "mask_national_id"
+   ],
+   "classes": [],
+   "docstring": "Return a masked version of a national ID suitable for display."
+  },
+  {
+   "file": "offline_sync_service.py",
+   "lines": 326,
+   "functions": [],
+   "classes": [
+    "ConflictResolution",
+    "SyncStatus"
+   ],
+   "docstring": ""
+  },
+  {
+   "file": "order_service.py",
+   "lines": 903,
+   "functions": [
+    "result_to_dict",
+    "order_to_dict",
+    "_generate_unique_token",
+    "_build_sharing_links",
+    "_check_critical_alerts",
+    "_emit_order_events",
+    "create_order",
+    "get_order_by_id",
+    "list_orders",
+    "validate_order",
+    "cancel_order",
+    "get_public_result",
+    "download_result_pdf",
+    "get_patient_history_by_id",
+    "get_patient_history_by_phone",
+    "_base_order_query"
+   ],
+   "classes": [],
+   "docstring": "Order and Result service - business logic layer for lab orders and results."
+  },
+  {
+   "file": "outbox_service.py",
+   "lines": 264,
+   "functions": [
+    "set_poll_interval",
+    "get_poll_interval",
+    "emit_to_outbox",
+    "purge_old_events"
+   ],
+   "classes": [],
+   "docstring": "Transactional Outbox Service \u2014 GULA Platform"
+  },
+  {
+   "file": "patient_card.py",
+   "lines": 236,
+   "functions": [
+    "_b64u_encode",
+    "_b64u_decode",
+    "_sign",
+    "issue_card_token",
+    "verify_card_token",
+    "_is_b64u",
+    "build_card_view",
+    "build_full_history",
+    "render_card_qr_png",
+    "lookup_patient_for_lab"
+   ],
+   "classes": [
+    "CardTokenError"
+   ],
+   "docstring": "Patient Card service \u2014 digital, QR-backed patient identity."
+  },
+  {
+   "file": "patient_service.py",
+   "lines": 437,
+   "functions": [
+    "patient_to_dict",
+    "list_patients",
+    "get_patient_by_id",
+    "create_patient",
+    "update_patient",
+    "get_family_members",
+    "get_patient_children",
+    "_check_duplicates",
+    "_resolve_mpi"
+   ],
+   "classes": [],
+   "docstring": "Patient service - business logic layer for patient operations."
+  },
+  {
+   "file": "pdf_report.py",
+   "lines": 435,
+   "functions": [
+    "_ar",
+    "_hijri_date",
+    "generate_result_pdf"
+   ],
+   "classes": [],
+   "docstring": "Generate professional bilingual (Arabic/English) lab result PDF reports."
+  },
+  {
+   "file": "quality_control_service.py",
+   "lines": 292,
+   "functions": [
+    "evaluate_westgard",
+    "evaluate_westgard_full",
+    "submit_single_qc",
+    "submit_batch_qc",
+    "list_qc_records",
+    "get_qc_summary",
+    "qc_to_dict"
+   ],
+   "classes": [],
+   "docstring": ""
+  },
+  {
+   "file": "risk_based_auth_service.py",
+   "lines": 300,
+   "functions": [],
+   "classes": [
+    "AuthRiskLevel",
+    "RequiredAction"
+   ],
+   "docstring": ""
+  },
+  {
+   "file": "samir.py",
+   "lines": 5,
+   "functions": [],
+   "classes": [],
+   "docstring": "samir.py \u2014 thin compatibility shim."
+  },
+  {
+   "file": "samir_engine.py",
+   "lines": 40,
+   "functions": [
+    "samir"
+   ],
+   "classes": [],
+   "docstring": "Samir Contextual Help Engine \u2014 GULA Platform"
+  },
+  {
+   "file": "sample_service.py",
+   "lines": 201,
+   "functions": [
+    "sample_to_dict",
+    "create_sample",
+    "list_samples",
+    "get_sample",
+    "update_sample"
+   ],
+   "classes": [],
+   "docstring": "Sample service \u2014 business logic layer for sample operations."
+  },
+  {
+   "file": "stats_service.py",
+   "lines": 356,
+   "functions": [
+    "_get_redis",
+    "_cache_get",
+    "_cache_set",
+    "_cache_key",
+    "daily_trends",
+    "test_frequency",
+    "flag_distribution",
+    "patient_growth",
+    "stats_summary",
+    "turnaround_times"
+   ],
+   "classes": [],
+   "docstring": "SELECT"
+  },
+  {
+   "file": "test_result_service.py",
+   "lines": 437,
+   "functions": [
+    "derive_status",
+    "result_dict",
+    "validate_payload",
+    "get_patient_scoped",
+    "fill_ranges_from_catalog",
+    "create_result",
+    "validate_result_payload",
+    "get_result",
+    "verify_result",
+    "list_citizen_results",
+    "list_results",
+    "citizen_timeline"
+   ],
+   "classes": [],
+   "docstring": "List test results scoped to the current user's laboratory."
+  }
+ ],
+ "route_modules": {
+  "/niam": 198,
+  "/national": 191,
+  "/clinical": 91,
+  "/ehr": 85,
+  "/governance": 78,
+  "/care-continuum": 74,
+  "/lims": 67,
+  "/api": 65,
+  "/nursing": 65,
+  "/nhdw": 61,
+  "/radiology": 57,
+  "/pharmacy": 55,
+  "/document-intelligence": 50,
+  "/research": 49,
+  "/ai": 42,
+  "/hospital": 39,
+  "/national-data": 39,
+  "/intelligence": 30,
+  "/admin": 28,
+  "/integration": 28,
+  "/authz": 27,
+  "/ems": 26,
+  "/fhir": 25,
+  "/kernel": 24,
+  "/edge": 22,
+  "/roadmap": 22,
+  "/biomedical": 21,
+  "/control-plane": 21,
+  "/critical-care": 20,
+  "/blood-bank": 19,
+  "/lifecycle": 19,
+  "/public-health": 19,
+  "/citizen-platform": 17,
+  "/ecosystem": 17,
+  "/pilot-platform": 15,
+  "/command-center": 13,
+  "/knowledge-graph": 13,
+  "/auth": 11,
+  "/compliance": 11,
+  "/health-data": 11,
+  "/health": 10,
+  "/certification": 9,
+  "/contracts": 9,
+  "/mfa": 9,
+  "/gateway": 8,
+  "/simulation": 8,
+  "/oauth2": 7,
+  "/test-results": 7,
+  "/citizen": 6,
+  "/mpi": 6,
+  "/orders": 6,
+  "/patients": 6,
+  "/stats": 6,
+  "/clinical-foundation": 5,
+  "/document-management": 5,
+  "/encounter-management": 5,
+  "/fhir-interoperability": 5,
+  "/healthcare-consent": 5,
+  "/labs": 5,
+  "/patient-card": 5,
+  "/provider-management": 5,
+  "/reporting-service": 5,
+  "/search-service": 5,
+  "/storage-service": 5,
+  "/workflow-engine": 5,
+  "/claims": 4,
+  "/qc": 4,
+  "/register": 4,
+  "/samples": 4,
+  "/service-accounts": 4,
+  "/tiers": 4,
+  "/consent": 3,
+  "/platform": 3,
+  "/alerts": 2,
+  "/docs": 2,
+  "/identity": 2,
+  "/integrations": 2,
+  "/metrics": 2,
+  "/notify": 2,
+  "/r": 2,
+  "/analyze": 1,
+  "/batch": 1,
+  "/dashboard": 1,
+  "/device": 1,
+  "/greeting": 1,
+  "/history": 1,
+  "/id-scan": 1,
+  "/insurance": 1,
+  "/login": 1,
+  "/logout": 1,
+  "/national-id": 1,
+  "/openapi.json": 1,
+  "/patient-history": 1,
+  "/qr-medical": 1,
+  "/qr": 1,
+  "/redoc": 1,
+  "/security": 1,
+  "/setup": 1,
+  "/test-profiles": 1,
+  "/test-types": 1
+ },
+ "schema_modules": {
+  "app/certification/routes.py": [
+   {
+    "name": "DimensionCheck",
+    "fields": [
+     "name",
+     "description",
+     "evaluator"
+    ]
+   },
+   {
+    "name": "ReleaseCheckRequest",
+    "fields": [
+     "gates"
+    ]
+   },
+   {
+    "name": "ReleaseCheckResponse",
+    "fields": [
+     "release_readiness",
+     "total_gates",
+     "passed",
+     "failed",
+     "blocking_failures",
+     "details"
+    ]
+   }
+  ],
+  "app/command_intelligence/routes.py": [
+   {
+    "name": "IncidentReport",
+    "fields": [
+     "incident_type",
+     "severity",
+     "title",
+     "description",
+     "affected_entities",
+     "root_cause",
+     "impact_analysis",
+     "recommendation"
+    ]
+   },
+   {
+    "name": "RecommendationRequest",
+    "fields": [
+     "recommendation_type",
+     "priority",
+     "title",
+     "description",
+     "expected_impact",
+     "risk_assessment"
+    ]
+   }
+  ],
+  "app/contracts/models.py": [
+   {
+    "name": "AsyncAPISpec",
+    "fields": [
+     "asyncapi",
+     "info",
+     "servers",
+     "channels",
+     "components"
+    ]
+   },
+   {
+    "name": "ContractExport",
+    "fields": [
+     "output_dir",
+     "formats",
+     "include_metadata",
+     "pretty"
+    ]
+   },
+   {
+    "name": "ContractMetadata",
+    "fields": [
+     "name",
+     "version",
+     "tags",
+     "labels"
+    ]
+   },
+   {
+    "name": "ContractVersion",
+    "fields": [
+     "version",
+     "description",
+     "status",
+     "format",
+     "generated_at",
+     "source"
+    ]
+   },
+   {
+    "name": "FHIRProfile",
+    "fields": [
+     "resourceType",
+     "id",
+     "url",
+     "version",
+     "name",
+     "status",
+     "description",
+     "fhirVersion",
+     "kind",
+     "abstract",
+     "type",
+     "baseDefinition",
+     "derivation",
+     "differential"
+    ]
+   },
+   {
+    "name": "GraphQLSchema",
+    "fields": [
+     "schema_",
+     "query",
+     "mutation",
+     "subscription",
+     "types"
+    ]
+   },
+   {
+    "name": "JSONSchema",
+    "fields": [
+     "schema_",
+     "id",
+     "type",
+     "title",
+     "description",
+     "properties",
+     "required",
+     "definitions"
+    ]
+   },
+   {
+    "name": "OpenAPISpec",
+    "fields": [
+     "openapi",
+     "info",
+     "servers",
+     "paths",
+     "components",
+     "tags"
+    ]
+   }
+  ],
+  "app/financial/schemas.py": [
+   {
+    "name": "FinancialReportParams",
+    "fields": [
+     "lab_id",
+     "date_from",
+     "date_to",
+     "group_by"
+    ]
+   },
+   {
+    "name": "FinancialReportResponse",
+    "fields": [
+     "lab_id",
+     "period",
+     "total_invoiced",
+     "total_collected",
+     "total_outstanding",
+     "invoice_count",
+     "payment_count",
+     "group_by",
+     "breakdown"
+    ]
+   },
+   {
+    "name": "InvoiceCreate",
+    "fields": [
+     "lab_id",
+     "subscription_id",
+     "items",
+     "amount",
+     "currency",
+     "due_date",
+     "notes"
+    ]
+   },
+   {
+    "name": "InvoiceFilterParams",
+    "fields": [
+     "lab_id",
+     "status",
+     "date_from",
+     "date_to"
+    ]
+   },
+   {
+    "name": "InvoiceResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "invoice_number",
+     "status",
+     "amount",
+     "currency",
+     "paid_amount",
+     "due_date",
+     "issued_at",
+     "paid_at",
+     "notes"
+    ]
+   },
+   {
+    "name": "PayableResponse",
+    "fields": [
+     "id",
+     "provider_id",
+     "amount",
+     "currency",
+     "status",
+     "due_date"
+    ]
+   },
+   {
+    "name": "PaymentCreate",
+    "fields": [
+     "invoice_id",
+     "amount",
+     "currency",
+     "method",
+     "reference",
+     "notes"
+    ]
+   },
+   {
+    "name": "PaymentResponse",
+    "fields": [
+     "id",
+     "invoice_id",
+     "amount",
+     "currency",
+     "method",
+     "status",
+     "reference",
+     "processed_at",
+     "notes"
+    ]
+   },
+   {
+    "name": "PricingRuleCreate",
+    "fields": [
+     "name",
+     "test_type",
+     "base_price",
+     "currency",
+     "quality_discount_pct",
+     "volume_discount_pct",
+     "active"
+    ]
+   },
+   {
+    "name": "PricingRuleResponse",
+    "fields": [
+     "id",
+     "name",
+     "test_type",
+     "base_price",
+     "currency",
+     "active"
+    ]
+   },
+   {
+    "name": "ReceivableResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "invoice_id",
+     "amount",
+     "currency",
+     "status",
+     "due_date",
+     "aging_days"
+    ]
+   }
+  ],
+  "app/governance/routes/constitution_routes.py": [
+   {
+    "name": "ADRRequest",
+    "fields": [
+     "title",
+     "context"
+    ]
+   },
+   {
+    "name": "EvaluateRequest",
+    "fields": [
+     "request_type",
+     "context"
+    ]
+   },
+   {
+    "name": "ProcurementRequest",
+    "fields": [
+     "requirement",
+     "cost"
+    ]
+   },
+   {
+    "name": "RecommendationRequest",
+    "fields": [
+     "query",
+     "category"
+    ]
+   }
+  ],
+  "app/governance/routes/governance_routes.py": [
+   {
+    "name": "ActingAppoint",
+    "fields": [
+     "node_id",
+     "acting_node_id",
+     "reason"
+    ]
+   },
+   {
+    "name": "DelegationCreate",
+    "fields": [
+     "delegator_node_id",
+     "delegate_node_id",
+     "scope",
+     "reason"
+    ]
+   },
+   {
+    "name": "LabRegister",
+    "fields": [
+     "lab_code",
+     "name_ar",
+     "lab_type",
+     "name_en",
+     "organization_node_id",
+     "license_number",
+     "governorate"
+    ]
+   },
+   {
+    "name": "NodeCreate",
+    "fields": [
+     "node_type",
+     "code",
+     "name_ar",
+     "name_en",
+     "parent_id",
+     "governorate",
+     "district",
+     "metadata_json"
+    ]
+   },
+   {
+    "name": "WorkerCreate",
+    "fields": [
+     "employee_code",
+     "full_name_ar",
+     "profession",
+     "full_name_en",
+     "national_id_hash",
+     "specialization",
+     "organization_node_id",
+     "department",
+     "unit",
+     "employment_date",
+     "contact_phone",
+     "contact_email"
+    ]
+   }
+  ],
+  "app/identity/api/auth.py": [
+   {
+    "name": "LoginRequest",
+    "fields": [
+     "login",
+     "password"
+    ]
+   },
+   {
+    "name": "LoginResponse",
+    "fields": [
+     "access_token",
+     "refresh_token",
+     "token_type",
+     "expires_in",
+     "session_uuid",
+     "account_uuid"
+    ]
+   }
+  ],
+  "app/insurance/api/claims.py": [
+   {
+    "name": "AppealCreate",
+    "fields": [
+     "reason",
+     "details",
+     "requested_amount",
+     "supporting_documents"
+    ]
+   },
+   {
+    "name": "AppealResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "claim_id",
+     "submitted_by",
+     "appeal_number",
+     "status",
+     "reason",
+     "details",
+     "requested_amount",
+     "reviewed_by",
+     "review_notes",
+     "decision",
+     "decision_amount",
+     "decision_date",
+     "escalation_level",
+     "filed_date",
+     "resolved_date",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "ClaimCreate",
+    "fields": [
+     "coverage_id",
+     "patient_id",
+     "provider_id",
+     "order_id",
+     "authorization_id",
+     "referral_id",
+     "claim_type",
+     "service_start_date",
+     "service_end_date",
+     "diagnosis_code_primary",
+     "diagnosis_code_secondary",
+     "icd10_code",
+     "idempotency_key",
+     "items"
+    ]
+   },
+   {
+    "name": "ClaimItemResponse",
+    "fields": [
+     "id",
+     "claim_id",
+     "service_code",
+     "service_name",
+     "service_category",
+     "loinc_code",
+     "cpt_code",
+     "quantity",
+     "unit_price",
+     "billed_amount",
+     "allowed_amount",
+     "paid_amount",
+     "copay_amount",
+     "deductible_amount",
+     "patient_responsibility",
+     "diagnosis_code",
+     "adjudication_status"
+    ]
+   },
+   {
+    "name": "ClaimItemSchema",
+    "fields": [
+     "service_code",
+     "service_name",
+     "service_category",
+     "loinc_code",
+     "cpt_code",
+     "quantity",
+     "unit_price",
+     "billed_amount",
+     "diagnosis_code",
+     "modifier",
+     "place_of_service"
+    ]
+   },
+   {
+    "name": "ClaimResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "coverage_id",
+     "patient_id",
+     "provider_id",
+     "order_id",
+     "authorization_id",
+     "referral_id",
+     "claim_number",
+     "claim_type",
+     "status",
+     "service_start_date",
+     "service_end_date",
+     "submitted_date",
+     "adjudicated_date",
+     "paid_date",
+     "total_billed",
+     "total_allowed",
+     "total_paid",
+     "total_deductible",
+     "total_copay",
+     "total_patient_responsibility",
+     "currency",
+     "diagnosis_code_primary",
+     "icd10_code",
+     "adjudication_code",
+     "adjudication_notes",
+     "rejection_reason",
+     "external_ref",
+     "created_at",
+     "updated_at",
+     "items"
+    ]
+   },
+   {
+    "name": "ClaimUpdate",
+    "fields": [
+     "service_start_date",
+     "service_end_date",
+     "diagnosis_code_primary",
+     "diagnosis_code_secondary",
+     "icd10_code",
+     "items"
+    ]
+   },
+   {
+    "name": "PaymentResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "claim_id",
+     "payer_id",
+     "payment_number",
+     "status",
+     "amount",
+     "currency",
+     "payment_method",
+     "payment_date",
+     "reference_number",
+     "adjustment_amount",
+     "adjustment_reason",
+     "notes",
+     "created_at"
+    ]
+   }
+  ],
+  "app/insurance/api/coverage_check.py": [
+   {
+    "name": "CoverageCheckRequest",
+    "fields": [
+     "patient_id",
+     "coverage_id",
+     "service_code",
+     "service_category",
+     "quantity",
+     "billed_amount",
+     "diagnosis_code",
+     "referring_provider_id",
+     "ordering_provider_id",
+     "facility_id",
+     "service_date"
+    ]
+   },
+   {
+    "name": "CoverageCheckResponse",
+    "fields": [
+     "coverage_id",
+     "policy_id",
+     "patient_id",
+     "service_code",
+     "service_category",
+     "determination",
+     "is_covered",
+     "coverage_percentage",
+     "copay_percentage",
+     "copay_amount",
+     "deductible_applies",
+     "deductible_remaining",
+     "deductible_amount",
+     "max_out_of_pocket_remaining",
+     "max_out_of_pocket_total",
+     "benefit_remaining",
+     "benefit_total",
+     "estimated_allowed",
+     "estimated_patient_responsibility",
+     "estimated_insurance_payment",
+     "requires_pre_auth",
+     "requires_referral",
+     "network_status",
+     "denial_reason",
+     "messages"
+    ]
+   },
+   {
+    "name": "EligibilityRequest",
+    "fields": [
+     "patient_id",
+     "coverage_id",
+     "service_date",
+     "service_code"
+    ]
+   },
+   {
+    "name": "EligibilityResponse",
+    "fields": [
+     "eligible",
+     "coverage_id",
+     "patient_id",
+     "status",
+     "network_status",
+     "benefit_remaining",
+     "deductible_remaining",
+     "requires_pre_auth",
+     "requires_referral",
+     "messages"
+    ]
+   },
+   {
+    "name": "EstimateRequest",
+    "fields": [
+     "patient_id",
+     "coverage_id",
+     "service_code",
+     "service_category",
+     "quantity",
+     "billed_amount",
+     "diagnosis_code"
+    ]
+   },
+   {
+    "name": "EstimateResponse",
+    "fields": [
+     "total_billed",
+     "estimated_allowed",
+     "deductible_amount",
+     "copay_amount",
+     "insurance_payment",
+     "patient_responsibility",
+     "coverage_percentage",
+     "is_covered",
+     "messages"
+    ]
+   }
+  ],
+  "app/insurance/api/coverages.py": [
+   {
+    "name": "CoverageCreate",
+    "fields": [
+     "policy_id",
+     "patient_id",
+     "dependent_id",
+     "subscriber_relation",
+     "start_date",
+     "end_date",
+     "copay_percentage",
+     "deductible_amount",
+     "deductible_total",
+     "max_out_of_pocket",
+     "benefit_total",
+     "network_status",
+     "authorization_required",
+     "referral_required",
+     "pre_existing_wait_period",
+     "notes"
+    ]
+   },
+   {
+    "name": "CoverageResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "policy_id",
+     "patient_id",
+     "dependent_id",
+     "status",
+     "subscriber_relation",
+     "start_date",
+     "end_date",
+     "verification_date",
+     "copay_percentage",
+     "deductible_remaining",
+     "deductible_total",
+     "max_out_of_pocket_remaining",
+     "max_out_of_pocket_total",
+     "benefit_remaining",
+     "benefit_total",
+     "network_status",
+     "authorization_required",
+     "referral_required",
+     "notes",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "CoverageUpdate",
+    "fields": [
+     "end_date",
+     "copay_percentage",
+     "deductible_remaining",
+     "deductible_total",
+     "max_out_of_pocket_remaining",
+     "max_out_of_pocket_total",
+     "benefit_remaining",
+     "benefit_total",
+     "network_status",
+     "authorization_required",
+     "referral_required",
+     "notes"
+    ]
+   }
+  ],
+  "app/insurance/api/network.py": [
+   {
+    "name": "AvailabilityCreate",
+    "fields": [
+     "day_of_week",
+     "time_from",
+     "time_to",
+     "is_available",
+     "slot_type",
+     "max_patients",
+     "current_patients",
+     "effective_from",
+     "effective_until"
+    ]
+   },
+   {
+    "name": "AvailabilityResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "network_provider_id",
+     "day_of_week",
+     "time_from",
+     "time_to",
+     "is_available",
+     "slot_type",
+     "max_patients",
+     "current_patients",
+     "effective_from",
+     "effective_until"
+    ]
+   },
+   {
+    "name": "NetworkProviderCreate",
+    "fields": [
+     "provider_id",
+     "facility_id",
+     "contract_id",
+     "facility_type",
+     "network_tier",
+     "is_preferred",
+     "is_exclusive",
+     "is_accepting_new_patients",
+     "join_date",
+     "termination_date",
+     "service_area"
+    ]
+   },
+   {
+    "name": "NetworkProviderResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "provider_id",
+     "facility_id",
+     "contract_id",
+     "facility_type",
+     "network_tier",
+     "is_preferred",
+     "is_exclusive",
+     "is_accepting_new_patients",
+     "join_date",
+     "termination_date",
+     "service_area",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "NetworkProviderUpdate",
+    "fields": [
+     "network_tier",
+     "is_preferred",
+     "is_exclusive",
+     "is_accepting_new_patients",
+     "termination_date",
+     "service_area"
+    ]
+   },
+   {
+    "name": "NetworkServiceCreate",
+    "fields": [
+     "service_code",
+     "service_name",
+     "negotiated_rate",
+     "contracted_rate",
+     "in_network_price",
+     "out_of_network_price",
+     "currency",
+     "effective_from",
+     "effective_until"
+    ]
+   },
+   {
+    "name": "NetworkServiceResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "network_provider_id",
+     "service_code",
+     "service_name",
+     "negotiated_rate",
+     "contracted_rate",
+     "in_network_price",
+     "out_of_network_price",
+     "currency",
+     "is_active",
+     "effective_from",
+     "effective_until",
+     "created_at"
+    ]
+   }
+  ],
+  "app/insurance/api/payments.py": [
+   {
+    "name": "BudgetCreate",
+    "fields": [
+     "provider_id",
+     "fiscal_year",
+     "total_budget",
+     "currency",
+     "notes"
+    ]
+   },
+   {
+    "name": "BudgetResponse",
+    "fields": []
+   },
+   {
+    "name": "PaymentCreate",
+    "fields": [
+     "claim_id",
+     "payer_id",
+     "amount",
+     "currency",
+     "payment_method",
+     "payment_date",
+     "reference_number",
+     "adjustment_amount",
+     "adjustment_reason",
+     "notes"
+    ]
+   },
+   {
+    "name": "PaymentResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "claim_id",
+     "payer_id",
+     "payment_number",
+     "status",
+     "amount",
+     "currency",
+     "payment_method",
+     "payment_date",
+     "reference_number",
+     "adjustment_amount",
+     "adjustment_reason",
+     "notes",
+     "created_at",
+     "processed_at"
+    ]
+   },
+   {
+    "name": "SettlementCreate",
+    "fields": [
+     "provider_id",
+     "period_start",
+     "period_end",
+     "notes"
+    ]
+   },
+   {
+    "name": "SettlementResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "provider_id",
+     "period_start",
+     "period_end",
+     "status",
+     "settlement_number",
+     "total_claims",
+     "total_billed",
+     "total_allowed",
+     "total_paid",
+     "total_adjustments",
+     "total_deductible",
+     "total_copay",
+     "net_amount",
+     "currency",
+     "notes",
+     "reconciled_at",
+     "paid_at",
+     "created_at",
+     "updated_at"
+    ]
+   }
+  ],
+  "app/insurance/api/policies.py": [
+   {
+    "name": "BenefitPackageCreate",
+    "fields": [
+     "provider_id",
+     "policy_id",
+     "name",
+     "name_ar",
+     "code",
+     "description",
+     "service_category",
+     "is_mandatory",
+     "coverage_percentage",
+     "copay_percentage",
+     "deductible_applies",
+     "max_benefit_per_claim",
+     "max_benefit_per_year",
+     "max_benefit_lifetime",
+     "max_visits_per_year",
+     "age_min",
+     "age_max",
+     "gender_restriction",
+     "requires_pre_auth",
+     "requires_referral"
+    ]
+   },
+   {
+    "name": "BenefitPackageResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "provider_id",
+     "policy_id",
+     "name",
+     "name_ar",
+     "code",
+     "description",
+     "service_category",
+     "is_mandatory",
+     "is_active",
+     "coverage_percentage",
+     "copay_percentage",
+     "deductible_applies",
+     "max_benefit_per_claim",
+     "max_benefit_per_year",
+     "max_benefit_lifetime",
+     "max_visits_per_year",
+     "age_min",
+     "age_max",
+     "gender_restriction",
+     "requires_pre_auth",
+     "requires_referral",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "PolicyCreate",
+    "fields": [
+     "provider_id",
+     "policy_number",
+     "group_number",
+     "policy_holder_id",
+     "subscriber_id",
+     "subscriber_name",
+     "subscriber_relation",
+     "start_date",
+     "end_date",
+     "grace_period_days",
+     "premium_amount",
+     "premium_currency",
+     "premium_frequency",
+     "copay_percentage",
+     "deductible_amount",
+     "max_out_of_pocket",
+     "max_lifetime_benefit",
+     "terms_text",
+     "exclusions_text"
+    ]
+   },
+   {
+    "name": "PolicyResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "provider_id",
+     "policy_number",
+     "group_number",
+     "status",
+     "policy_holder_id",
+     "subscriber_id",
+     "subscriber_name",
+     "subscriber_relation",
+     "start_date",
+     "end_date",
+     "grace_period_days",
+     "premium_amount",
+     "premium_currency",
+     "premium_frequency",
+     "copay_percentage",
+     "deductible_amount",
+     "max_out_of_pocket",
+     "max_lifetime_benefit",
+     "terms_text",
+     "exclusions_text",
+     "signed_at",
+     "cancelled_at",
+     "cancellation_reason",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "PolicyUpdate",
+    "fields": [
+     "group_number",
+     "end_date",
+     "grace_period_days",
+     "premium_amount",
+     "premium_currency",
+     "premium_frequency",
+     "copay_percentage",
+     "deductible_amount",
+     "max_out_of_pocket",
+     "max_lifetime_benefit",
+     "terms_text",
+     "exclusions_text"
+    ]
+   }
+  ],
+  "app/insurance/api/providers.py": [
+   {
+    "name": "ProviderContractCreate",
+    "fields": [
+     "facility_id",
+     "facility_type",
+     "contract_number",
+     "start_date",
+     "end_date",
+     "termination_notice_days",
+     "contract_type",
+     "network_type",
+     "is_exclusive",
+     "fee_schedule_id",
+     "discount_percentage",
+     "stop_loss_threshold",
+     "risk_sharing",
+     "terms_text"
+    ]
+   },
+   {
+    "name": "ProviderContractResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "insurance_provider_id",
+     "facility_id",
+     "facility_type",
+     "contract_number",
+     "status",
+     "start_date",
+     "end_date",
+     "termination_notice_days",
+     "contract_type",
+     "network_type",
+     "is_exclusive",
+     "discount_percentage",
+     "stop_loss_threshold",
+     "risk_sharing",
+     "terms_text",
+     "signed_at",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "ProviderCreate",
+    "fields": [
+     "insurance_type",
+     "name",
+     "name_ar",
+     "code",
+     "license_number",
+     "tax_id",
+     "is_government",
+     "phone",
+     "email",
+     "website",
+     "address_line",
+     "city",
+     "governorate",
+     "country",
+     "contact_person",
+     "contact_phone",
+     "coverage_notes"
+    ]
+   },
+   {
+    "name": "ProviderResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "insurance_type",
+     "name",
+     "name_ar",
+     "code",
+     "license_number",
+     "tax_id",
+     "is_government",
+     "is_active",
+     "phone",
+     "email",
+     "website",
+     "address_line",
+     "city",
+     "governorate",
+     "country",
+     "contact_person",
+     "contact_phone",
+     "coverage_notes",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "ProviderUpdate",
+    "fields": [
+     "insurance_type",
+     "name",
+     "name_ar",
+     "code",
+     "license_number",
+     "tax_id",
+     "is_government",
+     "phone",
+     "email",
+     "website",
+     "address_line",
+     "city",
+     "governorate",
+     "country",
+     "contact_person",
+     "contact_phone",
+     "coverage_notes",
+     "is_active"
+    ]
+   }
+  ],
+  "app/insurance/api/referrals.py": [
+   {
+    "name": "ReferralCreate",
+    "fields": [
+     "coverage_id",
+     "patient_id",
+     "authorization_id",
+     "from_practitioner_id",
+     "to_practitioner_id",
+     "from_facility_id",
+     "to_facility_id",
+     "referral_type",
+     "priority",
+     "clinical_reason",
+     "diagnosis_code",
+     "diagnosis_description",
+     "icd10_code",
+     "service_code",
+     "service_description",
+     "quantity",
+     "notes",
+     "clinical_notes",
+     "expiration_date"
+    ]
+   },
+   {
+    "name": "ReferralHistoryResponse",
+    "fields": [
+     "id",
+     "referral_id",
+     "from_status",
+     "to_status",
+     "changed_by",
+     "change_reason",
+     "created_at"
+    ]
+   },
+   {
+    "name": "ReferralResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "coverage_id",
+     "patient_id",
+     "authorization_id",
+     "from_practitioner_id",
+     "to_practitioner_id",
+     "from_facility_id",
+     "to_facility_id",
+     "referral_number",
+     "referral_type",
+     "status",
+     "priority",
+     "clinical_reason",
+     "diagnosis_code",
+     "diagnosis_description",
+     "icd10_code",
+     "service_code",
+     "service_description",
+     "quantity",
+     "notes",
+     "clinical_notes",
+     "expiration_date",
+     "qr_code",
+     "digital_signature",
+     "signed_by",
+     "signed_at",
+     "completed_at",
+     "completed_notes",
+     "cancelled_at",
+     "cancellation_reason",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "ReferralUpdate",
+    "fields": [
+     "to_practitioner_id",
+     "to_facility_id",
+     "priority",
+     "clinical_reason",
+     "diagnosis_code",
+     "diagnosis_description",
+     "icd10_code",
+     "service_code",
+     "service_description",
+     "quantity",
+     "notes",
+     "clinical_notes",
+     "expiration_date"
+    ]
+   }
+  ],
+  "app/knowledge_graph/routes.py": [
+   {
+    "name": "AddEdgeRequest",
+    "fields": [
+     "source_qualified_name",
+     "target_qualified_name",
+     "edge_type",
+     "metadata",
+     "weight"
+    ]
+   },
+   {
+    "name": "AddNodeRequest",
+    "fields": [
+     "node_type",
+     "name",
+     "qualified_name",
+     "description",
+     "metadata",
+     "source_path",
+     "tags",
+     "version"
+    ]
+   },
+   {
+    "name": "PathQueryParams",
+    "fields": [
+     "source",
+     "target"
+    ]
+   }
+  ],
+  "app/lims/routes.py": [
+   {
+    "name": "ASTMResultResponse",
+    "fields": [
+     "specimen_id",
+     "test_code",
+     "value",
+     "unit",
+     "flag"
+    ]
+   },
+   {
+    "name": "CalibrationRecordRequest",
+    "fields": [
+     "calibration_type",
+     "calibrator_lot",
+     "passed",
+     "notes"
+    ]
+   },
+   {
+    "name": "DeviceMessageRequest",
+    "fields": [
+     "instrument_id",
+     "raw_message"
+    ]
+   },
+   {
+    "name": "IQCRunRequest",
+    "fields": [
+     "program_id",
+     "test_code",
+     "measured_value",
+     "expected_value",
+     "sd",
+     "level",
+     "lot_number",
+     "instrument_id",
+     "notes"
+    ]
+   },
+   {
+    "name": "InstrumentCreateRequest",
+    "fields": [
+     "model_id",
+     "instrument_code",
+     "serial_number",
+     "workstation_id",
+     "ip_address",
+     "port"
+    ]
+   },
+   {
+    "name": "InventoryRequest",
+    "fields": [
+     "code",
+     "name",
+     "name_ar",
+     "current_quantity",
+     "unit",
+     "minimum_quantity",
+     "supplier_id",
+     "storage_location"
+    ]
+   },
+   {
+    "name": "MaintenanceRecordRequest",
+    "fields": [
+     "maintenance_type",
+     "title",
+     "description",
+     "performed_at",
+     "cost",
+     "notes"
+    ]
+   },
+   {
+    "name": "OrderCreateRequest",
+    "fields": [
+     "order_id",
+     "accession_number",
+     "priority",
+     "clinical_note",
+     "diagnosis_code"
+    ]
+   },
+   {
+    "name": "ReportGenerateRequest",
+    "fields": [
+     "order_id",
+     "report_number",
+     "locale",
+     "title",
+     "title_ar"
+    ]
+   },
+   {
+    "name": "ResultCreateRequest",
+    "fields": [
+     "specimen_id",
+     "test_code",
+     "test_name",
+     "value_numeric",
+     "value_text",
+     "unit",
+     "instrument_id",
+     "loinc_code"
+    ]
+   },
+   {
+    "name": "ResultValidateRequest",
+    "fields": [
+     "notes",
+     "signature_hash",
+     "action"
+    ]
+   },
+   {
+    "name": "SpecimenRegisterRequest",
+    "fields": [
+     "order_id",
+     "barcode",
+     "specimen_type",
+     "container_type",
+     "volume_ml",
+     "clinical_info"
+    ]
+   },
+   {
+    "name": "SpecimenTransitionRequest",
+    "fields": [
+     "target_status",
+     "notes",
+     "rejection_reason"
+    ]
+   }
+  ],
+  "app/models/test_result.py": [
+   {
+    "name": "TestResultBrief",
+    "fields": [
+     "id",
+     "test_code",
+     "test_name_en",
+     "test_name_ar",
+     "result_value",
+     "result_text",
+     "unit",
+     "status",
+     "is_abnormal",
+     "is_critical",
+     "sample_collected_at"
+    ]
+   },
+   {
+    "name": "TestResultCreate",
+    "fields": [
+     "citizen_id",
+     "lab_id",
+     "device_id",
+     "test_code",
+     "test_name_en",
+     "test_name_ar",
+     "category",
+     "result_value",
+     "result_text",
+     "unit",
+     "reference_min",
+     "reference_max",
+     "status",
+     "is_critical",
+     "is_abnormal",
+     "abnormality_direction",
+     "sample_collected_at",
+     "sample_barcode",
+     "ordering_physician",
+     "clinical_notes"
+    ]
+   },
+   {
+    "name": "TestResultForCitizen",
+    "fields": [
+     "id",
+     "test_name_ar",
+     "result_value",
+     "result_text",
+     "unit",
+     "reference_min",
+     "reference_max",
+     "status",
+     "is_abnormal",
+     "is_critical",
+     "abnormality_direction",
+     "sample_collected_at",
+     "result_completed_at"
+    ]
+   },
+   {
+    "name": "TestResultRead",
+    "fields": [
+     "id",
+     "citizen_id",
+     "lab_id",
+     "device_id",
+     "test_code",
+     "test_name_en",
+     "test_name_ar",
+     "category",
+     "result_value",
+     "result_text",
+     "unit",
+     "reference_min",
+     "reference_max",
+     "status",
+     "is_critical",
+     "is_abnormal",
+     "abnormality_direction",
+     "sample_collected_at",
+     "result_completed_at",
+     "verified_at",
+     "verified_by",
+     "sample_barcode",
+     "ordering_physician",
+     "clinical_notes",
+     "created_at",
+     "updated_at"
+    ]
+   }
+  ],
+  "app/national/api/routes/advance_directive.py": [
+   {
+    "name": "AdvanceDirectiveCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "directive_type",
+     "title",
+     "description",
+     "content",
+     "witness_name",
+     "witness_relationship",
+     "witness_signature",
+     "legal_representative_id",
+     "legal_representative_name",
+     "legal_representative_relationship",
+     "effective_date",
+     "expiration_date",
+     "document_url",
+     "notes"
+    ]
+   },
+   {
+    "name": "AdvanceDirectiveListResponse",
+    "fields": [
+     "items",
+     "total",
+     "skip",
+     "limit"
+    ]
+   },
+   {
+    "name": "AdvanceDirectiveResponse",
+    "fields": [
+     "id",
+     "patient_id",
+     "citizen_id",
+     "directive_type",
+     "status",
+     "title",
+     "description",
+     "content",
+     "witness_name",
+     "witness_relationship",
+     "witness_signature",
+     "legal_representative_id",
+     "legal_representative_name",
+     "legal_representative_relationship",
+     "effective_date",
+     "expiration_date",
+     "revoked_at",
+     "revoked_by",
+     "revocation_reason",
+     "document_url",
+     "notes",
+     "is_deleted",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "AdvanceDirectiveUpdate",
+    "fields": [
+     "directive_type",
+     "title",
+     "description",
+     "content",
+     "witness_name",
+     "witness_relationship",
+     "witness_signature",
+     "legal_representative_id",
+     "legal_representative_name",
+     "legal_representative_relationship",
+     "effective_date",
+     "expiration_date",
+     "document_url",
+     "notes"
+    ]
+   }
+  ],
+  "app/national/api/routes/cds.py": [
+   {
+    "name": "AllergyConflictResponse",
+    "fields": [
+     "has_conflict",
+     "allergen",
+     "allergy_code",
+     "medication_code",
+     "medication_name",
+     "severity",
+     "reaction"
+    ]
+   },
+   {
+    "name": "CalculateRiskRequest",
+    "fields": [
+     "patient_id",
+     "risk_type"
+    ]
+   },
+   {
+    "name": "ContraindicationResponse",
+    "fields": [
+     "has_contraindication",
+     "type",
+     "code",
+     "description",
+     "severity",
+     "details"
+    ]
+   },
+   {
+    "name": "CriticalAlertResponse",
+    "fields": [
+     "alert_type",
+     "severity",
+     "code",
+     "display",
+     "value",
+     "interpretation",
+     "reference_range",
+     "effective_datetime",
+     "reaction"
+    ]
+   },
+   {
+    "name": "DrugInteractionRequest",
+    "fields": [
+     "medication_code_a",
+     "medication_code_b"
+    ]
+   },
+   {
+    "name": "DrugInteractionResponse",
+    "fields": [
+     "has_interaction",
+     "severity",
+     "description",
+     "recommendation",
+     "mechanism"
+    ]
+   },
+   {
+    "name": "DuplicateOrderResponse",
+    "fields": [
+     "is_duplicate",
+     "existing_observation_id",
+     "encounter_id",
+     "source",
+     "order_type",
+     "order_code",
+     "order_display",
+     "ordered_at",
+     "time_window_hours",
+     "status",
+     "severity",
+     "recommendation"
+    ]
+   },
+   {
+    "name": "DuplicateTherapyRequest",
+    "fields": [
+     "medication_code",
+     "therapeutic_class"
+    ]
+   },
+   {
+    "name": "DuplicateTherapyResponse",
+    "fields": [
+     "is_duplicate",
+     "existing_medication_code",
+     "existing_medication_name",
+     "new_medication_code",
+     "new_medication_name",
+     "therapeutic_class",
+     "severity",
+     "recommendation"
+    ]
+   },
+   {
+    "name": "EvaluateGuidelinesRequest",
+    "fields": [
+     "patient_id",
+     "guideline_id"
+    ]
+   },
+   {
+    "name": "GuidelineRecommendation",
+    "fields": [
+     "guideline_id",
+     "guideline_name",
+     "guideline_description",
+     "recommendations",
+     "overall_status"
+    ]
+   },
+   {
+    "name": "PreventiveCareResponse",
+    "fields": [
+     "code",
+     "name",
+     "name_ar",
+     "category",
+     "frequency",
+     "reason",
+     "priority",
+     "due"
+    ]
+   },
+   {
+    "name": "RiskScoreResponse",
+    "fields": [
+     "risk_type",
+     "score",
+     "risk_level",
+     "factors",
+     "patient_id",
+     "calculated_at"
+    ]
+   }
+  ],
+  "app/national/api/routes/citizen.py": [
+   {
+    "name": "CitizenCreate",
+    "fields": [
+     "first_name",
+     "father_name",
+     "grandfather_name",
+     "last_name",
+     "mother_name",
+     "date_of_birth",
+     "gender",
+     "phone",
+     "email",
+     "governorate",
+     "nationality",
+     "marital_status"
+    ]
+   },
+   {
+    "name": "CitizenResponse",
+    "fields": [
+     "id",
+     "health_number",
+     "first_name",
+     "father_name",
+     "grandfather_name",
+     "last_name",
+     "mother_name",
+     "date_of_birth",
+     "gender",
+     "phone",
+     "email",
+     "governorate",
+     "nationality",
+     "identity_status",
+     "is_deceased",
+     "is_vip",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "CitizenUpdate",
+    "fields": [
+     "first_name",
+     "father_name",
+     "grandfather_name",
+     "last_name",
+     "mother_name",
+     "date_of_birth",
+     "gender",
+     "phone",
+     "email",
+     "governorate",
+     "nationality",
+     "marital_status"
+    ]
+   }
+  ],
+  "app/national/api/routes/encounter.py": [
+   {
+    "name": "EncounterCreate",
+    "fields": [
+     "encounter_type",
+     "patient_id",
+     "citizen_id",
+     "organization_id",
+     "facility_id",
+     "department_id",
+     "practitioner_id",
+     "referral_id",
+     "period_start",
+     "period_end",
+     "duration_minutes",
+     "reason_code",
+     "reason_description",
+     "diagnosis_code",
+     "diagnosis_description",
+     "icd10_code",
+     "priority",
+     "is_emergency",
+     "disposition",
+     "notes"
+    ]
+   },
+   {
+    "name": "EncounterListResponse",
+    "fields": [
+     "items",
+     "total",
+     "skip",
+     "limit"
+    ]
+   },
+   {
+    "name": "EncounterResponse",
+    "fields": [
+     "id",
+     "encounter_type",
+     "status",
+     "patient_id",
+     "citizen_id",
+     "organization_id",
+     "facility_id",
+     "department_id",
+     "practitioner_id",
+     "referral_id",
+     "period_start",
+     "period_end",
+     "duration_minutes",
+     "reason_code",
+     "reason_description",
+     "diagnosis_code",
+     "diagnosis_description",
+     "icd10_code",
+     "priority",
+     "is_emergency",
+     "disposition",
+     "notes",
+     "is_deleted",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "EncounterUpdate",
+    "fields": [
+     "encounter_type",
+     "facility_id",
+     "department_id",
+     "practitioner_id",
+     "period_start",
+     "period_end",
+     "duration_minutes",
+     "reason_code",
+     "reason_description",
+     "diagnosis_code",
+     "diagnosis_description",
+     "icd10_code",
+     "priority",
+     "is_emergency",
+     "disposition",
+     "notes"
+    ]
+   },
+   {
+    "name": "FHIREncounterResponse",
+    "fields": [
+     "resourceType",
+     "id",
+     "status",
+     "class_",
+     "subject",
+     "participant",
+     "period",
+     "reasonCode",
+     "diagnosis",
+     "hospitalization",
+     "location"
+    ]
+   }
+  ],
+  "app/national/api/routes/family.py": [
+   {
+    "name": "FamilyCreate",
+    "fields": [
+     "family_id_hash",
+     "family_name",
+     "governorate",
+     "address"
+    ]
+   },
+   {
+    "name": "FamilyMemberAdd",
+    "fields": [
+     "citizen_id",
+     "relationship",
+     "is_primary"
+    ]
+   },
+   {
+    "name": "FamilyMemberResponse",
+    "fields": [
+     "citizen_id",
+     "relationship",
+     "is_primary"
+    ]
+   },
+   {
+    "name": "FamilyResponse",
+    "fields": [
+     "id",
+     "family_id_hash",
+     "family_name",
+     "member_count",
+     "created_at"
+    ]
+   }
+  ],
+  "app/national/api/routes/health_card.py": [
+   {
+    "name": "HealthCardIssue",
+    "fields": [
+     "citizen_id",
+     "health_number",
+     "card_type"
+    ]
+   },
+   {
+    "name": "HealthCardResponse",
+    "fields": [
+     "id",
+     "citizen_id",
+     "health_number",
+     "card_number",
+     "card_type",
+     "status",
+     "issued_at",
+     "expires_at",
+     "is_active",
+     "is_lost"
+    ]
+   }
+  ],
+  "app/national/api/routes/identity.py": [
+   {
+    "name": "ForeignerRegister",
+    "fields": [
+     "passport_number",
+     "passport_country",
+     "visa_number",
+     "first_name",
+     "last_name",
+     "date_of_birth",
+     "gender",
+     "nationality",
+     "phone",
+     "email"
+    ]
+   },
+   {
+    "name": "IdentityMergeRequest",
+    "fields": [
+     "primary_citizen_id",
+     "secondary_citizen_id",
+     "reason",
+     "method"
+    ]
+   },
+   {
+    "name": "IdentityResponse",
+    "fields": [
+     "citizen_id",
+     "health_number",
+     "is_temporary",
+     "requires_merge"
+    ]
+   },
+   {
+    "name": "NewbornRegister",
+    "fields": [
+     "birth_certificate_number",
+     "first_name",
+     "last_name",
+     "date_of_birth",
+     "gender",
+     "mother_id",
+     "mother_name",
+     "father_id",
+     "father_name",
+     "birth_weight_grams",
+     "hospital_id"
+    ]
+   },
+   {
+    "name": "UnknownPatientRegister",
+    "fields": [
+     "description",
+     "approximate_date_of_birth",
+     "gender",
+     "found_location",
+     "found_by"
+    ]
+   },
+   {
+    "name": "VisitorRegister",
+    "fields": [
+     "passport_number",
+     "first_name",
+     "last_name",
+     "date_of_birth",
+     "gender",
+     "nationality",
+     "passport_country",
+     "phone"
+    ]
+   }
+  ],
+  "app/national/api/routes/medication_catalog.py": [
+   {
+    "name": "ContraindicationDetailResponse",
+    "fields": [
+     "type",
+     "code",
+     "description",
+     "severity",
+     "details"
+    ]
+   },
+   {
+    "name": "InteractionResponse",
+    "fields": [
+     "medication_code",
+     "medication_name",
+     "severity",
+     "description",
+     "recommendation",
+     "mechanism"
+    ]
+   },
+   {
+    "name": "MedicationCatalogCreate",
+    "fields": [
+     "medication_code",
+     "medication_code_system",
+     "medication_name",
+     "medication_name_ar",
+     "generic_name",
+     "brand_name",
+     "manufacturer",
+     "form",
+     "strength_value",
+     "strength_unit",
+     "route",
+     "category",
+     "therapeutic_class",
+     "atc_code",
+     "atc_description",
+     "is_controlled",
+     "is_narcotic",
+     "requires_prescription",
+     "is_active",
+     "max_daily_dose",
+     "min_age_years",
+     "pregnancy_category",
+     "ingredients",
+     "contraindications",
+     "side_effects",
+     "interactions"
+    ]
+   },
+   {
+    "name": "MedicationCatalogListResponse",
+    "fields": [
+     "items",
+     "total",
+     "skip",
+     "limit"
+    ]
+   },
+   {
+    "name": "MedicationCatalogResponse",
+    "fields": [
+     "id",
+     "medication_code",
+     "medication_code_system",
+     "medication_name",
+     "medication_name_ar",
+     "generic_name",
+     "brand_name",
+     "manufacturer",
+     "form",
+     "strength_value",
+     "strength_unit",
+     "route",
+     "category",
+     "therapeutic_class",
+     "atc_code",
+     "atc_description",
+     "is_controlled",
+     "is_narcotic",
+     "requires_prescription",
+     "is_active",
+     "max_daily_dose",
+     "min_age_years",
+     "pregnancy_category",
+     "ingredients",
+     "contraindications",
+     "side_effects",
+     "interactions",
+     "is_deleted",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "MedicationCatalogUpdate",
+    "fields": [
+     "medication_name",
+     "medication_name_ar",
+     "generic_name",
+     "brand_name",
+     "manufacturer",
+     "form",
+     "strength_value",
+     "strength_unit",
+     "route",
+     "category",
+     "therapeutic_class",
+     "atc_code",
+     "atc_description",
+     "is_controlled",
+     "is_narcotic",
+     "requires_prescription",
+     "is_active",
+     "max_daily_dose",
+     "min_age_years",
+     "pregnancy_category",
+     "ingredients",
+     "contraindications",
+     "side_effects",
+     "interactions"
+    ]
+   }
+  ],
+  "app/national/api/routes/observation.py": [
+   {
+    "name": "ObservationCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "category",
+     "code",
+     "code_system",
+     "code_display",
+     "code_display_ar",
+     "value_quantity",
+     "value_text",
+     "value_boolean",
+     "value_integer",
+     "value_range_low",
+     "value_range_high",
+     "unit",
+     "data_absent_reason",
+     "interpretation",
+     "reference_range_low",
+     "reference_range_high",
+     "reference_range_text",
+     "status",
+     "effective_datetime",
+     "issued_at",
+     "body_site",
+     "method",
+     "device_id",
+     "notes"
+    ]
+   },
+   {
+    "name": "ObservationListResponse",
+    "fields": [
+     "items",
+     "total",
+     "skip",
+     "limit"
+    ]
+   },
+   {
+    "name": "ObservationResponse",
+    "fields": [
+     "id",
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "category",
+     "code",
+     "code_system",
+     "code_display",
+     "code_display_ar",
+     "value_quantity",
+     "value_text",
+     "value_boolean",
+     "value_integer",
+     "value_range_low",
+     "value_range_high",
+     "unit",
+     "data_absent_reason",
+     "interpretation",
+     "reference_range_low",
+     "reference_range_high",
+     "reference_range_text",
+     "status",
+     "effective_datetime",
+     "issued_at",
+     "body_site",
+     "method",
+     "device_id",
+     "notes",
+     "is_deleted",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "ObservationUpdate",
+    "fields": [
+     "category",
+     "code",
+     "code_system",
+     "code_display",
+     "code_display_ar",
+     "value_quantity",
+     "value_text",
+     "value_boolean",
+     "value_integer",
+     "value_range_low",
+     "value_range_high",
+     "unit",
+     "data_absent_reason",
+     "interpretation",
+     "reference_range_low",
+     "reference_range_high",
+     "reference_range_text",
+     "status",
+     "effective_datetime",
+     "body_site",
+     "method",
+     "device_id",
+     "notes"
+    ]
+   }
+  ],
+  "app/national/api/routes/security.py": [
+   {
+    "name": "AuditLogResponse",
+    "fields": [
+     "id",
+     "user_id",
+     "action",
+     "resource_type",
+     "resource_id",
+     "details",
+     "created_at"
+    ]
+   },
+   {
+    "name": "BreakGlassRequest",
+    "fields": [
+     "citizen_id",
+     "reason",
+     "duration_minutes"
+    ]
+   },
+   {
+    "name": "BreakGlassResponse",
+    "fields": [
+     "access_id",
+     "granted",
+     "expires_at",
+     "reason"
+    ]
+   },
+   {
+    "name": "ConsentCheck",
+    "fields": [
+     "citizen_id",
+     "scope"
+    ]
+   },
+   {
+    "name": "ConsentCheckResponse",
+    "fields": [
+     "granted",
+     "consent_id",
+     "reason"
+    ]
+   }
+  ],
+  "app/national/api/routes/vital_signs.py": [
+   {
+    "name": "LatestVitalSign",
+    "fields": [
+     "code",
+     "code_display",
+     "value_quantity",
+     "value_text",
+     "unit",
+     "interpretation",
+     "reference_range_low",
+     "reference_range_high",
+     "effective_datetime",
+     "observation_id"
+    ]
+   },
+   {
+    "name": "LatestVitalSignsResponse",
+    "fields": [
+     "patient_id",
+     "vital_signs",
+     "recorded_at"
+    ]
+   },
+   {
+    "name": "VitalSignTrendPoint",
+    "fields": [
+     "observation_id",
+     "value_quantity",
+     "unit",
+     "interpretation",
+     "effective_datetime",
+     "encounter_id"
+    ]
+   },
+   {
+    "name": "VitalSignTrendResponse",
+    "fields": [
+     "patient_id",
+     "code",
+     "code_display",
+     "unit",
+     "data"
+    ]
+   },
+   {
+    "name": "VitalSignsReferenceCreate",
+    "fields": [
+     "vital_sign_code",
+     "vital_sign_name",
+     "vital_sign_name_ar",
+     "unit",
+     "normal_range_low",
+     "normal_range_high",
+     "critical_low",
+     "critical_high",
+     "display_order",
+     "category"
+    ]
+   },
+   {
+    "name": "VitalSignsReferenceListResponse",
+    "fields": [
+     "items",
+     "total"
+    ]
+   },
+   {
+    "name": "VitalSignsReferenceResponse",
+    "fields": [
+     "id",
+     "vital_sign_code",
+     "vital_sign_name",
+     "vital_sign_name_ar",
+     "unit",
+     "normal_range_low",
+     "normal_range_high",
+     "critical_low",
+     "critical_high",
+     "display_order",
+     "category",
+     "is_deleted",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "VitalSignsReferenceUpdate",
+    "fields": [
+     "vital_sign_name",
+     "vital_sign_name_ar",
+     "unit",
+     "normal_range_low",
+     "normal_range_high",
+     "critical_low",
+     "critical_high",
+     "display_order",
+     "category"
+    ]
+   }
+  ],
+  "app/national/notification_platform/api/routes.py": [
+   {
+    "name": "BatchSendRequest",
+    "fields": [
+     "batch_key",
+     "notifications",
+     "created_by"
+    ]
+   },
+   {
+    "name": "PreferenceUpdateRequest",
+    "fields": [
+     "user_id",
+     "channel",
+     "enabled",
+     "quiet_hours_start",
+     "quiet_hours_end",
+     "max_daily",
+     "categories_opt_in",
+     "categories_opt_out"
+    ]
+   },
+   {
+    "name": "ScheduleRequest",
+    "fields": [
+     "notification_id",
+     "scheduled_at",
+     "timezone",
+     "recurring",
+     "cron_expression",
+     "recurring_end_at"
+    ]
+   },
+   {
+    "name": "SendRequest",
+    "fields": [
+     "channel",
+     "recipients",
+     "subject",
+     "body",
+     "template_id",
+     "template_data",
+     "priority",
+     "category",
+     "scheduled_at",
+     "correlation_id",
+     "created_by",
+     "metadata"
+    ]
+   },
+   {
+    "name": "TemplateCreateRequest",
+    "fields": [
+     "name",
+     "description",
+     "channel",
+     "language",
+     "subject_template",
+     "body_template",
+     "template_engine",
+     "variables",
+     "category",
+     "created_by"
+    ]
+   },
+   {
+    "name": "TemplateUpdateRequest",
+    "fields": [
+     "name",
+     "description",
+     "subject_template",
+     "body_template",
+     "language",
+     "variables"
+    ]
+   }
+  ],
+  "app/nhdw/routes.py": [
+   {
+    "name": "AdmissionCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "hospital_id",
+     "department_id",
+     "room_id",
+     "bed_id",
+     "admission_type",
+     "admission_date",
+     "expected_discharge_date",
+     "diagnosis",
+     "diagnosis_code",
+     "diagnosis_system",
+     "admitting_doctor_id",
+     "referring_doctor_id",
+     "insurance_id",
+     "insurance_policy",
+     "is_emergency",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "AdmissionDischarge",
+    "fields": [
+     "discharge_type",
+     "discharge_date",
+     "discharge_destination",
+     "discharge_summary",
+     "medications_at_discharge",
+     "follow_up_instructions",
+     "follow_up_date",
+     "follow_up_provider_id",
+     "mortality_review",
+     "notes"
+    ]
+   },
+   {
+    "name": "AdmissionTransfer",
+    "fields": [
+     "to_department_id",
+     "to_room_id",
+     "to_bed_id",
+     "from_doctor_id",
+     "to_doctor_id",
+     "reason",
+     "clinical_summary",
+     "transfer_type"
+    ]
+   },
+   {
+    "name": "AdmissionUpdate",
+    "fields": [
+     "department_id",
+     "room_id",
+     "bed_id",
+     "admission_type",
+     "expected_discharge_date",
+     "diagnosis",
+     "diagnosis_code",
+     "diagnosis_system",
+     "admitting_doctor_id",
+     "referring_doctor_id",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "AlertCreate",
+    "fields": [
+     "alert_type",
+     "severity",
+     "title",
+     "title_ar",
+     "description",
+     "source_department_id",
+     "patient_id",
+     "metadata"
+    ]
+   },
+   {
+    "name": "CarePlanCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "diagnosis",
+     "goals",
+     "interventions",
+     "start_date",
+     "review_date",
+     "next_review_date",
+     "created_by",
+     "approved_by",
+     "care_team",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "CarePlanReview",
+    "fields": [
+     "review_notes"
+    ]
+   },
+   {
+    "name": "CarePlanUpdate",
+    "fields": [
+     "diagnosis",
+     "goals",
+     "interventions",
+     "review_date",
+     "next_review_date",
+     "approved_by",
+     "care_team",
+     "notes"
+    ]
+   },
+   {
+    "name": "ClinicalTaskAssign",
+    "fields": [
+     "assigned_to"
+    ]
+   },
+   {
+    "name": "ClinicalTaskCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "assigned_to",
+     "task_type",
+     "description",
+     "priority",
+     "due_date",
+     "scheduled_time",
+     "notes",
+     "metadata",
+     "is_recurring",
+     "recurrence_rule"
+    ]
+   },
+   {
+    "name": "ClinicalTaskUpdate",
+    "fields": [
+     "description",
+     "priority",
+     "due_date",
+     "scheduled_time",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "DashboardConfigCreate",
+    "fields": [
+     "role",
+     "department_id",
+     "config_json",
+     "is_default"
+    ]
+   },
+   {
+    "name": "MessageCreate",
+    "fields": [
+     "recipient_id",
+     "subject",
+     "body",
+     "priority",
+     "department_id",
+     "parent_message_id",
+     "has_attachments",
+     "metadata"
+    ]
+   },
+   {
+    "name": "QueueCheckIn",
+    "fields": [
+     "patient_id",
+     "department_id",
+     "clinic_id",
+     "priority",
+     "queue_date",
+     "visit_reason",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "ResourceScheduleCreate",
+    "fields": [
+     "resource_type",
+     "resource_id",
+     "scheduled_date",
+     "start_time",
+     "end_time",
+     "booked_by",
+     "booked_for_patient_id",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "ResourceScheduleUpdate",
+    "fields": [
+     "start_time",
+     "end_time",
+     "status",
+     "booked_by",
+     "booked_for_patient_id",
+     "notes"
+    ]
+   },
+   {
+    "name": "ShiftReportCreate",
+    "fields": [
+     "department_id",
+     "shift_type",
+     "shift_date",
+     "start_time",
+     "end_time",
+     "patient_count",
+     "admissions_count",
+     "discharges_count",
+     "transfers_count",
+     "critical_events",
+     "staffing",
+     "issues",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "TelemedicineEnd",
+    "fields": [
+     "notes",
+     "recording_url"
+    ]
+   },
+   {
+    "name": "TelemedicineSessionCreate",
+    "fields": [
+     "patient_id",
+     "provider_id",
+     "scheduled_at",
+     "session_type",
+     "platform",
+     "meeting_url",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "WaitingListConvert",
+    "fields": [
+     "hospital_id",
+     "room_id",
+     "bed_id",
+     "admission_type",
+     "notes"
+    ]
+   },
+   {
+    "name": "WaitingListCreate",
+    "fields": [
+     "patient_id",
+     "department_id",
+     "procedure_code",
+     "procedure_name",
+     "priority",
+     "clinical_urgency",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "WardRoundCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "department_id",
+     "lead_doctor_id",
+     "participants",
+     "clinical_summary",
+     "assessment",
+     "plan",
+     "medications_reviewed",
+     "investigations_ordered",
+     "follow_up_plan",
+     "notes",
+     "metadata"
+    ]
+   }
+  ],
+  "app/nursing/routes.py": [
+   {
+    "name": "AssignPatientRequest",
+    "fields": [
+     "nurse_id",
+     "patient_id",
+     "assignment_type",
+     "department_id",
+     "encounter_id",
+     "notes"
+    ]
+   },
+   {
+    "name": "CarePlanCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "nursing_diagnosis",
+     "goals",
+     "interventions",
+     "evaluation",
+     "start_date",
+     "review_date",
+     "next_review",
+     "status",
+     "notes"
+    ]
+   },
+   {
+    "name": "CarePlanUpdate",
+    "fields": [
+     "nursing_diagnosis",
+     "goals",
+     "interventions",
+     "evaluation",
+     "review_date",
+     "next_review",
+     "status",
+     "notes"
+    ]
+   },
+   {
+    "name": "ChecklistCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "checklist_type",
+     "items",
+     "status",
+     "notes"
+    ]
+   },
+   {
+    "name": "ChecklistItemUpdate",
+    "fields": [
+     "completed"
+    ]
+   },
+   {
+    "name": "DelegationCreate",
+    "fields": [
+     "task_id",
+     "delegated_to",
+     "reason",
+     "scope_notes",
+     "supervising_instructions"
+    ]
+   },
+   {
+    "name": "DischargePlanRequest",
+    "fields": [
+     "patient_id",
+     "expected_date",
+     "discharge_needs"
+    ]
+   },
+   {
+    "name": "EscalationCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "escalated_to",
+     "reason",
+     "severity",
+     "category",
+     "notes"
+    ]
+   },
+   {
+    "name": "EscalationResolve",
+    "fields": [
+     "resolution"
+    ]
+   },
+   {
+    "name": "FallRiskCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "assessed_at",
+     "total_score",
+     "risk_level",
+     "age_ge_65",
+     "fall_history_12mo",
+     "secondary_condition",
+     "assistive_device",
+     "iv_or_heparin_lock",
+     "gait_impaired",
+     "mental_status",
+     "elimination",
+     "medications",
+     "interventions_ordered",
+     "notes"
+    ]
+   },
+   {
+    "name": "FamilyCommunicationRequest",
+    "fields": [
+     "patient_id",
+     "family_contact",
+     "message"
+    ]
+   },
+   {
+    "name": "FluidBalanceCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "recorded_at",
+     "balance_type",
+     "category",
+     "fluid_name",
+     "amount_ml",
+     "route",
+     "start_time",
+     "end_time",
+     "infusion_rate",
+     "bag_volume",
+     "bag_number",
+     "notes"
+    ]
+   },
+   {
+    "name": "HandoverCreate",
+    "fields": [
+     "from_shift_id",
+     "to_shift_id",
+     "from_nurse_id",
+     "to_nurse_id",
+     "handover_type",
+     "shift_date",
+     "patient_summaries",
+     "pending_tasks",
+     "critical_alerts",
+     "medication_changes",
+     "equipment_issues",
+     "staffing_issues",
+     "notes"
+    ]
+   },
+   {
+    "name": "HomeCareHandoverRequest",
+    "fields": [
+     "patient_id",
+     "home_care_provider",
+     "summary"
+    ]
+   },
+   {
+    "name": "LabRequest",
+    "fields": [
+     "patient_id",
+     "tests"
+    ]
+   },
+   {
+    "name": "MedicationAdminRecord",
+    "fields": [
+     "medication_request_id",
+     "patient_id",
+     "encounter_id",
+     "medication_code",
+     "medication_code_system",
+     "medication_name",
+     "medication_name_ar",
+     "status",
+     "dose_value",
+     "dose_unit",
+     "route",
+     "site",
+     "method",
+     "administration_time",
+     "reason_not_given",
+     "note"
+    ]
+   },
+   {
+    "name": "MedicationSignRequest",
+    "fields": [
+     "medication_admin_id"
+    ]
+   },
+   {
+    "name": "MedicationVerifyRequest",
+    "fields": [
+     "right_patient",
+     "right_drug",
+     "right_dose",
+     "right_route",
+     "right_time"
+    ]
+   },
+   {
+    "name": "NursingNoteCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "shift_id",
+     "note_type",
+     "subjective",
+     "objective",
+     "assessment",
+     "intervention",
+     "response",
+     "evaluation",
+     "plan",
+     "attachments",
+     "patient_education",
+     "is_confidential"
+    ]
+   },
+   {
+    "name": "NutritionCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "assessed_at",
+     "nutrition_status",
+     "weight_kg",
+     "height_cm",
+     "usual_weight_kg",
+     "weight_change_1mo_kg",
+     "appetite",
+     "dietary_restrictions",
+     "chewing_difficulty",
+     "swallowing_difficulty",
+     "dysphagia_risk",
+     "fluid_restriction_ml",
+     "calorie_target_kcal",
+     "protein_target_g",
+     "feeding_method",
+     "supplements",
+     "diet_type",
+     "notes"
+    ]
+   },
+   {
+    "name": "PainAssessmentCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "assessed_at",
+     "pain_score",
+     "pain_level",
+     "pain_location",
+     "pain_quality",
+     "pain_pattern",
+     "onset",
+     "duration",
+     "aggravating_factors",
+     "relieving_factors",
+     "pain_goal",
+     "interventions_tried",
+     "effectiveness",
+     "non_verbal_indicators",
+     "notes"
+    ]
+   },
+   {
+    "name": "PharmacyRequest",
+    "fields": [
+     "patient_id",
+     "medication",
+     "dose",
+     "route"
+    ]
+   },
+   {
+    "name": "PhysicianMessageRequest",
+    "fields": [
+     "physician_id",
+     "patient_id",
+     "subject",
+     "body",
+     "priority"
+    ]
+   },
+   {
+    "name": "PressureInjuryCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "assessed_at",
+     "stage",
+     "anatomical_location",
+     "length_cm",
+     "width_cm",
+     "depth_cm",
+     "wound_bed",
+     "exudate_type",
+     "exudate_amount",
+     "wound_edges",
+     "periwound_skin",
+     "infection_signs",
+     "wound_culture",
+     "dressing_type",
+     "dressing_frequency",
+     "treatment_plan",
+     "photographs",
+     "notes"
+    ]
+   },
+   {
+    "name": "RadiologyRequest",
+    "fields": [
+     "patient_id",
+     "exam_type",
+     "urgency"
+    ]
+   },
+   {
+    "name": "ReferralRequest",
+    "fields": [
+     "patient_id",
+     "to_specialty",
+     "reason",
+     "urgency"
+    ]
+   },
+   {
+    "name": "ShiftEndRequest",
+    "fields": [
+     "shift_id"
+    ]
+   },
+   {
+    "name": "ShiftStartRequest",
+    "fields": [
+     "shift_type",
+     "shift_date",
+     "department_id",
+     "patient_count",
+     "assigned_patients",
+     "notes"
+    ]
+   },
+   {
+    "name": "TaskComplete",
+    "fields": [
+     "patient_response",
+     "notes"
+    ]
+   },
+   {
+    "name": "TaskCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "assigned_to",
+     "task_type",
+     "description",
+     "priority",
+     "status",
+     "scheduled_time",
+     "due_time",
+     "is_recurring",
+     "recurrence_rule",
+     "clinical_instruction",
+     "notes"
+    ]
+   },
+   {
+    "name": "TaskDefer",
+    "fields": [
+     "new_due_time",
+     "reason"
+    ]
+   },
+   {
+    "name": "TaskUpdate",
+    "fields": [
+     "description",
+     "priority",
+     "status",
+     "scheduled_time",
+     "due_time",
+     "assigned_to",
+     "clinical_instruction",
+     "notes"
+    ]
+   },
+   {
+    "name": "UnassignPatientRequest",
+    "fields": [
+     "nurse_id",
+     "patient_id"
+    ]
+   },
+   {
+    "name": "VitalSignsCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "recorded_at",
+     "bp_systolic",
+     "bp_diastolic",
+     "heart_rate",
+     "respiratory_rate",
+     "temperature",
+     "temperature_site",
+     "oxygen_saturation",
+     "oxygen_device",
+     "oxygen_flow_rate",
+     "height_cm",
+     "weight_kg",
+     "head_circumference_cm",
+     "pain_score",
+     "consciousness_level",
+     "gcs_eye",
+     "gcs_verbal",
+     "gcs_motor",
+     "pupil_left_size",
+     "pupil_left_reaction",
+     "pupil_right_size",
+     "pupil_right_reaction",
+     "blood_glucose",
+     "glucose_context",
+     "notes"
+    ]
+   }
+  ],
+  "app/pharmacy/routes.py": [
+   {
+    "name": "AllergyCheckRequest",
+    "fields": [
+     "drug_code",
+     "allergen_codes"
+    ]
+   },
+   {
+    "name": "ContraindicationCheckRequest",
+    "fields": [
+     "drug_code",
+     "condition_codes"
+    ]
+   },
+   {
+    "name": "DashboardResponse",
+    "fields": [
+     "total_prescriptions",
+     "active_prescriptions",
+     "pending_queue",
+     "dispensed_today"
+    ]
+   },
+   {
+    "name": "DispenseRecordCreate",
+    "fields": [
+     "prescription_id",
+     "prescription_item_id",
+     "patient_id",
+     "dispensed_by",
+     "verified_by",
+     "quantity_dispensed",
+     "quantity_unit",
+     "days_supply",
+     "batch_id",
+     "lot_number",
+     "expiry_date",
+     "cost_price",
+     "selling_price",
+     "discount",
+     "total_amount",
+     "pharmacist_notes",
+     "counseling_provided"
+    ]
+   },
+   {
+    "name": "DispenseRecordResponse",
+    "fields": [
+     "id",
+     "prescription_id",
+     "patient_id",
+     "dispensed_by",
+     "verified_by",
+     "dispensed_at",
+     "status",
+     "quantity_dispensed",
+     "quantity_unit",
+     "days_supply",
+     "batch_id",
+     "lot_number",
+     "expiry_date",
+     "total_amount",
+     "pharmacist_notes"
+    ]
+   },
+   {
+    "name": "DoseCalculateRequest",
+    "fields": [
+     "drug_code",
+     "indication_code",
+     "age_months",
+     "weight_kg"
+    ]
+   },
+   {
+    "name": "DrugBatchCreate",
+    "fields": [
+     "batch_number",
+     "manufacturer_batch",
+     "expiry_date",
+     "manufacturing_date",
+     "quantity_initial",
+     "storage_condition",
+     "location",
+     "supplier",
+     "cost_price",
+     "selling_price"
+    ]
+   },
+   {
+    "name": "DrugBatchResponse",
+    "fields": [
+     "id",
+     "drug_catalog_id",
+     "batch_number",
+     "manufacturer_batch",
+     "expiry_date",
+     "manufacturing_date",
+     "quantity_initial",
+     "quantity_remaining",
+     "storage_condition",
+     "location",
+     "received_date",
+     "supplier",
+     "cost_price",
+     "selling_price",
+     "is_quarantined"
+    ]
+   },
+   {
+    "name": "DrugCatalogCreate",
+    "fields": [
+     "code",
+     "name",
+     "name_ar",
+     "generic_name",
+     "brand_name",
+     "manufacturer",
+     "manufacturer_code",
+     "form",
+     "strength_value",
+     "strength_unit",
+     "route",
+     "category",
+     "therapeutic_class",
+     "atc_code",
+     "atc_description",
+     "is_controlled",
+     "is_narcotic",
+     "requires_prescription",
+     "is_active",
+     "max_daily_dose",
+     "min_age",
+     "pregnancy_category",
+     "lactation_category",
+     "ingredients",
+     "side_effects",
+     "drug_images",
+     "barcode_gs1",
+     "barcode_type"
+    ]
+   },
+   {
+    "name": "DrugCatalogListResponse",
+    "fields": [
+     "items",
+     "total",
+     "skip",
+     "limit"
+    ]
+   },
+   {
+    "name": "DrugCatalogResponse",
+    "fields": [
+     "id",
+     "code",
+     "name",
+     "name_ar",
+     "generic_name",
+     "brand_name",
+     "manufacturer",
+     "manufacturer_code",
+     "form",
+     "strength_value",
+     "strength_unit",
+     "route",
+     "category",
+     "therapeutic_class",
+     "atc_code",
+     "atc_description",
+     "is_controlled",
+     "is_narcotic",
+     "requires_prescription",
+     "is_active",
+     "max_daily_dose",
+     "min_age",
+     "pregnancy_category",
+     "lactation_category",
+     "ingredients",
+     "side_effects",
+     "barcode_gs1",
+     "is_deleted",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "DrugCatalogUpdate",
+    "fields": [
+     "name",
+     "name_ar",
+     "generic_name",
+     "brand_name",
+     "manufacturer",
+     "manufacturer_code",
+     "form",
+     "strength_value",
+     "strength_unit",
+     "route",
+     "category",
+     "therapeutic_class",
+     "atc_code",
+     "atc_description",
+     "is_controlled",
+     "is_narcotic",
+     "requires_prescription",
+     "is_active",
+     "max_daily_dose",
+     "min_age",
+     "pregnancy_category",
+     "lactation_category",
+     "ingredients",
+     "side_effects",
+     "drug_images",
+     "barcode_gs1",
+     "barcode_type"
+    ]
+   },
+   {
+    "name": "InteractionCheckRequest",
+    "fields": [
+     "drug_codes"
+    ]
+   },
+   {
+    "name": "InteractionCheckResponse",
+    "fields": [
+     "interactions",
+     "total",
+     "severe_count"
+    ]
+   },
+   {
+    "name": "MovementCreate",
+    "fields": [
+     "drug_catalog_id",
+     "batch_id",
+     "warehouse_id",
+     "store_id",
+     "movement_type",
+     "quantity",
+     "reference_type",
+     "reference_id",
+     "reason",
+     "notes"
+    ]
+   },
+   {
+    "name": "MovementResponse",
+    "fields": [
+     "id",
+     "drug_catalog_id",
+     "batch_id",
+     "movement_type",
+     "quantity",
+     "reference_type",
+     "reference_id",
+     "reason",
+     "performed_by",
+     "movement_date",
+     "notes"
+    ]
+   },
+   {
+    "name": "PolypharmacyCheckRequest",
+    "fields": [
+     "drug_codes"
+    ]
+   },
+   {
+    "name": "PrescriptionCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "prescriber_id",
+     "prescription_number",
+     "intent",
+     "priority",
+     "diagnosis",
+     "diagnosis_code",
+     "diagnosis_system",
+     "valid_from",
+     "valid_to",
+     "dispense_interval",
+     "substitution_allowed",
+     "note"
+    ]
+   },
+   {
+    "name": "PrescriptionItemCreate",
+    "fields": [
+     "drug_catalog_id",
+     "medication_code",
+     "medication_name",
+     "strength_value",
+     "strength_unit",
+     "form",
+     "route",
+     "dose_quantity",
+     "dose_unit",
+     "frequency",
+     "duration",
+     "duration_unit",
+     "quantity",
+     "quantity_unit",
+     "refills",
+     "instructions",
+     "substitution_allowed"
+    ]
+   },
+   {
+    "name": "PrescriptionItemResponse",
+    "fields": [
+     "id",
+     "prescription_id",
+     "drug_catalog_id",
+     "medication_code",
+     "medication_name",
+     "strength_value",
+     "strength_unit",
+     "form",
+     "route",
+     "dose_quantity",
+     "dose_unit",
+     "frequency",
+     "duration",
+     "duration_unit",
+     "quantity",
+     "quantity_unit",
+     "refills",
+     "refills_used",
+     "instructions",
+     "substitution_allowed",
+     "status"
+    ]
+   },
+   {
+    "name": "PrescriptionResponse",
+    "fields": [
+     "id",
+     "patient_id",
+     "encounter_id",
+     "prescriber_id",
+     "prescription_number",
+     "status",
+     "intent",
+     "priority",
+     "diagnosis",
+     "diagnosis_code",
+     "diagnosis_system",
+     "authored_on",
+     "valid_from",
+     "valid_to",
+     "substitution_allowed",
+     "note"
+    ]
+   },
+   {
+    "name": "RecallCreate",
+    "fields": [
+     "drug_catalog_id",
+     "batch_id",
+     "recall_reason",
+     "recall_date",
+     "initiated_by",
+     "severity",
+     "actions_taken",
+     "notes"
+    ]
+   },
+   {
+    "name": "RecallResponse",
+    "fields": [
+     "id",
+     "drug_catalog_id",
+     "batch_id",
+     "recall_reason",
+     "recall_date",
+     "severity",
+     "status",
+     "actions_taken",
+     "notes"
+    ]
+   },
+   {
+    "name": "RenalAdjustRequest",
+    "fields": [
+     "drug_code",
+     "egfr",
+     "weight_kg"
+    ]
+   },
+   {
+    "name": "ReturnCreate",
+    "fields": [
+     "patient_id",
+     "prescription_id",
+     "drug_catalog_id",
+     "batch_id",
+     "return_reason",
+     "quantity",
+     "disposition",
+     "notes"
+    ]
+   },
+   {
+    "name": "StockAdjustRequest",
+    "fields": [
+     "drug_catalog_id",
+     "batch_id",
+     "warehouse_id",
+     "store_id",
+     "adjustment",
+     "reason"
+    ]
+   },
+   {
+    "name": "StockLevelResponse",
+    "fields": [
+     "id",
+     "drug_catalog_id",
+     "batch_id",
+     "warehouse_id",
+     "store_id",
+     "quantity",
+     "reserved_quantity",
+     "available_quantity",
+     "reorder_point",
+     "reorder_quantity",
+     "max_level",
+     "storage_condition",
+     "last_count_date"
+    ]
+   },
+   {
+    "name": "SupplierCreate",
+    "fields": [
+     "name",
+     "name_ar",
+     "code",
+     "contact_person",
+     "phone",
+     "email",
+     "address",
+     "license_number",
+     "is_active",
+     "payment_terms"
+    ]
+   },
+   {
+    "name": "SupplierResponse",
+    "fields": [
+     "id",
+     "name",
+     "name_ar",
+     "code",
+     "contact_person",
+     "phone",
+     "email",
+     "address",
+     "license_number",
+     "is_active"
+    ]
+   },
+   {
+    "name": "TransferCreate",
+    "fields": [
+     "from_warehouse_id",
+     "to_warehouse_id",
+     "from_store_id",
+     "to_store_id",
+     "notes"
+    ]
+   },
+   {
+    "name": "TransferItemCreate",
+    "fields": [
+     "drug_catalog_id",
+     "batch_id",
+     "quantity_requested"
+    ]
+   },
+   {
+    "name": "TransferResponse",
+    "fields": [
+     "id",
+     "from_warehouse_id",
+     "to_warehouse_id",
+     "status",
+     "initiated_by",
+     "approved_by",
+     "dispatch_date",
+     "received_date",
+     "notes"
+    ]
+   },
+   {
+    "name": "WasteCreate",
+    "fields": [
+     "drug_catalog_id",
+     "batch_id",
+     "quantity",
+     "waste_reason",
+     "witness_by",
+     "disposal_method",
+     "notes"
+    ]
+   }
+  ],
+  "app/radiology/routes.py": [
+   {
+    "name": "CriticalFindingAcknowledge",
+    "fields": [
+     "acknowledged_by",
+     "notes"
+    ]
+   },
+   {
+    "name": "CriticalFindingCreate",
+    "fields": [
+     "exam_id",
+     "report_id",
+     "finding_type",
+     "finding_description",
+     "notified_by",
+     "notified_to",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "CriticalFindingNotify",
+    "fields": [
+     "notified_by",
+     "notified_to"
+    ]
+   },
+   {
+    "name": "DeviceStatusUpdate",
+    "fields": [
+     "status"
+    ]
+   },
+   {
+    "name": "ImageShareCreate",
+    "fields": [
+     "study_uid",
+     "shared_with",
+     "share_type",
+     "expires_in_hours",
+     "metadata"
+    ]
+   },
+   {
+    "name": "MPPSReceive",
+    "fields": [
+     "accession_number",
+     "status",
+     "series_count",
+     "images_count",
+     "performed_steps",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "ModalityDeviceCreate",
+    "fields": [
+     "device_id",
+     "device_name",
+     "device_model",
+     "manufacturer",
+     "modality_type",
+     "site_name",
+     "department_id",
+     "ip_address",
+     "ae_title",
+     "port",
+     "dicom_protocol",
+     "software_version",
+     "serial_number",
+     "metadata"
+    ]
+   },
+   {
+    "name": "OrderStatusUpdate",
+    "fields": [
+     "status"
+    ]
+   },
+   {
+    "name": "ProtocolCreate",
+    "fields": [
+     "code",
+     "name",
+     "name_ar",
+     "modality",
+     "body_part",
+     "protocol_type",
+     "contrast_protocol",
+     "typical_duration",
+     "typical_dose",
+     "preparation_instructions",
+     "positioning_instructions",
+     "series_parameters",
+     "metadata"
+    ]
+   },
+   {
+    "name": "RadiologyAppointmentCreate",
+    "fields": [
+     "order_id",
+     "patient_id",
+     "scheduled_date",
+     "scheduled_time",
+     "duration_minutes",
+     "modality",
+     "room",
+     "technologist_id",
+     "preparation_instructions",
+     "contrast_required",
+     "contrast_details",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "RadiologyExamCreate",
+    "fields": [
+     "order_id",
+     "appointment_id",
+     "patient_id",
+     "accession_number",
+     "modality",
+     "body_part",
+     "laterality",
+     "protocol_id",
+     "exam_code",
+     "exam_name",
+     "technologist_id",
+     "radiologist_id",
+     "metadata"
+    ]
+   },
+   {
+    "name": "RadiologyExamImagesUpdate",
+    "fields": [
+     "images_count",
+     "series_count"
+    ]
+   },
+   {
+    "name": "RadiologyExamStatusUpdate",
+    "fields": [
+     "status"
+    ]
+   },
+   {
+    "name": "RadiologyOrderCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "ordering_provider_id",
+     "modality",
+     "body_part",
+     "clinical_indication",
+     "diagnosis_code",
+     "diagnosis_system",
+     "priority",
+     "ordering_department_id",
+     "notes",
+     "metadata"
+    ]
+   },
+   {
+    "name": "RadiologyReportAmend",
+    "fields": [
+     "findings",
+     "impression",
+     "conclusion",
+     "recommendation",
+     "amended_by"
+    ]
+   },
+   {
+    "name": "RadiologyReportCreate",
+    "fields": [
+     "exam_id",
+     "accession_number",
+     "patient_id",
+     "radiologist_id",
+     "ordering_provider_id",
+     "clinical_indication",
+     "technique",
+     "comparison",
+     "findings",
+     "impression",
+     "conclusion",
+     "recommendation",
+     "body_text",
+     "transcribed_by",
+     "metadata"
+    ]
+   },
+   {
+    "name": "RadiologyReportDraftUpdate",
+    "fields": [
+     "findings",
+     "impression",
+     "conclusion",
+     "recommendation",
+     "body_text"
+    ]
+   },
+   {
+    "name": "RadiologyReportFinalize",
+    "fields": [
+     "radiologist_id"
+    ]
+   },
+   {
+    "name": "ReportTemplateCreate",
+    "fields": [
+     "template_code",
+     "template_name",
+     "template_name_ar",
+     "modality",
+     "body_part",
+     "structured_template",
+     "metadata"
+    ]
+   }
+  ],
+  "app/roadmap/routes.py": [
+   {
+    "name": "ADRCreate",
+    "fields": [
+     "title",
+     "context",
+     "decision",
+     "consequences",
+     "domain",
+     "created_by",
+     "approved_by",
+     "superseded_by"
+    ]
+   },
+   {
+    "name": "EpicCreate",
+    "fields": [
+     "name",
+     "code",
+     "description",
+     "priority",
+     "story_points",
+     "metadata_json"
+    ]
+   },
+   {
+    "name": "MilestoneCreate",
+    "fields": [
+     "name",
+     "target_date",
+     "description",
+     "metadata_json"
+    ]
+   },
+   {
+    "name": "MissionCreate",
+    "fields": [
+     "name",
+     "code",
+     "description",
+     "priority",
+     "start_date",
+     "target_date",
+     "owner",
+     "risk_level",
+     "metadata_json"
+    ]
+   },
+   {
+    "name": "MissionStatusUpdate",
+    "fields": [
+     "status"
+    ]
+   },
+   {
+    "name": "ProgramCreate",
+    "fields": [
+     "name",
+     "code",
+     "description",
+     "version",
+     "start_date",
+     "target_date",
+     "owner",
+     "budget",
+     "metadata_json"
+    ]
+   },
+   {
+    "name": "ProgramStatusUpdate",
+    "fields": [
+     "status"
+    ]
+   },
+   {
+    "name": "RiskCreate",
+    "fields": [
+     "description",
+     "risk_level",
+     "probability",
+     "impact",
+     "mitigation",
+     "owner"
+    ]
+   },
+   {
+    "name": "TaskCreate",
+    "fields": [
+     "name",
+     "description",
+     "priority",
+     "assignee",
+     "estimated_hours",
+     "dependencies",
+     "metadata_json"
+    ]
+   },
+   {
+    "name": "TaskStatusUpdate",
+    "fields": [
+     "status"
+    ]
+   },
+   {
+    "name": "TechnicalDebtCreate",
+    "fields": [
+     "component",
+     "description",
+     "severity",
+     "estimated_effort_hours",
+     "identified_by",
+     "metadata_json"
+    ]
+   }
+  ],
+  "app/routes/admin.py": [
+   {
+    "name": "ChangeRoleRequest",
+    "fields": [
+     "role",
+     "province_id"
+    ]
+   },
+   {
+    "name": "CreateLabRequest",
+    "fields": [
+     "name",
+     "city",
+     "phone",
+     "admin_email",
+     "admin_password",
+     "admin_name",
+     "province_id"
+    ]
+   },
+   {
+    "name": "CreateUserRequest",
+    "fields": [
+     "name",
+     "email",
+     "password",
+     "role",
+     "lab_id",
+     "province_id",
+     "national_id"
+    ]
+   },
+   {
+    "name": "_KillSwitchRequest",
+    "fields": [
+     "reason"
+    ]
+   }
+  ],
+  "app/routes/admin_log_level.py": [
+   {
+    "name": "LogLevelRequest",
+    "fields": [
+     "logger_name",
+     "level"
+    ]
+   }
+  ],
+  "app/routes/ai.py": [
+   {
+    "name": "ChatRequest",
+    "fields": [
+     "message",
+     "context"
+    ]
+   },
+   {
+    "name": "RejectRequest",
+    "fields": [
+     "reason"
+    ]
+   },
+   {
+    "name": "SuggestRequest",
+    "fields": [
+     "operation",
+     "payload",
+     "entity_type",
+     "entity_id",
+     "confidence",
+     "rationale"
+    ]
+   }
+  ],
+  "app/routes/ai_platform.py": [
+   {
+    "name": "AgentRequest",
+    "fields": [
+     "task",
+     "session_id"
+    ]
+   },
+   {
+    "name": "CDSEvaluateOrderRequest",
+    "fields": [
+     "results",
+     "patient_age",
+     "patient_gender"
+    ]
+   },
+   {
+    "name": "CDSEvaluateRequest",
+    "fields": [
+     "test_name",
+     "value",
+     "unit",
+     "normal_low",
+     "normal_high",
+     "patient_age",
+     "patient_gender"
+    ]
+   },
+   {
+    "name": "IndexRequest",
+    "fields": [
+     "text",
+     "content_type",
+     "content_id",
+     "metadata"
+    ]
+   },
+   {
+    "name": "KGSearchRequest",
+    "fields": [
+     "query",
+     "node_type",
+     "limit"
+    ]
+   },
+   {
+    "name": "OrchestrateRequest",
+    "fields": [
+     "query",
+     "session_id"
+    ]
+   },
+   {
+    "name": "RAGQueryRequest",
+    "fields": [
+     "question",
+     "content_type",
+     "max_docs"
+    ]
+   },
+   {
+    "name": "SearchRequest",
+    "fields": [
+     "query",
+     "content_type",
+     "limit",
+     "threshold"
+    ]
+   },
+   {
+    "name": "SessionMessageRequest",
+    "fields": [
+     "session_id",
+     "message"
+    ]
+   }
+  ],
+  "app/routes/ai_telemetry.py": [
+   {
+    "name": "FeedbackIn",
+    "fields": [
+     "interaction_id",
+     "anonymous_session_id",
+     "signal",
+     "notes"
+    ]
+   },
+   {
+    "name": "InteractionIn",
+    "fields": [
+     "anonymous_session_id",
+     "language",
+     "region",
+     "intent",
+     "prompt",
+     "prompt_redacted",
+     "response",
+     "response_model",
+     "retrieval_strategy",
+     "retrieval_refs",
+     "biomarkers",
+     "latency_ms",
+     "status",
+     "error_code",
+     "confidence_score",
+     "risk_level",
+     "escalation_recommended",
+     "retrieval_used",
+     "source_quality",
+     "unsupported_claims",
+     "fallback_generation",
+     "safety_flags"
+    ]
+   },
+   {
+    "name": "InteractionOut",
+    "fields": [
+     "id",
+     "lab_id",
+     "created_at"
+    ]
+   },
+   {
+    "name": "RetrievalRefIn",
+    "fields": [
+     "source",
+     "doc_id",
+     "doc_title",
+     "chunk_text",
+     "similarity",
+     "rank"
+    ]
+   },
+   {
+    "name": "UnresolvedIn",
+    "fields": [
+     "interaction_id",
+     "anonymous_session_id",
+     "question",
+     "language",
+     "category"
+    ]
+   }
+  ],
+  "app/routes/authorization.py": [
+   {
+    "name": "AssignRoleRequest",
+    "fields": [
+     "user_id",
+     "role_id",
+     "organization_id",
+     "facility_id",
+     "expires_at",
+     "is_primary"
+    ]
+   },
+   {
+    "name": "BatchPermissionCheckRequest",
+    "fields": [
+     "permissions",
+     "resource_attrs",
+     "environment"
+    ]
+   },
+   {
+    "name": "BreakGlassActivateRequest",
+    "fields": [
+     "emergency_category",
+     "justification",
+     "patient_id",
+     "duration_minutes"
+    ]
+   },
+   {
+    "name": "DelegationCreateRequest",
+    "fields": [
+     "delegate_id",
+     "role_id",
+     "reason",
+     "duration_hours",
+     "scope"
+    ]
+   },
+   {
+    "name": "PermissionCheckRequest",
+    "fields": [
+     "permission",
+     "resource_attrs",
+     "environment",
+     "justification"
+    ]
+   }
+  ],
+  "app/routes/batch.py": [
+   {
+    "name": "BatchOrderItem",
+    "fields": [
+     "patient_id",
+     "doctor_name",
+     "results"
+    ]
+   },
+   {
+    "name": "BatchOrderRequest",
+    "fields": [
+     "orders"
+    ]
+   },
+   {
+    "name": "BatchResultItem",
+    "fields": [
+     "test_name",
+     "value",
+     "value_text",
+     "unit",
+     "normal_range_low",
+     "normal_range_high"
+    ]
+   }
+  ],
+  "app/routes/canonical_patient.py": [
+   {
+    "name": "CanonicalPatientCreate",
+    "fields": [
+     "lab_id",
+     "national_id_hash",
+     "health_id",
+     "full_name",
+     "full_name_ar",
+     "date_of_birth",
+     "gender",
+     "phone",
+     "email",
+     "address",
+     "province",
+     "district",
+     "blood_type",
+     "source_system",
+     "source_id"
+    ]
+   },
+   {
+    "name": "CanonicalPatientMerge",
+    "fields": [
+     "target_id",
+     "source_id"
+    ]
+   },
+   {
+    "name": "CanonicalPatientResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "national_id_hash",
+     "health_id",
+     "full_name",
+     "full_name_ar",
+     "date_of_birth",
+     "gender",
+     "phone",
+     "email",
+     "address",
+     "province",
+     "district",
+     "blood_type",
+     "mpi_score",
+     "is_verified",
+     "is_deceased",
+     "source_system",
+     "source_id",
+     "version",
+     "created_at",
+     "updated_at"
+    ]
+   },
+   {
+    "name": "LinkCitizenRequest",
+    "fields": [
+     "citizen_id",
+     "canonical_id",
+     "method",
+     "confidence"
+    ]
+   },
+   {
+    "name": "LinkPatientRequest",
+    "fields": [
+     "patient_id",
+     "canonical_id",
+     "method",
+     "confidence"
+    ]
+   },
+   {
+    "name": "LinkResponse",
+    "fields": [
+     "id",
+     "link_type",
+     "linked_id",
+     "canonical_id",
+     "method",
+     "confidence",
+     "created_at"
+    ]
+   },
+   {
+    "name": "MergeResult",
+    "fields": [
+     "target_id",
+     "source_id",
+     "detail"
+    ]
+   },
+   {
+    "name": "SearchResponse",
+    "fields": [
+     "total",
+     "items"
+    ]
+   }
+  ],
+  "app/routes/citizen_portal.py": [
+   {
+    "name": "CitizenLoginRequest",
+    "fields": [
+     "identifier",
+     "email",
+     "password"
+    ]
+   }
+  ],
+  "app/routes/claims.py": [
+   {
+    "name": "ClaimCreate",
+    "fields": [
+     "patient_id",
+     "order_id",
+     "items",
+     "idempotency_key"
+    ]
+   },
+   {
+    "name": "ClaimItemCreate",
+    "fields": [
+     "test_code",
+     "description",
+     "quantity",
+     "unit_price",
+     "amount"
+    ]
+   },
+   {
+    "name": "ClaimItemResponse",
+    "fields": [
+     "id",
+     "claim_id",
+     "test_code",
+     "description",
+     "quantity",
+     "unit_price",
+     "amount"
+    ]
+   },
+   {
+    "name": "ClaimResponse",
+    "fields": [
+     "id",
+     "lab_id",
+     "patient_id",
+     "order_id",
+     "status",
+     "total_amount",
+     "currency",
+     "idempotency_key",
+     "external_ref",
+     "submitted_at",
+     "created_at",
+     "updated_at",
+     "items"
+    ]
+   }
+  ],
+  "app/routes/clinical.py": [
+   {
+    "name": "CareBundleComplianceRequest",
+    "fields": [
+     "bundle_id",
+     "completed_elements"
+    ]
+   },
+   {
+    "name": "CareGapRequest",
+    "fields": [
+     "patient_id",
+     "clinical_data"
+    ]
+   },
+   {
+    "name": "ClinicalAlertCreate",
+    "fields": [
+     "alert_type",
+     "severity",
+     "patient_id",
+     "encounter_id",
+     "provider_id",
+     "title",
+     "message",
+     "detail",
+     "trigger_code",
+     "trigger_system",
+     "trigger_value",
+     "is_actionable",
+     "source_rule_id"
+    ]
+   },
+   {
+    "name": "ClinicalCopilotRequest",
+    "fields": [
+     "patient_context",
+     "clinical_findings"
+    ]
+   },
+   {
+    "name": "CodeSystemCreate",
+    "fields": [
+     "name",
+     "system",
+     "uri",
+     "oid",
+     "description",
+     "publisher",
+     "contact",
+     "copyright",
+     "version",
+     "total_codes",
+     "is_case_sensitive",
+     "hierarchy_meaning"
+    ]
+   },
+   {
+    "name": "CohortCreate",
+    "fields": [
+     "name",
+     "description",
+     "inclusion_criteria",
+     "registry_id",
+     "is_active"
+    ]
+   },
+   {
+    "name": "ComplianceCheckCreate",
+    "fields": [
+     "check_type",
+     "standard",
+     "department",
+     "check_date",
+     "result",
+     "score",
+     "findings",
+     "non_conformities",
+     "observations",
+     "opportunities",
+     "action_plan",
+     "deadline",
+     "status"
+    ]
+   },
+   {
+    "name": "ContraindicationCheckRequest",
+    "fields": [
+     "subject_code",
+     "subject_system"
+    ]
+   },
+   {
+    "name": "DiagnosticAssistantRequest",
+    "fields": [
+     "symptoms",
+     "findings",
+     "patient_context"
+    ]
+   },
+   {
+    "name": "DrugInteractionCheckRequest",
+    "fields": [
+     "medications"
+    ]
+   },
+   {
+    "name": "DuplicateOrderCheckRequest",
+    "fields": [
+     "patient_id",
+     "order_code",
+     "encounter_id"
+    ]
+   },
+   {
+    "name": "ExplainabilityRequest",
+    "fields": [
+     "recommendation_id",
+     "recommendation_type"
+    ]
+   },
+   {
+    "name": "GuidelineApprovalCreate",
+    "fields": [
+     "guideline_id",
+     "approver_id",
+     "approver_name",
+     "approver_role",
+     "organization",
+     "decision",
+     "comments",
+     "effective_from",
+     "effective_until"
+    ]
+   },
+   {
+    "name": "GuidelineCreate",
+    "fields": [
+     "title",
+     "identifier",
+     "version",
+     "status",
+     "specialty",
+     "publisher",
+     "authoring_body",
+     "description",
+     "purpose",
+     "population",
+     "evidence_level",
+     "publication_date",
+     "effective_date",
+     "review_date",
+     "body",
+     "summary",
+     "keywords",
+     "language",
+     "source_url"
+    ]
+   },
+   {
+    "name": "GuidelineUpdate",
+    "fields": [
+     "title",
+     "version",
+     "status",
+     "specialty",
+     "description",
+     "purpose",
+     "population",
+     "evidence_level",
+     "body",
+     "summary",
+     "keywords",
+     "review_date"
+    ]
+   },
+   {
+    "name": "IncidentReportCreate",
+    "fields": [
+     "incident_type",
+     "incident_date",
+     "severity",
+     "location",
+     "department",
+     "patient_id",
+     "encounter_id",
+     "description",
+     "immediate_action",
+     "contributing_factors",
+     "root_cause",
+     "outcome",
+     "actions_taken",
+     "status",
+     "is_notifiable",
+     "notified_authority"
+    ]
+   },
+   {
+    "name": "IndicatorMeasurementCreate",
+    "fields": [
+     "indicator_id",
+     "measurement_date",
+     "period_start",
+     "period_end",
+     "numerator_value",
+     "denominator_value",
+     "result_value",
+     "notes",
+     "measured_by"
+    ]
+   },
+   {
+    "name": "MortalityReviewCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "date_of_death",
+     "cause_of_death",
+     "cause_code",
+     "cause_system",
+     "location",
+     "department",
+     "review_date",
+     "classification",
+     "preventability",
+     "contributing_factors",
+     "summary",
+     "recommendations",
+     "is_autopsy_performed",
+     "autopsy_findings",
+     "is_completed"
+    ]
+   },
+   {
+    "name": "OrderSetRecommendationRequest",
+    "fields": [
+     "condition",
+     "department",
+     "patient_age",
+     "patient_gender",
+     "chief_complaint"
+    ]
+   },
+   {
+    "name": "PathwayCreate",
+    "fields": [
+     "name",
+     "version",
+     "status",
+     "condition",
+     "description",
+     "duration_days",
+     "phases",
+     "milestones",
+     "expected_outcomes",
+     "inclusion_criteria",
+     "exclusion_criteria",
+     "target_population",
+     "setting",
+     "effective_date",
+     "expiration_date",
+     "owner"
+    ]
+   },
+   {
+    "name": "PatientSafetyEventCreate",
+    "fields": [
+     "category",
+     "event_type",
+     "patient_id",
+     "encounter_id",
+     "provider_id",
+     "event_date",
+     "severity",
+     "description",
+     "harm_level",
+     "preventability",
+     "contributing_factors",
+     "mitigating_factors",
+     "actions_taken",
+     "outcome",
+     "status",
+     "is_sentinel"
+    ]
+   },
+   {
+    "name": "ProtocolCreate",
+    "fields": [
+     "title",
+     "protocol_id",
+     "version",
+     "status",
+     "guideline_id",
+     "department",
+     "procedure_category",
+     "description",
+     "inclusion_criteria",
+     "exclusion_criteria",
+     "prerequisites",
+     "steps",
+     "duration_expected",
+     "required_equipment",
+     "required_personnel",
+     "complications",
+     "outcome_measures",
+     "effective_date",
+     "expiration_date",
+     "is_emergency",
+     "is_surgical"
+    ]
+   },
+   {
+    "name": "QualityIndicatorCreate",
+    "fields": [
+     "name",
+     "code",
+     "indicator_type",
+     "description",
+     "department",
+     "numerator",
+     "denominator",
+     "target_value",
+     "benchmark_value",
+     "unit",
+     "frequency",
+     "direction",
+     "is_national",
+     "is_active",
+     "steward",
+     "source",
+     "effective_start",
+     "effective_end"
+    ]
+   },
+   {
+    "name": "RegistryCreate",
+    "fields": [
+     "name",
+     "registry_type",
+     "description",
+     "condition",
+     "inclusion_criteria",
+     "steward"
+    ]
+   },
+   {
+    "name": "RiskPredictionRequest",
+    "fields": [
+     "patient_id",
+     "risk_type",
+     "clinical_data"
+    ]
+   },
+   {
+    "name": "StandingOrderCreate",
+    "fields": [
+     "title",
+     "order_id",
+     "description",
+     "department",
+     "order_type",
+     "order_details",
+     "indication",
+     "contraindications",
+     "frequency",
+     "duration",
+     "priority",
+     "requires_approval",
+     "is_active",
+     "effective_start",
+     "effective_end",
+     "approver_role",
+     "protocol_id"
+    ]
+   },
+   {
+    "name": "TerminologyCodeCreate",
+    "fields": [
+     "code",
+     "display",
+     "system",
+     "version_id",
+     "parent_id",
+     "definition",
+     "is_leaf",
+     "effective_date",
+     "status"
+    ]
+   },
+   {
+    "name": "TerminologyCodeUpdate",
+    "fields": [
+     "display",
+     "definition",
+     "is_leaf",
+     "status"
+    ]
+   },
+   {
+    "name": "TerminologyMappingCreate",
+    "fields": [
+     "source_system",
+     "source_code_id",
+     "target_system",
+     "target_code_id",
+     "relationship",
+     "mapping_priority",
+     "evidence"
+    ]
+   },
+   {
+    "name": "TerminologyVersionCreate",
+    "fields": [
+     "system",
+     "version",
+     "release_date",
+     "description",
+     "is_current",
+     "codes_count"
+    ]
+   },
+   {
+    "name": "ValueSetCreate",
+    "fields": [
+     "name",
+     "oid",
+     "description",
+     "purpose",
+     "is_extensible",
+     "is_experimental",
+     "steward",
+     "source",
+     "version",
+     "effective_start",
+     "effective_end"
+    ]
+   },
+   {
+    "name": "ValueSetMemberCreate",
+    "fields": [
+     "value_set_id",
+     "code_id",
+     "inclusion",
+     "order"
+    ]
+   }
+  ],
+  "app/routes/clinical_documentation.py": [
+   {
+    "name": "ConsultationNoteCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "referring_provider_id",
+     "consulting_provider_id",
+     "specialty",
+     "reason_for_consultation",
+     "clinical_findings",
+     "assessment",
+     "recommendations",
+     "department"
+    ]
+   },
+   {
+    "name": "EmergencyNoteCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "arrival_time",
+     "triage_category",
+     "chief_complaint",
+     "history_of_present_illness",
+     "vital_signs",
+     "examination_findings",
+     "assessment",
+     "plan",
+     "disposition",
+     "department"
+    ]
+   },
+   {
+    "name": "NursingNoteCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "assessment",
+     "interventions",
+     "response",
+     "plan",
+     "department"
+    ]
+   },
+   {
+    "name": "OperationNoteCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "procedure_name",
+     "procedure_code",
+     "surgeon_id",
+     "assistant_id",
+     "anesthesiologist_id",
+     "preoperative_diagnosis",
+     "postoperative_diagnosis",
+     "procedure_description",
+     "findings",
+     "complications",
+     "estimated_blood_loss",
+     "specimens_removed",
+     "anesthesia_type",
+     "department"
+    ]
+   },
+   {
+    "name": "ProgressNoteCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "note_type",
+     "subjective",
+     "objective",
+     "assessment",
+     "plan",
+     "department"
+    ]
+   },
+   {
+    "name": "SignDocumentRequest",
+    "fields": [
+     "document_id",
+     "signature_type",
+     "role"
+    ]
+   },
+   {
+    "name": "SoapNoteCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "subjective",
+     "objective",
+     "assessment",
+     "plan",
+     "department",
+     "diagnosis_codes",
+     "is_confidential"
+    ]
+   },
+   {
+    "name": "StructuredTemplateCreate",
+    "fields": [
+     "name",
+     "document_type",
+     "template_content",
+     "description",
+     "department",
+     "is_active"
+    ]
+   }
+  ],
+  "app/routes/clinical_orders.py": [
+   {
+    "name": "ClinicalOrderCreate",
+    "fields": [
+     "patient_id",
+     "encounter_id",
+     "order_type",
+     "order_code",
+     "order_name",
+     "description",
+     "priority",
+     "status",
+     "ordering_provider_id",
+     "department",
+     "diagnosis_code",
+     "diagnosis_system",
+     "diagnosis_display",
+     "instructions",
+     "notes",
+     "is_stat",
+     "is_standing",
+     "frequency",
+     "duration",
+     "start_date",
+     "end_date",
+     "source",
+     "metadata"
+    ]
+   },
+   {
+    "name": "ClinicalOrderUpdate",
+    "fields": [
+     "status",
+     "priority",
+     "instructions",
+     "notes"
+    ]
+   },
+   {
+    "name": "OrderTemplateCreate",
+    "fields": [
+     "name",
+     "order_type",
+     "order_code",
+     "order_name",
+     "description",
+     "department",
+     "priority",
+     "instructions",
+     "is_stat",
+     "metadata"
+    ]
+   },
+   {
+    "name": "RecurringOrderCreate",
+    "fields": [
+     "patient_id",
+     "order_type",
+     "order_code",
+     "order_name",
+     "description",
+     "frequency",
+     "interval_days",
+     "start_date",
+     "end_date",
+     "max_occurrences",
+     "department",
+     "instructions",
+     "ordering_provider_id"
+    ]
+   }
+  ],
+  "app/routes/clinical_quality.py": [
+   {
+    "name": "MeasurementRecord",
+    "fields": [
+     "indicator_id",
+     "measurement_date",
+     "period_start",
+     "period_end",
+     "numerator_value",
+     "denominator_value",
+     "result_value",
+     "notes",
+     "measured_by"
+    ]
+   }
+  ],
+  "app/routes/consent.py": [
+   {
+    "name": "CheckResponse",
+    "fields": [
+     "allowed",
+     "scope",
+     "expires_at"
+    ]
+   },
+   {
+    "name": "GrantRequest",
+    "fields": [
+     "gpid",
+     "grantee_id",
+     "scope",
+     "expires_in_hours"
+    ]
+   },
+   {
+    "name": "GrantResponse",
+    "fields": [
+     "consent_id",
+     "gpid",
+     "grantee_id",
+     "scope",
+     "expires_at"
+    ]
+   },
+   {
+    "name": "RevokeRequest",
+    "fields": [
+     "gpid",
+     "grantee_id",
+     "scope"
+    ]
+   },
+   {
+    "name": "RevokeResponse",
+    "fields": [
+     "revoked"
+    ]
+   }
+  ],
+  "app/routes/device_results.py": [
+   {
+    "name": "DeviceResult",
+    "fields": [
+     "test_name",
+     "value",
+     "value_text",
+     "unit",
+     "normal_range_low",
+     "normal_range_high"
+    ]
+   },
+   {
+    "name": "DeviceSubmission",
+    "fields": [
+     "barcode",
+     "device_id",
+     "results"
+    ]
+   }
+  ],
+  "app/routes/edge.py": [
+   {
+    "name": "DeviceSummary",
+    "fields": [
+     "device_id",
+     "display_name",
+     "role_mode",
+     "status",
+     "trust_score",
+     "last_seen_at",
+     "agent_version"
+    ]
+   },
+   {
+    "name": "HeartbeatRequest",
+    "fields": [
+     "agent_version",
+     "capabilities",
+     "telemetry",
+     "completed_task_uids"
+    ]
+   },
+   {
+    "name": "HeartbeatResponse",
+    "fields": [
+     "server_time",
+     "next_heartbeat_s",
+     "task",
+     "models",
+     "quarantined",
+     "kill_switched"
+    ]
+   },
+   {
+    "name": "ModelAssignRequest",
+    "fields": [
+     "lab_id",
+     "device_id"
+    ]
+   },
+   {
+    "name": "ModelRegisterRequest",
+    "fields": [
+     "name",
+     "version",
+     "runtime",
+     "format",
+     "quantization",
+     "size_mb",
+     "min_ram_mb",
+     "min_vram_mb",
+     "sha256",
+     "source_url",
+     "metadata"
+    ]
+   },
+   {
+    "name": "ModelStatusUpdate",
+    "fields": [
+     "status",
+     "rollout_pct"
+    ]
+   },
+   {
+    "name": "PolicyUpdate",
+    "fields": [
+     "max_concurrent_per_device",
+     "max_devices_per_lab",
+     "idle_only",
+     "battery_floor_pct",
+     "cpu_cap_pct",
+     "ram_cap_mb",
+     "allow_kinds",
+     "deny_kinds",
+     "min_trust_score",
+     "offline_queue_max",
+     "kill_switch"
+    ]
+   },
+   {
+    "name": "PolicyView",
+    "fields": [
+     "max_concurrent_per_device",
+     "max_devices_per_lab",
+     "idle_only",
+     "battery_floor_pct",
+     "cpu_cap_pct",
+     "ram_cap_mb",
+     "allow_kinds",
+     "deny_kinds",
+     "min_trust_score",
+     "offline_queue_max",
+     "kill_switch"
+    ]
+   },
+   {
+    "name": "RegisterDeviceRequest",
+    "fields": [
+     "public_key_pem",
+     "role_mode",
+     "display_name",
+     "agent_version",
+     "os_platform",
+     "capabilities",
+     "attestation_blob"
+    ]
+   },
+   {
+    "name": "RegisterDeviceResponse",
+    "fields": [
+     "device_id",
+     "status",
+     "role_mode",
+     "trust_score",
+     "cert_fingerprint",
+     "agent_token",
+     "nonce"
+    ]
+   },
+   {
+    "name": "TaskResultRequest",
+    "fields": [
+     "success",
+     "result",
+     "error",
+     "duration_ms"
+    ]
+   },
+   {
+    "name": "TaskSubmitRequest",
+    "fields": [
+     "kind",
+     "payload",
+     "priority",
+     "privacy_level",
+     "required_caps",
+     "min_trust",
+     "timeout_s",
+     "max_attempts",
+     "idempotency_key",
+     "expires_in_s"
+    ]
+   },
+   {
+    "name": "TaskSummary",
+    "fields": [
+     "task_uid",
+     "kind",
+     "status",
+     "priority",
+     "privacy_level",
+     "device_id",
+     "attempts",
+     "created_at",
+     "completed_at"
+    ]
+   }
+  ],
+  "app/routes/ehr.py": [
+   {
+    "name": "AllergyCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "allergy_type",
+     "category",
+     "criticality",
+     "code",
+     "code_system",
+     "code_display",
+     "code_display_ar",
+     "severity",
+     "status",
+     "verification_status",
+     "reaction",
+     "reaction_details",
+     "onset_date",
+     "notes",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "AllergyUpdate",
+    "fields": [
+     "code_display",
+     "code_display_ar",
+     "severity",
+     "status",
+     "reaction",
+     "reaction_details",
+     "notes"
+    ]
+   },
+   {
+    "name": "AttachmentCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "uploaded_by",
+     "source_type",
+     "source_id",
+     "file_name",
+     "file_type",
+     "file_size_bytes",
+     "storage_path",
+     "storage_bucket",
+     "content_hash",
+     "mime_type",
+     "caption",
+     "caption_ar",
+     "description",
+     "is_watermarked",
+     "is_encrypted",
+     "is_confidential",
+     "is_archived",
+     "category",
+     "sort_order",
+     "facility_id"
+    ]
+   },
+   {
+    "name": "AttachmentUpdate",
+    "fields": [
+     "caption",
+     "caption_ar",
+     "description",
+     "is_confidential",
+     "is_archived",
+     "category",
+     "sort_order"
+    ]
+   },
+   {
+    "name": "CarePlanActivityCreate",
+    "fields": [
+     "care_plan_id",
+     "goal_id",
+     "activity_code",
+     "activity_code_system",
+     "description",
+     "description_ar",
+     "status",
+     "scheduled_start",
+     "scheduled_end",
+     "performer",
+     "performer_id",
+     "location",
+     "outcome",
+     "progress_notes",
+     "notes",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "CarePlanCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "status",
+     "intent",
+     "title",
+     "title_ar",
+     "description",
+     "period_start",
+     "period_end",
+     "category",
+     "contributor",
+     "supporting_info",
+     "notes",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "CarePlanGoalCreate",
+    "fields": [
+     "care_plan_id",
+     "description",
+     "description_ar",
+     "status",
+     "priority",
+     "target_date",
+     "measured_by",
+     "notes",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "CarePlanUpdate",
+    "fields": [
+     "status",
+     "title",
+     "title_ar",
+     "description",
+     "period_start",
+     "period_end",
+     "notes"
+    ]
+   },
+   {
+    "name": "ClinicalNoteCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "author_id",
+     "note_type",
+     "title",
+     "title_ar",
+     "content",
+     "content_format",
+     "is_final",
+     "facility_id",
+     "department_id",
+     "tags",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "ClinicalNoteUpdate",
+    "fields": [
+     "title",
+     "title_ar",
+     "content",
+     "content_format",
+     "is_final",
+     "is_signed",
+     "signed_by",
+     "tags",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "ConditionCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "clinical_status",
+     "verification_status",
+     "category",
+     "severity",
+     "code",
+     "code_system",
+     "code_display",
+     "code_display_ar",
+     "icd10_code",
+     "icd10_description",
+     "body_site",
+     "laterality",
+     "onset_date",
+     "abatement_date",
+     "notes",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "ConditionUpdate",
+    "fields": [
+     "clinical_status",
+     "severity",
+     "code_display",
+     "icd10_code",
+     "icd10_description",
+     "abatement_date",
+     "notes"
+    ]
+   },
+   {
+    "name": "DiagnosisCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "diagnosis_type",
+     "rank",
+     "icd10_code",
+     "icd10_description",
+     "snomed_code",
+     "snomed_description",
+     "diagnosis_text",
+     "diagnosis_text_ar",
+     "diagnosis_date",
+     "resolution_date",
+     "is_active",
+     "is_chronic",
+     "certainty",
+     "notes",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "DiagnosisUpdate",
+    "fields": [
+     "diagnosis_type",
+     "icd10_code",
+     "icd10_description",
+     "diagnosis_text",
+     "diagnosis_text_ar",
+     "resolution_date",
+     "is_active",
+     "notes"
+    ]
+   },
+   {
+    "name": "FamilyHistoryCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "practitioner_id",
+     "relationship",
+     "relationship_detail",
+     "relative_name",
+     "relative_citizen_id",
+     "condition_code",
+     "condition_code_system",
+     "condition_display",
+     "condition_display_ar",
+     "icd10_code",
+     "icd10_description",
+     "age_at_onset",
+     "onset_age_years",
+     "is_deceased_due_to",
+     "notes"
+    ]
+   },
+   {
+    "name": "FamilyHistoryUpdate",
+    "fields": [
+     "relationship",
+     "relative_name",
+     "condition_display",
+     "icd10_code",
+     "notes"
+    ]
+   },
+   {
+    "name": "ImmunizationCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "administrator_id",
+     "vaccine_code",
+     "vaccine_code_system",
+     "vaccine_name",
+     "vaccine_name_ar",
+     "administration_date",
+     "manufacturer",
+     "lot_number",
+     "expiry_date",
+     "dose_number",
+     "dose_series",
+     "total_doses",
+     "route",
+     "site",
+     "dose_quantity",
+     "dose_unit",
+     "is_completed",
+     "status",
+     "reason_not_given",
+     "adverse_event",
+     "adverse_event_reported",
+     "facility_id",
+     "notes",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "ImmunizationUpdate",
+    "fields": [
+     "vaccine_name",
+     "lot_number",
+     "dose_number",
+     "is_completed",
+     "status",
+     "adverse_event",
+     "notes"
+    ]
+   },
+   {
+    "name": "MedAdminCreate",
+    "fields": [
+     "medication_request_id",
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "administrator_id",
+     "medication_code",
+     "medication_code_system",
+     "medication_name",
+     "medication_name_ar",
+     "status",
+     "category",
+     "dose_value",
+     "dose_unit",
+     "route",
+     "site",
+     "method",
+     "administration_time",
+     "reason_not_given",
+     "note",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "MedDispenseCreate",
+    "fields": [
+     "medication_request_id",
+     "patient_id",
+     "citizen_id",
+     "dispenser_id",
+     "medication_code",
+     "medication_code_system",
+     "medication_name",
+     "medication_name_ar",
+     "medication_brand",
+     "medication_form",
+     "status",
+     "category",
+     "quantity",
+     "quantity_unit",
+     "days_supply",
+     "dosage_instruction",
+     "route",
+     "frequency",
+     "prepared_by",
+     "verified_by",
+     "lot_number",
+     "expiry_date",
+     "note",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "MedRequestCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "prescriber_id",
+     "medication_code",
+     "medication_code_system",
+     "medication_name",
+     "medication_name_ar",
+     "medication_brand",
+     "medication_form",
+     "status",
+     "intent",
+     "priority",
+     "category",
+     "dosage_instruction",
+     "dosage_instructions",
+     "route",
+     "frequency",
+     "quantity",
+     "quantity_unit",
+     "refills",
+     "duration_days",
+     "reason_code",
+     "reason_description",
+     "clinical_indication",
+     "valid_from",
+     "valid_to",
+     "dispense_interval_days",
+     "substitution_allowed",
+     "note",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "MedStatementCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "medication_code",
+     "medication_code_system",
+     "medication_name",
+     "medication_name_ar",
+     "medication_brand",
+     "medication_form",
+     "strength_value",
+     "strength_unit",
+     "dosage_text",
+     "route",
+     "frequency",
+     "timing",
+     "status",
+     "category",
+     "date_started",
+     "date_ended",
+     "reason_code",
+     "reason_description",
+     "note",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "ProblemListItemCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "status",
+     "code",
+     "code_system",
+     "display",
+     "display_ar",
+     "clinical_status",
+     "verification_status",
+     "category",
+     "severity",
+     "onset_date",
+     "resolution_date",
+     "body_site",
+     "notes",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "ProblemListItemUpdate",
+    "fields": [
+     "status",
+     "display",
+     "display_ar",
+     "clinical_status",
+     "severity",
+     "resolution_date",
+     "notes"
+    ]
+   },
+   {
+    "name": "RiskFactorCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "risk_type",
+     "risk_level",
+     "score_name",
+     "score_value",
+     "score_maximum",
+     "score_version",
+     "factors",
+     "recommendations",
+     "assessment_date",
+     "next_assessment_date",
+     "is_high_risk",
+     "notes",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "RiskFactorUpdate",
+    "fields": [
+     "risk_level",
+     "score_value",
+     "score_maximum",
+     "factors",
+     "recommendations",
+     "next_assessment_date",
+     "is_high_risk",
+     "notes"
+    ]
+   },
+   {
+    "name": "SocialHistoryCreate",
+    "fields": [
+     "patient_id",
+     "citizen_id",
+     "encounter_id",
+     "practitioner_id",
+     "smoking_status",
+     "smoking_pack_years",
+     "smoking_quit_date",
+     "smoking_start_age",
+     "smoking_frequency",
+     "alcohol_status",
+     "alcohol_frequency",
+     "alcohol_quit_date",
+     "alcohol_start_age",
+     "occupation",
+     "occupation_history",
+     "occupational_hazards",
+     "disability_type",
+     "disability_detail",
+     "disability_since",
+     "exercise_frequency",
+     "diet_notes",
+     "lifestyle_factors",
+     "notes",
+     "metadata_"
+    ]
+   },
+   {
+    "name": "SocialHistoryUpdate",
+    "fields": [
+     "smoking_status",
+     "smoking_pack_years",
+     "alcohol_status",
+     "occupation",
+     "disability_type",
+     "exercise_frequency",
+     "diet_notes",
+     "notes"
+    ]
+   }
+  ],
+  "app/routes/hospital.py": [
+   {
+    "name": "AppointmentCreate",
+    "fields": [
+     "patient_id",
+     "provider_id",
+     "facility_id",
+     "appointment_type",
+     "scheduled_date",
+     "duration_minutes",
+     "reason",
+     "notes"
+    ]
+   },
+   {
+    "name": "BedAssign",
+    "fields": [
+     "patient_id",
+     "reason",
+     "diagnosis"
+    ]
+   },
+   {
+    "name": "BedCreate",
+    "fields": [
+     "bed_number",
+     "bed_type"
+    ]
+   },
+   {
+    "name": "BedDischarge",
+    "fields": [
+     "discharge_reason"
+    ]
+   },
+   {
+    "name": "BedTransfer",
+    "fields": [
+     "to_bed_id",
+     "reason"
+    ]
+   },
+   {
+    "name": "EquipmentCreate",
+    "fields": [
+     "equipment_code",
+     "equipment_name",
+     "equipment_name_ar",
+     "department_id",
+     "category",
+     "manufacturer",
+     "model",
+     "serial_number"
+    ]
+   },
+   {
+    "name": "HospitalCreate",
+    "fields": [
+     "code",
+     "name",
+     "name_ar",
+     "hospital_type",
+     "license_number",
+     "phone",
+     "email",
+     "website",
+     "address",
+     "city",
+     "province",
+     "country"
+    ]
+   },
+   {
+    "name": "HospitalUpdate",
+    "fields": [
+     "name",
+     "name_ar",
+     "hospital_type",
+     "license_number",
+     "phone",
+     "email",
+     "website",
+     "address",
+     "city",
+     "province",
+     "country",
+     "is_active"
+    ]
+   },
+   {
+    "name": "NestedCreate",
+    "fields": [
+     "code",
+     "name",
+     "name_ar"
+    ]
+   },
+   {
+    "name": "RoomCreate",
+    "fields": [
+     "code",
+     "name",
+     "clinic_id",
+     "floor_id",
+     "room_type",
+     "capacity"
+    ]
+   }
+  ],
+  "app/routes/identity.py": [
+   {
+    "name": "LinkIdentityRequest",
+    "fields": [
+     "patient_id",
+     "national_id",
+     "confirm_name"
+    ]
+   }
+  ],
+  "app/routes/labs.py": [
+   {
+    "name": "CreateEmployeeRequest",
+    "fields": [
+     "name",
+     "email",
+     "password",
+     "role"
+    ]
+   },
+   {
+    "name": "LabUpdate",
+    "fields": [
+     "name",
+     "city",
+     "address",
+     "phone",
+     "license_number",
+     "lab_type",
+     "director_name",
+     "website"
+    ]
+   },
+   {
+    "name": "UpdateEmployeeRequest",
+    "fields": [
+     "is_active",
+     "role"
+    ]
+   }
+  ],
+  "app/routes/login.py": [
+   {
+    "name": "LoginRequest",
+    "fields": [
+     "email",
+     "password"
+    ]
+   }
+  ],
+  "app/routes/mfa.py": [
+   {
+    "name": "MFASessionRequest",
+    "fields": [
+     "session_token"
+    ]
+   },
+   {
+    "name": "MFAStatusResponse",
+    "fields": [
+     "mfa_enabled",
+     "devices"
+    ]
+   },
+   {
+    "name": "TOTPSetupRequest",
+    "fields": [
+     "device_name"
+    ]
+   },
+   {
+    "name": "TOTPSetupResponse",
+    "fields": [
+     "secret",
+     "uri",
+     "backup_codes",
+     "device_id"
+    ]
+   },
+   {
+    "name": "TOTPVerifyRequest",
+    "fields": [
+     "token"
+    ]
+   },
+   {
+    "name": "WebAuthnAuthenticateBeginResponse",
+    "fields": [
+     "options"
+    ]
+   },
+   {
+    "name": "WebAuthnAuthenticateCompleteRequest",
+    "fields": [
+     "credential"
+    ]
+   },
+   {
+    "name": "WebAuthnRegisterBeginResponse",
+    "fields": [
+     "options"
+    ]
+   },
+   {
+    "name": "WebAuthnRegisterCompleteRequest",
+    "fields": [
+     "credential",
+     "device_name"
+    ]
+   }
+  ],
+  "app/routes/mobile.py": [
+   {
+    "name": "ChangePasswordRequest",
+    "fields": [
+     "current_password",
+     "new_password"
+    ]
+   },
+   {
+    "name": "DeviceTokenRequest",
+    "fields": [
+     "device_token",
+     "platform",
+     "app_version"
+    ]
+   },
+   {
+    "name": "RefreshRequest",
+    "fields": [
+     "refresh_token"
+    ]
+   }
+  ],
+  "app/routes/national_data.py": [
+   {
+    "name": "CatalogEntryCreate",
+    "fields": [
+     "entry_name",
+     "entry_type",
+     "schema_name",
+     "table_name",
+     "column_name",
+     "description",
+     "classification",
+     "sensitivity_level",
+     "source_system",
+     "is_sensitive",
+     "is_pii",
+     "is_phi"
+    ]
+   },
+   {
+    "name": "ConsentDirectiveCreate",
+    "fields": [
+     "consent_type",
+     "data_use_purpose",
+     "patient_id",
+     "citizen_id",
+     "consent_id",
+     "data_categories",
+     "authorized_party",
+     "jurisdiction"
+    ]
+   },
+   {
+    "name": "DeidentificationJobCreate",
+    "fields": [
+     "job_name",
+     "entity_type",
+     "techniques",
+     "fields_to_deidentify",
+     "fields_to_keep"
+    ]
+   },
+   {
+    "name": "DuplicateCheckRequest",
+    "fields": [
+     "golden_record_id",
+     "source_patient_id",
+     "source_national_patient_id",
+     "source_system",
+     "duplicate_probability",
+     "matching_algorithm",
+     "matched_fields"
+    ]
+   },
+   {
+    "name": "FeatureDefinitionCreate",
+    "fields": [
+     "feature_name",
+     "feature_type",
+     "entity_type",
+     "data_type",
+     "description",
+     "source_query",
+     "is_required",
+     "tags"
+    ]
+   },
+   {
+    "name": "FeatureValueCreate",
+    "fields": [
+     "feature_id",
+     "entity_type",
+     "entity_id",
+     "value_numeric",
+     "value_text",
+     "value_json"
+    ]
+   },
+   {
+    "name": "GoldenRecordCreate",
+    "fields": [
+     "patient_id",
+     "national_patient_id",
+     "citizen_id",
+     "confidence_score",
+     "matching_algorithm",
+     "matched_fields",
+     "notes"
+    ]
+   },
+   {
+    "name": "MergeActionRequest",
+    "fields": [
+     "golden_record_id",
+     "source_patient_id",
+     "target_patient_id",
+     "merge_type",
+     "merge_reason",
+     "merge_fields",
+     "conflict_resolution"
+    ]
+   },
+   {
+    "name": "QualityCheckCreate",
+    "fields": [
+     "rule_id",
+     "entity_type",
+     "entity_id",
+     "field_name",
+     "result_status",
+     "result_value",
+     "records_checked",
+     "records_failed",
+     "score"
+    ]
+   },
+   {
+    "name": "RecordEventRequest",
+    "fields": [
+     "event_type",
+     "aggregate_type",
+     "aggregate_id",
+     "event_data",
+     "metadata_",
+     "partition_key",
+     "causation_id",
+     "correlation_id"
+    ]
+   },
+   {
+    "name": "RetentionPolicyCreate",
+    "fields": [
+     "policy_name",
+     "entity_type",
+     "retention_days",
+     "action_on_expiry",
+     "archive_after_days",
+     "purge_after_days",
+     "allows_extension",
+     "legal_hold_enabled",
+     "notes"
+    ]
+   },
+   {
+    "name": "TrainingDatasetCreate",
+    "fields": [
+     "dataset_name",
+     "dataset_version",
+     "dataset_type",
+     "description",
+     "feature_list",
+     "target_variable",
+     "total_records",
+     "tags"
+    ]
+   },
+   {
+    "name": "VectorEmbeddingCreate",
+    "fields": [
+     "entity_type",
+     "entity_id",
+     "embedding_model",
+     "embedding_dimension",
+     "chunk_text",
+     "metadata_"
+    ]
+   }
+  ],
+  "app/routes/national_identity.py": [
+   {
+    "name": "NationalIdRequest",
+    "fields": [
+     "national_id"
+    ]
+   }
+  ],
+  "app/routes/national_streaming.py": [
+   {
+    "name": "CDCChangeRecord",
+    "fields": [
+     "table_name",
+     "operation",
+     "primary_key",
+     "primary_key_value",
+     "before",
+     "after",
+     "change_timestamp",
+     "transaction_id"
+    ]
+   },
+   {
+    "name": "EventStreamingPayload",
+    "fields": [
+     "event_type",
+     "aggregate_type",
+     "aggregate_id",
+     "event_data",
+     "metadata_",
+     "partition_key",
+     "correlation_id"
+    ]
+   },
+   {
+    "name": "FHIRSubscriptionPayload",
+    "fields": [
+     "resource_type",
+     "resource_id",
+     "event_type",
+     "resource",
+     "subscription_id",
+     "timestamp"
+    ]
+   },
+   {
+    "name": "HL7StreamingPayload",
+    "fields": [
+     "message_type",
+     "message_control_id",
+     "hl7_version",
+     "raw_message",
+     "parsed_segments",
+     "source_device",
+     "source_facility",
+     "patient_id",
+     "encounter_id"
+    ]
+   }
+  ],
+  "app/routes/notifications.py": [
+   {
+    "name": "NotifyRequest",
+    "fields": [
+     "order_id",
+     "channel"
+    ]
+   }
+  ],
+  "app/routes/oauth2.py": [
+   {
+    "name": "ClientRegisterRequest",
+    "fields": [
+     "client_name",
+     "redirect_uris",
+     "allowed_scopes",
+     "grant_types",
+     "response_types",
+     "is_confidential",
+     "token_endpoint_auth_method"
+    ]
+   }
+  ],
+  "app/routes/password_reset.py": [
+   {
+    "name": "ChangePasswordRequest",
+    "fields": [
+     "current_password",
+     "new_password"
+    ]
+   },
+   {
+    "name": "ForgotPasswordRequest",
+    "fields": [
+     "email"
+    ]
+   },
+   {
+    "name": "ResetPasswordRequest",
+    "fields": [
+     "token",
+     "new_password"
+    ]
+   }
+  ],
+  "app/routes/patient_card.py": [
+   {
+    "name": "ScanRequest",
+    "fields": [
+     "token"
+    ]
+   }
+  ],
+  "app/routes/patients.py": [
+   {
+    "name": "PatientCreate",
+    "fields": [
+     "full_name",
+     "phone",
+     "birth_date",
+     "gender",
+     "email",
+     "national_id",
+     "family_id",
+     "force_create",
+     "guardian_id"
+    ]
+   },
+   {
+    "name": "PatientUpdate",
+    "fields": [
+     "full_name",
+     "phone",
+     "birth_date",
+     "gender",
+     "email",
+     "family_id"
+    ]
+   }
+  ],
+  "app/routes/quality_control.py": [
+   {
+    "name": "QCBatchSubmit",
+    "fields": [
+     "results"
+    ]
+   },
+   {
+    "name": "QCSubmit",
+    "fields": [
+     "test_code",
+     "level",
+     "expected_value",
+     "measured_value",
+     "sd",
+     "unit",
+     "instrument_name",
+     "lot_number",
+     "notes"
+    ]
+   }
+  ],
+  "app/routes/register.py": [
+   {
+    "name": "CitizenRegisterRequest",
+    "fields": [
+     "full_name",
+     "phone",
+     "email",
+     "password",
+     "gender",
+     "birth_date",
+     "national_id"
+    ]
+   },
+   {
+    "name": "DoctorRegisterRequest",
+    "fields": [
+     "full_name",
+     "email",
+     "phone",
+     "password",
+     "license_number",
+     "specialty",
+     "workplace",
+     "national_id"
+    ]
+   },
+   {
+    "name": "LabRegisterRequest",
+    "fields": [
+     "lab_name",
+     "license_number",
+     "lab_type",
+     "director_name",
+     "city",
+     "address",
+     "phone",
+     "website",
+     "admin_name",
+     "email",
+     "password"
+    ]
+   },
+   {
+    "name": "StaffRegisterRequest",
+    "fields": [
+     "name",
+     "email",
+     "password",
+     "role"
+    ]
+   }
+  ],
+  "app/routes/results.py": [
+   {
+    "name": "AnalyzeRequest",
+    "fields": [
+     "results"
+    ]
+   },
+   {
+    "name": "CreateOrderRequest",
+    "fields": [
+     "patient_id",
+     "doctor_name",
+     "doctor_user_id",
+     "results"
+    ]
+   },
+   {
+    "name": "ResultItem",
+    "fields": [
+     "test_name",
+     "value",
+     "value_text",
+     "unit",
+     "normal_range_low",
+     "normal_range_high"
+    ]
+   }
+  ],
+  "app/routes/saml.py": [
+   {
+    "name": "SAMLResponseModel",
+    "fields": [
+     "SAMLResponse",
+     "RelayState"
+    ]
+   }
+  ],
+  "app/routes/samples.py": [
+   {
+    "name": "SampleCreate",
+    "fields": [
+     "order_id",
+     "sample_type",
+     "collected_by",
+     "notes",
+     "storage_location"
+    ]
+   },
+   {
+    "name": "SampleUpdate",
+    "fields": [
+     "status",
+     "rejection_reason",
+     "notes",
+     "storage_location"
+    ]
+   }
+  ],
+  "app/routes/service_accounts.py": [
+   {
+    "name": "CreateServiceAccountRequest",
+    "fields": [
+     "name",
+     "description",
+     "roles",
+     "scopes"
+    ]
+   },
+   {
+    "name": "ServiceAccountResponse",
+    "fields": [
+     "id",
+     "name",
+     "description",
+     "roles",
+     "scopes",
+     "is_active",
+     "last_used_at",
+     "created_by",
+     "created_at",
+     "expires_at"
+    ]
+   }
+  ],
+  "app/routes/test_results.py": [
+   {
+    "name": "TestResultCreate",
+    "fields": [
+     "health_id",
+     "test_name",
+     "test_code",
+     "value",
+     "value_text",
+     "unit",
+     "normal_range_low",
+     "normal_range_high",
+     "sample_type",
+     "doctor_name",
+     "order_id"
+    ]
+   },
+   {
+    "name": "TestResultValidateRequest",
+    "fields": [
+     "test_name",
+     "test_code",
+     "value",
+     "unit",
+     "normal_range_low",
+     "normal_range_high"
+    ]
+   }
+  ],
+  "app/routes/tiers.py": [
+   {
+    "name": "DemandSignalBody",
+    "fields": [
+     "lab_id",
+     "target_tier",
+     "reason"
+    ]
+   },
+   {
+    "name": "FeatureFlagBody",
+    "fields": [
+     "feature_key",
+     "is_enabled",
+     "reason",
+     "expires_at"
+    ]
+   },
+   {
+    "name": "SetTierBody",
+    "fields": [
+     "tier",
+     "deployment_mode",
+     "security_level",
+     "billing_cycle",
+     "notes"
+    ]
+   },
+   {
+    "name": "UpgradeRequestBody",
+    "fields": [
+     "target_tier",
+     "target_deployment_mode",
+     "target_security_level",
+     "reason"
+    ]
+   }
+  ],
+  "app/security/oauth2_provider.py": [
+   {
+    "name": "OAuth2AuthorizationRequest",
+    "fields": [
+     "response_type",
+     "client_id",
+     "redirect_uri",
+     "scope",
+     "state",
+     "code_challenge",
+     "code_challenge_method"
+    ]
+   },
+   {
+    "name": "OAuth2IntrospectRequest",
+    "fields": [
+     "token",
+     "token_type_hint"
+    ]
+   },
+   {
+    "name": "OAuth2RevokeRequest",
+    "fields": [
+     "token",
+     "token_type_hint"
+    ]
+   },
+   {
+    "name": "OAuth2TokenRequest",
+    "fields": [
+     "grant_type",
+     "code",
+     "redirect_uri",
+     "client_id",
+     "client_secret",
+     "refresh_token",
+     "scope",
+     "code_verifier"
+    ]
+   }
+  ],
+  "app/services/mpi/schemas.py": [
+   {
+    "name": "CitizenResponse",
+    "fields": [
+     "citizen_ulid",
+     "nid_verified",
+     "birth_year",
+     "gender",
+     "status",
+     "merged_into_ulid",
+     "created_at"
+    ]
+   },
+   {
+    "name": "MergeRequest",
+    "fields": [
+     "primary_ulid",
+     "secondary_ulid",
+     "reason"
+    ]
+   },
+   {
+    "name": "MergeResponse",
+    "fields": [
+     "event_id",
+     "primary_ulid",
+     "secondary_ulid",
+     "occurred_at",
+     "entry_hash"
+    ]
+   },
+   {
+    "name": "PendingReviewItem",
+    "fields": [
+     "claim_id",
+     "citizen_ulid",
+     "lab_id",
+     "local_patient_id",
+     "match_score",
+     "match_features",
+     "created_at"
+    ]
+   },
+   {
+    "name": "PendingReviewPage",
+    "fields": [
+     "total",
+     "items"
+    ]
+   },
+   {
+    "name": "ResolveDecision",
+    "fields": [
+     "decision",
+     "reason"
+    ]
+   },
+   {
+    "name": "ResolveRequest",
+    "fields": [
+     "lab_id",
+     "patient_id",
+     "name",
+     "phone",
+     "birth_date",
+     "gender",
+     "national_id",
+     "family_id"
+    ]
+   },
+   {
+    "name": "ResolveResponse",
+    "fields": [
+     "citizen_ulid",
+     "match_method",
+     "match_score",
+     "created",
+     "features"
+    ]
+   }
+  ],
+  "app/simulation/routes.py": [
+   {
+    "name": "DashboardResponse",
+    "fields": [
+     "twins",
+     "total_twins",
+     "total_simulations",
+     "total_predictions",
+     "healthy_count",
+     "degraded_count",
+     "unhealthy_count",
+     "by_type"
+    ]
+   },
+   {
+    "name": "DashboardTwinSummary",
+    "fields": [
+     "id",
+     "name",
+     "twin_type",
+     "entity_id",
+     "entity_type",
+     "status",
+     "health_score",
+     "simulation_count",
+     "prediction_count",
+     "last_updated",
+     "is_active"
+    ]
+   },
+   {
+    "name": "PredictionRequest",
+    "fields": [
+     "prediction_type",
+     "horizon_days"
+    ]
+   },
+   {
+    "name": "PredictionResponse",
+    "fields": [
+     "id",
+     "twin_id",
+     "prediction_type",
+     "target_date",
+     "predicted_value",
+     "confidence",
+     "model_name",
+     "features_used",
+     "actual_value",
+     "created_at"
+    ]
+   },
+   {
+    "name": "SimulationRequest",
+    "fields": [
+     "simulation_type",
+     "parameters"
+    ]
+   },
+   {
+    "name": "SimulationResponse",
+    "fields": [
+     "id",
+     "twin_id",
+     "name",
+     "simulation_type",
+     "parameters",
+     "status",
+     "result",
+     "started_at",
+     "completed_at",
+     "error",
+     "triggered_by",
+     "created_at"
+    ]
+   },
+   {
+    "name": "TwinCreateRequest",
+    "fields": [
+     "twin_type",
+     "entity_id",
+     "entity_type"
+    ]
+   },
+   {
+    "name": "TwinResponse",
+    "fields": [
+     "id",
+     "twin_type",
+     "entity_id",
+     "entity_type",
+     "name",
+     "config",
+     "state",
+     "metrics",
+     "version",
+     "is_active",
+     "created_at",
+     "updated_at"
+    ]
+   }
+  ],
+  "app/tasks/schema.py": [
+   {
+    "name": "TaskPayload",
+    "fields": [
+     "task_id",
+     "type",
+     "payload",
+     "retry_count",
+     "max_retries",
+     "timeout_s",
+     "enqueued_at"
+    ]
+   },
+   {
+    "name": "TaskResult",
+    "fields": [
+     "task_id",
+     "status",
+     "result",
+     "error",
+     "attempt",
+     "completed_at",
+     "duration_ms"
+    ]
+   }
+  ],
+  "app/trust/routes.py": [
+   {
+    "name": "ComplianceCheckRequest",
+    "fields": [
+     "check_type",
+     "check_name",
+     "target_id",
+     "target_type"
+    ]
+   },
+   {
+    "name": "ConsentCreateRequest",
+    "fields": [
+     "patient_id",
+     "purpose",
+     "data_categories",
+     "guardian_id",
+     "expires_in_days"
+    ]
+   },
+   {
+    "name": "ConsentResponse",
+    "fields": [
+     "id",
+     "patient_id",
+     "lab_id",
+     "purpose",
+     "status",
+     "granted_at",
+     "expires_at",
+     "data_categories"
+    ]
+   },
+   {
+    "name": "ConsentVerifyRequest",
+    "fields": [
+     "patient_id",
+     "purpose",
+     "data_category"
+    ]
+   },
+   {
+    "name": "SignDocumentRequest",
+    "fields": [
+     "document_hash",
+     "metadata"
+    ]
+   }
+  ]
+ },
+ "dangling_fks": [
+  [
+   "niam_adaptive_mfa_sessions",
+   "niam_user_sessions.id"
+  ],
+  [
+   "niam_trust_frameworks",
+   "niam_identity_authorities.id"
+  ],
+  [
+   "niam_trust_proofing",
+   "niam_identity_authorities.id"
+  ]
+ ],
+ "findings": [
+  "3 dangling FK targets exist in ORM metadata: niam_adaptive_mfa_sessions->niam_user_sessions, niam_trust_frameworks->niam_identity_authorities, niam_trust_proofing->niam_identity_authorities. Tables only exist in Alembic migrations; any query touching those models raises NoReferencedTableError at mapper configuration (tests survive via conftest stub tables).",
+  "Outbox pattern: producers (national streaming, claims, data platform, MPI, document intelligence) but ZERO registered event consumers - outbox is reliable logging, not workflow-driving.",
+  "Authorization is fragmented across 5 systems (legacy enum 13 perms, extended map 16, national 39, enterprise DB 92, kernel 11) with 2 inverted string formats (read:patients vs patients:read); effective permissions differ by auth path (JWT vs DB-assigned).",
+  "3 route sets are permanently locked out by orphan permission strings never granted: require_permission('admin') knowledge_graph (7 routes), 'simulation:read' (5), 'simulation:write' (3) - always 403.",
+  "require_role('national_admin','directorate_admin') in governance routes references roles absent from EXTENDED_ROLE_LEVELS (level 0 in hierarchy checks).",
+  "Citizen role has ZERO extended permissions; citizen portal relies on inline role==citizen checks instead of the permission layer.",
+  "LabUser.role is a free-form string (default 'staff'); no constraint to any role vocabulary; authorization_service._check_assignment_permission is a stub returning True.",
+  "Clinical state gating (can_release_results / requires_physician_ack) is implemented but not wired to any result-release endpoint.",
+  "Claims workflow ends at 'submitted' - no adjudication/reimbursement states.",
+  "require_service_account (gula_* API keys) is defined but unused by any route; no route accepts service-account keys.",
+  "GET /test-profiles is fully open (no auth, no rate limit); POST /logout performs no authentication; /metrics/prom is unauthenticated.",
+  "CareContinuumBase and ClinicalBase are separate declarative bases with FKs to national_* tables; CareContinuumBase FKs are not resolvable in its own metadata (EHR fixed earlier via EHRBase = NationalBase; care_continuum still at risk when mappers configure eagerly).",
+  "workflows/ package is empty; real workflow machinery lives in domain/order_state.py + national/workflow_runtime (scaffold: application/service.py is 0 lines) + capabilities/workflow_engine (CRUD-only).",
+  "Offline sync dual-implemented: services/offline_sync_service.py (no route consumers) vs integration/offline.py (wired to /integration/offline/sync).",
+  "Only one task handler registered (national_notification_deliver); documented send_notification handler has no registration.",
+  "GET /setup/status leaks setup state unauthenticated (intentional but worth gating in production).",
+  "Frontend calls backend root paths directly (VITE_API_BASE_URL=http://localhost:8000, no /api prefix); /mobile mobile_router not registered in factory; /authz/* routes have no frontend consumers."
+ ]
+}

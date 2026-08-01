@@ -7,6 +7,7 @@ import { RoleGuard } from "@/components/auth/RoleGuard";
 import type { UserRole } from "@/types";
 
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
+const PublicResultPage = lazy(() => import("@/pages/public-result/PublicResultPage").then(m => ({ default: m.PublicResultPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const PatientsPage = lazy(() => import("@/pages/patients/PatientsPage").then(m => ({ default: m.PatientsPage })));
 const OrdersPage = lazy(() => import("@/pages/orders/OrdersPage").then(m => ({ default: m.OrdersPage })));
@@ -111,6 +112,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/login" replace /> },
       { path: "login", element: <LazyPage><LoginPage /></LazyPage> },
+      { path: "r/:token", element: <LazyPage><PublicResultPage /></LazyPage> },
     ],
   },
   {

@@ -1,0 +1,86 @@
+{
+ "total_route_entries": 1986,
+ "unique_paths": 1648,
+ "route_modules": 100,
+ "total_entities_tables": 521,
+ "total_services": 40,
+ "total_route_files": 55,
+ "pydantic_classes": 520,
+ "public_routes": 52,
+ "auth_protected_routes": 1934,
+ "internal_only_routes": 34,
+ "frontend_used": 844,
+ "frontend_unused": 36,
+ "frontend_unknown": 1106,
+ "method_distribution": {
+  "GET": 966,
+  "PUT": 131,
+  "POST": 823,
+  "PATCH": 4,
+  "DELETE": 58,
+  "GET,HEAD": 4
+ },
+ "top_modules": {
+  "/niam": 198,
+  "/national": 191,
+  "/clinical": 91,
+  "/ehr": 85,
+  "/governance": 78,
+  "/care-continuum": 74,
+  "/lims": 67,
+  "/api": 65,
+  "/nursing": 65,
+  "/nhdw": 61,
+  "/radiology": 57,
+  "/pharmacy": 55,
+  "/document-intelligence": 50,
+  "/research": 49,
+  "/ai": 42
+ },
+ "entity_bases": {
+  "Base": 111,
+  "NationalBase": 187,
+  "CareContinuumBase": 45,
+  "ClinicalBase": 39,
+  "FinBase": 9,
+  "GovernanceBase": 61,
+  "IdentityBase": 69
+ },
+ "dangling_fks": [
+  [
+   "niam_adaptive_mfa_sessions",
+   "niam_user_sessions.id"
+  ],
+  [
+   "niam_trust_frameworks",
+   "niam_identity_authorities.id"
+  ],
+  [
+   "niam_trust_proofing",
+   "niam_identity_authorities.id"
+  ]
+ ],
+ "workflows": {
+  "total": 23,
+  "complete": 18,
+  "partial": 3,
+  "stub": 2
+ },
+ "roles": {
+  "system_a_legacy": 10,
+  "system_b_extended": 10,
+  "system_c_national": 16,
+  "system_d_enterprise_db": 19,
+  "user_type_enum": 37,
+  "kernel_permissions": 11
+ },
+ "permissions": {
+  "legacy": 13,
+  "extended": 16,
+  "national": 39,
+  "enterprise_db": 92,
+  "kernel": 11,
+  "orphans": 3
+ },
+ "findings_count": 17
+}
