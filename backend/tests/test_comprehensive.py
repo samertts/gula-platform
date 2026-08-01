@@ -744,13 +744,14 @@ class TestSystemConfig:
         assert True
 
     def test_app_version_semantic(self):
-        """App version must follow semantic versioning."""
+        """App version must follow semantic versioning (SemVer 2.0.0, incl. pre-release)."""
+        import re
+
         from app.config import APP_VERSION
 
-        parts = APP_VERSION.split(".")
-        assert len(parts) == 3
-        for part in parts:
-            assert part.isdigit(), f"Version part '{part}' is not numeric"
+        pattern = r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$"
+        assert re.match(pattern, APP_VERSION), f"Version '{APP_VERSION}' is not valid SemVer"
+        assert len(APP_VERSION.split(".")[:1]) == 1
 
     def test_jwt_expire_reasonable(self):
         """JWT expiry must be between 5 min and 24 hours."""

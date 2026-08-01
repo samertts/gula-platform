@@ -270,12 +270,15 @@ class TestConfig:
         assert config.MAX_REQUEST_BODY_MB > 0
 
     def test_app_version_format(self):
-        """App version should be in semver format."""
+        """App version should be in semver format (SemVer 2.0.0, incl. pre-release)."""
         import re
 
         from app.config import APP_VERSION
 
-        assert re.match(r"^\d+\.\d+\.\d+$", APP_VERSION), f"Invalid version: {APP_VERSION}"
+        assert re.match(
+            r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$",
+            APP_VERSION,
+        ), f"Invalid version: {APP_VERSION}"
 
     def test_platform_name_arabic(self):
         """Platform should have Arabic name."""
