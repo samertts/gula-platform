@@ -3,11 +3,16 @@ from __future__ import annotations
 import uuid
 
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
 
+from app.national.base import NationalBase
 from shared.models import BaseEntityMixin, OptimisticLockMixin, SoftDeleteMixin, TimestampMixin
 
-EHRBase = declarative_base()
+# EHR entities share the NationalBase metadata: every EHR foreign key targets
+# national_* tables (patients, practitioners, encounters, facilities, ...),
+# and SQLAlchemy resolves foreign keys only within the parent table's own
+# metadata.  A separate declarative_base() here made those FKs unresolvable
+# (NoReferencedTableError) at flush time — breaking every EHR insert.
+EHRBase = NationalBase
 
 # Backward-compatible aliases for the old EHR-prefixed mixin names.
 # New code should import TimestampMixin, SoftDeleteMixin from shared.models.
