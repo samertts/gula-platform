@@ -267,10 +267,43 @@ class TestLoginAuditWiring:
         svc = AuthenticationService(session)
         with patch.object(
             svc.account_service, "authenticate", new_callable=AsyncMock, return_value=None
+        ), patch.object(
+            svc.account_service, "find_by_email", new_callable=AsyncMock, return_value=None
+        ), patch.object(
+            svc.account_service, "find_by_username", new_callable=AsyncMock, return_value=None
         ), patch.object(svc, "_audit", new_callable=AsyncMock) as audit:
             result = await svc.login("bad@test.local", "wrong")
         assert result is None
         assert audit.await_args.kwargs["action"] == "login_failed"
+
+    @pytest.mark.asyncio
+    async def test_login_failure_unknown_account_audits_no_target(self):
+        session = MagicMock()
+        svc = AuthenticationService(session)
+        with patch.object(
+            svc.account_service, "authenticate", new_callable=AsyncMock, return_value=None
+        ), patch.object(
+            svc.account_service, "find_by_email", new_callable=AsyncMock, return_value=None
+        ), patch.object(
+            svc.account_service, "find_by_username", new_callable=AsyncMock, return_value=None
+        ), patch.object(svc, "_audit", new_callable=AsyncMock) as audit:
+            await svc.login("nobody@test.local", "wrong")
+        assert audit.await_args.kwargs["target_id"] is None
+
+    @pytest.mark.asyncio
+    async def test_login_failure_blocked_account_audits_target(self):
+        session = MagicMock()
+        account = _account(email="blocked@test.local")
+        svc = AuthenticationService(session)
+        with patch.object(
+            svc.account_service, "authenticate", new_callable=AsyncMock, return_value=None
+        ), patch.object(
+            svc.account_service, "find_by_email", new_callable=AsyncMock, return_value=account
+        ), patch.object(
+            svc.account_service, "find_by_username", new_callable=AsyncMock, return_value=None
+        ), patch.object(svc, "_audit", new_callable=AsyncMock) as audit:
+            await svc.login("blocked@test.local", "wrong")
+        assert audit.await_args.kwargs["target_id"] == account.id
 
     @pytest.mark.asyncio
     async def test_session_policy_block_denies_login(self):

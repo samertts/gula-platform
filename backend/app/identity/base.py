@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Column, DateTime, String
+from sqlalchemy import Column, DateTime, String, event
 from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
@@ -39,6 +39,20 @@ class IdentityBaseEntity(IdentityBase):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__} id={self.id}>"
+
+
+@event.listens_for(IdentityBaseEntity, "before_insert", propagate=True)
+def _ensure_identity_id(mapper, connection, target) -> None:
+    """Normalize the ellipsis placeholder used by NIAM call sites.
+
+    Many identity call sites construct entities with ``id=...`` (Ellipsis) as
+    a placeholder for the ULID default. SQLAlchemy's column default only
+    fires when the attribute is left unset, so the placeholder must be
+    resolved here — otherwise psycopg2 fails with "can't adapt type
+    'ellipsis'".
+    """
+    if target.id is Ellipsis or target.id is None:
+        target.id = _ulid()
 
 
 class IdentitySoftDeleteEntity(IdentityBaseEntity):

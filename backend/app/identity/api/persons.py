@@ -3,7 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_niam_db as get_db
 from app.identity.services.person_service import PersonService
 
 router = APIRouter(prefix="/persons", tags=["NIAM Persons"])

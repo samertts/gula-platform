@@ -336,6 +336,7 @@ class TestServices:
 
     @pytest.mark.asyncio
     async def test_account_service_create(self, mock_session):
+        mock_session.execute.return_value = _make_mock_execute(None)
         svc = AccountService(mock_session)
         result = await svc.create_account(
             identity_id="id-1",

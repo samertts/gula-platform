@@ -292,6 +292,82 @@ def get_db():
         db.close()
 
 
+# ── NIAM async bridge ──────────────────────────────────────────────────────
+# The identity platform (NIAM) services are written against AsyncSession.
+# The platform's production engine is synchronous (psycopg2). Instead of
+# redesigning the identity module, bridge async call sites onto the sync
+# session: every awaited call returns an object that is BOTH the real sync
+# result and awaitable, so `await session.execute(...)` and plain
+# `session.add(...)` both work against the same sync session.
+
+
+class _AwaitableProxy:
+    """Wraps a sync result; usable directly or with `await`."""
+
+    __slots__ = ("_value",)
+
+    def __init__(self, value):
+        self._value = value
+
+    def __await__(self):
+        async def _unwrap():
+            return self._value
+
+        return _unwrap().__await__()
+
+    def __getattr__(self, name):
+        return getattr(self._value, name)
+
+
+_ASYNC_BRIDGE_METHODS = frozenset(
+    {
+        "execute",
+        "flush",
+        "commit",
+        "rollback",
+        "close",
+        "delete",
+        "refresh",
+        "merge",
+        "run_sync",
+        "scalar",
+        "scalars",
+    }
+)
+
+
+class AsyncCompatSession:
+    """AsyncSession-compatible view over the synchronous SessionLocal.
+
+    Identity services use ``await session.execute(...)``; the bridge returns
+    an ``_AwaitableProxy`` so both awaitable and plain call sites work.
+    """
+
+    def __init__(self, sync_session):
+        object.__setattr__(self, "_sync_session", sync_session)
+
+    def __getattr__(self, name):
+        val = getattr(self._sync_session, name)
+        if callable(val) and name in _ASYNC_BRIDGE_METHODS:
+            def _bridged(*args, **kwargs):
+                return _AwaitableProxy(val(*args, **kwargs))
+
+            return _bridged
+        return val
+
+
+def get_niam_db():
+    """NIAM session dependency: sync engine bridged for async services."""
+    db = AsyncCompatSession(SessionLocal())
+    try:
+        yield db
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
 def get_read_db():
     """Read-replica session dependency.
 

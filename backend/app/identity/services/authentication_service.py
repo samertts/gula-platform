@@ -37,11 +37,14 @@ class AuthenticationService:
     ) -> dict | None:
         account = await self.account_service.authenticate(login, password)
         if not account:
+            blocked = await self.account_service.find_by_email(login)
+            if not blocked:
+                blocked = await self.account_service.find_by_username(login)
             await self._audit(
                 action="login_failed",
                 actor_type="unknown",
                 target_type="account",
-                target_id=None,
+                target_id=blocked.id if blocked else None,
                 ip_address=ip_address,
                 user_agent=user_agent,
                 metadata={"login": login, "reason": "invalid_credentials_or_status"},
@@ -95,6 +98,7 @@ class AuthenticationService:
         actor_type: str | None = None,
         target_type: str | None = None,
         target_id: str | None = None,
+        session_id: str | None = None,
         ip_address: str | None = None,
         user_agent: str | None = None,
         metadata: dict | None = None,
@@ -108,6 +112,7 @@ class AuthenticationService:
             actor_type=actor_type,
             target_type=target_type,
             target_id=target_id,
+            session_id=session_id,
             metadata=metadata,
             ip_address=ip_address,
             user_agent=user_agent,
@@ -166,8 +171,9 @@ class AuthenticationService:
             action="session_started",
             actor_id=account.id,
             actor_type=account.account_type,
-            target_type="session",
-            target_id=session.id,
+            target_type="account",
+            target_id=account.id,
+            session_id=session.id,
             ip_address=ip_address,
             user_agent=user_agent,
             metadata={"session_uuid": session.uuid, "policy_action": (policy or {}).get("action")},
@@ -210,8 +216,9 @@ class AuthenticationService:
             await self._audit(
                 action="logout_succeeded",
                 actor_type="user",
-                target_type="session",
-                target_id=session.id,
+                target_type="account",
+                target_id=session.account_id,
+                session_id=session.id,
                 metadata={"session_uuid": session_uuid, "reason": "user_logout"},
             )
 

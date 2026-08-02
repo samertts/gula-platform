@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
+from app.identity.base import _ulid
 from app.identity.models.account import Account, AccountStatus, AccountType
 from app.identity.repositories.account_repository import AccountRepository
 from app.security.auth import hash_password, verify_password
@@ -54,7 +55,24 @@ class AccountService:
             phone_verified=False,
             identity_verified=False,
         )
-        return await self.repo.create(account)
+        created = await self.repo.create(account)
+        if created.id is Ellipsis or created.id is None:
+            created.id = _ulid()
+        from app.identity.models.audit import AuditAction
+        from app.identity.services.audit_service import AuditService
+
+        await AuditService(self.repo.session).record(
+            action=AuditAction.account_created,
+            actor_type="system",
+            target_type="account",
+            target_id=created.id,
+            metadata={
+                "account_type": account.account_type,
+                "initial_status": AccountStatus.pending_verification.value,
+            },
+            outcome="success",
+        )
+        return created
 
     async def authenticate(self, login: str, password: str) -> Account | None:
         account = await self.repo.find_by_email(login)
@@ -105,6 +123,9 @@ class AccountService:
 
     async def find_by_email(self, email: str) -> Account | None:
         return await self.repo.find_by_email(email)
+
+    async def find_by_username(self, username: str) -> Account | None:
+        return await self.repo.find_by_username(username)
 
     async def change_password(self, account_id: str, old_password: str, new_password: str) -> bool:
         account = await self.repo.get_by_id(account_id)

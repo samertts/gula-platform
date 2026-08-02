@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_niam_db as get_db
 from app.identity.certificates.services import (
     APIKeyService,
     CertificateAuthorityService,

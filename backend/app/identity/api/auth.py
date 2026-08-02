@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_niam_db as get_db
 from app.identity.services.authentication_service import AuthenticationService
 
 router = APIRouter(prefix="/auth", tags=["NIAM Auth"])

@@ -1,0 +1,38 @@
+account_type,label,check,passed,detail
+human,Human — citizen / professional,account_created,True,pending_verification
+human,Human — citizen / professional,pending_login_allowed,True,True
+human,Human — citizen / professional,license_issued,True,expired
+human,Human — citizen / professional,identity_verified,True,2026-08-02 10:54:22.453169+00:00
+human,Human — citizen / professional,activated,True,active
+human,Human — citizen / professional,active_login_allowed,True,True
+human,Human — citizen / professional,suspended_login_blocked,True,False
+human,Human — citizen / professional,restored_login_allowed,True,True
+human,Human — citizen / professional,deactivated_login_blocked,True,False
+human,Human — citizen / professional,audit_trail,True,"['account_created', 'account_deactivated', 'account_restored', 'account_suspended', 'login_failed', 'login_succeeded', 'logout_succeeded', 'session_started']"
+machine,Machine-to-machine,account_created,True,pending_verification
+machine,Machine-to-machine,pending_login_allowed,True,True
+machine,Machine-to-machine,identity_verified,True,2026-08-02 10:54:23.545547+00:00
+machine,Machine-to-machine,activated,True,active
+machine,Machine-to-machine,active_login_allowed,True,True
+machine,Machine-to-machine,suspended_login_blocked,True,False
+machine,Machine-to-machine,restored_login_allowed,True,True
+machine,Machine-to-machine,deactivated_login_blocked,True,False
+machine,Machine-to-machine,audit_trail,True,"['account_created', 'account_deactivated', 'account_restored', 'account_suspended', 'login_failed', 'login_succeeded', 'logout_succeeded', 'session_started']"
+service,Service account,account_created,True,pending_verification
+service,Service account,pending_login_allowed,True,True
+service,Service account,identity_verified,True,2026-08-02 10:54:24.640509+00:00
+service,Service account,activated,True,active
+service,Service account,active_login_allowed,True,True
+service,Service account,suspended_login_blocked,True,False
+service,Service account,restored_login_allowed,True,True
+service,Service account,deactivated_login_blocked,True,False
+service,Service account,audit_trail,True,"['account_created', 'account_deactivated', 'account_restored', 'account_suspended', 'login_failed', 'login_succeeded', 'logout_succeeded', 'session_started']"
+system,System/root,account_created,True,pending_verification
+system,System/root,pending_login_allowed,True,True
+system,System/root,identity_verified,True,2026-08-02 10:54:25.745701+00:00
+system,System/root,activated,True,active
+system,System/root,active_login_allowed,True,True
+system,System/root,suspended_login_blocked,True,False
+system,System/root,restored_login_allowed,True,True
+system,System/root,deactivated_login_blocked,True,False
+system,System/root,audit_trail,True,"['account_created', 'account_deactivated', 'account_restored', 'account_suspended', 'login_failed', 'login_succeeded', 'logout_succeeded', 'session_started']"

@@ -5,7 +5,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database import get_niam_db as get_db
 
 from .models import ImpossibleTravelEvent, RiskPolicy, SessionPolicy
 from .services import AdaptiveAuthService, SessionGovernanceService

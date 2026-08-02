@@ -1,0 +1,5 @@
+account_type,identity_verification,professional_license,authority_approval
+human,manual_review,required,IRQ-MOH
+machine,manual_review,n/a,IRQ-MOH
+service,manual_review,n/a,IRQ-MOH
+system,manual_review,n/a,IRQ-MOH
