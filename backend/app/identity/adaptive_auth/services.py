@@ -530,23 +530,29 @@ class SessionGovernanceService:
 
         active_count = await self.get_active_session_count(account_id)
 
-        if not policy.allow_concurrent and active_count >= policy.max_sessions:
+        # PROGRAM-05 Rule 8/9: the concurrent-session limit applies whether or
+        # not concurrency is allowed; the oldest session is terminated when
+        # the limit is exceeded.
+        if active_count >= policy.max_sessions:
             if policy.terminate_previous_on_new_login:
                 await self.terminate_previous_sessions(
                     account_id,
                     current_session_id=None,
                     notify=policy.notify_previous_device,
+                    excess=max(1, active_count - (policy.max_sessions - 1)),
                 )
                 return {
                     "enforced": True,
                     "action": "terminated_previous",
                     "max_sessions": policy.max_sessions,
+                    "policy_id": policy.policy_id,
                 }
             return {
                 "enforced": True,
                 "action": "block_new_session",
                 "reason": "max_sessions_reached",
                 "max_sessions": policy.max_sessions,
+                "policy_id": policy.policy_id,
             }
 
         return {
@@ -556,6 +562,7 @@ class SessionGovernanceService:
             "require_mfa": policy.require_mfa,
             "session_timeout_minutes": policy.session_timeout_minutes,
             "inactivity_timeout_minutes": policy.inactivity_timeout_minutes,
+            "policy_id": policy.policy_id,
         }
 
     async def terminate_previous_sessions(
@@ -563,18 +570,33 @@ class SessionGovernanceService:
         account_id: str,
         current_session_id: str | None = None,
         notify: bool = True,
+        excess: int | None = None,
     ) -> int:
+        """Terminate the oldest active sessions of an account.
+
+        PROGRAM-05 Rule 9: when the concurrent-session limit is exceeded the
+        OLDEST session(s) terminate automatically. `excess` limits how many
+        sessions are terminated; when None, all other active sessions are
+        terminated.
+        """
         from app.identity.models import UserSession
 
-        stmt = select(UserSession).where(
-            UserSession.account_id == account_id,
-            UserSession.is_active.is_(True),
+        stmt = (
+            select(UserSession)
+            .where(
+                UserSession.account_id == account_id,
+                UserSession.is_active.is_(True),
+            )
+            .order_by(UserSession.started_at.asc())
         )
         if current_session_id:
             stmt = stmt.where(UserSession.id != current_session_id)
 
         result = await self.session.execute(stmt)
         sessions = list(result.scalars().all())
+
+        if excess is not None:
+            sessions = sessions[:excess]
 
         count = 0
         for session in sessions:

@@ -63,6 +63,14 @@ class AccountService:
         if not account:
             return None
 
+        # PROGRAM-05 Rule 10 / Appendix-B: suspended and deactivated accounts
+        # must never authenticate, regardless of credentials.
+        if account.status in (
+            AccountStatus.suspended.value,
+            AccountStatus.deactivated.value,
+        ):
+            return None
+
         if account.is_locked:
             if account.locked_until and account.locked_until > datetime.now(UTC):
                 return None
@@ -130,3 +138,94 @@ class AccountService:
         account.failed_login_attempts = 0
         await self.repo.session.flush()
         return True
+
+    # ── PROGRAM-05 Rule 10 — auditable account lifecycle state machine ──────
+
+    # Allowed transitions. Keys/values are AccountStatus values.
+    ALLOWED_TRANSITIONS: dict[str, set[str]] = {
+        "pending_verification": {"active", "suspended", "deactivated"},
+        "active": {"suspended", "deactivated", "pending_verification"},
+        "suspended": {"active", "deactivated"},
+        "deactivated": {"active"},
+        "locked": {"active", "suspended", "deactivated"},
+    }
+
+    async def transition_status(
+        self,
+        account_id: str,
+        new_status: AccountStatus,
+        reason: str,
+        actor_id: str | None = None,
+    ) -> tuple[Account, str] | None:
+        """Move an account to a new lifecycle state.
+
+        Returns (account, audit_action) on success; None when the transition
+        is not allowed. Every transition is persisted and auditable.
+        """
+        account = await self.repo.get_by_id(account_id)
+        if not account:
+            return None
+        allowed = self.ALLOWED_TRANSITIONS.get(account.status, set())
+        if new_status.value not in allowed:
+            return None
+
+        old_status = account.status
+        account.status = new_status.value
+        if new_status == AccountStatus.active:
+            account.activated_at = datetime.now(UTC)
+        elif new_status == AccountStatus.deactivated:
+            account.deactivated_at = datetime.now(UTC)
+            account.deactivation_reason = reason
+        await self.repo.session.flush()
+
+        action = {
+            AccountStatus.suspended: "account_suspended",
+            AccountStatus.deactivated: "account_deactivated",
+            AccountStatus.active: "account_restored",
+        }.get(new_status, "account_status_changed")
+
+        await self._audit_transition(
+            account=account,
+            old_status=old_status,
+            new_status=new_status,
+            reason=reason,
+            action=action,
+            actor_id=actor_id,
+        )
+        return account, action
+
+    async def _audit_transition(
+        self,
+        account: Account,
+        old_status: str,
+        new_status: AccountStatus,
+        reason: str,
+        action: str,
+        actor_id: str | None,
+    ) -> None:
+        from app.identity.models.audit import AuditAction
+        from app.identity.services.audit_service import AuditService
+
+        audit = AuditService(self.repo.session)
+        await audit.record(
+            action=AuditAction(action),
+            actor_id=actor_id,
+            actor_type="admin" if actor_id else "system",
+            target_type="account",
+            target_id=account.id,
+            changes={
+                "old_status": old_status,
+                "new_status": new_status.value,
+                "reason": reason,
+            },
+            outcome="success",
+        )
+
+    async def suspend_account(self, account_id: str, reason: str, actor_id: str | None = None):
+        return await self.transition_status(account_id, AccountStatus.suspended, reason, actor_id)
+
+    async def deactivate_account(self, account_id: str, reason: str, actor_id: str | None = None):
+        return await self.transition_status(account_id, AccountStatus.deactivated, reason, actor_id)
+
+    async def activate_account(self, account_id: str, reason: str, actor_id: str | None = None):
+        return await self.transition_status(account_id, AccountStatus.active, reason, actor_id)

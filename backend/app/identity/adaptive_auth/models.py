@@ -82,7 +82,7 @@ class AdaptiveMFASession(IdentityBaseEntity):
     )
     session_id = Column(
         String(100),
-        ForeignKey("niam_user_sessions.id", ondelete="SET NULL"),
+        ForeignKey("niam_sessions.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
