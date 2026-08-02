@@ -28,8 +28,8 @@ MIGRATIONS_DIR = pathlib.Path(__file__).parent.parent / "migrations" / "versions
 def _read_migration_meta(path: pathlib.Path) -> dict:
     """Extract revision/down_revision from a migration file without importing it."""
     src = path.read_text()
-    rev_match = re.search(r'^revision\s*=\s*["\']([^"\']+)["\']', src, re.M)
-    down_match = re.search(r"^down_revision\s*=\s*([^\n]+)", src, re.M)
+    rev_match = re.search(r'^revision\s*(?::\s*[^=\n]+)?\s*=\s*["\']([^"\']+)["\']', src, re.M)
+    down_match = re.search(r"^down_revision\s*(?::\s*[^=\n]+)?\s*=\s*([^\n]+)", src, re.M)
 
     revision = rev_match.group(1) if rev_match else None
 
@@ -169,6 +169,25 @@ def test_all_migration_files_compile():
         except SyntaxError as e:
             errors.append(f"  {p.name}: {e}")
     assert not errors, "Syntax errors in migration files:\n" + "\n".join(errors)
+
+
+def test_typed_annotation_style_migrations_parsed():
+    """Migrations using typed annotations (revision: str = "...") must be parsed.
+
+    Regression: the meta parser only matched untyped assignments, so
+    typed migrations were invisible — their down_revisions appeared as
+    orphans and they were reported unreachable from the root.
+    """
+    migs = _load_all_migrations()
+    revisions = {m["revision"] for m in migs}
+    assert "20260723_0002" in revisions, (
+        "20260723_0002 (typed-annotation migration) missing from parsed chain"
+    )
+    assert "20260802_0001" in revisions, (
+        "20260802_0001 (typed-annotation migration) missing from parsed chain"
+    )
+    by_id = {m["revision"]: m for m in migs}
+    assert by_id["20260802_0001"]["down_revision"] == "20260723_0002"
 
 
 def test_chain_reachable_from_root():
