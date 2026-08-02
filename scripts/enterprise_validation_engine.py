@@ -263,9 +263,9 @@ def _validator_db_migrations() -> dict[str, Any]:
     revisions: list[tuple[str, str | None]] = []
     for path in versions_dir.glob("*.py"):
         text = path.read_text(encoding="utf-8", errors="ignore")
-        rev = re.search(r'^revision\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
-        down = re.search(r'^down_revision\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
-        down = None if down is None or down.group(1).lower() in ("none", "null") else down.group(1)
+        rev = re.search(r'^revision(?::\s*str)?\s*=\s*["\']([^"\']+)["\']', text, re.MULTILINE)
+        down = re.search(r'^down_revision(?::\s*str(?:\s*\|\s*None)?)?\s*=\s*(?:None|["\']([^"\']+)["\'])', text, re.MULTILINE)
+        down = None if down is None or down.group(1) is None else down.group(1)
         if rev:
             revisions.append((rev.group(1), down))
 

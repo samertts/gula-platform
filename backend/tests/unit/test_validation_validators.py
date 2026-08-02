@@ -94,3 +94,15 @@ class TestDbMigrations:
     def test_missing_versions_dir_fails(self, tmp_path, monkeypatch):
         monkeypatch.setattr(eve, "REPO_ROOT", tmp_path)
         assert eve._validator_db_migrations()["status"] == "fail"
+
+    def test_typed_annotation_style_migrations_parsed(self, tmp_path, monkeypatch):
+        versions = tmp_path / "backend" / "migrations" / "versions"
+        versions.mkdir(parents=True)
+        (versions / "m_1.py").write_text('revision: str = "0001"\ndown_revision: str | None = None\n')
+        (versions / "m_2.py").write_text(
+            'revision: str = "0002"\ndown_revision: str | None = "0001"\n'
+        )
+        monkeypatch.setattr(eve, "REPO_ROOT", tmp_path)
+        result = eve._validator_db_migrations()
+        assert result["status"] == "pass", result["detail"]
+        assert "2 migrations" in result["detail"]

@@ -106,16 +106,31 @@ _RBAC_MATRIX: dict[Role, set[Permission]] = {
 # These mirror the richer role/permission model used by the GULA monolith.
 
 EXTENDED_ROLE_LEVELS: dict[str, int] = {
-    "master_admin":   100,
-    "ministry_admin":  90,
-    "province_admin":  80,
-    "admin":           50,
-    "lab_admin":       50,
-    "doctor":          40,
-    "staff":           20,
-    "lab_staff":       20,
-    "technician":      20,
-    "citizen":         10,
+    "master_admin":       100,
+    "ministry_admin":      90,
+    "organization_admin":  85,
+    "directorate_admin":   80,
+    "province_admin":      80,
+    "hospital_admin":      60,
+    "phc_admin":           55,
+    "lab_manager":         50,
+    "lab_supervisor":      45,
+    "quality_manager":     45,
+    "pathologist":         40,
+    "auditor":             70,
+    "security_officer":    70,
+    "admin":               50,
+    "lab_admin":           50,
+    "doctor":              35,
+    "staff":               20,
+    "lab_staff":           20,
+    "technician":          30,
+    "nurse":               25,
+    "receptionist":        20,
+    "cashier":             20,
+    "api_client":           5,
+    "patient":             10,
+    "citizen":             10,
 }
 
 EXTENDED_ALL_PERMISSIONS: list[str] = [
@@ -144,10 +159,66 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "dashboard:read", "audit:read",
         "platform:manage_labs", "platform:manage_users", "platform:view_stats",
     ],
+    "organization_admin": [
+        "patients:read", "orders:read", "results:read", "lab:read",
+        "dashboard:read", "audit:read",
+        "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+    ],
+    "directorate_admin": [
+        "patients:read", "orders:read", "results:read", "lab:read",
+        "dashboard:read", "audit:read",
+        "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+    ],
     "province_admin": [
         "patients:read", "orders:read", "results:read", "lab:read",
         "dashboard:read", "audit:read",
         "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+    ],
+    "hospital_admin": [
+        "patients:read", "patients:write",
+        "orders:read", "orders:write",
+        "results:read", "results:write",
+        "staff:manage", "lab:read", "lab:manage",
+        "dashboard:read", "audit:read",
+    ],
+    "phc_admin": [
+        "patients:read", "patients:write",
+        "orders:read", "orders:write",
+        "results:read", "results:write",
+        "staff:manage", "lab:read", "lab:manage",
+        "dashboard:read", "audit:read",
+    ],
+    "lab_manager": [
+        "patients:read", "patients:write", "patients:delete",
+        "orders:read", "orders:write",
+        "results:read", "results:write",
+        "staff:manage", "lab:read", "lab:manage",
+        "dashboard:read", "audit:read",
+        "platform:manage_users",
+    ],
+    "lab_supervisor": [
+        "patients:read", "patients:write",
+        "orders:read", "orders:write",
+        "results:read", "results:write",
+        "staff:manage", "lab:read", "lab:manage",
+        "dashboard:read",
+    ],
+    "quality_manager": [
+        "patients:read", "orders:read", "results:read",
+        "lab:read", "dashboard:read", "audit:read",
+    ],
+    "pathologist": [
+        "patients:read", "orders:read", "results:read", "results:write",
+        "lab:read", "dashboard:read",
+    ],
+    "auditor": [
+        "patients:read", "orders:read", "results:read", "lab:read",
+        "dashboard:read", "audit:read",
+    ],
+    "security_officer": [
+        "patients:read", "orders:read", "results:read", "lab:read",
+        "dashboard:read", "audit:read",
+        "platform:manage_users",
     ],
     "admin": [
         "patients:read", "patients:write", "patients:delete",
@@ -184,6 +255,26 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "orders:read", "orders:write",
         "results:read", "results:write",
         "lab:read", "dashboard:read",
+    ],
+    "nurse": [
+        "patients:read", "patients:write",
+        "orders:read", "orders:write",
+        "results:read",
+        "lab:read", "dashboard:read",
+    ],
+    "receptionist": [
+        "patients:read", "patients:write",
+        "orders:read", "orders:write",
+        "dashboard:read",
+    ],
+    "cashier": [
+        "orders:read", "lab:read", "dashboard:read",
+    ],
+    "api_client": [
+        "results:read", "lab:read",
+    ],
+    "patient": [
+        "patients:read", "results:read",
     ],
     "citizen": [],
 }

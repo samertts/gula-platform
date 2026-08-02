@@ -1,14 +1,28 @@
 export type UserRole =
   | 'master_admin'
   | 'ministry_admin'
+  | 'organization_admin'
+  | 'directorate_admin'
   | 'province_admin'
+  | 'hospital_admin'
+  | 'phc_admin'
+  | 'lab_manager'
+  | 'lab_supervisor'
+  | 'quality_manager'
+  | 'pathologist'
+  | 'auditor'
+  | 'security_officer'
   | 'admin'
   | 'lab_admin'
   | 'doctor'
   | 'staff'
   | 'lab_staff'
   | 'technician'
+  | 'nurse'
   | 'receptionist'
+  | 'cashier'
+  | 'api_client'
+  | 'patient'
   | 'citizen';
 
 export type Permission =

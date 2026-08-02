@@ -3,14 +3,28 @@ import type { Permission } from '@/types';
 export const ROLE_LEVELS: Record<string, number> = {
   master_admin: 100,
   ministry_admin: 90,
+  organization_admin: 85,
+  directorate_admin: 80,
   province_admin: 80,
+  hospital_admin: 60,
+  phc_admin: 55,
+  lab_manager: 50,
+  lab_supervisor: 45,
+  quality_manager: 45,
+  pathologist: 40,
+  auditor: 70,
+  security_officer: 70,
   admin: 50,
   lab_admin: 50,
-  doctor: 40,
-  technician: 20,
+  doctor: 35,
+  technician: 30,
+  nurse: 25,
+  receptionist: 20,
+  cashier: 20,
   staff: 20,
   lab_staff: 20,
-  receptionist: 25,
+  api_client: 5,
+  patient: 10,
   citizen: 10,
 };
 
@@ -28,6 +42,62 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "patients:read", "orders:read", "results:read", "lab:read",
     "dashboard:read", "audit:read",
     "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+  ],
+  organization_admin: [
+    "patients:read", "orders:read", "results:read", "lab:read",
+    "dashboard:read", "audit:read",
+    "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+  ],
+  directorate_admin: [
+    "patients:read", "orders:read", "results:read", "lab:read",
+    "dashboard:read", "audit:read",
+    "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+  ],
+  hospital_admin: [
+    "patients:read", "patients:write",
+    "orders:read", "orders:write",
+    "results:read", "results:write",
+    "staff:manage", "lab:read", "lab:manage",
+    "dashboard:read", "audit:read",
+  ],
+  phc_admin: [
+    "patients:read", "patients:write",
+    "orders:read", "orders:write",
+    "results:read", "results:write",
+    "staff:manage", "lab:read", "lab:manage",
+    "dashboard:read", "audit:read",
+  ],
+  lab_manager: [
+    "patients:read", "patients:write", "patients:delete",
+    "orders:read", "orders:write",
+    "results:read", "results:write",
+    "staff:manage", "lab:read", "lab:manage",
+    "dashboard:read", "audit:read",
+    "platform:manage_users",
+  ],
+  lab_supervisor: [
+    "patients:read", "patients:write",
+    "orders:read", "orders:write",
+    "results:read", "results:write",
+    "staff:manage", "lab:read", "lab:manage",
+    "dashboard:read",
+  ],
+  quality_manager: [
+    "patients:read", "orders:read", "results:read",
+    "lab:read", "dashboard:read", "audit:read",
+  ],
+  pathologist: [
+    "patients:read", "orders:read", "results:read", "results:write",
+    "lab:read", "dashboard:read",
+  ],
+  auditor: [
+    "patients:read", "orders:read", "results:read", "lab:read",
+    "dashboard:read", "audit:read",
+  ],
+  security_officer: [
+    "patients:read", "orders:read", "results:read", "lab:read",
+    "dashboard:read", "audit:read",
+    "platform:manage_users",
   ],
   province_admin: [
     "patients:read", "orders:read", "results:read", "lab:read",
@@ -65,9 +135,30 @@ export const ROLE_PERMISSIONS: Record<string, Permission[]> = {
     "lab:read", "dashboard:read",
   ],
   lab_staff: [
+    "patients:read", "patients:write",
     "orders:read", "orders:write",
     "results:read", "results:write",
     "lab:read", "dashboard:read",
+  ],
+  nurse: [
+    "patients:read", "patients:write",
+    "orders:read", "orders:write",
+    "results:read",
+    "lab:read", "dashboard:read",
+  ],
+  cashier: [
+    "orders:read", "lab:read", "dashboard:read",
+  ],
+  receptionist: [
+    "patients:read", "patients:write",
+    "orders:read", "orders:write",
+    "dashboard:read",
+  ],
+  api_client: [
+    "results:read", "lab:read",
+  ],
+  patient: [
+    "patients:read", "results:read",
   ],
   citizen: [],
 };
@@ -96,7 +187,7 @@ export function getRoleLevel(role: string): number {
 }
 
 export function isPlatformRole(role: string): boolean {
-  return ["master_admin", "ministry_admin", "province_admin"].includes(role);
+  return ["master_admin", "ministry_admin", "organization_admin", "directorate_admin", "province_admin"].includes(role);
 }
 
 export function getVisiblePermissions(role: string): Permission[] {

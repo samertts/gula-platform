@@ -95,6 +95,7 @@ markers = [
     "kernel: Kernel subsystem tests (no DB, no network)",
     "slow: tests that take more than a few seconds",
     "performance: performance baseline tests",
+    "governance: cross-layer parity and constitution gates",
 ]
 
 [tool.coverage.run]
