@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-02T09:29:48.392288+00:00",
+  "generated_at": "2026-08-02T09:50:22.945600+00:00",
   "repo": {
     "name": "gula-platform",
     "root": "/home/samertts/workspace/projects/gula-platform",
-    "git_head": "ac46e50a security(api): close broken function level authorization + certify role experience (P5)"
+    "git_head": "b9e3629f test(parity): certify backend-frontend parity (PROGRAM-06)"
   },
   "counts": {
     "modules": {
@@ -56,7 +56,7 @@
       "frontend-v3": 9
     },
     "docs": {
-      "docs_markdown_files": 545,
+      "docs_markdown_files": 546,
       "adr_count": 52,
       "constitution_docs": 47
     },
@@ -98,11 +98,12 @@
     "PROGRAM-03",
     "PROGRAM-04",
     "PROGRAM-05",
+    "PROGRAM-06",
     "PROGRAM-07C-REPORT",
     "PROGRAM-07M-REPORT"
   ],
   "source_freshness": {
-    "newest_source_mtime": 1785661990.4998643,
-    "brain_mtime": 1785653066.7273386
+    "newest_source_mtime": 1785664196.591155,
+    "brain_mtime": 1785662994.6805105
   }
 }
