@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..security.rate_limit import get_client_ip, rate_limit_user
 from ..services.audit_service import log_action
 from ..services.patient_card import (
@@ -55,7 +55,7 @@ class ScanRequest(BaseModel):
 def get_patient_card(
     patient_id: int,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Return the patient card payload + a freshly-signed QR token."""
@@ -89,7 +89,7 @@ def get_patient_card(
 def get_patient_card_qr(
     patient_id: int,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """PNG image of the patient-card QR. Always issues a fresh token so an
@@ -113,7 +113,7 @@ def get_patient_card_qr(
 def scan_patient_card(
     body: ScanRequest,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Resolve a scanned QR token to the patient record.
@@ -181,7 +181,7 @@ def get_patient_full_history(
     patient_id: int,
     request: Request,
     limit: int = Query(100, ge=1, le=500),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Aggregate the patient's full visit/result timeline within the lab."""
@@ -269,7 +269,7 @@ _GENDER_AR = {"M": "ذكر", "F": "أنثى", "male": "ذكر", "female": "أن�
 def get_patient_card_print(
     patient_id: int,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Printable Arabic-first HTML card with embedded QR (base64)."""

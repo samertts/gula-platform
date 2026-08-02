@@ -1,0 +1,75 @@
+path,label,icon,required_permissions,master_admin,ministry_admin,organization_admin,directorate_admin,province_admin,security_officer,auditor,hospital_admin,phc_admin,lab_manager,admin,lab_admin,lab_supervisor,quality_manager,pathologist,doctor,technician,nurse,staff,cashier,receptionist,lab_staff,citizen,patient,api_client
+/dashboard,nav.dashboard,LayoutDashboard,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/patients,nav.patients,Users,patients:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,V,V,.,V,V,.,V,.
+/orders,nav.orders,ClipboardList,orders:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/results,nav.results,FlaskConical,results:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,V,.,V,V
+/samples,nav.samples,TestTube,orders:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/qc,nav.qc,ShieldCheck,results:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,V,.,V,V
+/lims,nav.lims,Workflow,results:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,V,.,V,V
+/alerts,nav.alerts,BellRing,results:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,V,.,V,V
+/admin,nav.admin,Shield,platform:manage_users,V,V,V,V,V,V,.,.,.,V,V,V,.,.,.,.,.,.,.,.,.,.,.,.,.
+/admin/pending-labs,nav.pendingLabs,Clock,platform:manage_users,V,V,V,V,V,V,.,.,.,V,V,V,.,.,.,.,.,.,.,.,.,.,.,.,.
+/admin/control,nav.killSwitch,Power,platform:manage_users,V,V,V,V,V,V,.,.,.,V,V,V,.,.,.,.,.,.,.,.,.,.,.,.,.
+/labs,nav.labs,Building2,lab:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,V,V,V,V,.,V,.,.,V
+/stats,nav.stats,BarChart3,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/compliance,nav.compliance,FileCheck,audit:read,V,V,V,V,V,V,V,V,V,V,V,V,.,V,.,.,.,.,.,.,.,.,.,.,.
+/ai,nav.ai,Brain,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/ai-platform,nav.aiPlatform,Brain,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/patient-card,nav.patientCard,CreditCard,patients:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,V,V,.,V,V,.,V,.
+/identity,nav.identity,Fingerprint,patients:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,V,V,.,V,V,.,V,.
+/tiers,nav.tiers,Crown,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/hospital,nav.hospital,Building,lab:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,V,V,V,V,.,V,.,.,V
+/edge,nav.edgePlatform,Server,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/financial,nav.financial,DollarSign,lab:manage,V,.,.,.,.,.,.,V,V,V,V,V,V,.,.,.,.,.,.,.,.,.,.,.,.
+/national-data,nav.nationalData,BarChart3,patients:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,V,V,.,V,V,.,V,.
+/niam/governance,حوكمة الهوية,Scale,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/niam/trust,إطار الثقة,Shield,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/niam/lifecycle,دورة الحياة,UserCircle,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/niam/federation,الاتحاد,Globe,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/niam/certificates,الشهادات,Certificate,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/niam/workflows,سير العمل,Workflow,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/niam/adaptive-auth,المصادقة التكيفية,ShieldCheck,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/profile,nav.profile,UserCircle,,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V
+/settings,nav.settings,Settings,,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V
+/security,nav.security,Lock,,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V
+/notifications,nav.notifications,Bell,,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V
+/capabilities/clinical-foundation,الأسس السريرية,Heart,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/capabilities/document-management,إدارة المستندات,FileText,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/capabilities/encounter-management,إدارة الزيارات,CalendarDays,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/capabilities/healthcare-consent,الموافقة الصحية,FileCheck,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/capabilities/provider-management,إدارة المزودين,Building2,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/capabilities/reporting-service,خدمة التقارير,BarChart3,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/capabilities/search-service,خدمة البحث,Search,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/capabilities/storage-service,خدمة التخزين,HardDrive,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/capabilities/workflow-engine,محرك سير العمل,Workflow,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/background-platform,الخلفية الوطنية,Clock,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/document-platform,الوثائق الوطنية,FileText,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/ecosystem,النظام البيئي,ShareNetwork,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/ecosystem/gateway,بوابة النظام البيئي,Router,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/notification-platform,الإشعارات الوطنية,Bell,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/observability,المراقبة الوطنية,Eye,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/rules-engine,محرك القواعد,Braces,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/scheduling-platform,الجدولة الوطنية,Calendar,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/search-platform,البحث الوطني,Search,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/task-engine,محرك المهام,ListChecks,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/national/workflow-runtime,تشغيل سير العمل,PlayCircle,dashboard:read,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,V,.,.,.
+/ops-metrics,مؤشرات التشغيل,Gauge,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/ai-fabric,منصة الذكاء الاصطناعي,Brain,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/biomedical,الطب الحيوي,Microscope,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/blood-bank,بنك الدم,Droplets,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/certification,الشهادات,ScrollText,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/citizen-platform,منصة المواطن,UserCheck,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/command-center,مركز القيادة,Monitor,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/command-intelligence,الاستخبارات,BrainCircuit,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/control-plane,طائرة التحكم,Gamepad2,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/critical-care,العناية الحرجة,HeartPulse,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/ems,الطوارئ,Ambulance,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/health-data,البيانات الصحية,Database,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/integration,التكامل,Cable,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/kernel,النواة,Cpu,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/lifecycle-platform,دورة حياة المنصة,RefreshCw,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/pharmacy,الصيدلة,Pill,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/pilot-platform,المنصة التجريبية,FlaskConical,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/platform,المنصة,Layers,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/public-health,الصحة العامة,Activity,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+/fhir,التوافق الصحي FHIR,Share2,system:admin,V,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.

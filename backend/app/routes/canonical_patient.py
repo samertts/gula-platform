@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.canonical_patient import CanonicalPatient
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..services.mpi.canonical_service import (
     get_canonical_by_citizen,
     get_canonical_by_patient,
@@ -114,7 +114,7 @@ class SearchResponse(BaseModel):
 @router.post("", response_model=CanonicalPatientResponse, status_code=201)
 def create_canonical(
     data: CanonicalPatientCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
     canonical = CanonicalPatient(**data.model_dump())
@@ -130,7 +130,7 @@ def create_canonical(
 @router.get("/{canonical_id}", response_model=CanonicalPatientResponse)
 def get_canonical(
     canonical_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
     canonical = db.query(CanonicalPatient).filter(CanonicalPatient.id == canonical_id).first()
@@ -145,7 +145,7 @@ def get_canonical(
 @router.post("/merge", response_model=MergeResult)
 def merge(
     data: CanonicalPatientMerge,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ) -> MergeResult:
     merge_canonicals(db, target_id=data.target_id, source_id=data.source_id)
@@ -163,7 +163,7 @@ def merge(
 @router.get("/by-patient/{patient_id}", response_model=CanonicalPatientResponse)
 def get_by_patient(
     patient_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
     canonical = get_canonical_by_patient(db, patient_id)
@@ -178,7 +178,7 @@ def get_by_patient(
 @router.get("/by-citizen/{citizen_id}", response_model=CanonicalPatientResponse)
 def get_by_citizen(
     citizen_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ) -> CanonicalPatientResponse:
     canonical = get_canonical_by_citizen(db, citizen_id)
@@ -196,7 +196,7 @@ def search_canonical(
     province: str | None = Query(default=None, max_length=100),
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=20, ge=1, le=100),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ) -> SearchResponse:
     base = db.query(CanonicalPatient)
@@ -233,7 +233,7 @@ def search_canonical(
 @router.post("/link-patient", response_model=LinkResponse)
 def create_patient_link(
     data: LinkPatientRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ) -> LinkResponse:
     link = link_patient(
@@ -261,7 +261,7 @@ def create_patient_link(
 @router.post("/link-citizen", response_model=LinkResponse)
 def create_citizen_link(
     data: LinkCitizenRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ) -> LinkResponse:
     link = link_citizen(

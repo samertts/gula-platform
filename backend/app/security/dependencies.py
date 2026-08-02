@@ -129,6 +129,26 @@ def require_permission(permission: str):
     return checker
 
 
+_SIGN_OFF_ROLES = frozenset({"admin", "master_admin", "doctor"})
+
+
+def require_verify_authority(current_user: LabUser = Depends(get_current_user)) -> LabUser:
+    """Clinical sign-off authority for result verification.
+
+    Broader than results:write: doctors may sign off on their own orders'
+    results even though they are not granted results:write. This mirrors the
+    clinical-safety policy enforced in test_result_service.verify_result
+    (Phase 12.D — clinical sign-off authority).
+    """
+    perms = get_permissions_for_role(current_user.role)
+    if current_user.role not in _SIGN_OFF_ROLES and "results:write" not in perms:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Verify authority required: admin, doctor, or results:write",
+        )
+    return current_user
+
+
 def get_current_lab(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),

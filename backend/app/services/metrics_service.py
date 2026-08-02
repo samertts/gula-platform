@@ -127,7 +127,6 @@ def get_degradation_level() -> int:
 def build_health_status() -> dict:
     """Liveness/readiness payload matching the frontend HealthStatus contract."""
     from ..config import APP_NAME, APP_VERSION, PLATFORM_NAME_AR, RUNTIME_MODE
-
     from ..core.startup_guard import is_system_ready
 
     db_status, _db_ms = ping_db_detail()

@@ -26,7 +26,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..national.domain.encounter import Encounter
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..services import ehr_service
 
 router = APIRouter(prefix="/fhir", tags=["fhir"])
@@ -133,7 +133,7 @@ def _codeable_concept(
 @router.get("/Patient/{patient_id}", summary="FHIR Patient resource")
 def fhir_read_patient(
     patient_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     patient = ehr_service.get_national_patient_or_404(db, patient_id, current_user.lab_id)
@@ -187,7 +187,7 @@ def fhir_read_patient(
 @router.get("/Encounter/{encounter_id}", summary="FHIR Encounter resource")
 def fhir_read_encounter(
     encounter_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     encounter = (
@@ -254,7 +254,7 @@ def fhir_read_encounter(
 @router.get("/Condition/{condition_id}", summary="FHIR Condition resource")
 def fhir_read_condition(
     condition_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = (
@@ -336,7 +336,7 @@ def fhir_search_condition(
     patient: str | None = Query(None, alias="patient"),
     encounter: str | None = Query(None, alias="encounter"),
     clinical_status: str | None = Query(None, alias="clinical-status"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     if patient:
@@ -372,7 +372,7 @@ def fhir_search_condition(
 @router.get("/Observation/{observation_id}", summary="FHIR Observation for a lab result")
 def fhir_read_observation(
     observation_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     result = db.query(LabResult).join(LabOrder).filter(LabResult.id == observation_id).first()
@@ -436,7 +436,7 @@ def fhir_search_observation(
     code: str | None = Query(None, alias="code"),
     category: str | None = Query(None, alias="category"),
     date: str | None = Query(None, alias="date"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     bundle: dict[str, Any] = {
@@ -472,7 +472,7 @@ def fhir_search_observation(
 @router.get("/MedicationRequest/{request_id}", summary="FHIR MedicationRequest")
 def fhir_read_medication_request(
     request_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_request(db, request_id)
@@ -541,7 +541,7 @@ def _medication_request_to_fhir(rec: MedicationRequest) -> dict:
 def fhir_search_medication_request(
     patient: str | None = Query(None, alias="patient"),
     status: str | None = Query(None, alias="status"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     if patient:
@@ -570,7 +570,7 @@ def fhir_search_medication_request(
 @router.get("/MedicationStatement/{statement_id}", summary="FHIR MedicationStatement")
 def fhir_read_medication_statement(
     statement_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_statement(db, statement_id)
@@ -631,7 +631,7 @@ def _medication_statement_to_fhir(rec: MedicationStatement) -> dict:
 @router.get("/CarePlan/{plan_id}", summary="FHIR CarePlan resource")
 def fhir_read_care_plan(
     plan_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_care_plan(db, plan_id)
@@ -692,7 +692,7 @@ def _care_plan_to_fhir(db: Session, rec: CarePlan) -> dict:
 @router.get("/Procedure/{procedure_id}", summary="FHIR Procedure resource")
 def fhir_read_procedure(
     procedure_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_clinical_note(db, procedure_id)
@@ -723,7 +723,7 @@ def fhir_read_procedure(
 def fhir_search_procedure(
     patient: str | None = Query(None, alias="patient"),
     status: str | None = Query(None, alias="status"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     if patient:
@@ -771,7 +771,7 @@ def fhir_search_procedure(
 @router.get("/AllergyIntolerance/{allergy_id}", summary="FHIR AllergyIntolerance")
 def fhir_read_allergy(
     allergy_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_allergy(db, allergy_id)
@@ -827,7 +827,7 @@ def _allergy_to_fhir(rec: AllergyIntolerance) -> dict:
 def fhir_search_allergy(
     patient: str | None = Query(None, alias="patient"),
     clinical_status: str | None = Query(None, alias="clinical-status"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     if patient:
@@ -855,7 +855,7 @@ def fhir_search_allergy(
 @router.get("/Immunization/{immunization_id}", summary="FHIR Immunization")
 def fhir_read_immunization(
     immunization_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_immunization_record(db, immunization_id)
@@ -924,7 +924,7 @@ def _immunization_to_fhir(rec: ImmunizationRecord) -> dict:
 def fhir_search_immunization(
     patient: str | None = Query(None, alias="patient"),
     status: str | None = Query(None, alias="status"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     if patient:
@@ -952,7 +952,7 @@ def fhir_search_immunization(
 @router.get("/DocumentReference/{doc_id}", summary="FHIR DocumentReference")
 def fhir_read_document_reference(
     doc_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_clinical_attachment(db, doc_id)
@@ -1001,7 +1001,7 @@ def _attachment_to_document_reference(rec: ClinicalAttachment) -> dict:
 def fhir_search_document_reference(
     patient: str | None = Query(None, alias="patient"),
     category: str | None = Query(None, alias="category"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     if patient:
@@ -1033,7 +1033,7 @@ def fhir_search_document_reference(
 @router.get("/Composition/{composition_id}", summary="FHIR Composition for a clinical note")
 def fhir_read_composition(
     composition_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_clinical_note(db, composition_id)
@@ -1094,7 +1094,7 @@ def _clinical_note_to_composition(rec: ClinicalNote) -> dict:
 def fhir_search_composition(
     patient: str | None = Query(None, alias="patient"),
     status: str | None = Query(None, alias="status"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     if patient:
@@ -1129,7 +1129,7 @@ def fhir_search_composition(
 @router.get("/Bundle/{bundle_id}", summary="FHIR Bundle read - returns patient-everything")
 def fhir_read_bundle(
     bundle_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     ehr_service.get_national_patient_or_404(db, bundle_id, current_user.lab_id)
@@ -1265,7 +1265,7 @@ def fhir_create_resource(
     resource_type: str,
     body: dict[str, Any],
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     if resource_type not in _SUPPORTED_CREATE:
@@ -1293,7 +1293,7 @@ def fhir_update_resource(
     resource_id: str,
     body: dict[str, Any],
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     if resource_type not in _SUPPORTED_UPDATE:
@@ -1318,7 +1318,7 @@ def fhir_delete_resource(
     resource_type: str,
     resource_id: str,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     if resource_type not in _SUPPORTED_DELETE:
@@ -1340,7 +1340,7 @@ def fhir_delete_resource(
 @router.post("", summary="FHIR Batch or Transaction")
 def fhir_batch(
     body: dict[str, Any],
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     bundle_type = body.get("type", "batch")

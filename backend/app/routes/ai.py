@@ -51,7 +51,7 @@ from app.models.audit_log import AuditLog
 from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
 from app.models.patient import Patient
-from app.security.dependencies import get_current_user
+from app.security.dependencies import require_permission
 
 logger = logging.getLogger("gula.ai")
 
@@ -116,7 +116,7 @@ class RejectRequest(BaseModel):
 @router.post("/suggest")
 def create_suggestion(
     body: SuggestRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("dashboard:read")),
 ):
     """Create an AI suggestion. DISPLAY_ONLY suggestions are immediately usable.
     SUGGESTION type requires human approval before execution.
@@ -146,7 +146,7 @@ def create_suggestion(
 
 
 @router.get("/pending")
-def list_pending(current_user=Depends(get_current_user)):
+def list_pending(current_user=Depends(require_permission("dashboard:read"))):
     """List all pending AI approvals."""
     _require_doctor(current_user)
     pending = approval_store.pending_list()
@@ -173,7 +173,7 @@ def list_pending(current_user=Depends(get_current_user)):
 @router.post("/approve/{approval_id}")
 def approve_suggestion(
     approval_id: str,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("dashboard:read")),
 ):
     """Approve an AI suggestion."""
     _require_doctor(current_user)
@@ -195,7 +195,7 @@ def approve_suggestion(
 def reject_suggestion(
     approval_id: str,
     body: RejectRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("dashboard:read")),
 ):
     """Reject an AI suggestion with an optional reason."""
     _require_doctor(current_user)
@@ -221,7 +221,7 @@ def reject_suggestion(
 @router.post("/execute/{approval_id}")
 def execute_suggestion(
     approval_id: str,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("dashboard:read")),
 ):
     """Execute an approved suggestion inside the sandbox.
     Output is always display-only — never mutates clinical state.
@@ -254,7 +254,7 @@ def execute_suggestion(
 @router.post("/analyze-order/{order_id}")
 def analyze_order(
     order_id: int,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     """Run clinical pattern analysis on all results in an order.
@@ -802,7 +802,7 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
 @router.get("/critical-alerts", summary="نتائج حرجة — تنبيهات المختبر")
 def list_critical_alerts(
     limit: int = 50,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     """Return recent critical-result alerts for the current lab.
@@ -1019,7 +1019,7 @@ async def _call_gemini_chat(message: str, context: str | None = None) -> str:
 )
 async def ai_chat(
     body: ChatRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("dashboard:read")),
 ):
     """Send a message to the GULA AI assistant (powered by Gemini 2.0 Flash).
 

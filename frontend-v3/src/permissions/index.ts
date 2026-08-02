@@ -224,7 +224,7 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
   ],
   enterprise: [
     { label: "nav.hospital", path: "/hospital", icon: "Building", permissions: ["lab:read"] },
-    { label: "nav.edgePlatform", path: "/edge", icon: "Server", permissions: ["system:admin"] },
+    { label: "nav.edgePlatform", path: "/edge", icon: "Server", permissions: ["lab:manage"] },
     { label: "nav.financial", path: "/financial", icon: "DollarSign", permissions: ["lab:manage"] },
     { label: "nav.nationalData", path: "/national-data", icon: "BarChart3", permissions: ["patients:read"] },
   ],

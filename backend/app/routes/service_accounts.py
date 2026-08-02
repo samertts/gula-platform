@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..security.service_accounts import (
     create_service_account,
     list_service_accounts,
@@ -43,7 +43,7 @@ class ServiceAccountResponse(BaseModel):
 @router.post("")
 def create(
     data: CreateServiceAccountRequest,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("platform:manage_users")),
     db: Session = Depends(get_db),
 ):
     if current_user.role not in ("master_admin", "admin"):
@@ -68,7 +68,7 @@ def create(
 
 @router.get("")
 def list_all(
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("platform:manage_users")),
     db: Session = Depends(get_db),
 ):
     if current_user.role not in ("master_admin", "admin"):
@@ -93,7 +93,7 @@ def list_all(
 @router.delete("/{account_id}")
 def revoke(
     account_id: int,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("platform:manage_users")),
     db: Session = Depends(get_db),
 ):
     if current_user.role not in ("master_admin", "admin"):
@@ -107,7 +107,7 @@ def revoke(
 @router.post("/{account_id}/rotate")
 def rotate(
     account_id: int,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("platform:manage_users")),
     db: Session = Depends(get_db),
 ):
     if current_user.role not in ("master_admin", "admin"):

@@ -34,7 +34,7 @@ from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.subscription import FeatureFlag, LabSubscription, UpgradeDemandScore, UpgradeRequest
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..security.rate_limit import get_client_ip
 from ..services.audit_service import log_action
 
@@ -80,7 +80,7 @@ def list_tiers():
 
 @router.get("/tiers/my", summary="Current lab subscription info")
 def my_subscription(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     """Returns the calling lab's full subscription state, feature set, and limits."""
@@ -128,7 +128,7 @@ class UpgradeRequestBody(BaseModel):
 def request_upgrade(
     body: UpgradeRequestBody,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     """Lab admin submits an upgrade request.
@@ -211,7 +211,7 @@ class DemandSignalBody(BaseModel):
 def submit_upgrade_demand(
     body: DemandSignalBody,
     request: Request,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     """Verified citizens can signal demand for a lab to upgrade.
@@ -285,7 +285,7 @@ def submit_upgrade_demand(
 @router.get("/admin/tiers/demands", summary="Platform admin: top upgrade demand labs")
 def list_upgrade_demands(
     limit: int = 20,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     """Returns labs sorted by weighted upgrade demand score (highest first)."""
@@ -352,7 +352,7 @@ def set_lab_tier(
     lab_id: int,
     body: SetTierBody,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     """Platform admin manually sets the tier for a lab."""
@@ -439,7 +439,7 @@ def set_feature_flag(
     lab_id: int,
     body: FeatureFlagBody,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     """Platform admin: enable or disable a specific feature for a lab,
@@ -510,7 +510,7 @@ def set_feature_flag(
 @router.get("/admin/tiers/flags/{lab_id}", summary="List feature flags for a lab")
 def list_feature_flags(
     lab_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     if current_user.role not in ("master_admin", "ministry_admin", "admin"):

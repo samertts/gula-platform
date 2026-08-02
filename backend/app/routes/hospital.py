@@ -16,7 +16,7 @@ from ..hospital.models import (
     OperationTheater,
 )
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..services.hospital_service import HospitalService
 
 router = APIRouter(prefix="/hospital", tags=["hospital"])
@@ -279,7 +279,7 @@ def list_hospitals(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     hospitals = HospitalService.list_hospitals(db, current_user.lab_id, skip, limit)
     total = (
@@ -302,7 +302,7 @@ def list_hospitals(
 def get_hospital(
     hospital_id: int,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     return _model_to_dict(HospitalService.get_hospital(db, hospital_id, current_user.lab_id))
 
@@ -311,7 +311,7 @@ def get_hospital(
 def create_hospital(
     body: HospitalCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     hospital = HospitalService.create_hospital(
         db,
@@ -327,7 +327,7 @@ def update_hospital(
     hospital_id: int,
     body: HospitalUpdate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     data = {k: v for k, v in body.model_dump().items() if v is not None}
     if not data:
@@ -346,7 +346,7 @@ def update_hospital(
 def deactivate_hospital(
     hospital_id: int,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     HospitalService.deactivate_hospital(db, hospital_id, current_user.lab_id, current_user.id)
     return {"detail": "Hospital deactivated", "detail_ar": "تم إلغاء تنشيط المستشفى"}
@@ -359,7 +359,7 @@ def deactivate_hospital(
 def list_campuses(
     hospital_id: int,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     campuses = HospitalService.list_campuses(db, current_user.lab_id, hospital_id)
     return [_model_to_dict(c) for c in campuses]
@@ -370,7 +370,7 @@ def create_campus(
     hospital_id: int,
     body: CampusCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     campus = HospitalService.create_campus(
         db,
@@ -387,7 +387,7 @@ def update_campus(
     campus_id: int,
     body: CampusCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     campus = HospitalService._get_entity(db, Campus, campus_id, current_user.lab_id)
     data = body.model_dump()
@@ -404,7 +404,7 @@ def update_campus(
 def list_buildings(
     campus_id: int,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     buildings = HospitalService.list_buildings(db, current_user.lab_id, campus_id)
     return [_model_to_dict(b) for b in buildings]
@@ -415,7 +415,7 @@ def create_building(
     campus_id: int,
     body: BuildingCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     building = HospitalService.create_building(
         db,
@@ -434,7 +434,7 @@ def create_building(
 def list_floors(
     building_id: int,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     floors = HospitalService.list_floors(db, current_user.lab_id, building_id)
     return [_model_to_dict(f) for f in floors]
@@ -445,7 +445,7 @@ def create_floor(
     building_id: int,
     body: FloorCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     floor = HospitalService.create_floor(
         db,
@@ -465,7 +465,7 @@ def list_departments(
     hospital_id: int,
     parent_id: int | None = Query(None),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     depts = HospitalService.list_departments(
         db,
@@ -481,7 +481,7 @@ def create_department(
     hospital_id: int,
     body: DepartmentCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     dept = HospitalService.create_department(
         db,
@@ -498,7 +498,7 @@ def update_department(
     dept_id: int,
     body: DepartmentCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     dept = HospitalService._get_entity(db, HospitalDepartment, dept_id, current_user.lab_id)
     data = body.model_dump()
@@ -515,7 +515,7 @@ def update_department(
 def list_clinics(
     dept_id: int | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     clinics = HospitalService.list_clinics(db, current_user.lab_id, dept_id)
     return [_model_to_dict(c) for c in clinics]
@@ -526,7 +526,7 @@ def create_clinic(
     dept_id: int,
     body: ClinicCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     clinic = HospitalService.create_clinic(
         db,
@@ -546,7 +546,7 @@ def list_rooms(
     dept_id: int | None = None,
     room_type: str | None = Query(None),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     rooms = HospitalService.list_rooms(db, current_user.lab_id, dept_id, room_type)
     return [_model_to_dict(r) for r in rooms]
@@ -557,7 +557,7 @@ def create_room(
     dept_id: int,
     body: RoomCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     room = HospitalService.create_room(
         db,
@@ -578,7 +578,7 @@ def list_beds(
     status: str | None = Query(None),
     bed_type: str | None = Query(None),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     beds = HospitalService.list_beds(db, current_user.lab_id, room_id, status, bed_type)
     return [_model_to_dict(b) for b in beds]
@@ -589,7 +589,7 @@ def create_bed(
     room_id: int,
     body: BedCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     bed = HospitalService.create_bed(
         db,
@@ -609,7 +609,7 @@ def assign_bed(
     bed_id: int,
     body: BedAssign,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     bed = HospitalService.assign_bed(
         db,
@@ -628,7 +628,7 @@ def discharge_bed(
     bed_id: int,
     body: BedDischarge,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     bed = HospitalService.discharge_bed(
         db,
@@ -645,7 +645,7 @@ def transfer_bed(
     bed_id: int,
     body: BedTransfer,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     return HospitalService.transfer_bed(
         db,
@@ -664,7 +664,7 @@ def transfer_bed(
 def occupancy_stats(
     hospital_id: int | None = Query(None),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     return HospitalService.bed_occupancy_stats(db, current_user.lab_id, hospital_id)
 
@@ -676,7 +676,7 @@ def occupancy_stats(
 def list_units(
     hospital_id: int,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     units = HospitalService.list_units(db, current_user.lab_id, hospital_id)
     return [_model_to_dict(u) for u in units]
@@ -687,7 +687,7 @@ def create_unit(
     hospital_id: int,
     body: UnitCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     unit = HospitalService.create_unit(
         db,
@@ -706,7 +706,7 @@ def create_unit(
 def list_operation_theaters(
     hospital_id: int,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     ots = HospitalService.list_operation_theaters(db, current_user.lab_id, hospital_id)
     return [_model_to_dict(ot) for ot in ots]
@@ -719,7 +719,7 @@ def create_operation_theater(
     hospital_id: int,
     body: OperationTheaterCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     ot = HospitalService.create_ot(
         db,
@@ -736,7 +736,7 @@ def update_ot_status(
     ot_id: int,
     status: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     ot = HospitalService._get_entity(db, OperationTheater, ot_id, current_user.lab_id)
     allowed = {"available", "in_use", "cleaning", "maintenance"}
@@ -756,7 +756,7 @@ def list_equipment(
     category: str | None = Query(None),
     equipment_status: str | None = Query(None, alias="status"),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     equipment = HospitalService.list_equipment(
         db,
@@ -773,7 +773,7 @@ def create_equipment(
     hospital_id: int,
     body: EquipmentCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     equip = HospitalService.create_equipment(
         db,
@@ -790,7 +790,7 @@ def update_equipment(
     equip_id: int,
     body: EquipmentCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     equip = HospitalService._get_entity(db, MedicalEquipment, equip_id, current_user.lab_id)
     for k, v in body.model_dump().items():
@@ -807,7 +807,7 @@ def update_equipment(
 def list_cost_centers(
     hospital_id: int,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     ccs = HospitalService.list_cost_centers(db, current_user.lab_id, hospital_id)
     return [_model_to_dict(cc) for cc in ccs]
@@ -818,7 +818,7 @@ def create_cost_center(
     hospital_id: int,
     body: CostCenterCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     cc = HospitalService.create_cost_center(
         db,
@@ -840,7 +840,7 @@ def list_appointments(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     appointments = HospitalService.list_appointments(
         db,
@@ -862,7 +862,7 @@ def list_appointments(
 def create_appointment(
     body: AppointmentCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
 ):
     apt = HospitalService.create_appointment(
         db,
@@ -880,7 +880,7 @@ def create_appointment(
 def hospital_dashboard(
     hospital_id: int,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     return HospitalService.dashboard(db, current_user.lab_id, hospital_id)
 
@@ -892,7 +892,7 @@ def hospital_dashboard(
 def bed_assignment_history(
     bed_id: int,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
 ):
     HospitalService._get_entity(db, Bed, bed_id, current_user.lab_id)
     assignments = (

@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..security.rate_limit import get_client_ip, rate_limit_public, rate_limit_user
 from ..services.order_service import (
     TEST_PROFILES,
@@ -95,7 +95,7 @@ def list_test_profiles():
 def create_order_route(
     data: CreateOrderRequest,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     rate_limit_user(request, current_user.id, max_per_minute=30)
@@ -136,7 +136,7 @@ def list_orders_route(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=500),
     search: str | None = Query(None, max_length=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
     db: Session = Depends(get_db),
 ):
     return _list_orders(
@@ -153,7 +153,7 @@ def list_orders_route(
 @router.get("/orders/{order_id}")
 def get_order_route(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
     db: Session = Depends(get_db),
 ):
     result = _get_order_by_id(
@@ -172,7 +172,7 @@ def get_order_route(
 def validate_order_route(
     order_id: int,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     """Validate and lock an order.  Only admin/master_admin/doctor may do this.
@@ -202,7 +202,7 @@ def validate_order_route(
 def cancel_order_route(
     order_id: int,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     """Cancel an order.  Validated (locked) orders cannot be cancelled."""
@@ -256,7 +256,7 @@ def download_result_pdf_route(token: str, request: Request, db: Session = Depend
 @router.get("/patient-history/{patient_id}")
 def get_patient_history_by_id_route(
     patient_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Get complete test history for a patient (authenticated, lab-scoped)."""
@@ -303,7 +303,7 @@ def get_patient_history_route(
 def analyze_results(
     data: AnalyzeRequest,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:write")),
 ):
     """Analyze a batch of results for multi-test clinical patterns.
     Returns detected patterns (sepsis, DKA, renal failure, etc.)
@@ -338,7 +338,7 @@ def analyze_results(
 @router.get("/orders/{order_id}/intelligence")
 def analyze_order(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     """Run clinical intelligence analysis on an existing order's results.

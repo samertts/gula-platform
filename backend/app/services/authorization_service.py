@@ -312,7 +312,10 @@ class PolicyService:
             return False
         if target.get("user_types") and subject.get("user_type") not in target["user_types"]:
             return False
-        if conditions.get("governorate") and subject.get("governorate_id") not in conditions["governorate"]:
+        if (
+            conditions.get("governorate")
+            and subject.get("governorate_id") not in conditions["governorate"]
+        ):
             return False
         if conditions.get("time_of_day"):
             current_hour = datetime.now(UTC).hour
@@ -507,15 +510,16 @@ class AuthorizationCheckService:
             .all()
         )
         role_ids = [r.role_id for r in roles]
-        if not role_ids:
-            return []
-        q = self.db.query(RolePermission).filter(RolePermission.role_id.in_(role_ids))
-        assigned = {rp.permission_id for rp in q.all()}
         legacy = set()
         if user.role:
             all_legacy = shared_get_permissions(user.role)
             legacy.update(all_legacy)
-        combined = assigned | legacy
+        if not role_ids:
+            combined = legacy
+        else:
+            q = self.db.query(RolePermission).filter(RolePermission.role_id.in_(role_ids))
+            assigned = {rp.permission_id for rp in q.all()}
+            combined = assigned | legacy
         if domain:
             perm_rows = (
                 self.db.query(Permission)
@@ -1165,15 +1169,15 @@ class IdentityService:
 
     def get_identity_context(self, user: User) -> dict[str, Any]:
         org = None
-        if user.organization_id:
+        if getattr(user, "organization_id", None):
             org = (
                 self.db.query(Organization).filter(Organization.id == user.organization_id).first()
             )
         tenant = None
-        if user.tenant_id:
+        if getattr(user, "tenant_id", None):
             tenant = self.db.query(Tenant).filter(Tenant.id == user.tenant_id).first()
         facility = None
-        if user.facility_id:
+        if getattr(user, "facility_id", None):
             facility = self.db.query(Facility).filter(Facility.id == user.facility_id).first()
         role_assignments = (
             self.db.query(RoleAssignment)
@@ -1203,12 +1207,14 @@ class IdentityService:
             "user": {
                 "id": user.id,
                 "email": user.email,
-                "full_name": user.full_name,
-                "user_type": user.user_type,
-                "role": user.role,
-                "mfa_enabled": user.mfa_enabled,
-                "is_active": user.is_active,
-                "is_verified": user.is_verified,
+                "full_name": getattr(
+                    user, "full_name", user.name if hasattr(user, "name") else None
+                ),
+                "user_type": getattr(user, "user_type", None),
+                "role": getattr(user, "role", None),
+                "mfa_enabled": getattr(user, "mfa_enabled", False),
+                "is_active": getattr(user, "is_active", True),
+                "is_verified": getattr(user, "is_verified", False),
             },
             "organization": {
                 "id": org.id,
@@ -1236,7 +1242,7 @@ class IdentityService:
             if facility
             else None,
             "roles": roles,
-            "governorate_id": user.governorate_id,
+            "governorate_id": getattr(user, "governorate_id", None),
         }
 
     def _compute_scope(self, assignment: RoleAssignment) -> dict[str, Any]:

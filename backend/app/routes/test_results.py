@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission, require_verify_authority
 from ..security.rate_limit import rate_limit_user
 from ..services.test_result_service import (
     citizen_timeline as service_timeline,
@@ -38,7 +38,9 @@ class TestResultCreate(BaseModel):
     normal_range_high: float | None = None
     sample_type: str | None = Field("blood", max_length=50)
     doctor_name: str | None = Field(None, max_length=200)
-    order_id: int | None = Field(None, description="Attach to an existing order; otherwise a new one is created.")
+    order_id: int | None = Field(
+        None, description="Attach to an existing order; otherwise a new one is created."
+    )
 
     @field_validator("test_name", "doctor_name")
     @classmethod
@@ -59,7 +61,7 @@ class TestResultValidateRequest(BaseModel):
 def create_test_result(
     data: TestResultCreate,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:write")),
     db: Session = Depends(get_db),
 ):
     return create_result(
@@ -84,7 +86,7 @@ def create_test_result(
 def validate_test_result(
     data: TestResultValidateRequest,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:write")),
     db: Session = Depends(get_db),
 ):
     rate_limit_user(request, current_user.id, max_per_minute=60)
@@ -108,7 +110,7 @@ def list_test_results(
     is_abnormal: bool | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     return list_results(
@@ -127,7 +129,7 @@ def list_test_results(
 @router.get("/{result_id}")
 def get_test_result(
     result_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     return get_result(result_id, current_user, db)
@@ -137,7 +139,7 @@ def get_test_result(
 def verify_test_result(
     result_id: int,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_verify_authority),
     db: Session = Depends(get_db),
 ):
     return verify_result(result_id, current_user, request, db)
@@ -152,17 +154,19 @@ def list_citizen_results_endpoint(
     is_abnormal: bool | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
-    return list_citizen_results(health_id, category, date_from, date_to, is_abnormal, skip, limit, current_user, db)
+    return list_citizen_results(
+        health_id, category, date_from, date_to, is_abnormal, skip, limit, current_user, db
+    )
 
 
 @router.get("/citizen/{health_id}/timeline")
 def citizen_timeline_endpoint(
     health_id: str,
     category: str | None = Query(None, max_length=50),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     return service_timeline(health_id, category, current_user, db)

@@ -58,7 +58,7 @@ from app.models.ai_interaction import (
     AIUnresolvedQuestion,
 )
 from app.models.lab_user import LabUser
-from app.security.dependencies import get_current_user
+from app.security.dependencies import require_permission
 
 logger = logging.getLogger("gula.ai.dataset")
 
@@ -204,7 +204,7 @@ def _now() -> datetime:
 )
 def log_interaction(
     payload: InteractionIn,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     if payload.status not in STATUS_VALUES:
@@ -338,7 +338,7 @@ def log_interaction(
 def append_retrieval_refs(
     interaction_id: str,
     refs: list[RetrievalRefIn],
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     iid = _parse_uuid(interaction_id, "interaction_id")
@@ -390,7 +390,7 @@ def append_retrieval_refs(
 )
 def submit_feedback(
     payload: FeedbackIn,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     if payload.signal not in FEEDBACK_SIGNALS:
@@ -437,7 +437,7 @@ def submit_feedback(
 )
 def log_unresolved(
     payload: UnresolvedIn,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     iid_uuid: uuid.UUID | None = None
@@ -480,7 +480,7 @@ def log_unresolved(
     summary="Aggregate counters for the calling lab (Phase 3+6 readout)",
 )
 def dataset_summary(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     lab_id = current_user.lab_id
@@ -574,7 +574,7 @@ def dataset_status():
     summary="Aggregate telemetry counters for the calling lab",
 )
 def telemetry_stats(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     lab_id = current_user.lab_id
@@ -614,7 +614,7 @@ def telemetry_stats(
 )
 def telemetry_export(
     format: str = Query("json", pattern="^(json|csv)$"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     if current_user.role not in ("admin", "master_admin"):

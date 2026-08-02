@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
-from app.security.dependencies import get_current_user
+from app.security.dependencies import require_permission
 
 logger = logging.getLogger("gula.routes.clinical_orders")
 
@@ -112,7 +112,7 @@ def _next_id() -> str:
 @router.post("", status_code=201)
 def create_order(
     data: ClinicalOrderCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     if data.order_type not in _ORDER_TYPES:
@@ -148,7 +148,7 @@ def list_orders(
     status: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
     db: Session = Depends(get_db),
 ):
     items = list(_FAKE_ORDERS.values())
@@ -171,7 +171,7 @@ def list_orders(
 @router.get("/{order_id}")
 def get_order(
     order_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
     db: Session = Depends(get_db),
 ):
     order = _FAKE_ORDERS.get(order_id)
@@ -183,7 +183,7 @@ def get_order(
 @router.put("/{order_id}/cancel")
 def cancel_order(
     order_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     order = _FAKE_ORDERS.get(order_id)
@@ -203,7 +203,7 @@ def cancel_order(
 @router.put("/{order_id}/complete")
 def complete_order(
     order_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     order = _FAKE_ORDERS.get(order_id)
@@ -245,7 +245,7 @@ class OrderTemplateCreate(BaseModel):
 def list_order_templates(
     order_type: str | None = None,
     department: str | None = None,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
     db: Session = Depends(get_db),
 ):
     items = list(_ORDER_TEMPLATES.values())
@@ -259,7 +259,7 @@ def list_order_templates(
 @router.post("/templates", status_code=201)
 def create_order_template(
     data: OrderTemplateCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     template_id = _next_id()
@@ -284,7 +284,7 @@ _RECURRING_ORDERS: dict[str, dict[str, Any]] = {}
 @router.post("/recurring", status_code=201)
 def create_recurring_order(
     data: RecurringOrderCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     if data.order_type not in _ORDER_TYPES:
@@ -311,7 +311,7 @@ def create_recurring_order(
 def list_recurring_orders(
     patient_id: str | None = None,
     department: str | None = None,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
     db: Session = Depends(get_db),
 ):
     items = list(_RECURRING_ORDERS.values())
@@ -333,7 +333,7 @@ _STANDING_ORDER_ASSIGNMENTS: dict[str, dict[str, Any]] = {}
 @router.get("/standing")
 def get_standing_orders_for_patient(
     patient_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
     db: Session = Depends(get_db),
 ):
     items = [

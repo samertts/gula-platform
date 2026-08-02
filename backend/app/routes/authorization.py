@@ -12,7 +12,7 @@ from app._compat import UTC
 from app.database import get_db
 from app.models.authorization import BreakGlassSession
 from app.models.user import User
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 from app.services.authorization_service import (
     AuthorizationAuditService,
     AuthorizationCheckService,
@@ -80,7 +80,7 @@ def list_permissions(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("platform:manage_users")),
 ):
     svc = PermissionService(db)
     items = svc.get_all(domain=domain, skip=skip, limit=limit)
@@ -110,7 +110,7 @@ def list_permissions(
 @router.get("/permissions/domains")
 def list_permission_domains(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("platform:manage_users")),
 ):
     svc = PermissionService(db)
     return {"domains": svc.get_domains()}
@@ -120,7 +120,7 @@ def list_permission_domains(
 def get_permission(
     permission_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("platform:manage_users")),
 ):
     svc = PermissionService(db)
     perm = svc.get_by_id(permission_id)
@@ -138,7 +138,7 @@ def list_roles(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("platform:manage_users")),
 ):
     svc = RoleService(db)
     items = svc.get_all(level=level, skip=skip, limit=limit)
@@ -165,7 +165,7 @@ def list_roles(
 @router.get("/roles/levels")
 def list_role_levels(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("platform:manage_users")),
 ):
     svc = RoleService(db)
     return {"levels": svc.get_levels()}
@@ -174,7 +174,7 @@ def list_role_levels(
 @router.get("/roles/hierarchy")
 def get_role_hierarchy(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("platform:manage_users")),
 ):
     svc = RoleService(db)
     return {"hierarchy": svc.get_hierarchy()}
@@ -184,7 +184,7 @@ def get_role_hierarchy(
 def get_role(
     role_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("platform:manage_users")),
 ):
     svc = RoleService(db)
     role = svc.get_by_id(role_id)
@@ -209,7 +209,7 @@ def get_role_permissions(
     role_id: str,
     inherited: bool = Query(False),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("platform:manage_users")),
 ):
     svc = RoleService(db)
     if inherited:
@@ -227,7 +227,7 @@ def get_role_permissions(
 def check_permission(
     req: PermissionCheckRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("platform:manage_users")),
 ):
     svc = AuthorizationCheckService(db)
     return svc.check_permission(
@@ -243,7 +243,7 @@ def check_permission(
 def check_permissions_batch(
     req: BatchPermissionCheckRequest,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_permission("platform:manage_users")),
 ):
     svc = AuthorizationCheckService(db)
     return svc.check_many(

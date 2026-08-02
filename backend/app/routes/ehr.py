@@ -24,7 +24,7 @@ from app.ehr.enums import (
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..services import ehr_service
 
 router = APIRouter(prefix="/ehr", tags=["ehr"])
@@ -75,7 +75,7 @@ class ClinicalNoteUpdate(BaseModel):
 @router.post("/clinical-notes", summary="Create a clinical note")
 def create_clinical_note(
     body: ClinicalNoteCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -87,7 +87,7 @@ def create_clinical_note(
 @router.get("/clinical-notes/{note_id}", summary="Get a clinical note")
 def get_clinical_note(
     note_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_clinical_note(db, note_id)
@@ -101,7 +101,7 @@ def get_clinical_note(
 def update_clinical_note(
     note_id: str,
     body: ClinicalNoteUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_clinical_note(db, note_id)
@@ -120,7 +120,7 @@ def update_clinical_note(
 @router.delete("/clinical-notes/{note_id}", summary="Soft-delete a clinical note")
 def delete_clinical_note(
     note_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_clinical_note(db, note_id)
@@ -140,7 +140,7 @@ def list_patient_clinical_notes(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -156,7 +156,7 @@ def list_encounter_clinical_notes(
     encounter_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     records = ehr_service.list_clinical_notes_by_encounter(db, encounter_id, skip, limit)
@@ -203,7 +203,7 @@ class AllergyUpdate(BaseModel):
 @router.post("/allergies", summary="Create an allergy record")
 def create_allergy(
     body: AllergyCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -215,7 +215,7 @@ def create_allergy(
 @router.get("/allergies/{allergy_id}", summary="Get an allergy record")
 def get_allergy(
     allergy_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_allergy(db, allergy_id)
@@ -229,7 +229,7 @@ def get_allergy(
 def update_allergy(
     allergy_id: str,
     body: AllergyUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_allergy(db, allergy_id)
@@ -244,7 +244,7 @@ def update_allergy(
 @router.delete("/allergies/{allergy_id}", summary="Soft-delete an allergy record")
 def delete_allergy(
     allergy_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_allergy(db, allergy_id)
@@ -264,7 +264,7 @@ def list_patient_allergies(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -307,7 +307,7 @@ class MedStatementCreate(BaseModel):
 @router.post("/medication-statements", summary="Create a medication statement")
 def create_medication_statement(
     body: MedStatementCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -322,7 +322,7 @@ def create_medication_statement(
 )
 def get_medication_statement(
     statement_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_statement(db, statement_id)
@@ -339,7 +339,7 @@ def get_medication_statement(
 def update_medication_statement(
     statement_id: str,
     body: MedStatementCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_statement(db, statement_id)
@@ -361,7 +361,7 @@ def update_medication_statement(
 )
 def delete_medication_statement(
     statement_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_statement(db, statement_id)
@@ -381,7 +381,7 @@ def list_patient_medication_statements(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -431,7 +431,7 @@ class MedRequestCreate(BaseModel):
 @router.post("/medication-requests", summary="Create a medication request")
 def create_medication_request(
     body: MedRequestCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -446,7 +446,7 @@ def create_medication_request(
 )
 def get_medication_request(
     request_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_request(db, request_id)
@@ -463,7 +463,7 @@ def get_medication_request(
 def update_medication_request(
     request_id: str,
     body: MedRequestCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_request(db, request_id)
@@ -485,7 +485,7 @@ def update_medication_request(
 )
 def delete_medication_request(
     request_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_request(db, request_id)
@@ -505,7 +505,7 @@ def list_patient_medication_requests(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -548,7 +548,7 @@ class MedDispenseCreate(BaseModel):
 @router.post("/medication-dispenses", summary="Create a medication dispense")
 def create_medication_dispense(
     body: MedDispenseCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -563,7 +563,7 @@ def create_medication_dispense(
 )
 def get_medication_dispense(
     dispense_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_dispense(db, dispense_id)
@@ -580,7 +580,7 @@ def get_medication_dispense(
 def update_medication_dispense(
     dispense_id: str,
     body: MedDispenseCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_dispense(db, dispense_id)
@@ -602,7 +602,7 @@ def update_medication_dispense(
 )
 def delete_medication_dispense(
     dispense_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_dispense(db, dispense_id)
@@ -622,7 +622,7 @@ def list_patient_medication_dispenses(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -664,7 +664,7 @@ class MedAdminCreate(BaseModel):
 )
 def create_medication_administration(
     body: MedAdminCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -682,7 +682,7 @@ def create_medication_administration(
 )
 def get_medication_administration(
     admin_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_administration(db, admin_id)
@@ -699,7 +699,7 @@ def get_medication_administration(
 def update_medication_administration(
     admin_id: str,
     body: MedAdminCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_administration(db, admin_id)
@@ -721,7 +721,7 @@ def update_medication_administration(
 )
 def delete_medication_administration(
     admin_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_medication_administration(db, admin_id)
@@ -741,7 +741,7 @@ def list_patient_medication_administrations(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -791,7 +791,7 @@ class CarePlanUpdate(BaseModel):
 @router.post("/care-plans", summary="Create a care plan")
 def create_care_plan(
     body: CarePlanCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -803,7 +803,7 @@ def create_care_plan(
 @router.get("/care-plans/{plan_id}", summary="Get a care plan with goals and activities")
 def get_care_plan(
     plan_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_care_plan(db, plan_id)
@@ -824,7 +824,7 @@ def get_care_plan(
 def update_care_plan(
     plan_id: str,
     body: CarePlanUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_care_plan(db, plan_id)
@@ -846,7 +846,7 @@ def update_care_plan(
 @router.delete("/care-plans/{plan_id}", summary="Soft-delete a care plan")
 def delete_care_plan(
     plan_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_care_plan(db, plan_id)
@@ -866,7 +866,7 @@ def list_patient_care_plans(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -903,7 +903,7 @@ class CarePlanGoalCreate(BaseModel):
 def create_care_plan_goal(
     plan_id: str,
     body: CarePlanGoalCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     cp = ehr_service.get_care_plan(db, plan_id)
@@ -924,7 +924,7 @@ def create_care_plan_goal(
 def update_care_plan_goal(
     goal_id: str,
     body: CarePlanGoalCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     goal = ehr_service.get_care_plan_goal(db, goal_id)
@@ -948,7 +948,7 @@ def update_care_plan_goal(
 )
 def delete_care_plan_goal(
     goal_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     goal = ehr_service.get_care_plan_goal(db, goal_id)
@@ -991,7 +991,7 @@ class CarePlanActivityCreate(BaseModel):
 def create_care_plan_activity(
     plan_id: str,
     body: CarePlanActivityCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     cp = ehr_service.get_care_plan(db, plan_id)
@@ -1012,7 +1012,7 @@ def create_care_plan_activity(
 def update_care_plan_activity(
     activity_id: str,
     body: CarePlanActivityCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     activity = ehr_service.get_care_plan_activity(db, activity_id)
@@ -1036,7 +1036,7 @@ def update_care_plan_activity(
 )
 def delete_care_plan_activity(
     activity_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     activity = ehr_service.get_care_plan_activity(db, activity_id)
@@ -1088,7 +1088,7 @@ class ProblemListItemUpdate(BaseModel):
 @router.post("/problem-list", summary="Add a problem list item")
 def create_problem_list_item(
     body: ProblemListItemCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -1103,7 +1103,7 @@ def create_problem_list_item(
 )
 def get_problem_list_item(
     item_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_problem_list_item(db, item_id)
@@ -1120,7 +1120,7 @@ def get_problem_list_item(
 def update_problem_list_item(
     item_id: str,
     body: ProblemListItemUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_problem_list_item(db, item_id)
@@ -1142,7 +1142,7 @@ def update_problem_list_item(
 )
 def delete_problem_list_item(
     item_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_problem_list_item(db, item_id)
@@ -1162,7 +1162,7 @@ def list_patient_problem_list(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -1211,7 +1211,7 @@ class ConditionUpdate(BaseModel):
 @router.post("/conditions", summary="Create a condition record")
 def create_condition(
     body: ConditionCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -1226,7 +1226,7 @@ def create_condition(
 )
 def get_condition(
     condition_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_condition(db, condition_id)
@@ -1243,7 +1243,7 @@ def get_condition(
 def update_condition(
     condition_id: str,
     body: ConditionUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_condition(db, condition_id)
@@ -1261,7 +1261,7 @@ def update_condition(
 )
 def delete_condition(
     condition_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_condition(db, condition_id)
@@ -1281,7 +1281,7 @@ def list_patient_conditions(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -1330,7 +1330,7 @@ class DiagnosisUpdate(BaseModel):
 @router.post("/diagnoses", summary="Create a diagnosis record")
 def create_diagnosis(
     body: DiagnosisCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -1345,7 +1345,7 @@ def create_diagnosis(
 )
 def get_diagnosis(
     diagnosis_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_diagnosis(db, diagnosis_id)
@@ -1362,7 +1362,7 @@ def get_diagnosis(
 def update_diagnosis(
     diagnosis_id: str,
     body: DiagnosisUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_diagnosis(db, diagnosis_id)
@@ -1380,7 +1380,7 @@ def update_diagnosis(
 )
 def delete_diagnosis(
     diagnosis_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_diagnosis(db, diagnosis_id)
@@ -1400,7 +1400,7 @@ def list_patient_diagnoses(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -1444,7 +1444,7 @@ class FamilyHistoryUpdate(BaseModel):
 @router.post("/family-history", summary="Create a family history record")
 def create_family_history(
     body: FamilyHistoryCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -1459,7 +1459,7 @@ def create_family_history(
 )
 def get_family_history(
     record_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_family_history_record(db, record_id)
@@ -1476,7 +1476,7 @@ def get_family_history(
 def update_family_history(
     record_id: str,
     body: FamilyHistoryUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_family_history_record(db, record_id)
@@ -1498,7 +1498,7 @@ def update_family_history(
 )
 def delete_family_history(
     record_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_family_history_record(db, record_id)
@@ -1518,7 +1518,7 @@ def list_patient_family_history(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -1572,7 +1572,7 @@ class SocialHistoryUpdate(BaseModel):
 @router.post("/social-history", summary="Create a social history record")
 def create_social_history(
     body: SocialHistoryCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -1587,7 +1587,7 @@ def create_social_history(
 )
 def get_social_history(
     record_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_social_history_record(db, record_id)
@@ -1604,7 +1604,7 @@ def get_social_history(
 def update_social_history(
     record_id: str,
     body: SocialHistoryUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_social_history_record(db, record_id)
@@ -1626,7 +1626,7 @@ def update_social_history(
 )
 def delete_social_history(
     record_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_social_history_record(db, record_id)
@@ -1646,7 +1646,7 @@ def list_patient_social_history(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -1693,7 +1693,7 @@ class RiskFactorUpdate(BaseModel):
 @router.post("/risk-factors", summary="Create a risk factor record")
 def create_risk_factor(
     body: RiskFactorCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -1708,7 +1708,7 @@ def create_risk_factor(
 )
 def get_risk_factor(
     record_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_risk_factor_record(db, record_id)
@@ -1725,7 +1725,7 @@ def get_risk_factor(
 def update_risk_factor(
     record_id: str,
     body: RiskFactorUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_risk_factor_record(db, record_id)
@@ -1747,7 +1747,7 @@ def update_risk_factor(
 )
 def delete_risk_factor(
     record_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_risk_factor_record(db, record_id)
@@ -1767,7 +1767,7 @@ def list_patient_risk_factors(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -1824,7 +1824,7 @@ class ImmunizationUpdate(BaseModel):
 @router.post("/immunizations", summary="Create an immunization record")
 def create_immunization(
     body: ImmunizationCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -1839,7 +1839,7 @@ def create_immunization(
 )
 def get_immunization(
     record_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_immunization_record(db, record_id)
@@ -1856,7 +1856,7 @@ def get_immunization(
 def update_immunization(
     record_id: str,
     body: ImmunizationUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_immunization_record(db, record_id)
@@ -1878,7 +1878,7 @@ def update_immunization(
 )
 def delete_immunization(
     record_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_immunization_record(db, record_id)
@@ -1898,7 +1898,7 @@ def list_patient_immunizations(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -1951,7 +1951,7 @@ class AttachmentUpdate(BaseModel):
 @router.post("/attachments", summary="Create a clinical attachment record")
 def create_attachment(
     body: AttachmentCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, body.patient_id, current_user.lab_id)
@@ -1966,7 +1966,7 @@ def create_attachment(
 )
 def get_attachment(
     attachment_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_clinical_attachment(db, attachment_id)
@@ -1983,7 +1983,7 @@ def get_attachment(
 def update_attachment(
     attachment_id: str,
     body: AttachmentUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_clinical_attachment(db, attachment_id)
@@ -2005,7 +2005,7 @@ def update_attachment(
 )
 def delete_attachment(
     attachment_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     record = ehr_service.get_clinical_attachment(db, attachment_id)
@@ -2025,7 +2025,7 @@ def list_patient_attachments(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -2048,7 +2048,7 @@ def get_patient_timeline(
     limit: int = Query(100, ge=1, le=500),
     event_type: str | None = Query(None),
     live: bool = Query(False, description="If true, aggregates from all EHR tables in real-time"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     _get_patient(db, patient_id, current_user.lab_id)
@@ -2067,7 +2067,7 @@ def get_patient_timeline(
 @router.get("/patient/{patient_id}")
 def get_patient_ehr(
     patient_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     patient = _get_patient(db, patient_id, current_user.lab_id)
@@ -2096,7 +2096,7 @@ def get_patient_ehr(
 @router.get("/patient/{patient_id}/summary")
 def get_patient_summary(
     patient_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     patient = _get_patient(db, patient_id, current_user.lab_id)

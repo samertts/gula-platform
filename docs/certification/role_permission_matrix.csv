@@ -1,0 +1,17 @@
+permission,master_admin,ministry_admin,organization_admin,directorate_admin,province_admin,security_officer,auditor,hospital_admin,phc_admin,lab_manager,admin,lab_admin,lab_supervisor,quality_manager,pathologist,doctor,technician,nurse,staff,cashier,receptionist,lab_staff,citizen,patient,api_client
+audit:read,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,.,Y,.,.,.,.,.,.,.,.,.,.,.
+dashboard:read,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,.,.,.
+lab:manage,Y,.,.,.,.,.,.,Y,Y,Y,Y,Y,Y,.,.,.,.,.,.,.,.,.,.,.,.
+lab:read,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,.,Y,Y,Y,Y,.,Y,.,.,Y
+orders:read,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,.,.,.
+orders:write,Y,.,.,.,.,.,.,Y,Y,Y,Y,Y,Y,.,.,.,Y,Y,Y,.,Y,Y,.,.,.
+patients:delete,Y,.,.,.,.,.,.,.,.,Y,Y,Y,.,.,.,.,.,.,.,.,.,.,.,.,.
+patients:read,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,.,Y,Y,.,Y,Y,.,Y,.
+patients:write,Y,.,.,.,.,.,.,Y,Y,Y,Y,Y,Y,.,.,.,.,Y,Y,.,Y,Y,.,.,.
+platform:manage_labs,Y,Y,Y,Y,Y,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+platform:manage_users,Y,Y,Y,Y,Y,Y,.,.,.,Y,Y,Y,.,.,.,.,.,.,.,.,.,.,.,.,.
+platform:view_stats,Y,Y,Y,Y,Y,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.
+results:read,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,Y,.,.,Y,.,Y,Y
+results:write,Y,.,.,.,.,.,.,Y,Y,Y,Y,Y,Y,.,Y,.,Y,.,Y,.,.,Y,.,.,.
+staff:manage,Y,.,.,.,.,.,.,Y,Y,Y,Y,Y,Y,.,.,.,.,.,.,.,.,.,.,.,.
+system:admin,Y,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.

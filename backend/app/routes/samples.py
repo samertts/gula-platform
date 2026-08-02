@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..security.rate_limit import get_client_ip
 from ..services import sample_service
 
@@ -50,7 +50,7 @@ class SampleUpdate(BaseModel):
 def create_sample(
     data: SampleCreate,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     return sample_service.create_sample(
@@ -68,7 +68,7 @@ def create_sample(
 
 @router.get("")
 def list_samples(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
     db: Session = Depends(get_db),
     status: str | None = None,
     skip: int = Query(0, ge=0),
@@ -80,7 +80,7 @@ def list_samples(
 @router.get("/{barcode}")
 def get_sample(
     barcode: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
     db: Session = Depends(get_db),
 ):
     return sample_service.get_sample(db, current_user.lab_id, barcode)
@@ -91,7 +91,7 @@ def update_sample(
     barcode: str,
     data: SampleUpdate,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:write")),
     db: Session = Depends(get_db),
 ):
     return sample_service.update_sample(

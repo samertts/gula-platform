@@ -69,7 +69,7 @@ from ..models.edge import (
     EdgeTask,
 )
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..security.rate_limit import rate_limit_public, rate_limit_user
 
 router = APIRouter(prefix="/edge", tags=["edge"])
@@ -333,7 +333,7 @@ def _resolve_agent_device(
 def register_device_endpoint(
     body: RegisterDeviceRequest,
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -370,7 +370,7 @@ def register_device_endpoint(
 def list_devices(
     request: Request,
     status_filter: str | None = Query(None, alias="status"),
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -386,7 +386,7 @@ def list_devices(
 def get_device(
     device_id: str,
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -421,7 +421,7 @@ def quarantine_device(
     device_id: str,
     request: Request,
     reason: str = Query(..., min_length=3, max_length=200),
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -440,7 +440,7 @@ def revoke_device(
     device_id: str,
     request: Request,
     reason: str = Query(..., min_length=3, max_length=200),
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -458,7 +458,7 @@ def revoke_device(
 def reinstate_device(
     device_id: str,
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -480,7 +480,7 @@ def device_kill_switch(
     device_id: str,
     request: Request,
     on: bool = Query(...),
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -503,7 +503,7 @@ def device_kill_switch(
 def submit_task_endpoint(
     body: TaskSubmitRequest,
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -544,7 +544,7 @@ def list_tasks(
     status_filter: str | None = Query(None, alias="status"),
     kind: str | None = Query(None, max_length=64),
     limit: int = Query(100, ge=1, le=500),
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -562,7 +562,7 @@ def list_tasks(
 def get_task(
     task_uid: str,
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -589,7 +589,7 @@ def cancel_task_endpoint(
     task_uid: str,
     request: Request,
     reason: str = Query("operator cancelled", min_length=3, max_length=200),
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -614,7 +614,7 @@ def cancel_task_endpoint(
 @router.get("/policy", response_model=PolicyView)
 def get_lab_policy(
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -627,7 +627,7 @@ def get_lab_policy(
 def update_lab_policy(
     body: PolicyUpdate,
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -657,7 +657,7 @@ def update_lab_policy(
 @router.get("/fleet/summary")
 def fleet_summary_endpoint(
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -689,7 +689,7 @@ def fleet_summary_endpoint(
 def register_model_endpoint(
     body: ModelRegisterRequest,
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -721,7 +721,7 @@ def register_model_endpoint(
 @router.get("/models")
 def list_models(
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -747,7 +747,7 @@ def update_model_status(
     model_uid: str,
     body: ModelStatusUpdate,
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()
@@ -772,7 +772,7 @@ def assign_model_endpoint(
     model_uid: str,
     body: ModelAssignRequest,
     request: Request,
-    user: LabUser = Depends(get_current_user),
+    user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     _kill_switch_guard()

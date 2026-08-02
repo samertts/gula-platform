@@ -21,6 +21,8 @@ from app.services.authorization_service import (
 )
 from sqlalchemy.orm import Session
 
+from shared.rbac.permissions import get_permissions_for_role as shared_get_permissions
+
 
 @pytest.fixture()
 def user(db: Session) -> User:
@@ -100,9 +102,7 @@ class TestCheckPermission:
 
     def test_legacy_role_string_grants(self, db):
         _make_permission(db, permission_id="patients:read", domain="patients")
-        admin = User(
-            full_name="Admin", role="admin", email="legacy@test.local", password_hash="x"
-        )
+        admin = User(full_name="Admin", role="admin", email="legacy@test.local", password_hash="x")
         db.add(admin)
         db.flush()
         role = Role(role_id="admin_role", name_en="x", name_ar="x")
@@ -251,7 +251,22 @@ class TestGetGrantedPermissions:
         assert all(p.startswith("lab.") for p in granted)
 
     def test_no_roles_empty(self, db, user):
-        assert AuthorizationCheckService(db).get_granted_permissions(user) == []
+        # user without role assignments falls back to legacy role-based
+        # permissions (get_granted_permissions must never drop user.role)
+        granted = AuthorizationCheckService(db).get_granted_permissions(user)
+        assert granted == sorted(shared_get_permissions("lab_manager"))
+
+    def test_no_role_no_assignments_empty(self, db):
+        # user with neither role nor assignments has no permissions at all
+        u = User(
+            full_name="None",
+            role=None,
+            email="none@test.local",
+            password_hash="x",
+        )
+        db.add(u)
+        db.flush()
+        assert AuthorizationCheckService(db).get_granted_permissions(u) == []
 
 
 class TestPolicyService:

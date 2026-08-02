@@ -544,7 +544,7 @@ class TestMfaWorkflow:
 class TestComplianceShapes:
     def test_audit_summary_shape(self, client, db, make_lab, make_lab_user):
         lab = make_lab()
-        user = make_lab_user(lab_id=lab.id, role="staff")
+        user = make_lab_user(lab_id=lab.id, role="quality_manager")
         headers = auth_headers(user.id, lab.id, user.role)
 
         r = client.get("/compliance/audit-summary", headers=headers)

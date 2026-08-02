@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..services.quality_control_service import (
     get_qc_summary,
     list_qc_records,
@@ -34,7 +34,7 @@ class QCBatchSubmit(BaseModel):
 @router.post("", status_code=201)
 def submit_qc(
     data: QCSubmit,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:write")),
     db: Session = Depends(get_db),
 ):
     return submit_single_qc(
@@ -56,7 +56,7 @@ def submit_qc(
 @router.post("/batch", status_code=201)
 def submit_qc_batch(
     data: QCBatchSubmit,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:write")),
     db: Session = Depends(get_db),
 ):
     return submit_batch_qc(
@@ -74,7 +74,7 @@ def list_qc(
     days: int = Query(7, ge=1, le=90),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     return list_qc_records(
@@ -91,7 +91,7 @@ def list_qc(
 @router.get("/summary")
 def qc_summary(
     days: int = Query(7, ge=1, le=90),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("results:read")),
     db: Session = Depends(get_db),
 ):
     return get_qc_summary(lab_id=current_user.lab_id, db=db, days=days)

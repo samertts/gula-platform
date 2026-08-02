@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..services import lab_service
 
 router = APIRouter(prefix="/labs", tags=["labs"])
@@ -61,7 +61,7 @@ class UpdateEmployeeRequest(BaseModel):
 
 @router.get("/me")
 def get_my_lab(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:read")),
     db: Session = Depends(get_db),
 ):
     return lab_service.get_lab(db, current_user.lab_id)
@@ -69,7 +69,7 @@ def get_my_lab(
 
 @router.get("/me/employees")
 def list_my_employees(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("staff:manage")),
     db: Session = Depends(get_db),
 ):
     employees = lab_service.list_employees(db, current_user.lab_id, current_user)
@@ -79,7 +79,7 @@ def list_my_employees(
 @router.post("/me/employees", status_code=201)
 def create_employee(
     data: CreateEmployeeRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("staff:manage")),
     db: Session = Depends(get_db),
 ):
     result = lab_service.create_employee(
@@ -92,7 +92,7 @@ def create_employee(
 def update_employee(
     employee_id: int,
     data: UpdateEmployeeRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("staff:manage")),
     db: Session = Depends(get_db),
 ):
     return lab_service.update_employee(
@@ -103,7 +103,7 @@ def update_employee(
 @router.put("/me")
 def update_my_lab(
     data: LabUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("lab:manage")),
     db: Session = Depends(get_db),
 ):
     result = lab_service.update_lab(

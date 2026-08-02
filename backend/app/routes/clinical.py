@@ -13,7 +13,7 @@ from app.clinical.terminology.models import (
 )
 from app.database import get_db
 from app.models.lab_user import LabUser
-from app.security.dependencies import get_current_user
+from app.security.dependencies import require_permission
 from app.services.clinical_service import (
     CDSService,
     ClinicalAIService,
@@ -114,7 +114,7 @@ def search_terminology_codes(
     status: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = TerminologyService.search_codes(
@@ -131,7 +131,7 @@ def search_terminology_codes(
 @router.post("/terminology/codes", status_code=201)
 def create_terminology_code(
     data: TerminologyCodeCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = TerminologyService.create_code(db, data.model_dump(exclude_none=True))
@@ -141,7 +141,7 @@ def create_terminology_code(
 @router.get("/terminology/codes/{code_id}")
 def get_terminology_code(
     code_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     obj = TerminologyService.get_code(db, code_id)
@@ -154,7 +154,7 @@ def get_terminology_code(
 def update_terminology_code(
     code_id: str,
     data: TerminologyCodeUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = TerminologyService.update_code(db, code_id, data.model_dump(exclude_none=True))
@@ -166,7 +166,7 @@ def update_terminology_code(
 @router.delete("/terminology/codes/{code_id}")
 def delete_terminology_code(
     code_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     ok = TerminologyService.delete_code(db, code_id)
@@ -180,7 +180,7 @@ def list_terminology_versions(
     system: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = TerminologyService.get_versions(db, system=system, skip=skip, limit=limit)
@@ -190,7 +190,7 @@ def list_terminology_versions(
 @router.post("/terminology/versions", status_code=201)
 def create_terminology_version(
     data: TerminologyVersionCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = TerminologyService.create_version(db, data.model_dump(exclude_none=True))
@@ -200,7 +200,7 @@ def create_terminology_version(
 @router.post("/terminology/mappings", status_code=201)
 def create_terminology_mapping(
     data: TerminologyMappingCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = TerminologyService.create_mapping(db, data.model_dump(exclude_none=True))
@@ -212,7 +212,7 @@ def list_value_sets(
     name: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = TerminologyService.get_value_sets(db, name=name, skip=skip, limit=limit)
@@ -222,7 +222,7 @@ def list_value_sets(
 @router.post("/terminology/value-sets", status_code=201)
 def create_value_set(
     data: ValueSetCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = TerminologyService.create_value_set(db, data.model_dump(exclude_none=True))
@@ -232,7 +232,7 @@ def create_value_set(
 @router.post("/terminology/value-set-members", status_code=201)
 def create_value_set_member(
     data: ValueSetMemberCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = TerminologyService.create_value_set_member(db, data.model_dump(exclude_none=True))
@@ -243,7 +243,7 @@ def create_value_set_member(
 def list_code_systems(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = TerminologyService.get_code_systems(db, skip=skip, limit=limit)
@@ -253,7 +253,7 @@ def list_code_systems(
 @router.post("/terminology/code-systems", status_code=201)
 def create_code_system(
     data: CodeSystemCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = TerminologyService.create_code_system(db, data.model_dump(exclude_none=True))
@@ -266,7 +266,7 @@ def search_icd10(
     chapter: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = TerminologyService.search_icd10(
@@ -285,7 +285,7 @@ def search_loinc(
     class_name: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = TerminologyService.search_loinc(
@@ -303,7 +303,7 @@ def search_snomed(
     q: str | None = Query(None, description="Search by concept ID or name"),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = TerminologyService.search_snomed(db, query=q, skip=skip, limit=limit)
@@ -315,7 +315,7 @@ def fhir_expand_value_set(
     url: str | None = Query(None, description="Value set URL or OID"),
     filter: str | None = Query(None, alias="filter"),
     count: int = Query(50, ge=1, le=1000),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     vs_filters = [ValueSet.is_deleted.is_(False)]
@@ -361,7 +361,7 @@ def fhir_expand_value_set(
 def fhir_lookup_code(
     system: str = Query(..., description="Code system URI"),
     code: str = Query(..., description="Code to look up"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     obj = (
@@ -510,7 +510,7 @@ def list_guidelines(
     specialty: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = ClinicalKnowledgeService.list_guidelines(
@@ -526,7 +526,7 @@ def list_guidelines(
 @router.post("/knowledge/guidelines", status_code=201)
 def create_guideline(
     data: GuidelineCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.create_guideline(db, data.model_dump(exclude_none=True))
@@ -536,7 +536,7 @@ def create_guideline(
 @router.get("/knowledge/guidelines/{guideline_id}")
 def get_guideline(
     guideline_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.get_guideline(db, guideline_id)
@@ -549,7 +549,7 @@ def get_guideline(
 def update_guideline(
     guideline_id: str,
     data: GuidelineUpdate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.update_guideline(
@@ -568,7 +568,7 @@ def list_protocols(
     department: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = ClinicalKnowledgeService.list_protocols(
@@ -584,7 +584,7 @@ def list_protocols(
 @router.post("/knowledge/protocols", status_code=201)
 def create_protocol(
     data: ProtocolCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.create_protocol(db, data.model_dump(exclude_none=True))
@@ -594,7 +594,7 @@ def create_protocol(
 @router.get("/knowledge/protocols/{protocol_id}")
 def get_protocol(
     protocol_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.get_protocol(db, protocol_id)
@@ -607,7 +607,7 @@ def get_protocol(
 def update_protocol(
     protocol_id: str,
     data: ProtocolCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.update_protocol(
@@ -626,7 +626,7 @@ def list_pathways(
     condition: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = ClinicalKnowledgeService.list_pathways(
@@ -642,7 +642,7 @@ def list_pathways(
 @router.post("/knowledge/pathways", status_code=201)
 def create_pathway(
     data: PathwayCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.create_pathway(db, data.model_dump(exclude_none=True))
@@ -652,7 +652,7 @@ def create_pathway(
 @router.get("/knowledge/pathways/{pathway_id}")
 def get_pathway(
     pathway_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.get_pathway(db, pathway_id)
@@ -665,7 +665,7 @@ def get_pathway(
 def update_pathway(
     pathway_id: str,
     data: PathwayCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.update_pathway(
@@ -682,7 +682,7 @@ def update_pathway(
 def create_guideline_approval(
     guideline_id: str,
     data: GuidelineApprovalCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     data_dict = data.model_dump(exclude_none=True)
@@ -697,7 +697,7 @@ def list_standing_orders(
     active_only: bool = True,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = ClinicalKnowledgeService.list_standing_orders(
@@ -713,7 +713,7 @@ def list_standing_orders(
 @router.post("/knowledge/standing-orders", status_code=201)
 def create_standing_order(
     data: StandingOrderCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = ClinicalKnowledgeService.create_standing_order(db, data.model_dump(exclude_none=True))
@@ -726,7 +726,7 @@ def list_recommendations(
     evidence_level: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = ClinicalKnowledgeService.get_recommendations(
@@ -791,7 +791,7 @@ class CareBundleComplianceRequest(BaseModel):
 @router.post("/cds/order-set-recommendations")
 def get_order_set_recommendations(
     data: OrderSetRecommendationRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     results = CDSService.get_order_set_recommendations(
@@ -805,7 +805,7 @@ def get_order_set_recommendations(
 @router.post("/cds/contraindication-check")
 def check_contraindications(
     data: ContraindicationCheckRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     results = CDSService.check_contraindications(
@@ -819,7 +819,7 @@ def check_contraindications(
 @router.post("/cds/duplicate-order-check")
 def check_duplicate_order(
     data: DuplicateOrderCheckRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     results = CDSService.check_duplicate_order(
@@ -834,7 +834,7 @@ def check_duplicate_order(
 @router.post("/cds/drug-interaction-check")
 def check_drug_interactions(
     data: DrugInteractionCheckRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     results = CDSService.check_drug_interactions(
@@ -847,7 +847,7 @@ def check_drug_interactions(
 @router.post("/cds/alerts", status_code=201)
 def create_clinical_alert(
     data: ClinicalAlertCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = CDSService.create_alert(db, data.model_dump(exclude_none=True))
@@ -861,7 +861,7 @@ def get_active_alerts(
     severity: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = CDSService.get_active_alerts(
@@ -878,7 +878,7 @@ def get_active_alerts(
 @router.put("/cds/alerts/{alert_id}/acknowledge")
 def acknowledge_alert(
     alert_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = CDSService.acknowledge_alert(db, alert_id, current_user.id)
@@ -892,7 +892,7 @@ def get_patient_reminders(
     patient_id: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = CDSService.get_patient_reminders(
@@ -907,7 +907,7 @@ def get_patient_reminders(
 @router.post("/cds/care-bundle-compliance")
 def check_care_bundle_compliance(
     data: CareBundleComplianceRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     result = CDSService.check_care_bundle_compliance(
@@ -1039,7 +1039,7 @@ def list_quality_indicators(
     active_only: bool = True,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = QualityService.list_indicators(
@@ -1056,7 +1056,7 @@ def list_quality_indicators(
 @router.post("/quality/indicators", status_code=201)
 def create_quality_indicator(
     data: QualityIndicatorCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = QualityService.create_indicator(db, data.model_dump(exclude_none=True))
@@ -1066,7 +1066,7 @@ def create_quality_indicator(
 @router.post("/quality/measurements", status_code=201)
 def create_indicator_measurement(
     data: IndicatorMeasurementCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = QualityService.record_measurement(db, data.model_dump(exclude_none=True))
@@ -1080,7 +1080,7 @@ def list_audit_records(
     audit_type: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = QualityService.get_audit_records(
@@ -1097,7 +1097,7 @@ def list_audit_records(
 @router.post("/quality/audit-records", status_code=201)
 def create_audit_record(
     data: dict[str, Any],
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = QualityService.create_audit_record(db, data, audited_by=current_user.id)
@@ -1107,7 +1107,7 @@ def create_audit_record(
 @router.post("/quality/compliance-checks", status_code=201)
 def create_compliance_check(
     data: ComplianceCheckCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = QualityService.create_compliance_check(
@@ -1124,7 +1124,7 @@ def list_compliance_checks(
     department: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = QualityService.get_compliance_checks(
@@ -1143,7 +1143,7 @@ def list_benchmarks(
     year: int | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = QualityService.get_benchmarks(
@@ -1159,7 +1159,7 @@ def list_benchmarks(
 @router.post("/quality/mortality-reviews", status_code=201)
 def create_mortality_review(
     data: MortalityReviewCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = QualityService.create_mortality_review(
@@ -1173,7 +1173,7 @@ def create_mortality_review(
 @router.post("/quality/incident-reports", status_code=201)
 def create_incident_report(
     data: IncidentReportCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = QualityService.create_incident_report(
@@ -1187,7 +1187,7 @@ def create_incident_report(
 @router.post("/quality/safety-events", status_code=201)
 def create_safety_event(
     data: PatientSafetyEventCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     obj = QualityService.create_safety_event(
@@ -1201,7 +1201,7 @@ def create_safety_event(
 @router.get("/quality/dashboard")
 def get_quality_dashboard(
     department: str | None = None,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     kpis = QualityService.get_kpi_summary(db, department=department)
@@ -1238,7 +1238,7 @@ class CohortCreate(BaseModel):
 @router.post("/research/registries", status_code=201)
 def create_registry(
     data: RegistryCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return ResearchService.create_registry(db, data.model_dump(exclude_none=True))
@@ -1249,7 +1249,7 @@ def list_registries(
     registry_type: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = ResearchService.list_registries(
@@ -1269,7 +1269,7 @@ def list_registries(
 @router.post("/research/cohorts", status_code=201)
 def create_cohort(
     data: CohortCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return ResearchService.create_cohort(db, data.model_dump(exclude_none=True))
@@ -1279,7 +1279,7 @@ def create_cohort(
 def list_cohorts(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items, total = ResearchService.list_cohorts(db, skip=skip, limit=limit)
@@ -1295,7 +1295,7 @@ def list_cohorts(
 def export_deidentified_dataset(
     cohort_id: str | None = None,
     registry_id: str | None = None,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return ResearchService.export_deidentified_dataset(
@@ -1340,7 +1340,7 @@ class ExplainabilityRequest(BaseModel):
 @router.post("/ai/copilot")
 def clinical_copilot(
     data: ClinicalCopilotRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return ClinicalAIService.clinical_copilot(
@@ -1353,7 +1353,7 @@ def clinical_copilot(
 @router.post("/ai/risk-prediction")
 def predict_risk(
     data: RiskPredictionRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return ClinicalAIService.predict_risk(
@@ -1367,7 +1367,7 @@ def predict_risk(
 @router.post("/ai/care-gaps")
 def detect_care_gaps(
     data: CareGapRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return ClinicalAIService.detect_care_gaps(
@@ -1380,7 +1380,7 @@ def detect_care_gaps(
 @router.post("/ai/diagnostic-assistant")
 def diagnostic_assistant(
     data: DiagnosticAssistantRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return ClinicalAIService.diagnostic_assistant(
@@ -1394,7 +1394,7 @@ def diagnostic_assistant(
 @router.post("/ai/explain")
 def get_explanation(
     data: ExplainabilityRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return ClinicalAIService.get_explanation(

@@ -34,7 +34,7 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..services.audit_service import get_latest_anchor, verify_audit_chain
 
 logger = logging.getLogger("gula.compliance")
@@ -46,7 +46,7 @@ _COMPLIANCE_ROLES = {"admin", "master_admin", "province_admin", "lab_admin"}
 
 
 @router.get("/info", summary="System information for government audit")
-def system_info(current_user: LabUser = Depends(get_current_user)):
+def system_info(current_user: LabUser = Depends(require_permission("audit:read"))):
     """Returns comprehensive system information for government compliance verification.
     المعلومات الكاملة للنظام للتحقق من الامتثال الحكومي.
 
@@ -139,7 +139,7 @@ def system_info(current_user: LabUser = Depends(get_current_user)):
 
 @router.get("/audit-summary", summary="Audit summary for compliance (authenticated)")
 def audit_summary(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("audit:read")),
     db: Session = Depends(get_db),
 ):
     """Returns audit log statistics for compliance reporting.
@@ -179,7 +179,7 @@ def audit_summary(
 @router.get("/fhir/patient/{patient_id}", summary="FHIR Patient resource (basic)")
 def get_fhir_patient(
     patient_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Returns patient data in HL7 FHIR R4 Patient resource format.
@@ -255,7 +255,7 @@ def get_fhir_patient(
 @router.get("/fhir/observation/{order_id}", summary="FHIR Observation resource (basic)")
 def get_fhir_observations(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Returns lab results in HL7 FHIR R4 Observation bundle format.
@@ -354,7 +354,7 @@ def get_fhir_observations(
 @router.get("/fhir/diagnostic-report/{order_id}", summary="FHIR DiagnosticReport resource")
 def get_fhir_diagnostic_report(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Returns lab order as HL7 FHIR R4 DiagnosticReport resource.
@@ -465,7 +465,7 @@ def get_fhir_diagnostic_report(
 @router.get("/fhir/service-request/{order_id}", summary="FHIR ServiceRequest resource")
 def get_fhir_service_request(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Returns lab order as HL7 FHIR R4 ServiceRequest resource.
@@ -550,7 +550,7 @@ def get_fhir_service_request(
 
 @router.get("/dhis2/aggregate", summary="DHIS2 aggregate data export for MoH reporting")
 def get_dhis2_aggregate(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Returns aggregate lab statistics in DHIS2-compatible format.
@@ -667,7 +667,7 @@ def get_dhis2_aggregate(
 @router.get("/audit-integrity", summary="Verify audit log chain integrity (admin)")
 def audit_integrity(
     limit: int = 1000,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("audit:read")),
     db: Session = Depends(get_db),
 ):
     """Verifies the cryptographic hash chain of audit log records.
@@ -698,7 +698,7 @@ def audit_integrity(
 
 @router.get("/security-report", summary="Security posture report for government audit")
 def security_report(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("audit:read")),
     db: Session = Depends(get_db),
 ):
     """Returns a structured security posture report for government and ISO 27001 auditors.
@@ -919,7 +919,7 @@ def time_sync_status():
 
 @router.get("/system-status", summary="Full system health and security status dashboard")
 def system_status(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("audit:read")),
     db: Session = Depends(get_db),
 ):
     """Comprehensive system status for government and compliance dashboards.

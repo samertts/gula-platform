@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
-from app.security.dependencies import get_current_user
+from app.security.dependencies import require_permission
 
 logger = logging.getLogger("gula.routes.clinical_documentation")
 
@@ -164,7 +164,7 @@ def _store_document(doc_type: str, data: dict) -> dict:
 @router.post("/soap-notes", status_code=201)
 def create_soap_note(
     data: SoapNoteCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return _store_document(
@@ -180,7 +180,7 @@ def create_soap_note(
 @router.post("/progress-notes", status_code=201)
 def create_progress_note(
     data: ProgressNoteCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return _store_document(
@@ -196,7 +196,7 @@ def create_progress_note(
 @router.post("/nursing-notes", status_code=201)
 def create_nursing_note(
     data: NursingNoteCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return _store_document(
@@ -212,7 +212,7 @@ def create_nursing_note(
 @router.post("/consultation-notes", status_code=201)
 def create_consultation_note(
     data: ConsultationNoteCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return _store_document(
@@ -228,7 +228,7 @@ def create_consultation_note(
 @router.post("/operation-notes", status_code=201)
 def create_operation_note(
     data: OperationNoteCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return _store_document(
@@ -244,7 +244,7 @@ def create_operation_note(
 @router.post("/emergency-notes", status_code=201)
 def create_emergency_note(
     data: EmergencyNoteCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return _store_document(
@@ -264,7 +264,7 @@ def list_documents(
     department: str | None = None,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items = list(_DOCUMENTS.values())
@@ -282,7 +282,7 @@ def list_documents(
 @router.get("/{document_id}")
 def get_document(
     document_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     doc = _DOCUMENTS.get(document_id)
@@ -300,7 +300,7 @@ def get_document(
 def list_structured_templates(
     document_type: str | None = None,
     department: str | None = None,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     items = list(_TEMPLATES.values())
@@ -314,7 +314,7 @@ def list_structured_templates(
 @router.post("/templates", status_code=201)
 def create_structured_template(
     data: StructuredTemplateCreate,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     if data.document_type not in _DOCUMENT_TYPES and data.document_type != "general":
@@ -342,7 +342,7 @@ def create_structured_template(
 @router.post("/sign")
 def sign_document(
     data: SignDocumentRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     doc = _DOCUMENTS.get(data.document_id)
@@ -380,7 +380,7 @@ def sign_document(
 @router.get("/{document_id}/versions")
 def get_document_version_history(
     document_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     if document_id not in _DOCUMENTS:

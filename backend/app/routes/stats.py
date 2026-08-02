@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..services.stats_service import (
     daily_trends,
     flag_distribution,
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/stats", tags=["statistics"])
 @router.get("/trends/daily")
 def daily_trends_endpoint(
     days: int = Query(30, ge=1, le=365),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     return daily_trends(current_user.lab_id, days, db)
@@ -29,7 +29,7 @@ def daily_trends_endpoint(
 def test_frequency_endpoint(
     days: int = Query(30, ge=1, le=365),
     limit: int = Query(15, ge=1, le=50),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     return test_frequency(current_user.lab_id, days, limit, db)
@@ -38,7 +38,7 @@ def test_frequency_endpoint(
 @router.get("/trends/flags")
 def flag_distribution_endpoint(
     days: int = Query(30, ge=1, le=365),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     return flag_distribution(current_user.lab_id, days, db)
@@ -47,7 +47,7 @@ def flag_distribution_endpoint(
 @router.get("/trends/patients")
 def patient_growth_endpoint(
     days: int = Query(90, ge=7, le=365),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     return patient_growth(current_user.lab_id, days, db)
@@ -55,7 +55,7 @@ def patient_growth_endpoint(
 
 @router.get("/summary")
 def stats_summary_endpoint(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     return stats_summary(current_user.lab_id, db)
@@ -64,7 +64,7 @@ def stats_summary_endpoint(
 @router.get("/turnaround")
 def turnaround_times_endpoint(
     days: int = Query(30, ge=1, le=90),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("dashboard:read")),
     db: Session = Depends(get_db),
 ):
     return turnaround_times(current_user.lab_id, days, db)

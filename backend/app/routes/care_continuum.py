@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_permission
 from ..services.care_continuum_service import (
     accept_referral,
     complete_referral,
@@ -112,7 +112,7 @@ def _practitioner_id(user: LabUser) -> str | None:
 @router.post("/primary-care-encounters", summary="Create primary care encounter")
 def api_create_primary_care_encounter(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_primary_care_encounter(db, data, _lab_id(current_user))
@@ -124,7 +124,7 @@ def api_create_primary_care_encounter(
 )
 def api_get_primary_care_encounter(
     encounter_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     result = get_primary_care_encounter(db, encounter_id)
@@ -140,7 +140,7 @@ def api_list_primary_care_encounters(
     practitioner_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_primary_care_encounters(
@@ -161,7 +161,7 @@ def api_list_primary_care_encounters(
 def api_update_primary_care_encounter(
     encounter_id: str,
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     from ..care_continuum.models.primary_care import PrimaryCareEncounter
@@ -187,7 +187,7 @@ def api_update_primary_care_encounter(
 @router.post("/family-medicine-records", summary="Create family medicine record")
 def api_create_family_medicine_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_family_medicine_record(db, data)
@@ -201,7 +201,7 @@ def api_list_family_medicine_records(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_family_medicine_records(db, patient_id, _lab_id(current_user), skip, limit)
@@ -210,7 +210,7 @@ def api_list_family_medicine_records(
 @router.post("/community-clinic-records", summary="Create community clinic record")
 def api_create_community_clinic_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_community_clinic_record(db, data)
@@ -224,7 +224,7 @@ def api_list_community_clinic_records(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_community_clinic_records(db, patient_id, _lab_id(current_user), skip, limit)
@@ -233,7 +233,7 @@ def api_list_community_clinic_records(
 @router.post("/health-assessments", summary="Create health assessment")
 def api_create_health_assessment(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_health_assessment(db, data)
@@ -244,7 +244,7 @@ def api_list_health_assessments(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_health_assessments(db, patient_id, _lab_id(current_user), skip, limit)
@@ -253,7 +253,7 @@ def api_list_health_assessments(
 @router.post("/preventive-care-records", summary="Create preventive care record")
 def api_create_preventive_care_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_preventive_care_record(db, data)
@@ -267,7 +267,7 @@ def api_list_preventive_care_records(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_preventive_care_records(db, patient_id, _lab_id(current_user), skip, limit)
@@ -281,7 +281,7 @@ def api_list_preventive_care_records(
 @router.post("/referrals", summary="Create referral request")
 def api_create_referral(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_referral_request(db, data)
@@ -290,7 +290,7 @@ def api_create_referral(
 @router.put("/referrals/{referral_id}/accept", summary="Accept referral")
 def api_accept_referral(
     referral_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     result = accept_referral(db, referral_id, _lab_id(current_user))
@@ -303,7 +303,7 @@ def api_accept_referral(
 def api_reject_referral(
     referral_id: str,
     reason: str = Query(..., description="Reason for rejection"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     result = reject_referral(db, referral_id, reason)
@@ -318,7 +318,7 @@ def api_reject_referral(
 )
 def api_complete_referral(
     referral_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     result = complete_referral(db, referral_id)
@@ -336,7 +336,7 @@ def api_list_referrals(
     direction: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_referrals(
@@ -358,7 +358,7 @@ def api_list_referrals(
 )
 def api_get_referral_timeline(
     referral_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return get_referral_timeline(db, referral_id)
@@ -370,7 +370,7 @@ def api_get_referral_timeline(
 )
 def api_create_cross_org_referral(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_cross_org_referral(db, data)
@@ -382,7 +382,7 @@ def api_create_cross_org_referral(
 )
 def api_create_referral_response(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_referral_response(db, data)
@@ -397,7 +397,7 @@ def api_get_referral_analytics(
     organization_id: str | None = Query(None),
     start_date: date | None = Query(None),
     end_date: date | None = Query(None),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return get_referral_analytics(db, facility_id, organization_id, start_date, end_date)
@@ -411,7 +411,7 @@ def api_get_referral_analytics(
 @router.post("/care-journeys", summary="Create care journey")
 def api_create_care_journey(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_care_journey(db, data)
@@ -420,7 +420,7 @@ def api_create_care_journey(
 @router.get("/care-journeys/{journey_id}", summary="Get care journey")
 def api_get_care_journey(
     journey_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     result = get_care_journey(db, journey_id)
@@ -434,7 +434,7 @@ def api_list_care_journeys(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_care_journeys(db, patient_id, _lab_id(current_user), skip, limit)
@@ -443,7 +443,7 @@ def api_list_care_journeys(
 @router.post("/follow-up-plans", summary="Create follow-up plan")
 def api_create_follow_up_plan(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_follow_up_plan(db, data)
@@ -454,7 +454,7 @@ def api_list_follow_up_plans(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_follow_up_plans(db, patient_id, _lab_id(current_user), skip, limit)
@@ -463,7 +463,7 @@ def api_list_follow_up_plans(
 @router.post("/care-coordination", summary="Create care coordination")
 def api_create_care_coordination(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_care_coordination(db, data)
@@ -474,7 +474,7 @@ def api_list_care_coordination(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_care_coordination(db, patient_id, _lab_id(current_user), skip, limit)
@@ -483,7 +483,7 @@ def api_list_care_coordination(
 @router.post("/transitions-of-care", summary="Create transition of care")
 def api_create_transition_of_care(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_transition_of_care(db, data)
@@ -492,7 +492,7 @@ def api_create_transition_of_care(
 @router.post("/clinical-handovers", summary="Create clinical handover")
 def api_create_clinical_handover(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_clinical_handover(db, data)
@@ -501,7 +501,7 @@ def api_create_clinical_handover(
 @router.post("/home-care-plans", summary="Create home care plan")
 def api_create_home_care_plan(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_home_care_plan(db, data)
@@ -512,7 +512,7 @@ def api_list_home_care_plans(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_home_care_plans(db, patient_id, _lab_id(current_user), skip, limit)
@@ -521,7 +521,7 @@ def api_list_home_care_plans(
 @router.post("/community-care-records", summary="Create community care record")
 def api_create_community_care_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_community_care_record(db, data)
@@ -535,7 +535,7 @@ def api_list_community_care_records(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_community_care_records(db, patient_id, _lab_id(current_user), skip, limit)
@@ -552,7 +552,7 @@ def api_list_community_care_records(
 )
 def api_create_chronic_disease_registry(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_chronic_disease_registry(db, data)
@@ -567,7 +567,7 @@ def api_list_chronic_disease_registry(
     disease_type: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_chronic_disease_registry(
@@ -588,7 +588,7 @@ def api_get_disease_specific_registry(
     disease_type: str,
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     from ..services.care_continuum_service import get_disease_specific_registry
@@ -602,7 +602,7 @@ def api_get_disease_specific_registry(
 )
 def api_create_disease_management_plan(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_disease_management_plan(db, data)
@@ -616,7 +616,7 @@ def api_list_disease_management_plans(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_disease_management_plans(db, patient_id, _lab_id(current_user), skip, limit)
@@ -628,7 +628,7 @@ def api_list_disease_management_plans(
 )
 def api_create_risk_stratification(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_risk_stratification(db, data)
@@ -642,7 +642,7 @@ def api_list_risk_stratifications(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_risk_stratifications(db, patient_id, _lab_id(current_user), skip, limit)
@@ -654,7 +654,7 @@ def api_list_risk_stratifications(
 )
 def api_create_self_monitoring_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_self_monitoring_record(db, data)
@@ -668,7 +668,7 @@ def api_create_self_monitoring_record(
 @router.post("/pregnancy-records", summary="Create pregnancy record")
 def api_create_pregnancy_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_pregnancy_record(db, data)
@@ -680,7 +680,7 @@ def api_create_pregnancy_record(
 )
 def api_get_pregnancy_record(
     pregnancy_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     result = get_pregnancy_record(db, pregnancy_id)
@@ -694,7 +694,7 @@ def api_list_pregnancy_records(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_pregnancy_records(db, patient_id, _lab_id(current_user), skip, limit)
@@ -706,7 +706,7 @@ def api_list_pregnancy_records(
 )
 def api_create_antenatal_care_visit(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_antenatal_care_visit(db, data)
@@ -715,7 +715,7 @@ def api_create_antenatal_care_visit(
 @router.post("/delivery-records", summary="Create delivery record")
 def api_create_delivery_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_delivery_record(db, data)
@@ -727,7 +727,7 @@ def api_create_delivery_record(
 )
 def api_create_postnatal_care_visit(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_postnatal_care_visit(db, data)
@@ -736,7 +736,7 @@ def api_create_postnatal_care_visit(
 @router.post("/growth-monitoring", summary="Create growth monitoring record")
 def api_create_growth_monitoring(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_growth_monitoring(db, data)
@@ -748,7 +748,7 @@ def api_create_growth_monitoring(
 )
 def api_create_breastfeeding_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_breastfeeding_record(db, data)
@@ -760,7 +760,7 @@ def api_create_breastfeeding_record(
 )
 def api_create_child_development_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_child_development_record(db, data)
@@ -774,7 +774,7 @@ def api_create_child_development_record(
 @router.post("/vaccination-records", summary="Create vaccination record")
 def api_create_vaccination_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_vaccination_record(db, data)
@@ -788,7 +788,7 @@ def api_list_vaccination_records(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_vaccination_records(db, patient_id, _lab_id(current_user), skip, limit)
@@ -800,7 +800,7 @@ def api_list_vaccination_records(
 )
 def api_create_immunization_schedule(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_immunization_schedule(db, data)
@@ -814,7 +814,7 @@ def api_list_immunization_schedules(
     patient_id: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_immunization_schedules(db, patient_id, _lab_id(current_user), skip, limit)
@@ -825,7 +825,7 @@ def api_list_immunization_schedules(
     summary="Get missed vaccinations",
 )
 def api_get_missed_vaccinations(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return get_missed_vaccinations(db, _lab_id(current_user))
@@ -834,7 +834,7 @@ def api_get_missed_vaccinations(
 @router.post("/reminder-schedules", summary="Create reminder schedule")
 def api_create_reminder_schedule(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_reminder_schedule(db, data)
@@ -845,7 +845,7 @@ def api_create_reminder_schedule(
     summary="Get immunization coverage stats",
 )
 def api_get_immunization_coverage(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return get_immunization_coverage(db, _lab_id(current_user))
@@ -857,7 +857,7 @@ def api_get_immunization_coverage(
 )
 def api_create_cold_chain_monitor(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_cold_chain_monitor(db, data)
@@ -871,7 +871,7 @@ def api_create_cold_chain_monitor(
 @router.post("/health-programs", summary="Create health program")
 def api_create_health_program(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_health_program(db, data)
@@ -881,7 +881,7 @@ def api_create_health_program(
 def api_list_health_programs(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_health_programs(db, _lab_id(current_user), skip, limit)
@@ -893,7 +893,7 @@ def api_list_health_programs(
 )
 def api_create_program_enrollment(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_program_enrollment(db, data)
@@ -905,7 +905,7 @@ def api_create_program_enrollment(
 )
 def api_create_screening_campaign(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_screening_campaign(db, data)
@@ -918,7 +918,7 @@ def api_create_screening_campaign(
 def api_list_screening_campaigns(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_screening_campaigns(db, _lab_id(current_user), skip, limit)
@@ -927,7 +927,7 @@ def api_list_screening_campaigns(
 @router.post("/community-visits", summary="Create community visit")
 def api_create_community_visit(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_community_visit(db, data)
@@ -939,7 +939,7 @@ def api_create_community_visit(
 )
 def api_create_school_health_visit(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_school_health_visit(db, data)
@@ -951,7 +951,7 @@ def api_create_school_health_visit(
 )
 def api_create_occupational_health_record(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_occupational_health_record(db, data)
@@ -963,7 +963,7 @@ def api_create_occupational_health_record(
 )
 def api_create_health_promotion_activity(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_health_promotion_activity(db, data)
@@ -977,7 +977,7 @@ def api_create_health_promotion_activity(
 @router.post("/patient-tasks", summary="Create patient task")
 def api_create_patient_task(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_patient_task(db, data)
@@ -990,7 +990,7 @@ def api_list_patient_tasks(
     task_type: str | None = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return list_patient_tasks(
@@ -1010,7 +1010,7 @@ def api_list_patient_tasks(
 )
 def api_create_self_follow_up_task(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_self_follow_up_task(db, data)
@@ -1022,7 +1022,7 @@ def api_create_self_follow_up_task(
 )
 def api_create_educational_material_assignment(
     data: dict,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     return create_educational_material_assignment(db, data)
@@ -1039,7 +1039,7 @@ def api_create_educational_material_assignment(
 )
 def api_detect_care_gaps(
     patient_id: str,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     return detect_care_gaps(db, patient_id, _lab_id(current_user))
@@ -1056,7 +1056,7 @@ def api_detect_care_gaps(
 )
 def api_coordinate_ehr_immunization(
     ehr_record_id: str = Query(..., description="EHR ImmunizationRecord ID"),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
     from ..ehr.models.immunization import ImmunizationRecord
