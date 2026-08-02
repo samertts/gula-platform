@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-08-02T09:50:22.945600+00:00",
+  "generated_at": "2026-08-02T10:55:14.603753+00:00",
   "repo": {
     "name": "gula-platform",
     "root": "/home/samertts/workspace/projects/gula-platform",
-    "git_head": "b9e3629f test(parity): certify backend-frontend parity (PROGRAM-06)"
+    "git_head": "dd1a4b27 fix(identity): bridge sync DB to async NIAM, audit lifecycle fully (PROGRAM-05)"
   },
   "counts": {
     "modules": {
       "backend/app": {
         "python_files": 1788,
-        "lines": 264883
+        "lines": 265277
       },
       "shared": {
         "python_files": 113,
@@ -49,14 +49,14 @@
     },
     "models": 28,
     "tests": {
-      "backend/tests": 151,
+      "backend/tests": 152,
       "tests": 0,
       "shared": 0,
       "security/tests": 10,
       "frontend-v3": 9
     },
     "docs": {
-      "docs_markdown_files": 546,
+      "docs_markdown_files": 551,
       "adr_count": 52,
       "constitution_docs": 47
     },
@@ -103,7 +103,7 @@
     "PROGRAM-07M-REPORT"
   ],
   "source_freshness": {
-    "newest_source_mtime": 1785664196.591155,
-    "brain_mtime": 1785662994.6805105
+    "newest_source_mtime": 1785667906.3366883,
+    "brain_mtime": 1785664228.9521716
   }
 }
