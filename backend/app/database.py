@@ -6,14 +6,13 @@ import os
 import threading
 import time
 
+from fastapi import Request
 from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from .config import DATABASE_URL, READ_REPLICA_ENABLED, READ_REPLICA_URL
 
 logger = logging.getLogger("gula.database")
-
-from fastapi import Request
 
 # ── Request correlation context ───────────────────────────────────────────────
 # Set by middleware / auth dependency so every DB error log carries full context:
