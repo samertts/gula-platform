@@ -234,7 +234,6 @@ class Bulkhead:
         pass
 
     def __init__(self, max_concurrent: int, name: str = "bulkhead"):
-        self._sem = asyncio.Semaphore(max_concurrent) if False else None
         self._max = max_concurrent
         self._count = 0
         self._name = name
