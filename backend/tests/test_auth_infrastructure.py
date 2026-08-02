@@ -512,6 +512,61 @@ def test_privileged_mfa_challenge_rejects_wrong_code(client, db):
     assert resp2.status_code == 400, resp2.text
 
 
+def test_db_driven_mfa_roles_cover_auditor(client, db):
+    """Roles with requires_mfa=True in the roles table must be challenged even
+    when they are outside the legacy hardcoded privileged set."""
+    from app.models.authorization import Role
+    from app.models.lab import Lab
+    from app.models.lab_user import LabUser
+    from app.models.mfa_device import MFADevice
+
+    from shared.auth.mfa import generate_totp_secret
+
+    role = db.query(Role).filter(Role.role_id == "auditor").first()
+    if not role:
+        role = Role(
+            role_id="auditor",
+            name_en="Auditor",
+            name_ar="مدقق",
+            level="70",
+            requires_mfa=True,
+            is_active=True,
+        )
+        db.add(role)
+        db.flush()
+
+    lab = db.query(Lab).filter(Lab.id == 1).first()
+    user = LabUser(
+        lab_id=lab.id,
+        email="audit@mfa.gula",
+        name="System Auditor",
+        password_hash=hash_password("password123"),
+        role="auditor",
+        is_active=True,
+    )
+    db.add(user)
+    db.flush()
+    secret = generate_totp_secret()
+    db.add(
+        MFADevice(
+            user_id=user.id,
+            device_type="totp",
+            device_name="Test Auth",
+            secret=secret,
+            is_active=True,
+            is_primary=True,
+        )
+    )
+    db.commit()
+
+    resp = client.post("/login", json={"email": "audit@mfa.gula", "password": "password123"})
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["mfa_pending"] is True, body
+    assert body["mfa_session"]
+    assert "token" not in body
+
+
 def test_privileged_mfa_challenge_rejects_bogus_session(client, db):
     resp = client.post(
         "/mfa-verify", json={"mfa_session": "not-a-real-session", "code": "123456"}

@@ -189,7 +189,25 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     # ── Enforce MFA for privileged roles ─────────────────────────────────────
+    # Roles requiring MFA are defined declaratively in bootstrap (roles.py
+    # RoleDef.requires_mfa) and persisted on Role.requires_mfa. Fall back to
+    # the hardcoded set only when the roles table has not been seeded yet
+    # (fresh deployment before bootstrap), so enforcement never silently
+    # weakens after seeding.
     privileged_roles = {"master_admin", "ministry_admin", "province_admin"}
+    try:
+        from ..models.authorization import Role as RoleModel
+
+        mfa_roles = (
+            db.query(RoleModel.role_id)
+            .filter(RoleModel.requires_mfa.is_(True), RoleModel.is_active.is_(True))
+            .all()
+        )
+        if mfa_roles:
+            privileged_roles = {r[0] for r in mfa_roles}
+    except Exception:
+        # roles table missing (pre-bootstrap) — keep the hardcoded fallback
+        pass
     if user.role in privileged_roles:
         from ..security.mfa_service import MFAService
 
