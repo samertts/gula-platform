@@ -172,3 +172,29 @@ class TestGetJsonMetrics:
         metrics = metrics_service.get_json_metrics(db_session, lab_id=None, is_wide=True)
         assert "ok" in metrics["redis"]
         assert "ping_ms" in metrics["redis"]
+
+
+class TestBuildHealthStatus:
+    def test_ready_false_while_startup_guard_not_ready(self):
+        from app.core import startup_guard
+        from app.services.metrics_service import build_health_status
+
+        saved = startup_guard.system_ready
+        startup_guard.system_ready = False
+        try:
+            payload = build_health_status()
+            assert payload["system_ready"] is False
+        finally:
+            startup_guard.system_ready = saved
+
+    def test_ready_reflects_startup_guard(self):
+        from app.core import startup_guard
+        from app.services.metrics_service import build_health_status
+
+        saved = startup_guard.system_ready
+        startup_guard.system_ready = True
+        try:
+            payload = build_health_status()
+            assert payload["system_ready"] is True
+        finally:
+            startup_guard.system_ready = saved

@@ -116,7 +116,7 @@ class ModelRegistry:
                 if existing:
                     db.execute(
                         text(
-                            "UPDATE ai_model_registry SET provider=:p, model_type=:mt, version=:v, capabilities=:caps::jsonb, config=:cfg::jsonb, is_active=:active, max_tokens=:mtok, cost_per_1k_input=:cpi, cost_per_1k_output=:cpo WHERE name=:name",
+                            "UPDATE ai_model_registry SET provider=:p, model_type=:mt, version=:v, capabilities=CAST(:caps AS JSONB), config=CAST(:cfg AS JSONB), is_active=:active, max_tokens=:mtok, cost_per_1k_input=:cpi, cost_per_1k_output=:cpo WHERE name=:name",
                         ),
                         {
                             "name": m.name,
@@ -134,7 +134,7 @@ class ModelRegistry:
                 else:
                     db.execute(
                         text(
-                            "INSERT INTO ai_model_registry (name, provider, model_type, version, capabilities, config, is_active, max_tokens, cost_per_1k_input, cost_per_1k_output) VALUES (:name, :p, :mt, :v, :caps::jsonb, :cfg::jsonb, :active, :mtok, :cpi, :cpo)",
+                            "INSERT INTO ai_model_registry (name, provider, model_type, version, capabilities, config, is_active, max_tokens, cost_per_1k_input, cost_per_1k_output) VALUES (:name, :p, :mt, :v, CAST(:caps AS JSONB), CAST(:cfg AS JSONB), :active, :mtok, :cpi, :cpo)",
                         ),
                         {
                             "name": m.name,

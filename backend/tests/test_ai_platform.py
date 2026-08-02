@@ -452,6 +452,20 @@ class TestModelRegistry:
         assert mr.deactivate_model("test-model")
         assert not mr.get_model("test-model").is_active
 
+    def test_sync_sql_uses_sqlalchemy_compatible_jsonb_cast(self):
+        """Regression: `:caps::jsonb` is invalid SQLAlchemy bind syntax and
+        made the AI registry seed fail on PostgreSQL. Statements must use
+        `CAST(:param AS JSONB)` instead."""
+        import inspect
+
+        from app.ai.governance import ModelRegistry
+
+        src = inspect.getsource(ModelRegistry._sync_to_db)
+        assert "CAST(:caps AS JSONB)" in src
+        assert "CAST(:cfg AS JSONB)" in src
+        assert ":caps::jsonb" not in src
+        assert ":cfg::jsonb" not in src
+
 
 class TestPromptManager:
     def test_list_prompts(self):
