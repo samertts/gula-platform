@@ -3,3 +3,4 @@ human,manual_review,required,IRQ-MOH
 machine,manual_review,n/a,IRQ-MOH
 service,manual_review,n/a,IRQ-MOH
 system,manual_review,n/a,IRQ-MOH
+session_policy,manual_review,n/a,IRQ-MOH

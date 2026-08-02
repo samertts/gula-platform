@@ -599,19 +599,44 @@ class SessionGovernanceService:
             sessions = sessions[:excess]
 
         count = 0
+        terminated_uuids = []
         for session in sessions:
             session.is_active = False
             session.terminated_at = datetime.now(UTC)
             session.termination_reason = "superseded_by_new_login"
+            terminated_uuids.append(session.uuid)
             count += 1
 
         if count > 0:
             await self.session.flush()
+            await self._audit_policy_termination(account_id, terminated_uuids, excess)
 
         if notify and count > 0:
             await self.notify_previous_device(account_id, current_session_id)
 
         return count
+
+    async def _audit_policy_termination(
+        self,
+        account_id: str,
+        terminated_uuids: list[str],
+        excess: int | None,
+    ) -> None:
+        from app.identity.models.audit import AuditAction
+        from app.identity.services.audit_service import AuditService
+
+        await AuditService(self.session).record(
+            action=AuditAction.session_terminated_by_policy,
+            actor_type="system",
+            target_type="account",
+            target_id=account_id,
+            metadata={
+                "terminated_sessions": terminated_uuids,
+                "reason": "superseded_by_new_login",
+                "excess": excess,
+            },
+            outcome="success",
+        )
 
     async def notify_previous_device(
         self,

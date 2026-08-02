@@ -18,8 +18,6 @@ from datetime import date, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy import select
-
 from app._compat import UTC
 from app.identity.adaptive_auth.models import SessionPolicy
 from app.identity.adaptive_auth.services import SessionGovernanceService
@@ -32,40 +30,50 @@ from app.identity.services.account_service import AccountService
 from app.identity.services.authentication_service import AuthenticationService
 from app.identity.services.authorization_service import AuthorizationService
 from app.security.auth import hash_password
+from sqlalchemy import select
 
 
 def _account(**kw) -> Account:
-    defaults = dict(
-        id=...,
-        uuid=str(uuid.uuid4()),
-        identity_id="identity-1",
-        account_type="human",
-        status=AccountStatus.active.value,
-        password_hash=hash_password("SecurePass123!@#"),
-        is_active=True,
-        is_locked=False,
-        failed_login_attempts=0,
-    )
+    defaults = {
+        "id": ...,
+        "uuid": str(uuid.uuid4()),
+        "identity_id": "identity-1",
+        "account_type": "human",
+        "status": AccountStatus.active.value,
+        "password_hash": hash_password("SecurePass123!@#"),
+        "is_active": True,
+        "is_locked": False,
+        "failed_login_attempts": 0,
+    }
     defaults.update(kw)
     return Account(**defaults)
 
 
 def _policy(**kw) -> SessionPolicy:
-    defaults = dict(
-        id=...,
-        uuid=str(uuid.uuid4()),
-        policy_id="citizen-default",
-        name="Citizen default",
-        applies_to="human",
-        max_sessions=1,
-        allow_concurrent=False,
-        require_mfa=False,
-        notify_previous_device=True,
-        terminate_previous_on_new_login=True,
-        is_active=True,
-    )
+    defaults = {
+        "id": ...,
+        "uuid": str(uuid.uuid4()),
+        "policy_id": "citizen-default",
+        "name": "Citizen default",
+        "applies_to": "human",
+        "max_sessions": 1,
+        "allow_concurrent": False,
+        "require_mfa": False,
+        "notify_previous_device": True,
+        "terminate_previous_on_new_login": True,
+        "is_active": True,
+    }
     defaults.update(kw)
     return SessionPolicy(**defaults)
+
+
+def _mock_execute_rows(rows: list) -> callable:
+    def _fake_execute(stmt):
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = rows
+        return result
+
+    return _fake_execute
 
 
 class TestAccountLifecycleAuthentication:
@@ -232,6 +240,35 @@ class TestSessionPolicyEnforcement:
         ):
             result = await svc.enforce_session_policy("a1", "human")
         assert result["action"] == "terminated_previous"
+
+    @pytest.mark.asyncio
+    async def test_policy_termination_is_audited(self):
+        session = MagicMock()
+        session.flush = AsyncMock()
+        old = UserSession(
+            id="old-1",
+            uuid=str(uuid.uuid4()),
+            account_id="a1",
+            token_jti="jti-old",
+            session_type="web",
+            is_active=True,
+            started_at=datetime.now(UTC) - timedelta(hours=2),
+            last_activity_at=datetime.now(UTC) - timedelta(hours=1),
+            expires_at=datetime.now(UTC) + timedelta(days=7),
+        )
+        svc = SessionGovernanceService(session)
+        session.execute = AsyncMock(side_effect=_mock_execute_rows([old]))
+        from app.identity.services.audit_service import AuditService
+
+        with patch.object(
+            AuditService, "_get_last_entry_hash", new_callable=AsyncMock, return_value=None
+        ), patch.object(svc, "_audit_policy_termination", new_callable=AsyncMock) as audit:
+            count = await svc.terminate_previous_sessions("a1", excess=1)
+        assert count == 1
+        assert old.is_active is False
+        assert old.termination_reason == "superseded_by_new_login"
+        audit.assert_awaited_once()
+        assert audit.await_args.args[1] == [old.uuid]
 
 
 class TestLoginAuditWiring:

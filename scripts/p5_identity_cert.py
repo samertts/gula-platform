@@ -35,7 +35,7 @@ sys.path.insert(0, str(ROOT))
 from app._compat import UTC
 from app.database import AsyncCompatSession, SessionLocal
 from app.identity.models.account import AccountStatus, AccountType
-from app.identity.models.audit import AuditAction
+from app.identity.models.audit import AuditAction, IdentityAuditEntry
 from app.identity.models.identity import IdentityType
 from app.identity.models.license import ProfessionalLicense
 from app.identity.models.niam_organization import NIAMOrganization
@@ -227,6 +227,80 @@ async def _collect_checks(
     return {"account_type": account_type, "label": label, "checks": checks}
 
 
+async def _verify_session_policy(db) -> dict:
+    """E2E: max_sessions=1 policy terminates the OLDEST session on re-login."""
+    from sqlalchemy import select
+
+    from app.identity.adaptive_auth.models import SessionPolicy
+    from app.identity.models.session import UserSession
+
+    suffix = "policy"
+    email = f"p5.{suffix}@demo.local"
+    person_svc = PersonService(db)
+    identity_svc = IdentityService(db)
+    account_svc = AccountService(db)
+    auth_svc = AuthenticationService(db)
+
+    person = await person_svc.create_person(
+        given_name="P5", family_name="Policy", email=email, phone="+9647000000000"
+    )
+    issuer_id = await _ensure_issuing_authority(db)
+    identity = await identity_svc.create_identity(
+        person_id=person.id,
+        identity_type=IdentityType.citizen,
+        issued_by_organization=issuer_id,
+    )
+    account = await account_svc.create_account(
+        identity_id=identity.id,
+        account_type=AccountType.human,
+        email=email,
+        password=DEMO_PASS,
+    )
+    await account_svc.activate_account(account.id, "policy-cert activation")
+
+    policy = SessionPolicy(
+        id=...,
+        uuid=str(uuid.uuid4()),
+        policy_id=f"POLICY-{suffix.upper()}",
+        name="P5 cert single-session policy",
+        applies_to=AccountType.human.value,
+        max_sessions=1,
+        allow_concurrent=False,
+        terminate_previous_on_new_login=True,
+        notify_previous_device=False,
+        require_mfa=False,
+        session_timeout_minutes=60,
+        inactivity_timeout_minutes=30,
+        is_active=True,
+    )
+    db.add(policy)
+    await db.flush()
+
+    s1 = await auth_svc.login(email, DEMO_PASS)
+    s2 = await auth_svc.login(email, DEMO_PASS)
+    sessions = (
+        await db.execute(
+            select(UserSession).where(UserSession.account_id == account.id)
+        )
+    ).scalars().all()
+    active = [s for s in sessions if s.is_active]
+    checks = [
+        ("login1_ok", s1 is not None, bool(s1)),
+        ("login2_ok", s2 is not None, bool(s2)),
+        ("oldest_terminated", len(active) == 1 and active[0].uuid == s2["session_uuid"], f"active={[s.uuid for s in active]}"),
+        ("terminated_audited", any(
+            e.action == "session_terminated_by_policy" or e.action == "session_terminated"
+            for e in (
+                await db.execute(
+                    select(IdentityAuditEntry).where(IdentityAuditEntry.target_id == account.id)
+                )
+            ).scalars().all()
+        ), "audit-check"),
+    ]
+    db.rollback()
+    return {"account_type": "session_policy", "label": "Session Policy E2E", "checks": checks}
+
+
 async def run_all() -> dict:
     db = AsyncCompatSession(SessionLocal())
     results = {}
@@ -234,7 +308,7 @@ async def run_all() -> dict:
         for account_type, (label, is_professional) in ACCOUNT_TYPES.items():
             try:
                 results[account_type] = await _collect_checks(db, account_type, label, is_professional)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 results[account_type] = {
                     "account_type": account_type,
                     "label": label,
@@ -242,6 +316,16 @@ async def run_all() -> dict:
                     "checks": [],
                 }
                 db.rollback()
+        try:
+            results["session_policy"] = await _verify_session_policy(db)
+        except Exception as exc:  # noqa: BLE001
+            results["session_policy"] = {
+                "account_type": "session_policy",
+                "label": "Session Policy E2E",
+                "error": f"{type(exc).__name__}: {exc}",
+                "checks": [],
+            }
+            db.rollback()
     finally:
         db.close()
     return results
