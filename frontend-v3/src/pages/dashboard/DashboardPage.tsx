@@ -1,14 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { dashboardApi } from "@/api/endpoints";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
+import { Button, Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
 import { Users, ClipboardList, FlaskConical, AlertTriangle } from "lucide-react";
 
 export function DashboardPage() {
   const { t } = useTranslation();
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["dashboard"],
     queryFn: () => dashboardApi.dashboard(),
+    retry: 1,
   });
 
   const statCards = [
@@ -25,7 +26,18 @@ export function DashboardPage() {
         <p className="text-muted-foreground">{t("dashboard.subtitle")}</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {isError && (
+        <Card>
+          <CardContent className="flex items-center justify-between p-4">
+            <p className="text-sm text-red-600 dark:text-red-400">{t("common.error")}</p>
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
+              {t("common.retry")}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4" aria-busy={isLoading}>
         {statCards.map((card) => (
           <Card key={card.key}>
             <CardContent className="flex items-center gap-4 p-6">
@@ -35,7 +47,9 @@ export function DashboardPage() {
               <div>
                 <p className="text-sm text-muted-foreground">{card.label}</p>
                 <p className="text-2xl font-bold">
-                  {isLoading ? "..." : (data as unknown as Record<string, number | undefined>)?.[card.key] ?? 0}
+                  {isLoading
+                    ? "—"
+                    : (data as unknown as Record<string, number | undefined>)?.[card.key] ?? 0}
                 </p>
               </div>
             </CardContent>

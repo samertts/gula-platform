@@ -611,9 +611,9 @@ function OrderDetailDialog({
               onChange={(e) => setChannel(e.target.value)}
               className="w-full rounded-md border bg-background px-3 py-2 text-sm"
             >
-              <option value="sms">SMS</option>
-              <option value="email">Email</option>
-              <option value="push">Push</option>
+              <option value="sms">{t("order.channelSms")}</option>
+              <option value="email">{t("order.channelEmail")}</option>
+              <option value="push">{t("order.channelPush")}</option>
             </select>
           </div>
           <div className="space-y-2">
