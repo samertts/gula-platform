@@ -13,6 +13,8 @@ from .config import DATABASE_URL, READ_REPLICA_ENABLED, READ_REPLICA_URL
 
 logger = logging.getLogger("gula.database")
 
+from fastapi import Request
+
 # ── Request correlation context ───────────────────────────────────────────────
 # Set by middleware / auth dependency so every DB error log carries full context:
 #   request_id + endpoint   ← set by RequestIDMiddleware
@@ -356,8 +358,20 @@ class AsyncCompatSession:
         return val
 
 
-def get_niam_db():
-    """NIAM session dependency: sync engine bridged for async services."""
+def get_niam_db(request: Request = None):
+    """NIAM session dependency: sync engine bridged for async services.
+
+    Honors a ``get_db`` dependency override (tests, admin tooling) so that
+    NIAM routes share the same session/transaction as the rest of the
+    platform instead of opening a competing session on the same engine.
+    """
+    override = None
+    if request is not None:
+        override = request.app.dependency_overrides.get(get_db)
+    if override is not None:
+        for sync_db in override():
+            yield AsyncCompatSession(sync_db)
+        return
     db = AsyncCompatSession(SessionLocal())
     try:
         yield db
