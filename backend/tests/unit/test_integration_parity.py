@@ -154,11 +154,12 @@ def seeded_ai_data(db, make_lab, make_lab_user):
     )
     db.commit()
 
-
     db.add(
         AIFeedback(
             id=uuid.uuid4(),
-            interaction_id=db.query(AIInteraction.id).filter(AIInteraction.lab_id == lab.id).first()[0],
+            interaction_id=db.query(AIInteraction.id)
+            .filter(AIInteraction.lab_id == lab.id)
+            .first()[0],
             lab_id=lab.id,
             anonymous_session_id="session-a",
             signal="helpful",
@@ -220,7 +221,9 @@ class TestAiTelemetryExport:
         assert body["count"] == 2
         assert body["lab_id"] == lab.id
 
-    def test_export_forbidden_for_technician(self, client, db, make_lab, make_lab_user, seeded_ai_data):
+    def test_export_forbidden_for_technician(
+        self, client, db, make_lab, make_lab_user, seeded_ai_data
+    ):
         lab, _user, _other_lab, _other_user = seeded_ai_data
         tech_user = make_lab_user(lab_id=lab.id, role="technician")
         headers = auth_headers(tech_user.id, lab.id, "technician")
@@ -347,13 +350,17 @@ class TestAdminWorkflows:
         assert r.status_code == 200
         assert r.json()["active"] is False
 
-        r = client.post("/admin/kill-switch/activate", json={"reason": "test drill"}, headers=headers)
+        r = client.post(
+            "/admin/kill-switch/activate", json={"reason": "test drill"}, headers=headers
+        )
         assert r.status_code == 200
         r = client.get("/admin/kill-switch/status", headers=headers)
         assert r.json()["active"] is True
         assert r.json().get("reason") == "test drill"
 
-        r = client.post("/admin/kill-switch/deactivate", json={"reason": "all clear"}, headers=headers)
+        r = client.post(
+            "/admin/kill-switch/deactivate", json={"reason": "all clear"}, headers=headers
+        )
         assert r.status_code == 200
         r = client.get("/admin/kill-switch/status", headers=headers)
         assert r.json()["active"] is False
@@ -447,7 +454,9 @@ class TestServiceAccounts:
 
         r = client.get("/service-accounts", headers=headers)
         assert r.status_code == 403
-        r = client.post("/service-accounts", json={"name": "x", "roles": ["staff"]}, headers=headers)
+        r = client.post(
+            "/service-accounts", json={"name": "x", "roles": ["staff"]}, headers=headers
+        )
         assert r.status_code == 403
         r = client.delete("/service-accounts/1", headers=headers)
         assert r.status_code == 403
@@ -600,3 +609,56 @@ class TestAuditLogs:
 
         r = client.get("/admin/audit-logs", headers=headers)
         assert r.status_code == 403
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PROGRAM-06 — Frontend route parity gate
+# Every path in frontend-v3/src/api/endpoints.ts must resolve to a live
+# backend route (method + path pattern). A frontend change that calls a
+# non-existent endpoint fails CI.
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+class TestFrontendRouteParity:
+    @staticmethod
+    def _frontend_paths():
+        import re
+        from pathlib import Path
+
+        fe_file = (
+            Path(__file__).resolve().parents[3] / "frontend-v3" / "src" / "api" / "endpoints.ts"
+        )
+        if not fe_file.exists():
+            pytest.skip("frontend-v3 endpoints.ts not present")
+        src = fe_file.read_text(encoding="utf-8")
+        pat = re.compile(r"api\.(get|post|put|delete|patch)(?:<[^>]*>)?\(\s*([`\"'])([^`\"']+)\2")
+        out = []
+        for m in pat.finditer(src):
+            norm = re.sub(r"\$\{[^}]*\}", "{id}", m.group(3)).split("?")[0]
+            out.append((m.group(1).upper(), norm))
+        return sorted(set(out))
+
+    @staticmethod
+    def _matches(fe_path: str, be_path: str) -> bool:
+        import re
+
+        fe_re = re.escape(fe_path).replace(r"\{id\}", "[^/]+")
+        be_re = re.escape(be_path).replace(r"\{[^}]+\}", "[^/]+")
+        return re.fullmatch(fe_re, be_path) is not None or re.fullmatch(be_re, fe_path) is not None
+
+    def test_every_frontend_path_exists_on_backend(self, client):
+        from fastapi.routing import _IncludedRouter
+
+        be = []
+        for r in client.app.routes:
+            items = r.original_router.routes if isinstance(r, _IncludedRouter) else [r]
+            for rr in items:
+                for m in getattr(rr, "methods", None) or []:
+                    if m != "HEAD":
+                        be.append((m, getattr(rr, "path", "")))
+
+        missing = []
+        for method, path in self._frontend_paths():
+            if not any(method == m and self._matches(path, bp) for m, bp in be):
+                missing.append(f"{method} {path}")
+        assert not missing, "frontend calls to non-existent backend routes:\n" + "\n".join(missing)

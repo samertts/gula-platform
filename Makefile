@@ -346,6 +346,10 @@ brain-check:
 	$(Q)echo "=== Checking Project Brain freshness ==="
 	$(Q)$(PY) scripts/project_brain.py --check
 
+parity:
+	$(Q)echo "=== Backend-Frontend Parity Certification (PROGRAM-06) ==="
+	$(Q)ENV=test $(PY) scripts/p6_parity_check.py
+
 validate:
 	$(Q)echo "=== Enterprise Validation Engine (fast) ==="
 	$(Q)$(PY) scripts/enterprise_validation_engine.py --scope fast
