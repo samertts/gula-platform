@@ -96,3 +96,6 @@ crash.log
 
 # ── Security Scanning ──────────────────────────────────────────────────────────
 .semgrep/logs/
+
+# production secrets — never commit
+.env.production
