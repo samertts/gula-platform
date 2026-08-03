@@ -21,6 +21,22 @@ pytestmark = [
 ]
 
 
+def _best_latency_ms(run: callable, trials: int = 3) -> float:
+    """Return the best (minimum) wall-clock latency in ms across trials.
+
+    Loop-based micro-benchmarks are vulnerable to a single measurement being
+    preempted by concurrent CI workers/builds. Taking the minimum tolerates
+    one preempted sample while still failing on a genuine, uniform regression
+    (a real slowdown raises every trial, not just one).
+    """
+    best = float("inf")
+    for _ in range(trials):
+        start = time.monotonic()
+        run()
+        best = min(best, (time.monotonic() - start) * 1000)
+    return best
+
+
 class TestPerformanceBaseline:
     def test_cold_start(self):
         start = time.monotonic()
@@ -53,10 +69,12 @@ class TestPerformanceBaseline:
     def test_service_lookup(self):
         sr = ServiceRegistry()
         sr.register("svc", {"data": 42})
-        start = time.monotonic()
-        for _ in range(10_000):
-            sr.get("svc")
-        elapsed = (time.monotonic() - start) * 1000
+
+        def run() -> None:
+            for _ in range(10_000):
+                sr.get("svc")
+
+        elapsed = _best_latency_ms(run)
         assert elapsed < 200, f"10k lookups took {elapsed:.1f}ms (limit 200ms)"
 
     def test_di_lookup(self):
@@ -69,10 +87,12 @@ class TestPerformanceBaseline:
         )
         container.register(desc)
         container.resolve("svc")
-        start = time.monotonic()
-        for _ in range(10_000):
-            container.resolve("svc")
-        elapsed = (time.monotonic() - start) * 1000
+
+        def run() -> None:
+            for _ in range(10_000):
+                container.resolve("svc")
+
+        elapsed = _best_latency_ms(run)
         assert elapsed < 300, f"10k DI lookups took {elapsed:.1f}ms (limit 300ms)"
 
     def test_event_dispatch(self, kernel: Kernel):
@@ -82,19 +102,23 @@ class TestPerformanceBaseline:
             pass
 
         eb.subscribe("perf.test", handler)
-        start = time.monotonic()
-        for _ in range(10_000):
-            eb.publish(Event(name="perf.test", data={}))
-        elapsed = (time.monotonic() - start) * 1000
+
+        def run() -> None:
+            for _ in range(10_000):
+                eb.publish(Event(name="perf.test", data={}))
+
+        elapsed = _best_latency_ms(run)
         assert elapsed < 1000, f"10k dispatches took {elapsed:.1f}ms (limit 1000ms)"
 
     def test_config_lookup(self):
         cr = ConfigurationRegistry()
         cr.set("key", "value")
-        start = time.monotonic()
-        for _ in range(100_000):
-            cr.get("key")
-        elapsed = (time.monotonic() - start) * 1000
+
+        def run() -> None:
+            for _ in range(100_000):
+                cr.get("key")
+
+        elapsed = _best_latency_ms(run)
         assert elapsed < 500, f"100k config lookups took {elapsed:.1f}ms (limit 500ms)"
 
     def test_scheduler_latency(self, kernel: Kernel):
