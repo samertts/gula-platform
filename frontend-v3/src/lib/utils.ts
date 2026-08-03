@@ -144,7 +144,7 @@ export function asTableData<T = Record<string, unknown>>(value: unknown): T[] {
 }
 
 interface ApiErrorLike {
-  response?: { data?: { detail?: string | { msg?: string }[] } };
+  response?: { data?: { detail?: string | { msg?: string }[]; detail_ar?: string } };
   message?: string;
 }
 
@@ -152,6 +152,9 @@ export function getErrorMessage(err: unknown, fallback = "حدث خطأ غير �
   if (!err) return fallback;
   const e = err as ApiErrorLike;
   const detail = e.response?.data?.detail;
+  const detailAr = e.response?.data?.detail_ar;
+  // Arabic-first platform: prefer the backend's Arabic message when present.
+  if (typeof detailAr === "string" && detailAr.length > 0) return detailAr;
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail) && detail[0]?.msg) return detail[0].msg;
   if (typeof e.message === "string" && e.message !== "Request failed with status code 401") {

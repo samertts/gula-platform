@@ -1524,7 +1524,7 @@ export const samlApi = {
 export const mobileApi = {
   refresh: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/auth/refresh", data).then((r) => r.data),
   changePassword: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/auth/change-password", data).then((r) => r.data),
-  info: () => api.get<Record<string, unknown>>("/auth/mobile/app-info").then((r) => r.data),
+  info: () => api.get<Record<string, unknown>>("/mobile/app-info").then((r) => r.data),
 };
 
 // ── Integrations ──
