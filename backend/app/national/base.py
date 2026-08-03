@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Column, String
-from sqlalchemy.orm import declarative_base
 
 from app._compat import UTC
 from app.models.base import (
@@ -15,8 +14,12 @@ from app.models.base import (
     TenantMixin,
     TimestampMixin,
 )
+from shared.models.base import SharedBase
 
-NationalBase = declarative_base()
+# National/EHR bound contexts share ONE declarative metadata (Shared Core).
+# This keeps every `from app.national.base import NationalBase` import working
+# while removing the app.ehr -> app.national edge of the import cycle.
+NationalBase = SharedBase
 
 
 def _ulid() -> str:

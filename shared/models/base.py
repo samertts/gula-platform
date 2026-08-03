@@ -4,6 +4,15 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import Boolean, Column, DateTime, Integer
+from sqlalchemy.orm import declarative_base
+
+# Single authoritative declarative metadata for the national/EHR bound
+# contexts (PROGRAM-STABLE-002 shared-core extraction). Both the national
+# domain and the EHR domain register their tables on this metadata so that
+# cross-context foreign keys resolve; keeping it in Shared Core removes the
+# `app.ehr <-> app.national` import cycle (ehr/base.py previously imported
+# `app.national.base`, while `app.national.fhir.*` imports `app.ehr.models.*`).
+SharedBase = declarative_base()
 
 
 class TimestampMixin:
