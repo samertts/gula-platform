@@ -82,9 +82,12 @@ class AuthorizationService:
         )
         today = date.today()
         for lic in result.scalars().all():
-            if lic.verified and lic.status == LicenseStatus.active.value:
-                if lic.expiry_date is None or lic.expiry_date >= today:
-                    return True
+            if (
+                lic.verified
+                and lic.status == LicenseStatus.active.value
+                and (lic.expiry_date is None or lic.expiry_date >= today)
+            ):
+                return True
         return False
 
     async def get_assignments_for_person(self, person_id: str) -> list:
