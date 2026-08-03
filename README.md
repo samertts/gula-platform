@@ -180,6 +180,8 @@ source .venv/bin/activate
 pip install -r backend/requirements.txt
 cp .env.example .env
 # Edit .env with your local PostgreSQL and Redis connection details
+# Email: add RESEND_API_KEY=<your key> and EMAIL_FROM= to enable Resend
+# email delivery (see backend/app/notifications/README.md).
 cd backend && uvicorn app.main:app --reload --port 8000
 
 # Frontend
@@ -251,6 +253,12 @@ The project includes:
 - **Blue-green deployments** — zero-downtime switching
 - **Auto-rollback** — automatic failure recovery
 - **Disaster recovery** — failover, failback, point-in-time recovery
+
+> **Secrets in production:** every secret (`RESEND_API_KEY`, `SECRET_KEY`,
+> database passwords, etc.) must be provided through `.env` (local) or the
+> hosting platform's Secrets/Environment Variables (production). Never
+> hardcode or commit credentials. The backend fails startup in production
+> when `RESEND_API_KEY` is missing.
 
 See [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) and
 [DEPLOYMENT_PLATFORMS.md](DEPLOYMENT_PLATFORMS.md) for details.

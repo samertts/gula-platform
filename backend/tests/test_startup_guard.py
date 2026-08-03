@@ -31,7 +31,7 @@ import pytest
 
 
 class TestValidateConfig:
-    def _run(self, secret_key="", encryption_key="", nid_hmac_key="", is_prod=True):
+    def _run(self, secret_key="", encryption_key="", nid_hmac_key="", resend_api_key="", is_prod=True):
         """Helper: patch app.config attributes and call validate_config().
 
         validate_config() does `from ..config import SECRET_KEY, ...` inside the
@@ -44,17 +44,20 @@ class TestValidateConfig:
         old_sk = cfg.SECRET_KEY
         old_ek = cfg.ENCRYPTION_KEY
         old_nid = cfg.NID_HMAC_KEY
+        old_resend = cfg.RESEND_API_KEY
         old_prod = cfg.IS_PRODUCTION
         try:
             cfg.SECRET_KEY = secret_key
             cfg.ENCRYPTION_KEY = encryption_key
             cfg.NID_HMAC_KEY = nid_hmac_key
+            cfg.RESEND_API_KEY = resend_api_key
             cfg.IS_PRODUCTION = is_prod
             startup_guard.validate_config()
         finally:
             cfg.SECRET_KEY = old_sk
             cfg.ENCRYPTION_KEY = old_ek
             cfg.NID_HMAC_KEY = old_nid
+            cfg.RESEND_API_KEY = old_resend
             cfg.IS_PRODUCTION = old_prod
 
     def test_passes_with_strong_secrets(self):
@@ -65,7 +68,47 @@ class TestValidateConfig:
             secret_key="a" * 64,
             encryption_key=fkey,
             nid_hmac_key="b" * 64,
+            resend_api_key="re_" + "A" * 40,
             is_prod=True,
+        )
+
+    def test_raises_on_missing_resend_key_in_prod(self):
+        from cryptography.fernet import Fernet
+
+        fkey = Fernet.generate_key().decode()
+        with pytest.raises(RuntimeError, match="RESEND_API_KEY"):
+            self._run(
+                secret_key="a" * 64,
+                encryption_key=fkey,
+                nid_hmac_key="b" * 64,
+                resend_api_key="",
+                is_prod=True,
+            )
+
+    def test_raises_on_weak_resend_key_in_prod(self):
+        from cryptography.fernet import Fernet
+
+        fkey = Fernet.generate_key().decode()
+        with pytest.raises(RuntimeError, match="RESEND_API_KEY"):
+            self._run(
+                secret_key="a" * 64,
+                encryption_key=fkey,
+                nid_hmac_key="b" * 64,
+                resend_api_key="changeme",
+                is_prod=True,
+            )
+
+    def test_missing_resend_key_tolerated_in_dev(self):
+        from cryptography.fernet import Fernet
+
+        fkey = Fernet.generate_key().decode()
+        # Non-production: missing RESEND_API_KEY warns but does not raise
+        self._run(
+            secret_key="a" * 64,
+            encryption_key=fkey,
+            nid_hmac_key="b" * 64,
+            resend_api_key="",
+            is_prod=False,
         )
 
     def test_raises_on_missing_secret_key_in_prod(self):

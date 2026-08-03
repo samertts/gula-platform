@@ -69,6 +69,10 @@ class SNDHSConfig:
 class NotificationConfig:
     fcm_server_key: str = ""
     apns_key: str = ""
+    resend_api_key: str = ""
+    email_from: str = ""
+    resend_timeout_seconds: int = 30
+    resend_max_retries: int = 3
 
 
 @dataclass
@@ -198,6 +202,10 @@ def load_config() -> AppConfig:
 
     cfg.notification.fcm_server_key = _env_str("FCM_SERVER_KEY", "")
     cfg.notification.apns_key = _env_str("APNS_KEY", "")
+    cfg.notification.resend_api_key = _env_str("RESEND_API_KEY", "")
+    cfg.notification.email_from = _env_str("EMAIL_FROM", "noreply@gula-platform.org")
+    cfg.notification.resend_timeout_seconds = _env_int("RESEND_TIMEOUT_SECONDS", 30)
+    cfg.notification.resend_max_retries = _env_int("RESEND_MAX_RETRIES", 3)
 
     cfg.adapter.mode_default = _env_str("GULA_ADAPTER_MODE", "stub").lower()
     cfg.adapter.mode_nid = _env_str("GULA_ADAPTER_MODE_NID", cfg.adapter.mode_default).lower()

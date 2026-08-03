@@ -28,6 +28,7 @@ dependencies = [
     "arabic-reshaper>=3.0.1",
     "python-bidi>=0.6.11",
     "httpx>=0.28.1",
+    "resend>=2.35.0",
     "redis>=8.0.1",
     "sentry-sdk[fastapi]>=2.66.0",
     "opentelemetry-sdk>=1.24",

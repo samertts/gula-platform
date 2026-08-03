@@ -230,6 +230,16 @@ OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "")
 FCM_SERVER_KEY = os.getenv("FCM_SERVER_KEY", "")  # Firebase Cloud Messaging
 APNS_KEY = os.getenv("APNS_KEY", "")  # Apple Push Notifications
 
+# ─── Email (Resend — production email provider) ─────────────────────────────
+# The Resend API key must come ONLY from the environment (.env for local
+# development, Secrets/Environment Variables on the hosting platform).
+# It is NEVER hardcoded, logged, or committed to the repository.
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+EMAIL_FROM = os.getenv("EMAIL_FROM", "noreply@gula-platform.org")
+RESEND_TIMEOUT_SECONDS = int(os.getenv("RESEND_TIMEOUT_SECONDS", "30"))
+RESEND_MAX_RETRIES = int(os.getenv("RESEND_MAX_RETRIES", "3"))
+RESEND_ENABLED = bool(RESEND_API_KEY)
+
 # ─── API Documentation ───────────────────────────────────────────────────────
 # Enable API docs in production for government testers (controlled by env var)
 ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"

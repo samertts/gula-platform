@@ -41,6 +41,10 @@ class NotificationSender:
         whatsapp_api_url: str = "",
         whatsapp_token: str = "",
         whatsapp_phone_id: str = "",
+        resend_api_key: str = "",
+        resend_email_from: str = "",
+        resend_timeout_seconds: int = 30,
+        resend_max_retries: int = 3,
     ):
         self._fcm_key = fcm_key
         self._apns_key = apns_key
@@ -56,6 +60,16 @@ class NotificationSender:
         self._whatsapp_api_url = whatsapp_api_url or os.getenv("WHATSAPP_API_URL", "")
         self._whatsapp_token = whatsapp_token or os.getenv("WHATSAPP_TOKEN", "")
         self._whatsapp_phone_id = whatsapp_phone_id or os.getenv("WHATSAPP_PHONE_ID", "")
+        self._resend_api_key = resend_api_key or os.getenv("RESEND_API_KEY", "")
+        self._resend_email_from = resend_email_from or os.getenv(
+            "EMAIL_FROM", "noreply@gula-platform.org",
+        )
+        self._resend_timeout_seconds = resend_timeout_seconds or int(
+            os.getenv("RESEND_TIMEOUT_SECONDS", "30"),
+        )
+        self._resend_max_retries = resend_max_retries or int(
+            os.getenv("RESEND_MAX_RETRIES", "3"),
+        )
         self._http_client: httpx.Client | None = None
 
     @property
@@ -82,6 +96,23 @@ class NotificationSender:
             return False
 
     def send_email(self, to: str, subject: str, body: str) -> bool:
+        if self._resend_api_key:
+            from .resend import ResendEmailClient
+
+            client = ResendEmailClient(
+                api_key=self._resend_api_key,
+                from_email=self._resend_email_from,
+                timeout_seconds=self._resend_timeout_seconds,
+                max_retries=self._resend_max_retries,
+            )
+            html = body if "<html" in body or "<p" in body else ""
+            text = "" if html else body
+            result = client.send(subject=subject, to=to, html=html, text=text)
+            if result.success:
+                return True
+            logger.error("[EMAIL] Resend delivery failed To=%s: %s", to, result.error)
+            return False
+
         if not self._smtp_host:
             logger.info("[EMAIL] To=%s Subject=%s (SMTP not configured, logged only)", to, subject)
             return True
@@ -181,6 +212,10 @@ def get_sender(
     whatsapp_api_url: str = "",
     whatsapp_token: str = "",
     whatsapp_phone_id: str = "",
+    resend_api_key: str = "",
+    resend_email_from: str = "",
+    resend_timeout_seconds: int = 30,
+    resend_max_retries: int = 3,
 ) -> NotificationSender:
     global _sender
     if _sender is None:
@@ -198,6 +233,10 @@ def get_sender(
             whatsapp_api_url=whatsapp_api_url,
             whatsapp_token=whatsapp_token,
             whatsapp_phone_id=whatsapp_phone_id,
+            resend_api_key=resend_api_key,
+            resend_email_from=resend_email_from,
+            resend_timeout_seconds=resend_timeout_seconds,
+            resend_max_retries=resend_max_retries,
         )
     return _sender
 

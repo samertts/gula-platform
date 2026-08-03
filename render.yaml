@@ -130,6 +130,16 @@ services:
           type: keyvalue
           property: connectionString
 
+      # ── Email (Resend) — set in Render Secrets (never in Git) ────────────
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: noreply@gula-platform.org
+      - key: RESEND_TIMEOUT_SECONDS
+        value: "30"
+      - key: RESEND_MAX_RETRIES
+        value: "3"
+
       # ── CORS — match the static-site domain that Render assigns us ───────
       # After first deploy, edit the value to your custom domain(s).
       - key: CORS_ORIGINS

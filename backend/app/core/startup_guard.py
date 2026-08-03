@@ -113,9 +113,30 @@ def _is_weak(value: str) -> bool:
 
 def validate_config() -> None:
     """Fail fast if any required secret is missing or dangerously weak."""
-    from ..config import AUDIT_ANCHOR_KEY, ENCRYPTION_KEY, IS_PRODUCTION, NID_HMAC_KEY, SECRET_KEY
+    from ..config import (
+        AUDIT_ANCHOR_KEY,
+        ENCRYPTION_KEY,
+        IS_PRODUCTION,
+        NID_HMAC_KEY,
+        RESEND_API_KEY,
+        SECRET_KEY,
+    )
 
     errors: list[str] = []
+
+    if not RESEND_API_KEY:
+        if IS_PRODUCTION:
+            errors.append(
+                "RESEND_API_KEY is not set. Email delivery is disabled. "
+                "Set RESEND_API_KEY in .env (development) or the hosting "
+                "platform's Secrets/Environment Variables (production).",
+            )
+    elif IS_PRODUCTION and _is_weak(RESEND_API_KEY):
+        errors.append(
+            "RESEND_API_KEY looks like a placeholder/default value. "
+            "Get a real key from https://resend.com/api-keys and store it "
+            "in environment secrets — never in source code.",
+        )
 
     if not SECRET_KEY:
         if IS_PRODUCTION:
