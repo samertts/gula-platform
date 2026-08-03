@@ -1,0 +1,1 @@
+"""Authoritative rule-engine domain model living in Shared Core."""

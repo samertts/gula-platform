@@ -7,10 +7,10 @@ from datetime import UTC, datetime
 from typing import Any
 
 from app.kernel import Kernel
-from app.national.rules_engine.domain.entities import (
+from shared.rules_engine.domain.entities import (
     RuleDefinition,
 )
-from app.national.rules_engine.domain.enums import (
+from shared.rules_engine.domain.enums import (
     Operator,
     RuleOutcome,
     RuleSeverity,
