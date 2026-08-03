@@ -11,7 +11,16 @@ from .sender import (
     send_email,
     send_push,
     send_sms,
+    send_telegram,
     send_whatsapp,
+)
+from .telegram import (
+    TelegramNotificationService,
+    TelegramSendResult,
+    get_telegram_service,
+)
+from .telegram import (
+    send_telegram as send_telegram_msg,
 )
 from .template import (
     NotificationTemplate,
@@ -25,7 +34,10 @@ __all__ = [
     "NotificationSender",
     "NotificationTemplate",
     "ResendEmailClient",
+    "TelegramNotificationService",
+    "TelegramSendResult",
     "get_email_client",
+    "get_telegram_service",
     "get_template",
     "register_template",
     "render_template",
@@ -33,5 +45,7 @@ __all__ = [
     "send_email_resend",
     "send_push",
     "send_sms",
+    "send_telegram",
+    "send_telegram_msg",
     "send_whatsapp",
 ]

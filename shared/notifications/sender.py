@@ -45,6 +45,9 @@ class NotificationSender:
         resend_email_from: str = "",
         resend_timeout_seconds: int = 30,
         resend_max_retries: int = 3,
+        telegram_bot_token: str = "",
+        telegram_timeout_seconds: int = 30,
+        telegram_max_retries: int = 3,
     ):
         self._fcm_key = fcm_key
         self._apns_key = apns_key
@@ -69,6 +72,13 @@ class NotificationSender:
         )
         self._resend_max_retries = resend_max_retries or int(
             os.getenv("RESEND_MAX_RETRIES", "3"),
+        )
+        self._telegram_bot_token = telegram_bot_token or os.getenv("TELEGRAM_BOT_TOKEN", "")
+        self._telegram_timeout_seconds = telegram_timeout_seconds or int(
+            os.getenv("TELEGRAM_TIMEOUT_SECONDS", "30"),
+        )
+        self._telegram_max_retries = telegram_max_retries or int(
+            os.getenv("TELEGRAM_MAX_RETRIES", "3"),
         )
         self._http_client: httpx.Client | None = None
 
@@ -189,6 +199,59 @@ class NotificationSender:
             logger.error("[WHATSAPP] Delivery failed To=%s: %s", to, exc)
             return False
 
+    def send_telegram(
+        self,
+        chat_id: int | str,
+        text: str,
+        parse_mode: str = "",
+        send_photo: str | bytes | None = None,
+        send_document: str | bytes | None = None,
+        send_file_path: str = "",
+        alert_level: str | None = None,
+        monitoring_service: str | None = None,
+    ) -> bool:
+        """Send a Telegram notification via the official Bot API.
+
+        chat_id is required and supplied dynamically per call — it is never
+        read from configuration. Returns True only on confirmed delivery.
+        """
+        from .telegram import TelegramNotificationService
+
+        service = TelegramNotificationService(
+            bot_token=self._telegram_bot_token,
+            timeout_seconds=self._telegram_timeout_seconds,
+            max_retries=self._telegram_max_retries,
+        )
+        if not service.is_configured:
+            logger.info(
+                "[TELEGRAM] chat_id=%s (bot not configured, logged only)",
+                chat_id,
+            )
+            return False
+
+        if monitoring_service:
+            result = service.send_monitoring(chat_id=chat_id, message=text, service=monitoring_service)
+        elif alert_level:
+            result = service.send_alert(chat_id=chat_id, message=text, level=alert_level)
+        elif send_file_path:
+            result = service.send_file(chat_id=chat_id, file_path=send_file_path, caption=text)
+        elif send_document is not None:
+            result = service.send_document(chat_id=chat_id, document=send_document, caption=text)
+        elif send_photo is not None:
+            result = service.send_photo(chat_id=chat_id, photo=send_photo, caption=text)
+        elif parse_mode == "HTML":
+            result = service.send_html(chat_id=chat_id, html=text)
+        elif parse_mode == "MarkdownV2":
+            result = service.send_markdown_v2(chat_id=chat_id, text=text)
+        else:
+            result = service.send_text(chat_id=chat_id, text=text)
+
+        if result.success:
+            logger.info("[TELEGRAM] Delivered Chat=%s MessageId=%s", chat_id, result.message_id)
+            return True
+        logger.error("[TELEGRAM] Delivery failed Chat=%s: %s", chat_id, result.error)
+        return False
+
     def close(self) -> None:
         if self._http_client:
             self._http_client.close()
@@ -216,6 +279,9 @@ def get_sender(
     resend_email_from: str = "",
     resend_timeout_seconds: int = 30,
     resend_max_retries: int = 3,
+    telegram_bot_token: str = "",
+    telegram_timeout_seconds: int = 30,
+    telegram_max_retries: int = 3,
 ) -> NotificationSender:
     global _sender
     if _sender is None:
@@ -237,6 +303,9 @@ def get_sender(
             resend_email_from=resend_email_from,
             resend_timeout_seconds=resend_timeout_seconds,
             resend_max_retries=resend_max_retries,
+            telegram_bot_token=telegram_bot_token,
+            telegram_timeout_seconds=telegram_timeout_seconds,
+            telegram_max_retries=telegram_max_retries,
         )
     return _sender
 
@@ -255,3 +324,12 @@ def send_sms(to: str, body: str) -> bool:
 
 def send_whatsapp(to: str, body: str) -> bool:
     return get_sender().send_whatsapp(to, body)
+
+
+def send_telegram(
+    chat_id: int | str,
+    text: str,
+    parse_mode: str = "",
+    **kwargs: Any,
+) -> bool:
+    return get_sender().send_telegram(chat_id, text, parse_mode=parse_mode, **kwargs)

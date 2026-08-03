@@ -31,7 +31,16 @@ import pytest
 
 
 class TestValidateConfig:
-    def _run(self, secret_key="", encryption_key="", nid_hmac_key="", resend_api_key="", is_prod=True):
+    def _run(
+        self,
+        secret_key="",
+        encryption_key="",
+        nid_hmac_key="",
+        resend_api_key="",
+        telegram_bot_token="142536" + ":" + "A" * 40,
+        telegram_notifications_enabled=True,
+        is_prod=True,
+    ):
         """Helper: patch app.config attributes and call validate_config().
 
         validate_config() does `from ..config import SECRET_KEY, ...` inside the
@@ -45,12 +54,16 @@ class TestValidateConfig:
         old_ek = cfg.ENCRYPTION_KEY
         old_nid = cfg.NID_HMAC_KEY
         old_resend = cfg.RESEND_API_KEY
+        old_tg_token = cfg.TELEGRAM_BOT_TOKEN
+        old_tg_enabled = cfg.TELEGRAM_NOTIFICATIONS_ENABLED
         old_prod = cfg.IS_PRODUCTION
         try:
             cfg.SECRET_KEY = secret_key
             cfg.ENCRYPTION_KEY = encryption_key
             cfg.NID_HMAC_KEY = nid_hmac_key
             cfg.RESEND_API_KEY = resend_api_key
+            cfg.TELEGRAM_BOT_TOKEN = telegram_bot_token
+            cfg.TELEGRAM_NOTIFICATIONS_ENABLED = telegram_notifications_enabled
             cfg.IS_PRODUCTION = is_prod
             startup_guard.validate_config()
         finally:
@@ -58,6 +71,8 @@ class TestValidateConfig:
             cfg.ENCRYPTION_KEY = old_ek
             cfg.NID_HMAC_KEY = old_nid
             cfg.RESEND_API_KEY = old_resend
+            cfg.TELEGRAM_BOT_TOKEN = old_tg_token
+            cfg.TELEGRAM_NOTIFICATIONS_ENABLED = old_tg_enabled
             cfg.IS_PRODUCTION = old_prod
 
     def test_passes_with_strong_secrets(self):
@@ -108,6 +123,66 @@ class TestValidateConfig:
             encryption_key=fkey,
             nid_hmac_key="b" * 64,
             resend_api_key="",
+            is_prod=False,
+        )
+
+    # ── Telegram ────────────────────────────────────────────────────────────
+
+    def test_missing_telegram_token_in_prod_raises(self):
+        from cryptography.fernet import Fernet
+
+        fkey = Fernet.generate_key().decode()
+        with pytest.raises(RuntimeError, match="TELEGRAM_BOT_TOKEN"):
+            self._run(
+                secret_key="a" * 64,
+                encryption_key=fkey,
+                nid_hmac_key="b" * 64,
+                resend_api_key="re_" + "A" * 40,
+                telegram_bot_token="",
+                telegram_notifications_enabled=True,
+                is_prod=True,
+            )
+
+    def test_weak_telegram_token_in_prod_raises(self):
+        from cryptography.fernet import Fernet
+
+        fkey = Fernet.generate_key().decode()
+        with pytest.raises(RuntimeError, match="TELEGRAM_BOT_TOKEN"):
+            self._run(
+                secret_key="a" * 64,
+                encryption_key=fkey,
+                nid_hmac_key="b" * 64,
+                resend_api_key="re_" + "A" * 40,
+                telegram_bot_token="changeme",
+                telegram_notifications_enabled=True,
+                is_prod=True,
+            )
+
+    def test_missing_telegram_token_ok_when_disabled(self):
+        from cryptography.fernet import Fernet
+
+        fkey = Fernet.generate_key().decode()
+        self._run(
+            secret_key="a" * 64,
+            encryption_key=fkey,
+            nid_hmac_key="b" * 64,
+            resend_api_key="re_" + "A" * 40,
+            telegram_bot_token="",
+            telegram_notifications_enabled=False,
+            is_prod=True,
+        )
+
+    def test_missing_telegram_token_tolerated_in_dev(self):
+        from cryptography.fernet import Fernet
+
+        fkey = Fernet.generate_key().decode()
+        self._run(
+            secret_key="a" * 64,
+            encryption_key=fkey,
+            nid_hmac_key="b" * 64,
+            resend_api_key="re_" + "A" * 40,
+            telegram_bot_token="",
+            telegram_notifications_enabled=True,
             is_prod=False,
         )
 

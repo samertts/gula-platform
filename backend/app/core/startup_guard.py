@@ -120,9 +120,28 @@ def validate_config() -> None:
         NID_HMAC_KEY,
         RESEND_API_KEY,
         SECRET_KEY,
+        TELEGRAM_BOT_TOKEN,
+        TELEGRAM_NOTIFICATIONS_ENABLED,
     )
 
     errors: list[str] = []
+
+    if TELEGRAM_NOTIFICATIONS_ENABLED:
+        if not TELEGRAM_BOT_TOKEN:
+            if IS_PRODUCTION:
+                errors.append(
+                    "TELEGRAM_BOT_TOKEN is not set while "
+                    "TELEGRAM_NOTIFICATIONS_ENABLED=true. Create a bot with "
+                    "@BotFather and store TELEGRAM_BOT_TOKEN in .env "
+                    "(development) or the hosting platform's "
+                    "Secrets/Environment Variables (production).",
+                )
+        elif IS_PRODUCTION and _is_weak(TELEGRAM_BOT_TOKEN):
+            errors.append(
+                "TELEGRAM_BOT_TOKEN looks like a placeholder/default value. "
+                "Get a real bot token from @BotFather and store it in "
+                "environment secrets — never in source code.",
+            )
 
     if not RESEND_API_KEY:
         if IS_PRODUCTION:

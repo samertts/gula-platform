@@ -166,7 +166,7 @@ class ResendEmailClient:
         while True:
             try:
                 return self._do_send(params, recipients)
-            except Exception as exc:  # noqa: BLE001 — SDK wraps everything in ResendError
+            except Exception as exc:
                 attempt += 1
                 retryable = _is_retryable_error(exc)
                 if not retryable or attempt > self._max_retries:

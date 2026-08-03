@@ -25,11 +25,30 @@ version scheme follows [Semantic Versioning](https://semver.org/).
 - Docs: `docs/adr/ADR-011-resend-email-provider.md` (Free-First exception +
   SMTP fallback), notifications README, backend catalog, README deployment
   secrets policy.
+- **Telegram Bot as production notification provider** —
+  `shared/notifications/telegram.py` (`TelegramNotificationService`) using the
+  official Telegram Bot API over HTTPS with dependency injection, bounded
+  timeouts, exponential-backoff retries on transient failures (HTTP 408/429/
+  5xx, network), structured logging and bot-token redaction everywhere.
+- `NotificationSender.send_telegram()` integrates Telegram with dynamic
+  `chat_id` (never a config value); supports text / HTML / MarkdownV2 /
+  photos / documents / files / alerts / monitoring notifications.
+- Startup validation fails in production when `TELEGRAM_BOT_TOKEN` is missing
+  or weak while `TELEGRAM_NOTIFICATIONS_ENABLED=true`.
+- Environment configuration: `TELEGRAM_BOT_TOKEN` (empty in `.env.example`),
+  `TELEGRAM_NOTIFICATIONS_ENABLED`, `TELEGRAM_TIMEOUT_SECONDS`,
+  `TELEGRAM_MAX_RETRIES` in `.env.example`, `backend/app/config.py`,
+  `shared/config/loader.py`.
+- Unit tests: `backend/tests/notifications/test_telegram.py` (36 tests),
+  Telegram cases in `test_notification_sender.py` and
+  `test_startup_guard.py`.
+- Docs: `docs/adr/ADR-012-telegram-notification-provider.md`, notifications
+  README, backend catalog.
 
 ### Security
-- Secrets (including `RESEND_API_KEY`) are loaded ONLY from the environment
-  (`.env` / hosting-platform secrets) — never hardcoded, never in logs, never
-  committed.
+- Secrets (including `RESEND_API_KEY` and `TELEGRAM_BOT_TOKEN`) are loaded
+  ONLY from the environment (`.env` / hosting-platform secrets) — never
+  hardcoded, never in logs, never committed.
 
 ## [1.0.0] — 2026-08-02
 

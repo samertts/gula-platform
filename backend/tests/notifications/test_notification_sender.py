@@ -14,6 +14,7 @@ from shared.notifications.sender import (
     send_email,
     send_push,
     send_sms,
+    send_telegram,
     send_whatsapp,
 )
 
@@ -153,3 +154,89 @@ class TestNotificationSender:
         send_email("t@t.com", "S", "B")
         send_sms("+9647701234567", "B")
         send_whatsapp("+9647701234567", "B")
+
+
+class TestNotificationSenderTelegram:
+    def test_send_telegram_not_configured_returns_false(self, caplog):
+        sender = NotificationSender()
+        with caplog.at_level(logging.INFO):
+            result = sender.send_telegram(chat_id=123, text="Hello")
+        assert result is False
+        assert "not configured" in caplog.text
+
+    def test_send_telegram_text_with_dynamic_chat_id(self):
+        fake_token = "142536" + ":" + "A" * 40
+        sender = NotificationSender(telegram_bot_token=fake_token)
+        with patch("shared.notifications.telegram.httpx.Client") as mock_cls:
+            mock_client = mock_cls.return_value.__enter__.return_value
+            mock_client.post.return_value = MagicMock(
+                json=lambda: {"ok": True, "result": {"message_id": 7}},
+            )
+            result = sender.send_telegram(chat_id=-100777, text="Hello")
+        assert result is True
+        call_kwargs = mock_client.post.call_args.kwargs
+        assert call_kwargs["json"]["chat_id"] == -100777
+        assert call_kwargs["json"]["text"] == "Hello"
+
+    def test_send_telegram_html_uses_parse_mode(self):
+        fake_token = "142536" + ":" + "A" * 40
+        sender = NotificationSender(telegram_bot_token=fake_token)
+        with patch("shared.notifications.telegram.httpx.Client") as mock_cls:
+            mock_client = mock_cls.return_value.__enter__.return_value
+            mock_client.post.return_value = MagicMock(
+                json=lambda: {"ok": True, "result": {"message_id": 7}},
+            )
+            result = sender.send_telegram(chat_id=1, text="<b>Hi</b>", parse_mode="HTML")
+        assert result is True
+        assert mock_client.post.call_args.kwargs["json"]["parse_mode"] == "HTML"
+
+    def test_send_telegram_alert_path(self):
+        fake_token = "142536" + ":" + "A" * 40
+        sender = NotificationSender(telegram_bot_token=fake_token)
+        with patch("shared.notifications.telegram.httpx.Client") as mock_cls:
+            mock_client = mock_cls.return_value.__enter__.return_value
+            mock_client.post.return_value = MagicMock(
+                json=lambda: {"ok": True, "result": {"message_id": 7}},
+            )
+            result = sender.send_telegram(chat_id=1, text="disk full", alert_level="critical")
+        assert result is True
+        text = mock_client.post.call_args.kwargs["json"]["text"]
+        assert "[CRITICAL]" in text
+
+    def test_send_telegram_monitoring_path(self):
+        fake_token = "142536" + ":" + "A" * 40
+        sender = NotificationSender(telegram_bot_token=fake_token)
+        with patch("shared.notifications.telegram.httpx.Client") as mock_cls:
+            mock_client = mock_cls.return_value.__enter__.return_value
+            mock_client.post.return_value = MagicMock(
+                json=lambda: {"ok": True, "result": {"message_id": 7}},
+            )
+            result = sender.send_telegram(
+                chat_id=1, text="healthy", monitoring_service="gula-platform"
+            )
+        assert result is True
+        text = mock_client.post.call_args.kwargs["json"]["text"]
+        assert "[MONITORING:gula-platform]" in text
+
+    def test_send_telegram_failure_returns_false(self, caplog):
+        fake_token = "142536" + ":" + "A" * 40
+        sender = NotificationSender(telegram_bot_token=fake_token)
+        with patch("shared.notifications.telegram.httpx.Client") as mock_cls:
+            mock_client = mock_cls.return_value.__enter__.return_value
+            mock_client.post.return_value = MagicMock(
+                json=lambda: {"ok": False, "description": "chat not found", "error_code": 400},
+            )
+            with caplog.at_level(logging.ERROR):
+                result = sender.send_telegram(chat_id=999, text="Hi")
+        assert result is False
+        assert "chat not found" in caplog.text
+
+    def test_module_level_send_telegram(self):
+        fake_token = "142536" + ":" + "A" * 40
+        with patch("shared.notifications.sender.get_sender") as mock_get:
+            mock_sender = MagicMock()
+            mock_sender.send_telegram.return_value = True
+            mock_get.return_value = mock_sender
+            result = send_telegram(chat_id=1, text="Hi", parse_mode="HTML")
+        assert result is True
+        mock_sender.send_telegram.assert_called_once_with(1, "Hi", parse_mode="HTML")

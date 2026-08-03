@@ -240,6 +240,16 @@ RESEND_TIMEOUT_SECONDS = int(os.getenv("RESEND_TIMEOUT_SECONDS", "30"))
 RESEND_MAX_RETRIES = int(os.getenv("RESEND_MAX_RETRIES", "3"))
 RESEND_ENABLED = bool(RESEND_API_KEY)
 
+# ─── Telegram Bot (production notification provider) ─────────────────────────
+# The bot token must come ONLY from the environment (.env for local dev,
+# Secrets/Environment Variables on the hosting platform). It is NEVER
+# hardcoded, logged, or committed. chat_id is NOT configured here — it is
+# supplied dynamically per notification.
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_NOTIFICATIONS_ENABLED = os.getenv("TELEGRAM_NOTIFICATIONS_ENABLED", "true").lower() == "true"
+TELEGRAM_TIMEOUT_SECONDS = int(os.getenv("TELEGRAM_TIMEOUT_SECONDS", "30"))
+TELEGRAM_MAX_RETRIES = int(os.getenv("TELEGRAM_MAX_RETRIES", "3"))
+
 # ─── API Documentation ───────────────────────────────────────────────────────
 # Enable API docs in production for government testers (controlled by env var)
 ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"

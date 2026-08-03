@@ -73,6 +73,10 @@ class NotificationConfig:
     email_from: str = ""
     resend_timeout_seconds: int = 30
     resend_max_retries: int = 3
+    telegram_bot_token: str = ""
+    telegram_notifications_enabled: bool = True
+    telegram_timeout_seconds: int = 30
+    telegram_max_retries: int = 3
 
 
 @dataclass
@@ -206,6 +210,12 @@ def load_config() -> AppConfig:
     cfg.notification.email_from = _env_str("EMAIL_FROM", "noreply@gula-platform.org")
     cfg.notification.resend_timeout_seconds = _env_int("RESEND_TIMEOUT_SECONDS", 30)
     cfg.notification.resend_max_retries = _env_int("RESEND_MAX_RETRIES", 3)
+    cfg.notification.telegram_bot_token = _env_str("TELEGRAM_BOT_TOKEN", "")
+    cfg.notification.telegram_notifications_enabled = _env_bool(
+        "TELEGRAM_NOTIFICATIONS_ENABLED", True,
+    )
+    cfg.notification.telegram_timeout_seconds = _env_int("TELEGRAM_TIMEOUT_SECONDS", 30)
+    cfg.notification.telegram_max_retries = _env_int("TELEGRAM_MAX_RETRIES", 3)
 
     cfg.adapter.mode_default = _env_str("GULA_ADAPTER_MODE", "stub").lower()
     cfg.adapter.mode_nid = _env_str("GULA_ADAPTER_MODE_NID", cfg.adapter.mode_default).lower()
