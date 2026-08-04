@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ..notifications.service import get_service as get_legacy_service
+from ..notifications.telegram_enterprise import EnterpriseTelegramService
 from . import PlatformRegistry
 
 logger = logging.getLogger("gula.platform.notifications")
@@ -23,6 +24,7 @@ class NotificationResult:
 class NotificationService:
     def __init__(self) -> None:
         self._service = get_legacy_service()
+        self._telegram = EnterpriseTelegramService()
 
     def send_notification(
         self,
@@ -84,6 +86,52 @@ class NotificationService:
             error=result.error,
         )
 
+    def send_telegram(
+        self,
+        chat_id: int | str,
+        text: str,
+        parse_mode: str = "HTML",
+        **kwargs,
+    ) -> NotificationResult:
+        """Send a Telegram message through the enterprise service."""
+        return self._remap_telegram(self._telegram.send(chat_id, text, parse_mode=parse_mode, **kwargs))
+
+    def broadcast_telegram(
+        self,
+        chat_ids: list,
+        text: str,
+        parse_mode: str = "HTML",
+        interval_seconds: float = 0.25,
+        **kwargs,
+    ) -> list[NotificationResult]:
+        """Broadcast to many Telegram recipients with pacing."""
+        results = self._telegram.broadcast(
+            chat_ids, text, parse_mode=parse_mode, interval_seconds=interval_seconds, **kwargs
+        )
+        return [self._remap_telegram(r) for r in results]
+
+    def webhook_health(self) -> dict:
+        """Provider health snapshot for /health/deep."""
+        info = self._telegram.provider_health()
+        return {
+            "webhook_set": info.is_webhook_set,
+            "pending_updates": info.pending_update_count,
+            "last_error": info.last_error_message or None,
+            "provider_connected": self._telegram.provider_connected(),
+        }
+
+    def capabilities(self) -> list[str]:
+        return self._telegram._service.capabilities
+
+    @staticmethod
+    def _remap_telegram(result) -> NotificationResult:
+        return NotificationResult(
+            success=result.success,
+            channel="telegram",
+            recipient="",
+            error=result.error,
+        )
+
 
 PlatformRegistry.register(
     "notifications",
@@ -94,6 +142,16 @@ PlatformRegistry.register(
         {
             "name": "schedule_notification",
             "description": "Schedule a notification for later delivery",
+        },
+        {"name": "send_telegram", "description": "Send a Telegram message (enterprise provider)"},
+        {
+            "name": "broadcast_telegram",
+            "description": "Broadcast to many Telegram chats with pacing",
+        },
+        {"name": "telegram_webhook_health", "description": "Telegram provider/webhook health"},
+        {
+            "name": "telegram_capabilities",
+            "description": "Advertise Telegram provider capabilities",
         },
     ],
 )

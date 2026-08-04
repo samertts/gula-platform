@@ -17,7 +17,15 @@ from .sender import (
 from .telegram import (
     TelegramNotificationService,
     TelegramSendResult,
+    TelegramWebhookInfo,
+    append_prometheus_metrics,
+    build_force_reply,
+    build_inline_keyboard,
+    build_remove_keyboard,
+    build_reply_keyboard,
+    detect_mime_type,
     get_telegram_service,
+    validate_webhook_secret,
 )
 from .telegram import (
     send_telegram as send_telegram_msg,
@@ -36,6 +44,13 @@ __all__ = [
     "ResendEmailClient",
     "TelegramNotificationService",
     "TelegramSendResult",
+    "TelegramWebhookInfo",
+    "append_prometheus_metrics",
+    "build_force_reply",
+    "build_inline_keyboard",
+    "build_remove_keyboard",
+    "build_reply_keyboard",
+    "detect_mime_type",
     "get_email_client",
     "get_telegram_service",
     "get_template",
@@ -48,4 +63,5 @@ __all__ = [
     "send_telegram",
     "send_telegram_msg",
     "send_whatsapp",
+    "validate_webhook_secret",
 ]

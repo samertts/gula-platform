@@ -6,6 +6,7 @@ from typing import Any
 
 from shared.circuit_breaker import CircuitBreaker
 from shared.notifications.sender import get_sender
+from shared.notifications.telegram import get_telegram_service
 from shared.notifications.template import render_template
 
 logger = logging.getLogger("gula.notifications")
@@ -63,6 +64,11 @@ class NotificationService:
                 result = sender.send_whatsapp(to, body)
             elif channel == "push":
                 result = sender.send_push(to, subject, body, template_data)
+            elif channel == "telegram":
+                telegram_result = get_telegram_service().send(
+                    chat_id=to, text=body, parse_mode="HTML",
+                )
+                result = telegram_result.success
             else:
                 return NotificationResult(
                     success=False,

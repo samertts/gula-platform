@@ -82,10 +82,11 @@ class TestHealthEndpoints:
         assert body["grade"] in ("A", "B", "C", "F")
         assert isinstance(body["issues"], list)
         comps = body["components"]
-        assert set(comps) == {"database", "redis", "queue"}
+        assert set(comps) == {"database", "redis", "queue", "telegram"}
         assert comps["database"]["ok"] is True
         assert isinstance(comps["database"]["latency_ms"], float)
         assert isinstance(comps["queue"]["backlog"], int)
+        assert isinstance(comps["telegram"]["configured"], bool)
         proc = body["process"]
         assert isinstance(proc["memory_rss_mb"], float)
         assert isinstance(proc["uptime_s"], int)

@@ -250,6 +250,20 @@ TELEGRAM_NOTIFICATIONS_ENABLED = os.getenv("TELEGRAM_NOTIFICATIONS_ENABLED", "tr
 TELEGRAM_TIMEOUT_SECONDS = int(os.getenv("TELEGRAM_TIMEOUT_SECONDS", "30"))
 TELEGRAM_MAX_RETRIES = int(os.getenv("TELEGRAM_MAX_RETRIES", "3"))
 
+# ─── Telegram enterprise (PROGRAM-COMM-002A) ─────────────────────────────────
+# Webhook mode: when TELEGRAM_WEBHOOK_URL is set the provider registers a
+# webhook and the platform serves /webhooks/telegram/update. When empty, the
+# bot runs in polling mode. TELEGRAM_WEBHOOK_SECRET_TOKEN is returned by
+# Telegram in the X-Telegram-Bot-Api-Secret-Token header and validated
+# constant-time on every update — keep it secret, like the bot token.
+TELEGRAM_WEBHOOK_URL = os.getenv("TELEGRAM_WEBHOOK_URL", "")
+TELEGRAM_WEBHOOK_SECRET_TOKEN = os.getenv("TELEGRAM_WEBHOOK_SECRET_TOKEN", "")
+TELEGRAM_WEBHOOK_MAX_CONNECTIONS = int(os.getenv("TELEGRAM_WEBHOOK_MAX_CONNECTIONS", "40"))
+TELEGRAM_MODE = os.getenv("TELEGRAM_MODE", "auto")  # polling | webhook | auto
+# Outbound rate limiting (smooth token bucket) + per-chat flood guard.
+TELEGRAM_RATE_PER_MINUTE = int(os.getenv("TELEGRAM_RATE_PER_MINUTE", "30"))
+TELEGRAM_MAX_PER_CHAT = int(os.getenv("TELEGRAM_MAX_PER_CHAT", "0"))
+
 # ─── API Documentation ───────────────────────────────────────────────────────
 # Enable API docs in production for government testers (controlled by env var)
 ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"

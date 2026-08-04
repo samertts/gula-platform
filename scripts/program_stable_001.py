@@ -43,9 +43,10 @@ FRONTEND = ROOT / "frontend-v3"
 PY = BACKEND / ".venv" / "bin" / "python"
 
 DOMAINS = [
-    "lab", "pharmacy", "radiology", "hospital", "blood_bank", "public_health",
-    "insurance", "citizen_platform", "ehr", "biomedical", "nursing",
-    "critical_care", "care_continuum", "health_data", "nhdw", "national_data",
+    "lab", "lims", "pharmacy", "radiology", "hospital", "blood_bank",
+    "public_health", "insurance", "citizen_platform", "ehr", "biomedical",
+    "nursing", "critical_care", "care_continuum", "health_data", "nhdw",
+    "national_data",
 ]
 
 FINDINGS: list[dict] = []
@@ -283,6 +284,7 @@ def p2_domain_isolation() -> None:
         src_pkg = rel.split("/")[1] if "/" in rel else None
         if src_pkg not in DOMAINS:
             continue
+        pkg_path = rel[:-3].replace("/", ".")
         try:
             tree = ast.parse(p.read_text(encoding="utf-8", errors="ignore"))
         except SyntaxError:
@@ -291,12 +293,12 @@ def p2_domain_isolation() -> None:
             if isinstance(node, ast.ImportFrom) and node.module:
                 for a in node.names:
                     mod = (node.module + "." + a.name) if a.name != "*" else node.module
-                    tgt = _target_domain(mod)
+                    tgt = _target_domain(mod, pkg_path, node.level)
                     if tgt and tgt != src_pkg and not _allowed_cross(src_pkg, tgt, rel):
                         violations.append(f"{rel}: imports {mod}")
             elif isinstance(node, ast.Import):
                 for a in node.names:
-                    tgt = _target_domain(a.name)
+                    tgt = _target_domain(a.name, pkg_path, 0)
                     if tgt and tgt != src_pkg and not _allowed_cross(src_pkg, tgt, rel):
                         violations.append(f"{rel}: imports {a.name}")
     if violations:
@@ -306,9 +308,26 @@ def p2_domain_isolation() -> None:
         finding("P2", "domain-isolation", "pass", "no cross-domain imports among active domains")
 
 
-def _target_domain(mod: str) -> str | None:
+def _target_domain(mod: str, pkg_path: str = "", level: int = 0) -> str | None:
+    """Return the domain package an import expression points at.
+
+    ``mod`` is the dotted module expression as written (absolute like
+    ``app.ehr.models`` or relative like ``hospital.models`` from a level-2
+    import). ``pkg_path`` is the dot-separated module path of the importing
+    file (e.g. ``app.nhdw.kpi``) and ``level`` is the AST relative-import
+    level, used to resolve relative imports to their absolute target so that
+    same-name intra-package submodules (e.g.
+    ``care_continuum.models.public_health``) are not mistaken for the
+    top-level ``public_health`` domain.
+    """
+    if level >= 1:
+        parts = pkg_path.split(".")
+        if len(parts) <= level:
+            return None
+        base = parts[: -level]
+        mod = ".".join([*base, *mod.split(".")])
     for d in DOMAINS:
-        if mod.startswith(("app." + d, ".." + d)):
+        if mod.startswith(("app." + d, ".." + d, d + ".")) or mod == d:
             return d
     return None
 
@@ -319,11 +338,15 @@ def _target_domain(mod: str) -> str | None:
 # read it (approved read contracts) or write one clinically-owned table
 # (nursing medication-administration, risk-registered). All are
 # single-directional: the EHR imports no consumer context.
+# The NHDW (national health data warehouse) reads hospital operational
+# entities (Bed/Room/Department/OperationTheater) read-only for national
+# KPI analytics — same warehouse-read class as the national_data contracts.
 _APPROVED_EHR_CONTRACTS: frozenset[tuple[str, str]] = frozenset(
     {
         ("citizen_platform", "ehr"),
         ("nursing", "ehr"),
         ("national_data", "ehr"),
+        ("nhdw", "hospital"),
     }
 )
 

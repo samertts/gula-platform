@@ -1,5 +1,44 @@
 # Changelog
 
+## [2.2.0] — 2026-08-04 — PROGRAM-COMM-002A (Enterprise Telegram Delivery)
+
+### Added
+- **Enterprise Telegram webhook** (`shared/notifications/telegram.py`) —
+  set/delete/getWebhookInfo/getMe, switch_mode, polling, auto mode switching,
+  `X-Telegram-Bot-Api-Secret-Token` secret validation, `TelegramWebhookInfo`.
+- **Webhook ingress** (`backend/app/routes/telegram_webhook.py`) —
+  `POST /webhooks/telegram/update` (secret-validated, replay-guarded, rate-limited)
+  and `GET /webhooks/telegram/health`. Registered in the app factory.
+- **Orchestration layer** (`backend/app/notifications/telegram_enterprise.py`) —
+  `EnterpriseTelegramService` with CircuitBreaker, broadcast/batch/schedule via
+  the existing TaskQueue/TaskWorker (`telegram.deliver` handler).
+- **Rich delivery** — media groups (album), attachments with MIME auto-detection,
+  audio/video/voice/animation, location/contact, edit/delete, inline/reply/force
+  keyboards, channels/forums/posts/topics support.
+- **Observability** — deps-free counters + `append_prometheus_metrics()`; `telegram`
+  component in deep health; Prometheus `telegram_*` metrics.
+- **Config & guards** — `TELEGRAM_WEBHOOK_URL`, `TELEGRAM_WEBHOOK_SECRET_TOKEN`,
+  `TELEGRAM_WEBHOOK_MAX_CONNECTIONS`, `TELEGRAM_MODE`, `TELEGRAM_RATE_PER_MINUTE`;
+  production startup guard requires secret when webhook URL is set.
+- **Enterprise test suite** (`backend/tests/notifications/test_telegram_enterprise.py`)
+  — 62 computed tests across 10 classes.
+- **Docs** — `docs/ai/PROGRAM-COMM-002A_REPORT.md`,
+  `docs/adr/ADR-013-telegram-enterprise-layer.md`,
+  `docs/operations/telegram-enterprise.md`.
+
+### Changed
+- `shared/notifications/sender.py` — rich-message pass-through (reply_markup,
+  reply_to_message_id, message_thread_id).
+- `backend/app/notifications/service.py` — Telegram channel routes through the
+  enterprise provider.
+- `backend/app/services/metrics_service.py` — deep-health `telegram` component +
+  Prometheus append.
+
+### Quality
+- Ruff: 0 new violations (baseline 379 preserved); VERDICT PASS on all hard gates
+  (ruff/tsc/eslint/unit/frontend-unit/brain-freshness); 757 backend unit + 141
+  notification tests passing.
+
 ## [2.1.1] — 2026-07-13 — MISSION-001A
 
 ### Added

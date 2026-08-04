@@ -22,6 +22,7 @@ Hybrid Readiness (is_system_ready):
 
 import asyncio
 import logging
+import os
 import time
 
 logger = logging.getLogger("gula.startup")
@@ -141,6 +142,18 @@ def validate_config() -> None:
                 "TELEGRAM_BOT_TOKEN looks like a placeholder/default value. "
                 "Get a real bot token from @BotFather and store it in "
                 "environment secrets — never in source code.",
+            )
+
+        # Enterprise webhook mode (PROGRAM-COMM-002A): when a webhook URL is
+        # configured, a secret token must be too — otherwise the webhook
+        # endpoint accepts unsigned updates.
+        telegram_webhook_url = os.getenv("TELEGRAM_WEBHOOK_URL", "")
+        telegram_webhook_secret = os.getenv("TELEGRAM_WEBHOOK_SECRET_TOKEN", "")
+        if telegram_webhook_url and not telegram_webhook_secret and IS_PRODUCTION:
+            errors.append(
+                "TELEGRAM_WEBHOOK_URL is set but TELEGRAM_WEBHOOK_SECRET_TOKEN "
+                "is empty. Generate a long random value (e.g. "
+                "openssl rand -hex 32) and store it in environment secrets.",
             )
 
     if not RESEND_API_KEY:

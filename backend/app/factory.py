@@ -477,6 +477,7 @@ def _register_routes(app: FastAPI) -> None:
     from .routes import ai as ai_routes
     from .routes import citizen_portal as citizen_portal_routes
     from .routes import optimizer as optimizer_routes
+    from .routes import telegram_webhook as telegram_webhook_routes
     from .routes import tiers as tiers_routes
 
     core_routes = [
@@ -517,6 +518,7 @@ def _register_routes(app: FastAPI) -> None:
         app.include_router(r.router)
 
     app.include_router(tiers_routes.router)
+    app.include_router(telegram_webhook_routes.router)
 
     from .financial import register_routes as register_financial_routes
 

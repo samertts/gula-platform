@@ -77,6 +77,11 @@ class NotificationConfig:
     telegram_notifications_enabled: bool = True
     telegram_timeout_seconds: int = 30
     telegram_max_retries: int = 3
+    telegram_webhook_url: str = ""
+    telegram_webhook_secret_token: str = ""
+    telegram_mode: str = "auto"
+    telegram_rate_per_minute: int = 30
+    telegram_max_per_chat: int = 0
 
 
 @dataclass
@@ -216,6 +221,13 @@ def load_config() -> AppConfig:
     )
     cfg.notification.telegram_timeout_seconds = _env_int("TELEGRAM_TIMEOUT_SECONDS", 30)
     cfg.notification.telegram_max_retries = _env_int("TELEGRAM_MAX_RETRIES", 3)
+    cfg.notification.telegram_webhook_url = _env_str("TELEGRAM_WEBHOOK_URL", "")
+    cfg.notification.telegram_webhook_secret_token = _env_str(
+        "TELEGRAM_WEBHOOK_SECRET_TOKEN", "",
+    )
+    cfg.notification.telegram_mode = _env_str("TELEGRAM_MODE", "auto").lower()
+    cfg.notification.telegram_rate_per_minute = _env_int("TELEGRAM_RATE_PER_MINUTE", 30)
+    cfg.notification.telegram_max_per_chat = _env_int("TELEGRAM_MAX_PER_CHAT", 0)
 
     cfg.adapter.mode_default = _env_str("GULA_ADAPTER_MODE", "stub").lower()
     cfg.adapter.mode_nid = _env_str("GULA_ADAPTER_MODE_NID", cfg.adapter.mode_default).lower()

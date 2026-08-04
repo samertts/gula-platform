@@ -157,6 +157,29 @@ def build_deep_health() -> dict:
     uptime_s = get_uptime_s()
     degradation = get_degradation_level()
 
+    telegram = {"ok": True, "configured": False}
+    try:
+        from ..notifications.telegram_enterprise import EnterpriseTelegramService
+
+        wrapper = EnterpriseTelegramService()
+        telegram_ok = wrapper.provider_connected()
+        telegram = {
+            "ok": telegram_ok,
+            "configured": wrapper._service.is_configured,
+            "network": "connected" if telegram_ok else "unreachable",
+            "error": None if telegram_ok else "provider unreachable",
+        }
+    except Exception:
+        telegram = {"ok": False, "configured": False, "error": "health probe failed"}
+
+    active_requests = 0
+    try:
+        from ..middleware import ConcurrencyLimitMiddleware
+
+        active_requests = ConcurrencyLimitMiddleware._active
+    except Exception:
+        pass
+
     issues: list[str] = []
     if not db_ok:
         issues.append("database_unreachable")
@@ -168,8 +191,10 @@ def build_deep_health() -> dict:
         issues.append("queue_backlog_high")
     if degradation > 0:
         issues.append(f"degraded_mode_l{degradation}")
+    if not telegram["ok"]:
+        issues.append("telegram_provider_unreachable")
 
-    if not db_ok or not red_ok:
+    if not db_ok or not red_ok or not telegram["ok"]:
         grade = "F"
     elif degradation > 0 or db_ms > 500:
         grade = "C"
@@ -177,14 +202,6 @@ def build_deep_health() -> dict:
         grade = "B"
     else:
         grade = "A"
-
-    active_requests = 0
-    try:
-        from ..middleware import ConcurrencyLimitMiddleware
-
-        active_requests = ConcurrencyLimitMiddleware._active
-    except Exception:
-        pass
 
     return {
         "grade": grade,
@@ -201,6 +218,7 @@ def build_deep_health() -> dict:
                 "error": None if red_ok else "unreachable",
             },
             "queue": {"backlog": backlog, "error": None},
+            "telegram": telegram,
         },
         "process": {
             "memory_rss_mb": get_rss_mb(),
@@ -503,5 +521,11 @@ def build_prometheus_response(request: Request, db: Session) -> PlainTextRespons
     lines.append("")
     lines.append(request_metrics_exposition())
     lines.append(security_metrics_exposition())
+    try:
+        from shared.notifications.telegram import append_prometheus_metrics as telegram_metrics
+
+        lines.append(telegram_metrics())
+    except Exception:
+        pass
     lines.append("")
     return PlainTextResponse("\n".join(lines) + "\n", media_type=_PROM_CONTENT_TYPE)

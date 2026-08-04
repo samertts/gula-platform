@@ -24,6 +24,7 @@ from app.radiology.pacs import (
     ImageViewerService,
 )
 from app.radiology.services import RadiologyService
+from app.security.dependencies import get_current_user
 
 logger = logging.getLogger("gula.radiology.routes")
 
@@ -251,7 +252,7 @@ def _get_study_service(db: Session) -> DICOMStudyService:
 def create_order(
     data: RadiologyOrderCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     order = svc.create_order(
@@ -282,7 +283,7 @@ def list_orders(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from) if date_from else None
@@ -309,7 +310,7 @@ def list_orders(
 def get_order(
     order_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     order = svc.get_order(order_id)
@@ -323,7 +324,7 @@ def update_order_status(
     order_id: str,
     data: OrderStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     order = svc.update_order_status(order_id, data.status)
@@ -342,7 +343,7 @@ def search_orders(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from) if date_from else None
@@ -374,7 +375,7 @@ def list_appointments(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from) if date_from else None
@@ -395,7 +396,7 @@ def list_appointments(
 def create_appointment(
     data: RadiologyAppointmentCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     appt = svc.schedule_appointment(
@@ -422,7 +423,7 @@ def create_appointment(
 def checkin_appointment(
     appointment_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     appt = svc.check_in_appointment(appointment_id)
@@ -435,7 +436,7 @@ def checkin_appointment(
 def arrive_appointment(
     appointment_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     appt = svc.arrive_appointment(appointment_id)
@@ -448,7 +449,7 @@ def arrive_appointment(
 def get_appointment(
     appointment_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     appt = svc.get_appointment(appointment_id)
@@ -473,7 +474,7 @@ def list_exams(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from) if date_from else None
@@ -500,7 +501,7 @@ def list_exams(
 def create_exam(
     data: RadiologyExamCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     exam = svc.create_exam(
@@ -525,7 +526,7 @@ def create_exam(
 def get_exam(
     exam_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     exam = svc.get_exam(exam_id)
@@ -539,7 +540,7 @@ def update_exam_status(
     exam_id: str,
     data: RadiologyExamStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     exam = svc.update_exam_status(exam_id, data.status)
@@ -553,7 +554,7 @@ def update_exam_images(
     exam_id: str,
     data: RadiologyExamImagesUpdate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     exam = svc.update_exam_images(exam_id, data.images_count, data.series_count)
@@ -567,7 +568,7 @@ def technologist_worklist(
     modality: str | None = None,
     date: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     date_ = datetime.fromisoformat(date) if date else datetime.now(UTC)
@@ -580,7 +581,7 @@ def radiologist_worklist(
     status: str | None = None,
     priority: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     exams = svc.get_radiologist_worklist(status=status, priority=priority)
@@ -591,7 +592,7 @@ def radiologist_worklist(
 def modality_worklist(
     device_id: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     entries = svc.get_modality_worklist(modality_device_id=device_id)
@@ -608,7 +609,7 @@ def list_protocols(
     modality: str | None = None,
     body_part: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     protocols = svc.list_protocols(modality=modality, body_part=body_part)
@@ -619,7 +620,7 @@ def list_protocols(
 def create_protocol(
     data: ProtocolCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     protocol = svc.create_protocol(
@@ -644,7 +645,7 @@ def create_protocol(
 def get_protocol(
     protocol_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     protocol = svc.get_protocol(protocol_id)
@@ -668,7 +669,7 @@ def list_reports(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from) if date_from else None
@@ -694,7 +695,7 @@ def list_reports(
 def create_report(
     data: RadiologyReportCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     report = svc.create_report(
@@ -721,7 +722,7 @@ def create_report(
 def get_report(
     report_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     report = svc.get_report(report_id)
@@ -735,7 +736,7 @@ def save_report_draft(
     report_id: str,
     data: RadiologyReportDraftUpdate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     report = svc.save_report_draft(
@@ -756,7 +757,7 @@ def finalize_report(
     report_id: str,
     data: RadiologyReportFinalize,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     report = svc.finalize_report(report_id, radiologist_id=data.radiologist_id)
@@ -770,7 +771,7 @@ def amend_report(
     report_id: str,
     data: RadiologyReportAmend,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     report = svc.amend_report(
@@ -790,7 +791,7 @@ def amend_report(
 def verify_report(
     report_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     report = svc.verify_report(report_id)
@@ -810,7 +811,7 @@ def search_reports(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from) if date_from else None
@@ -838,7 +839,7 @@ def list_report_templates(
     modality: str | None = None,
     body_part: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     templates = svc.list_report_templates(modality=modality, body_part=body_part)
@@ -849,7 +850,7 @@ def list_report_templates(
 def create_report_template(
     data: ReportTemplateCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     template = svc.create_report_template(
@@ -873,7 +874,7 @@ def create_report_template(
 def get_study(
     study_uid: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_study_service(db)
     study = svc.get_study(study_uid)
@@ -893,7 +894,7 @@ def search_studies(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_study_service(db)
     from_ = datetime.fromisoformat(date_from) if date_from else None
@@ -920,7 +921,7 @@ def search_studies(
 def get_study_series(
     study_uid: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_storage_service(db)
     instances = svc.get_study_instances(study_uid)
@@ -944,7 +945,7 @@ def get_series_images(
     study_uid: str,
     series_uid: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_storage_service(db)
     instances = svc.get_series_instances(series_uid)
@@ -955,7 +956,7 @@ def get_series_images(
 def view_image(
     image_uid: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     viewer = ImageViewerService(db)
     url = viewer.get_streaming_url(image_uid)
@@ -968,7 +969,7 @@ def view_image(
 def download_image(
     image_uid: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     storage_svc = _get_storage_service(db)
     record = storage_svc.retrieve(image_uid)
@@ -988,7 +989,7 @@ def download_image(
 def create_share(
     data: ImageShareCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     sharing = ImageSharingService(db)
     share = sharing.create_share(
@@ -1006,7 +1007,7 @@ def create_share(
 def revoke_share(
     share_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     sharing = ImageSharingService(db)
     revoked = sharing.revoke_share(share_id)
@@ -1020,7 +1021,7 @@ def get_study_thumbnail(
     study_uid: str,
     size: int = Query(256, ge=32, le=1024),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     storage_svc = _get_storage_service(db)
     instances = storage_svc.get_study_instances(study_uid)
@@ -1042,7 +1043,7 @@ def list_devices(
     modality_type: str | None = None,
     status: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     device_svc = DeviceMonitoringService(db)
     devices = device_svc.list_devices(modality_type=modality_type, status=status)
@@ -1053,7 +1054,7 @@ def list_devices(
 def register_device(
     data: ModalityDeviceCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     device_svc = DeviceMonitoringService(db)
     device = device_svc.register_device(
@@ -1080,7 +1081,7 @@ def update_device_status(
     device_id: str,
     data: DeviceStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     device_svc = DeviceMonitoringService(db)
     device = device_svc.update_device_status(device_id, data.status)
@@ -1093,7 +1094,7 @@ def update_device_status(
 def get_device_worklist(
     device_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     wl_svc = ModalityWorklistService(db)
     entries = wl_svc.get_worklist_for_device(device_id)
@@ -1104,7 +1105,7 @@ def get_device_worklist(
 def receive_mpps(
     data: MPPSReceive,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     mpps_handler = MPPSHandler(db)
     mpps_data = {
@@ -1125,7 +1126,7 @@ def receive_mpps(
 @router.get("/device-health")
 def get_device_health(
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     device_svc = DeviceMonitoringService(db)
     stale = device_svc.detect_stale_devices()
@@ -1152,7 +1153,7 @@ def list_critical_findings(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from) if date_from else None
@@ -1178,7 +1179,7 @@ def list_critical_findings(
 def create_critical_finding(
     data: CriticalFindingCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     finding = svc.create_critical_finding(
@@ -1199,7 +1200,7 @@ def acknowledge_critical_finding(
     finding_id: str,
     data: CriticalFindingAcknowledge,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     finding = svc.acknowledge_critical_finding(
@@ -1218,7 +1219,7 @@ def notify_critical_finding(
     notified_by: str = Query(...),
     notified_to: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     finding = svc.notify_critical_finding(
@@ -1241,7 +1242,7 @@ def get_dashboard(
     date_from: str = Query(...),
     date_to: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from)
@@ -1261,7 +1262,7 @@ def get_workload(
     date_from: str = Query(...),
     date_to: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from)
@@ -1279,7 +1280,7 @@ def get_report_tat(
     date_from: str = Query(...),
     date_to: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from)
@@ -1292,7 +1293,7 @@ def get_modality_utilization(
     date_from: str = Query(...),
     date_to: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     from_ = datetime.fromisoformat(date_from)
@@ -1312,7 +1313,7 @@ def citizen_reports(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     reports = svc.search_reports(
@@ -1333,7 +1334,7 @@ def citizen_reports(
 def citizen_images(
     patient_id: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     storage_svc = _get_storage_service(db)
     records = storage_svc.query(patient_id=patient_id)
@@ -1356,7 +1357,7 @@ def citizen_images(
 def citizen_create_share(
     data: ImageShareCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     sharing = ImageSharingService(db)
     share = sharing.create_share(

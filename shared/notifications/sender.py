@@ -65,7 +65,8 @@ class NotificationSender:
         self._whatsapp_phone_id = whatsapp_phone_id or os.getenv("WHATSAPP_PHONE_ID", "")
         self._resend_api_key = resend_api_key or os.getenv("RESEND_API_KEY", "")
         self._resend_email_from = resend_email_from or os.getenv(
-            "EMAIL_FROM", "noreply@gula-platform.org",
+            "EMAIL_FROM",
+            "noreply@gula-platform.org",
         )
         self._resend_timeout_seconds = resend_timeout_seconds or int(
             os.getenv("RESEND_TIMEOUT_SECONDS", "30"),
@@ -88,12 +89,15 @@ class NotificationSender:
             self._http_client = httpx.Client(timeout=30.0)
         return self._http_client
 
-    def send_push(self, token: str, title: str, body: str, data: dict[str, Any] | None = None) -> bool:
+    def send_push(
+        self, token: str, title: str, body: str, data: dict[str, Any] | None = None
+    ) -> bool:
         if not self._fcm_key:
             logger.warning("FCM key not configured, skipping push notification")
             return False
         try:
             from firebase_admin import messaging
+
             msg = messaging.Message(
                 notification=messaging.Notification(title=title, body=body),
                 data={k: str(v) for k, v in (data or {}).items()},
@@ -209,11 +213,19 @@ class NotificationSender:
         send_file_path: str = "",
         alert_level: str | None = None,
         monitoring_service: str | None = None,
+        reply_markup: dict | None = None,
+        reply_to_message_id: int | None = None,
+        message_thread_id: int | None = None,
+        coordinate: tuple[float, float] | None = None,
+        contact: tuple[str, str] | None = None,
     ) -> bool:
         """Send a Telegram notification via the official Bot API.
 
         chat_id is required and supplied dynamically per call — it is never
         read from configuration. Returns True only on confirmed delivery.
+
+        Enterprise extras: rich markup, reply-to, forum threads, location and
+        contact are forwarded to the canonical shared provider.
         """
         from .telegram import TelegramNotificationService
 
@@ -229,22 +241,48 @@ class NotificationSender:
             )
             return False
 
+        kwargs = {}
+        if reply_markup is not None:
+            kwargs["reply_markup"] = reply_markup
+        if reply_to_message_id is not None:
+            kwargs["reply_to_message_id"] = reply_to_message_id
+        if message_thread_id is not None:
+            kwargs["message_thread_id"] = message_thread_id
+
         if monitoring_service:
-            result = service.send_monitoring(chat_id=chat_id, message=text, service=monitoring_service)
+            result = service.send_monitoring(
+                chat_id=chat_id, message=text, service=monitoring_service
+            )
         elif alert_level:
             result = service.send_alert(chat_id=chat_id, message=text, level=alert_level)
         elif send_file_path:
-            result = service.send_file(chat_id=chat_id, file_path=send_file_path, caption=text)
-        elif send_document is not None:
-            result = service.send_document(chat_id=chat_id, document=send_document, caption=text)
+            result = service.send_file(
+                chat_id=chat_id, file_path=send_file_path, caption=text, **kwargs
+            )
+        elif coordinate is not None:
+            result = service.send_location(
+                chat_id=chat_id,
+                latitude=coordinate[0],
+                longitude=coordinate[1],
+            )
+        elif contact is not None:
+            result = service.send_contact(
+                chat_id=chat_id,
+                phone_number=contact[0],
+                first_name=contact[1],
+            )
         elif send_photo is not None:
-            result = service.send_photo(chat_id=chat_id, photo=send_photo, caption=text)
+            result = service.send_photo(chat_id=chat_id, photo=send_photo, caption=text, **kwargs)
+        elif send_document is not None:
+            result = service.send_document(
+                chat_id=chat_id, document=send_document, caption=text, **kwargs
+            )
         elif parse_mode == "HTML":
-            result = service.send_html(chat_id=chat_id, html=text)
+            result = service.send_html(chat_id=chat_id, html=text, **kwargs)
         elif parse_mode == "MarkdownV2":
-            result = service.send_markdown_v2(chat_id=chat_id, text=text)
+            result = service.send_markdown_v2(chat_id=chat_id, text=text, **kwargs)
         else:
-            result = service.send_text(chat_id=chat_id, text=text)
+            result = service.send_text(chat_id=chat_id, text=text, **kwargs)
 
         if result.success:
             logger.info("[TELEGRAM] Delivered Chat=%s MessageId=%s", chat_id, result.message_id)
