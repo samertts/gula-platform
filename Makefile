@@ -101,6 +101,10 @@ help:
 	@echo "    make governor-check        Governor self-check (CI gate)"
 	@echo "    make governor-report       Regenerate Governor artifacts"
 	@echo "    make governor-test         Governor unit tests"
+	@echo "  ── AI Kernel (GULA-KERNEL-001) ───────────────────────────────────"
+	@echo "    make kernel-check          Kernel self-check (CI gate)"
+	@echo "    make kernel-report         Regenerate Kernel artifacts"
+	@echo "    make kernel-test           Kernel unit tests"
 	@echo ""
 	@echo "  ── Monitoring (optional profile) ─────────────────────────────────"
 	@echo "    make monitoring       Start Prometheus + Grafana"
@@ -364,6 +368,19 @@ governor-report:
 governor-test:
 	$(Q)echo "=== Governor unit tests ==="
 	$(Q)ENV=test PYTHONPATH=.. $(PY) -m pytest backend/tests/unit/test_governor.py -q --no-header
+
+kernel-check:
+	$(Q)echo "=== AI Kernel self-check (GULA-KERNEL-001) ==="
+	$(Q)$(PY) scripts/kernel.py check
+
+kernel-report:
+	$(Q)echo "=== Regenerating AI Kernel artifacts (GULA-KERNEL-001) ==="
+	$(Q)$(PY) scripts/kernel.py audit
+	$(Q)$(PY) scripts/kernel.py report
+
+kernel-test:
+	$(Q)echo "=== AI Kernel unit tests ==="
+	$(Q)ENV=test PYTHONPATH=.. $(PY) -m pytest backend/tests/unit/test_kernel.py -q --no-header
 
 parity:
 	$(Q)echo "=== Backend-Frontend Parity Certification (PROGRAM-06) ==="

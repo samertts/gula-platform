@@ -117,6 +117,18 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | docs/governor/ | docs | Active |
 | .ai/core/governor/README.md | knowledge | Active |
 
+## AI Kernel (GULA-KERNEL-001)
+
+| Artifact | Location | Status |
+|---|---|---|
+| GULA-KERNEL-001 | scripts/kernel/ + scripts/kernel.py | Active |
+| KERNEL_AUDIT_REPORT.md | repo root | Active |
+| KERNEL_IMPLEMENTATION_REPORT.md | repo root | Active |
+| ENTERPRISE_READINESS_SCORE.md | repo root | Active |
+| AI_OPERATING_STATUS.md | repo root | Active |
+| docs/kernel/ | docs | Active |
+| .ai/core/kernel/README.md | knowledge | Active |
+
 ## Total Count
 
 | Category | Count |
@@ -137,4 +149,5 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Technical Debt | 8 (1 resolved) |
 | Automation Scripts | 13 |
 | Governor Modules | 18 |
-| **Total Artifacts** | **128** |
+| Kernel Modules | 19 |
+| **Total Artifacts** | **147** |

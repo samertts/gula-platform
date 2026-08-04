@@ -61,6 +61,9 @@ security_root_causes.md
 # ── AI Governor runtime state ───────────────────────────────────────────────────
 .ai/core/governor/state/
 
+# ── AI Kernel runtime state ─────────────────────────────────────────────────────
+.ai/core/kernel/state/
+
 # ── OS ─────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

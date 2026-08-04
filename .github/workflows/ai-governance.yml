@@ -51,6 +51,9 @@ jobs:
       - name: Governor Self-Check (GULA-GOVERNOR-001)
         run: python3 scripts/governor.py check
 
+      - name: AI Kernel Self-Check (GULA-KERNEL-001)
+        run: python3 scripts/kernel.py check
+
   brain-refresh:
     name: Brain Auto-Refresh (post-merge)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

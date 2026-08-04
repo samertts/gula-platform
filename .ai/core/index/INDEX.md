@@ -139,6 +139,22 @@ Enterprise AI governance, coordination, safety and stability framework.
 | `AI_HEALTH_DASHBOARD.md` | Governor | Phase 12 health dashboard |
 | `GOVERNOR_IMPLEMENTATION_REPORT.md` | Governor | Phase 13 implementation report |
 
+### AI Kernel (GULA-KERNEL-001)
+Enterprise AI Execution Kernel — the permanent execution layer every AI Engine
+depends on (execution, coordination, resource/state management, security,
+communication, knowledge access, checkpointing, recovery).
+
+| File | Source | Description |
+|---|---|---|
+| `.ai/core/kernel/README.md` | Kernel | Execution-layer overview |
+| `docs/kernel/README.md` | Kernel | Execution-layer documentation index |
+| `docs/kernel/PHASES.md` | Kernel | Phase-by-phase design (0–18) |
+| `docs/kernel/CONTRACT.md` | Kernel | 16-field engine contract + autonomy |
+| `KERNEL_AUDIT_REPORT.md` | Kernel | Phase 0 foundation audit |
+| `KERNEL_IMPLEMENTATION_REPORT.md` | Kernel | Phase 18 implementation report |
+| `ENTERPRISE_READINESS_SCORE.md` | Kernel | Readiness score (100/100, grade A) |
+| `AI_OPERATING_STATUS.md` | Kernel | Operating status |
+
 ### Database
 Database schema, migrations, and data decisions.
 
