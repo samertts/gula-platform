@@ -97,6 +97,10 @@ help:
 	@echo "    make validate              Enterprise validation engine (fast scope)"
 	@echo "    make validate-full         Enterprise validation engine (full scope)"
 	@echo "    make validate-baseline     Update regression baseline after improvement"
+	@echo "  ── Governor (GULA-GOVERNOR-001) ─────────────────────────────────"
+	@echo "    make governor-check        Governor self-check (CI gate)"
+	@echo "    make governor-report       Regenerate Governor artifacts"
+	@echo "    make governor-test         Governor unit tests"
 	@echo ""
 	@echo "  ── Monitoring (optional profile) ─────────────────────────────────"
 	@echo "    make monitoring       Start Prometheus + Grafana"
@@ -345,6 +349,21 @@ brain:
 brain-check:
 	$(Q)echo "=== Checking Project Brain freshness ==="
 	$(Q)$(PY) scripts/project_brain.py --check
+
+governor-check:
+	$(Q)echo "=== Governor self-check (GULA-GOVERNOR-001) ==="
+	$(Q)$(PY) scripts/governor.py check
+
+governor-report:
+	$(Q)echo "=== Regenerating Governor artifacts (GULA-GOVERNOR-001) ==="
+	$(Q)$(PY) scripts/governor.py audit
+	$(Q)$(PY) scripts/governor.py authority
+	$(Q)$(PY) scripts/governor.py health
+	$(Q)$(PY) scripts/governor.py report
+
+governor-test:
+	$(Q)echo "=== Governor unit tests ==="
+	$(Q)ENV=test PYTHONPATH=.. $(PY) -m pytest backend/tests/unit/test_governor.py -q --no-header
 
 parity:
 	$(Q)echo "=== Backend-Frontend Parity Certification (PROGRAM-06) ==="

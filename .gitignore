@@ -58,6 +58,9 @@ codeql_*.md
 enterprise_security_*.md
 security_root_causes.md
 
+# ── AI Governor runtime state ───────────────────────────────────────────────────
+.ai/core/governor/state/
+
 # ── OS ─────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db

@@ -48,6 +48,9 @@ jobs:
         run: |
           python3 -c "import ast; [ast.parse(open(f).read()) for f in ['scripts/project_brain.py', 'scripts/enterprise_validation_engine.py']]; print('scripts: syntax OK')"
 
+      - name: Governor Self-Check (GULA-GOVERNOR-001)
+        run: python3 scripts/governor.py check
+
   brain-refresh:
     name: Brain Auto-Refresh (post-merge)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
