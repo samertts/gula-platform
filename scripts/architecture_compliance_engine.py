@@ -276,7 +276,8 @@ def get_module_layer(module: str, root: pathlib.Path) -> str | None:
                     "platform", "policies", "roadmap", "rules", "skills", "validation",
                     "workflows", "financial", "ai_fabric", "capabilities",
                     "constraints", "control_plane", "dependencies", "ems",
-                    "kernel", "lifecycle_platform", "national_data", "nhdw"):
+                    "kernel", "lifecycle_platform", "national_data", "nhdw",
+                    "mpi"):
         if module.startswith(f"app.{ctx_pkg}") or module.startswith(f"..{ctx_pkg}"):
             return "bounded_context"
     return None
@@ -621,6 +622,7 @@ BOUNDED_CONTEXTS: dict[str, set[str]] = {
     "lifecycle_platform": {"lifecycle_platform"},
     "ai": {"ai"},
     "command_intelligence": {"command_intelligence"},
+    "mpi": {"mpi"},
 }
 
 # These top-level directories are NOT bounded contexts — they are cross-cutting layers
@@ -718,7 +720,7 @@ def check_forbidden_imports(
 CROSS_CONTEXT_ALLOWLIST: dict[str, set[str]] = {
     "lims": {"ehr", "health_data", "clinical", "knowledge_graph", "interoperability"},
     "ehr": {"lims", "health_data", "clinical", "knowledge_graph", "interoperability"},
-    "health_data": {"ehr", "lims"},
+    "health_data": {"ehr", "lims", "mpi"},
     "clinical": {"ehr", "lims", "knowledge_graph"},
     "knowledge_graph": set(),
 }
