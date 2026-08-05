@@ -131,6 +131,41 @@ def run_compat_check() -> int:
     return 0
 
 
+def run_migrate() -> int:
+    """Phase 4 — migration plan registry snapshot."""
+    from .migration import MIGRATION_DIR, MigrationEngine, _demo_plan
+
+    engine = MigrationEngine()
+    plan = _demo_plan()
+    engine.register(plan)
+    print("MIGRATION FRAMEWORK (GULA-KERNEL-EXT-001)")
+    print(f"  plans: {len(engine.plans())}")
+    for entry in engine.plans():
+        breaking = " (breaking)" if engine.is_breaking(entry.id) else ""
+        print(f"  - {entry.id} {entry.target} {entry.from_version} -> {entry.to_version}"
+              f" [{entry.state}]{breaking}")
+    engine.save(MIGRATION_DIR + "migration_plans.json")
+    return 0
+
+
+def run_migrate_run() -> int:
+    """Phase 4 — execute the demo migration plan (reversible, audited)."""
+    from .migration import MIGRATION_DIR, MigrationEngine, MigrationError, _demo_plan
+
+    engine = MigrationEngine()
+    plan = engine.register(_demo_plan())
+    try:
+        engine.execute(plan.id)
+    except MigrationError as exc:
+        print(f"MIGRATION EXECUTION FAILED: {exc}")
+        return 1
+    print("MIGRATION EXECUTION (GULA-KERNEL-EXT-001)")
+    print(f"  [PASS] {plan.id} {plan.from_version} -> {plan.to_version} [{plan.state}]")
+    print(f"  [PASS] rollback plan armed ({len(plan.rollback_steps)} steps)")
+    engine.save(MIGRATION_DIR + "migration_plans.json")
+    return 0
+
+
 def run_ext_check() -> int:
     failures: list[str] = []
 
@@ -174,6 +209,17 @@ def run_ext_check() -> int:
     except Exception as exc:
         failures.append(f"compatibility check failed: {exc}")
 
+    from .migration import MigrationEngine, _demo_plan
+
+    try:
+        migration_engine = MigrationEngine()
+        plan = migration_engine.register(_demo_plan())
+        migration_engine.execute(plan.id)
+        if plan.state != "executed":
+            failures.append("migration engine: demo plan did not execute")
+    except Exception as exc:
+        failures.append(f"migration engine failed: {exc}")
+
     print("KERNEL EXTENSION SELF-CHECK")
     print("=" * 60)
     if failures:
@@ -185,6 +231,7 @@ def run_ext_check() -> int:
     print("  [PASS] all engines certified")
     print(f"  [PASS] {len(policy_engine.search())} policies registered")
     print(f"  [PASS] {len(compat_matrix.entries('contract'))} contracts compatible")
+    print(f"  [PASS] migration demo executed ({plan.id} -> {plan.state})")
     print("=" * 60)
     print("RESULT: ALL KERNEL EXTENSION CHECKS PASSED")
     return 0
@@ -197,5 +244,7 @@ EXT_COMMANDS = {
     "ext-policy-evaluate": run_policy_evaluate,
     "ext-compat": run_compat,
     "ext-compat-check": run_compat_check,
+    "ext-migrate": run_migrate,
+    "ext-migrate-run": run_migrate_run,
     "ext-check": run_ext_check,
 }

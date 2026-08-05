@@ -328,6 +328,8 @@ COMMANDS = {
     "ext-policy-evaluate": _ext_commands()["ext-policy-evaluate"],
     "ext-compat": _ext_commands()["ext-compat"],
     "ext-compat-check": _ext_commands()["ext-compat-check"],
+    "ext-migrate": _ext_commands()["ext-migrate"],
+    "ext-migrate-run": _ext_commands()["ext-migrate-run"],
     "ext-check": _ext_commands()["ext-check"],
 }
 

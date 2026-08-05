@@ -141,6 +141,8 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Policy catalog | .ai/core/policies/ | Active |
 | Compatibility Framework (Phase 3) | scripts/kernel/ext/compatibility.py | Active |
 | Compatibility matrix | .ai/core/compat/ | Active |
+| Migration Framework (Phase 4) | scripts/kernel/ext/migration.py | Active |
+| Migration plans | .ai/core/migrations/ | Active |
 
 ## Total Count
 
@@ -166,4 +168,5 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | SDK Artifacts | 6 |
 | Policies | 16 |
 | Compat Matrix | 7 contracts |
-| **Total Artifacts** | **170** |
+| Migration Plans | 1 |
+| **Total Artifacts** | **171** |
