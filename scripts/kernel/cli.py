@@ -294,6 +294,13 @@ def run_check() -> int:
     return 0
 
 
+def _ext_commands() -> dict[str, object]:
+    """Lazily import the extension CLI (GULA-KERNEL-EXT-001)."""
+    from .ext import cli as ext_cli
+
+    return ext_cli.EXT_COMMANDS
+
+
 COMMANDS = {
     "audit": run_audit,
     "state": run_state,
@@ -315,6 +322,9 @@ COMMANDS = {
     "diagnose": run_diagnose,
     "report": run_report,
     "check": run_check,
+    "ext-plugin": _ext_commands()["ext-plugin"],
+    "ext-plugin-certify": _ext_commands()["ext-plugin-certify"],
+    "ext-check": _ext_commands()["ext-check"],
 }
 
 

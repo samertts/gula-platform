@@ -129,6 +129,15 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | docs/kernel/ | docs | Active |
 | .ai/core/kernel/README.md | knowledge | Active |
 
+## AI Kernel Extensions (GULA-KERNEL-EXT-001)
+
+| Artifact | Location | Status |
+|---|---|---|
+| GULA-KERNEL-EXT-001 | scripts/kernel/ext/ | Active |
+| KERNEL_EXTENSION_AUDIT.md | repo root | Active |
+| Plugin SDK (Phase 1) | scripts/kernel/ext/plugin.py | Active |
+| SDK docs | .ai/core/sdk/ | Active |
+
 ## Total Count
 
 | Category | Count |
@@ -150,4 +159,5 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Automation Scripts | 13 |
 | Governor Modules | 18 |
 | Kernel Modules | 19 |
-| **Total Artifacts** | **147** |
+| SDK Artifacts | 6 |
+| **Total Artifacts** | **153** |

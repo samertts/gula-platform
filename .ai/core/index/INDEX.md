@@ -155,6 +155,20 @@ communication, knowledge access, checkpointing, recovery).
 | `ENTERPRISE_READINESS_SCORE.md` | Kernel | Readiness score (100/100, grade A) |
 | `AI_OPERATING_STATUS.md` | Kernel | Operating status |
 
+### AI Kernel Extensions (GULA-KERNEL-EXT-001)
+Enterprise Kernel Extensions — Plugin SDK, Policy Engine, Compatibility,
+Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
+
+| File | Source | Description |
+|---|---|---|
+| `KERNEL_EXTENSION_AUDIT.md` | Kernel Ext | Phase 0 extension audit |
+| `.ai/core/sdk/README.md` | SDK | Plugin SDK overview |
+| `.ai/core/sdk/PLUGIN_SPEC.md` | SDK | Plugin specification |
+| `.ai/core/sdk/PLUGIN_API.md` | SDK | Plugin API reference |
+| `.ai/core/sdk/PLUGIN_LIFECYCLE.md` | SDK | Plugin lifecycle |
+| `.ai/core/sdk/PLUGIN_SECURITY.md` | SDK | Plugin security & sandbox |
+| `.ai/core/sdk/PLUGIN_TESTING.md` | SDK | Plugin testing & certification |
+
 ### Database
 Database schema, migrations, and data decisions.
 
