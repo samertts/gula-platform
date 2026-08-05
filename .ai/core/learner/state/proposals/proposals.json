@@ -1,0 +1,53 @@
+{
+  "proposals": [
+    {
+      "proposal_id": "PRO-000001",
+      "target": "builder",
+      "title": "Seed a Builder improvement proposal",
+      "rationale": "Builder outputs should be re-verifiable from the skill store",
+      "status": "open",
+      "created_at": "2026-08-05T10:56:28.550948+00:00"
+    },
+    {
+      "proposal_id": "PRO-000002",
+      "target": "reviewer",
+      "title": "Seed a Reviewer improvement proposal",
+      "rationale": "Reviewer verdicts should feed skill confidence back into the knowledge store",
+      "status": "open",
+      "created_at": "2026-08-05T10:56:28.550969+00:00"
+    },
+    {
+      "proposal_id": "PRO-000003",
+      "target": "orchestrator",
+      "title": "Seed an Orchestrator improvement proposal",
+      "rationale": "Orchestrator missions should trigger automatic knowledge extraction on completion",
+      "status": "open",
+      "created_at": "2026-08-05T10:56:28.550975+00:00"
+    },
+    {
+      "proposal_id": "PRO-000004",
+      "target": "deployer",
+      "title": "Seed a Deployer improvement proposal",
+      "rationale": "Deployer runs should publish runbooks from deployment lessons",
+      "status": "open",
+      "created_at": "2026-08-05T10:56:28.550979+00:00"
+    },
+    {
+      "proposal_id": "PRO-000005",
+      "target": "quality-system",
+      "title": "Seed a Quality System improvement proposal",
+      "rationale": "Quality gates should include a knowledge-coverage check",
+      "status": "open",
+      "created_at": "2026-08-05T10:56:28.550982+00:00"
+    },
+    {
+      "proposal_id": "PRO-000006",
+      "target": "knowledge-system",
+      "title": "Seed a Knowledge System improvement proposal",
+      "rationale": "The knowledge graph should be browsable from the registry",
+      "status": "open",
+      "created_at": "2026-08-05T10:56:28.550986+00:00"
+    }
+  ],
+  "updated_at": "2026-08-05T10:56:28.551288+00:00"
+}

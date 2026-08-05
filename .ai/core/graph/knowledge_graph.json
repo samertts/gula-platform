@@ -1,0 +1,106 @@
+{
+  "nodes": [
+    {
+      "id": "KNOW-000002",
+      "kind": "memory",
+      "title": "Mission Knowledge Pipeline",
+      "related": [
+        "PLAYBOOK-000005",
+        "RUNBOOK-000006"
+      ],
+      "updated_at": "2026-08-05T10:56:28.538571+00:00"
+    },
+    {
+      "id": "KNOW-000002",
+      "kind": "memory",
+      "title": "Mission Knowledge Pipeline",
+      "related": [
+        "PLAYBOOK-000005",
+        "RUNBOOK-000006"
+      ],
+      "updated_at": "2026-08-05T10:56:28.538571+00:00"
+    },
+    {
+      "id": "KNOW-000002",
+      "kind": "memory",
+      "title": "Mission Knowledge Pipeline",
+      "related": [
+        "PLAYBOOK-000005",
+        "RUNBOOK-000006"
+      ],
+      "updated_at": "2026-08-05T10:56:28.538571+00:00"
+    },
+    {
+      "id": "KNOW-000002",
+      "kind": "memory",
+      "title": "Mission Knowledge Pipeline",
+      "related": [
+        "PLAYBOOK-000005",
+        "RUNBOOK-000006"
+      ],
+      "updated_at": "2026-08-05T10:56:28.538571+00:00"
+    },
+    {
+      "id": "KNOW-000002",
+      "kind": "memory",
+      "title": "Mission Knowledge Pipeline",
+      "related": [
+        "PLAYBOOK-000005",
+        "RUNBOOK-000006"
+      ],
+      "updated_at": "2026-08-05T10:56:28.538571+00:00"
+    },
+    {
+      "id": "KNOW-000002",
+      "kind": "memory",
+      "title": "Mission Knowledge Pipeline",
+      "related": [
+        "PLAYBOOK-000005",
+        "RUNBOOK-000006"
+      ],
+      "updated_at": "2026-08-05T10:56:28.538571+00:00"
+    },
+    {
+      "id": "KNOW-000002",
+      "kind": "memory",
+      "title": "Mission Knowledge Pipeline",
+      "related": [
+        "PLAYBOOK-000005",
+        "RUNBOOK-000006"
+      ],
+      "updated_at": "2026-08-05T10:56:28.538571+00:00"
+    },
+    {
+      "id": "SKILL-000008",
+      "kind": "skill",
+      "title": "Knowledge Recording Pipeline",
+      "related": [
+        "KNOW-000002",
+        "PLAYBOOK-000005",
+        "RUNBOOK-000006"
+      ],
+      "updated_at": "2026-08-05T10:56:28.539359+00:00"
+    },
+    {
+      "id": "PLAYBOOK-000005",
+      "kind": "playbook",
+      "title": "Deployment Playbook",
+      "related": [
+        "RUNBOOK-000006",
+        "KNOW-000002"
+      ],
+      "updated_at": "2026-08-05T10:56:28.542878+00:00"
+    },
+    {
+      "id": "RUNBOOK-000006",
+      "kind": "runbook",
+      "title": "Production Runbook",
+      "related": [
+        "PLAYBOOK-000005",
+        "KNOW-000002"
+      ],
+      "updated_at": "2026-08-05T10:56:28.544964+00:00"
+    }
+  ],
+  "updated_at": "2026-08-05T10:56:28.544980+00:00"
+}

@@ -284,6 +284,29 @@ Deployer Engine — transforms verified software into a production-ready platfor
 | `scripts/deployer/cli.py` | Deployer | Deployer CLI |
 | `scripts/deployer.py` | Deployer | Deployer launcher |
 
+### Learner
+Learner Engine — transforms every completed mission into permanent engineering knowledge.
+
+| File | Source | Description |
+|---|---|---|
+| `LEARNER_AUDIT_REPORT.md` | Learner | Knowledge-system audit |
+| `LEARNER_IMPLEMENTATION_REPORT.md` | Learner | Knowledge created + health score |
+| `.ai/core/learner/README.md` | Learner | Learner Engine overview |
+| `scripts/learner/core.py` | Learner | Shared constants + dataclasses |
+| `scripts/learner/audit.py` | Learner | Phase 0 knowledge audit |
+| `scripts/learner/extract.py` | Learner | Phase 1 knowledge extraction |
+| `scripts/learner/skills.py` | Learner | Phase 2 skill generation |
+| `scripts/learner/playbooks.py` | Learner | Phase 3 playbook generation |
+| `scripts/learner/runbooks.py` | Learner | Phase 4 runbook generation |
+| `scripts/learner/memory.py` | Learner | Phase 5 memory + knowledge graph |
+| `scripts/learner/patterns.py` | Learner | Phase 6 pattern discovery |
+| `scripts/learner/improve.py` | Learner | Phase 7 improvement proposals |
+| `scripts/learner/quality.py` | Learner | Phase 8 knowledge quality |
+| `scripts/learner/search.py` | Learner | Phase 9 knowledge search |
+| `scripts/learner/report.py` | Learner | Phase 10 implementation report |
+| `scripts/learner/cli.py` | Learner | Learner CLI |
+| `scripts/learner.py` | Learner | Learner launcher |
+
 ### Database
 Database schema, migrations, and data decisions.
 

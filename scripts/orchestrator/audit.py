@@ -36,6 +36,10 @@ SYSTEMS: dict[str, tuple[str, ...]] = {
         "scripts/deployer.py",
         "scripts/deployer/core.py",
     ),
+    "learner": (
+        "scripts/learner.py",
+        "scripts/learner/core.py",
+    ),
     "knowledge": (
         ".ai/core/registry/REGISTRY.md",
         ".ai/core/index/INDEX.md",
@@ -132,9 +136,9 @@ def render_markdown(entries: list[AuditEntry]) -> str:
     lines.append(
         f"**AUDIT COMPLETE** — {present}/{len(entries)} systems present. "
         "The Orchestrator can coordinate the Builder, Reviewer, Deployer, "
-        "Kernel, and Knowledge systems. Where a dedicated engine is absent, "
-        "the Orchestrator routes to the closest available engine and records "
-        "the mapping as a decision."
+        "Learner, Kernel, and Knowledge systems. Where a dedicated engine is "
+        "absent, the Orchestrator routes to the closest available engine and "
+        "records the mapping as a decision."
     )
     lines.append("")
     return "\n".join(lines)

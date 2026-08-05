@@ -32,6 +32,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | SKILL-000005 | Fix Westgard Rule Ordering | Approved | 100% |
 | SKILL-000006 | Optimize Pytest DDL Setup | Approved | 100% |
 | SKILL-000007 | Fix Timezone Test Bugs | Approved | 90% |
+| SKILL-000008 | Knowledge Recording Pipeline | Approved | 90% |
 
 ## Playbooks
 
@@ -41,12 +42,14 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | PLAYBOOK-000002 | Fix Docker Build Failure | Approved | 90% |
 | PLAYBOOK-000003 | Fix npm/Node.js Issues | Approved | 90% |
 | PLAYBOOK-000004 | Fix Python/uv Environment | Approved | 90% |
+| PLAYBOOK-000005 | Deployment Playbook | Approved | 90% |
 
 ## Memory Records
 
 | ID | Title | Status | Confidence |
 |---|---|---|---|
 | KNOW-000001 | Environment Standardization | Approved | 100% |
+| KNOW-000002 | Mission Knowledge Pipeline | Approved | 90% |
 
 ## Runbooks
 
@@ -57,6 +60,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | RUNBOOK-000003 | Security Incident Response | Approved | 90% |
 | RUNBOOK-000004 | High Latency Investigation | Approved | 90% |
 | RUNBOOK-000005 | Disk Full Recovery | Approved | 90% |
+| RUNBOOK-000006 | Production Runbook | Approved | 90% |
 
 ## Checklists
 
@@ -235,17 +239,37 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Deployer launcher | scripts/deployer.py | Active |
 | Deployer knowledge | .ai/core/deployer/ | Active |
 
+## Learner Engine (GULA-LEARNER-001)
+
+| Component | Location | Status |
+|---|---|---|
+| Learner core | scripts/learner/core.py | Active |
+| Phase 0 Audit | scripts/learner/audit.py | Active |
+| Phase 1 Extraction | scripts/learner/extract.py | Active |
+| Phase 2 Skills | scripts/learner/skills.py | Active |
+| Phase 3 Playbooks | scripts/learner/playbooks.py | Active |
+| Phase 4 Runbooks | scripts/learner/runbooks.py | Active |
+| Phase 5 Memory | scripts/learner/memory.py | Active |
+| Phase 6 Patterns | scripts/learner/patterns.py | Active |
+| Phase 7 Improve | scripts/learner/improve.py | Active |
+| Phase 8 Quality | scripts/learner/quality.py | Active |
+| Phase 9 Search | scripts/learner/search.py | Active |
+| Phase 10 Report | scripts/learner/report.py | Active |
+| Learner CLI | scripts/learner/cli.py | Active |
+| Learner launcher | scripts/learner.py | Active |
+| Learner knowledge | .ai/core/learner/ | Active |
+
 ## Total Count
 
 | Category | Count |
 |---|---|
 | KUPs | 3 |
-| Skills | 7 |
-| Playbooks | 4 |
-| Runbooks | 5 |
+| Skills | 8 |
+| Playbooks | 5 |
+| Runbooks | 6 |
 | Checklists | 3 |
-| Memory Records | 2 |
-| Reports | 3 |
+| Memory Records | 3 |
+| Reports | 5 |
 | Bridge Files | 16 |
 | Templates | 3 |
 | Lessons | 3 |
@@ -260,6 +284,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Reviewer Modules | 15 |
 | Orchestrator Modules | 15 |
 | Deployer Modules | 15 |
+| Learner Modules | 15 |
 | SDK Artifacts | 6 |
 | Policies | 16 |
 | Compat Matrix | 7 contracts |
@@ -268,7 +293,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Workflow | 1 workflow |
 | Catalog items | 3 |
 | Evolution signals | 1 |
-| Memory entries | 3 |
+| Memory entries | 4 |
 | Health score | 100/100 |
 | Certification reports | 7 |
-| **Total Artifacts** | **227** |
+| **Total Artifacts** | **248** |

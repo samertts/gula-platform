@@ -8,6 +8,7 @@ Audit of the current AI systems for GULA-ORCHESTRATOR-001.
 | builder | present | ready to coordinate | `scripts/builder/core.py, scripts/builder/cli.py, scripts/builder.py` |
 | reviewer | present | ready to coordinate | `scripts/reviewer/core.py, scripts/reviewer/decision.py, scripts/reviewer/cli.py, scripts/reviewer.py` |
 | deployer | present | ready to coordinate | `scripts/deployer.py, scripts/deployer/core.py` |
+| learner | present | ready to coordinate | `scripts/learner.py, scripts/learner/core.py` |
 | knowledge | present | ready to coordinate | `.ai/core/registry/REGISTRY.md, .ai/core/index/INDEX.md, docs/brain/PROJECT_BRAIN.md, scripts/project_brain.py` |
 | constitution | present | ready to coordinate | `AI_OPERATING_CONSTITUTION.md, docs/constitution/32_AI_EXECUTION_CONSTITUTION.md, AGENTS.md` |
 | registry | present | ready to coordinate | `.ai/core/registry/REGISTRY.md, .ai/core/index/INDEX.md` |
@@ -17,4 +18,4 @@ Audit of the current AI systems for GULA-ORCHESTRATOR-001.
 
 ## Verdict
 
-**AUDIT COMPLETE** — 9/9 systems present. The Orchestrator can coordinate the Builder, Reviewer, Deployer, Kernel, and Knowledge systems. Where a dedicated engine is absent, the Orchestrator routes to the closest available engine and records the mapping as a decision.
+**AUDIT COMPLETE** — 10/10 systems present. The Orchestrator can coordinate the Builder, Reviewer, Deployer, Learner, Kernel, and Knowledge systems. Where a dedicated engine is absent, the Orchestrator routes to the closest available engine and records the mapping as a decision.

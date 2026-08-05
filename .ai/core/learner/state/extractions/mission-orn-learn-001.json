@@ -1,0 +1,26 @@
+{
+  "source": "mission:ORN-LEARN-001",
+  "problem": "Complete engineering objective: Record knowledge from a completed engineering mission",
+  "cause": "Platform capability requested under refactor classification",
+  "solution": "Executed refactor mission 'Record knowledge from a completed engineering mission' end-to-end through the Orchestrator pipeline (status complete)",
+  "alternative_solutions": [],
+  "rejected_solutions": [],
+  "tradeoffs": [
+    "refactor scope bounded by the mission plan",
+    "Budget enforced per phase (5 minutes / 50 files)"
+  ],
+  "risks": [
+    "Mission checkpoint required for progress durability"
+  ],
+  "lessons": [
+    "Refactor missions route through the Orchestrator pipeline",
+    "Knowledge must be recorded after every mission regardless of outcome"
+  ],
+  "performance_impact": "Coordinated via deterministic mission pipeline",
+  "security_impact": "Reviewed before merge via the Reviewer gate",
+  "recommendations": [
+    "Register mission knowledge before closing the mission"
+  ],
+  "reusable": true,
+  "created_at": "2026-08-05T10:56:28.531226+00:00"
+}
