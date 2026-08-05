@@ -336,6 +336,13 @@ def _learner_commands() -> dict[str, object]:
     return learner_cli.LEARNER_COMMANDS
 
 
+def _optimizer_commands() -> dict[str, object]:
+    """Lazily import the Optimizer CLI (GULA-OPTIMIZER-001)."""
+    from scripts.optimizer import cli as optimizer_cli
+
+    return optimizer_cli.OPTIMIZER_COMMANDS
+
+
 COMMANDS = {
     "audit": run_audit,
     "state": run_state,
@@ -433,6 +440,19 @@ COMMANDS = {
     "learner-report": _learner_commands()["learner-report"],
     "learner-learn": _learner_commands()["learner-learn"],
     "learner-check": _learner_commands()["learner-check"],
+    "optimizer-audit": _optimizer_commands()["optimizer-audit"],
+    "optimizer-analyze": _optimizer_commands()["optimizer-analyze"],
+    "optimizer-bottlenecks": _optimizer_commands()["optimizer-bottlenecks"],
+    "optimizer-architecture": _optimizer_commands()["optimizer-architecture"],
+    "optimizer-resources": _optimizer_commands()["optimizer-resources"],
+    "optimizer-dx": _optimizer_commands()["optimizer-dx"],
+    "optimizer-debt": _optimizer_commands()["optimizer-debt"],
+    "optimizer-optimize": _optimizer_commands()["optimizer-optimize"],
+    "optimizer-evolve": _optimizer_commands()["optimizer-evolve"],
+    "optimizer-validate": _optimizer_commands()["optimizer-validate"],
+    "optimizer-report": _optimizer_commands()["optimizer-report"],
+    "optimizer-run": _optimizer_commands()["optimizer-run"],
+    "optimizer-check": _optimizer_commands()["optimizer-check"],
 }
 
 
