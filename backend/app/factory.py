@@ -445,6 +445,8 @@ def _register_routes(app: FastAPI) -> None:
     In openapi mode, we still register routes (they define the OpenAPI schema)
     but skip any route module that requires DB/AI/external service imports.
     """
+    from app.communication.experience import routes as communication_experience_routes
+
     from .routes import (
         admin,
         admin_log_level,
@@ -520,6 +522,8 @@ def _register_routes(app: FastAPI) -> None:
     app.include_router(tiers_routes.router)
     app.include_router(telegram_webhook_routes.router)
 
+    app.include_router(communication_experience_routes.router)
+
     from .financial import register_routes as register_financial_routes
 
     register_financial_routes(app)
@@ -544,7 +548,7 @@ def _register_routes(app: FastAPI) -> None:
 
     app.include_router(stats_routes.router)
 
-    from .services.mpi import router as mpi_router
+    from .mpi import router as mpi_router
 
     app.include_router(mpi_router)
 

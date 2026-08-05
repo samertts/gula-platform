@@ -110,3 +110,16 @@ class CitizenLink(Base):
 
     citizen = relationship("Citizen", back_populates="canonical_links")
     canonical = relationship("CanonicalPatient", back_populates="citizen_links")
+
+
+# Import the MPI model module so ``Citizen`` is registered in the shared
+# ``Base`` registry alongside ``CitizenLink``. Both classes cross-reference
+# each other via relationship strings; without this import, any code path that
+# configures mappers before the MPI module is loaded (e.g. the background
+# worker's outbox loop) fails with "expression 'Citizen' failed to locate a
+# name". The module is pure models (no service logic) — no import cycle.
+from app.models.mpi import (  # noqa: E402,F401
+    Citizen,
+    IdentityClaim,
+    MergeAudit,
+)

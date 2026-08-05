@@ -36,7 +36,7 @@ from sqlalchemy.orm import relationship
 
 from app._compat import UTC
 
-from ...database import Base
+from ..database import Base
 
 
 class Citizen(Base):

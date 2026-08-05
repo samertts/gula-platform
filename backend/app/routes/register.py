@@ -16,8 +16,8 @@ from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..services.audit_service import log_action
 from ..services.identity import hash_national_id as mpi_hash_nid
 from ..services.identity import normalize_name as mpi_normalize_name
-from ..services.mpi.blocking import blocking_key, phone_last10
-from ..services.mpi.models import Citizen
+from ..mpi.blocking import blocking_key, phone_last10
+from ..models.mpi import Citizen
 
 
 def _validate_password(password: str) -> None:

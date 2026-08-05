@@ -9,7 +9,7 @@ Public surface:
   - Citizen, IdentityClaim, MergeAudit: SQLAlchemy models
 """
 
-from .models import Citizen, IdentityClaim, MergeAudit
+from ..models.mpi import Citizen, IdentityClaim, MergeAudit
 from .resolver import merge_citizens, resolve_identity
 
 

@@ -21,8 +21,8 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379")
 
 import pytest
 from app.services.identity import jaro_similarity, jaro_winkler, normalize_name
-from app.services.mpi.blocking import blocking_key, phone_last10
-from app.services.mpi.matcher import (
+from app.mpi.blocking import blocking_key, phone_last10
+from app.mpi.matcher import (
     THRESHOLD_AUTO,
     THRESHOLD_REVIEW,
     Candidate,

@@ -10,7 +10,7 @@ from ..models.lab_order import LabOrder
 from ..models.patient import Patient
 from ..services.audit_service import log_action
 from ..services.identity import hash_family_id, hash_national_id, match_score
-from ..services.mpi import resolver as mpi_resolver
+from ..mpi import resolver as mpi_resolver
 
 
 @dataclass

@@ -27,7 +27,7 @@ inside tight loops across hundreds of candidates.
 
 from dataclasses import dataclass, field
 
-from ..identity import jaro_winkler, normalize_name
+from ..services.identity import jaro_winkler, normalize_name
 
 # ── Weights (keep in sync with docs in architecture/FOUNDATION.md §6) ────────
 W_PHONE = 0.30

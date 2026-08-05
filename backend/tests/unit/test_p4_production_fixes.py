@@ -27,7 +27,7 @@ from app.database import Base
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
 from app.routes.test_results import TestResultCreate
-from app.services.mpi.models import Citizen
+from app.models.mpi import Citizen
 from app.services.patient_service import create_patient
 from pydantic import ValidationError
 from sqlalchemy import create_engine

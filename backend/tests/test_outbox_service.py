@@ -47,7 +47,7 @@ def db():
     import app.models.lab
     import app.models.lab_user
     import app.models.outbox
-    from app.services.mpi.models import Citizen, IdentityClaim
+    from app.models.mpi import Citizen, IdentityClaim
 
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
     import app.national.domain

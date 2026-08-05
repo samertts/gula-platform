@@ -21,7 +21,7 @@ by three signals at once.
 
 import re
 
-from ..identity import normalize_name
+from ..services.identity import normalize_name
 
 _BLOCKING_KEY_LEN = 5  # 4 chars of surname + 1 char of given
 

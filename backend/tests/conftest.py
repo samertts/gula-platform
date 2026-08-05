@@ -83,7 +83,7 @@ def _compile_bigint_sqlite(element, compiler, **kw):
 # resolution works even in tests that never request a DB fixture.  In
 # particular CitizenLink.citizen = relationship("Citizen") requires class
 # "Citizen" be registered on Base *before* any mapper configuration fires.
-from app.services.mpi.models import Citizen, IdentityClaim
+from app.models.mpi import Citizen, IdentityClaim
 
 # ── Session-scoped engine & DDL (once per test run) ───────────────────────────
 # Creating hundreds of tables on every test function is too slow (~80s per test).

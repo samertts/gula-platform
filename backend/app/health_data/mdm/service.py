@@ -7,7 +7,7 @@ from typing import Any
 from app._compat import UTC
 from app.health_data.enums import DataQuality
 from app.health_data.mdm.matching import MatchingEngine
-from app.services.mpi.matcher import build_profile as mpi_build_profile
+from app.mpi.matcher import build_profile as mpi_build_profile
 
 logger = logging.getLogger("gula.health_data.mdm.service")
 

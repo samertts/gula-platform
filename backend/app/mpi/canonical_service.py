@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.models.canonical_patient import CanonicalPatient, CitizenLink, PatientLink
 from app.models.patient import Patient
-from app.services.mpi.models import Citizen
+from app.models.mpi import Citizen
 
 
 def find_or_create_canonical(

@@ -64,7 +64,7 @@ def db_engine():
     import app.models.sample
     import app.models.subscription
     import app.models.user
-    from app.services.mpi.models import Citizen, IdentityClaim
+    from app.models.mpi import Citizen, IdentityClaim
 
     engine = create_engine(
         "sqlite:///:memory:",
