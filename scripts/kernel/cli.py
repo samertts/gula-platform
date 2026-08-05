@@ -315,6 +315,13 @@ def _reviewer_commands() -> dict[str, object]:
     return reviewer_cli.REVIEWER_COMMANDS
 
 
+def _orchestrator_commands() -> dict[str, object]:
+    """Lazily import the Orchestrator CLI (GULA-ORCHESTRATOR-001)."""
+    from scripts.orchestrator import cli as orchestrator_cli
+
+    return orchestrator_cli.ORCHESTRATOR_COMMANDS
+
+
 COMMANDS = {
     "audit": run_audit,
     "state": run_state,
@@ -375,6 +382,17 @@ COMMANDS = {
     "reviewer-documentation": _reviewer_commands()["reviewer-documentation"],
     "reviewer-performance": _reviewer_commands()["reviewer-performance"],
     "reviewer-knowledge": _reviewer_commands()["reviewer-knowledge"],
+    "orchestrator-audit": _orchestrator_commands()["orchestrator-audit"],
+    "orchestrator-mission": _orchestrator_commands()["orchestrator-mission"],
+    "orchestrator-classify": _orchestrator_commands()["orchestrator-classify"],
+    "orchestrator-plan": _orchestrator_commands()["orchestrator-plan"],
+    "orchestrator-route": _orchestrator_commands()["orchestrator-route"],
+    "orchestrator-checkpoint": _orchestrator_commands()["orchestrator-checkpoint"],
+    "orchestrator-resume": _orchestrator_commands()["orchestrator-resume"],
+    "orchestrator-status": _orchestrator_commands()["orchestrator-status"],
+    "orchestrator-history": _orchestrator_commands()["orchestrator-history"],
+    "orchestrator-report": _orchestrator_commands()["orchestrator-report"],
+    "orchestrator-check": _orchestrator_commands()["orchestrator-check"],
 }
 
 
