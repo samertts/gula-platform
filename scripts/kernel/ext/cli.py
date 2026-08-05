@@ -185,6 +185,25 @@ def run_event_bus() -> int:
     return 0
 
 
+def run_workflow() -> int:
+    """Phase 6 — run the demo workflow through its approval gate."""
+    from .event_bus import EventBus
+    from .workflow import WORKFLOW_DIR, WorkflowEngine, _demo_workflow
+
+    bus = EventBus()
+    engine = WorkflowEngine(event_bus=bus)
+    workflow = engine.register(_demo_workflow())
+    engine.run(workflow.id)
+    engine.approve(workflow.id, "review")
+    print("WORKFLOW ENGINE (GULA-KERNEL-EXT-001)")
+    print(f"  workflow: {workflow.id} -> {workflow.state}")
+    for step in workflow.steps:
+        print(f"  - {step.id} [{step.status}]")
+    print(f"  events emitted: {len(bus.events())}")
+    engine.save(WORKFLOW_DIR + "workflows.json")
+    return 0
+
+
 def run_ext_check() -> int:
     failures: list[str] = []
 
@@ -250,6 +269,18 @@ def run_ext_check() -> int:
     except Exception as exc:
         failures.append(f"event bus failed: {exc}")
 
+    from .workflow import WorkflowEngine, _demo_workflow
+
+    try:
+        workflow_engine = WorkflowEngine()
+        workflow = workflow_engine.register(_demo_workflow())
+        workflow_engine.run(workflow.id)
+        workflow_engine.approve(workflow.id, "review")
+        if workflow.state != "completed":
+            failures.append(f"workflow engine: demo ended {workflow.state}")
+    except Exception as exc:
+        failures.append(f"workflow engine failed: {exc}")
+
     print("KERNEL EXTENSION SELF-CHECK")
     print("=" * 60)
     if failures:
@@ -263,6 +294,7 @@ def run_ext_check() -> int:
     print(f"  [PASS] {len(compat_matrix.entries('contract'))} contracts compatible")
     print(f"  [PASS] migration demo executed ({plan.id} -> {plan.state})")
     print(f"  [PASS] event bus delivered ({len(deliveries)} handler(s))")
+    print(f"  [PASS] workflow completed ({workflow.id} -> {workflow.state})")
     print("=" * 60)
     print("RESULT: ALL KERNEL EXTENSION CHECKS PASSED")
     return 0
@@ -278,5 +310,6 @@ EXT_COMMANDS = {
     "ext-migrate": run_migrate,
     "ext-migrate-run": run_migrate_run,
     "ext-event-bus": run_event_bus,
+    "ext-workflow": run_workflow,
     "ext-check": run_ext_check,
 }

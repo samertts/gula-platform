@@ -1,0 +1,92 @@
+{
+  "schema_version": "1.0.0",
+  "workflows": [
+    {
+      "id": "WF-000001",
+      "name": "demo mission workflow",
+      "state": "completed",
+      "steps": [
+        {
+          "id": "prep",
+          "kind": "task",
+          "description": "prepare mission",
+          "requires": [],
+          "max_retries": 0,
+          "status": "completed"
+        },
+        {
+          "id": "review",
+          "kind": "approval",
+          "description": "governor review gate",
+          "requires": [
+            "prep"
+          ],
+          "max_retries": 0,
+          "status": "completed"
+        },
+        {
+          "id": "finalize",
+          "kind": "task",
+          "description": "finalize mission",
+          "requires": [
+            "review"
+          ],
+          "max_retries": 0,
+          "status": "completed"
+        }
+      ],
+      "created_at": "2026-08-05T07:22:07.780501+00:00",
+      "updated_at": "2026-08-05T07:22:07.780524+00:00"
+    }
+  ],
+  "history": [
+    {
+      "event": "registered",
+      "workflow": "WF-000001",
+      "at": "2026-08-05T07:22:07.780558+00:00",
+      "detail": ""
+    },
+    {
+      "event": "started",
+      "workflow": "WF-000001",
+      "at": "2026-08-05T07:22:07.780565+00:00",
+      "detail": ""
+    },
+    {
+      "event": "step_completed",
+      "workflow": "WF-000001",
+      "at": "2026-08-05T07:22:07.780582+00:00",
+      "detail": "prep"
+    },
+    {
+      "event": "awaiting_approval",
+      "workflow": "WF-000001",
+      "at": "2026-08-05T07:22:07.780590+00:00",
+      "detail": "review"
+    },
+    {
+      "event": "approved",
+      "workflow": "WF-000001",
+      "at": "2026-08-05T07:22:07.780618+00:00",
+      "detail": "review"
+    },
+    {
+      "event": "started",
+      "workflow": "WF-000001",
+      "at": "2026-08-05T07:22:07.780622+00:00",
+      "detail": ""
+    },
+    {
+      "event": "step_completed",
+      "workflow": "WF-000001",
+      "at": "2026-08-05T07:22:07.780628+00:00",
+      "detail": "finalize"
+    },
+    {
+      "event": "completed",
+      "workflow": "WF-000001",
+      "at": "2026-08-05T07:22:07.780634+00:00",
+      "detail": ""
+    }
+  ]
+}

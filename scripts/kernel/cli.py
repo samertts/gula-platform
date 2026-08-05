@@ -331,6 +331,7 @@ COMMANDS = {
     "ext-migrate": _ext_commands()["ext-migrate"],
     "ext-migrate-run": _ext_commands()["ext-migrate-run"],
     "ext-event-bus": _ext_commands()["ext-event-bus"],
+    "ext-workflow": _ext_commands()["ext-workflow"],
     "ext-check": _ext_commands()["ext-check"],
 }
 

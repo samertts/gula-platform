@@ -177,6 +177,8 @@ Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
 | `.ai/core/migrations/migration_plans.json` | Migration | Migration plan registry |
 | `.ai/core/events/README.md` | Event Bus | Enterprise Event Bus overview |
 | `.ai/core/events/event_journal.json` | Event Bus | Delivery journal |
+| `.ai/core/workflows/README.md` | Workflow | Workflow Engine overview |
+| `.ai/core/workflows/workflows.json` | Workflow | Workflow state |
 
 ### Database
 Database schema, migrations, and data decisions.
