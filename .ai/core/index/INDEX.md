@@ -187,6 +187,13 @@ Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
 | `.ai/core/memory/memory_store.json` | Memory | Memory store |
 | `.ai/core/health/README.md` | Health | Health Engine overview |
 | `.ai/core/health/health_report.json` | Health | Health report |
+| `PLUGIN_CERTIFICATION.md` | Kernel Ext | Phase 11 plugin certification |
+| `POLICY_CERTIFICATION.md` | Kernel Ext | Phase 11 policy certification |
+| `COMPATIBILITY_REPORT.md` | Kernel Ext | Phase 11 compatibility report |
+| `MIGRATION_REPORT.md` | Kernel Ext | Phase 11 migration report |
+| `MARKETPLACE_REPORT.md` | Kernel Ext | Phase 11 marketplace report |
+| `HEALTH_REPORT.md` | Kernel Ext | Phase 11 health report |
+| `ENTERPRISE_EXTENSION_REPORT.md` | Kernel Ext | Phase 11 enterprise certification |
 
 ### Database
 Database schema, migrations, and data decisions.

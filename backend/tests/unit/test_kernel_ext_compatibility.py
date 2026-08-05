@@ -14,12 +14,12 @@ from scripts.kernel.ext.compatibility import (
     CompatibilityError,
     CompatibilityMatrix,
     CompatibilityRecord,
+    check_contract,
     compare_versions,
     engine_matrix,
     is_breaking_change,
     is_contract_conformant,
     parse_version,
-    check_contract,
 )
 
 

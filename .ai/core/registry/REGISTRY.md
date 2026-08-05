@@ -155,6 +155,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Memory store | .ai/core/memory/ | Active |
 | Health Engine (Phase 10) | scripts/kernel/ext/health.py | Active |
 | Health report | .ai/core/health/ | Active |
+| Phase 11 Certification | root certification reports | Complete |
 
 ## Total Count
 
@@ -187,4 +188,5 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Evolution signals | 1 |
 | Memory entries | 3 |
 | Health score | 100/100 |
-| **Total Artifacts** | **177** |
+| Certification reports | 7 |
+| **Total Artifacts** | **184** |
