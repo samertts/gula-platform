@@ -343,6 +343,13 @@ def _optimizer_commands() -> dict[str, object]:
     return optimizer_cli.OPTIMIZER_COMMANDS
 
 
+def _architect_commands() -> dict[str, object]:
+    """Lazily import the Architect CLI (GULA-ARCHITECT-001)."""
+    from scripts.architect import cli as architect_cli
+
+    return architect_cli.ARCHITECT_COMMANDS
+
+
 COMMANDS = {
     "audit": run_audit,
     "state": run_state,
@@ -454,6 +461,19 @@ COMMANDS = {
     "optimizer-report": _optimizer_commands()["optimizer-report"],
     "optimizer-run": _optimizer_commands()["optimizer-run"],
     "optimizer-check": _optimizer_commands()["optimizer-check"],
+    "architect-audit": _architect_commands()["architect-audit"],
+    "architect-model": _architect_commands()["architect-model"],
+    "architect-decisions": _architect_commands()["architect-decisions"],
+    "architect-dependencies": _architect_commands()["architect-dependencies"],
+    "architect-evolution": _architect_commands()["architect-evolution"],
+    "architect-risk": _architect_commands()["architect-risk"],
+    "architect-review": _architect_commands()["architect-review"],
+    "architect-simulation": _architect_commands()["architect-simulation"],
+    "architect-coordination": _architect_commands()["architect-coordination"],
+    "architect-health": _architect_commands()["architect-health"],
+    "architect-report": _architect_commands()["architect-report"],
+    "architect-run": _architect_commands()["architect-run"],
+    "architect-check": _architect_commands()["architect-check"],
 }
 
 

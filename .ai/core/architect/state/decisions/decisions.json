@@ -1,0 +1,256 @@
+{
+  "discovered_at": "2026-08-05T16:46:49.958280+00:00",
+  "adr_files": [],
+  "decisions": [
+    {
+      "decision_id": "AD-modular-monolith-first",
+      "title": "Modular monolith first, service extraction when evidence demands",
+      "status": "proposed",
+      "context": "A national healthcare platform must ship as one deployable before splitting services; premature microservices multiply operational cost across governorates without evidence.",
+      "decision": "Adopt a modular monolith. Extract services only when measurement shows a real boundary (load, team, regulatory).",
+      "reason": "One deployable unit minimizes governance, deployment, and rollback complexity during national pilot while preserving clear module boundaries for later extraction.",
+      "alternatives": [
+        "Distributed microservices from day one",
+        "Layered single module with no boundaries"
+      ],
+      "trade_offs": [
+        "Deployment blast radius spans the whole platform",
+        "Module boundaries must be enforced by review, not by process isolation"
+      ],
+      "risk": "Monolith grows into a ball of mud without boundary enforcement.",
+      "cost": "Low — no extra infrastructure; requires review discipline.",
+      "rollback": "Full revert of the module; extraction path remains open.",
+      "review_status": "pending-review",
+      "consequences": [
+        "One deployable unit, clear module boundaries",
+        "Services extracted only when measured"
+      ],
+      "created_at": "2026-08-05T16:46:49.957564+00:00"
+    },
+    {
+      "decision_id": "AD-fhir-r4",
+      "title": "FHIR R4 as the interoperability backbone",
+      "status": "proposed",
+      "context": "National health data must interoperate across ministries, directorates, hospitals, and laboratories.",
+      "decision": "Adopt FHIR R4 resources as the canonical clinical contract, with HL7 adapters at the boundaries.",
+      "reason": "FHIR R4 is the national-standard clinical contract; HL7 messaging is preserved for legacy analyzer and hospital bridges.",
+      "alternatives": [
+        "Proprietary clinical data model",
+        "HL7 v2 only"
+      ],
+      "trade_offs": [
+        "FHIR profiles require national conformance effort",
+        "HL7 v2 adapters add translation complexity"
+      ],
+      "risk": "Specification drift between national FHIR profiles and platform.",
+      "cost": "Medium — conformance testing and profile management.",
+      "rollback": "FHIR layer is additive; legacy data model retained.",
+      "review_status": "pending-review",
+      "consequences": [
+        "FHIR R4 resources as the canonical clinical contract",
+        "HL7 messaging preserved at device and hospital boundaries"
+      ],
+      "created_at": "2026-08-05T16:46:49.957679+00:00"
+    },
+    {
+      "decision_id": "AD-multi-tenant-isolation",
+      "title": "Multi-tenancy with tenant isolation at the data layer",
+      "status": "proposed",
+      "context": "Every governorate, directorate, hospital, and laboratory must operate independently without cross-tenant leakage.",
+      "decision": "Enforce tenant isolation at the data layer: lab_id scoping through services and models, verified by the Reviewer.",
+      "reason": "Regulatory and clinical safety require tenant-scoped access enforced in every query, not just at the UI.",
+      "alternatives": [
+        "Single shared database without scoping",
+        "Database-per-tenant"
+      ],
+      "trade_offs": [
+        "Single schema requires disciplined scoping everywhere",
+        "Database-per-tenant multiplies operational cost"
+      ],
+      "risk": "A missing scoping filter leaks data across tenants.",
+      "cost": "Low-to-medium — discipline enforced by tests and review.",
+      "rollback": "Restore row-level scoping; no schema change.",
+      "review_status": "pending-review",
+      "consequences": [
+        "Tenant-scoped access control",
+        "Lab-level isolation enforced in every query"
+      ],
+      "created_at": "2026-08-05T16:46:49.957762+00:00"
+    },
+    {
+      "decision_id": "AD-postgresql-redis",
+      "title": "PostgreSQL + Redis as the platform data stack",
+      "status": "proposed",
+      "context": "Free, self-hosted, and operationally boring primitives support national deployment without vendor lock-in.",
+      "decision": "Use PostgreSQL as the primary store and Redis for caching and the task queue; both replaceable behind interfaces.",
+      "reason": "PostgreSQL and Redis are self-hosted, replaceable, and meet the Free/Open-Source/Self-Hosted-first constitution.",
+      "alternatives": [
+        "Managed cloud databases",
+        "NoSQL primary store"
+      ],
+      "trade_offs": [
+        "PostgreSQL requires migration discipline",
+        "Redis is memory-bound and needs eviction policy"
+      ],
+      "risk": "Operational tuning burden grows at national scale.",
+      "cost": "Low — self-hosted OSS; operational expertise required.",
+      "rollback": "Swap the cache/client behind existing interfaces.",
+      "review_status": "pending-review",
+      "consequences": [
+        "PostgreSQL primary store",
+        "Redis caching and task queue"
+      ],
+      "created_at": "2026-08-05T16:46:49.957839+00:00"
+    },
+    {
+      "decision_id": "AD-immutable-audit-log",
+      "title": "Immutable audit log for clinical and administrative actions",
+      "status": "proposed",
+      "context": "Regulatory compliance (ISO 15189, CAP, CLSI) and national accountability require tamper-evident audit trails.",
+      "decision": "Maintain an immutable, append-only audit log with verification capability for every clinical and administrative action.",
+      "reason": "Clinical safety and regulatory certification demand append-only, verifiable records of every significant action.",
+      "alternatives": [
+        "Mutable audit tables",
+        "Third-party audit SaaS"
+      ],
+      "trade_offs": [
+        "Append-only storage grows unboundedly",
+        "Verification adds a small write-path cost"
+      ],
+      "risk": "Audit records could be tampered with if the store is compromised.",
+      "cost": "Low — storage; requires retention policy.",
+      "rollback": "Immutable by design; no rollback, retention pruning only.",
+      "review_status": "pending-review",
+      "consequences": [
+        "Append-only audit records",
+        "Verification capability on every record"
+      ],
+      "created_at": "2026-08-05T16:46:49.957914+00:00"
+    },
+    {
+      "decision_id": "AD-offline-first",
+      "title": "Offline-first operations for laboratory continuity",
+      "status": "proposed",
+      "context": "Laboratories in underserved governorates cannot depend on continuous connectivity.",
+      "decision": "Design offline-first: local data capture, outbox-pattern synchronization, conflict-resolution policies.",
+      "reason": "Clinical continuity requires local-first data capture with reliable synchronization when connectivity returns.",
+      "alternatives": [
+        "Online-only operation",
+        "Local terminals with nightly batch sync"
+      ],
+      "trade_offs": [
+        "Conflict resolution policies are complex",
+        "Offline capture adds validation latency"
+      ],
+      "risk": "Synchronization conflicts across governorate partitions.",
+      "cost": "Medium — sync engine and conflict policies.",
+      "rollback": "Disable offline mode; revert to online-only.",
+      "review_status": "pending-review",
+      "consequences": [
+        "Local-first data capture",
+        "Synchronization via outbox/event bus"
+      ],
+      "created_at": "2026-08-05T16:46:49.957984+00:00"
+    },
+    {
+      "decision_id": "AD-arabic-first",
+      "title": "Arabic-first user experience with RTL layout",
+      "status": "proposed",
+      "context": "The national platform serves Arabic-speaking clinical staff and citizens across Iraq.",
+      "decision": "Deliver Arabic-first UI with dir=\"rtl\" in frontend-v3, with internationalization for every user-facing string.",
+      "reason": "Usability and national mandate require Arabic as the primary interface language with correct RTL rendering.",
+      "alternatives": [
+        "English-first with Arabic later",
+        "Bilingual from day one"
+      ],
+      "trade_offs": [
+        "RTL layout requires careful component design",
+        "Translation keys add UI overhead"
+      ],
+      "risk": "Incomplete translation coverage for inactive contexts.",
+      "cost": "Low-to-medium — i18n keying and RTL testing.",
+      "rollback": "Flip locale preference; no schema change.",
+      "review_status": "pending-review",
+      "consequences": [
+        "Arabic as primary language",
+        "RTL layout throughout frontend-v3"
+      ],
+      "created_at": "2026-08-05T16:46:49.958054+00:00"
+    },
+    {
+      "decision_id": "AD-identity-platform",
+      "title": "Centralized identity platform for all platform roles",
+      "status": "proposed",
+      "context": "Ministry, directorate, hospital, and laboratory hierarchies need a single identity authority with RBAC/ABAC.",
+      "decision": "Adopt the centralized identity platform (NIAM) as the single authority with RBAC and ABAC authorization.",
+      "reason": "A single identity authority keeps authorization consistent across the national hierarchy and avoids credential fragmentation.",
+      "alternatives": [
+        "Per-context identity stores",
+        "Third-party identity SaaS"
+      ],
+      "trade_offs": [
+        "Single authority is a high-value target",
+        "Federation adapters are required for national integration"
+      ],
+      "risk": "Identity coupling to the national federation roadmap.",
+      "cost": "Medium — identity platform hardening and federation.",
+      "rollback": "Adapter-based federation allows swapping the authority.",
+      "review_status": "pending-review",
+      "consequences": [
+        "Central identity authority",
+        "RBAC and ABAC authorization"
+      ],
+      "created_at": "2026-08-05T16:46:49.958125+00:00"
+    },
+    {
+      "decision_id": "AD-event-bus",
+      "title": "Event-driven integration between platform modules",
+      "status": "proposed",
+      "context": "Orders, results, notifications, and offline sync must react to domain events without hard coupling.",
+      "decision": "Use a domain event bus with the outbox pattern for reliable event publishing across contexts.",
+      "reason": "Domain events decouple contexts and enable the outbox pattern for reliable publishing.",
+      "alternatives": [
+        "Synchronous service calls everywhere",
+        "Shared database integration"
+      ],
+      "trade_offs": [
+        "Eventual consistency across consumers",
+        "Event schema versioning is required"
+      ],
+      "risk": "Event schema drift breaks consumers.",
+      "cost": "Low-to-medium — bus + outbox infrastructure.",
+      "rollback": "Revert to synchronous calls for affected flows.",
+      "review_status": "pending-review",
+      "consequences": [
+        "Domain events on a shared bus",
+        "Outbox pattern for reliable publishing"
+      ],
+      "created_at": "2026-08-05T16:46:49.958193+00:00"
+    },
+    {
+      "decision_id": "AD-national-ehr",
+      "title": "National EHR compatibility (FHIR R4, SNDHS integration)",
+      "status": "proposed",
+      "context": "The platform must remain mergeable into future national health releases across all Iraqi governorates.",
+      "decision": "Keep national EHR and SNDHS government integration on the roadmap with FHIR R4 contracts and gateway adapters.",
+      "reason": "National compatibility is a core mission requirement; government integration gateways keep the platform sovereign.",
+      "alternatives": [
+        "Closed platform with no national integration",
+        "Single national vendor stack"
+      ],
+      "trade_offs": [
+        "Gateway adapters add surface area",
+        "National spec changes require adaptation"
+      ],
+      "risk": "Specification drift with national standards.",
+      "cost": "High over 5 years — federation and compliance.",
+      "rollback": "Gateway adapters isolate national dependencies.",
+      "review_status": "pending-review",
+      "consequences": [
+        "FHIR R4 national contracts",
+        "Government integration gateways"
+      ],
+      "created_at": "2026-08-05T16:46:49.958261+00:00"
+    }
+  ]
+}

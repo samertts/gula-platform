@@ -1,0 +1,74 @@
+{
+  "discovered_at": "2026-08-05T16:46:50.341065+00:00",
+  "assumptions": {
+    "active_user_fraction": 0.1,
+    "requests_per_active_user_per_day": 50,
+    "peak_multiplier": 3.0,
+    "cache_bytes_per_user": 51200,
+    "storage_bytes_per_user": 52428800,
+    "requests_per_replica_per_second": 500.0,
+    "replica_monthly_cost_usd": 50
+  },
+  "projections": [
+    {
+      "users": 100,
+      "requests_per_second": 0,
+      "database_connections": 20,
+      "cache_memory_gb": 0.0,
+      "storage_gb": 4.9,
+      "monthly_cost_usd": 50,
+      "app_replicas": 1,
+      "tier": "single-node",
+      "predicted_bottleneck": "CPU and memory headroom under peak clinical load",
+      "note": "Assumes 10% active users, 50 requests/active-user/day, 3x peak multiplier, 50 KB cache/user, 50 MB clinical storage/user, 500 requests/sec/replica."
+    },
+    {
+      "users": 1000,
+      "requests_per_second": 0,
+      "database_connections": 20,
+      "cache_memory_gb": 0.05,
+      "storage_gb": 48.8,
+      "monthly_cost_usd": 52,
+      "app_replicas": 1,
+      "tier": "small-cluster",
+      "predicted_bottleneck": "database connection pool saturation",
+      "note": "Assumes 10% active users, 50 requests/active-user/day, 3x peak multiplier, 50 KB cache/user, 50 MB clinical storage/user, 500 requests/sec/replica."
+    },
+    {
+      "users": 10000,
+      "requests_per_second": 2,
+      "database_connections": 20,
+      "cache_memory_gb": 0.48,
+      "storage_gb": 488.3,
+      "monthly_cost_usd": 74,
+      "app_replicas": 1,
+      "tier": "regional",
+      "predicted_bottleneck": "cache memory and analytics query load",
+      "note": "Assumes 10% active users, 50 requests/active-user/day, 3x peak multiplier, 50 KB cache/user, 50 MB clinical storage/user, 500 requests/sec/replica."
+    },
+    {
+      "users": 100000,
+      "requests_per_second": 17,
+      "database_connections": 24,
+      "cache_memory_gb": 4.77,
+      "storage_gb": 4882.8,
+      "monthly_cost_usd": 295,
+      "app_replicas": 1,
+      "tier": "multi-region",
+      "predicted_bottleneck": "cross-governorate sync latency and partition handling",
+      "note": "Assumes 10% active users, 50 requests/active-user/day, 3x peak multiplier, 50 KB cache/user, 50 MB clinical storage/user, 500 requests/sec/replica."
+    },
+    {
+      "users": 1000000,
+      "requests_per_second": 174,
+      "database_connections": 64,
+      "cache_memory_gb": 47.68,
+      "storage_gb": 48828.1,
+      "monthly_cost_usd": 2496,
+      "app_replicas": 1,
+      "tier": "national",
+      "predicted_bottleneck": "data residency, federation, and compliance across governorates",
+      "note": "Assumes 10% active users, 50 requests/active-user/day, 3x peak multiplier, 50 KB cache/user, 50 MB clinical storage/user, 500 requests/sec/replica."
+    }
+  ]
+}

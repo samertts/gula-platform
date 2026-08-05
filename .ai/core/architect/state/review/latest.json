@@ -1,0 +1,57 @@
+{
+  "review_id": "REV-BA1DFE6A",
+  "candidate": "candidate",
+  "findings": [
+    {
+      "dimension": "architecture",
+      "verdict": "fail",
+      "score": 45,
+      "notes": "Evidence-scored architecture at 45/100."
+    },
+    {
+      "dimension": "scalability",
+      "verdict": "fail",
+      "score": 40,
+      "notes": "Evidence-scored scalability at 40/100."
+    },
+    {
+      "dimension": "reliability",
+      "verdict": "fail",
+      "score": 40,
+      "notes": "Evidence-scored reliability at 40/100."
+    },
+    {
+      "dimension": "maintainability",
+      "verdict": "fail",
+      "score": 40,
+      "notes": "Evidence-scored maintainability at 40/100."
+    },
+    {
+      "dimension": "security",
+      "verdict": "conditional",
+      "score": 50,
+      "notes": "Evidence-scored security at 50/100."
+    },
+    {
+      "dimension": "performance",
+      "verdict": "fail",
+      "score": 40,
+      "notes": "Evidence-scored performance at 40/100."
+    },
+    {
+      "dimension": "cost",
+      "verdict": "fail",
+      "score": 40,
+      "notes": "Evidence-scored cost at 40/100."
+    },
+    {
+      "dimension": "compliance",
+      "verdict": "fail",
+      "score": 45,
+      "notes": "Evidence-scored compliance at 45/100."
+    }
+  ],
+  "verdict": "fail",
+  "overall_score": 42,
+  "created_at": "2026-08-05T16:46:50.297141+00:00"
+}

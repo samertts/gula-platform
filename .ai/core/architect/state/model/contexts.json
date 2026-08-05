@@ -1,0 +1,23 @@
+{
+  "discovered_at": "2026-08-05T16:46:29.158276+00:00",
+  "contexts": [
+    {
+      "name": "lab",
+      "description": "Bounded context governing the lab domain.",
+      "modules": [
+        "backend/app/services/lab_service.py"
+      ],
+      "entities": [],
+      "subdomains": [
+        "core",
+        "catalog",
+        "tiering",
+        "management"
+      ],
+      "data_flow": "Lab catalog, tiers, employees, equipment",
+      "control_flow": "Lab CRUD operations and capability registration",
+      "trust_boundary": "internal",
+      "discovered_at": "2026-08-05T16:46:29.153376+00:00"
+    }
+  ]
+}

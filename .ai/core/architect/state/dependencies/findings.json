@@ -1,0 +1,22 @@
+{
+  "discovered_at": "2026-08-05T16:46:50.037049+00:00",
+  "edges": [
+    {
+      "source": "routes",
+      "target": "models",
+      "kind": "calls",
+      "evidence": "backend/app/routes/a.py -> app.models"
+    }
+  ],
+  "findings": [
+    {
+      "finding_id": "DEP-980038F6",
+      "kind": "skip-layer",
+      "source": "routes",
+      "target": "models",
+      "severity": "medium",
+      "evidence": "backend/app/routes/a.py -> app.models",
+      "recommendation": "Route layer (routes) must call services, not reach models directly."
+    }
+  ]
+}

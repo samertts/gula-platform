@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-08-05T08:41:47.334589+00:00",
+  "generated_at": "2026-08-05T16:45:34.855439+00:00",
   "repo": {
     "name": "gula-platform",
     "root": "/home/samertts/workspace/projects/gula-platform",
-    "git_head": "e0558b41 feat(reviewer): GULA-REVIEWER-001 phases 3-10 — eight areas, decision & report"
+    "git_head": "f8435575 test(backend): service unit tests — patient(33) consent(21) risk-based-auth(32) claims(17) + 2 real bug fixes"
   },
   "counts": {
     "modules": {
       "backend/app": {
         "python_files": 1799,
-        "lines": 267977
+        "lines": 267990
       },
       "shared": {
         "python_files": 148,
@@ -41,15 +41,15 @@
       }
     },
     "routes": 2183,
-    "migrations": 53,
-    "migrations_head": "20260804_0001",
+    "migrations": 54,
+    "migrations_head": "20260805_0001",
     "services": {
       "service_files": 40,
-      "total_lines": 16696
+      "total_lines": 16699
     },
     "models": 29,
     "tests": {
-      "backend/tests": 197,
+      "backend/tests": 234,
       "tests": 0,
       "shared": 0,
       "security/tests": 10,
@@ -103,7 +103,7 @@
     "PROGRAM-07M-REPORT"
   ],
   "source_freshness": {
-    "newest_source_mtime": 1785918956.9928257,
-    "brain_mtime": 1785878117.386486
+    "newest_source_mtime": 1785948050.34772,
+    "brain_mtime": 1785928001.8055878
   }
 }

@@ -1,0 +1,116 @@
+{
+  "discovered_at": "2026-08-05T16:46:50.073348+00:00",
+  "horizons": [
+    "1-year",
+    "3-year",
+    "5-year"
+  ],
+  "scalability_plan": [
+    {
+      "scale": "100-1k users",
+      "plan": "Single node; vertical scaling; replicated app behind a load balancer."
+    },
+    {
+      "scale": "1k-10k users",
+      "plan": "Small cluster; Redis sharding; read replicas for analytics."
+    },
+    {
+      "scale": "10k-100k users",
+      "plan": "Regional deployments; partition data stores by governorate."
+    },
+    {
+      "scale": "100k-1M users",
+      "plan": "Multi-region federation; tenant-aware routing; event mesh."
+    }
+  ],
+  "refactoring_strategy": [
+    "Always preserve behavioral compatibility; refactor behind interfaces.",
+    "One measured extraction at a time; never speculative service splits.",
+    "Keep dormant modules mergeable into national releases.",
+    "Enforce module boundaries with review gates, not process isolation.",
+    "Eliminate circular dependencies before adding new abstractions."
+  ],
+  "milestones": [
+    {
+      "horizon": "1-year",
+      "title": "Clinical safety certification",
+      "scope": "ISO 15189, CAP, CLSI evidence packs automated and continuously validated by the quality gates.",
+      "enabler": "Compliance dashboards + regression gates",
+      "risk": "Audit evidence drift",
+      "technology": "Automated evidence collection tooling",
+      "migration": "Additive compliance reports; existing data untouched"
+    },
+    {
+      "horizon": "1-year",
+      "title": "National pilot readiness",
+      "scope": "Operationalize the national pilot: identity platform, FHIR R4 contracts, offline sync hardening, multi-tenant isolation proof.",
+      "enabler": "Existing monolith + deployer + reviewer",
+      "risk": "Scope creep across governorate pilot sites",
+      "technology": "Python 3.12, FastAPI, PostgreSQL 16, Redis — unchanged stack",
+      "migration": "Feature-flag pilot rollout; no data migration"
+    },
+    {
+      "horizon": "1-year",
+      "title": "Observability at national scale",
+      "scope": "OpenTelemetry tracing, structured logs, and metrics across every surface; incident runbooks rehearsed.",
+      "enabler": "Deployer observability phase + self-healing",
+      "risk": "Signal-to-noise ratio in operations",
+      "technology": "OpenTelemetry OTLP -> Jaeger/Tempo (self-hosted)",
+      "migration": "Gradual instrumentation; zero schema change"
+    },
+    {
+      "horizon": "3-year",
+      "title": "Analyzer integration network",
+      "scope": "ASTM/HL7 device bridge standardization across laboratory hardware, with validation and audit of every result.",
+      "enabler": "Analyzer bridge + clinical safety validation",
+      "risk": "Device protocol fragmentation",
+      "technology": "ASTM/HL7 adapter framework",
+      "migration": "Adapter per protocol; no core schema change"
+    },
+    {
+      "horizon": "3-year",
+      "title": "Governorate rollout",
+      "scope": "Multi-directorate deployment with Ministry hierarchy, regional data residency, and national event bus federation.",
+      "enabler": "Tenant-aware routing + event bus federation",
+      "risk": "Data residency and latency across governorates",
+      "technology": "Region-aware tenants, federation adapters",
+      "migration": "Tenant-aware data routing with backward-compatible reads"
+    },
+    {
+      "horizon": "3-year",
+      "title": "National identity federation",
+      "scope": "Citizen identity authority federated with national health platform; ABAC authorization at Ministry level.",
+      "enabler": "Identity platform + ABAC engine",
+      "risk": "Privacy and consent across boundaries",
+      "technology": "ABAC policy engine, federation gateway",
+      "migration": "Claims-based identity mapping with rollback adapter"
+    },
+    {
+      "horizon": "5-year",
+      "title": "Federated event mesh",
+      "scope": "Fault-tolerant, self-hosted event mesh connecting every governorate deployment into one logical platform.",
+      "enabler": "Event bus federation + offline queues",
+      "risk": "Network partition handling",
+      "technology": "Federated event bus with durable queues",
+      "migration": "Gradual federation; local queues remain authoritative"
+    },
+    {
+      "horizon": "5-year",
+      "title": "National EHR interoperability",
+      "scope": "Full FHIR R4 national EHR exchange; SNDHS government integration; cross-governorate continuity of care.",
+      "enabler": "National EHR + government gateways",
+      "risk": "Specification drift with national standards",
+      "technology": "National FHIR profiles, gateway services",
+      "migration": "Canonical FHIR resource migration with dual-write window"
+    },
+    {
+      "horizon": "5-year",
+      "title": "National intelligence platform",
+      "scope": "Aggregated analytics and clinical intelligence across the national platform with strict privacy preservation.",
+      "enabler": "Analytics layer + privacy-preserving computation",
+      "risk": "De-identification and consent governance",
+      "technology": "OLAP read replicas, de-identification pipeline",
+      "migration": "Read-model projections; source of truth unchanged"
+    }
+  ]
+}

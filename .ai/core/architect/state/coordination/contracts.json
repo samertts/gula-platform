@@ -1,0 +1,63 @@
+{
+  "discovered_at": "2026-08-05T16:46:29.318818+00:00",
+  "contracts": [
+    {
+      "engine": "builder",
+      "role": "Executor",
+      "mandate": "Implements every accepted architectural decision as working code with atomic, conventional, tested commits.",
+      "dependencies": [
+        "reviewer",
+        "kernel"
+      ],
+      "status": "missing"
+    },
+    {
+      "engine": "reviewer",
+      "role": "Verifier",
+      "mandate": "Independently verifies every change-set against the architecture before acceptance; gates merge readiness.",
+      "dependencies": [
+        "kernel"
+      ],
+      "status": "missing"
+    },
+    {
+      "engine": "orchestrator",
+      "role": "Coordinator",
+      "mandate": "Turns strategic objectives into managed missions routed to the engine that owns each surface.",
+      "dependencies": [
+        "builder",
+        "reviewer",
+        "deployer",
+        "learner"
+      ],
+      "status": "missing"
+    },
+    {
+      "engine": "learner",
+      "role": "Memory",
+      "mandate": "Records permanent, versioned, searchable knowledge so decisions and patterns survive across missions.",
+      "dependencies": [
+        "kernel"
+      ],
+      "status": "missing"
+    },
+    {
+      "engine": "optimizer",
+      "role": "Perfector",
+      "mandate": "Continuously improves performance, scalability, and maintainability without changing business behavior.",
+      "dependencies": [
+        "reviewer"
+      ],
+      "status": "missing"
+    },
+    {
+      "engine": "deployer",
+      "role": "Operator",
+      "mandate": "Deploys, operates, scales, and rolls back the platform across governorate infrastructure.",
+      "dependencies": [
+        "builder"
+      ],
+      "status": "missing"
+    }
+  ]
+}
