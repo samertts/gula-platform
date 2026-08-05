@@ -175,6 +175,8 @@ Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
 | `.ai/core/compat/engine_compatibility.json` | Compat | Engine contract matrix |
 | `.ai/core/migrations/README.md` | Migration | Migration Framework overview |
 | `.ai/core/migrations/migration_plans.json` | Migration | Migration plan registry |
+| `.ai/core/events/README.md` | Event Bus | Enterprise Event Bus overview |
+| `.ai/core/events/event_journal.json` | Event Bus | Delivery journal |
 
 ### Database
 Database schema, migrations, and data decisions.

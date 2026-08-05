@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0.0",
+  "events": [
+    {
+      "id": "EVT-000001",
+      "name": "migration.executed",
+      "publisher": "ext-migrate",
+      "payload": {
+        "plan": "MIGR-000001",
+        "state": "executed"
+      },
+      "kind": "system",
+      "priority": "normal",
+      "emitted_at": "2026-08-05T07:17:33.092437+00:00"
+    }
+  ],
+  "deliveries": [
+    {
+      "event_id": "EVT-000001",
+      "handler": "governor",
+      "status": "delivered",
+      "detail": ""
+    },
+    {
+      "event_id": "EVT-000001",
+      "handler": "audit",
+      "status": "delivered",
+      "detail": ""
+    }
+  ]
+}

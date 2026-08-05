@@ -166,6 +166,25 @@ def run_migrate_run() -> int:
     return 0
 
 
+def run_event_bus() -> int:
+    """Phase 5 — publish a demo event and show the audit trail."""
+    from .event_bus import EVENT_JOURNAL, Event, EventBus
+
+    bus = EventBus()
+    bus.subscribe("migration.executed", "governor", lambda _ev: None)
+    bus.subscribe("*", "audit", lambda _ev: None)
+    event = Event(id="EVT-000001", name="migration.executed", publisher="ext-migrate",
+                  payload={"plan": "MIGR-000001", "state": "executed"})
+    deliveries = bus.publish(event)
+    print("EVENT BUS (GULA-KERNEL-EXT-001)")
+    print(f"  events emitted: {len(bus.events())}")
+    print(f"  handlers matched: {len(deliveries)}")
+    for delivery in deliveries:
+        print(f"  [{delivery.status}] {delivery.event_id} -> {delivery.handler}")
+    bus.save(EVENT_JOURNAL + "event_journal.json")
+    return 0
+
+
 def run_ext_check() -> int:
     failures: list[str] = []
 
@@ -220,6 +239,17 @@ def run_ext_check() -> int:
     except Exception as exc:
         failures.append(f"migration engine failed: {exc}")
 
+    from .event_bus import Event, EventBus
+
+    try:
+        bus = EventBus()
+        bus.subscribe("migration.executed", "governor", lambda _ev: None)
+        deliveries = bus.publish(Event(id="EVT-000002", name="migration.executed", publisher="ext-check"))
+        if not deliveries:
+            failures.append("event bus: no deliveries for demo event")
+    except Exception as exc:
+        failures.append(f"event bus failed: {exc}")
+
     print("KERNEL EXTENSION SELF-CHECK")
     print("=" * 60)
     if failures:
@@ -232,6 +262,7 @@ def run_ext_check() -> int:
     print(f"  [PASS] {len(policy_engine.search())} policies registered")
     print(f"  [PASS] {len(compat_matrix.entries('contract'))} contracts compatible")
     print(f"  [PASS] migration demo executed ({plan.id} -> {plan.state})")
+    print(f"  [PASS] event bus delivered ({len(deliveries)} handler(s))")
     print("=" * 60)
     print("RESULT: ALL KERNEL EXTENSION CHECKS PASSED")
     return 0
@@ -246,5 +277,6 @@ EXT_COMMANDS = {
     "ext-compat-check": run_compat_check,
     "ext-migrate": run_migrate,
     "ext-migrate-run": run_migrate_run,
+    "ext-event-bus": run_event_bus,
     "ext-check": run_ext_check,
 }

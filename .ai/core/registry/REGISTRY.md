@@ -143,6 +143,8 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Compatibility matrix | .ai/core/compat/ | Active |
 | Migration Framework (Phase 4) | scripts/kernel/ext/migration.py | Active |
 | Migration plans | .ai/core/migrations/ | Active |
+| Event Bus (Phase 5) | scripts/kernel/ext/event_bus.py | Active |
+| Event journal | .ai/core/events/ | Active |
 
 ## Total Count
 
@@ -169,4 +171,5 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Policies | 16 |
 | Compat Matrix | 7 contracts |
 | Migration Plans | 1 |
-| **Total Artifacts** | **171** |
+| Event Bus | 1 journal |
+| **Total Artifacts** | **172** |
