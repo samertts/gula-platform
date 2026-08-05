@@ -214,6 +214,29 @@ Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
 | `scripts/builder/cli.py` | Builder | Builder CLI |
 | `scripts/builder.py` | Builder | Builder launcher |
 
+### AI Reviewer Engine (GULA-REVIEWER-001)
+
+| File | Source | Description |
+|---|---|---|
+| `REVIEWER_AUDIT_REPORT.md` | Reviewer | Phase 0 repository audit |
+| `REVIEWER_IMPLEMENTATION_REPORT.md` | Reviewer | Deterministic review verdict |
+| `.ai/core/reviewer/README.md` | Reviewer | Reviewer Engine overview |
+| `.ai/core/reviewer/state/latest_review.json` | Reviewer | Latest persisted verdict |
+| `scripts/reviewer/core.py` | Reviewer | Shared constants + dataclasses |
+| `scripts/reviewer/audit.py` | Reviewer | Phase 0 audit module |
+| `scripts/reviewer/architecture_review.py` | Reviewer | Phase 1 architecture review |
+| `scripts/reviewer/code_review.py` | Reviewer | Phase 2 code review |
+| `scripts/reviewer/security_review.py` | Reviewer | Phase 3 security review |
+| `scripts/reviewer/test_review.py` | Reviewer | Phase 4 test review |
+| `scripts/reviewer/deployment_review.py` | Reviewer | Phase 5 deployment review |
+| `scripts/reviewer/docs_review.py` | Reviewer | Phase 6 documentation review |
+| `scripts/reviewer/performance_review.py` | Reviewer | Phase 7 performance review |
+| `scripts/reviewer/knowledge_review.py` | Reviewer | Phase 8 knowledge review |
+| `scripts/reviewer/decision.py` | Reviewer | Phase 9 decision engine |
+| `scripts/reviewer/report.py` | Reviewer | Phase 10 report + gate |
+| `scripts/reviewer/cli.py` | Reviewer | Reviewer CLI |
+| `scripts/reviewer.py` | Reviewer | Reviewer launcher |
+
 ### Database
 Database schema, migrations, and data decisions.
 
@@ -411,8 +434,8 @@ To find knowledge, search by these tags:
 | Roadmap | 1 |
 | Checkpoints | 1 |
 | **Total .ai artifacts** | **~105** |
-| **Total bridged artifacts** | **~171** |
-| **Grand total** | **~276** |
+| **Total bridged artifacts** | **~189** |
+| **Grand total** | **~294** |
 
 ---
 

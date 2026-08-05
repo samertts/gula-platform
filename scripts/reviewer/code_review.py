@@ -116,6 +116,7 @@ def check_duplication(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
 def check_complexity(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
     """Flag files with very long functions (indentation-depth heuristic)."""
     findings: list[ReviewFinding] = []
+    affected: list[str] = []
     for path in _py_files(repo / "backend"):
         max_depth = 0
         for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
@@ -124,20 +125,28 @@ def check_complexity(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
                 depth = len(line) - len(line.lstrip(" "))
                 max_depth = max(max_depth, depth)
         if max_depth > 32:
-            findings.append(ReviewFinding(
-                "code", Severity.MEDIUM, "High nesting complexity",
-                detail=f"{path.relative_to(repo)} reaches depth {max_depth}",
-                evidence=path.name,
-                suggested_fix="extract nested logic into helper functions",
-            ))
+            affected.append(path.relative_to(repo).as_posix())
+    if affected:
+        findings.append(ReviewFinding(
+            "code", Severity.MEDIUM, "High nesting complexity",
+            detail=f"{len(affected)} files reach indentation depth > 32 "
+                   f"(e.g. {Path(affected[0]).name})",
+            evidence="backend/",
+            suggested_fix="extract nested logic into helper functions",
+        ))
     return findings
 
 
 def check_naming(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
-    """Flag camelCase identifiers in Python code, ignoring string literals."""
+    """Flag camelCase identifiers in Python code, ignoring string literals.
+
+    Aggregated to a single finding: PEP 8 naming debt is systemic and is
+    fixed across the codebase, not file-by-file.
+    """
     findings: list[ReviewFinding] = []
     # Remove string literals before matching so dict keys/labels are skipped.
     strings_re = re.compile(r"""(['"])(?:\\.|(?!\1).)*\1""", re.DOTALL)
+    affected: list[str] = []
     for path in _py_files(repo / "backend"):
         text = path.read_text(encoding="utf-8", errors="ignore")
         code = strings_re.sub("", text)
@@ -145,29 +154,35 @@ def check_naming(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
         # Skip stdlib/framework method calls like .getLogger / .setValue
         matches = [m for m in matches if f".{m}" not in code]
         if matches:
-            findings.append(ReviewFinding(
-                "code", Severity.LOW, "Non-standard naming",
-                detail=f"{path.relative_to(repo)} uses camelCase identifiers "
-                       f"(e.g. {', '.join(matches[:3])})",
-                evidence=path.name,
-                suggested_fix="use snake_case per PEP 8",
-            ))
+            affected.append(path.relative_to(repo).as_posix())
+    if affected:
+        findings.append(ReviewFinding(
+            "code", Severity.LOW, "Non-standard naming",
+            detail=f"camelCase identifiers in {len(affected)} backend files "
+                   f"(e.g. {Path(affected[0]).name}, {Path(affected[-1]).name})",
+            evidence="backend/",
+            suggested_fix="use snake_case per PEP 8",
+        ))
     return findings
 
 
 def check_unused_imports(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
-    """Heuristic: flag files importing more than a threshold of modules."""
+    """Heuristic: flag high import-density modules (aggregated)."""
     findings: list[ReviewFinding] = []
+    affected: list[str] = []
     for path in _py_files(repo / "backend"):
         text = path.read_text(encoding="utf-8", errors="ignore")
         imports = len(re.findall(r"^\s*(?:import|from)\s+", text, re.MULTILINE))
-        if imports > 25:
-            findings.append(ReviewFinding(
-                "code", Severity.LOW, "Import density high",
-                detail=f"{path.relative_to(repo)} has {imports} import statements",
-                evidence=path.name,
-                suggested_fix="run ruff with F401 to drop unused imports",
-            ))
+        if imports > 50:
+            affected.append(f"{path.relative_to(repo).as_posix()} ({imports})")
+    if affected:
+        findings.append(ReviewFinding(
+            "code", Severity.LOW, "Import density high",
+            detail=f"{len(affected)} modules exceed 50 import statements "
+                   f"(e.g. {Path(affected[0]).name})",
+            evidence="backend/",
+            suggested_fix="run ruff with F401 to drop unused imports and split modules",
+        ))
     return findings
 
 

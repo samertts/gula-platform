@@ -6,7 +6,6 @@ API documentation, ADRs, security docs, and stale/broken markdown signals.
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from scripts.kernel.core import REPO_ROOT, Severity

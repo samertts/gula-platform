@@ -13,7 +13,6 @@ from pathlib import Path
 from scripts.kernel.core import REPO_ROOT
 from scripts.reviewer.core import (
     AreaReview,
-    Decision,
     ReviewFinding,
     ReviewReport,
     decide_area,
@@ -87,7 +86,7 @@ def summary_lines(report: ReviewReport) -> list[str]:
         )
     lines.append("")
     high = [f for a in report.area_reviews for f in a.findings
-            if f.severity.value in {"HIGH", "CRITICAL"}]
+            if f.severity.value in {"high", "critical"}]
     if high:
         lines.append(f"High/critical findings: {len(high)}")
         for f in high[:10]:

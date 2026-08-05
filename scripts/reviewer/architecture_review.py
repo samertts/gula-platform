@@ -34,6 +34,7 @@ def check_clean_architecture(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
     routes = _files(repo / "backend/app/routes", "*.py")
     services = _files(repo / "backend/app/services", "*.py")
     models = _files(repo / "backend/app/models", "*.py")
+    fat: list[str] = []
 
     if not routes:
         findings.append(ReviewFinding(
@@ -57,12 +58,15 @@ def check_clean_architecture(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
     for route in routes:
         text = route.read_text(encoding="utf-8", errors="ignore")
         if text.count("app.") > 200 or len(text.splitlines()) > 500:
-            findings.append(ReviewFinding(
-                "architecture", Severity.MEDIUM, "Route may be fat",
-                detail=f"{route.relative_to(repo)} exceeds thickness threshold",
-                evidence=route.name,
-                suggested_fix="delegate logic to a service module",
-            ))
+            fat.append(route.relative_to(repo).as_posix())
+    if fat:
+        findings.append(ReviewFinding(
+            "architecture", Severity.MEDIUM, "Fat routes",
+            detail=f"{len(fat)} routes exceed the 500-line / 200-call threshold "
+                   f"(e.g. {Path(fat[0]).name})",
+            evidence="backend/app/routes",
+            suggested_fix="delegate logic to service modules to keep routes thin",
+        ))
     return findings
 
 

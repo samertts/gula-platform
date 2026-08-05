@@ -57,7 +57,13 @@ def check_registry_and_index(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
 def check_engine_readmes(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
     """Verify each engine under scripts/ documents itself in .ai/core/<name>/."""
     findings: list[ReviewFinding] = []
-    engines = sorted(p for p in (repo / "scripts").iterdir() if p.is_dir() and (p / "__init__.py").exists())
+    scripts_dir = repo / "scripts"
+    if not scripts_dir.is_dir():
+        return findings
+    engines = sorted(
+        p for p in scripts_dir.iterdir()
+        if p.is_dir() and (p / "__init__.py").exists()
+    )
     for engine in engines:
         readme = repo / ".ai" / "core" / engine.name / "README.md"
         if not readme.exists():

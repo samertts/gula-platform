@@ -30,7 +30,7 @@ def _ts_files(root: Path) -> list[Path]:
         return []
     excluded = {"node_modules", "dist", "build"}
     return sorted(
-        p for p in root.rglob("*") 
+        p for p in root.rglob("*")
         if p.suffix in {".ts", ".tsx"}
         and not any(part in excluded for part in p.parts)
     )
@@ -63,7 +63,7 @@ def _query_in_loop_count(code: str) -> int:
     lines = code.splitlines()
     headers: list[tuple[int, str, str]] = []
     hits = 0
-    for lineno, line in enumerate(lines):
+    for _lineno, line in enumerate(lines):
         stripped = line.strip()
         if not stripped:
             continue

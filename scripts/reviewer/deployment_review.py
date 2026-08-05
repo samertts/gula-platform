@@ -26,8 +26,8 @@ def _files(root: Path, glob: str) -> list[Path]:
 def check_containerization(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
     """Verify Dockerfiles exist for backend/frontend and use HEALTHCHECK."""
     findings: list[ReviewFinding] = []
-    dockerfiles = [p for p in _files(repo / "backend", "Dockerfile")] + \
-                  [p for p in _files(repo / "frontend-v3", "Dockerfile")]
+    dockerfiles = list(_files(repo / "backend", "Dockerfile")) + \
+        list(_files(repo / "frontend-v3", "Dockerfile"))
     if not dockerfiles:
         findings.append(ReviewFinding(
             "deployment", Severity.HIGH, "No Dockerfiles found",

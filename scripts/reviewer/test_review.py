@@ -50,7 +50,7 @@ def check_test_presence(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
 def check_module_coverage(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
     """Map service modules to test files; flag services without any test."""
     findings: list[ReviewFinding] = []
-    services = [p for p in _py_files(repo / "backend" / "app" / "services")]
+    services = list(_py_files(repo / "backend" / "app" / "services"))
     test_texts = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in _py_files(repo / "backend" / "tests"))
     untested: list[str] = []
     for service in services:
@@ -98,10 +98,6 @@ def check_test_count_health(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
         len(re.findall(r"\bdef\s+test_|^class\s+Test", p.read_text(encoding="utf-8", errors="ignore")))
         for p in _py_files(repo / "backend" / "tests")
     )
-    frontend = sum(
-        len(re.findall(r"\btest\(['\"]|^\s*test\b", p.read_text(encoding="utf-8", errors="ignore")))
-        for p in (repo / "frontend-v3").rglob("*.test.ts")
-    ) if (repo / "frontend-v3").exists() else 0
     if backend < 100:
         findings.append(ReviewFinding(
             "tests", Severity.MEDIUM, "Backend test count low",

@@ -308,6 +308,13 @@ def _builder_commands() -> dict[str, object]:
     return builder_cli.BUILDER_COMMANDS
 
 
+def _reviewer_commands() -> dict[str, object]:
+    """Lazily import the Reviewer CLI (GULA-REVIEWER-001)."""
+    from scripts.reviewer import cli as reviewer_cli
+
+    return reviewer_cli.REVIEWER_COMMANDS
+
+
 COMMANDS = {
     "audit": run_audit,
     "state": run_state,
@@ -354,6 +361,20 @@ COMMANDS = {
     "builder-review": _builder_commands()["builder-review"],
     "builder-report": _builder_commands()["builder-report"],
     "builder-check": _builder_commands()["builder-check"],
+    "reviewer-audit": _reviewer_commands()["reviewer-audit"],
+    "reviewer-review": _reviewer_commands()["reviewer-review"],
+    "reviewer-area": _reviewer_commands()["reviewer-area"],
+    "reviewer-gate": _reviewer_commands()["reviewer-gate"],
+    "reviewer-report": _reviewer_commands()["reviewer-report"],
+    "reviewer-check": _reviewer_commands()["reviewer-check"],
+    "reviewer-architecture": _reviewer_commands()["reviewer-architecture"],
+    "reviewer-code": _reviewer_commands()["reviewer-code"],
+    "reviewer-security": _reviewer_commands()["reviewer-security"],
+    "reviewer-tests": _reviewer_commands()["reviewer-tests"],
+    "reviewer-deployment": _reviewer_commands()["reviewer-deployment"],
+    "reviewer-documentation": _reviewer_commands()["reviewer-documentation"],
+    "reviewer-performance": _reviewer_commands()["reviewer-performance"],
+    "reviewer-knowledge": _reviewer_commands()["reviewer-knowledge"],
 }
 
 

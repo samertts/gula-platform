@@ -175,6 +175,26 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Builder launcher | scripts/builder.py | Active |
 | Builder knowledge | .ai/core/builder/ | Active |
 
+## Reviewer Engine (GULA-REVIEWER-001)
+
+| Component | Location | Status |
+|---|---|---|
+| Reviewer core | scripts/reviewer/core.py | Active |
+| Phase 0 Audit | scripts/reviewer/audit.py | Active |
+| Phase 1 Architecture | scripts/reviewer/architecture_review.py | Active |
+| Phase 2 Code | scripts/reviewer/code_review.py | Active |
+| Phase 3 Security | scripts/reviewer/security_review.py | Active |
+| Phase 4 Tests | scripts/reviewer/test_review.py | Active |
+| Phase 5 Deployment | scripts/reviewer/deployment_review.py | Active |
+| Phase 6 Documentation | scripts/reviewer/docs_review.py | Active |
+| Phase 7 Performance | scripts/reviewer/performance_review.py | Active |
+| Phase 8 Knowledge | scripts/reviewer/knowledge_review.py | Active |
+| Phase 9 Decision | scripts/reviewer/decision.py | Active |
+| Phase 10 Report | scripts/reviewer/report.py | Active |
+| Reviewer CLI | scripts/reviewer/cli.py | Active |
+| Reviewer launcher | scripts/reviewer.py | Active |
+| Reviewer knowledge | .ai/core/reviewer/ | Active |
+
 ## Total Count
 
 | Category | Count |
@@ -197,6 +217,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Governor Modules | 18 |
 | Kernel Modules | 19 |
 | Builder Modules | 12 |
+| Reviewer Modules | 15 |
 | SDK Artifacts | 6 |
 | Policies | 16 |
 | Compat Matrix | 7 contracts |
@@ -208,4 +229,4 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Memory entries | 3 |
 | Health score | 100/100 |
 | Certification reports | 7 |
-| **Total Artifacts** | **197** |
+| **Total Artifacts** | **212** |
