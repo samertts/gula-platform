@@ -1,0 +1,86 @@
+{
+  "schema_version": "1.0.0",
+  "entries": [
+    {
+      "id": "MEM-997682",
+      "tier": "long_term",
+      "content": "current mission checkpoint",
+      "tags": [
+        "checkpoint"
+      ],
+      "source": "",
+      "created_at": "2026-08-05T07:30:28.185559+00:00",
+      "last_accessed_at": "2026-08-05T07:30:28.185624+00:00",
+      "access_count": 3,
+      "archived": false
+    },
+    {
+      "id": "MEM-269800",
+      "tier": "failure",
+      "content": "timeout in astm adapter",
+      "tags": [
+        "astm",
+        "timeout"
+      ],
+      "source": "",
+      "created_at": "2026-08-05T07:30:28.185645+00:00",
+      "last_accessed_at": "",
+      "access_count": 0,
+      "archived": false
+    },
+    {
+      "id": "MEM-999302",
+      "tier": "decision",
+      "content": "use outbox for domain events",
+      "tags": [
+        "event",
+        "outbox"
+      ],
+      "source": "",
+      "created_at": "2026-08-05T07:30:28.185663+00:00",
+      "last_accessed_at": "",
+      "access_count": 0,
+      "archived": false
+    }
+  ],
+  "history": [
+    {
+      "event": "remembered",
+      "id": "MEM-997682",
+      "tier": "working",
+      "at": "2026-08-05T07:30:28.185595+00:00"
+    },
+    {
+      "event": "accessed",
+      "id": "MEM-997682",
+      "at": "2026-08-05T07:30:28.185608+00:00"
+    },
+    {
+      "event": "accessed",
+      "id": "MEM-997682",
+      "at": "2026-08-05T07:30:28.185617+00:00"
+    },
+    {
+      "event": "accessed",
+      "id": "MEM-997682",
+      "at": "2026-08-05T07:30:28.185624+00:00"
+    },
+    {
+      "event": "promoted",
+      "id": "MEM-997682",
+      "at": "2026-08-05T07:30:28.185632+00:00"
+    },
+    {
+      "event": "remembered",
+      "id": "MEM-269800",
+      "tier": "failure",
+      "at": "2026-08-05T07:30:28.185654+00:00"
+    },
+    {
+      "event": "remembered",
+      "id": "MEM-999302",
+      "tier": "decision",
+      "at": "2026-08-05T07:30:28.185669+00:00"
+    }
+  ]
+}

@@ -245,6 +245,28 @@ def run_evolution() -> int:
     return 0
 
 
+def run_memory() -> int:
+    """Phase 9 — write/recall across memory tiers."""
+    from .memory import MEMORY_DIR, MemoryStore
+
+    store = MemoryStore()
+    working = store.remember("working", "current mission checkpoint", tags=["checkpoint"])
+    for _ in range(3):
+        store.touch(working.id)
+    store.promote(working.id)
+    store.remember("failure", "timeout in astm adapter", tags=["astm", "timeout"])
+    store.remember("decision", "use outbox for domain events", tags=["event", "outbox"])
+    print("ENTERPRISE AI MEMORY (GULA-KERNEL-EXT-001)")
+    print(f"  entries: {len(store.entries())}")
+    for tier in ("working", "long_term", "failure", "decision"):
+        for entry in store.entries(tier):
+            print(f"  - {entry.id} {entry.tier:9s} {entry.content[:48]}")
+    hits = store.recall("outbox")
+    print(f"  recall 'outbox': {len(hits)} hit(s)")
+    store.save(MEMORY_DIR + "memory_store.json")
+    return 0
+
+
 def run_ext_check() -> int:
     failures: list[str] = []
 
@@ -344,6 +366,20 @@ def run_ext_check() -> int:
     except Exception as exc:
         failures.append(f"evolution engine failed: {exc}")
 
+    from .memory import MemoryStore
+
+    try:
+        memory_store = MemoryStore()
+        memory = memory_store.remember("working", "demo checkpoint", tags=["checkpoint"])
+        memory_store.touch(memory.id)
+        memory_store.touch(memory.id)
+        memory_store.touch(memory.id)
+        memory_store.promote(memory.id)
+        if memory.tier != "long_term":
+            failures.append("memory: working entry not promoted")
+    except Exception as exc:
+        failures.append(f"memory engine failed: {exc}")
+
     print("KERNEL EXTENSION SELF-CHECK")
     print("=" * 60)
     if failures:
@@ -360,6 +396,7 @@ def run_ext_check() -> int:
     print(f"  [PASS] workflow completed ({workflow.id} -> {workflow.state})")
     print(f"  [PASS] marketplace installed ({len(marketplace.installed())} item(s))")
     print(f"  [PASS] evolution detected ({len(evolution.detect())} signal(s))")
+    print(f"  [PASS] memory promoted ({len(memory_store.entries('long_term'))} long-term entry)")
     print("=" * 60)
     print("RESULT: ALL KERNEL EXTENSION CHECKS PASSED")
     return 0
@@ -378,5 +415,6 @@ EXT_COMMANDS = {
     "ext-workflow": run_workflow,
     "ext-marketplace": run_marketplace,
     "ext-evolution": run_evolution,
+    "ext-memory": run_memory,
     "ext-check": run_ext_check,
 }
