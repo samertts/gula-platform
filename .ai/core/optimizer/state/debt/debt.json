@@ -1,0 +1,75 @@
+{
+  "debt": [
+    {
+      "debt_id": "DEBT-000001",
+      "kind": "duplicated-logic",
+      "area": "code",
+      "impact": "Fixing one copy does not fix the others; drift silently diverges.",
+      "severity": "medium",
+      "status": "open",
+      "recommendation": "Extract the shared behavior into a reusable core module.",
+      "created_at": "2026-08-05T11:32:28.002648+00:00"
+    },
+    {
+      "debt_id": "DEBT-000002",
+      "kind": "deprecated-code",
+      "area": "code",
+      "impact": "Deprecated paths linger and grow stale security surface.",
+      "severity": "medium",
+      "status": "open",
+      "recommendation": "Remove the deprecated path once call sites are migrated.",
+      "created_at": "2026-08-05T11:32:28.663674+00:00"
+    },
+    {
+      "debt_id": "DEBT-000003",
+      "kind": "temporary-fixes",
+      "area": "code",
+      "impact": "Temporary fixes become permanent and hide the real cause.",
+      "severity": "high",
+      "status": "open",
+      "recommendation": "Replace the temporary fix with a permanent, tested solution.",
+      "created_at": "2026-08-05T11:32:29.327546+00:00"
+    },
+    {
+      "debt_id": "DEBT-000004",
+      "kind": "architecture-drift",
+      "area": "architecture",
+      "impact": "Modules cross boundaries and erode the intended architecture.",
+      "severity": "high",
+      "status": "open",
+      "recommendation": "Restore the intended module boundaries and break the cycle.",
+      "created_at": "2026-08-05T11:32:29.459367+00:00"
+    },
+    {
+      "debt_id": "DEBT-000005",
+      "kind": "dependency-problems",
+      "area": "dependencies",
+      "impact": "Outdated or vulnerable dependencies block safe upgrades.",
+      "severity": "high",
+      "status": "open",
+      "recommendation": "Upgrade dependencies in small, reviewed, tested batches.",
+      "created_at": "2026-08-05T11:32:29.985361+00:00"
+    },
+    {
+      "debt_id": "DEBT-000006",
+      "kind": "configuration-drift",
+      "area": "configuration",
+      "impact": "Environments diverge; behavior differs where it should not.",
+      "severity": "medium",
+      "status": "open",
+      "recommendation": "Source configuration from a single shared core.",
+      "created_at": "2026-08-05T11:32:30.705915+00:00"
+    },
+    {
+      "debt_id": "DEBT-000007",
+      "kind": "documentation-drift",
+      "area": "documentation",
+      "impact": "Docs no longer match reality, so engineers trust code instead.",
+      "severity": "medium",
+      "status": "open",
+      "recommendation": "Update the documentation to match the implemented reality.",
+      "created_at": "2026-08-05T11:32:31.280351+00:00"
+    }
+  ],
+  "updated_at": "2026-08-05T11:32:31.280397+00:00"
+}

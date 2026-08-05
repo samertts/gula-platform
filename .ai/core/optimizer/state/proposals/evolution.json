@@ -1,0 +1,61 @@
+{
+  "proposals": [
+    {
+      "proposal_id": "EVO-000008",
+      "target": "improvement-proposals",
+      "title": "Streamline optimization proposal tracking",
+      "rationale": "Proposals should carry measured before/after evidence when approved.",
+      "status": "open",
+      "created_at": "2026-08-05T11:32:31.285334+00:00"
+    },
+    {
+      "proposal_id": "EVO-000009",
+      "target": "architecture-evolution",
+      "title": "Promote verified architecture recommendations to ADRs",
+      "rationale": "Verified ARC recommendations should become decision records.",
+      "status": "open",
+      "created_at": "2026-08-05T11:32:31.285358+00:00"
+    },
+    {
+      "proposal_id": "EVO-000010",
+      "target": "refactoring-candidates",
+      "title": "Schedule high-severity debt for refactoring",
+      "rationale": "Highest-severity debt records should feed the next refactoring mission.",
+      "status": "open",
+      "created_at": "2026-08-05T11:32:31.285365+00:00"
+    },
+    {
+      "proposal_id": "EVO-000011",
+      "target": "infrastructure-improvements",
+      "title": "Apply verified resource recommendations to infrastructure",
+      "rationale": "Resource savings should be measured against the baseline after change.",
+      "status": "open",
+      "created_at": "2026-08-05T11:32:31.285371+00:00"
+    },
+    {
+      "proposal_id": "EVO-000012",
+      "target": "automation-opportunities",
+      "title": "Automate bottleneck re-detection in CI",
+      "rationale": "Run bottleneck detection on the CI and record findings in the registry.",
+      "status": "open",
+      "created_at": "2026-08-05T11:32:31.285376+00:00"
+    },
+    {
+      "proposal_id": "EVO-000013",
+      "target": "ai-capability-improvements",
+      "title": "Feed optimization results back to the Learner",
+      "rationale": "Every verified optimization should become reusable engineering knowledge.",
+      "status": "open",
+      "created_at": "2026-08-05T11:32:31.285380+00:00"
+    },
+    {
+      "proposal_id": "EVO-000014",
+      "target": "knowledge-improvements",
+      "title": "Publish optimization knowledge to the knowledge store",
+      "rationale": "Optimization lessons should be searchable alongside mission lessons.",
+      "status": "open",
+      "created_at": "2026-08-05T11:32:31.285385+00:00"
+    }
+  ],
+  "updated_at": "2026-08-05T11:32:31.285398+00:00"
+}

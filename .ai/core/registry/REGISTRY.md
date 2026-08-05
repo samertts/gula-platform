@@ -259,6 +259,26 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Learner launcher | scripts/learner.py | Active |
 | Learner knowledge | .ai/core/learner/ | Active |
 
+## Optimizer Engine (GULA-OPTIMIZER-001)
+
+| Component | Location | Status |
+|---|---|---|
+| Optimizer core | scripts/optimizer/core.py | Active |
+| Phase 0 Audit | scripts/optimizer/audit.py | Active |
+| Phase 1 Analysis | scripts/optimizer/analyze.py | Active |
+| Phase 2 Bottlenecks | scripts/optimizer/bottlenecks.py | Active |
+| Phase 3 Architecture | scripts/optimizer/architecture.py | Active |
+| Phase 4 Resources | scripts/optimizer/resources.py | Active |
+| Phase 5 DX | scripts/optimizer/developer_experience.py | Active |
+| Phase 6 Debt | scripts/optimizer/debt.py | Active |
+| Phase 7 Safe | scripts/optimizer/safe.py | Active |
+| Phase 8 Evolution | scripts/optimizer/evolution.py | Active |
+| Phase 9 Quality | scripts/optimizer/quality.py | Active |
+| Phase 10 Report | scripts/optimizer/report.py | Active |
+| Optimizer CLI | scripts/optimizer/cli.py | Active |
+| Optimizer launcher | scripts/optimizer.py | Active |
+| Optimizer knowledge | .ai/core/optimizer/ | Active |
+
 ## Total Count
 
 | Category | Count |
@@ -285,6 +305,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Orchestrator Modules | 15 |
 | Deployer Modules | 15 |
 | Learner Modules | 15 |
+| Optimizer Modules | 15 |
 | SDK Artifacts | 6 |
 | Policies | 16 |
 | Compat Matrix | 7 contracts |
@@ -296,4 +317,4 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Memory entries | 4 |
 | Health score | 100/100 |
 | Certification reports | 7 |
-| **Total Artifacts** | **248** |
+| **Total Artifacts** | **263** |

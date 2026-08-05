@@ -1,0 +1,85 @@
+{
+  "recommendations": [
+    {
+      "recommendation_id": "ARC-000001",
+      "technique": "module-boundaries",
+      "area": "backend",
+      "rationale": "Keep Clean Architecture and DDD: modules depend inward, never on bounded-context siblings.",
+      "expected_impact": "Lower coupling, clearer ownership, smaller review surfaces.",
+      "created_at": "2026-08-05T11:32:27.250453+00:00"
+    },
+    {
+      "recommendation_id": "ARC-000002",
+      "technique": "dependency-reduction",
+      "area": "backend",
+      "rationale": "Prune unused and duplicated dependencies; prefer standard library.",
+      "expected_impact": "Smaller images, fewer CVEs, faster installs.",
+      "created_at": "2026-08-05T11:32:27.250490+00:00"
+    },
+    {
+      "recommendation_id": "ARC-000003",
+      "technique": "caching",
+      "area": "backend",
+      "rationale": "Cache hot, read-heavy data with an invalidation policy.",
+      "expected_impact": "Lower latency, fewer database hits, steadier load.",
+      "created_at": "2026-08-05T11:32:27.250501+00:00"
+    },
+    {
+      "recommendation_id": "ARC-000004",
+      "technique": "indexing",
+      "area": "database",
+      "rationale": "Add indexes that match the actual query patterns.",
+      "expected_impact": "Faster lookups and sorted scans on large tables.",
+      "created_at": "2026-08-05T11:32:27.250508+00:00"
+    },
+    {
+      "recommendation_id": "ARC-000005",
+      "technique": "async-processing",
+      "area": "backend",
+      "rationale": "Move non-critical work onto the event bus and task queues.",
+      "expected_impact": "Responsive APIs and decoupled workers.",
+      "created_at": "2026-08-05T11:32:27.250516+00:00"
+    },
+    {
+      "recommendation_id": "ARC-000006",
+      "technique": "lazy-loading",
+      "area": "frontend",
+      "rationale": "Import heavy frontend modules only when the route is visited.",
+      "expected_impact": "Smaller initial bundle, faster first paint.",
+      "created_at": "2026-08-05T11:32:27.250523+00:00"
+    },
+    {
+      "recommendation_id": "ARC-000007",
+      "technique": "code-splitting",
+      "area": "frontend",
+      "rationale": "Split the bundle by route and feature instead of shipping one blob.",
+      "expected_impact": "Cacheable chunks and reduced initial transfer.",
+      "created_at": "2026-08-05T11:32:27.250530+00:00"
+    },
+    {
+      "recommendation_id": "ARC-000008",
+      "technique": "compression",
+      "area": "infrastructure",
+      "rationale": "Enable gzip/brotli on the proxy and compress API payloads.",
+      "expected_impact": "Lower bandwidth and faster transfers.",
+      "created_at": "2026-08-05T11:32:27.250537+00:00"
+    },
+    {
+      "recommendation_id": "ARC-000009",
+      "technique": "queue-optimization",
+      "area": "infrastructure",
+      "rationale": "Bound queue sizes, retries, and worker concurrency to the infrastructure.",
+      "expected_impact": "Predictable backpressure and no worker saturation.",
+      "created_at": "2026-08-05T11:32:27.250544+00:00"
+    },
+    {
+      "recommendation_id": "ARC-000010",
+      "technique": "database-optimization",
+      "area": "database",
+      "rationale": "Avoid N+1, batch writes, and keep transactions short.",
+      "expected_impact": "Fewer round trips and lower lock contention.",
+      "created_at": "2026-08-05T11:32:27.250552+00:00"
+    }
+  ],
+  "updated_at": "2026-08-05T11:32:27.250571+00:00"
+}

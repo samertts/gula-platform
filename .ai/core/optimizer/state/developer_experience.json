@@ -1,0 +1,61 @@
+{
+  "findings": [
+    {
+      "dx_id": "DX-000001",
+      "dimension": "build-speed",
+      "score": 100,
+      "recommendation": "Add caching to the build pipeline and keep the build matrix minimal.",
+      "created_at": "2026-08-05T11:32:27.253653+00:00"
+    },
+    {
+      "dx_id": "DX-000002",
+      "dimension": "test-speed",
+      "score": 100,
+      "recommendation": "Split slow integration suites from fast unit suites and cache dependencies.",
+      "created_at": "2026-08-05T11:32:27.253906+00:00"
+    },
+    {
+      "dx_id": "DX-000003",
+      "dimension": "dev-startup",
+      "score": 100,
+      "recommendation": "Provide a one-command local environment with sample data and health checks.",
+      "created_at": "2026-08-05T11:32:27.254244+00:00"
+    },
+    {
+      "dx_id": "DX-000004",
+      "dimension": "repository-navigation",
+      "score": 100,
+      "recommendation": "Keep the README, architecture map, and engine indexes current.",
+      "created_at": "2026-08-05T11:32:27.259129+00:00"
+    },
+    {
+      "dx_id": "DX-000005",
+      "dimension": "knowledge-search",
+      "score": 100,
+      "recommendation": "Rebuild the knowledge search index after every structural change.",
+      "created_at": "2026-08-05T11:32:27.259456+00:00"
+    },
+    {
+      "dx_id": "DX-000006",
+      "dimension": "automation",
+      "score": 100,
+      "recommendation": "Automate quality gates, lint, and formatting in pre-commit and CI.",
+      "created_at": "2026-08-05T11:32:27.259806+00:00"
+    },
+    {
+      "dx_id": "DX-000007",
+      "dimension": "tooling",
+      "score": 100,
+      "recommendation": "Standardize on a single linter, formatter, and type checker for the stack.",
+      "created_at": "2026-08-05T11:32:27.260155+00:00"
+    },
+    {
+      "dx_id": "DX-000008",
+      "dimension": "developer-feedback",
+      "score": 100,
+      "recommendation": "Publish validation reports and risk registers so feedback reaches developers.",
+      "created_at": "2026-08-05T11:32:27.260449+00:00"
+    }
+  ],
+  "updated_at": "2026-08-05T11:32:27.260484+00:00"
+}

@@ -1,0 +1,85 @@
+{
+  "recommendations": [
+    {
+      "resource_id": "RES-000001",
+      "target": "docker-images",
+      "area": "docker",
+      "saving_type": "image-size",
+      "recommendation": "Use slim Python 3.12 base images, multi-stage builds, and `.dockerignore` to keep images small and layer-friendly.",
+      "created_at": "2026-08-05T11:32:27.251297+00:00"
+    },
+    {
+      "resource_id": "RES-000002",
+      "target": "containers",
+      "area": "docker",
+      "saving_type": "memory",
+      "recommendation": "Pin CPU/memory limits per container and run as non-root with a HEALTHCHECK so scheduler placement is predictable.",
+      "created_at": "2026-08-05T11:32:27.251327+00:00"
+    },
+    {
+      "resource_id": "RES-000003",
+      "target": "volumes",
+      "area": "docker",
+      "saving_type": "storage",
+      "recommendation": "Right-size named volumes, prune orphaned volumes, and move cold artifacts to MinIO object storage.",
+      "created_at": "2026-08-05T11:32:27.251337+00:00"
+    },
+    {
+      "resource_id": "RES-000004",
+      "target": "redis",
+      "area": "datastore",
+      "saving_type": "memory",
+      "recommendation": "Enable Redis eviction policies, cap cache keys, and use lazy initialization so Redis failures degrade gracefully.",
+      "created_at": "2026-08-05T11:32:27.251346+00:00"
+    },
+    {
+      "resource_id": "RES-000005",
+      "target": "postgresql",
+      "area": "datastore",
+      "saving_type": "cpu",
+      "recommendation": "Add matching indexes, bound connection pools, and use `autovacuum` tuning before adding hardware.",
+      "created_at": "2026-08-05T11:32:27.251353+00:00"
+    },
+    {
+      "resource_id": "RES-000006",
+      "target": "rabbitmq",
+      "area": "datastore",
+      "saving_type": "memory",
+      "recommendation": "Bound queue lengths, set TTLs on dead-letter queues, and enforce consumer prefetch limits.",
+      "created_at": "2026-08-05T11:32:27.251360+00:00"
+    },
+    {
+      "resource_id": "RES-000007",
+      "target": "minio",
+      "area": "datastore",
+      "saving_type": "storage",
+      "recommendation": "Apply lifecycle policies to archive old objects and enable compression for cold buckets.",
+      "created_at": "2026-08-05T11:32:27.251366+00:00"
+    },
+    {
+      "resource_id": "RES-000008",
+      "target": "worker-usage",
+      "area": "backend",
+      "saving_type": "cpu",
+      "recommendation": "Size worker concurrency to the queue depth instead of the host core count; pause idle workers.",
+      "created_at": "2026-08-05T11:32:27.251375+00:00"
+    },
+    {
+      "resource_id": "RES-000009",
+      "target": "background-tasks",
+      "area": "backend",
+      "saving_type": "cpu",
+      "recommendation": "Schedule heavy background jobs off-peak and use the bounded queue instead of unbounded fan-out.",
+      "created_at": "2026-08-05T11:32:27.251382+00:00"
+    },
+    {
+      "resource_id": "RES-000010",
+      "target": "infrastructure-cost",
+      "area": "infrastructure",
+      "saving_type": "cost",
+      "recommendation": "Prefer self-hosted free-first components, prune unused resources, and right-size before scaling out.",
+      "created_at": "2026-08-05T11:32:27.251390+00:00"
+    }
+  ],
+  "updated_at": "2026-08-05T11:32:27.251410+00:00"
+}

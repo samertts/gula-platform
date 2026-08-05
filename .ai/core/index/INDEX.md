@@ -307,6 +307,30 @@ Learner Engine — transforms every completed mission into permanent engineering
 | `scripts/learner/cli.py` | Learner | Learner CLI |
 | `scripts/learner.py` | Learner | Learner launcher |
 
+### Optimizer
+Optimizer Engine — continuously improves performance, scalability, reliability,
+maintainability, DX, and resource efficiency without changing business behavior.
+
+| File | Source | Description |
+|---|---|---|
+| `OPTIMIZER_AUDIT_REPORT.md` | Optimizer | Optimization-surface audit |
+| `OPTIMIZER_IMPLEMENTATION_REPORT.md` | Optimizer | Benchmarks + recommendations |
+| `.ai/core/optimizer/README.md` | Optimizer | Optimizer Engine overview |
+| `scripts/optimizer/core.py` | Optimizer | Shared constants + dataclasses |
+| `scripts/optimizer/audit.py` | Optimizer | Phase 0 optimization audit |
+| `scripts/optimizer/analyze.py` | Optimizer | Phase 1 baseline analysis |
+| `scripts/optimizer/bottlenecks.py` | Optimizer | Phase 2 bottleneck detection |
+| `scripts/optimizer/architecture.py` | Optimizer | Phase 3 architecture recommendations |
+| `scripts/optimizer/resources.py` | Optimizer | Phase 4 resource optimization |
+| `scripts/optimizer/developer_experience.py` | Optimizer | Phase 5 DX assessment |
+| `scripts/optimizer/debt.py` | Optimizer | Phase 6 performance debt |
+| `scripts/optimizer/safe.py` | Optimizer | Phase 7 safe optimization |
+| `scripts/optimizer/evolution.py` | Optimizer | Phase 8 evolution proposals |
+| `scripts/optimizer/quality.py` | Optimizer | Phase 9 quality validation |
+| `scripts/optimizer/report.py` | Optimizer | Phase 10 implementation report |
+| `scripts/optimizer/cli.py` | Optimizer | Optimizer CLI |
+| `scripts/optimizer.py` | Optimizer | Optimizer launcher |
+
 ### Database
 Database schema, migrations, and data decisions.
 
