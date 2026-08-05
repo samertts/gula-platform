@@ -326,6 +326,8 @@ COMMANDS = {
     "ext-plugin-certify": _ext_commands()["ext-plugin-certify"],
     "ext-policy": _ext_commands()["ext-policy"],
     "ext-policy-evaluate": _ext_commands()["ext-policy-evaluate"],
+    "ext-compat": _ext_commands()["ext-compat"],
+    "ext-compat-check": _ext_commands()["ext-compat-check"],
     "ext-check": _ext_commands()["ext-check"],
 }
 

@@ -96,6 +96,41 @@ def run_policy_evaluate() -> int:
     return 1 if any(v.verdict == "deny" for v in violations) else 0
 
 
+def run_compat() -> int:
+    """Phase 3 — render the engine contract compatibility matrix."""
+    from ..core import ENGINE_REGISTRY
+    from .compatibility import COMPAT_DIR, engine_matrix
+
+    matrix = engine_matrix(ENGINE_REGISTRY)
+    print("COMPATIBILITY MATRIX (GULA-KERNEL-EXT-001)")
+    print(f"  contracts checked: {len(matrix.entries('contract'))}")
+    for record in matrix.entries("contract"):
+        status = "PASS" if record.compatible else "FAIL"
+        print(f"  [{status}] {record.name} {record.to_version} {record.notes}")
+    matrix.save(COMPAT_DIR + "engine_compatibility.json")
+    return 0
+
+
+def run_compat_check() -> int:
+    """Phase 3 — exit 1 if any kernel contract is broken or unversioned."""
+    from ..core import ENGINE_REGISTRY
+    from .compatibility import CompatibilityError, engine_matrix
+
+    try:
+        matrix = engine_matrix(ENGINE_REGISTRY)
+    except CompatibilityError as exc:
+        print(f"COMPATIBILITY CHECK FAILED: {exc}")
+        return 1
+    broken = matrix.breaking()
+    print("COMPATIBILITY CHECK (GULA-KERNEL-EXT-001)")
+    if broken:
+        for record in broken:
+            print(f"  [BREAKING] {record.name}: {record.notes}")
+        return 1
+    print(f"  [PASS] {len(matrix.entries('contract'))} kernel contracts conformant")
+    return 0
+
+
 def run_ext_check() -> int:
     failures: list[str] = []
 
@@ -130,6 +165,15 @@ def run_ext_check() -> int:
     except Exception as exc:
         failures.append(f"policy engine failed: {exc}")
 
+    from .compatibility import engine_matrix
+
+    try:
+        compat_matrix = engine_matrix(ENGINE_REGISTRY)
+        if compat_matrix.breaking():
+            failures.append("compatibility: breaking contract changes detected")
+    except Exception as exc:
+        failures.append(f"compatibility check failed: {exc}")
+
     print("KERNEL EXTENSION SELF-CHECK")
     print("=" * 60)
     if failures:
@@ -140,6 +184,7 @@ def run_ext_check() -> int:
     print("  [PASS] all engines register as plugins")
     print("  [PASS] all engines certified")
     print(f"  [PASS] {len(policy_engine.search())} policies registered")
+    print(f"  [PASS] {len(compat_matrix.entries('contract'))} contracts compatible")
     print("=" * 60)
     print("RESULT: ALL KERNEL EXTENSION CHECKS PASSED")
     return 0
@@ -150,5 +195,7 @@ EXT_COMMANDS = {
     "ext-plugin-certify": run_plugin_certify,
     "ext-policy": run_policy,
     "ext-policy-evaluate": run_policy_evaluate,
+    "ext-compat": run_compat,
+    "ext-compat-check": run_compat_check,
     "ext-check": run_ext_check,
 }

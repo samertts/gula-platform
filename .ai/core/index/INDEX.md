@@ -171,6 +171,8 @@ Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
 | `.ai/core/policies/README.md` | Policy | Policy Engine overview |
 | `.ai/core/policies/POLICIES.md` | Policy | Human-readable policy catalogue |
 | `.ai/core/policies/policies.json` | Policy | Machine-readable policy set |
+| `.ai/core/compat/README.md` | Compat | Compatibility Framework overview |
+| `.ai/core/compat/engine_compatibility.json` | Compat | Engine contract matrix |
 
 ### Database
 Database schema, migrations, and data decisions.

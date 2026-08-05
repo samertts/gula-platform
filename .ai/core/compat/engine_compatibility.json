@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0.0",
+  "records": [
+    {
+      "kind": "contract",
+      "name": "architect",
+      "from_version": "0.0.0",
+      "to_version": "1.0.0",
+      "compatible": true,
+      "notes": "kernel contract conformant",
+      "checked_at": "2026-08-05T07:12:52.287405+00:00"
+    },
+    {
+      "kind": "contract",
+      "name": "orchestrator",
+      "from_version": "0.0.0",
+      "to_version": "1.0.0",
+      "compatible": true,
+      "notes": "kernel contract conformant",
+      "checked_at": "2026-08-05T07:12:52.287460+00:00"
+    },
+    {
+      "kind": "contract",
+      "name": "reviewer",
+      "from_version": "0.0.0",
+      "to_version": "1.0.0",
+      "compatible": true,
+      "notes": "kernel contract conformant",
+      "checked_at": "2026-08-05T07:12:52.287474+00:00"
+    },
+    {
+      "kind": "contract",
+      "name": "builder",
+      "from_version": "0.0.0",
+      "to_version": "1.0.0",
+      "compatible": true,
+      "notes": "kernel contract conformant",
+      "checked_at": "2026-08-05T07:12:52.287484+00:00"
+    },
+    {
+      "kind": "contract",
+      "name": "deployer",
+      "from_version": "0.0.0",
+      "to_version": "1.0.0",
+      "compatible": true,
+      "notes": "kernel contract conformant",
+      "checked_at": "2026-08-05T07:12:52.287492+00:00"
+    },
+    {
+      "kind": "contract",
+      "name": "learner",
+      "from_version": "0.0.0",
+      "to_version": "1.0.0",
+      "compatible": true,
+      "notes": "kernel contract conformant",
+      "checked_at": "2026-08-05T07:12:52.287500+00:00"
+    },
+    {
+      "kind": "contract",
+      "name": "optimizer",
+      "from_version": "0.0.0",
+      "to_version": "1.0.0",
+      "compatible": true,
+      "notes": "kernel contract conformant",
+      "checked_at": "2026-08-05T07:12:52.287507+00:00"
+    }
+  ]
+}
