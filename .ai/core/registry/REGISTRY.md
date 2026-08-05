@@ -157,6 +157,24 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Health report | .ai/core/health/ | Active |
 | Phase 11 Certification | root certification reports | Complete |
 
+## Builder Engine (GULA-BUILDER-001)
+
+| Component | Location | Status |
+|---|---|---|
+| Builder core | scripts/builder/core.py | Active |
+| Phase 0 Audit | scripts/builder/audit.py | Active |
+| Phase 1 Analyzer | scripts/builder/analyzer.py | Active |
+| Phase 2 Planner | scripts/builder/planner.py | Active |
+| Phase 3 Impact | scripts/builder/impact.py | Active |
+| Phase 4 Executor | scripts/builder/executor.py | Active |
+| Phase 5 Recovery | scripts/builder/recovery.py | Active |
+| Phase 6 Knowledge | scripts/builder/knowledge.py | Active |
+| Phase 7 Review | scripts/builder/review.py | Active |
+| Phase 8 Report | scripts/builder/report.py | Active |
+| Builder CLI | scripts/builder/cli.py | Active |
+| Builder launcher | scripts/builder.py | Active |
+| Builder knowledge | .ai/core/builder/ | Active |
+
 ## Total Count
 
 | Category | Count |
@@ -178,6 +196,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Automation Scripts | 13 |
 | Governor Modules | 18 |
 | Kernel Modules | 19 |
+| Builder Modules | 12 |
 | SDK Artifacts | 6 |
 | Policies | 16 |
 | Compat Matrix | 7 contracts |
@@ -189,4 +208,4 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Memory entries | 3 |
 | Health score | 100/100 |
 | Certification reports | 7 |
-| **Total Artifacts** | **184** |
+| **Total Artifacts** | **197** |

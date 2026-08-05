@@ -195,6 +195,25 @@ Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
 | `HEALTH_REPORT.md` | Kernel Ext | Phase 11 health report |
 | `ENTERPRISE_EXTENSION_REPORT.md` | Kernel Ext | Phase 11 enterprise certification |
 
+### AI Builder Engine (GULA-BUILDER-001)
+
+| File | Source | Description |
+|---|---|---|
+| `BUILDER_AUDIT_REPORT.md` | Builder | Phase 0 repository audit |
+| `.ai/core/builder/README.md` | Builder | Builder Engine overview |
+| `scripts/builder/core.py` | Builder | Shared constants + dataclasses |
+| `scripts/builder/audit.py` | Builder | Phase 0 audit module |
+| `scripts/builder/analyzer.py` | Builder | Phase 1 Mission Analyzer |
+| `scripts/builder/planner.py` | Builder | Phase 2 Mission Planner |
+| `scripts/builder/impact.py` | Builder | Phase 3 Engineering Analyzer |
+| `scripts/builder/executor.py` | Builder | Phase 4 Execution Engine |
+| `scripts/builder/recovery.py` | Builder | Phase 5 Failure Recovery |
+| `scripts/builder/knowledge.py` | Builder | Phase 6 Knowledge Integration |
+| `scripts/builder/review.py` | Builder | Phase 7 Self Review |
+| `scripts/builder/report.py` | Builder | Phase 8 Output |
+| `scripts/builder/cli.py` | Builder | Builder CLI |
+| `scripts/builder.py` | Builder | Builder launcher |
+
 ### Database
 Database schema, migrations, and data decisions.
 
