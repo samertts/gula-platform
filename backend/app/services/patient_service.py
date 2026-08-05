@@ -265,12 +265,15 @@ def get_family_members(db: Session, family_id: str, lab_id: int) -> dict:
         return {"error": "No patients found with this family ID in your lab", "status_code": 404}
 
     # Attach order count + last visit for each member
-    order_stats = dict(
-        db.query(LabOrder.patient_id, func.count(LabOrder.id), func.max(LabOrder.created_at))
-        .filter(LabOrder.patient_id.in_([m.id for m in members]))
-        .group_by(LabOrder.patient_id)
-        .all(),
-    )
+    order_stats = {
+        patient_id: (count, last_ts)
+        for patient_id, count, last_ts in (
+            db.query(LabOrder.patient_id, func.count(LabOrder.id), func.max(LabOrder.created_at))
+            .filter(LabOrder.patient_id.in_([m.id for m in members]))
+            .group_by(LabOrder.patient_id)
+            .all()
+        )
+    }
 
     result = []
     for m in members:

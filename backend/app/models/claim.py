@@ -10,7 +10,16 @@ All queries MUST filter by lab_id (security invariant).
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, Numeric, String
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from app._compat import UTC
@@ -27,6 +36,7 @@ class Claim(Base):
         Index("ix_claims_lab_id", "lab_id"),
         Index("ix_claims_patient_id", "patient_id"),
         Index("ix_claims_status", "status"),
+        UniqueConstraint("lab_id", "idempotency_key", name="uq_claims_lab_idempotency"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -42,7 +52,7 @@ class Claim(Base):
     status = Column(String(30), nullable=False, default="draft")
     total_amount = Column(Numeric(12, 2), nullable=True)
     currency = Column(String(10), nullable=False, default="IQD")
-    idempotency_key = Column(String(255), nullable=True, unique=True)
+    idempotency_key = Column(String(255), nullable=True)
     external_ref = Column(String(255), nullable=True)
     submitted_at = Column(DateTime(timezone=True), nullable=True)
 
