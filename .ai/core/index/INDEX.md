@@ -185,6 +185,8 @@ Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
 | `.ai/core/evolution/evolution_state.json` | Evolution | Signal/proposal state |
 | `.ai/core/memory/README.md` | Memory | Enterprise AI Memory overview |
 | `.ai/core/memory/memory_store.json` | Memory | Memory store |
+| `.ai/core/health/README.md` | Health | Health Engine overview |
+| `.ai/core/health/health_report.json` | Health | Health report |
 
 ### Database
 Database schema, migrations, and data decisions.

@@ -153,6 +153,8 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Evolution state | .ai/core/evolution/ | Active |
 | AI Memory (Phase 9) | scripts/kernel/ext/memory.py | Active |
 | Memory store | .ai/core/memory/ | Active |
+| Health Engine (Phase 10) | scripts/kernel/ext/health.py | Active |
+| Health report | .ai/core/health/ | Active |
 
 ## Total Count
 
@@ -184,4 +186,5 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Catalog items | 3 |
 | Evolution signals | 1 |
 | Memory entries | 3 |
-| **Total Artifacts** | **176** |
+| Health score | 100/100 |
+| **Total Artifacts** | **177** |

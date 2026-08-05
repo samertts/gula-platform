@@ -1,0 +1,71 @@
+{
+  "health": 100.0,
+  "risk": 0.0,
+  "readiness": 100.0,
+  "generated_at": "2026-08-05T07:33:23.310770+00:00",
+  "components": [
+    {
+      "name": "plugin_sdk",
+      "status": "pass",
+      "weight": 1.0,
+      "critical": true,
+      "detail": "7 plugins registered"
+    },
+    {
+      "name": "policy_engine",
+      "status": "pass",
+      "weight": 1.0,
+      "critical": true,
+      "detail": "16 policies"
+    },
+    {
+      "name": "compatibility",
+      "status": "pass",
+      "weight": 1.0,
+      "critical": true,
+      "detail": "7 contracts"
+    },
+    {
+      "name": "migration",
+      "status": "pass",
+      "weight": 1.0,
+      "critical": true,
+      "detail": "executed"
+    },
+    {
+      "name": "event_bus",
+      "status": "pass",
+      "weight": 1.0,
+      "critical": true,
+      "detail": "1 events, 0 failures"
+    },
+    {
+      "name": "workflow",
+      "status": "pass",
+      "weight": 1.0,
+      "critical": true,
+      "detail": "completed"
+    },
+    {
+      "name": "marketplace",
+      "status": "pass",
+      "weight": 1.0,
+      "critical": false,
+      "detail": "1 installed"
+    },
+    {
+      "name": "evolution",
+      "status": "pass",
+      "weight": 1.0,
+      "critical": false,
+      "detail": "1 signals"
+    },
+    {
+      "name": "memory",
+      "status": "pass",
+      "weight": 1.0,
+      "critical": false,
+      "detail": "1 entries"
+    }
+  ]
+}

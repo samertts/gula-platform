@@ -24,6 +24,7 @@ from . import (
     compatibility,
     event_bus,
     evolution,
+    health,
     marketplace,
     memory,
     migration,
@@ -32,4 +33,4 @@ from . import (
     workflow,
 )
 
-__all__ = ["compatibility", "event_bus", "evolution", "marketplace", "memory", "migration", "plugin", "policy", "workflow"]
+__all__ = ["compatibility", "event_bus", "evolution", "health", "marketplace", "memory", "migration", "plugin", "policy", "workflow"]

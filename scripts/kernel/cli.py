@@ -335,6 +335,7 @@ COMMANDS = {
     "ext-marketplace": _ext_commands()["ext-marketplace"],
     "ext-evolution": _ext_commands()["ext-evolution"],
     "ext-memory": _ext_commands()["ext-memory"],
+    "ext-health": _ext_commands()["ext-health"],
     "ext-check": _ext_commands()["ext-check"],
 }
 

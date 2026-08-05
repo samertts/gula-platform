@@ -6,6 +6,9 @@ point. No ad-hoc scripts; every extension is reached through the Kernel.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 from ..core import Severity
 
 
@@ -267,6 +270,25 @@ def run_memory() -> int:
     return 0
 
 
+def run_health() -> int:
+    """Phase 10 — score platform HEALTH/RISK/READINESS over extensions."""
+    from .health import HEALTH_DIR, extension_health, is_ready
+
+    report = extension_health()
+    print("HEALTH ENGINE (GULA-KERNEL-EXT-001)")
+    print(f"  HEALTH_SCORE:    {report.health:5.1f}/100")
+    print(f"  RISK_SCORE:      {report.risk:5.1f}/100")
+    print(f"  READINESS_SCORE: {report.readiness:5.1f}/100")
+    for component in report.components:
+        status = "PASS" if component.status == "pass" else "FAIL"
+        print(f"  [{status}] {component.name:14s} {component.detail}")
+    path = Path(HEALTH_DIR + "health_report.json")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(report.to_dict(), indent=2) + "\n", encoding="utf-8")
+    print(f"  saved: {path}")
+    return 0 if is_ready(report) else 1
+
+
 def run_ext_check() -> int:
     failures: list[str] = []
 
@@ -380,6 +402,17 @@ def run_ext_check() -> int:
     except Exception as exc:
         failures.append(f"memory engine failed: {exc}")
 
+    from .health import extension_health, is_ready
+
+    try:
+        health_report = extension_health()
+        if not is_ready(health_report):
+            failures.append(
+                f"health: readiness {health_report.readiness} below threshold"
+            )
+    except Exception as exc:
+        failures.append(f"health engine failed: {exc}")
+
     print("KERNEL EXTENSION SELF-CHECK")
     print("=" * 60)
     if failures:
@@ -397,6 +430,7 @@ def run_ext_check() -> int:
     print(f"  [PASS] marketplace installed ({len(marketplace.installed())} item(s))")
     print(f"  [PASS] evolution detected ({len(evolution.detect())} signal(s))")
     print(f"  [PASS] memory promoted ({len(memory_store.entries('long_term'))} long-term entry)")
+    print(f"  [PASS] health readiness {health_report.readiness:.1f}/100")
     print("=" * 60)
     print("RESULT: ALL KERNEL EXTENSION CHECKS PASSED")
     return 0
@@ -416,5 +450,6 @@ EXT_COMMANDS = {
     "ext-marketplace": run_marketplace,
     "ext-evolution": run_evolution,
     "ext-memory": run_memory,
+    "ext-health": run_health,
     "ext-check": run_ext_check,
 }
