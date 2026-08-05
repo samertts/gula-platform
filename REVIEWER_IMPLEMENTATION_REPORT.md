@@ -4,7 +4,7 @@ Deterministic review verdict from GULA-REVIEWER-001.
 
 ```
 Reviewer verdict: PASS WITH WARNINGS (score 93.3/100)
-Target: repository | Mission: — | 2026-08-05T08:41:31.323024+00:00
+Target: repository | Mission: — | 2026-08-05T08:52:04.893175+00:00
 
 - architecture   PASS WITH WARNINGS   score  85.0  (3 finding(s))
 - code           PASS WITH WARNINGS   score  84.0  (5 finding(s))
@@ -67,5 +67,5 @@ _no findings_
 _no findings_
 
 ---
-Reviewed at: 2026-08-05T08:41:31.323024+00:00
+Reviewed at: 2026-08-05T08:52:04.893175+00:00
 Overall score: 93.3/100 — PASS WITH WARNINGS
