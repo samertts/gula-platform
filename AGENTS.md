@@ -328,11 +328,11 @@ Transform the GULA monorepo into a production-grade national healthcare platform
 ## Next Move
 1. **COMPLETE — Reviewer acceptance workflow:** `reviewer-verify <mission> [file...] [--git]` reviews a Builder change-set (scoped checks across all 8 areas, deterministic verdict); `reviewer-gate <mission> [file...] [--git]` gates the change-set before merge, `reviewer-gate` still gates the whole repo when no mission is given. 41 tests → **933 engine tests pass** (reviewer 80 + optimizer 112 + learner 105 + deployer 126 + orchestrator 139 + builder 131 + kernel-ext 240). Next: PROGRAM-011 WARN burn-down.
 2. **COMPLETE — PROGRAM-011 WARN burn-down:** (a) ASHS per-signal cooldown (`scripts/self_heal.py`, `ASHS_ACTION_COOLDOWN=600` + file-persisted map), (b) outbox-backlog repair (`auto_repair.py` `outbox_poll` 10s→2s, auto-restored), (c) OpenTelemetry SDK export (`app/telemetry.py` OTLP/HTTP → Jaeger/Tempo, env-gated, wired in `factory.py`; 27 tests: `test_self_heal_cooldown.py` 8 + `test_outbox_auto_repair.py` 12 + `test_telemetry.py` 7). Remaining WARNs: cloud snapshot restore, frontend `/metrics` page, ENCRYPTION_KEY rotation re-encryption.
-3. Follow `docs/ai/MASTER_ROADMAP.md`: component-level baselines, Android/DB validators, brain auto-refresh in CI
+3. **COMPLETE — MASTER_ROADMAP Q3/Q4 governance:** component-level baselines (`reports/validation/baseline.json` v2: backend/frontend-v3/android), Android + DB validators in the engine (`_validator_android_consistency`, `_validator_db_migrations`), brain auto-refresh post-merge (`ai-governance.yml` `brain-refresh` job). Next: remaining WARNs (cloud snapshot restore, frontend `/metrics` page, ENCRYPTION_KEY rotation) or the concrete Next Moves below.
 4. Reduce architecture debt (32 L1 layer violations, L3 75, L4 375 — L2 circular deps now 0; score 21.4/100) — advisory but tracked
-5. Add frontend tests for UI components (Badge, Button, Card, etc.)
-6. Continue backend test coverage (pricing_service, identity_service)
-7. Fix remaining N999 module naming violations in active code
+5. **COMPLETE — Frontend component tests:** **122 tests across 9 files**; all 8 UI primitives (Badge, Button, Card, Input, Select, Textarea, Dialog, DataTable) covered via `primitives.test.tsx` (19) + `ui-components.test.tsx` (24) + `DataTable.test.tsx` (5/8) + `Dialog.test.tsx` (6) — committed `9ea90238`/`fdef3bb6`.
+6. Backend unit-test coverage gaps (active services with no unit test file): `care_continuum_service`, `consent_service`, `device_trust_service`, `hospital_service`, `offline_sync_service`, `patient_service`, `risk_based_auth_service`, `claims_service` (`identity_service` is covered; `pricing_service` does not exist — stale)
+7. Fix remaining N999 module naming violations (71, mostly dormant `national_data/models/warehouse/` star-schema modules)
 
 ## Relevant Files
 
