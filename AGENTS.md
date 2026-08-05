@@ -1,11 +1,16 @@
 # AI Agent Guidance for GULA Platform
 
+> **AUTHORITY:** The supreme AI constitution is `AI_OPERATING_CONSTITUTION.md`.
+> All rules below are summaries. The constitution is the single source of truth.
+> If any conflict exists, the constitution wins. See Section 1.4 for precedence.
+
 All AI agents (Claude Code, ChatGPT, Gemini, OpenCode, GitHub Copilot, and future agents)
 working on this repository MUST automatically enforce the following rules.
 
 ## Permanent Platform Constitution — PROGRAM-CONSTITUTION-001
 
-The following rules are ALWAYS in effect, even if not mentioned in the current prompt:
+> **Full text:** `AI_OPERATING_CONSTITUTION.md` Section 2.
+> The rules below are summaries. The constitution is authoritative.
 
 ### Free First
 Never recommend commercial software before evaluating free alternatives.
@@ -192,7 +197,7 @@ Never remove dormant enterprise modules. Dormant modules are strategic assets. I
 
 # Workspace Anchored Summary (auto-updated)
 
-Last updated: **PROGRAM-STABLE-001/002 v1.0 CERTIFIED** — Stable v1.0 certification boards approve: request parity + shared-core/domain-sovereignty. **backend 2845 tests pass / 0 fail** (full suite, ~8m; was 2820); frontend tsc 0, eslint 0, vitest 122/122, build PASS; enterprise validation fast VERDICT PASS; ruff baseline 379 preserved. **PROGRAM-STABLE-001 repairs:** flaky perf benchmarks made load-robust (embedding cosine best-of-3, kernel latency min-of-3); **import cycles eliminated** — `app.ehr <-> app.national` broken by moving the national/EHR shared declarative metadata into Shared Core (`shared/models.base.SharedBase`), and `app.kernel <-> app.national` broken by extracting the rule-engine domain into `shared/rules_engine` (national re-exports for backward compat); STABLE harness scanner made severity-aware per constitution §32.3 + approved-contract allowlist (PASS). **PROGRAM-STABLE-002:** shared core now hosts the declarative metadata + rule-engine domain types; domain-isolation gate PASS with documented EHR-consumer contracts. Prior: PROGRAM-03 v2.0 (2764 tests, 9 workflow pages, MFA challenge).
+Last updated: **GULA-REVIEWER-001 COMPLETE** — independent verification engine built: 8 area reviews (architecture, code, security, tests, deployment, documentation, performance, knowledge), weighted decision model (security 0.20, architecture/code/tests 0.15, deployment/docs/knowledge 0.10, performance 0.05; penalties LOW 2 / MEDIUM 5 / HIGH 15 / CRITICAL 30), deterministic PASS/PASS_WITH_WARNINGS/REJECT, `reviewer-*` commands wired into the Kernel, 39 reviewer tests → **410 engine tests pass** (reviewer 39 + builder 131 + kernel-ext 240); `kernel check`, `ext-check`, `builder-check`, `reviewer-check` all PASS; whole-repo verdict **PASS WITH WARNINGS (93.3/100)** with every finding auditable (severity + evidence + suggested fix). Systemic debt aggregated so known baselines don't drown regression signals. **PROGRAM-STABLE-001/002 v1.0 CERTIFIED** — Stable v1.0 certification boards approve: request parity + shared-core/domain-sovereignty. **backend 2845 tests pass / 0 fail** (full suite, ~8m; was 2820); frontend tsc 0, eslint 0, vitest 122/122, build PASS; enterprise validation fast VERDICT PASS; ruff baseline 379 preserved. **PROGRAM-STABLE-001 repairs:** flaky perf benchmarks made load-robust (embedding cosine best-of-3, kernel latency min-of-3); **import cycles eliminated** — `app.ehr <-> app.national` broken by moving the national/EHR shared declarative metadata into Shared Core (`shared/models.base.SharedBase`), and `app.kernel <-> app.national` broken by extracting the rule-engine domain into `shared/rules_engine` (national re-exports for backward compat); STABLE harness scanner made severity-aware per constitution §32.3 + approved-contract allowlist (PASS). **PROGRAM-STABLE-002:** shared core now hosts the declarative metadata + rule-engine domain types; domain-isolation gate PASS with documented EHR-consumer contracts. Prior: PROGRAM-03 v2.0 (2764 tests, 9 workflow pages, MFA challenge).
 
 ## Objective
 Transform the GULA monorepo into a production-grade national healthcare platform by fixing infrastructure, security, architecture, frontend–backend alignment, and code quality across the entire codebase.
@@ -321,12 +326,13 @@ Transform the GULA monorepo into a production-grade national healthcare platform
 - Constitution enforcer (advisory) fails Rule 1: 52 source files without tests (mostly dormant contexts) — tracked.
 
 ## Next Move
-1. PROGRAM-011 WARN burn-down: (a) ASHS per-signal cooldown in `scripts/self_heal.py` (restart-loop risk), (b) outbox-backlog repair action in `auto_repair.py` (docstring promise), (c) OpenTelemetry SDK export (Jaeger/Tempo provisioned but unused)
-2. Follow `docs/ai/MASTER_ROADMAP.md`: component-level baselines, Android/DB validators, brain auto-refresh in CI
-3. Reduce architecture debt (32 L1 layer violations, L3 75, L4 375 — L2 circular deps now 0; score 21.4/100) — advisory but tracked
-4. Add frontend tests for UI components (Badge, Button, Card, etc.)
-5. Continue backend test coverage (pricing_service, identity_service)
-6. Fix remaining N999 module naming violations in active code
+1. Wire the Reviewer into the acceptance workflow: gate Builder outputs with `reviewer-gate` before merge, add a `reviewer-verify <mission>` command that reviews a Builder change-set (not just the whole repo)
+2. PROGRAM-011 WARN burn-down: (a) ASHS per-signal cooldown in `scripts/self_heal.py` (restart-loop risk), (b) outbox-backlog repair action in `auto_repair.py` (docstring promise), (c) OpenTelemetry SDK export (Jaeger/Tempo provisioned but unused)
+3. Follow `docs/ai/MASTER_ROADMAP.md`: component-level baselines, Android/DB validators, brain auto-refresh in CI
+4. Reduce architecture debt (32 L1 layer violations, L3 75, L4 375 — L2 circular deps now 0; score 21.4/100) — advisory but tracked
+5. Add frontend tests for UI components (Badge, Button, Card, etc.)
+6. Continue backend test coverage (pricing_service, identity_service)
+7. Fix remaining N999 module naming violations in active code
 
 ## Relevant Files
 
@@ -385,4 +391,12 @@ Transform the GULA monorepo into a production-grade national healthcare platform
 - `frontend-v3/src/hooks/__tests__/useDebounce.test.ts` — **3 tests**: initial value, delayed update, timer cancellation
 - `frontend-v3/src/hooks/__tests__/useToast.test.ts` — **5 tests**: empty start, add, auto-dismiss, dismiss, multiple
 - `frontend-v3/src/test/setup.ts` — vitest setup file (@testing-library/jest-dom matchers)
+
+### Reviewer Engine (GULA-REVIEWER-001)
+- `scripts/reviewer/core.py` — shared scoring/decision primitives (area weights, severity penalties, Decision enum)
+- `scripts/reviewer/{architecture,code,security,test,deployment,docs,performance,knowledge}_review.py` — 8 area review modules
+- `scripts/reviewer/decision.py` + `report.py` — deterministic verdict aggregation, JSON state, gate()
+- `scripts/reviewer/audit.py`, `scripts/reviewer/cli.py`, `scripts/reviewer.py` — Phase 0 audit + CLI + launcher
+- `REVIEWER_AUDIT_REPORT.md` / `REVIEWER_IMPLEMENTATION_REPORT.md` — root audit + verdict reports
+- Commands: `reviewer-audit`, `reviewer-review`, `reviewer-area`, `reviewer-gate`, `reviewer-report`, `reviewer-check`, plus per-area shortcuts
 - `frontend-v3/vite.config.ts` — added `test` section (vitest config)
