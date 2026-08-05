@@ -301,6 +301,13 @@ def _ext_commands() -> dict[str, object]:
     return ext_cli.EXT_COMMANDS
 
 
+def _builder_commands() -> dict[str, object]:
+    """Lazily import the Builder CLI (GULA-BUILDER-001)."""
+    from scripts.builder import cli as builder_cli
+
+    return builder_cli.BUILDER_COMMANDS
+
+
 COMMANDS = {
     "audit": run_audit,
     "state": run_state,
@@ -337,6 +344,16 @@ COMMANDS = {
     "ext-memory": _ext_commands()["ext-memory"],
     "ext-health": _ext_commands()["ext-health"],
     "ext-check": _ext_commands()["ext-check"],
+    "builder-audit": _builder_commands()["builder-audit"],
+    "builder-analyze": _builder_commands()["builder-analyze"],
+    "builder-plan": _builder_commands()["builder-plan"],
+    "builder-impact": _builder_commands()["builder-impact"],
+    "builder-execute": _builder_commands()["builder-execute"],
+    "builder-recover": _builder_commands()["builder-recover"],
+    "builder-knowledge": _builder_commands()["builder-knowledge"],
+    "builder-review": _builder_commands()["builder-review"],
+    "builder-report": _builder_commands()["builder-report"],
+    "builder-check": _builder_commands()["builder-check"],
 }
 
 
