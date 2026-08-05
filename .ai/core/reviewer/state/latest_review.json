@@ -1,0 +1,149 @@
+{
+  "target": "repository",
+  "mission_id": "",
+  "decision": "PASS WITH WARNINGS",
+  "overall_score": 93.3,
+  "reviewed_at": "2026-08-05T08:23:09.183019+00:00",
+  "area_reviews": [
+    {
+      "area": "architecture",
+      "score": 85.0,
+      "decision": "PASS WITH WARNINGS",
+      "findings": [
+        {
+          "area": "architecture",
+          "severity": "medium",
+          "title": "Fat routes",
+          "detail": "13 routes exceed the 500-line / 200-call threshold (e.g. ai.py)",
+          "evidence": "backend/app/routes",
+          "suggested_fix": "delegate logic to service modules to keep routes thin"
+        },
+        {
+          "area": "architecture",
+          "severity": "medium",
+          "title": "Low dependency injection usage",
+          "detail": "1/56 services inject dependencies",
+          "evidence": "backend/app/services",
+          "suggested_fix": "prefer constructor injection of session/repository"
+        },
+        {
+          "area": "architecture",
+          "severity": "medium",
+          "title": "ADR naming deviation",
+          "detail": "2/30 ADRs missing 'ADR-<n>' heading",
+          "evidence": "docs/adr",
+          "suggested_fix": "rename ADRs to follow the ADR-<n> convention"
+        }
+      ]
+    },
+    {
+      "area": "code",
+      "score": 84.0,
+      "decision": "PASS WITH WARNINGS",
+      "findings": [
+        {
+          "area": "code",
+          "severity": "low",
+          "title": "Dead-code markers present",
+          "detail": "10 TODO/FIXME/HACK/XXX markers across backend",
+          "evidence": "backend/",
+          "suggested_fix": "resolve or ticket each marker; do not leave silently"
+        },
+        {
+          "area": "code",
+          "severity": "medium",
+          "title": "Duplicated code blocks detected",
+          "detail": "65 repeated 4-line blocks across files; worst x38",
+          "evidence": "/home/samertts/workspace/projects/gula-platform/backend/tests/conftest.py; /home/samertts/workspace/projects/gula-platform/backend/tests/test_ai_guardrails.py; /home/samertts/workspace/projects/gula-platform/backend/tests/test_ai_platform.py",
+          "suggested_fix": "extract the duplicated logic into a shared helper"
+        },
+        {
+          "area": "code",
+          "severity": "medium",
+          "title": "High nesting complexity",
+          "detail": "25 files reach indentation depth > 32 (e.g. code_quality.py)",
+          "evidence": "backend/",
+          "suggested_fix": "extract nested logic into helper functions"
+        },
+        {
+          "area": "code",
+          "severity": "low",
+          "title": "Non-standard naming",
+          "detail": "camelCase identifiers in 36 backend files (e.g. system_optimizer.py, test_integration_parity.py)",
+          "evidence": "backend/",
+          "suggested_fix": "use snake_case per PEP 8"
+        },
+        {
+          "area": "code",
+          "severity": "low",
+          "title": "Import density high",
+          "detail": "6 modules exceed 50 import statements (e.g. factory.py (140))",
+          "evidence": "backend/",
+          "suggested_fix": "run ruff with F401 to drop unused imports and split modules"
+        }
+      ]
+    },
+    {
+      "area": "security",
+      "score": 95.0,
+      "decision": "PASS WITH WARNINGS",
+      "findings": [
+        {
+          "area": "security",
+          "severity": "medium",
+          "title": "Audit append-only property unproven",
+          "detail": "no 'append' semantics found in backend/app/audit",
+          "evidence": "backend/app/audit",
+          "suggested_fix": "enforce append-only writes and detect tampering"
+        }
+      ]
+    },
+    {
+      "area": "tests",
+      "score": 93.0,
+      "decision": "PASS WITH WARNINGS",
+      "findings": [
+        {
+          "area": "tests",
+          "severity": "medium",
+          "title": "Services without test references",
+          "detail": "16 services never referenced by tests (e.g. ali_reza.py, ali_reza_engine.py, canonical_service.py, care_continuum_service.py, claims_service.py)",
+          "evidence": "backend/app/services",
+          "suggested_fix": "add unit or integration tests for each service module"
+        },
+        {
+          "area": "tests",
+          "severity": "low",
+          "title": "Thin assertions",
+          "detail": "test_control_layer.py: 0 asserts in 579 lines",
+          "evidence": "test_control_layer.py",
+          "suggested_fix": "assert on behavior, not just execution paths"
+        }
+      ]
+    },
+    {
+      "area": "deployment",
+      "score": 100.0,
+      "decision": "PASS",
+      "findings": []
+    },
+    {
+      "area": "documentation",
+      "score": 100.0,
+      "decision": "PASS",
+      "findings": []
+    },
+    {
+      "area": "performance",
+      "score": 100.0,
+      "decision": "PASS",
+      "findings": []
+    },
+    {
+      "area": "knowledge",
+      "score": 100.0,
+      "decision": "PASS",
+      "findings": []
+    }
+  ]
+}
