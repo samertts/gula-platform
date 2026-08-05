@@ -327,7 +327,7 @@ Transform the GULA monorepo into a production-grade national healthcare platform
 
 ## Next Move
 1. **COMPLETE — Reviewer acceptance workflow:** `reviewer-verify <mission> [file...] [--git]` reviews a Builder change-set (scoped checks across all 8 areas, deterministic verdict); `reviewer-gate <mission> [file...] [--git]` gates the change-set before merge, `reviewer-gate` still gates the whole repo when no mission is given. 41 tests → **933 engine tests pass** (reviewer 80 + optimizer 112 + learner 105 + deployer 126 + orchestrator 139 + builder 131 + kernel-ext 240). Next: PROGRAM-011 WARN burn-down.
-2. PROGRAM-011 WARN burn-down: (a) ASHS per-signal cooldown in `scripts/self_heal.py` (restart-loop risk), (b) outbox-backlog repair action in `auto_repair.py` (docstring promise), (c) OpenTelemetry SDK export (Jaeger/Tempo provisioned but unused)
+2. **COMPLETE — PROGRAM-011 WARN burn-down:** (a) ASHS per-signal cooldown (`scripts/self_heal.py`, `ASHS_ACTION_COOLDOWN=600` + file-persisted map), (b) outbox-backlog repair (`auto_repair.py` `outbox_poll` 10s→2s, auto-restored), (c) OpenTelemetry SDK export (`app/telemetry.py` OTLP/HTTP → Jaeger/Tempo, env-gated, wired in `factory.py`; 27 tests: `test_self_heal_cooldown.py` 8 + `test_outbox_auto_repair.py` 12 + `test_telemetry.py` 7). Remaining WARNs: cloud snapshot restore, frontend `/metrics` page, ENCRYPTION_KEY rotation re-encryption.
 3. Follow `docs/ai/MASTER_ROADMAP.md`: component-level baselines, Android/DB validators, brain auto-refresh in CI
 4. Reduce architecture debt (32 L1 layer violations, L3 75, L4 375 — L2 circular deps now 0; score 21.4/100) — advisory but tracked
 5. Add frontend tests for UI components (Badge, Button, Card, etc.)
