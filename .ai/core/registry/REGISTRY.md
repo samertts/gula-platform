@@ -195,6 +195,26 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Reviewer launcher | scripts/reviewer.py | Active |
 | Reviewer knowledge | .ai/core/reviewer/ | Active |
 
+## Orchestrator Engine (GULA-ORCHESTRATOR-001)
+
+| Component | Location | Status |
+|---|---|---|
+| Orchestrator core | scripts/orchestrator/core.py | Active |
+| Phase 0 Audit | scripts/orchestrator/audit.py | Active |
+| Phase 1 Classifier | scripts/orchestrator/classifier.py | Active |
+| Phase 2 Planner | scripts/orchestrator/planner.py | Active |
+| Phase 3 Router | scripts/orchestrator/router.py | Active |
+| Phase 4 Dependencies | scripts/orchestrator/dependencies.py | Active |
+| Phase 5 Checkpoint | scripts/orchestrator/checkpoint.py | Active |
+| Phase 6 Failure | scripts/orchestrator/failure.py | Active |
+| Phase 7 Resources | scripts/orchestrator/resources.py | Active |
+| Phase 8 Dashboard | scripts/orchestrator/dashboard.py | Active |
+| Phase 9 History | scripts/orchestrator/history.py | Active |
+| Phase 10 Report | scripts/orchestrator/report.py | Active |
+| Orchestrator CLI | scripts/orchestrator/cli.py | Active |
+| Orchestrator launcher | scripts/orchestrator.py | Active |
+| Orchestrator knowledge | .ai/core/orchestrator/ | Active |
+
 ## Total Count
 
 | Category | Count |
@@ -218,6 +238,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Kernel Modules | 19 |
 | Builder Modules | 12 |
 | Reviewer Modules | 15 |
+| Orchestrator Modules | 15 |
 | SDK Artifacts | 6 |
 | Policies | 16 |
 | Compat Matrix | 7 contracts |
@@ -229,4 +250,4 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Memory entries | 3 |
 | Health score | 100/100 |
 | Certification reports | 7 |
-| **Total Artifacts** | **212** |
+| **Total Artifacts** | **227** |

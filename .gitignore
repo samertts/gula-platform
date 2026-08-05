@@ -105,3 +105,7 @@ crash.log
 
 # production secrets — never commit
 .env.production
+
+# ── Orchestrator runtime state ────────────────────────────────────────────────
+.ai/core/orchestrator/state/checkpoints/
+.ai/core/orchestrator/state/missions/

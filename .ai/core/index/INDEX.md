@@ -237,6 +237,30 @@ Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
 | `scripts/reviewer/cli.py` | Reviewer | Reviewer CLI |
 | `scripts/reviewer.py` | Reviewer | Reviewer launcher |
 
+### Orchestrator
+Orchestrator Engine — the executive brain that coordinates engineering work.
+
+| File | Source | Description |
+|---|---|---|
+| `ORCHESTRATOR_AUDIT_REPORT.md` | Orchestrator | Engine/surface detection audit |
+| `ORCHESTRATOR_IMPLEMENTATION_REPORT.md` | Orchestrator | Mission stats + phase coverage |
+| `MISSION_STATUS.md` | Orchestrator | Live mission dashboard |
+| `.ai/core/orchestrator/README.md` | Orchestrator | Orchestrator Engine overview |
+| `scripts/orchestrator/core.py` | Orchestrator | Shared constants + dataclasses |
+| `scripts/orchestrator/audit.py` | Orchestrator | Phase 0 audit module |
+| `scripts/orchestrator/classifier.py` | Orchestrator | Phase 1 Mission Classifier |
+| `scripts/orchestrator/planner.py` | Orchestrator | Phase 2 Mission Planner |
+| `scripts/orchestrator/router.py` | Orchestrator | Phase 3 Engineering Router |
+| `scripts/orchestrator/dependencies.py` | Orchestrator | Phase 4 Dependency Engine |
+| `scripts/orchestrator/checkpoint.py` | Orchestrator | Phase 5 Checkpoint Engine |
+| `scripts/orchestrator/failure.py` | Orchestrator | Phase 6 Failure Manager |
+| `scripts/orchestrator/resources.py` | Orchestrator | Phase 7 Resource Manager |
+| `scripts/orchestrator/dashboard.py` | Orchestrator | Phase 8 Mission Dashboard |
+| `scripts/orchestrator/history.py` | Orchestrator | Phase 9 Mission History |
+| `scripts/orchestrator/report.py` | Orchestrator | Phase 10 Implementation Report |
+| `scripts/orchestrator/cli.py` | Orchestrator | Orchestrator CLI |
+| `scripts/orchestrator.py` | Orchestrator | Orchestrator launcher |
+
 ### Database
 Database schema, migrations, and data decisions.
 
