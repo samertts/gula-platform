@@ -234,6 +234,7 @@ Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
 | `scripts/reviewer/knowledge_review.py` | Reviewer | Phase 8 knowledge review |
 | `scripts/reviewer/decision.py` | Reviewer | Phase 9 decision engine |
 | `scripts/reviewer/report.py` | Reviewer | Phase 10 report + gate |
+| `scripts/reviewer/verify.py` | Reviewer | Phase 11 change-set verification (`reviewer-verify`) |
 | `scripts/reviewer/cli.py` | Reviewer | Reviewer CLI |
 | `scripts/reviewer.py` | Reviewer | Reviewer launcher |
 

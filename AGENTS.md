@@ -326,7 +326,7 @@ Transform the GULA monorepo into a production-grade national healthcare platform
 - Constitution enforcer (advisory) fails Rule 1: 52 source files without tests (mostly dormant contexts) — tracked.
 
 ## Next Move
-1. Wire the Reviewer into the acceptance workflow: gate Builder outputs with `reviewer-gate` before merge, add a `reviewer-verify <mission>` command that reviews a Builder change-set (not just the whole repo)
+1. **COMPLETE — Reviewer acceptance workflow:** `reviewer-verify <mission> [file...] [--git]` reviews a Builder change-set (scoped checks across all 8 areas, deterministic verdict); `reviewer-gate <mission> [file...] [--git]` gates the change-set before merge, `reviewer-gate` still gates the whole repo when no mission is given. 41 tests → **933 engine tests pass** (reviewer 80 + optimizer 112 + learner 105 + deployer 126 + orchestrator 139 + builder 131 + kernel-ext 240). Next: PROGRAM-011 WARN burn-down.
 2. PROGRAM-011 WARN burn-down: (a) ASHS per-signal cooldown in `scripts/self_heal.py` (restart-loop risk), (b) outbox-backlog repair action in `auto_repair.py` (docstring promise), (c) OpenTelemetry SDK export (Jaeger/Tempo provisioned but unused)
 3. Follow `docs/ai/MASTER_ROADMAP.md`: component-level baselines, Android/DB validators, brain auto-refresh in CI
 4. Reduce architecture debt (32 L1 layer violations, L3 75, L4 375 — L2 circular deps now 0; score 21.4/100) — advisory but tracked
@@ -396,9 +396,10 @@ Transform the GULA monorepo into a production-grade national healthcare platform
 - `scripts/reviewer/core.py` — shared scoring/decision primitives (area weights, severity penalties, Decision enum)
 - `scripts/reviewer/{architecture,code,security,test,deployment,docs,performance,knowledge}_review.py` — 8 area review modules
 - `scripts/reviewer/decision.py` + `report.py` — deterministic verdict aggregation, JSON state, gate()
+- `scripts/reviewer/verify.py` — Phase 11 change-set verification (`reviewer-verify <mission>`): resolves a Builder change-set (mission record → explicit files → git), runs scoped checks across all 8 areas, writes `REVIEWER_VERIFY_REPORT.md` + `state/latest_verify.json`; `reviewer-gate <mission>` gates only the change-set
 - `scripts/reviewer/audit.py`, `scripts/reviewer/cli.py`, `scripts/reviewer.py` — Phase 0 audit + CLI + launcher
 - `REVIEWER_AUDIT_REPORT.md` / `REVIEWER_IMPLEMENTATION_REPORT.md` — root audit + verdict reports
-- Commands: `reviewer-audit`, `reviewer-review`, `reviewer-area`, `reviewer-gate`, `reviewer-report`, `reviewer-check`, plus per-area shortcuts
+- Commands: `reviewer-audit`, `reviewer-review`, `reviewer-area`, `reviewer-gate`, `reviewer-report`, `reviewer-check`, `reviewer-verify`, plus per-area shortcuts
 - `frontend-v3/vite.config.ts` — added `test` section (vitest config)
 
 ### Orchestrator Engine (GULA-ORCHESTRATOR-001)

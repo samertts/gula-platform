@@ -195,6 +195,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Phase 8 Knowledge | scripts/reviewer/knowledge_review.py | Active |
 | Phase 9 Decision | scripts/reviewer/decision.py | Active |
 | Phase 10 Report | scripts/reviewer/report.py | Active |
+| Phase 11 Verify | scripts/reviewer/verify.py | Active |
 | Reviewer CLI | scripts/reviewer/cli.py | Active |
 | Reviewer launcher | scripts/reviewer.py | Active |
 | Reviewer knowledge | .ai/core/reviewer/ | Active |
@@ -301,7 +302,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Governor Modules | 18 |
 | Kernel Modules | 19 |
 | Builder Modules | 12 |
-| Reviewer Modules | 15 |
+| Reviewer Modules | 16 |
 | Orchestrator Modules | 15 |
 | Deployer Modules | 15 |
 | Learner Modules | 15 |
@@ -317,4 +318,4 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Memory entries | 4 |
 | Health score | 100/100 |
 | Certification reports | 7 |
-| **Total Artifacts** | **263** |
+| **Total Artifacts** | **264** |
