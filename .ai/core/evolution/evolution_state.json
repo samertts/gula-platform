@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0.0",
+  "threshold": 2,
+  "signals": [
+    {
+      "id": "EVO-034536",
+      "kind": "repeated_fix",
+      "area": "capabilities_import",
+      "evidence": [
+        "same import fix observed",
+        "same import fix observed",
+        "same import fix observed"
+      ],
+      "count": 3,
+      "severity": "low",
+      "detected_at": "2026-08-05T07:28:22.593330+00:00"
+    }
+  ],
+  "proposals": [
+    {
+      "id": "RFC-034536",
+      "signal_id": "EVO-034536",
+      "title": "consolidate capability imports",
+      "rationale": "repeated import fixes justify a single module",
+      "status": "open",
+      "created_at": "2026-08-05T07:28:22.593353+00:00"
+    }
+  ],
+  "history": [
+    {
+      "event": "observed",
+      "kind": "repeated_fix",
+      "area": "capabilities_import",
+      "at": "2026-08-05T07:28:22.593284+00:00"
+    },
+    {
+      "event": "observed",
+      "kind": "repeated_fix",
+      "area": "capabilities_import",
+      "at": "2026-08-05T07:28:22.593307+00:00"
+    },
+    {
+      "event": "observed",
+      "kind": "repeated_fix",
+      "area": "capabilities_import",
+      "at": "2026-08-05T07:28:22.593312+00:00"
+    },
+    {
+      "event": "proposed",
+      "id": "RFC-034536",
+      "signal": "EVO-034536",
+      "at": "2026-08-05T07:28:22.593359+00:00"
+    }
+  ]
+}

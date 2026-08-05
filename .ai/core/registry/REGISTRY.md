@@ -149,6 +149,8 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Workflow state | .ai/core/workflows/ | Active |
 | AI Marketplace (Phase 7) | scripts/kernel/ext/marketplace.py | Active |
 | Marketplace catalog | .ai/core/marketplace/ | Active |
+| Evolution Engine (Phase 8) | scripts/kernel/ext/evolution.py | Active |
+| Evolution state | .ai/core/evolution/ | Active |
 
 ## Total Count
 
@@ -178,4 +180,5 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Event Bus | 1 journal |
 | Workflow | 1 workflow |
 | Catalog items | 3 |
-| **Total Artifacts** | **174** |
+| Evolution signals | 1 |
+| **Total Artifacts** | **175** |

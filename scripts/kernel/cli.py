@@ -333,6 +333,7 @@ COMMANDS = {
     "ext-event-bus": _ext_commands()["ext-event-bus"],
     "ext-workflow": _ext_commands()["ext-workflow"],
     "ext-marketplace": _ext_commands()["ext-marketplace"],
+    "ext-evolution": _ext_commands()["ext-evolution"],
     "ext-check": _ext_commands()["ext-check"],
 }
 

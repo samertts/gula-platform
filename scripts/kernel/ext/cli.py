@@ -225,6 +225,26 @@ def run_marketplace() -> int:
     return 0
 
 
+def run_evolution() -> int:
+    """Phase 8 — detect evolution signals and open an RFC proposal."""
+    from .evolution import EVOLUTION_DIR, EvolutionEngine
+
+    engine = EvolutionEngine(threshold=2)
+    for _ in range(3):
+        engine.record("repeated_fix", "capabilities_import", "same import fix observed")
+    signals = engine.detect()
+    print("EVOLUTION ENGINE (GULA-KERNEL-EXT-001)")
+    if not signals:
+        print("  no signals above threshold")
+    for signal in signals:
+        print(f"  [DETECTED] {signal.id} {signal.kind} x{signal.count} ({signal.area})")
+        proposal = engine.propose(signal.id, "consolidate capability imports",
+                                  "repeated import fixes justify a single module")
+        print(f"  [RFC] {proposal.id} [{proposal.status}] {proposal.title}")
+    engine.save(EVOLUTION_DIR + "evolution_state.json")
+    return 0
+
+
 def run_ext_check() -> int:
     failures: list[str] = []
 
@@ -313,6 +333,17 @@ def run_ext_check() -> int:
     except Exception as exc:
         failures.append(f"marketplace failed: {exc}")
 
+    from .evolution import EvolutionEngine
+
+    try:
+        evolution = EvolutionEngine(threshold=2)
+        evolution.record("repeated_fix", "imports", "fix 1")
+        evolution.record("repeated_fix", "imports", "fix 2")
+        if not evolution.detect():
+            failures.append("evolution: signal not detected above threshold")
+    except Exception as exc:
+        failures.append(f"evolution engine failed: {exc}")
+
     print("KERNEL EXTENSION SELF-CHECK")
     print("=" * 60)
     if failures:
@@ -328,6 +359,7 @@ def run_ext_check() -> int:
     print(f"  [PASS] event bus delivered ({len(deliveries)} handler(s))")
     print(f"  [PASS] workflow completed ({workflow.id} -> {workflow.state})")
     print(f"  [PASS] marketplace installed ({len(marketplace.installed())} item(s))")
+    print(f"  [PASS] evolution detected ({len(evolution.detect())} signal(s))")
     print("=" * 60)
     print("RESULT: ALL KERNEL EXTENSION CHECKS PASSED")
     return 0
@@ -345,5 +377,6 @@ EXT_COMMANDS = {
     "ext-event-bus": run_event_bus,
     "ext-workflow": run_workflow,
     "ext-marketplace": run_marketplace,
+    "ext-evolution": run_evolution,
     "ext-check": run_ext_check,
 }
