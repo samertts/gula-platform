@@ -395,6 +395,7 @@ COMMANDS = {
     "reviewer-gate": _reviewer_commands()["reviewer-gate"],
     "reviewer-report": _reviewer_commands()["reviewer-report"],
     "reviewer-check": _reviewer_commands()["reviewer-check"],
+    "reviewer-verify": _reviewer_commands()["reviewer-verify"],
     "reviewer-architecture": _reviewer_commands()["reviewer-architecture"],
     "reviewer-code": _reviewer_commands()["reviewer-code"],
     "reviewer-security": _reviewer_commands()["reviewer-security"],

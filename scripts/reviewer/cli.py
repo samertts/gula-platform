@@ -77,14 +77,68 @@ def run_review() -> int:
 
 
 def run_gate() -> int:
-    """Run the review and return gate exit semantics (0 pass, 1 reject)."""
+    """Gate the whole repo, or a mission's change-set when an id is given.
+
+    `reviewer-gate <mission> [file...] [--git]` gates only the Builder
+    change-set for that mission (see reviewer-verify). Without a mission id
+    the full repository review is gated.
+    """
+    import sys
+
     from .decision import decide
-    from .report import gate
+    from .report import gate as repo_gate
+    from .verify import gate as changeset_gate
+    from .verify import review_changeset
+
+    if len(sys.argv) > 2:
+        mission_id = sys.argv[2]
+        files = tuple(a for a in sys.argv[3:] if not a.startswith("--"))
+        use_git = "--git" in sys.argv[3:]
+        report, _, _ = review_changeset(mission_id, explicit_files=files, use_git=use_git)
+        code = changeset_gate(report)
+        print(f"Reviewer gate (changeset {mission_id}): {report.decision} "
+              f"(score {report.overall_score:.1f}/100)")
+        return code
 
     report = decide()
-    code = gate(report)
+    code = repo_gate(report)
     print(f"Reviewer gate: {report.decision} (score {report.overall_score:.1f}/100)")
     return code
+
+
+def run_verify() -> int:
+    """Review a Builder change-set for a mission (`reviewer-verify <mission>`)."""
+    import sys
+
+    from .decision import summary_lines
+    from .verify import gate, review_changeset, write_report
+
+    if len(sys.argv) < 3:
+        print("Usage: reviewer-verify <mission_id> [file...] [--git]")
+        print("  mission_id  a mission from the orchestrator registry (e.g. ORN-XXXX)")
+        print("  file...     optional explicit change-set paths (repo-relative)")
+        print("  --git       derive the change-set from the git working tree vs HEAD")
+        return 2
+
+    mission_id = sys.argv[2]
+    files = tuple(a for a in sys.argv[3:] if not a.startswith("--"))
+    use_git = "--git" in sys.argv[3:]
+
+    report, mission, paths = review_changeset(
+        mission_id, explicit_files=files, use_git=use_git
+    )
+    if not mission.found:
+        print(f"[warn] mission {mission_id} not found in the orchestrator registry; "
+              "verifying by change-set only")
+    print(f"CHANGE-SET REVIEW (GULA-REVIEWER-001) — {mission_id}")
+    print(f"  files: {len(paths)}")
+    for path in paths:
+        print(f"    {path.as_posix()}")
+    for line in summary_lines(report):
+        print(line)
+    path = write_report(report, paths)
+    print(f"[OK] {path.name} written")
+    return gate(report)
 
 
 def run_report() -> int:
@@ -121,6 +175,10 @@ def run_check() -> int:
     if not knowledge_ok:
         failures.append("knowledge review not clean")
 
+    from .verify import self_check as verify_self_check
+
+    failures.extend(verify_self_check())
+
     print("REVIEWER SELF-CHECK")
     print("=" * 60)
     if failures:
@@ -152,6 +210,7 @@ REVIEWER_COMMANDS = {
     "reviewer-gate": run_gate,
     "reviewer-report": run_report,
     "reviewer-check": run_check,
+    "reviewer-verify": run_verify,
     "reviewer-architecture": lambda: run_area("architecture"),
     "reviewer-code": lambda: run_area("code"),
     "reviewer-security": lambda: run_area("security"),
