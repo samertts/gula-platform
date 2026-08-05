@@ -322,6 +322,13 @@ def _orchestrator_commands() -> dict[str, object]:
     return orchestrator_cli.ORCHESTRATOR_COMMANDS
 
 
+def _deployer_commands() -> dict[str, object]:
+    """Lazily import the Deployer CLI (GULA-DEPLOYER-001)."""
+    from scripts.deployer import cli as deployer_cli
+
+    return deployer_cli.DEPLOYER_COMMANDS
+
+
 COMMANDS = {
     "audit": run_audit,
     "state": run_state,
@@ -393,6 +400,19 @@ COMMANDS = {
     "orchestrator-history": _orchestrator_commands()["orchestrator-history"],
     "orchestrator-report": _orchestrator_commands()["orchestrator-report"],
     "orchestrator-check": _orchestrator_commands()["orchestrator-check"],
+    "deployer-audit": _deployer_commands()["deployer-audit"],
+    "deployer-architecture": _deployer_commands()["deployer-architecture"],
+    "deployer-pipeline": _deployer_commands()["deployer-pipeline"],
+    "deployer-infrastructure": _deployer_commands()["deployer-infrastructure"],
+    "deployer-health": _deployer_commands()["deployer-health"],
+    "deployer-rollback": _deployer_commands()["deployer-rollback"],
+    "deployer-scaling": _deployer_commands()["deployer-scaling"],
+    "deployer-observability": _deployer_commands()["deployer-observability"],
+    "deployer-security": _deployer_commands()["deployer-security"],
+    "deployer-knowledge": _deployer_commands()["deployer-knowledge"],
+    "deployer-report": _deployer_commands()["deployer-report"],
+    "deployer-deploy": _deployer_commands()["deployer-deploy"],
+    "deployer-check": _deployer_commands()["deployer-check"],
 }
 
 

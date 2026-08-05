@@ -131,8 +131,8 @@ def render_markdown(entries: list[AuditEntry]) -> str:
     lines.append("")
     lines.append(
         f"**AUDIT COMPLETE** — {present}/{len(entries)} systems present. "
-        "The Orchestrator can coordinate the Builder, Reviewer, Kernel, and "
-        "Knowledge systems. Where a Deployer or dedicated engine is absent, "
+        "The Orchestrator can coordinate the Builder, Reviewer, Deployer, "
+        "Kernel, and Knowledge systems. Where a dedicated engine is absent, "
         "the Orchestrator routes to the closest available engine and records "
         "the mapping as a decision."
     )
