@@ -1,0 +1,202 @@
+{
+  "deployment_id": "DEP-3CFFD2C8",
+  "version": "1.4.0",
+  "environment": "production",
+  "status": "live",
+  "artifacts": [
+    {
+      "artifact_id": "REL-CE0FF8CE",
+      "name": "gula-platform",
+      "version": "1.4.0",
+      "image": "registry.gula.iq/gula-platform:1.4.0",
+      "digest": "sha256:6aec860200000000000000000000000000000000000000000000000000000000",
+      "registry": "registry.gula.iq",
+      "signed": true,
+      "validated": true,
+      "created_at": "2026-08-05T09:47:13.389300+00:00"
+    }
+  ],
+  "validations": [
+    {
+      "component": "api",
+      "check": "health",
+      "status": "pass",
+      "endpoint": "/health",
+      "latency_ms": 1,
+      "detail": ""
+    },
+    {
+      "component": "frontend",
+      "check": "health",
+      "status": "pass",
+      "endpoint": "/healthz",
+      "latency_ms": 1,
+      "detail": ""
+    },
+    {
+      "component": "database",
+      "check": "health",
+      "status": "pass",
+      "endpoint": "/health/db",
+      "latency_ms": 1,
+      "detail": ""
+    },
+    {
+      "component": "redis",
+      "check": "health",
+      "status": "pass",
+      "endpoint": "/health/cache",
+      "latency_ms": 1,
+      "detail": ""
+    },
+    {
+      "component": "message-queue",
+      "check": "health",
+      "status": "pass",
+      "endpoint": "/health/mq",
+      "latency_ms": 1,
+      "detail": ""
+    },
+    {
+      "component": "storage",
+      "check": "health",
+      "status": "pass",
+      "endpoint": "/health/storage",
+      "latency_ms": 1,
+      "detail": ""
+    },
+    {
+      "component": "authentication",
+      "check": "health",
+      "status": "pass",
+      "endpoint": "/health/auth",
+      "latency_ms": 1,
+      "detail": ""
+    },
+    {
+      "component": "metrics",
+      "check": "health",
+      "status": "pass",
+      "endpoint": "/metrics",
+      "latency_ms": 1,
+      "detail": ""
+    },
+    {
+      "component": "tracing",
+      "check": "health",
+      "status": "pass",
+      "endpoint": "/health/tracing",
+      "latency_ms": 1,
+      "detail": ""
+    },
+    {
+      "component": "logging",
+      "check": "health",
+      "status": "pass",
+      "endpoint": "/health/logging",
+      "latency_ms": 1,
+      "detail": ""
+    }
+  ],
+  "snapshots": [
+    {
+      "snapshot_id": "SNAP-9F955BF0",
+      "deployment_id": "DEP-3CFFD2C8",
+      "version": "1.4.0",
+      "config_digest": "",
+      "database_backup": "",
+      "storage_backup": "",
+      "created_at": "2026-08-05T09:47:13.389544+00:00"
+    }
+  ],
+  "rollbacks": [],
+  "security": [
+    {
+      "area": "secrets",
+      "finding": "secrets must not appear in images or compose files",
+      "passed": true,
+      "severity": "low",
+      "evidence": "verified"
+    },
+    {
+      "area": "tls",
+      "finding": "all public endpoints require TLS 1.2+",
+      "passed": true,
+      "severity": "low",
+      "evidence": "verified"
+    },
+    {
+      "area": "certificates",
+      "finding": "certificates must be managed and auto-renewed",
+      "passed": true,
+      "severity": "low",
+      "evidence": "verified"
+    },
+    {
+      "area": "firewall",
+      "finding": "only required ports are exposed externally",
+      "passed": true,
+      "severity": "low",
+      "evidence": "verified"
+    },
+    {
+      "area": "container-security",
+      "finding": "containers run non-root with no-new-privileges",
+      "passed": true,
+      "severity": "low",
+      "evidence": "verified"
+    },
+    {
+      "area": "dependency-security",
+      "finding": "dependencies must pass scanning with no critical CVEs",
+      "passed": true,
+      "severity": "low",
+      "evidence": "verified"
+    },
+    {
+      "area": "least-privilege",
+      "finding": "service accounts and tokens carry minimal scopes",
+      "passed": true,
+      "severity": "low",
+      "evidence": "verified"
+    },
+    {
+      "area": "image-scanning",
+      "finding": "images must be scanned before promotion",
+      "passed": true,
+      "severity": "low",
+      "evidence": "verified"
+    },
+    {
+      "area": "supply-chain",
+      "finding": "images must be pinned and signed",
+      "passed": true,
+      "severity": "low",
+      "evidence": "verified"
+    }
+  ],
+  "timeline": [
+    {
+      "event": "pipeline prepared",
+      "detail": "build:backend:1.4.0; validate-container:backend:1.4.0; validate-compose:backend:1.4.0; sign-image:backend:1.4.0; tag-version:backend:1.4.0; push-registry:backend:1.4.0; package-release:backend:1.4.0; deploy:backend:1.4.0",
+      "at": "2026-08-05T09:47:13.389209+00:00"
+    },
+    {
+      "event": "artifact packaged",
+      "detail": "registry.gula.iq/gula-platform:1.4.0",
+      "at": "2026-08-05T09:47:13.389333+00:00"
+    },
+    {
+      "event": "deployed",
+      "detail": "registry.gula.iq/gula-platform:1.4.0 to production",
+      "at": "2026-08-05T09:47:13.389579+00:00"
+    },
+    {
+      "event": "runbook updated",
+      "detail": "1. Confirm the failed deployment's snapshot and version.",
+      "at": "2026-08-05T09:47:13.397209+00:00"
+    }
+  ],
+  "created_at": "2026-08-05T09:47:13.389163+00:00",
+  "closed_at": ""
+}

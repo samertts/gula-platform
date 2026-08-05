@@ -215,6 +215,26 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Orchestrator launcher | scripts/orchestrator.py | Active |
 | Orchestrator knowledge | .ai/core/orchestrator/ | Active |
 
+## Deployer Engine (GULA-DEPLOYER-001)
+
+| Component | Location | Status |
+|---|---|---|
+| Deployer core | scripts/deployer/core.py | Active |
+| Phase 0 Audit | scripts/deployer/audit.py | Active |
+| Phase 1 Architecture | scripts/deployer/architecture.py | Active |
+| Phase 2 Execution | scripts/deployer/execution.py | Active |
+| Phase 3 Infrastructure | scripts/deployer/infrastructure.py | Active |
+| Phase 4 Health | scripts/deployer/health.py | Active |
+| Phase 5 Rollback | scripts/deployer/rollback.py | Active |
+| Phase 6 Scaling | scripts/deployer/scaling.py | Active |
+| Phase 7 Observability | scripts/deployer/observability.py | Active |
+| Phase 8 Security | scripts/deployer/security.py | Active |
+| Phase 9 Knowledge | scripts/deployer/knowledge.py | Active |
+| Phase 10 Report | scripts/deployer/report.py | Active |
+| Deployer CLI | scripts/deployer/cli.py | Active |
+| Deployer launcher | scripts/deployer.py | Active |
+| Deployer knowledge | .ai/core/deployer/ | Active |
+
 ## Total Count
 
 | Category | Count |
@@ -239,6 +259,7 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Builder Modules | 12 |
 | Reviewer Modules | 15 |
 | Orchestrator Modules | 15 |
+| Deployer Modules | 15 |
 | SDK Artifacts | 6 |
 | Policies | 16 |
 | Compat Matrix | 7 contracts |

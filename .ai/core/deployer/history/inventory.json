@@ -1,0 +1,8 @@
+{
+  "resources": [
+    {
+      "deployment_id": "DEP-1",
+      "environment": "production"
+    }
+  ]
+}

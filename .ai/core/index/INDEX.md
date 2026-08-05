@@ -261,6 +261,29 @@ Orchestrator Engine — the executive brain that coordinates engineering work.
 | `scripts/orchestrator/cli.py` | Orchestrator | Orchestrator CLI |
 | `scripts/orchestrator.py` | Orchestrator | Orchestrator launcher |
 
+### Deployer
+Deployer Engine — transforms verified software into a production-ready platform.
+
+| File | Source | Description |
+|---|---|---|
+| `DEPLOYER_AUDIT_REPORT.md` | Deployer | Deployment surface audit |
+| `DEPLOYER_IMPLEMENTATION_REPORT.md` | Deployer | Deployment stats + phase coverage |
+| `.ai/core/deployer/README.md` | Deployer | Deployer Engine overview |
+| `scripts/deployer/core.py` | Deployer | Shared constants + dataclasses |
+| `scripts/deployer/audit.py` | Deployer | Phase 0 audit module |
+| `scripts/deployer/architecture.py` | Deployer | Phase 1 deployment topology |
+| `scripts/deployer/execution.py` | Deployer | Phase 2 build/package/deploy pipeline |
+| `scripts/deployer/infrastructure.py` | Deployer | Phase 3 infrastructure management |
+| `scripts/deployer/health.py` | Deployer | Phase 4 health validation |
+| `scripts/deployer/rollback.py` | Deployer | Phase 5 rollback engine |
+| `scripts/deployer/scaling.py` | Deployer | Phase 6 auto scaling |
+| `scripts/deployer/observability.py` | Deployer | Phase 7 observability integration |
+| `scripts/deployer/security.py` | Deployer | Phase 8 deployment security |
+| `scripts/deployer/knowledge.py` | Deployer | Phase 9 deployment knowledge |
+| `scripts/deployer/report.py` | Deployer | Phase 10 implementation report |
+| `scripts/deployer/cli.py` | Deployer | Deployer CLI |
+| `scripts/deployer.py` | Deployer | Deployer launcher |
+
 ### Database
 Database schema, migrations, and data decisions.
 
