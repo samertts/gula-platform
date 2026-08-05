@@ -204,6 +204,27 @@ def run_workflow() -> int:
     return 0
 
 
+def run_marketplace() -> int:
+    """Phase 7 — catalog the built-in reusable assets + install demo."""
+    from .marketplace import MARKETPLACE_DIR, CatalogItem, Marketplace
+
+    marketplace = Marketplace()
+    marketplace.add(CatalogItem("CAT-000001", "plugin", "governor-plugin", "1.0.0",
+                                "governor as installable plugin"))
+    marketplace.add(CatalogItem("CAT-000002", "policy", "security-policy-set", "1.0.0",
+                                "16 canonical policies"))
+    marketplace.add(CatalogItem("CAT-000003", "skill", "refactor-skill", "1.0.0",
+                                "clean architecture refactor workflow"))
+    marketplace.install("CAT-000001")
+    print("AI MARKETPLACE (GULA-KERNEL-EXT-001)")
+    print(f"  catalog items: {len(marketplace.search())}")
+    for item in marketplace.search():
+        state = "installed" if marketplace.is_installed(item.id) else "available"
+        print(f"  - {item.id} {item.kind:8s} {item.name} {item.version} [{state}]")
+    marketplace.save(MARKETPLACE_DIR + "marketplace_catalog.json")
+    return 0
+
+
 def run_ext_check() -> int:
     failures: list[str] = []
 
@@ -281,6 +302,17 @@ def run_ext_check() -> int:
     except Exception as exc:
         failures.append(f"workflow engine failed: {exc}")
 
+    from .marketplace import CatalogItem, Marketplace
+
+    try:
+        marketplace = Marketplace()
+        marketplace.add(CatalogItem("CAT-000001", "plugin", "governor-plugin", "1.0.0", "demo"))
+        marketplace.install("CAT-000001")
+        if not marketplace.is_installed("CAT-000001"):
+            failures.append("marketplace: demo item not installed")
+    except Exception as exc:
+        failures.append(f"marketplace failed: {exc}")
+
     print("KERNEL EXTENSION SELF-CHECK")
     print("=" * 60)
     if failures:
@@ -295,6 +327,7 @@ def run_ext_check() -> int:
     print(f"  [PASS] migration demo executed ({plan.id} -> {plan.state})")
     print(f"  [PASS] event bus delivered ({len(deliveries)} handler(s))")
     print(f"  [PASS] workflow completed ({workflow.id} -> {workflow.state})")
+    print(f"  [PASS] marketplace installed ({len(marketplace.installed())} item(s))")
     print("=" * 60)
     print("RESULT: ALL KERNEL EXTENSION CHECKS PASSED")
     return 0
@@ -311,5 +344,6 @@ EXT_COMMANDS = {
     "ext-migrate-run": run_migrate_run,
     "ext-event-bus": run_event_bus,
     "ext-workflow": run_workflow,
+    "ext-marketplace": run_marketplace,
     "ext-check": run_ext_check,
 }

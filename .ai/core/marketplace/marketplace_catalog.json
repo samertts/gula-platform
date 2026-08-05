@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0.0",
+  "items": [
+    {
+      "id": "CAT-000001",
+      "kind": "plugin",
+      "name": "governor-plugin",
+      "version": "1.0.0",
+      "description": "governor as installable plugin",
+      "source": "",
+      "license": "MIT",
+      "published_at": "2026-08-05T07:25:29.918785+00:00"
+    },
+    {
+      "id": "CAT-000002",
+      "kind": "policy",
+      "name": "security-policy-set",
+      "version": "1.0.0",
+      "description": "16 canonical policies",
+      "source": "",
+      "license": "MIT",
+      "published_at": "2026-08-05T07:25:29.918850+00:00"
+    },
+    {
+      "id": "CAT-000003",
+      "kind": "skill",
+      "name": "refactor-skill",
+      "version": "1.0.0",
+      "description": "clean architecture refactor workflow",
+      "source": "",
+      "license": "MIT",
+      "published_at": "2026-08-05T07:25:29.918866+00:00"
+    }
+  ],
+  "installed": {
+    "CAT-000001": "1.0.0"
+  },
+  "history": [
+    {
+      "event": "indexed",
+      "id": "CAT-000001",
+      "at": "2026-08-05T07:25:29.918842+00:00"
+    },
+    {
+      "event": "indexed",
+      "id": "CAT-000002",
+      "at": "2026-08-05T07:25:29.918862+00:00"
+    },
+    {
+      "event": "indexed",
+      "id": "CAT-000003",
+      "at": "2026-08-05T07:25:29.918873+00:00"
+    },
+    {
+      "event": "installed",
+      "id": "CAT-000001",
+      "version": "1.0.0",
+      "at": "2026-08-05T07:25:29.918878+00:00"
+    }
+  ]
+}

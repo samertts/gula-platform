@@ -20,6 +20,6 @@ Modules:
     cli             Extension CLI (integrated into scripts/kernel.py)
 """
 
-from . import compatibility, event_bus, migration, plugin, policy, workflow
+from . import compatibility, event_bus, marketplace, migration, plugin, policy, workflow
 
-__all__ = ["compatibility", "event_bus", "migration", "plugin", "policy", "workflow"]
+__all__ = ["compatibility", "event_bus", "marketplace", "migration", "plugin", "policy", "workflow"]
