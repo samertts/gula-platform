@@ -137,6 +137,8 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | KERNEL_EXTENSION_AUDIT.md | repo root | Active |
 | Plugin SDK (Phase 1) | scripts/kernel/ext/plugin.py | Active |
 | SDK docs | .ai/core/sdk/ | Active |
+| Policy Engine (Phase 2) | scripts/kernel/ext/policy.py | Active |
+| Policy catalog | .ai/core/policies/ | Active |
 
 ## Total Count
 
@@ -160,4 +162,5 @@ All knowledge artifacts with unique IDs. IDs are immutable and never reused.
 | Governor Modules | 18 |
 | Kernel Modules | 19 |
 | SDK Artifacts | 6 |
-| **Total Artifacts** | **153** |
+| Policies | 16 |
+| **Total Artifacts** | **169** |

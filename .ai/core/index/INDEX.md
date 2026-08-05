@@ -2,7 +2,7 @@
 
 **Mission:** PROGRAM-KNOWLEDGE-001
 **Created:** 2026-08-04
-**Last Updated:** 2026-08-04
+**Last Updated:** 2026-08-05
 **Status:** Active
 
 ---
@@ -168,6 +168,9 @@ Migration, Event Bus, Workflow, Marketplace, Evolution, Memory, Health.
 | `.ai/core/sdk/PLUGIN_LIFECYCLE.md` | SDK | Plugin lifecycle |
 | `.ai/core/sdk/PLUGIN_SECURITY.md` | SDK | Plugin security & sandbox |
 | `.ai/core/sdk/PLUGIN_TESTING.md` | SDK | Plugin testing & certification |
+| `.ai/core/policies/README.md` | Policy | Policy Engine overview |
+| `.ai/core/policies/POLICIES.md` | Policy | Human-readable policy catalogue |
+| `.ai/core/policies/policies.json` | Policy | Machine-readable policy set |
 
 ### Database
 Database schema, migrations, and data decisions.

@@ -46,8 +46,57 @@ def run_plugin_certify() -> int:
     return 1 if failures else 0
 
 
+def run_policy() -> int:
+    """Phase 2 — policy registry snapshot."""
+    from .policy import PolicyEngine, default_policies
+
+    engine = PolicyEngine()
+    for policy in default_policies():
+        engine.register(policy)
+    policies = engine.search()
+    print("POLICY ENGINE (GULA-KERNEL-EXT-001)")
+    print(f"  policies active: {len(policies)}")
+    for policy in policies:
+        print(f"  - {policy.id} {policy.category:13s} {policy.action:4s} {policy.statement}")
+    return 0
+
+
+def run_policy_evaluate() -> int:
+    """Phase 2 — evaluate a sample context; exit 1 if any policy is denied."""
+    from .policy import PolicyEngine, default_policies
+
+    engine = PolicyEngine()
+    for policy in default_policies():
+        engine.register(policy)
+    context = {
+        "content": "document body",
+        "deployment_approval": "auto",
+        "autonomy_level": "L6",
+        "phase_files": 10,
+        "phase_seconds": 120,
+        "knowledge_verified": True,
+        "bypass_quality": False,
+        "has_rollback": True,
+        "uses_paid_service": False,
+        "constitution_change": "manual",
+        "architecture_change": "manual",
+        "removes_national_feature": False,
+        "has_benchmark": False,
+        "has_docs": True,
+        "context_tokens": 1000,
+        "simulated": True,
+    }
+    violations = engine.evaluate(context)
+    print("POLICY EVALUATION")
+    if not violations:
+        print("  [PASS] no policy violations")
+        return 0
+    for violation in violations:
+        print(f"  [{violation.verdict.upper()}] {violation.detail}")
+    return 1 if any(v.verdict == "deny" for v in violations) else 0
+
+
 def run_ext_check() -> int:
-    """Run all extension self-checks; exit 1 on any failure."""
     failures: list[str] = []
 
     from ..core import ENGINE_REGISTRY
@@ -70,6 +119,17 @@ def run_ext_check() -> int:
         if hard:
             failures.append(f"plugin {name} failed certification")
 
+    from .policy import PolicyEngine, default_policies
+
+    try:
+        policy_engine = PolicyEngine()
+        for policy in default_policies():
+            policy_engine.register(policy)
+        if not policy_engine.search():
+            failures.append("policy engine: no policies registered")
+    except Exception as exc:
+        failures.append(f"policy engine failed: {exc}")
+
     print("KERNEL EXTENSION SELF-CHECK")
     print("=" * 60)
     if failures:
@@ -79,6 +139,7 @@ def run_ext_check() -> int:
         return 1
     print("  [PASS] all engines register as plugins")
     print("  [PASS] all engines certified")
+    print(f"  [PASS] {len(policy_engine.search())} policies registered")
     print("=" * 60)
     print("RESULT: ALL KERNEL EXTENSION CHECKS PASSED")
     return 0
@@ -87,5 +148,7 @@ def run_ext_check() -> int:
 EXT_COMMANDS = {
     "ext-plugin": run_plugin,
     "ext-plugin-certify": run_plugin_certify,
+    "ext-policy": run_policy,
+    "ext-policy-evaluate": run_policy_evaluate,
     "ext-check": run_ext_check,
 }

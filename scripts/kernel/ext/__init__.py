@@ -20,6 +20,6 @@ Modules:
     cli             Extension CLI (integrated into scripts/kernel.py)
 """
 
-from . import plugin
+from . import plugin, policy
 
-__all__ = ["plugin"]
+__all__ = ["plugin", "policy"]
