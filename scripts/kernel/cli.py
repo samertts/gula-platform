@@ -329,6 +329,13 @@ def _deployer_commands() -> dict[str, object]:
     return deployer_cli.DEPLOYER_COMMANDS
 
 
+def _learner_commands() -> dict[str, object]:
+    """Lazily import the Learner CLI (GULA-LEARNER-001)."""
+    from scripts.learner import cli as learner_cli
+
+    return learner_cli.LEARNER_COMMANDS
+
+
 COMMANDS = {
     "audit": run_audit,
     "state": run_state,
@@ -413,6 +420,19 @@ COMMANDS = {
     "deployer-report": _deployer_commands()["deployer-report"],
     "deployer-deploy": _deployer_commands()["deployer-deploy"],
     "deployer-check": _deployer_commands()["deployer-check"],
+    "learner-audit": _learner_commands()["learner-audit"],
+    "learner-extract": _learner_commands()["learner-extract"],
+    "learner-skill": _learner_commands()["learner-skill"],
+    "learner-playbook": _learner_commands()["learner-playbook"],
+    "learner-runbook": _learner_commands()["learner-runbook"],
+    "learner-memory": _learner_commands()["learner-memory"],
+    "learner-patterns": _learner_commands()["learner-patterns"],
+    "learner-improve": _learner_commands()["learner-improve"],
+    "learner-quality": _learner_commands()["learner-quality"],
+    "learner-search": _learner_commands()["learner-search"],
+    "learner-report": _learner_commands()["learner-report"],
+    "learner-learn": _learner_commands()["learner-learn"],
+    "learner-check": _learner_commands()["learner-check"],
 }
 
 
