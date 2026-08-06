@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication
+from l10n import TranslationManager
+from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QFormLayout,
     QGroupBox,
@@ -13,16 +13,14 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
-    QSlider,
     QSpinBox,
     QVBoxLayout,
     QWidget,
 )
-
-from config import AppConfig, save_config
-from l10n import TranslationManager
 from session import SessionManager
 from widgets.dialogs import AboutDialog, AlertDialog, ConfirmDialog
+
+from config import AppConfig, save_config
 
 
 class SettingsView(QWidget):

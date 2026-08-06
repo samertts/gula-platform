@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -31,7 +31,7 @@ class AuditService:
                 performed_by=performed_by,
                 lab_id=lab_id,
                 details=details or {},
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
             )
             session.add(entry)
             session.commit()

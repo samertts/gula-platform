@@ -196,13 +196,19 @@ class KnowledgeGraph:
         self.nodes[node.id] = node
         db = next(get_db())
         try:
-            aliases_json = f"'{_jsonify(aliases or [])}'::jsonb"
-            props_json = f"'{_jsonify(properties or {})}'::jsonb"
             db.execute(
                 text(
-                    f"INSERT INTO ai_knowledge_nodes (node_type, external_id, label, description, aliases, properties) VALUES (:nt, :eid, :label, :desc, {aliases_json}, {props_json})",
+                    "INSERT INTO ai_knowledge_nodes (node_type, external_id, label, description, aliases, properties) "
+                    "VALUES (:nt, :eid, :label, :desc, CAST(:aliases AS jsonb), CAST(:props AS jsonb))",
                 ),
-                {"nt": node_type, "eid": external_id, "label": label, "desc": description},
+                {
+                    "nt": node_type,
+                    "eid": external_id,
+                    "label": label,
+                    "desc": description,
+                    "aliases": _jsonify(aliases or []),
+                    "props": _jsonify(properties or {}),
+                },
             )
             db.commit()
         except Exception as exc:

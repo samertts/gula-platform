@@ -32,6 +32,21 @@ QUEUE_KEY = "gula:tasks:pending"
 DLQ_KEY = "gula:tasks:dead"
 RUNNING_SET = "gula:tasks:running"
 
+
+def _is_redis_timeout(exc: Exception) -> bool:
+    """True for redis/socket timeouts — a BRPOP deadline, not a failure.
+
+    redis-py wraps socket timeouts in its own exceptions.TimeoutError (which
+    does not subclass the builtin ``TimeoutError``), so both must be checked.
+    """
+    if isinstance(exc, TimeoutError):
+        return True
+    try:
+        import redis as _redis_lib
+    except Exception:
+        return False
+    return isinstance(exc, _redis_lib.exceptions.TimeoutError)
+
 # ── In-memory fallback ───────────────────────────────────────────────────────
 
 
@@ -100,7 +115,16 @@ class _RedisTaskQueue:
 
     async def dequeue(self, timeout: int = 5) -> TaskPayload | None:
         loop = asyncio.get_running_loop()
-        result = await loop.run_in_executor(None, self._r.brpop, QUEUE_KEY, timeout)
+        try:
+            result = await loop.run_in_executor(None, self._r.brpop, QUEUE_KEY, timeout)
+        except Exception as exc:
+            if _is_redis_timeout(exc):
+                # BRPOP deadline with no task available = empty queue, NOT a
+                # crash. Returning None lets the worker loop poll again
+                # cleanly instead of crash-restarting the resilient loop on
+                # every idle cycle.
+                return None
+            raise
         if result is None:
             return None
         _key, raw = result

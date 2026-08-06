@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 import logging
-import os
 import sys
 import traceback
 
 from PySide6.QtCore import QLockFile, Qt
-from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QApplication, QSplashScreen, QWidget
-
-from config import AppConfig, get_config_path, load_config, save_config
+from PySide6.QtWidgets import QApplication, QSplashScreen
 from session import SessionManager
 from theme import ThemeManager
 from widgets.dialogs import LoginDialog
+
+from config import AppConfig, get_config_path, load_config, save_config
 
 logging.basicConfig(
     level=logging.INFO,

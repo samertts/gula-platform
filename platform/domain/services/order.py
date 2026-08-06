@@ -1,10 +1,7 @@
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any
-from uuid import uuid4
-
 from platform.core.event_bus import EventBus
 from platform.domain.events import OrderCreated, OrderStatusChanged
+from typing import Any
 
 
 @dataclass

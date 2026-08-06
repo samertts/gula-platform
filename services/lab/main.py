@@ -5,7 +5,6 @@ Manages laboratories, devices, and lab operations
 
 import logging
 import os
-
 from datetime import datetime
 
 import asyncpg

@@ -39,13 +39,23 @@ BLUEPRINT_SECTIONS: tuple[str, ...] = (
 )
 
 # Shared Core services a Domain must consume instead of reimplementing
-# (Phase 2). Full catalog lives in ``shared_core.py``.
+# (Phase 2). The canonical catalog (service -> single authoritative provider)
+# lives in ``shared_core.py``; this tuple MUST contain exactly the catalog keys.
 SHARED_CORE_SERVICES: tuple[str, ...] = (
     "identity",
     "authentication",
     "authorization",
     "organizations",
+    "users",
+    "sessions",
     "audit",
+    "rbac",
+    "abac",
+    "encryption",
+    "digital_signature",
+    "mfa",
+    "auth_primitives",
+    "service_accounts",
     "notifications",
     "workflow_engine",
     "rule_engine",
@@ -56,14 +66,32 @@ SHARED_CORE_SERVICES: tuple[str, ...] = (
     "document_engine",
     "files",
     "media",
+    "pdf_engine",
+    "printing",
+    "payments",
     "scheduler",
+    "event_bus",
+    "api_gateway",
+    "api_schemas",
+    "validators",
     "localization",
+    "design_system",
+    "config_loader",
+    "settings",
+    "dependency_injection",
+    "device_integration",
+    "communication",
+    "ai_gateway",
+    "feature_flags",
+    "health_checks",
     "monitoring",
     "logging",
-    "api_gateway",
+    "telemetry",
+    "cache",
+    "retry",
+    "circuit_breaker",
+    "backup_recovery",
     "fhir_engine",
-    "event_bus",
-    "settings",
 )
 
 # Domain lifecycle states (Phase 5).

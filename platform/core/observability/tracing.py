@@ -1,7 +1,6 @@
 import time
 import uuid
 from contextvars import ContextVar
-from typing import Any
 
 _current_trace_id: ContextVar[str | None] = ContextVar("trace_id", default=None)
 _current_span_id: ContextVar[str | None] = ContextVar("span_id", default=None)

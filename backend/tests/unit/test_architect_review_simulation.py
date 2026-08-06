@@ -9,16 +9,20 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3]))
 
 from scripts.architect.review import (
     DIMENSION_EVIDENCE,
-    persist_review,
-    render_markdown as render_review,
-    review_design,
     _verdict,
+    persist_review,
+    review_design,
+)
+from scripts.architect.review import (
+    render_markdown as render_review,
 )
 from scripts.architect.simulation import (
     SCALE_STEPS,
+    persist_simulation,
     project_full,
     project_scale,
-    persist_simulation,
+)
+from scripts.architect.simulation import (
     render_markdown as render_simulation,
 )
 

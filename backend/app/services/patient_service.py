@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 
 from ..models.lab_order import LabOrder
 from ..models.patient import Patient
+from ..mpi import resolver as mpi_resolver
 from ..services.audit_service import log_action
 from ..services.identity import hash_family_id, hash_national_id, match_score
-from ..mpi import resolver as mpi_resolver
 
 
 @dataclass

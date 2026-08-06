@@ -35,6 +35,58 @@ _center: CommunicationCenter | None = None
 _center_built = False
 
 
+# ── Provider plugin wiring (PROGRAM-COMM-002) ───────────────────────────────
+
+
+def _register_provider_plugins(center: CommunicationCenter) -> None:
+    """Discover + register provider plugins without touching the Core.
+
+    Providers self-register through the plugin catalog / entry points; the
+    Center publishes them into its registry. Providers without credentials
+    report ``DOWN`` health and are skipped by routing — configuration is
+    purely env / docker / k8s / cloud secrets.
+    """
+    try:
+        from shared.communication_providers import load_provider_plugins
+
+        manager = load_provider_plugins(center.providers)
+        logger.info(
+            "communication_providers_registered count=%d channels=%s",
+            len(manager.states()),
+            ",".join(center.providers.channels()),
+        )
+    except Exception:
+        logger.exception("communication_provider_registration_failed")
+
+
+def _install_experience_sinks(center: CommunicationCenter) -> None:
+    """Bind the durable user-experience sinks (PROGRAM-COMM-003).
+
+    The unified user inbox is written by the durable in-app sink installed
+    on the ``inapp`` provider, and the audit-history sink appends
+    channel/provider outcomes to per-notification history. Both are
+    best-effort: failures never block delivery.
+    """
+    try:
+        from .experience.sinks import DurableInAppSink, InboxAuditSink
+
+        provider = center.providers.get("inapp")
+        if provider is not None:
+            provider._sink = DurableInAppSink()
+            logger.info("communication_durable_inbox_sink_installed")
+    except Exception:
+        logger.exception("communication_durable_inbox_sink_failed")
+    try:
+        from shared.communication.audit import CompositeAuditSink
+
+        composite = center.audit_sink
+        if isinstance(composite, CompositeAuditSink):
+            composite.add(InboxAuditSink())
+            logger.info("communication_inbox_audit_sink_installed")
+    except Exception:
+        logger.exception("communication_inbox_audit_sink_install_failed")
+
+
 # ── Platform audit sink ───────────────────────────────────────────────────────
 
 
@@ -190,7 +242,9 @@ def get_communication_center() -> CommunicationCenter:
         return _center
     config = CommunicationConfig.from_env()
     _center = build_communication_center(config=config)
+    _register_provider_plugins(_center)
     _register_starter_content(_center)
+    _install_experience_sinks(_center)
 
     if config.audit_enabled:
         composite = _center.audit_sink

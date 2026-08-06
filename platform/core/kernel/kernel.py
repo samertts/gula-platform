@@ -2,14 +2,13 @@ import asyncio
 import logging
 import time
 from enum import Enum
-from typing import Any
-
+from platform.core.event_bus import EventBus
+from platform.core.kernel.config_loader import ConfigLoader
+from platform.core.kernel.di_container import DIContainer
+from platform.core.kernel.health import HealthManager
 from platform.core.kernel.lifecycle import LifecycleEvent, LifecycleListener
 from platform.core.kernel.service_registry import ServiceRegistry
-from platform.core.kernel.di_container import DIContainer
-from platform.core.kernel.config_loader import ConfigLoader
-from platform.core.kernel.health import HealthManager, HealthStatus
-from platform.core.event_bus import EventBus
+from typing import Any
 
 
 class KernelState(Enum):

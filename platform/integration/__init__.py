@@ -1,10 +1,22 @@
-from platform.integration.adapters import DatabaseAdapter, DatabaseConfig, RedisAdapter, RedisConfig, HttpClientAdapter, HTTPConfig, MonolithAdapter
-from platform.integration.bridge import IntegrationBridge, BridgeConfig
+from platform.integration.adapters import (
+    DatabaseAdapter,
+    DatabaseConfig,
+    HttpClientAdapter,
+    HTTPConfig,
+    MonolithAdapter,
+    RedisAdapter,
+    RedisConfig,
+)
+from platform.integration.bridge import BridgeConfig, IntegrationBridge
 
 __all__ = [
-    "DatabaseAdapter", "DatabaseConfig",
-    "RedisAdapter", "RedisConfig",
-    "HttpClientAdapter", "HTTPConfig",
+    "BridgeConfig",
+    "DatabaseAdapter",
+    "DatabaseConfig",
+    "HTTPConfig",
+    "HttpClientAdapter",
+    "IntegrationBridge",
     "MonolithAdapter",
-    "IntegrationBridge", "BridgeConfig",
+    "RedisAdapter",
+    "RedisConfig",
 ]

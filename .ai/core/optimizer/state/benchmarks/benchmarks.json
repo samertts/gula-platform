@@ -7,25 +7,25 @@
       "baseline": true,
       "threshold": null,
       "source": "route modules registered by the backend",
-      "measured_at": "2026-08-05T11:32:20.215756+00:00"
+      "measured_at": "2026-08-06T12:02:06.871906+00:00"
     },
     {
       "name": "database-queries",
-      "value": 60.0,
+      "value": 62.0,
       "unit": "models",
       "baseline": true,
       "threshold": null,
       "source": "model modules that map to database tables",
-      "measured_at": "2026-08-05T11:32:20.218147+00:00"
+      "measured_at": "2026-08-06T12:02:06.886901+00:00"
     },
     {
       "name": "memory-usage",
-      "value": 1541956.0,
+      "value": 1428898.0,
       "unit": "bytes",
       "baseline": true,
       "threshold": null,
       "source": "size of cache + service implementation code",
-      "measured_at": "2026-08-05T11:32:20.223305+00:00"
+      "measured_at": "2026-08-06T12:02:06.892881+00:00"
     },
     {
       "name": "cpu-usage",
@@ -34,34 +34,34 @@
       "baseline": true,
       "threshold": null,
       "source": "background task modules competing for CPU",
-      "measured_at": "2026-08-05T11:32:20.223883+00:00"
+      "measured_at": "2026-08-06T12:02:06.903237+00:00"
     },
     {
       "name": "disk-usage",
-      "value": 23438808.0,
+      "value": 23888420.0,
       "unit": "bytes",
       "baseline": true,
       "threshold": null,
       "source": "size of backend + shared implementation code",
-      "measured_at": "2026-08-05T11:32:20.523531+00:00"
+      "measured_at": "2026-08-06T12:02:07.666186+00:00"
     },
     {
       "name": "network-traffic",
-      "value": 229.0,
+      "value": 213.0,
       "unit": "files",
       "baseline": true,
       "threshold": null,
       "source": "route + service modules carrying request traffic",
-      "measured_at": "2026-08-05T11:32:20.532249+00:00"
+      "measured_at": "2026-08-06T12:02:07.698782+00:00"
     },
     {
       "name": "build-time",
-      "value": 705148317.0,
+      "value": 707492156.0,
       "unit": "bytes",
       "baseline": true,
       "threshold": null,
       "source": "size of backend package (proxy for build work)",
-      "measured_at": "2026-08-05T11:32:22.515849+00:00"
+      "measured_at": "2026-08-06T12:02:10.597032+00:00"
     },
     {
       "name": "startup-time",
@@ -70,35 +70,35 @@
       "baseline": true,
       "threshold": null,
       "source": "route modules imported at application startup",
-      "measured_at": "2026-08-05T11:32:22.565643+00:00"
+      "measured_at": "2026-08-06T12:02:10.686943+00:00"
     },
     {
       "name": "bundle-size",
-      "value": 1488112.0,
+      "value": 1488072.0,
       "unit": "bytes",
       "baseline": true,
       "threshold": null,
       "source": "size of frontend source that must be bundled",
-      "measured_at": "2026-08-05T11:32:22.596914+00:00"
+      "measured_at": "2026-08-06T12:02:10.748078+00:00"
     },
     {
       "name": "container-size",
-      "value": 960806848.0,
+      "value": 961116741.0,
       "unit": "bytes",
       "baseline": true,
       "threshold": null,
       "source": "size of deployable application payloads",
-      "measured_at": "2026-08-05T11:32:27.224255+00:00"
+      "measured_at": "2026-08-06T12:02:16.346121+00:00"
     },
     {
       "name": "execution-time",
-      "value": 663.0,
+      "value": 775.0,
       "unit": "test-files",
       "baseline": true,
       "threshold": null,
       "source": "test files that gate execution time",
-      "measured_at": "2026-08-05T11:32:27.244266+00:00"
+      "measured_at": "2026-08-06T12:02:16.452135+00:00"
     }
   ],
-  "updated_at": "2026-08-05T11:32:27.244807+00:00"
+  "updated_at": "2026-08-06T12:02:16.452925+00:00"
 }

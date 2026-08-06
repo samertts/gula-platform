@@ -1,8 +1,6 @@
 import logging
 from typing import Any
 
-from platform.core.kernel import Kernel
-
 
 class PluginRegistry:
     def __init__(self):

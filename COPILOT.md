@@ -1,5 +1,9 @@
 # GitHub Copilot Guidance — GULA Platform
 
+> **AUTHORITY:** The supreme AI constitution is `AI_OPERATING_CONSTITUTION.md`.
+> All rules below are summaries. The constitution is the single source of truth.
+> If any conflict exists, the constitution wins. See Section 1.4 for precedence.
+
 ## Permanent Constitution Rules
 
 These rules are ALWAYS in effect. Copilot MUST enforce them automatically.

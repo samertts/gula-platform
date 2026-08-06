@@ -1,30 +1,25 @@
 from __future__ import annotations
 
+from l10n import TranslationManager
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QComboBox,
-    QFrame,
     QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QListWidget,
     QListWidgetItem,
     QPushButton,
     QSplitter,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
+from session import SessionManager
+from widgets.charts import KpiCard, MiniChart
+from widgets.dialogs import DateRangeDialog
 
 from config import AppConfig
-from l10n import TranslationManager
-from session import SessionManager
-from widgets.charts import KpiCard, MiniChart, TrendChart
-from widgets.dialogs import DateRangeDialog
 
 
 class ReportsView(QWidget):

@@ -14,9 +14,14 @@ from typing import Any
 from app.domain_platform.core import SHARED_CORE_SERVICES as SHARED_CORE_SERVICES
 
 # Canonical Shared Core catalog: service -> (provider module, description).
-# Every entry maps to a real module in the GULA platform (``shared/`` or
-# ``backend/app/``). Domains consume these; they never rebuild them.
+# Every entry maps to a real, existing module in the GULA platform (``shared/``
+# or ``backend/app/``). Domains consume these; they never rebuild them. A
+# service may appear here only if exactly ONE authoritative provider exists;
+# providers that exist elsewhere in the tree are documented as consolidation
+# findings in MASTER_REMAINING_WORK.md and must be migrated before they may
+# join this registry.
 SHARED_CORE_CATALOG: dict[str, dict[str, str]] = {
+    # ── Identity & Digital Trust ────────────────────────────────────────────
     "identity": {
         "provider": "backend/app/identity",
         "description": "NIAM identity registry (person, enterprise, machine, guest).",
@@ -33,10 +38,47 @@ SHARED_CORE_CATALOG: dict[str, dict[str, str]] = {
         "provider": "backend/app/identity/models/niam_organization.py",
         "description": "Ministry/Directorate/Hospital/Laboratory hierarchy + org guard.",
     },
+    "users": {
+        "provider": "backend/app/identity/api/accounts.py",
+        "description": "User/account registry and lifecycle.",
+    },
+    "sessions": {
+        "provider": "backend/app/identity/api/sessions.py",
+        "description": "Session registry, workspace binding, max concurrent enforcement.",
+    },
     "audit": {
         "provider": "backend/app/identity/models/audit.py",
         "description": "Immutable, hash-chained audit log for every platform event.",
     },
+    "rbac": {
+        "provider": "shared/rbac/permissions.py",
+        "description": "Role-based access control primitives.",
+    },
+    "abac": {
+        "provider": "backend/app/security/abac.py",
+        "description": "Attribute-based access control (subject/resource/context attributes).",
+    },
+    "encryption": {
+        "provider": "shared/security/encryption.py",
+        "description": "Symmetric/asymmetric encryption and at-rest protection.",
+    },
+    "digital_signature": {
+        "provider": "shared/security/hmac.py",
+        "description": "HMAC signatures, integrity and signing primitives.",
+    },
+    "mfa": {
+        "provider": "shared/auth/mfa.py",
+        "description": "Multi-factor authentication primitives (TOTP/OTP).",
+    },
+    "auth_primitives": {
+        "provider": "shared/auth",
+        "description": "JWT, password hashing and passkey/WebAuthn primitives.",
+    },
+    "service_accounts": {
+        "provider": "backend/app/security/service_accounts.py",
+        "description": "Machine/service identity and credentials.",
+    },
+    # ── Core platform services ──────────────────────────────────────────────
     "notifications": {
         "provider": "backend/app/notifications",
         "description": "Push, email, SMS, in-app notification delivery.",
@@ -77,13 +119,78 @@ SHARED_CORE_CATALOG: dict[str, dict[str, str]] = {
         "provider": "shared/storage",
         "description": "Image and media asset handling.",
     },
+    "pdf_engine": {
+        "provider": "shared/pdf/generator.py",
+        "description": "PDF generation for reports, labels and documents.",
+    },
+    "printing": {
+        "provider": "shared/printing/printer.py",
+        "description": "Label/report printing primitives.",
+    },
+    "payments": {
+        "provider": "shared/payments.py",
+        "description": "Payment processing primitives (country-agnostic gateways).",
+    },
     "scheduler": {
         "provider": "shared/scheduler.py",
         "description": "Recurring job scheduling (domain workflows consume it).",
     },
+    "event_bus": {
+        "provider": "shared/events",
+        "description": "Event bus for async cross-domain events.",
+    },
+    "api_gateway": {
+        "provider": "backend/app/routes",
+        "description": "Gateway routing, versioning, rate limiting.",
+    },
+    "api_schemas": {
+        "provider": "shared/schemas",
+        "description": "Shared pagination/response schemas for stable API contracts.",
+    },
+    "validators": {
+        "provider": "shared/validators/common.py",
+        "description": "Cross-cutting input and value validators.",
+    },
     "localization": {
         "provider": "shared/localization.py",
         "description": "Arabic-first localization and i18n.",
+    },
+    "design_system": {
+        "provider": "shared/design_system",
+        "description": "RTL-first design tokens and components.",
+    },
+    "config_loader": {
+        "provider": "shared/config/loader.py",
+        "description": "Environment-aware configuration loading.",
+    },
+    "settings": {
+        "provider": "backend/app/config.py",
+        "description": "Platform configuration and settings.",
+    },
+    "dependency_injection": {
+        "provider": "shared/di_container",
+        "description": "DI container for modular composition.",
+    },
+    "device_integration": {
+        "provider": "shared/device",
+        "description": "Analyzer/modality integration (ASTM, HL7 adapters).",
+    },
+    "communication": {
+        "provider": "shared/communication",
+        "description": "Provider-neutral communication platform (channels, queue, policy).",
+    },
+    "ai_gateway": {
+        "provider": "shared/ai",
+        "description": "Self-hosted AI inference gateway (Ollama-first, provider-swappable).",
+    },
+    # ── Observability & resilience ──────────────────────────────────────────
+    "feature_flags": {
+        "provider": "shared/feature_flags.py",
+        "description": "Feature flag evaluation and rollout controls.",
+    },
+    "health_checks": {
+        "provider": "shared/health/checker.py",
+        "description": "Liveness/readiness health check primitives.",
     },
     "monitoring": {
         "provider": "backend/app/services/metrics_service.py",
@@ -93,21 +200,29 @@ SHARED_CORE_CATALOG: dict[str, dict[str, str]] = {
         "provider": "shared/logging",
         "description": "Structured logging and tracing.",
     },
-    "api_gateway": {
-        "provider": "backend/app/routes",
-        "description": "Gateway routing, versioning, rate limiting.",
+    "telemetry": {
+        "provider": "shared/observability/tracer.py",
+        "description": "Distributed tracing (OTLP) and metrics collection.",
+    },
+    "cache": {
+        "provider": "shared/cache/backends.py",
+        "description": "Multi-backend caching (Redis, in-memory).",
+    },
+    "retry": {
+        "provider": "shared/retry/decorators.py",
+        "description": "Retry decorators with backoff for resilience.",
+    },
+    "circuit_breaker": {
+        "provider": "shared/circuit_breaker.py",
+        "description": "Circuit breaker for failing dependencies.",
+    },
+    "backup_recovery": {
+        "provider": "shared/backup/manager.py",
+        "description": "Backup and recovery orchestration.",
     },
     "fhir_engine": {
         "provider": "backend/app/fhir",
         "description": "FHIR R4 engine (resources, profiles, mappers, validation).",
-    },
-    "event_bus": {
-        "provider": "shared/events",
-        "description": "Event bus for async cross-domain events.",
-    },
-    "settings": {
-        "provider": "backend/app/config.py",
-        "description": "Platform configuration and settings.",
     },
 }
 

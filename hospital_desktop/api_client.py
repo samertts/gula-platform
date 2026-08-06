@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import time
 from pathlib import Path
 from typing import Any
@@ -86,12 +85,11 @@ class ApiClient:
                 self.token = data.get("access_token") or data.get("token")
                 self.refresh_token = data.get("refresh_token", "")
                 return data
-            elif resp.status_code == 401:
+            if resp.status_code == 401:
                 raise AuthError("Invalid credentials", status_code=401)
-            elif resp.status_code == 422:
+            if resp.status_code == 422:
                 raise ValidationError("Validation error", status_code=422, response=resp.json())
-            else:
-                self._handle_error(resp)
+            self._handle_error(resp)
         except requests.ConnectionError:
             raise NetworkError("Cannot connect to server")
         except requests.Timeout:
@@ -137,16 +135,15 @@ class ApiClient:
 
         if status == 401:
             raise AuthError(detail.get("detail", "Unauthorized"), status, detail)
-        elif status == 403:
+        if status == 403:
             raise AuthError(detail.get("detail", "Forbidden"), status, detail)
-        elif status == 404:
+        if status == 404:
             raise NotFoundError(detail.get("detail", "Not found"), status, detail)
-        elif status == 422:
+        if status == 422:
             raise ValidationError(detail.get("detail", "Validation error"), status, detail)
-        elif status >= 500:
+        if status >= 500:
             raise ApiError(detail.get("detail", "Server error"), status, detail)
-        else:
-            raise ApiError(detail.get("detail", f"HTTP {status}"), status, detail)
+        raise ApiError(detail.get("detail", f"HTTP {status}"), status, detail)
 
     def _request(self, method: str, endpoint: str, **kwargs) -> Any:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"

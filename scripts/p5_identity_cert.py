@@ -229,10 +229,9 @@ async def _collect_checks(
 
 async def _verify_session_policy(db) -> dict:
     """E2E: max_sessions=1 policy terminates the OLDEST session on re-login."""
-    from sqlalchemy import select
-
     from app.identity.adaptive_auth.models import SessionPolicy
     from app.identity.models.session import UserSession
+    from sqlalchemy import select
 
     suffix = "policy"
     email = f"p5.{suffix}@demo.local"
@@ -308,7 +307,7 @@ async def run_all() -> dict:
         for account_type, (label, is_professional) in ACCOUNT_TYPES.items():
             try:
                 results[account_type] = await _collect_checks(db, account_type, label, is_professional)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 results[account_type] = {
                     "account_type": account_type,
                     "label": label,
@@ -318,7 +317,7 @@ async def run_all() -> dict:
                 db.rollback()
         try:
             results["session_policy"] = await _verify_session_policy(db)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             results["session_policy"] = {
                 "account_type": "session_policy",
                 "label": "Session Policy E2E",

@@ -35,6 +35,7 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 
+from ..models.mpi import Citizen, IdentityClaim, MergeAudit
 from ..services.identity import (
     hash_family_id,
     hash_national_id,
@@ -47,7 +48,6 @@ from .matcher import (
     classify,
     score,
 )
-from ..models.mpi import Citizen, IdentityClaim, MergeAudit
 
 # ── ULID (Crockford base32, 26 chars) ────────────────────────────────────────
 # Implemented inline to avoid adding a dependency.

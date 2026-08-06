@@ -2,9 +2,8 @@ import asyncio
 import logging
 import os
 import threading
-from typing import Any
-
 from platform.core.kernel import Kernel
+from typing import Any
 
 
 class RuntimeManager:

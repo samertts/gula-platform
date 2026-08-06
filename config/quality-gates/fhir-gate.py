@@ -25,11 +25,10 @@ Exit codes:
 import argparse
 import json
 import logging
-import os
 import pathlib
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger("fhir-gate")
@@ -283,7 +282,7 @@ def check_arabic_translations(fhir_dir: pathlib.Path) -> list[dict[str, Any]]:
 
         has_designation = "designation" in text
         has_translation = "translation" in text or "ar" in text.lower()
-        has_arabic = bool(re.search(r'[\u0600-\u06FF\u0750-\u077F]', text))
+        has_arabic = bool(re.search(r"[\u0600-\u06FF\u0750-\u077F]", text))
 
         if has_arabic and not has_designation and not has_translation:
             failures.append({
@@ -335,7 +334,7 @@ def print_report(failures: list[dict[str, Any]], json_output: bool = False) -> i
 
     if json_output:
         report = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "passed": len(errors) == 0,
             "summary": {"errors": len(errors), "warnings": len(warnings), "total": len(failures)},
             "failures": failures,
@@ -382,7 +381,7 @@ def main() -> int:
     if not fhir_dir.is_dir():
         logger.warning("FHIR directory does not exist: %s", fhir_dir)
         print(json.dumps({
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "passed": True,
             "summary": {"errors": 0, "warnings": 0, "total": 0},
             "failures": [],

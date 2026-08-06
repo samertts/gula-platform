@@ -1,0 +1,87 @@
+{
+  "target": "changeset:ORN-1E9C0FE9",
+  "mission_id": "ORN-1E9C0FE9",
+  "decision": "REJECT",
+  "overall_score": 96.5,
+  "reviewed_at": "2026-08-05T12:09:40.796262+00:00",
+  "area_reviews": [
+    {
+      "area": "architecture",
+      "score": 100.0,
+      "decision": "PASS",
+      "findings": []
+    },
+    {
+      "area": "code",
+      "score": 85.0,
+      "decision": "REJECT",
+      "findings": [
+        {
+          "area": "code",
+          "severity": "high",
+          "title": "Ruff violations in change-set",
+          "detail": "ruff found 1 violation(s) across 1 changed file(s)",
+          "evidence": "backend/app/routes/admin.py",
+          "suggested_fix": "run `ruff check --fix` on the change-set before merge"
+        }
+      ]
+    },
+    {
+      "area": "security",
+      "score": 100.0,
+      "decision": "PASS",
+      "findings": []
+    },
+    {
+      "area": "tests",
+      "score": 95.0,
+      "decision": "PASS WITH WARNINGS",
+      "findings": [
+        {
+          "area": "tests",
+          "severity": "medium",
+          "title": "Changed module lacks a test",
+          "detail": "no test found for backend/app/routes/admin.py",
+          "evidence": "admin.py",
+          "suggested_fix": "add a regression test alongside the change"
+        }
+      ]
+    },
+    {
+      "area": "deployment",
+      "score": 100.0,
+      "decision": "PASS",
+      "findings": []
+    },
+    {
+      "area": "documentation",
+      "score": 95.0,
+      "decision": "PASS WITH WARNINGS",
+      "findings": [
+        {
+          "area": "documentation",
+          "severity": "medium",
+          "title": "Change-set lacks documentation",
+          "detail": "public API, frontend, or new knowledge module changed without a doc update",
+          "evidence": "backend/app/routes/admin.py",
+          "suggested_fix": "add an ADR or doc update covering the change"
+        }
+      ]
+    },
+    {
+      "area": "performance",
+      "score": 100.0,
+      "decision": "PASS",
+      "findings": []
+    },
+    {
+      "area": "knowledge",
+      "score": 100.0,
+      "decision": "PASS",
+      "findings": []
+    }
+  ],
+  "files": [
+    "backend/app/routes/admin.py"
+  ]
+}

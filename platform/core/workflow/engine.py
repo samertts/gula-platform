@@ -1,8 +1,7 @@
 import logging
-from typing import Any
-
 from platform.core.workflow.context import WorkflowContext
-from platform.core.workflow.step import StepResult, StepStatus, WorkflowStep
+from platform.core.workflow.step import StepStatus, WorkflowStep
+from typing import Any
 
 
 class WorkflowEngine:

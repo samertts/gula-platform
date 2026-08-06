@@ -4,10 +4,8 @@ import json
 import logging
 import sqlite3
 import threading
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 from api_client import ApiClient, NetworkError
 
@@ -185,7 +183,7 @@ class OfflineDatabase:
         if not entity_id:
             raise ValueError("Entity must have an 'id' field")
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         data["updated_at"] = now
 
         with self._lock:
@@ -193,13 +191,13 @@ class OfflineDatabase:
                 f"SELECT id FROM {table} WHERE id = ?", (entity_id,)
             ).fetchone()
 
-            placeholders = ", ".join(f":{k}" for k in data.keys())
+            placeholders = ", ".join(f":{k}" for k in data)
             columns = ", ".join(data.keys())
             values = {k: (json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v)
                       for k, v in data.items()}
 
             if existing:
-                set_clause = ", ".join(f"{k} = :{k}" for k in data.keys())
+                set_clause = ", ".join(f"{k} = :{k}" for k in data)
                 self._conn.execute(
                     f"UPDATE {table} SET {set_clause} WHERE id = :id",
                     values,
@@ -264,13 +262,13 @@ class OfflineDatabase:
         with self._lock:
             self._conn.execute(
                 f"UPDATE {table} SET deleted = 1, updated_at = ? WHERE id = ?",
-                (datetime.now(timezone.utc).isoformat(), entity_id),
+                (datetime.now(UTC).isoformat(), entity_id),
             )
             self._conn.commit()
         self._log_change(entity_type, entity_id, "delete", {})
 
     def _log_change(self, entity_type: str, entity_id: str, action: str, data: dict):
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock:
             self._conn.execute(
                 "INSERT INTO sync_log (entity_type, entity_id, action, data, status, created_at) "
@@ -287,7 +285,7 @@ class OfflineDatabase:
         return [dict(r) for r in rows]
 
     def mark_synced(self, sync_id: int):
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         with self._lock:
             self._conn.execute(
                 "UPDATE sync_log SET status = 'synced', synced_at = ? WHERE id = ?",
@@ -374,7 +372,7 @@ class SyncEngine:
                     results["failed"] += 1
                     results["errors"].append(f"{entity_type}: {e}")
 
-            self._db.set_metadata("last_sync", datetime.now(timezone.utc).isoformat())
+            self._db.set_metadata("last_sync", datetime.now(UTC).isoformat())
             self._notify("success", f"Synced {results['synced']} items")
         except Exception as e:
             self._notify("error", str(e))
@@ -405,13 +403,13 @@ class SyncEngine:
                         try:
                             self._db.save(entity_type, item)
                             results["synced"] += 1
-                        except Exception as e:
+                        except Exception:
                             results["failed"] += 1
                     logger.info("Delta synced %d %s", len(items), entity_type)
                 except Exception as e:
                     logger.warning("Delta sync failed for %s: %s", entity_type, e)
 
-            self._db.set_metadata("last_sync", datetime.now(timezone.utc).isoformat())
+            self._db.set_metadata("last_sync", datetime.now(UTC).isoformat())
             self._notify("success", f"Delta sync: {results['synced']} updates")
         except Exception as e:
             self._notify("error", str(e))

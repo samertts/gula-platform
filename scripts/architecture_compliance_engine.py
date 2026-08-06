@@ -726,6 +726,23 @@ CROSS_CONTEXT_ALLOWLIST: dict[str, set[str]] = {
 }
 
 
+def _matches_ctx_pkg(mod: str, ctx_pkg: str) -> bool:
+    """Boundary-aware package match: 'app.ai_fabric' must not match 'ai'."""
+    for prefix in (f"app.{ctx_pkg}", f"..{ctx_pkg}"):
+        if mod == prefix or mod.startswith(prefix + "."):
+            return True
+    return False
+
+
+def _module_context(mod: str) -> str | None:
+    """Resolve an import module to a bounded-context name (first match wins)."""
+    for ctx_name, ctx_pkgs in BOUNDED_CONTEXTS.items():
+        for ctx_pkg in ctx_pkgs:
+            if _matches_ctx_pkg(mod, ctx_pkg):
+                return ctx_name
+    return None
+
+
 def check_cross_domain_violations(
     root: pathlib.Path,
     exclude_dirs: set[str],
@@ -744,23 +761,20 @@ def check_cross_domain_violations(
         checked += 1
         module_str = module_path(fp, root)
         imports = parse_imports(fp)
-        own_contexts = BOUNDED_CONTEXTS[pkg]
         allowlist = CROSS_CONTEXT_ALLOWLIST.get(pkg, set())
 
         for imp in imports:
             mod = imp["module"]
-            for ctx_name, ctx_pkgs in BOUNDED_CONTEXTS.items():
-                if ctx_name == pkg:
-                    continue
-                for ctx_pkg in ctx_pkgs:
-                    if mod.startswith(ctx_pkg) or mod.startswith(f"app.{ctx_pkg}"):
-                        if ctx_name not in allowlist:
-                            violations.append(
-                                f"{module_str}:{imp['lineno']} bounded context leakage: "
-                                f"'{pkg}' imports from '{ctx_name}' "
-                                f"({imp['module']}.{imp.get('name', '')})"
-                            )
-                        break
+            target_ctx = _module_context(mod)
+            if target_ctx is None or target_ctx == pkg:
+                continue
+            if target_ctx in allowlist:
+                continue
+            violations.append(
+                f"{module_str}:{imp['lineno']} bounded context leakage: "
+                f"'{pkg}' imports from '{target_ctx}' "
+                f"({imp['module']}.{imp.get('name', '')})"
+            )
 
     status = PASS
     if violations:

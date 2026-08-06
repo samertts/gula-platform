@@ -1,47 +1,70 @@
 #!/bin/bash
+# =============================================================================
+# GULA Platform — Continuous Backup
+# Self-hosted-first: writes local dumps by default. Optional off-site copy via
+# S3 only when AWS_ACCESS_KEY_ID is set (documented exception, never required).
+# =============================================================================
 set -euo pipefail
 
-BACKUP_DIR="/app/backups"
-S3_BUCKET="s3://gula-backups"
-RETENTION_DAYS=30
-RETENTION_WEEKS=12
-RETENTION_MONTHS=12
-DB_NAME="labdb"
-DB_USER="postgres"
+BACKUP_DIR="${BACKUP_DIR:-/app/backups}"
+S3_BUCKET="${S3_BUCKET:-s3://gula-backups}"
+RETENTION_DAYS="${RETENTION_DAYS:-30}"
+RETENTION_WEEKS="${RETENTION_WEEKS:-12}"
+RETENTION_MONTHS="${RETENTION_MONTHS:-12}"
+DB_NAME="${DB_NAME:-labdb}"
+DB_USER="${DB_USER:-postgres}"
+DB_HOST="${DB_HOST:-postgres}"
+DB_PORT="${DB_PORT:-5432}"
 DATE=$(date +%Y%m%d-%H%M%S)
 
 log() { printf '[BACKUP] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ) $*"; }
 
+upload_remote() {
+    if [ -n "${AWS_ACCESS_KEY_ID:-}" ] && command -v aws >/dev/null 2>&1; then
+        aws s3 cp "$1" "$2" --storage-class STANDARD_IA 2>/dev/null && return 0
+    fi
+    log "Remote upload skipped (no AWS credentials / aws cli) — local copy retained"
+    return 0
+}
+
 do_full_backup() {
     log "Starting full backup..."
     mkdir -p "$BACKUP_DIR/daily" "$BACKUP_DIR/weekly" "$BACKUP_DIR/monthly"
-    pg_dump -U "$DB_USER" -d "$DB_NAME" -Fc -f "$BACKUP_DIR/daily/${DB_NAME}_${DATE}.dump"
+    PGPASSWORD="${DB_PASSWORD:-}" pg_dump -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" \
+        -Fc -f "$BACKUP_DIR/daily/${DB_NAME}_${DATE}.dump"
     gzip "$BACKUP_DIR/daily/${DB_NAME}_${DATE}.dump"
     local FILE="$BACKUP_DIR/daily/${DB_NAME}_${DATE}.dump.gz"
-    if [ -f "$FILE" ]; then
-        aws s3 cp "$FILE" "$S3_BUCKET/daily/" --storage-class STANDARD_IA
-        log "Full backup uploaded: $FILE"
-    fi
+    upload_remote "$FILE" "$S3_BUCKET/daily/"
+    log "Full backup complete: $FILE"
 }
 
 do_wal_archive() {
     log "Archiving WAL files..."
-    aws s3 sync /var/lib/postgresql/data/pg_wal/ "$S3_BUCKET/wal/" --exclude "archive_status/*"
+    if command -v aws >/dev/null 2>&1 && [ -n "${AWS_ACCESS_KEY_ID:-}" ]; then
+        aws s3 sync /var/lib/postgresql/data/pg_wal/ "$S3_BUCKET/wal/" --exclude "archive_status/*" 2>/dev/null || true
+    fi
 }
+
 do_weekly_retention() {
     local DOW=$(date +%u)
     [ "$DOW" -ne 7 ] && return
     log "Running weekly retention..."
-    cp "$BACKUP_DIR/daily/${DB_NAME}_${DATE}.dump.gz" "$BACKUP_DIR/weekly/"
-    aws s3 cp "$BACKUP_DIR/weekly/${DB_NAME}_${DATE}.dump.gz" "$S3_BUCKET/weekly/"
+    local LATEST=$(ls -t "$BACKUP_DIR/daily/${DB_NAME}"_*.dump.gz 2>/dev/null | head -1)
+    [ -n "$LATEST" ] || return
+    cp "$LATEST" "$BACKUP_DIR/weekly/"
+    upload_remote "$BACKUP_DIR/weekly/$(basename "$LATEST")" "$S3_BUCKET/weekly/"
 }
+
 do_monthly_retention() {
     local DOM=$(date +%d)
     [ "$DOM" -ne 1 ] && return
     log "Running monthly retention..."
-    cp "$BACKUP_DIR/daily/${DB_NAME}_${DATE}.dump.gz" "$BACKUP_DIR/monthly/"
-    aws s3 cp "$BACKUP_DIR/monthly/${DB_NAME}_${DATE}.dump.gz" "$S3_BUCKET/monthly/"
+    local LATEST=$(ls -t "$BACKUP_DIR/daily/${DB_NAME}"_*.dump.gz 2>/dev/null | head -1)
+    [ -n "$LATEST" ] || return
+    cp "$LATEST" "$BACKUP_DIR/monthly/"
+    upload_remote "$BACKUP_DIR/monthly/$(basename "$LATEST")" "$S3_BUCKET/monthly/"
 }
+
 do_cleanup() {
     log "Cleaning backups older than ${RETENTION_DAYS}d..."
     find "$BACKUP_DIR/daily" -name "*.dump.gz" -mtime +"$RETENTION_DAYS" -delete
@@ -49,6 +72,7 @@ do_cleanup() {
     find "$BACKUP_DIR/monthly" -name "*.dump.gz" -mtime +$((RETENTION_MONTHS * 30)) -delete
     log "Cleanup complete."
 }
+
 do_metrics() {
     local BACKUP_SIZE=$(du -sh "$BACKUP_DIR/daily" 2>/dev/null | cut -f1)
     local BACKUP_AGE=0

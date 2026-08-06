@@ -54,6 +54,9 @@ jobs:
       - name: AI Kernel Self-Check (GULA-KERNEL-001)
         run: python3 scripts/kernel.py check
 
+      - name: Architecture Constitution Gate (PROGRAM-ALPHA — hard gate)
+        run: python3 scripts/architecture.py check
+
   brain-refresh:
     name: Brain Auto-Refresh (post-merge)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

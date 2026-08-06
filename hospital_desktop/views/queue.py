@@ -1,26 +1,24 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QColor, QFont
+from l10n import TranslationManager
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox,
     QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QPushButton,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
+from session import SessionManager
+from widgets.dialogs import AlertDialog
 
 from config import AppConfig
-from l10n import TranslationManager
-from session import SessionManager
-from widgets.charts import MiniChart, SearchBar
-from widgets.dialogs import AlertDialog
 
 
 class QueueView(QWidget):

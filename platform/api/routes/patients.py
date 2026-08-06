@@ -1,8 +1,7 @@
+from platform.api.dependencies.container import get_patient_service
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-
-from platform.api.dependencies.container import get_patient_service
 
 router = APIRouter()
 
@@ -13,8 +12,8 @@ async def create_patient(
     patient_service=Depends(get_patient_service),
 ) -> dict[str, Any]:
     try:
-        from platform.domain.services.patient import PatientData
         from datetime import date
+        from platform.domain.services.patient import PatientData
 
         dob = None
         if data.get("date_of_birth"):

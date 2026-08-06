@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from PySide6.QtCore import QTimer, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QPainter
-from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSizePolicy, QStatusBar, QWidget
-
-from session import SessionManager
 from l10n import TranslationManager
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QPainter
+from PySide6.QtWidgets import QLabel, QPushButton, QStatusBar, QWidget
+from session import SessionManager
 
 
 class StatusIndicator(QWidget):
@@ -65,7 +64,7 @@ class StatusBar(QStatusBar):
         self._user_label = QLabel(f"\U0001f464 {session.name or 'User'}")
         self._user_label.setStyleSheet("font-size: 12px; padding: 0 8px;")
 
-        self._alert_button = StatusBarButton(f"\U0001f514 0")
+        self._alert_button = StatusBarButton("\U0001f514 0")
         self._alert_count = 0
 
         self.addPermanentWidget(self._connection_indicator)

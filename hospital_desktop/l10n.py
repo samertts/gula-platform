@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import re
-
 
 class ArStrings:
     app_title = "نظام إدارة المستشفيات الوطني"

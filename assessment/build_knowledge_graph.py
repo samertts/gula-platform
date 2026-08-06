@@ -1,13 +1,16 @@
 """Repository Brain — Knowledge Graph Builder.
 Generates JSON knowledge graph, Mermaid diagrams, and cross-references.
 """
-import json, os, re, ast, hashlib
-from pathlib import Path
+import ast
+import json
+import os
+import re
 from collections import defaultdict
+from pathlib import Path
 
 REPO = Path("/home/samertts/workspace/projects/gula-platform")
 SKIP_DIRS = {".git", "__pycache__", ".venv", "node_modules", ".mypy_cache",
-             ".ruff_cache", ".pytest_cache", "__pycache__", "archive"}
+             ".ruff_cache", ".pytest_cache", "archive"}
 
 class KnowledgeGraph:
     def __init__(self):
@@ -98,7 +101,7 @@ class KnowledgeGraph:
                 self.routes.add((router_name, method.upper(), path))
             for match in re.finditer(r'@router\.(get|post|put|delete|patch)\(["\'](.+?)["\']', code):
                 method, path = match.groups()
-                func_match = re.search(r'async def (\w+)\(', code[match.end():match.end()+200])
+                func_match = re.search(r"async def (\w+)\(", code[match.end():match.end()+200])
                 func_name = func_match.group(1) if func_match else "unknown"
                 self.api_entities[router_name].add((method.upper(), path, func_name))
 
@@ -108,7 +111,7 @@ class KnowledgeGraph:
             return
         for f in sorted(models_dir.glob("*.py")):
             code = f.read_text(encoding="utf-8", errors="replace")
-            for match in re.finditer(r'class (\w+)\(Base\)', code):
+            for match in re.finditer(r"class (\w+)\(Base\)", code):
                 self.models.add((f.stem, match.group(1)))
 
     def _scan_events(self):
@@ -116,9 +119,9 @@ class KnowledgeGraph:
         if events_dir.exists():
             for f in sorted(events_dir.glob("*.py")):
                 code = f.read_text(encoding="utf-8", errors="replace")
-                for m in re.finditer(r'class (\w+Event)\b', code):
+                for m in re.finditer(r"class (\w+Event)\b", code):
                     self.events.add(m.group(1))
-                for m in re.finditer(r'class (\w+)\(', code):
+                for m in re.finditer(r"class (\w+)\(", code):
                     if "Event" in m.group(1):
                         self.events.add(m.group(1))
 
@@ -126,7 +129,7 @@ class KnowledgeGraph:
         events_py = REPO / "backend" / "app" / "core" / "events.py"
         if events_py.exists():
             code = events_py.read_text(encoding="utf-8", errors="replace")
-            for m in re.finditer(r'class (\w+Event)\b', code):
+            for m in re.finditer(r"class (\w+Event)\b", code):
                 self.events.add(m.group(1))
 
     def _scan_plugins(self):
@@ -134,9 +137,9 @@ class KnowledgeGraph:
         if plugins_dir.exists():
             for f in sorted(plugins_dir.glob("*.py")):
                 code = f.read_text(encoding="utf-8", errors="replace")
-                for m in re.finditer(r'class (\w+Plugin)\b', code):
+                for m in re.finditer(r"class (\w+Plugin)\b", code):
                     self.plugins.add(m.group(1))
-                for m in re.finditer(r'class (\w+Manager)\b', code):
+                for m in re.finditer(r"class (\w+Manager)\b", code):
                     self.plugins.add(m.group(1))
 
     def _scan_services(self):
@@ -146,7 +149,7 @@ class KnowledgeGraph:
                 if f.name == "__init__.py":
                     continue
                 code = f.read_text(encoding="utf-8", errors="replace")
-                for m in re.finditer(r'(?:class|def)\s+(\w+)', code):
+                for m in re.finditer(r"(?:class|def)\s+(\w+)", code):
                     self.services.add((f.stem, m.group(1)))
 
     def _scan_kernel_subsystems(self):
@@ -567,7 +570,7 @@ if __name__ == "__main__":
     # Write markdown report
     (output_dir / "repository_brain.md").write_text(generate_markdown_report(knowledge))
 
-    print(f"Repository Brain generated:")
+    print("Repository Brain generated:")
     print(f"  - {knowledge['node_count']} nodes, {knowledge['edge_count']} edges")
     print(f"  - {knowledge['route_count']} API routes, {knowledge['model_count']} models")
     print(f"  - {knowledge['event_count']} events, {knowledge['plugin_count']} plugins")

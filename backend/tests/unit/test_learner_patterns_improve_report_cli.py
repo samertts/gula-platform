@@ -13,9 +13,9 @@ from scripts.learner.cli import (
     run_audit,
     run_improve,
     run_playbook,
-    run_runbook,
     run_quality,
     run_report,
+    run_runbook,
 )
 from scripts.learner.improve import (
     load_proposals,

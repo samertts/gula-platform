@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
 
 from app.pipeline.normalizer import NormalizedResult
 from app.storage.db import InMemoryDB
-
-from datetime import UTC
 
 
 class ResultRepository:

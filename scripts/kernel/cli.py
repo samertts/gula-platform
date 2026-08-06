@@ -357,6 +357,13 @@ def _domains_commands() -> dict[str, object]:
     return domains_cli.DOMAINS_COMMANDS
 
 
+def _architecture_commands() -> dict[str, object]:
+    """Lazily import the Architecture Constitution CLI (PROGRAM-ALPHA)."""
+    from scripts.architecture import cli as architecture_cli
+
+    return architecture_cli.ARCHITECTURE_COMMANDS
+
+
 COMMANDS = {
     "audit": run_audit,
     "state": run_state,
@@ -487,6 +494,14 @@ COMMANDS = {
     "domain-docs": _domains_commands()["domain-docs"],
     "domain-report": _domains_commands()["domain-report"],
     "domain-check": _domains_commands()["domain-check"],
+    "architecture-scan": _architecture_commands()["architecture-scan"],
+    "architecture-gate": _architecture_commands()["architecture-gate"],
+    "architecture-country": _architecture_commands()["architecture-country"],
+    "architecture-report": _architecture_commands()["architecture-report"],
+    "architecture-constitution": _architecture_commands()["architecture-constitution"],
+    "architecture-docs": _architecture_commands()["architecture-docs"],
+    "architecture-baseline": _architecture_commands()["architecture-baseline"],
+    "architecture-check": _architecture_commands()["architecture-check"],
 }
 
 

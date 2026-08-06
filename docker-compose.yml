@@ -45,6 +45,11 @@ services:
       timeout: 5s
       retries: 15
       start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   # ---------------------------------------------------------------------------
   # CACHE
@@ -81,6 +86,11 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   # ---------------------------------------------------------------------------
   # BACKEND API
@@ -193,6 +203,11 @@ services:
       timeout: 10s
       retries: 20
       start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   # ---------------------------------------------------------------------------
   # BACKGROUND WORKER
@@ -244,6 +259,58 @@ services:
       - gula-net
 
   # ---------------------------------------------------------------------------
+  # BACKUP (scheduled pg_dump — self-hosted, local by default)
+  # ---------------------------------------------------------------------------
+  # Runs daily full backups + retention via cron inside a postgres image (has
+  # pg_dump). Writes to the host ./backups dir. Optional off-site copy when
+  # AWS credentials are provided in .env.
+
+  gula-backup:
+    image: postgres:17-alpine
+    container_name: gula-backup
+    restart: always
+    mem_limit: 256m
+    mem_reservation: 64m
+    cpus: "0.3"
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: labdb
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_DIR: /backups
+      RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+      RETENTION_WEEKS: ${BACKUP_RETENTION_WEEKS:-12}
+      RETENTION_MONTHS: ${BACKUP_RETENTION_MONTHS:-12}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-}
+    volumes:
+      - ./backups:/backups
+      - ./scripts/continuous-backup.sh:/usr/local/bin/gula-backup.sh:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "0 2 * * * /usr/local/bin/gula-backup.sh full" > /etc/crontabs/root
+        echo "0 3 * * * /usr/local/bin/gula-backup.sh wal" >> /etc/crontabs/root
+        echo "0 4 * * 0 /usr/local/bin/gula-backup.sh weekly" >> /etc/crontabs/root
+        echo "0 4 1 * * /usr/local/bin/gula-backup.sh monthly" >> /etc/crontabs/root
+        /usr/local/bin/gula-backup.sh full
+        exec crond -f -l 8
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - gula-net
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
   # FRONTEND (static files served by nginx)
   # ---------------------------------------------------------------------------
 
@@ -260,7 +327,7 @@ services:
     expose:
       - "80"
     volumes:
-      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend-v3/dist:/usr/share/nginx/html:ro
       - ./config/nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - gula-net
@@ -270,6 +337,11 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
 
   # ---------------------------------------------------------------------------
   # API GATEWAY (Nginx reverse proxy)
@@ -309,6 +381,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
     networks:
       - gula-net
 

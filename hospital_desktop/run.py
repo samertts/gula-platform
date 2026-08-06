@@ -8,7 +8,6 @@ Usage:
                   [--server http://localhost:8000] [--offline]
 """
 
-import os
 
 from main import main
 

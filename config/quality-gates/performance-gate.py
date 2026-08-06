@@ -25,11 +25,10 @@ import argparse
 import json
 import logging
 import os
-import pathlib
 import sys
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger("performance-gate")
@@ -248,7 +247,7 @@ def print_report(
 
     if json_output:
         report = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "passed": len(errors) == 0,
             "results": results,
             "summary": {"errors": len(errors), "warnings": len(all_warnings)},

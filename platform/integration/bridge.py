@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -34,7 +34,7 @@ class IntegrationBridge:
             await self._redis.connect()
 
         if self._config.enable_http:
-            from platform.integration.adapters.http_client import HttpClientAdapter, HTTPConfig
+            from platform.integration.adapters.http_client import HttpClientAdapter
             self._http = HttpClientAdapter()
             await self._http.connect()
 

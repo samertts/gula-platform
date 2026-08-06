@@ -1,39 +1,28 @@
 from __future__ import annotations
 
 import math
-import time
-from datetime import datetime
-from typing import Any
 
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
-    QBrush,
     QColor,
-    QConicalGradient,
     QCursor,
     QFont,
-    QLinearGradient,
     QPainter,
     QPainterPath,
     QPen,
-    QRadialGradient,
 )
 from PySide6.QtWidgets import (
-    QComboBox,
     QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QLineEdit,
-    QPushButton,
     QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
-
-from theme import ThemeManager
 
 
 class KpiCard(QFrame):
@@ -76,7 +65,7 @@ class KpiCard(QFrame):
 
         self._label_label = QLabel(label)
         self._label_label.setProperty("subheading", True)
-        self._label_label.setStyleSheet(f"font-size: 11px; color: #8b949e;")
+        self._label_label.setStyleSheet("font-size: 11px; color: #8b949e;")
         layout.addWidget(self._label_label)
 
     def set_value(self, value: str, trend: str = ""):

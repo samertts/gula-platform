@@ -14,13 +14,13 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
+from ..models.mpi import Citizen, IdentityClaim
 from ..models.patient import Patient
 from ..security.consent_dep import require_consent
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_user
 from ..security.rbac import require_own_lab, require_role
 from . import resolver as mpi_resolver
-from ..models.mpi import Citizen, IdentityClaim
 from .schemas import (
     CitizenResponse,
     MergeRequest,

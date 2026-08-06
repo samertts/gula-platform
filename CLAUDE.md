@@ -4,7 +4,9 @@
 > **Mandate:** This is the **first file every AI model and developer must read** when
 > working on this repository. It is the single authoritative entry point for project
 > philosophy, architecture, standards, governance, and knowledge navigation.
-> **Read chain:** `CLAUDE.md` → `AGENTS.md` (auto-loaded instructions + anchored state)
+> **Supreme Authority:** `AI_OPERATING_CONSTITUTION.md` (CONST-000001) supersedes all
+> rules below. If any conflict exists, the constitution wins.
+> **Read chain:** `AI_OPERATING_CONSTITUTION.md` → `CLAUDE.md` → `AGENTS.md` (auto-loaded instructions + anchored state)
 > → `docs/brain/PROJECT_BRAIN.md` (live knowledge index) → domain docs.
 > **Companion governance:** `docs/ai/AI_GOVERNANCE.md` (operations),
 > `docs/constitution/32_AI_EXECUTION_CONSTITUTION.md` (law),

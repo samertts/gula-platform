@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link } from "react-router";
 import { publicResultsApi } from "@/api/endpoints";
 import { Card, CardContent, Badge, Button } from "@/components/ui";
 import { LoadingSpinner } from "@/components/shared/PageComponents";

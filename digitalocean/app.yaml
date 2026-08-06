@@ -47,7 +47,7 @@ services:
         cpu:
           percent: 75
 
-    http_port: 10000
+    http_port: 8000
 
     health_check:
       http_path: /health

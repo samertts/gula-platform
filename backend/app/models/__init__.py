@@ -22,6 +22,7 @@ from .authorization import (
     UserTypeEnum,
 )
 from .canonical_patient import CanonicalPatient, CitizenLink, PatientLink
+from .communication_experience import NotificationEvent, UserNotification, UserPreferencesRow
 from .consent import Consent
 from .edge import (
     EdgeDevice,
@@ -78,6 +79,7 @@ __all__ = [
     "LabSubscription",
     "LabUser",
     "MedicalTerminologyNormalized",
+    "NotificationEvent",
     "OAuth2Client",
     "OAuth2Token",
     "Organization",
@@ -99,5 +101,7 @@ __all__ = [
     "UpgradeDemandScore",
     "UpgradeRequest",
     "User",
+    "UserNotification",
+    "UserPreferencesRow",
     "UserTypeEnum",
 ]

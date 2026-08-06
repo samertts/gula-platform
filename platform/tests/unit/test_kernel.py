@@ -12,7 +12,6 @@ class TestKernel:
         assert test_kernel.state == KernelState.UNINITIALIZED
 
     def test_kernel_boot(self, test_kernel):
-        import pytest
         with pytest.raises(Exception):
             pass
 
@@ -75,7 +74,6 @@ class TestDIContainer:
         assert result["key"] == "value"
 
     def test_resolve_missing_raises(self, test_kernel):
-        import pytest
         container = test_kernel.container()
         with pytest.raises(KeyError):
             container.resolve("does_not_exist")

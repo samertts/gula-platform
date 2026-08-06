@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardTitle, CardHeader, Input, Button, Badge } from "@/components/ui";
 import { PageHeader } from "@/components/shared/PageComponents";

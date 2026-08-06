@@ -1,8 +1,7 @@
+from platform.core.kernel import Kernel
 from typing import Any
 
 from fastapi import Request
-
-from platform.core.kernel import Kernel
 
 
 def _get_container(request: Request) -> Any:

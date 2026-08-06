@@ -1,19 +1,17 @@
-import logging
 from contextlib import asynccontextmanager
+from platform.api.middleware.platform import PlatformMiddleware
+from platform.api.routes.auth import router as auth_router
+from platform.api.routes.health import router as health_router
+from platform.api.routes.labs import router as labs_router
+from platform.api.routes.metrics import router as metrics_router
+from platform.api.routes.orders import router as orders_router
+from platform.api.routes.patients import router as patients_router
+from platform.api.routes.results import router as results_router
+from platform.apps.bootstrap import PlatformBootstrap
 from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
-from platform.api.routes.health import router as health_router
-from platform.api.routes.patients import router as patients_router
-from platform.api.routes.orders import router as orders_router
-from platform.api.routes.results import router as results_router
-from platform.api.routes.labs import router as labs_router
-from platform.api.routes.auth import router as auth_router
-from platform.api.routes.metrics import router as metrics_router
-from platform.api.middleware.platform import PlatformMiddleware
-from platform.apps.bootstrap import PlatformBootstrap
 
 
 class PlatformAPI:

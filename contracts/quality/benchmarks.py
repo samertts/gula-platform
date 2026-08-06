@@ -12,13 +12,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import time
-import math
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timedelta
+from collections.abc import Awaitable, Callable
+from dataclasses import asdict, dataclass, field
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable, Awaitable
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -118,7 +119,7 @@ class BenchmarkResult:
     def status(self) -> str:
         if self.passes_p95 and self.passes_p99:
             return "PASS"
-        elif self.passes_p99:
+        if self.passes_p99:
             return "WARN"
         return "FAIL"
 
@@ -1414,7 +1415,7 @@ def _generate_report(suite: BenchmarkSuiteResult):
     lines.append("- Default pool size: 6 connections per worker")
     lines.append("- Max overflow: 12 connections per worker")
     lines.append("- Workers: 3 (gunicorn)")
-    lines.append(f"- Budget: 3 × (6 + 12) = 54 connections (within Postgres default of 100)")
+    lines.append("- Budget: 3 × (6 + 12) = 54 connections (within Postgres default of 100)")
     lines.append("")
     lines.append(
         "Concurrent benchmarks above verify that the pool can handle simultaneous requests "

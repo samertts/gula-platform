@@ -1,9 +1,6 @@
 import functools
 import logging
-from typing import Any
-
 from platform.core.modules.module import Module, ModuleManifest
-
 
 _registered_modules: dict[str, type[Module]] = {}
 

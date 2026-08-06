@@ -1,15 +1,19 @@
 import logging
-from typing import Any
-
 from platform.core.kernel import Kernel
 from platform.core.modules.registrar import get_registered_modules
 from platform.core.observability import MetricsCollector
 from platform.domain.services import (
-    AuditService, NotificationService,
-    PatientService, OrderService, ResultService, LabService, AuthService,
+    AuditService,
+    AuthService,
+    LabService,
+    NotificationService,
+    OrderService,
+    PatientService,
+    ResultService,
 )
-from platform.integration.bridge import IntegrationBridge, BridgeConfig
-from platform.migration.bridge import ServiceBridge, MigrationState
+from platform.integration.bridge import BridgeConfig, IntegrationBridge
+from platform.migration.bridge import MigrationState, ServiceBridge
+from typing import Any
 
 
 class PlatformBootstrap:

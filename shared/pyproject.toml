@@ -32,6 +32,17 @@ celery = ["celery>=5.3.0"]
 where = ["."]
 include = ["shared", "shared.*"]
 
+[project.entry-points."gula.communication.providers"]
+resend = "shared.communication_providers.plugins.resend:ResendPlugin"
+telegram = "shared.communication_providers.plugins.telegram:TelegramPlugin"
+push = "shared.communication_providers.plugins.push:NoopPushPlugin"
+discord = "shared.communication_providers.plugins.discord:DiscordPlugin"
+slack = "shared.communication_providers.plugins.slack:SlackPlugin"
+teams = "shared.communication_providers.plugins.teams:TeamsPlugin"
+sms = "shared.communication_providers.plugins.sms:NoopSmsPlugin"
+webhook = "shared.communication_providers.plugins.webhook:WebhookPlugin"
+inapp = "shared.communication_providers.plugins.inapp:InAppPlugin"
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100

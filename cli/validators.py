@@ -1,7 +1,5 @@
-import ast
 import logging
 import os
-import re
 
 logger = logging.getLogger("gula.cli.validators")
 
@@ -84,7 +82,7 @@ class FHIRValidator:
 
         if os.path.isfile(fhir_route):
             content = _read_file(fhir_route)
-            if "router = APIRouter(prefix=\"/fhir\"" in content:
+            if 'router = APIRouter(prefix="/fhir"' in content:
                 findings["passed"].append("FHIR route registered at /fhir")
             else:
                 findings["warnings"].append("FHIR route exists but may not use /fhir prefix")
@@ -127,7 +125,6 @@ class FHIRValidator:
 
 class SecurityValidator:
     def validate_all(self) -> dict:
-        import importlib.util
 
         findings = {"passed": [], "warnings": [], "errors": []}
 

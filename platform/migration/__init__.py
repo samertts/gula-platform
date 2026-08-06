@@ -1,3 +1,3 @@
-from platform.migration.bridge import ServiceBridge, ModelBridge, MigrationState
+from platform.migration.bridge import MigrationState, ModelBridge, ServiceBridge
 
-__all__ = ["ServiceBridge", "ModelBridge", "MigrationState"]
+__all__ = ["MigrationState", "ModelBridge", "ServiceBridge"]

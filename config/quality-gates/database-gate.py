@@ -26,12 +26,11 @@ Exit codes:
 import argparse
 import json
 import logging
-import os
 import pathlib
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger("database-gate")
@@ -109,7 +108,7 @@ def check_non_nullable_columns(migrations_dir: pathlib.Path) -> list[dict[str, A
             continue
 
         col_pattern = re.compile(
-            r'sa\.Column\([\s\S]*?\)|Column\([\s\S]*?\)',
+            r"sa\.Column\([\s\S]*?\)|Column\([\s\S]*?\)",
             re.MULTILINE
         )
         for match in col_pattern.finditer(text):
@@ -141,7 +140,7 @@ def check_index_naming(migrations_dir: pathlib.Path) -> list[dict[str, Any]]:
         except (OSError, UnicodeDecodeError):
             continue
 
-        index_pattern = re.compile(r'op\.create_index\([\s\S]*?\)', re.MULTILINE)
+        index_pattern = re.compile(r"op\.create_index\([\s\S]*?\)", re.MULTILINE)
         for match in index_pattern.finditer(text):
             index_text = match.group()
             name_match = re.search(r"'([^']+)'|\"([^\"]+)\"", index_text)
@@ -179,12 +178,12 @@ def check_foreign_key_constraints(migrations_dir: pathlib.Path) -> list[dict[str
             continue
 
         create_table_pattern = re.compile(
-            r'op\.create_table\([\s\S]*?\)',
+            r"op\.create_table\([\s\S]*?\)",
             re.MULTILINE
         )
         for match in create_table_pattern.finditer(text):
             table_text = match.group()
-            columns = re.findall(r'sa\.Column\([\s\S]*?\)', table_text)
+            columns = re.findall(r"sa\.Column\([\s\S]*?\)", table_text)
             has_foreign_key = any("ForeignKey" in col for col in columns)
             if not has_foreign_key:
                 table_name_match = re.search(r"'(\w+)'", table_text)
@@ -251,7 +250,7 @@ def check_enum_consistency(migrations_dir: pathlib.Path) -> list[dict[str, Any]]
             continue
 
         enum_pattern = re.compile(
-            r'sa\.Enum\(([^)]+)\)',
+            r"sa\.Enum\(([^)]+)\)",
             re.MULTILINE
         )
         for match in enum_pattern.finditer(text):
@@ -286,7 +285,7 @@ def check_column_types(migrations_dir: pathlib.Path) -> list[dict[str, Any]]:
         except (OSError, UnicodeDecodeError):
             continue
 
-        varchar_pattern = re.compile(r'sa\.VARCHAR\(255\)|sa\.String\(255\)|VARCHAR\(255\)', re.IGNORECASE)
+        varchar_pattern = re.compile(r"sa\.VARCHAR\(255\)|sa\.String\(255\)|VARCHAR\(255\)", re.IGNORECASE)
         varchar_matches = varchar_pattern.findall(text)
         if len(varchar_matches) > 5:
             failures.append({
@@ -385,7 +384,7 @@ def check_table_naming(migrations_dir: pathlib.Path) -> list[dict[str, Any]]:
                         "severity": "warning",
                         "message": f"Table '{table_name}' does not follow plural naming convention",
                     })
-            if not re.match(r'^[a-z][a-z0-9_]*$', table_name):
+            if not re.match(r"^[a-z][a-z0-9_]*$", table_name):
                 failures.append({
                     "check": "table_naming",
                     "severity": "error",
@@ -437,7 +436,7 @@ def print_report(failures: list[dict[str, Any]], json_output: bool = False) -> i
 
     if json_output:
         report = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "passed": len(errors) == 0,
             "summary": {"errors": len(errors), "warnings": len(warnings), "total": len(failures)},
             "failures": failures,

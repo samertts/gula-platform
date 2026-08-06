@@ -1,5 +1,9 @@
 # Codex Guidance — GULA Platform
 
+> **AUTHORITY:** The supreme AI constitution is `AI_OPERATING_CONSTITUTION.md`.
+> All rules below are summaries. The constitution is the single source of truth.
+> If any conflict exists, the constitution wins. See Section 1.4 for precedence.
+
 ## Permanent Platform Constitution (PROGRAM-CONSTITUTION-001)
 
 This section is always enforced, even if not mentioned in prompts.

@@ -65,7 +65,7 @@ def parse_ts_roles() -> tuple[dict[str, int], dict[str, list[str]]]:
 def main() -> None:
     db = db_roles()
     sys.path.insert(0, str(ROOT))
-    from shared.rbac.permissions import (  # noqa: E402
+    from shared.rbac.permissions import (
         EXTENDED_ROLE_LEVELS,
         EXTENDED_ROLE_PERMISSIONS,
     )

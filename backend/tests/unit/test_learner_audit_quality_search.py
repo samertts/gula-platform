@@ -8,7 +8,8 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[3]))
 
-from scripts.learner import quality, search as search_module
+from scripts.learner import quality
+from scripts.learner import search as search_module
 from scripts.learner.audit import AUDIT_PATTERNS, audit_system, render_markdown
 from scripts.learner.quality import (
     QUALITY_CHECKS,
@@ -68,7 +69,7 @@ class TestQuality:
             monkeypatch.setattr(quality, directory_name, tmp_path / directory_name)
         (tmp_path / "SKILL_DIR").mkdir()
         duplicate = (
-            "---\nid: SKILL-000001\ntype: skill\ntitle: X\nversion: \"1.0\"\n"
+            '---\nid: SKILL-000001\ntype: skill\ntitle: X\nversion: "1.0"\n'
             "status: verified\nconfidence: verified\n---\n"
         )
         (tmp_path / "SKILL_DIR" / "SKILL-000001_a.md").write_text(duplicate, encoding="utf-8")

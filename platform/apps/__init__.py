@@ -1,6 +1,10 @@
 from platform.apps.modules import *
 
 __all__ = [
-    "PatientModule", "OrderModule", "ResultModule",
-    "LabModule", "UserModule", "ReportModule",
+    "LabModule",
+    "OrderModule",
+    "PatientModule",
+    "ReportModule",
+    "ResultModule",
+    "UserModule",
 ]

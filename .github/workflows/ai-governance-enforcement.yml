@@ -1,0 +1,66 @@
+name: AI Governance Enforcement
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ai-validation:
+    name: AI System Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Constitution Validator
+        run: python3 scripts/validate_constitution.py
+        continue-on-error: false
+
+      - name: Knowledge Validator
+        run: python3 scripts/validate_knowledge.py
+        continue-on-error: false
+
+      - name: AI System Validator
+        run: python3 scripts/validate_ai_system.py
+        continue-on-error: false
+
+      - name: Generate Validation Report
+        if: always()
+        run: |
+          python3 scripts/validate_ai_system.py --json > reports/validation/ai_validation.json 2>/dev/null || true
+          python3 scripts/validate_constitution.py --json > reports/validation/constitution_validation.json 2>/dev/null || true
+          python3 scripts/validate_knowledge.py --json > reports/validation/knowledge_validation.json 2>/dev/null || true
+        continue-on-error: true
+
+      - name: Upload Validation Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-validation-reports
+          path: reports/validation/*.json
+          retention-days: 30
+        continue-on-error: true
+
+  protected-files:
+    name: Protected File Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Protected Files
+        run: |
+          PROTECTED_FILES=("AI_OPERATING_CONSTITUTION.md" "AI_BOOTSTRAP.md")
+          for PF in "${PROTECTED_FILES[@]}"; do
+            if git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -q "^${PF}$"; then
+              echo "::warning::Protected file $PF was modified. Verify approval."
+            fi
+          done
+        continue-on-error: true

@@ -1,7 +1,7 @@
+from platform.api.dependencies.container import get_auth_service
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-
-from platform.api.dependencies.container import get_auth_service
 
 router = APIRouter()
 

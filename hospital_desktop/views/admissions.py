@@ -1,30 +1,25 @@
 from __future__ import annotations
 
+from l10n import TranslationManager
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
-    QFrame,
     QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
-    QSplitter,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
+from session import SessionManager
+from widgets.dialogs import AlertDialog
 
 from config import AppConfig
-from l10n import TranslationManager
-from session import SessionManager
-from widgets.charts import SearchBar
-from widgets.dialogs import AlertDialog, ConfirmDialog
 
 
 class AdmissionForm(QWidget):

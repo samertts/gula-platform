@@ -132,3 +132,24 @@ class TestMain:
     def test_missing_database_url_returns_2(self, monkeypatch, capsys):
         monkeypatch.delenv("DATABASE_URL", raising=False)
         assert rr.main(["--old-key", OLD_KEY, "--new-key", NEW_KEY]) == 2
+
+
+class TestIdentifierValidation:
+    def test_accepts_plain_identifiers(self):
+        assert rr._validate_identifier("national_citizens", "table") == "national_citizens"
+        assert rr._validate_identifier("national_id_hash", "column") == "national_id_hash"
+
+    def test_rejects_sql_injection_identifiers(self):
+        payload = "national_id_hash; DROP TABLE audit_logs"
+        with pytest.raises(SystemExit):
+            rr._validate_identifier(payload, "column")
+
+    def test_rejects_quoted_identifier(self):
+        with pytest.raises(SystemExit):
+            rr._validate_identifier("national_id_hash' OR '1'='1", "column")
+
+    def test_main_rejects_injection_table(self, monkeypatch, capsys):
+        monkeypatch.setenv("DATABASE_URL", "sqlite:///memory")
+        with pytest.raises(SystemExit):
+            rr.main(["--old-key", OLD_KEY, "--new-key", NEW_KEY,
+                     "--table", "citizens; DELETE FROM audit_logs"])

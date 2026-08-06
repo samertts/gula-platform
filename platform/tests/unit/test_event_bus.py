@@ -14,8 +14,8 @@ class TestEventBus:
             received.append(event.data)
 
         event_bus.subscribe("test.events", handler)
-        from platform.core.event_bus import Event
         import asyncio
+        from platform.core.event_bus import Event
         asyncio.run(event_bus.publish("test.events", Event(topic="test.events", data={"msg": "hello"})))
         assert len(received) == 1
         assert received[0]["msg"] == "hello"
@@ -30,7 +30,6 @@ class TestEventBus:
         assert event_bus.topic_count() == 1
 
     def test_dead_letter_queue(self, event_bus):
-        import pytest
 
         async def failing_handler(event):
             raise ValueError("fail")
@@ -64,8 +63,8 @@ class TestEventBus:
             received.append(event.topic)
 
         event_bus.add_global_subscriber(global_handler)
-        from platform.core.event_bus import Event
         import asyncio
+        from platform.core.event_bus import Event
         asyncio.run(event_bus.publish("any.topic", Event(topic="any.topic")))
         assert "any.topic" in received
 

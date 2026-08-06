@@ -2,7 +2,7 @@ FROM python:3.12-slim AS builder
 
 WORKDIR /deps
 
-COPY backend/requirements.txt .
+COPY requirements.txt .
 
 RUN pip install --no-cache-dir --compile --prefix=/install -r requirements.txt
 
@@ -19,23 +19,23 @@ RUN pip install dumb-init
 
 COPY --from=builder /install /usr/local
 
-COPY backend/app ./app
-COPY backend/migrations ./migrations
-COPY backend/alembic.ini .
+COPY app ./app
+COPY migrations ./migrations
+COPY alembic.ini .
 
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
 
-EXPOSE 10000
+EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:10000/health', timeout=3)"
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"
 
 ENTRYPOINT ["dumb-init", "--"]
 
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", \
      "--workers", "2", \
      "--timeout", "30", \
-     "--bind", "0.0.0.0:10000", \
+     "--bind", "0.0.0.0:8000", \
      "--access-logfile", "-", \
      "--error-logfile", "-"]

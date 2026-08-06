@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import re
 import sys
 from collections.abc import Callable
 from typing import Any
@@ -41,6 +42,15 @@ logger = logging.getLogger("gula.reencrypt")
 
 DEFAULT_TABLE = "national_citizens"
 DEFAULT_COLUMN = "national_id_hash"
+
+_IDENTIFIER_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+
+
+def _validate_identifier(name: str, kind: str) -> str:
+    """Reject table/column names that could escape SQL string composition."""
+    if not _IDENTIFIER_RE.fullmatch(name):
+        raise SystemExit(f"Invalid {kind} name: {name!r}")
+    return name
 
 
 def reencrypt_value(old_key: str, new_key: str, value: str | None) -> str | None:
@@ -161,6 +171,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.old_key == args.new_key:
         logger.error("Old and new keys are identical — nothing to do.")
         return 2
+
+    args.table = _validate_identifier(args.table, "table")
+    args.column = _validate_identifier(args.column, "column")
 
     database_url = os.getenv("DATABASE_URL")
     if not database_url:

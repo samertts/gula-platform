@@ -1,30 +1,22 @@
 from __future__ import annotations
 
+from l10n import TranslationManager
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont, QKeySequence
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QComboBox,
     QDateEdit,
-    QDateTimeEdit,
     QDialog,
-    QDialogButtonBox,
     QFormLayout,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
-    QMessageBox,
-    QProgressBar,
     QPushButton,
-    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
-    QWidget,
 )
 
 from config import AppConfig
-from l10n import TranslationManager
 
 
 class LoginDialog(QDialog):

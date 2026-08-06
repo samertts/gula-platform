@@ -202,7 +202,6 @@ class TestReportGeneration:
 
     @pytest.fixture()
     def report(self, request, api_catalog: dict, platform_version: str, report_path: Path):
-        from conftest import load_json
         results = {
             "report_metadata": {
                 "generated_at": datetime.now().isoformat(),

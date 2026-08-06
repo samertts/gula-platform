@@ -15,11 +15,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi.testclient import TestClient  # noqa: E402
-
-from app.main import app  # noqa: E402
-from app.database import SessionLocal  # noqa: E402
-from app.models.lab_user import LabUser  # noqa: E402
+from app.database import SessionLocal
+from app.main import app
+from app.models.lab_user import LabUser
+from fastapi.testclient import TestClient
 
 MASTER_EMAIL = "admin@gula-platform.org"
 MASTER_PASS = "Master@2026!E2E"
@@ -89,7 +88,7 @@ def main() -> None:
             print(f"  {role:20s} ERROR {r.status_code}: {r.text[:150]}")
 
     # ── TOTP enrollment for MFA-required demo roles (idempotent) ──────────────
-    from app.security.mfa_service import MFAService  # noqa: E402
+    from app.security.mfa_service import MFAService
 
     db = SessionLocal()
     mfa_secrets: dict[str, str] = {}

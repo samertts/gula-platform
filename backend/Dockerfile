@@ -44,10 +44,10 @@ RUN python -m compileall app/
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
 
-EXPOSE 10000
+EXPOSE 8000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:10000/health', timeout=3)"
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"
 
 # Startup: gunicorn with UvicornWorker.
 #   Migrations (alembic upgrade head) run as a Render preDeployCommand — NOT here.
@@ -56,6 +56,6 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
 CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", \
      "--workers", "2", \
      "--timeout", "30", \
-     "--bind", "0.0.0.0:10000", \
+     "--bind", "0.0.0.0:8000", \
      "--access-logfile", "-", \
      "--error-logfile", "-"]

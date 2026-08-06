@@ -1,8 +1,7 @@
+from platform.api.dependencies.container import get_lab_service
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-
-from platform.api.dependencies.container import get_lab_service
 
 router = APIRouter()
 

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import asyncio
-import sys
 
 
 async def migrate():
@@ -16,7 +15,12 @@ async def migrate():
     print("\nMigration readiness:")
     from platform.migration import ServiceBridge
     bridge = ServiceBridge()
-    from platform.domain.services import PatientService, OrderService, ResultService, LabService, AuthService
+    from platform.domain.services import (
+        LabService,
+        OrderService,
+        PatientService,
+        ResultService,
+    )
     from platform.integration.adapters.monolith import MonolithAdapter
 
     monolith = MonolithAdapter()

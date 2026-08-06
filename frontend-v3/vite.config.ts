@@ -10,7 +10,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['vite.svg'],
+      injectRegister: false,
+      includeAssets: ['vite.svg', 'sw.js'],
       manifest: {
         name: 'غولا | GULA - نظام معلومات المختبرات',
         short_name: 'غولا',

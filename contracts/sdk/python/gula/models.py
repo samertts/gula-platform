@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any
 
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
-    field_validator,
-    model_validator,
 )
 
 
@@ -30,7 +27,7 @@ class LoginRequest(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    refresh_token: Optional[str] = None
+    refresh_token: str | None = None
 
 
 class ChangePasswordRequest(BaseModel):
@@ -40,13 +37,13 @@ class ChangePasswordRequest(BaseModel):
 
 class LabRegisterRequest(BaseModel):
     lab_name: str = Field(..., min_length=2, max_length=200)
-    license_number: Optional[str] = None
-    lab_type: Optional[str] = Field(None, pattern=r"^(private|government|hospital|clinic)$")
-    director_name: Optional[str] = Field(None, min_length=2, max_length=200)
-    city: Optional[str] = None
-    address: Optional[str] = None
-    phone: Optional[str] = None
-    website: Optional[str] = None
+    license_number: str | None = None
+    lab_type: str | None = Field(None, pattern=r"^(private|government|hospital|clinic)$")
+    director_name: str | None = Field(None, min_length=2, max_length=200)
+    city: str | None = None
+    address: str | None = None
+    phone: str | None = None
+    website: str | None = None
     admin_name: str = Field(..., min_length=2, max_length=200)
     email: str = Field(..., max_length=100)
     password: str = Field(..., min_length=8, max_length=128)
@@ -55,18 +52,18 @@ class LabRegisterRequest(BaseModel):
 class CitizenRegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=200)
     phone: str = Field(..., pattern=r"^\+?[0-9]{7,15}$")
-    email: Optional[str] = Field(None, max_length=100)
+    email: str | None = Field(None, max_length=100)
     password: str = Field(..., min_length=8, max_length=128)
-    gender: Optional[str] = None
-    birth_date: Optional[str] = None
-    national_id: Optional[str] = Field(None, pattern=r"^[0-9]{10,14}$")
+    gender: str | None = None
+    birth_date: str | None = None
+    national_id: str | None = Field(None, pattern=r"^[0-9]{10,14}$")
 
 
 class StaffRegisterRequest(BaseModel):
     name: str = Field(..., min_length=2, max_length=200)
     email: str = Field(..., max_length=100)
     password: str = Field(..., min_length=8, max_length=128)
-    role: Optional[str] = Field(None, pattern=r"^(technician|doctor|receptionist|staff)$")
+    role: str | None = Field(None, pattern=r"^(technician|doctor|receptionist|staff)$")
 
 
 class DoctorRegisterRequest(BaseModel):
@@ -75,20 +72,20 @@ class DoctorRegisterRequest(BaseModel):
     phone: str = Field(..., pattern=r"^\+?[0-9]{7,15}$")
     password: str = Field(..., min_length=8, max_length=128)
     license_number: str = Field(..., min_length=3, max_length=100)
-    specialty: Optional[str] = None
-    workplace: Optional[str] = None
-    national_id: Optional[str] = Field(None, pattern=r"^[0-9]{10,14}$")
+    specialty: str | None = None
+    workplace: str | None = None
+    national_id: str | None = Field(None, pattern=r"^[0-9]{10,14}$")
 
 
 class DeviceTokenRequest(BaseModel):
     device_token: str = Field(..., min_length=10, max_length=512)
     platform: str = Field(..., pattern=r"^(android|ios)$")
-    app_version: Optional[str] = None
+    app_version: str | None = None
 
 
 class CitizenLoginRequest(BaseModel):
     identifier: str
-    email: Optional[str] = None
+    email: str | None = None
     password: str
 
 
@@ -98,12 +95,12 @@ class NationalIdRequest(BaseModel):
 
 class CreateLabRequest(BaseModel):
     name: str = Field(..., min_length=2)
-    city: Optional[str] = None
-    phone: Optional[str] = None
+    city: str | None = None
+    phone: str | None = None
     admin_email: str
     admin_password: str = Field(..., min_length=8)
     admin_name: str
-    province_id: Optional[int] = None
+    province_id: int | None = None
 
 
 class CreateUserRequest(BaseModel):
@@ -111,24 +108,24 @@ class CreateUserRequest(BaseModel):
     email: str
     password: str = Field(..., min_length=8)
     role: str
-    lab_id: Optional[int] = None
-    province_id: Optional[int] = None
-    national_id: Optional[str] = None
+    lab_id: int | None = None
+    province_id: int | None = None
+    national_id: str | None = None
 
 
 class ChangeRoleRequest(BaseModel):
     role: str
-    province_id: Optional[int] = None
+    province_id: int | None = None
 
 
 class KillSwitchRequest(BaseModel):
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class LinkIdentityRequest(BaseModel):
     patient_id: int
     national_id: str
-    confirm_name: Optional[str] = None
+    confirm_name: str | None = None
 
 
 # ── Patients Domain ────────────────────────────────────────────────────────────
@@ -137,22 +134,22 @@ class LinkIdentityRequest(BaseModel):
 class PatientCreate(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=200)
     phone: str = Field(..., pattern=r"^(07\d{9}|9647\d{9})$")
-    birth_date: Optional[str] = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
-    gender: Optional[str] = Field(None, pattern=r"^(male|female|M|F)$")
-    email: Optional[str] = Field(None, max_length=100)
-    national_id: Optional[str] = Field(None, pattern=r"^\d{12,13}$")
-    family_id: Optional[str] = Field(None, pattern=r"^\d{1,15}$")
-    force_create: Optional[bool] = None
-    guardian_id: Optional[int] = None
+    birth_date: str | None = Field(None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    gender: str | None = Field(None, pattern=r"^(male|female|M|F)$")
+    email: str | None = Field(None, max_length=100)
+    national_id: str | None = Field(None, pattern=r"^\d{12,13}$")
+    family_id: str | None = Field(None, pattern=r"^\d{1,15}$")
+    force_create: bool | None = None
+    guardian_id: int | None = None
 
 
 class PatientUpdate(BaseModel):
-    full_name: Optional[str] = Field(None, min_length=2, max_length=200)
-    phone: Optional[str] = None
-    birth_date: Optional[str] = None
-    gender: Optional[str] = None
-    email: Optional[str] = None
-    family_id: Optional[str] = Field(None, pattern=r"^\d{1,15}$")
+    full_name: str | None = Field(None, min_length=2, max_length=200)
+    phone: str | None = None
+    birth_date: str | None = None
+    gender: str | None = None
+    email: str | None = None
+    family_id: str | None = Field(None, pattern=r"^\d{1,15}$")
 
 
 class ScanRequest(BaseModel):
@@ -163,26 +160,26 @@ class ScanRequest(BaseModel):
 
 
 class LabUpdate(BaseModel):
-    name: Optional[str] = None
-    city: Optional[str] = None
-    address: Optional[str] = None
-    phone: Optional[str] = None
-    license_number: Optional[str] = None
-    lab_type: Optional[str] = Field(None, pattern=r"^(private|government|hospital|clinic)$")
-    director_name: Optional[str] = None
-    website: Optional[str] = None
+    name: str | None = None
+    city: str | None = None
+    address: str | None = None
+    phone: str | None = None
+    license_number: str | None = None
+    lab_type: str | None = Field(None, pattern=r"^(private|government|hospital|clinic)$")
+    director_name: str | None = None
+    website: str | None = None
 
 
 class CreateEmployeeRequest(BaseModel):
     name: str
     email: str
     password: str = Field(..., min_length=8)
-    role: Optional[str] = Field(None, pattern=r"^(admin|staff|technician)$")
+    role: str | None = Field(None, pattern=r"^(admin|staff|technician)$")
 
 
 class UpdateEmployeeRequest(BaseModel):
-    is_active: Optional[bool] = None
-    role: Optional[str] = Field(None, pattern=r"^(admin|staff|technician)$")
+    is_active: bool | None = None
+    role: str | None = Field(None, pattern=r"^(admin|staff|technician)$")
 
 
 # ── Orders & Results Domain ────────────────────────────────────────────────────
@@ -190,17 +187,17 @@ class UpdateEmployeeRequest(BaseModel):
 
 class ResultItem(BaseModel):
     test_name: str
-    value: Optional[float] = None
-    value_text: Optional[str] = None
-    unit: Optional[str] = None
-    normal_range_low: Optional[float] = None
-    normal_range_high: Optional[float] = None
+    value: float | None = None
+    value_text: str | None = None
+    unit: str | None = None
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
 
 
 class CreateOrderRequest(BaseModel):
     patient_id: int = Field(..., ge=1)
-    doctor_name: Optional[str] = Field(None, max_length=200)
-    doctor_user_id: Optional[int] = None
+    doctor_name: str | None = Field(None, max_length=200)
+    doctor_user_id: int | None = None
     results: list[ResultItem]
 
 
@@ -210,16 +207,16 @@ class AnalyzeRequest(BaseModel):
 
 class BatchResultItem(BaseModel):
     test_name: str
-    value: Optional[float] = None
-    value_text: Optional[str] = None
-    unit: Optional[str] = None
-    normal_range_low: Optional[float] = None
-    normal_range_high: Optional[float] = None
+    value: float | None = None
+    value_text: str | None = None
+    unit: str | None = None
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
 
 
 class BatchOrderItem(BaseModel):
     patient_id: int
-    doctor_name: Optional[str] = None
+    doctor_name: str | None = None
     results: list[BatchResultItem]
 
 
@@ -230,42 +227,42 @@ class BatchOrderRequest(BaseModel):
 class TestResultCreate(BaseModel):
     health_id: str = Field(..., min_length=3, max_length=20)
     test_name: str = Field(..., min_length=1, max_length=200)
-    test_code: Optional[str] = Field(None, max_length=50)
-    value: Optional[float] = None
-    value_text: Optional[str] = Field(None, max_length=200)
-    unit: Optional[str] = Field(None, max_length=20)
-    normal_range_low: Optional[float] = None
-    normal_range_high: Optional[float] = None
-    sample_type: Optional[str] = Field(None, max_length=50)
-    doctor_name: Optional[str] = Field(None, max_length=200)
-    order_id: Optional[int] = None
+    test_code: str | None = Field(None, max_length=50)
+    value: float | None = None
+    value_text: str | None = Field(None, max_length=200)
+    unit: str | None = Field(None, max_length=20)
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
+    sample_type: str | None = Field(None, max_length=50)
+    doctor_name: str | None = Field(None, max_length=200)
+    order_id: int | None = None
 
 
 class TestResultRead(BaseModel):
     id: int
     citizen_id: int
     lab_id: int
-    device_id: Optional[int] = None
+    device_id: int | None = None
     test_code: str
     test_name_en: str
     test_name_ar: str
-    category: Optional[str] = None
-    result_value: Optional[float] = None
-    result_text: Optional[str] = None
-    unit: Optional[str] = None
-    reference_min: Optional[float] = None
-    reference_max: Optional[float] = None
+    category: str | None = None
+    result_value: float | None = None
+    result_text: str | None = None
+    unit: str | None = None
+    reference_min: float | None = None
+    reference_max: float | None = None
     status: str
     is_critical: bool
     is_abnormal: bool
-    abnormality_direction: Optional[str] = None
+    abnormality_direction: str | None = None
     sample_collected_at: str
-    result_completed_at: Optional[str] = None
-    verified_at: Optional[str] = None
-    verified_by: Optional[str] = None
+    result_completed_at: str | None = None
+    verified_at: str | None = None
+    verified_by: str | None = None
     sample_barcode: str
-    ordering_physician: Optional[str] = None
-    clinical_notes: Optional[str] = None
+    ordering_physician: str | None = None
+    clinical_notes: str | None = None
     created_at: str
     updated_at: str
 
@@ -277,9 +274,9 @@ class TestResultBrief(BaseModel):
     test_code: str
     test_name_en: str
     test_name_ar: str
-    result_value: Optional[float] = None
-    result_text: Optional[str] = None
-    unit: Optional[str] = None
+    result_value: float | None = None
+    result_text: str | None = None
+    unit: str | None = None
     status: str
     is_abnormal: bool
     is_critical: bool
@@ -291,61 +288,61 @@ class TestResultBrief(BaseModel):
 class TestResultForCitizen(BaseModel):
     id: int
     test_name_ar: str
-    result_value: Optional[float] = None
-    result_text: Optional[str] = None
-    unit: Optional[str] = None
-    reference_min: Optional[float] = None
-    reference_max: Optional[float] = None
+    result_value: float | None = None
+    result_text: str | None = None
+    unit: str | None = None
+    reference_min: float | None = None
+    reference_max: float | None = None
     status: str
     is_abnormal: bool
     is_critical: bool
-    abnormality_direction: Optional[str] = None
+    abnormality_direction: str | None = None
     sample_collected_at: str
-    result_completed_at: Optional[str] = None
+    result_completed_at: str | None = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class TestResultValidateRequest(BaseModel):
     test_name: str = Field(..., min_length=1, max_length=200)
-    test_code: Optional[str] = Field(None, max_length=50)
-    value: Optional[float] = None
-    unit: Optional[str] = Field(None, max_length=20)
-    normal_range_low: Optional[float] = None
-    normal_range_high: Optional[float] = None
+    test_code: str | None = Field(None, max_length=50)
+    value: float | None = None
+    unit: str | None = Field(None, max_length=20)
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
 
 
 class DeviceResult(BaseModel):
     test_name: str
-    value: Optional[float] = None
-    value_text: Optional[str] = None
-    unit: Optional[str] = None
-    normal_range_low: Optional[float] = None
-    normal_range_high: Optional[float] = None
+    value: float | None = None
+    value_text: str | None = None
+    unit: str | None = None
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
 
 
 class DeviceSubmission(BaseModel):
     barcode: str
-    device_id: Optional[str] = None
+    device_id: str | None = None
     results: list[DeviceResult]
 
 
 class SuggestRequest(BaseModel):
     operation: str
-    payload: Optional[dict] = None
-    entity_type: Optional[str] = None
-    entity_id: Optional[int] = None
-    confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
-    rationale: Optional[str] = None
+    payload: dict | None = None
+    entity_type: str | None = None
+    entity_id: int | None = None
+    confidence: float | None = Field(None, ge=0.0, le=1.0)
+    rationale: str | None = None
 
 
 class RejectRequest(BaseModel):
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000)
-    context: Optional[str] = Field(None, max_length=500)
+    context: str | None = Field(None, max_length=500)
 
 
 # ── Samples Domain ─────────────────────────────────────────────────────────────
@@ -354,16 +351,16 @@ class ChatRequest(BaseModel):
 class SampleCreate(BaseModel):
     order_id: int
     sample_type: str
-    collected_by: Optional[str] = None
-    notes: Optional[str] = None
-    storage_location: Optional[str] = None
+    collected_by: str | None = None
+    notes: str | None = None
+    storage_location: str | None = None
 
 
 class SampleUpdate(BaseModel):
-    status: Optional[str] = None
-    rejection_reason: Optional[str] = None
-    notes: Optional[str] = None
-    storage_location: Optional[str] = None
+    status: str | None = None
+    rejection_reason: str | None = None
+    notes: str | None = None
+    storage_location: str | None = None
 
 
 # ── Consent Domain ─────────────────────────────────────────────────────────────
@@ -401,7 +398,7 @@ class RevokeResponse(BaseModel):
 class CheckResponse(BaseModel):
     allowed: bool
     scope: str
-    expires_at: Optional[str] = None
+    expires_at: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -411,24 +408,24 @@ class CheckResponse(BaseModel):
 
 class ClaimItemCreate(BaseModel):
     test_code: str
-    description: Optional[str] = None
-    quantity: Optional[int] = Field(default=1, ge=1)
+    description: str | None = None
+    quantity: int | None = Field(default=1, ge=1)
     unit_price: float = Field(..., gt=0)
     amount: float = Field(..., gt=0)
 
 
 class ClaimCreate(BaseModel):
     patient_id: int
-    order_id: Optional[int] = None
+    order_id: int | None = None
     items: list[ClaimItemCreate]
-    idempotency_key: Optional[str] = None
+    idempotency_key: str | None = None
 
 
 class ClaimItemResponse(BaseModel):
     id: int
     claim_id: int
     test_code: str
-    description: Optional[str] = None
+    description: str | None = None
     quantity: int
     unit_price: float
     amount: float
@@ -440,15 +437,15 @@ class ClaimResponse(BaseModel):
     id: int
     lab_id: int
     patient_id: int
-    order_id: Optional[int] = None
+    order_id: int | None = None
     status: str
-    total_amount: Optional[float] = None
+    total_amount: float | None = None
     currency: str
-    idempotency_key: Optional[str] = None
-    external_ref: Optional[str] = None
-    submitted_at: Optional[str] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    idempotency_key: str | None = None
+    external_ref: str | None = None
+    submitted_at: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
     items: list[ClaimItemResponse]
 
     model_config = ConfigDict(from_attributes=True)
@@ -459,12 +456,12 @@ class ClaimResponse(BaseModel):
 
 class RegisterDeviceRequest(BaseModel):
     public_key_pem: str = Field(..., min_length=80, max_length=8000)
-    role_mode: Optional[str] = Field(None, pattern=r"^(personal|clinic|enterprise)$")
-    display_name: Optional[str] = Field(None, max_length=200)
-    agent_version: Optional[str] = Field(None, max_length=32)
-    os_platform: Optional[str] = Field(None, max_length=64)
-    capabilities: Optional[dict] = None
-    attestation_blob: Optional[str] = Field(None, max_length=8000)
+    role_mode: str | None = Field(None, pattern=r"^(personal|clinic|enterprise)$")
+    display_name: str | None = Field(None, max_length=200)
+    agent_version: str | None = Field(None, max_length=32)
+    os_platform: str | None = Field(None, max_length=64)
+    capabilities: dict | None = None
+    attestation_blob: str | None = Field(None, max_length=8000)
 
 
 class RegisterDeviceResponse(BaseModel):
@@ -481,45 +478,45 @@ class RegisterDeviceResponse(BaseModel):
 
 class DeviceSummary(BaseModel):
     device_id: str
-    display_name: Optional[str] = None
+    display_name: str | None = None
     role_mode: str
     status: str
     trust_score: float
-    last_seen_at: Optional[str] = None
-    agent_version: Optional[str] = None
+    last_seen_at: str | None = None
+    agent_version: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class DeviceDetail(BaseModel):
     device_id: str
-    display_name: Optional[str] = None
+    display_name: str | None = None
     role_mode: str
     status: str
     trust_score: float
-    last_seen_at: Optional[str] = None
-    agent_version: Optional[str] = None
-    capabilities: Optional[dict] = None
+    last_seen_at: str | None = None
+    agent_version: str | None = None
+    capabilities: dict | None = None
     registered_at: str
-    revoked_at: Optional[str] = None
-    quarantined_at: Optional[str] = None
+    revoked_at: str | None = None
+    quarantined_at: str | None = None
     kill_switched: bool
-    latest_telemetry: Optional[dict] = None
+    latest_telemetry: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class TaskSubmitRequest(BaseModel):
     kind: str = Field(..., min_length=3, max_length=64)
-    payload: Optional[dict] = None
-    priority: Optional[int] = Field(None, ge=1, le=10)
-    privacy_level: Optional[str] = Field(None, pattern=r"^(standard|sensitive|phi)$")
-    required_caps: Optional[list[str]] = None
-    min_trust: Optional[float] = Field(None, ge=0.0, le=100.0)
-    timeout_s: Optional[int] = Field(None, ge=5, le=600)
-    max_attempts: Optional[int] = Field(None, ge=1, le=10)
-    idempotency_key: Optional[str] = Field(None, max_length=80)
-    expires_in_s: Optional[int] = Field(None, ge=10, le=86400)
+    payload: dict | None = None
+    priority: int | None = Field(None, ge=1, le=10)
+    privacy_level: str | None = Field(None, pattern=r"^(standard|sensitive|phi)$")
+    required_caps: list[str] | None = None
+    min_trust: float | None = Field(None, ge=0.0, le=100.0)
+    timeout_s: int | None = Field(None, ge=5, le=600)
+    max_attempts: int | None = Field(None, ge=1, le=10)
+    idempotency_key: str | None = Field(None, max_length=80)
+    expires_in_s: int | None = Field(None, ge=10, le=86400)
 
 
 class TaskSummary(BaseModel):
@@ -528,10 +525,10 @@ class TaskSummary(BaseModel):
     status: str
     priority: int
     privacy_level: str
-    device_id: Optional[str] = None
+    device_id: str | None = None
     attempts: int
     created_at: str
-    completed_at: Optional[str] = None
+    completed_at: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -542,13 +539,13 @@ class TaskDetail(BaseModel):
     status: str
     priority: int
     privacy_level: str
-    device_id: Optional[str] = None
+    device_id: str | None = None
     attempts: int
     created_at: str
-    completed_at: Optional[str] = None
-    payload: Optional[dict] = None
-    result: Optional[dict] = None
-    error: Optional[str] = None
+    completed_at: str | None = None
+    payload: dict | None = None
+    result: dict | None = None
+    error: str | None = None
     timeout_s: int
     max_attempts: int
 
@@ -562,8 +559,8 @@ class PolicyView(BaseModel):
     battery_floor_pct: int
     cpu_cap_pct: int
     ram_cap_mb: int
-    allow_kinds: Optional[list[str]] = None
-    deny_kinds: Optional[list[str]] = None
+    allow_kinds: list[str] | None = None
+    deny_kinds: list[str] | None = None
     min_trust_score: float
     offline_queue_max: int
     kill_switch: bool
@@ -572,66 +569,66 @@ class PolicyView(BaseModel):
 
 
 class PolicyUpdate(BaseModel):
-    max_concurrent_per_device: Optional[int] = Field(None, ge=1, le=64)
-    max_devices_per_lab: Optional[int] = Field(None, ge=1, le=10000)
-    idle_only: Optional[bool] = None
-    battery_floor_pct: Optional[int] = Field(None, ge=0, le=100)
-    cpu_cap_pct: Optional[int] = Field(None, ge=10, le=100)
-    ram_cap_mb: Optional[int] = Field(None, ge=128, le=131072)
-    allow_kinds: Optional[list[str]] = None
-    deny_kinds: Optional[list[str]] = None
-    min_trust_score: Optional[float] = Field(None, ge=0.0, le=100.0)
-    offline_queue_max: Optional[int] = Field(None, ge=10, le=100000)
-    kill_switch: Optional[bool] = None
+    max_concurrent_per_device: int | None = Field(None, ge=1, le=64)
+    max_devices_per_lab: int | None = Field(None, ge=1, le=10000)
+    idle_only: bool | None = None
+    battery_floor_pct: int | None = Field(None, ge=0, le=100)
+    cpu_cap_pct: int | None = Field(None, ge=10, le=100)
+    ram_cap_mb: int | None = Field(None, ge=128, le=131072)
+    allow_kinds: list[str] | None = None
+    deny_kinds: list[str] | None = None
+    min_trust_score: float | None = Field(None, ge=0.0, le=100.0)
+    offline_queue_max: int | None = Field(None, ge=10, le=100000)
+    kill_switch: bool | None = None
 
 
 class HeartbeatRequest(BaseModel):
-    agent_version: Optional[str] = Field(None, max_length=32)
-    capabilities: Optional[dict] = None
-    telemetry: Optional[dict] = None
-    completed_task_uids: Optional[list[str]] = None
+    agent_version: str | None = Field(None, max_length=32)
+    capabilities: dict | None = None
+    telemetry: dict | None = None
+    completed_task_uids: list[str] | None = None
 
 
 class HeartbeatResponse(BaseModel):
     server_time: str
     next_heartbeat_s: int
-    task: Optional[dict] = None
-    models: Optional[list[dict]] = None
-    quarantined: Optional[bool] = None
-    kill_switched: Optional[bool] = None
+    task: dict | None = None
+    models: list[dict] | None = None
+    quarantined: bool | None = None
+    kill_switched: bool | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class TaskResultRequest(BaseModel):
     success: bool
-    result: Optional[dict] = None
-    error: Optional[str] = Field(None, max_length=2000)
-    duration_ms: Optional[int] = Field(None, ge=0, le=600000)
+    result: dict | None = None
+    error: str | None = Field(None, max_length=2000)
+    duration_ms: int | None = Field(None, ge=0, le=600000)
 
 
 class ModelRegisterRequest(BaseModel):
     name: str = Field(..., max_length=120)
     version: str = Field(..., max_length=40)
-    runtime: Optional[str] = Field(None, pattern=r"^(ollama|llamacpp|onnx|custom)$")
-    format: Optional[str] = Field(None, max_length=32)
-    quantization: Optional[str] = Field(None, max_length=32)
-    size_mb: Optional[float] = Field(None, ge=0)
-    min_ram_mb: Optional[float] = Field(None, ge=0)
-    min_vram_mb: Optional[float] = Field(None, ge=0)
-    sha256: Optional[str] = Field(None, max_length=80)
-    source_url: Optional[str] = Field(None, max_length=500)
-    metadata: Optional[dict] = None
+    runtime: str | None = Field(None, pattern=r"^(ollama|llamacpp|onnx|custom)$")
+    format: str | None = Field(None, max_length=32)
+    quantization: str | None = Field(None, max_length=32)
+    size_mb: float | None = Field(None, ge=0)
+    min_ram_mb: float | None = Field(None, ge=0)
+    min_vram_mb: float | None = Field(None, ge=0)
+    sha256: str | None = Field(None, max_length=80)
+    source_url: str | None = Field(None, max_length=500)
+    metadata: dict | None = None
 
 
 class ModelStatusUpdate(BaseModel):
     status: str = Field(..., pattern=r"^(draft|canary|active|retired|blocked)$")
-    rollout_pct: Optional[float] = Field(None, ge=0.0, le=100.0)
+    rollout_pct: float | None = Field(None, ge=0.0, le=100.0)
 
 
 class ModelAssignRequest(BaseModel):
-    lab_id: Optional[int] = None
-    device_id: Optional[str] = Field(None, max_length=64)
+    lab_id: int | None = None
+    device_id: str | None = Field(None, max_length=64)
 
 
 # ── MPI Domain ─────────────────────────────────────────────────────────────────
@@ -641,19 +638,19 @@ class ResolveRequest(BaseModel):
     lab_id: int = Field(..., ge=1)
     patient_id: int = Field(..., ge=1)
     name: str = Field(..., min_length=2, max_length=200)
-    phone: Optional[str] = Field(None, max_length=30)
-    birth_date: Optional[str] = None
-    gender: Optional[str] = Field(None, pattern=r"^[MFmf]$")
-    national_id: Optional[str] = Field(None, max_length=30)
-    family_id: Optional[str] = Field(None, max_length=30)
+    phone: str | None = Field(None, max_length=30)
+    birth_date: str | None = None
+    gender: str | None = Field(None, pattern=r"^[MFmf]$")
+    national_id: str | None = Field(None, max_length=30)
+    family_id: str | None = Field(None, max_length=30)
 
 
 class ResolveResponse(BaseModel):
     citizen_ulid: str
     match_method: str
-    match_score: Optional[float] = None
+    match_score: float | None = None
     created: bool
-    features: Optional[dict] = None
+    features: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -661,10 +658,10 @@ class ResolveResponse(BaseModel):
 class CitizenResponse(BaseModel):
     citizen_ulid: str
     nid_verified: bool
-    birth_year: Optional[int] = None
-    gender: Optional[str] = None
+    birth_year: int | None = None
+    gender: str | None = None
     status: str
-    merged_into_ulid: Optional[str] = None
+    merged_into_ulid: str | None = None
     created_at: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -691,8 +688,8 @@ class PendingReviewItem(BaseModel):
     citizen_ulid: str
     lab_id: int
     local_patient_id: int
-    match_score: Optional[float] = None
-    match_features: Optional[dict] = None
+    match_score: float | None = None
+    match_features: dict | None = None
     created_at: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -714,37 +711,37 @@ class ResolveDecision(BaseModel):
 
 
 class RetrievalRefIn(BaseModel):
-    source: Optional[str] = Field(None, max_length=64)
-    doc_id: Optional[str] = Field(None, max_length=128)
-    doc_title: Optional[str] = Field(None, max_length=256)
-    chunk_text: Optional[str] = Field(None, max_length=4000)
-    similarity: Optional[float] = Field(None, ge=0.0, le=1.0)
-    rank: Optional[int] = Field(None, ge=0, le=10000)
+    source: str | None = Field(None, max_length=64)
+    doc_id: str | None = Field(None, max_length=128)
+    doc_title: str | None = Field(None, max_length=256)
+    chunk_text: str | None = Field(None, max_length=4000)
+    similarity: float | None = Field(None, ge=0.0, le=1.0)
+    rank: int | None = Field(None, ge=0, le=10000)
 
 
 class InteractionIn(BaseModel):
     anonymous_session_id: str = Field(..., min_length=1, max_length=128)
-    language: Optional[str] = Field(None, max_length=8)
-    region: Optional[str] = Field(None, max_length=64)
-    intent: Optional[str] = Field(None, max_length=64)
-    prompt: Optional[str] = Field(None, max_length=8000)
-    prompt_redacted: Optional[bool] = None
-    response: Optional[str] = Field(None, max_length=16000)
-    response_model: Optional[str] = Field(None, max_length=64)
-    retrieval_strategy: Optional[str] = Field(None, max_length=64)
-    retrieval_refs: Optional[list[RetrievalRefIn]] = None
-    biomarkers: Optional[list[str]] = None
-    latency_ms: Optional[int] = Field(None, ge=0, le=600000)
-    status: Optional[str] = Field(None, max_length=20)
-    error_code: Optional[str] = Field(None, max_length=64)
-    confidence_score: Optional[float] = Field(None, ge=0.0, le=1.0)
-    risk_level: Optional[str] = Field(None, max_length=32)
-    escalation_recommended: Optional[bool] = None
-    retrieval_used: Optional[bool] = None
-    source_quality: Optional[float] = Field(None, ge=0.0, le=1.0)
-    unsupported_claims: Optional[int] = Field(None, ge=0, le=1000)
-    fallback_generation: Optional[bool] = None
-    safety_flags: Optional[list[str]] = None
+    language: str | None = Field(None, max_length=8)
+    region: str | None = Field(None, max_length=64)
+    intent: str | None = Field(None, max_length=64)
+    prompt: str | None = Field(None, max_length=8000)
+    prompt_redacted: bool | None = None
+    response: str | None = Field(None, max_length=16000)
+    response_model: str | None = Field(None, max_length=64)
+    retrieval_strategy: str | None = Field(None, max_length=64)
+    retrieval_refs: list[RetrievalRefIn] | None = None
+    biomarkers: list[str] | None = None
+    latency_ms: int | None = Field(None, ge=0, le=600000)
+    status: str | None = Field(None, max_length=20)
+    error_code: str | None = Field(None, max_length=64)
+    confidence_score: float | None = Field(None, ge=0.0, le=1.0)
+    risk_level: str | None = Field(None, max_length=32)
+    escalation_recommended: bool | None = None
+    retrieval_used: bool | None = None
+    source_quality: float | None = Field(None, ge=0.0, le=1.0)
+    unsupported_claims: int | None = Field(None, ge=0, le=1000)
+    fallback_generation: bool | None = None
+    safety_flags: list[str] | None = None
 
 
 class InteractionOut(BaseModel):
@@ -759,15 +756,15 @@ class FeedbackIn(BaseModel):
     interaction_id: str
     anonymous_session_id: str = Field(..., min_length=1, max_length=128)
     signal: str
-    notes: Optional[str] = Field(None, max_length=2000)
+    notes: str | None = Field(None, max_length=2000)
 
 
 class UnresolvedIn(BaseModel):
-    interaction_id: Optional[str] = None
-    anonymous_session_id: Optional[str] = Field(None, max_length=128)
+    interaction_id: str | None = None
+    anonymous_session_id: str | None = Field(None, max_length=128)
     question: str = Field(..., min_length=1, max_length=8000)
-    language: Optional[str] = Field(None, max_length=8)
-    category: Optional[str] = Field(None, max_length=64)
+    language: str | None = Field(None, max_length=8)
+    category: str | None = Field(None, max_length=64)
 
 
 # ── Governance Domain ──────────────────────────────────────────────────────────
@@ -777,49 +774,49 @@ class NodeCreate(BaseModel):
     node_type: str
     code: str = Field(..., min_length=1, max_length=100)
     name_ar: str = Field(..., min_length=1, max_length=300)
-    name_en: Optional[str] = None
-    parent_id: Optional[int] = None
-    governorate: Optional[str] = None
-    district: Optional[str] = None
-    metadata_json: Optional[dict] = None
+    name_en: str | None = None
+    parent_id: int | None = None
+    governorate: str | None = None
+    district: str | None = None
+    metadata_json: dict | None = None
 
 
 class DelegationCreate(BaseModel):
     delegator_node_id: int
     delegate_node_id: int
-    scope: Optional[dict] = None
-    reason: Optional[str] = None
+    scope: dict | None = None
+    reason: str | None = None
 
 
 class ActingAppoint(BaseModel):
     node_id: int
     acting_node_id: int
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class WorkerCreate(BaseModel):
     employee_code: str
     full_name_ar: str
     profession: str
-    full_name_en: Optional[str] = None
-    national_id_hash: Optional[str] = None
-    specialization: Optional[str] = None
-    organization_node_id: Optional[int] = None
-    department: Optional[str] = None
-    unit: Optional[str] = None
-    employment_date: Optional[str] = None
-    contact_phone: Optional[str] = None
-    contact_email: Optional[str] = None
+    full_name_en: str | None = None
+    national_id_hash: str | None = None
+    specialization: str | None = None
+    organization_node_id: int | None = None
+    department: str | None = None
+    unit: str | None = None
+    employment_date: str | None = None
+    contact_phone: str | None = None
+    contact_email: str | None = None
 
 
 class LabRegister(BaseModel):
     lab_code: str
     name_ar: str
     lab_type: str
-    name_en: Optional[str] = None
-    organization_node_id: Optional[int] = None
-    license_number: Optional[str] = None
-    governorate: Optional[str] = None
+    name_en: str | None = None
+    organization_node_id: int | None = None
+    license_number: str | None = None
+    governorate: str | None = None
 
 
 # ── LIMS Domain ────────────────────────────────────────────────────────────────
@@ -829,40 +826,40 @@ class SpecimenRegisterRequest(BaseModel):
     order_id: int
     barcode: str
     specimen_type: str
-    container_type: Optional[str] = None
-    volume_ml: Optional[float] = None
-    clinical_info: Optional[str] = None
+    container_type: str | None = None
+    volume_ml: float | None = None
+    clinical_info: str | None = None
 
 
 class SpecimenTransitionRequest(BaseModel):
     target_status: str
-    notes: Optional[str] = None
-    rejection_reason: Optional[str] = None
+    notes: str | None = None
+    rejection_reason: str | None = None
 
 
 class OrderCreateRequest(BaseModel):
     order_id: int
     accession_number: str
-    priority: Optional[str] = None
-    clinical_note: Optional[str] = None
-    diagnosis_code: Optional[str] = None
+    priority: str | None = None
+    clinical_note: str | None = None
+    diagnosis_code: str | None = None
 
 
 class ResultCreateRequest(BaseModel):
     specimen_id: int
     test_code: str
     test_name: str
-    value_numeric: Optional[float] = None
-    value_text: Optional[str] = None
-    unit: Optional[str] = None
-    instrument_id: Optional[int] = None
-    loinc_code: Optional[str] = None
+    value_numeric: float | None = None
+    value_text: str | None = None
+    unit: str | None = None
+    instrument_id: int | None = None
+    loinc_code: str | None = None
 
 
 class ResultValidateRequest(BaseModel):
-    notes: Optional[str] = None
-    signature_hash: Optional[str] = None
-    action: Optional[str] = None
+    notes: str | None = None
+    signature_hash: str | None = None
+    action: str | None = None
 
 
 class IQCRunRequest(BaseModel):
@@ -871,54 +868,54 @@ class IQCRunRequest(BaseModel):
     measured_value: float
     expected_value: float
     sd: float
-    level: Optional[str] = None
-    lot_number: Optional[str] = None
-    instrument_id: Optional[int] = None
-    notes: Optional[str] = None
+    level: str | None = None
+    lot_number: str | None = None
+    instrument_id: int | None = None
+    notes: str | None = None
 
 
 class InstrumentCreateRequest(BaseModel):
     model_id: int
     instrument_code: str
-    serial_number: Optional[str] = None
-    workstation_id: Optional[int] = None
-    ip_address: Optional[str] = None
-    port: Optional[int] = None
+    serial_number: str | None = None
+    workstation_id: int | None = None
+    ip_address: str | None = None
+    port: int | None = None
 
 
 class MaintenanceRecordRequest(BaseModel):
     maintenance_type: str
     title: str
-    description: Optional[str] = None
-    performed_at: Optional[str] = None
-    cost: Optional[float] = None
-    notes: Optional[str] = None
+    description: str | None = None
+    performed_at: str | None = None
+    cost: float | None = None
+    notes: str | None = None
 
 
 class CalibrationRecordRequest(BaseModel):
     calibration_type: str
-    calibrator_lot: Optional[str] = None
-    passed: Optional[bool] = None
-    notes: Optional[str] = None
+    calibrator_lot: str | None = None
+    passed: bool | None = None
+    notes: str | None = None
 
 
 class InventoryRequest(BaseModel):
     code: str
     name: str
-    name_ar: Optional[str] = None
+    name_ar: str | None = None
     current_quantity: float
     unit: str
-    minimum_quantity: Optional[float] = None
-    supplier_id: Optional[int] = None
-    storage_location: Optional[str] = None
+    minimum_quantity: float | None = None
+    supplier_id: int | None = None
+    storage_location: str | None = None
 
 
 class ReportGenerateRequest(BaseModel):
     order_id: int
     report_number: str
-    locale: Optional[str] = None
-    title: Optional[str] = None
-    title_ar: Optional[str] = None
+    locale: str | None = None
+    title: str | None = None
+    title_ar: str | None = None
 
 
 class DeviceMessageRequest(BaseModel):
@@ -941,53 +938,53 @@ class ASTMResultResponse(BaseModel):
 
 class UpgradeRequestBody(BaseModel):
     target_tier: str
-    target_deployment_mode: Optional[str] = None
-    target_security_level: Optional[str] = None
-    reason: Optional[str] = None
+    target_deployment_mode: str | None = None
+    target_security_level: str | None = None
+    reason: str | None = None
 
 
 class DemandSignalBody(BaseModel):
     lab_id: int
     target_tier: str
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class SetTierBody(BaseModel):
     tier: str
-    deployment_mode: Optional[str] = None
-    security_level: Optional[str] = None
-    billing_cycle: Optional[str] = None
-    notes: Optional[str] = None
+    deployment_mode: str | None = None
+    security_level: str | None = None
+    billing_cycle: str | None = None
+    notes: str | None = None
 
 
 class FeatureFlagBody(BaseModel):
     feature_key: str
     is_enabled: bool
-    reason: Optional[str] = None
-    expires_at: Optional[str] = None
+    reason: str | None = None
+    expires_at: str | None = None
 
 
 # ── Tasks Domain ───────────────────────────────────────────────────────────────
 
 
 class TaskPayload(BaseModel):
-    task_id: Optional[str] = None
+    task_id: str | None = None
     type: str
-    payload: Optional[dict] = None
-    retry_count: Optional[int] = None
-    max_retries: Optional[int] = None
-    timeout_s: Optional[int] = None
-    enqueued_at: Optional[str] = None
+    payload: dict | None = None
+    retry_count: int | None = None
+    max_retries: int | None = None
+    timeout_s: int | None = None
+    enqueued_at: str | None = None
 
 
 class TaskResult(BaseModel):
     task_id: str
     status: str
-    result: Optional[Any] = None
-    error: Optional[str] = None
-    attempt: Optional[int] = None
-    completed_at: Optional[str] = None
-    duration_ms: Optional[float] = None
+    result: Any | None = None
+    error: str | None = None
+    attempt: int | None = None
+    completed_at: str | None = None
+    duration_ms: float | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -997,7 +994,7 @@ class TaskResult(BaseModel):
 
 class NotifyRequest(BaseModel):
     order_id: int
-    channel: Optional[str] = Field(None, pattern=r"^(whatsapp|sms)$")
+    channel: str | None = Field(None, pattern=r"^(whatsapp|sms)$")
 
 
 # ── Quality Control Domain ─────────────────────────────────────────────────────
@@ -1008,11 +1005,11 @@ class QCSubmit(BaseModel):
     level: str
     expected_value: float
     measured_value: float
-    sd: Optional[float] = None
-    unit: Optional[str] = None
-    instrument_name: Optional[str] = None
-    lot_number: Optional[str] = None
-    notes: Optional[str] = None
+    sd: float | None = None
+    unit: str | None = None
+    instrument_name: str | None = None
+    lot_number: str | None = None
+    notes: str | None = None
 
 
 class QCBatchSubmit(BaseModel):
@@ -1025,21 +1022,21 @@ class QCBatchSubmit(BaseModel):
 class LegacyTestResultCreate(BaseModel):
     citizen_id: int = Field(..., ge=1)
     lab_id: int = Field(..., ge=1)
-    device_id: Optional[int] = Field(None, ge=1)
+    device_id: int | None = Field(None, ge=1)
     test_code: str = Field(..., min_length=1, max_length=30)
     test_name_en: str = Field(..., min_length=1, max_length=200)
     test_name_ar: str = Field(..., min_length=1, max_length=200)
-    category: Optional[str] = Field(None, max_length=50)
-    result_value: Optional[float] = None
-    result_text: Optional[str] = Field(None, max_length=200)
-    unit: Optional[str] = Field(None, max_length=20)
-    reference_min: Optional[float] = None
-    reference_max: Optional[float] = None
-    status: Optional[str] = Field(None, pattern=r"^(pending|completed|verified|rejected)$")
-    is_critical: Optional[bool] = None
-    is_abnormal: Optional[bool] = None
-    abnormality_direction: Optional[str] = None
+    category: str | None = Field(None, max_length=50)
+    result_value: float | None = None
+    result_text: str | None = Field(None, max_length=200)
+    unit: str | None = Field(None, max_length=20)
+    reference_min: float | None = None
+    reference_max: float | None = None
+    status: str | None = Field(None, pattern=r"^(pending|completed|verified|rejected)$")
+    is_critical: bool | None = None
+    is_abnormal: bool | None = None
+    abnormality_direction: str | None = None
     sample_collected_at: str
     sample_barcode: str = Field(..., min_length=1, max_length=64)
-    ordering_physician: Optional[str] = Field(None, max_length=200)
-    clinical_notes: Optional[str] = None
+    ordering_physician: str | None = Field(None, max_length=200)
+    clinical_notes: str | None = None

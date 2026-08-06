@@ -1,4 +1,5 @@
 import asyncio
+
 import pytest
 
 
@@ -75,7 +76,6 @@ class TestQueryBus:
         assert result["result"] == 42
 
     def test_unknown_query_raises(self, query_bus):
-        import pytest
         from platform.core.cqrs import Query
         with pytest.raises(KeyError):
             asyncio.run(query_bus.ask("unknown"))

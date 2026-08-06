@@ -12,15 +12,19 @@ from scripts.architect.evolution import (
     SCALABILITY_PLAN,
     build_roadmap,
     persist_roadmap,
+)
+from scripts.architect.evolution import (
     render_markdown as render_evolution,
 )
 from scripts.architect.risk import (
     STRATEGIC_RISKS,
+    _priority,
     build_risks,
     exposure,
     persist_risks,
+)
+from scripts.architect.risk import (
     render_markdown as render_risk,
-    _priority,
 )
 
 

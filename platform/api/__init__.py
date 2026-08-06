@@ -1,3 +1,3 @@
-from platform.api.app import create_app, PlatformAPI
+from platform.api.app import PlatformAPI, create_app
 
-__all__ = ["create_app", "PlatformAPI"]
+__all__ = ["PlatformAPI", "create_app"]

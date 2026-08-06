@@ -29,14 +29,11 @@ Exit codes:
 import argparse
 import json
 import logging
-import os
 import pathlib
-import re
-import subprocess
 import sys
-import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+import urllib.request
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger("api-gate")
@@ -404,7 +401,7 @@ def print_report(failures: list[dict[str, Any]], json_output: bool = False) -> i
 
     if json_output:
         report = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "passed": len(errors) == 0,
             "summary": {"errors": len(errors), "warnings": len(warnings), "total": len(failures)},
             "failures": failures,
@@ -464,7 +461,7 @@ def main() -> int:
             except Exception as exc:
                 logger.error("Could not load OpenAPI spec: %s", exc)
                 print(json.dumps({
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "passed": False,
                     "summary": {"errors": 1, "warnings": 0, "total": 1},
                     "failures": [{"check": "openapi_load", "severity": "error",

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { Card, CardContent, CardTitle, Button } from "@/components/ui";
 import { PageHeader } from "@/components/shared/PageComponents";
 import { useLocale } from "@/contexts/LocaleContext";

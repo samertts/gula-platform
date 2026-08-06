@@ -231,7 +231,7 @@ def main() -> int:
 
     summary = report["summary"]
     print(f"\n{'=' * 60}")
-    print(f"  GULA Platform Compatibility Report")
+    print("  GULA Platform Compatibility Report")
     print(f"{'=' * 60}")
     print(f"  Generated: {report['report_metadata']['generated_at']}")
     print(f"  Platform:  {report['report_metadata']['platform_version']}")

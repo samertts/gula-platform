@@ -3,7 +3,7 @@ import pytest
 
 class TestWorkflowEngine:
     def test_define_and_execute(self, workflow_engine):
-        from platform.core.workflow import WorkflowStep, StepResult, StepStatus
+        from platform.core.workflow import StepResult, StepStatus, WorkflowStep
 
         class SimpleStep(WorkflowStep):
             async def execute(self, context):
@@ -15,13 +15,14 @@ class TestWorkflowEngine:
         assert context.get("processed") is True
 
     def test_unknown_workflow_raises(self, workflow_engine):
-        import pytest
         import asyncio
+
+        import pytest
         with pytest.raises(ValueError, match="Unknown workflow"):
             asyncio.run(workflow_engine.execute("does_not_exist"))
 
     def test_workflow_history(self, workflow_engine):
-        from platform.core.workflow import WorkflowStep, StepResult, StepStatus
+        from platform.core.workflow import StepResult, StepStatus, WorkflowStep
 
         class OkStep(WorkflowStep):
             async def execute(self, context):
@@ -35,7 +36,7 @@ class TestWorkflowEngine:
         assert history[0]["steps"][0]["status"] == "completed"
 
     def test_step_failure_stops_workflow(self, workflow_engine):
-        from platform.core.workflow import WorkflowStep, StepResult, StepStatus
+        from platform.core.workflow import StepResult, StepStatus, WorkflowStep
 
         class FailStep(WorkflowStep):
             async def execute(self, context):
@@ -53,7 +54,7 @@ class TestWorkflowEngine:
         assert len(history[0]["steps"]) == 1
 
     def test_defined_workflows(self, workflow_engine):
-        from platform.core.workflow import WorkflowStep, StepResult, StepStatus
+        from platform.core.workflow import StepResult, StepStatus, WorkflowStep
 
         class DummyStep(WorkflowStep):
             async def execute(self, context):

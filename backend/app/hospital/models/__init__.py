@@ -27,7 +27,7 @@ class HospitalMaster(HospitalBaseEntity):
 
     campuses = relationship("Campus", back_populates="hospital", cascade="all, delete-orphan")
     departments = relationship(
-        "Department", back_populates="hospital", cascade="all, delete-orphan"
+        "HospitalDepartment", back_populates="hospital", cascade="all, delete-orphan"
     )
     units = relationship("Unit", back_populates="hospital", cascade="all, delete-orphan")
     operation_theaters = relationship(
@@ -145,7 +145,7 @@ class Clinic(HospitalBaseEntity):
     phone = Column(String(20), nullable=True)
 
     hospital = relationship("HospitalMaster", back_populates="clinics")
-    department = relationship("Department", back_populates="clinics")
+    department = relationship("HospitalDepartment", back_populates="clinics")
     rooms = relationship("Room", back_populates="clinic", cascade="all, delete-orphan")
 
 
@@ -170,7 +170,7 @@ class Room(HospitalBaseEntity):
     room_type = Column(String(50), nullable=False, index=True)
     capacity = Column(Integer, default=1)
 
-    department = relationship("Department", back_populates="rooms")
+    department = relationship("HospitalDepartment", back_populates="rooms")
     clinic = relationship("Clinic", back_populates="rooms")
     floor = relationship("Floor", back_populates="rooms")
     beds = relationship("Bed", back_populates="room", cascade="all, delete-orphan")
@@ -229,7 +229,7 @@ class OperationTheater(HospitalBaseEntity):
     current_surgery_id = Column(Integer, nullable=True)
 
     hospital = relationship("HospitalMaster", back_populates="operation_theaters")
-    department = relationship("Department", back_populates="operation_theaters")
+    department = relationship("HospitalDepartment", back_populates="operation_theaters")
 
 
 class MedicalEquipment(HospitalBaseEntity):
@@ -257,7 +257,7 @@ class MedicalEquipment(HospitalBaseEntity):
     next_maintenance_date = Column(DateTime(timezone=True), nullable=True)
 
     hospital = relationship("HospitalMaster", back_populates="equipment")
-    department = relationship("Department", back_populates="equipment")
+    department = relationship("HospitalDepartment", back_populates="equipment")
 
 
 class CostCenter(HospitalBaseEntity):
@@ -306,8 +306,8 @@ __all__ = [
     "Campus",
     "Clinic",
     "CostCenter",
-    "Department",
     "Floor",
+    "HospitalDepartment",
     "HospitalMaster",
     "MedicalEquipment",
     "OperationTheater",

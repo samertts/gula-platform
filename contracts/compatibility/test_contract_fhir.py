@@ -5,8 +5,6 @@ import os
 from datetime import datetime
 from typing import Any
 
-import pytest
-
 _BACKEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "backend")
 _REPO_ROOT = os.path.join(os.path.dirname(__file__), "..", "..")
 
@@ -113,7 +111,9 @@ class TestFHIRMapperOutput:
     }
 
     def test_specimen_mapper_produces_valid_fhir(self):
-        from app.lims.fhir_mappers import specimen_to_fhir, result_to_fhir, order_to_fhir_service_request, instrument_to_fhir_device, report_to_fhir_diagnostic
+        from app.lims.fhir_mappers import (
+            specimen_to_fhir,
+        )
 
         class FakeSpecimen:
             id = 1

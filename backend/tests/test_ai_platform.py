@@ -127,6 +127,42 @@ class TestKnowledgeGraph:
         assert node.label == "Complete Blood Count (CBC)"
         assert node.node_type == "lab_test"
 
+    def test_create_node_sql_injection_safe(self, monkeypatch):
+        captured = {}
+
+        class _FakeConn:
+            def execute(self, stmt, params):
+                captured["sql"] = str(stmt)
+                captured["params"] = params
+                return
+
+            def commit(self):
+                return None
+
+            def rollback(self):
+                return None
+
+            def close(self):
+                return None
+
+        def _fake_get_db():
+            yield _FakeConn()
+
+        import sys
+
+        _kg_module = sys.modules["app.ai.knowledge_graph"]
+        monkeypatch.setattr(_kg_module, "get_db", _fake_get_db)
+        payload = "x' OR '1'='1"
+        self.kg.create_node(
+            node_type="test",
+            label="Injection Probe",
+            aliases=[payload],
+            properties={"note": payload},
+        )
+        assert payload not in captured["sql"]
+        assert payload in captured["params"]["aliases"]
+        assert payload in captured["params"]["props"]
+
     def test_get_nonexistent_node(self):
         assert self.kg.get_node(99999) is None
 

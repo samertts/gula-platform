@@ -1,30 +1,26 @@
 from __future__ import annotations
 
+from l10n import TranslationManager
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
-    QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
-    QSplitter,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
-
-from config import AppConfig
-from l10n import TranslationManager
 from session import SessionManager
 from widgets.charts import MiniChart, SearchBar
 from widgets.dialogs import AlertDialog, ConfirmDialog
+
+from config import AppConfig
 
 
 class WardRoundForm(QWidget):

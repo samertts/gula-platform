@@ -431,4 +431,4 @@ def downgrade():
     op.execute("""DROP INDEX IF EXISTS ix_users_lab_id""")
 
 if __name__ == "__main__":
-    print(f"200 FK indexes defined")
+    print("200 FK indexes defined")

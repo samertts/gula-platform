@@ -274,7 +274,7 @@ Incident Commander: [Name]
 
 **Symptoms:** Health check fails, users see 503
 
-**Response:** [Runbook: backend-down.md](runbooks/backend-down.md)
+**Response:** [Runbook: backend-down](../runbooks/backend-down.md)
 
 **Key Actions:**
 1. Check container status and logs
@@ -287,7 +287,7 @@ Incident Commander: [Name]
 
 **Symptoms:** Circuit breaker open, writes failing
 
-**Response:** [Runbook: database-down.md](runbooks/database-down.md)
+**Response:** [Runbook: database-down](../runbooks/database-down.md)
 
 **Key Actions:**
 1. Check Patroni status
@@ -299,7 +299,7 @@ Incident Commander: [Name]
 
 **Symptoms:** API slow, users complaining
 
-**Response:** [Runbook: high-latency.md](runbooks/high-latency.md)
+**Response:** [Runbook: high-latency](../runbooks/high-latency.md)
 
 **Key Actions:**
 1. Identify slow queries
@@ -311,7 +311,7 @@ Incident Commander: [Name]
 
 **Symptoms:** Breach, attack, anomaly
 
-**Response:** [Runbook: security-incident.md](runbooks/security-incident.md)
+**Response:** [Runbook: security-incident](../runbooks/security-incident.md)
 
 **Key Actions:**
 1. Contain (rotate secrets, block IPs)
@@ -323,7 +323,7 @@ Incident Commander: [Name]
 
 **Symptoms:** Health check fails after deploy
 
-**Response:** [Runbook: failed-deployment.md](runbooks/failed-deployment.md)
+**Response:** [Runbook: failed-deployment](../runbooks/failed-deployment.md)
 
 **Key Actions:**
 1. Roll back immediately
@@ -335,7 +335,7 @@ Incident Commander: [Name]
 
 **Symptoms:** Write operations fail, DB stops
 
-**Response:** [Runbook: disk-full.md](runbooks/disk-full.md)
+**Response:** [Runbook: disk-full](../runbooks/disk-full.md)
 
 **Key Actions:**
 1. Free space (logs, WAL, Docker)

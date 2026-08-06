@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import uuid
-from typing import Any, Optional
+from typing import Any
 
 import httpx
 
@@ -45,7 +44,6 @@ from .models import (
     KillSwitchRequest,
     LabRegister,
     LabUpdate,
-    LegacyTestResultCreate,
     LinkIdentityRequest,
     LoginRequest,
     MaintenanceRecordRequest,
@@ -85,9 +83,7 @@ from .models import (
     SuggestRequest,
     TaskResultRequest,
     TaskSubmitRequest,
-    TestResultBrief,
     TestResultCreate,
-    TestResultRead,
     TestResultValidateRequest,
     UnresolvedIn,
     UpdateEmployeeRequest,

@@ -20,7 +20,7 @@ class TestModule:
 
     def test_module_manifest_created(self):
         from platform.core.modules import module
-        from platform.core.modules.registrar import get_registered_modules, clear_registered_modules
+        from platform.core.modules.registrar import clear_registered_modules, get_registered_modules
 
         clear_registered_modules()
 
@@ -64,7 +64,7 @@ class TestModule:
         assert svc["type"] == "postgres"
 
     def test_module_clear_registrations(self):
-        from platform.core.modules.registrar import get_registered_modules, clear_registered_modules
+        from platform.core.modules.registrar import clear_registered_modules, get_registered_modules
 
         @module(name="temp.module")
         class TempModule:

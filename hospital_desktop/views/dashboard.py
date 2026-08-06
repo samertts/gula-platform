@@ -2,29 +2,26 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from PySide6.QtCore import QTimer, Qt, Signal
-from PySide6.QtGui import QFont
+from l10n import TranslationManager
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QComboBox,
     QFrame,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
+from session import SessionManager
+from widgets.charts import KpiCard, OccupancyGauge, TrendChart
 
 from config import AppConfig
-from l10n import TranslationManager
-from session import SessionManager
-from widgets.charts import KpiCard, MiniChart, OccupancyGauge, TrendChart
 
 DEPT_COLORS = {
     "\u0627\u0644\u0637\u0648\u0627\u0631\u0626": "#f85149",

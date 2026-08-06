@@ -65,7 +65,7 @@ class TestEndpointReachability:
                         break
                 if not matched:
                     unmatched.append(f"{group_name}: {path}")
-        assert not unmatched, f"Catalog paths not found in backend:\n" + "\n".join(unmatched)
+        assert not unmatched, "Catalog paths not found in backend:\n" + "\n".join(unmatched)
 
     def test_health_endpoints_public(self, client):
         public_paths = ["/health", "/health/live", "/health/ready", "/health/status", "/health/deep"]

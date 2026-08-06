@@ -9,15 +9,15 @@ from ..config import NID_HMAC_KEY
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
+from ..models.mpi import Citizen
 from ..models.user import User
+from ..mpi.blocking import blocking_key, phone_last10
 from ..security.auth import hash_password
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..services.audit_service import log_action
 from ..services.identity import hash_national_id as mpi_hash_nid
 from ..services.identity import normalize_name as mpi_normalize_name
-from ..mpi.blocking import blocking_key, phone_last10
-from ..models.mpi import Citizen
 
 
 def _validate_password(password: str) -> None:

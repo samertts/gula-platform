@@ -1,8 +1,8 @@
 import asyncio
 import logging
-from typing import Any, Callable
-
+from collections.abc import Callable
 from platform.core.event_bus.event import Event, Topic
+from typing import Any
 
 
 class EventBus:

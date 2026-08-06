@@ -1,38 +1,30 @@
 from __future__ import annotations
 
 import logging
-import sys
-from datetime import datetime
-from pathlib import Path
 
+from l10n import TranslationManager
 from PySide6.QtCore import QByteArray, QSize, Qt, QTimer
-from PySide6.QtGui import QAction, QFont, QIcon, QKeySequence
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QDockWidget,
-    QHBoxLayout,
     QLabel,
     QListWidget,
     QListWidgetItem,
     QMainWindow,
     QMenu,
-    QMenuBar,
-    QMessageBox,
-    QPushButton,
-    QSizePolicy,
     QStackedWidget,
     QSystemTrayIcon,
     QVBoxLayout,
     QWidget,
 )
-
-from config import AppConfig, get_config_path, load_config, save_config
-from l10n import TranslationManager
 from session import SessionManager
 from theme import ThemeManager
-from widgets.dialogs import AboutDialog, AlertDialog, ConfirmDialog
+from widgets.dialogs import AboutDialog, ConfirmDialog
 from widgets.navbar import NavBar
 from widgets.statusbar import StatusBar
+
+from config import AppConfig, get_config_path, save_config
 
 VIEW_CLASSES = {}
 
@@ -41,14 +33,14 @@ def _import_views():
     global VIEW_CLASSES
     if VIEW_CLASSES:
         return VIEW_CLASSES
-    from views.dashboard import DashboardView
-    from views.patients import PatientView
     from views.admissions import AdmissionsView
-    from views.queue import QueueView
     from views.clinical import ClinicalView
     from views.communication import CommunicationView
-    from views.resources import ResourceView
+    from views.dashboard import DashboardView
+    from views.patients import PatientView
+    from views.queue import QueueView
     from views.reports import ReportsView
+    from views.resources import ResourceView
     from views.settings import SettingsView
 
     VIEW_CLASSES = {

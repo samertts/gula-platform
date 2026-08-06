@@ -1,7 +1,7 @@
 import asyncio
 import logging
-from datetime import datetime, timedelta
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 class TaskScheduler:

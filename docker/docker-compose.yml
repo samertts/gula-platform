@@ -2,7 +2,7 @@ services:
 
   gula-backend:
     build:
-      context: ..
+      context: ../backend
       dockerfile: Dockerfile
     container_name: gula-backend
     restart: always
@@ -11,16 +11,18 @@ services:
     cpus: "0.5"
     security_opt:
       - no-new-privileges:true
-    ports:
-      - "127.0.0.1:3000:3000"
+    expose:
+      - "8000"
+    volumes:
+      - ../shared:/app/shared:ro
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: "3000"
+      RUNTIME_MODE: ${RUNTIME_MODE:-api}
       DATABASE_URL: ${DATABASE_URL:-}
       REDIS_URL: ${REDIS_URL:-}
       SECRET_KEY: ${SECRET_KEY:-}
+      PYTHONPATH: /app
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=5)"]
       interval: 30s
       timeout: 10s
       retries: 3

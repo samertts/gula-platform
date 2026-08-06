@@ -30,7 +30,7 @@ import pathlib
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger("security-gate")
@@ -304,8 +304,8 @@ def check_exposed_credentials(root: pathlib.Path) -> list[dict[str, Any]]:
         (r'(?i)(password|passwd|pwd)\s*[:=]\s*["\'][^"\']+["\']', "Hardcoded password"),
         (r'(?i)(api[_-]?key|apikey)\s*[:=]\s*["\'][^"\']+["\']', "Hardcoded API key"),
         (r'(?i)(secret|token)\s*[:=]\s*["\'][A-Za-z0-9_\-]{16,}["\']', "Hardcoded secret/token"),
-        (r'(?i)-----BEGIN (RSA |EC )?PRIVATE KEY-----', "Private key in code"),
-        (r'(?i)-----BEGIN CERTIFICATE-----', "Certificate in code"),
+        (r"(?i)-----BEGIN (RSA |EC )?PRIVATE KEY-----", "Private key in code"),
+        (r"(?i)-----BEGIN CERTIFICATE-----", "Certificate in code"),
         (r'(?i)aws_access_key_id\s*=\s*["\'][A-Z0-9]{16,}["\']', "AWS access key"),
     ]
 
@@ -413,7 +413,7 @@ def print_report(findings: list[dict[str, Any]], json_output: bool = False) -> i
 
     if json_output:
         report = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "passed": len(errors) == 0,
             "summary": {"errors": len(errors), "warnings": len(warnings), "total": len(findings)},
             "findings": findings,
@@ -430,14 +430,14 @@ def print_report(findings: list[dict[str, Any]], json_output: bool = False) -> i
     if errors:
         print(f"  {BOLD}{RED}Errors ({len(errors)}):{RESET}")
         for e in errors:
-            file_info = f" [{e.get('file', '')}:{e.get('line', '')}]" if e.get('file') else ""
+            file_info = f" [{e.get('file', '')}:{e.get('line', '')}]" if e.get("file") else ""
             print(f"    {RED}✗{RESET} [{e.get('check_name', e['check'])}]{file_info} {e['message']}")
         print()
 
     if warnings:
         print(f"  {BOLD}{YELLOW}Warnings ({len(warnings)}):{RESET}")
         for w in warnings:
-            file_info = f" [{w.get('file', '')}:{w.get('line', '')}]" if w.get('file') else ""
+            file_info = f" [{w.get('file', '')}:{w.get('line', '')}]" if w.get("file") else ""
             print(f"    {YELLOW}⚠{RESET} [{w.get('check_name', w['check'])}]{file_info} {w['message']}")
         print()
 

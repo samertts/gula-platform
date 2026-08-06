@@ -1,8 +1,8 @@
 import argparse
 import json
 import os
-import sys
 import subprocess
+import sys
 from datetime import datetime
 
 from . import __version__

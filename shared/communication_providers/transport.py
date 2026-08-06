@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 import httpx
+
 from shared.circuit_breaker import CircuitBreaker
 
 from .base import ProviderMetrics, Redactor, TokenBucket

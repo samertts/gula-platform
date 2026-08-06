@@ -1,27 +1,23 @@
 from __future__ import annotations
 
+from l10n import TranslationManager
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QComboBox,
-    QFormLayout,
     QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
-    QPushButton,
-    QTabWidget,
     QTableWidget,
     QTableWidgetItem,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
+from session import SessionManager
+from widgets.charts import OccupancyGauge
 
 from config import AppConfig
-from l10n import TranslationManager
-from session import SessionManager
-from widgets.charts import OccupancyGauge, SearchBar
-from widgets.dialogs import AlertDialog
 
 
 class ResourceView(QWidget):
@@ -164,7 +160,7 @@ class ResourceView(QWidget):
             ["\u062c\u0647\u0627\u0632 \u062a\u0646\u0641\u0633", "\u0627\u0644\u0639\u0646\u0627\u064a\u0629 \u0627\u0644\u0645\u0631\u0643\u0632\u0629", "Drager", "\u0639\u0627\u0645\u0644", "01/07/2026", "01/08/2026"],
             ["\u0645\u0648\u0646\u064a\u062a\u0648\u0631 \u0642\u0644\u0628", "\u0627\u0644\u0637\u0648\u0627\u0631\u0626", "Philips", "\u0639\u0627\u0645\u0644", "15/06/2026", "15/09/2026"],
             ["\u062c\u0647\u0627\u0632 \u0623\u0634\u0639\u0629", "\u0627\u0644\u0623\u0634\u0639\u0629", "Siemens", "\u0642\u064a\u062f \u0627\u0644\u0635\u064a\u0627\u0646\u0629", "10/07/2026", "25/07/2026"],
-            ["\u0645\u062e\u0628\u0631 \u062f\u0645", "\u0627\u0644\u0645\u062e\u062a\u0628\u0631", "Sysmex", "\u0639\u0627\u0645\u0644", "01/07/2026", "01\/10\/2026"],
+            ["\u0645\u062e\u0628\u0631 \u062f\u0645", "\u0627\u0644\u0645\u062e\u062a\u0628\u0631", "Sysmex", "\u0639\u0627\u0645\u0644", "01/07/2026", r"01\/10\/2026"],
             ["\u062c\u0647\u0627\u0632 \u062a\u062e\u062f\u064a\u0631", "\u0627\u0644\u062c\u0631\u0627\u062d\u0629", "GE", "\u0639\u0627\u0637\u0644", "05/06/2026", "05/08/2026"],
         ]
         self._equip_table.setRowCount(len(equip_data))

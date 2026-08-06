@@ -27,13 +27,10 @@ import argparse
 import ast
 import json
 import logging
-import os
 import pathlib
-import re
 import subprocess
 import sys
-from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 logger = logging.getLogger("architecture-gate")
@@ -415,7 +412,7 @@ def print_report(failures: list[dict[str, Any]], json_output: bool = False) -> i
 
     if json_output:
         report = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "passed": len(errors) == 0,
             "summary": {"errors": len(errors), "warnings": len(warnings), "total": len(failures)},
             "failures": failures,

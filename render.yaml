@@ -43,8 +43,8 @@ services:
     branch: main
     autoDeploy: true
 
-    # Render listens on this port; must match gunicorn --bind 0.0.0.0:10000
-    port: 10000
+    # Render listens on this port; must match gunicorn --bind 0.0.0.0:8000
+    port: 8000
 
     # Render uses this path for liveness / readiness probes
     healthCheckPath: /health

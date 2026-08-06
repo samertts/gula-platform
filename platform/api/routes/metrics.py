@@ -1,9 +1,8 @@
-from typing import Any
+
+from platform.core.kernel import Kernel
 
 from fastapi import APIRouter
 from starlette.responses import PlainTextResponse
-
-from platform.core.kernel import Kernel
 
 router = APIRouter()
 
@@ -36,7 +35,7 @@ async def prometheus_metrics() -> PlainTextResponse:
     lines.append("")
     for name, comp in kernel.health._components.items():
         status_val = {"green": 1, "yellow": 0.5, "red": 0, "unknown": -1}.get(comp.status.value, -1)
-        lines.append(f'# HELP gula_health_component Health check status')
-        lines.append(f'# TYPE gula_health_component gauge')
+        lines.append("# HELP gula_health_component Health check status")
+        lines.append("# TYPE gula_health_component gauge")
         lines.append(f'gula_health_component{{name="{name}"}} {status_val}')
     return PlainTextResponse("\n".join(lines) + "\n")

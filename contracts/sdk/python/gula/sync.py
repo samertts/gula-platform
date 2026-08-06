@@ -6,9 +6,8 @@ import logging
 import os
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
 
 from .client import GulaClient
 from .exceptions import ConflictError, GulaError
@@ -21,11 +20,11 @@ class SyncEntry:
     id: str
     method: str
     path: str
-    body: Optional[dict] = None
+    body: dict | None = None
     created_at: float = field(default_factory=time.time)
     retries: int = 0
     max_retries: int = 3
-    last_error: Optional[str] = None
+    last_error: str | None = None
 
 
 class SyncQueue:
@@ -70,7 +69,7 @@ class SyncQueue:
         except OSError as e:
             logger.error("Failed to save sync queue: %s", e)
 
-    def enqueue(self, method: str, path: str, body: Optional[dict] = None) -> str:
+    def enqueue(self, method: str, path: str, body: dict | None = None) -> str:
         entry_id = str(uuid.uuid4())
         entry = SyncEntry(id=entry_id, method=method, path=path, body=body)
         self._entries.append(entry)
@@ -79,7 +78,7 @@ class SyncQueue:
         logger.info("Enqueued %s %s (id=%s)", method.upper(), path, entry_id)
         return entry_id
 
-    def dequeue(self) -> Optional[SyncEntry]:
+    def dequeue(self) -> SyncEntry | None:
         if not self._entries:
             return None
         expired = [e for e in self._entries if e.retries >= e.max_retries]
@@ -123,7 +122,7 @@ class ConflictResolver:
         if strategy not in (self.STRATEGY_CLIENT_WINS, self.STRATEGY_SERVER_WINS, self.STRATEGY_MERGE):
             raise ValueError(f"Invalid strategy: {strategy}")
         self._strategy = strategy
-        self._merge_fn: Optional[Callable[[dict, dict], dict]] = None
+        self._merge_fn: Callable[[dict, dict], dict] | None = None
 
     def set_merge_fn(self, fn: Callable[[dict, dict], dict]) -> None:
         self._merge_fn = fn
@@ -142,8 +141,8 @@ class SyncEngine:
     def __init__(
         self,
         client: GulaClient,
-        queue: Optional[SyncQueue] = None,
-        conflict_resolver: Optional[ConflictResolver] = None,
+        queue: SyncQueue | None = None,
+        conflict_resolver: ConflictResolver | None = None,
         poll_interval: float = 5.0,
     ):
         self._client = client
@@ -156,7 +155,7 @@ class SyncEngine:
     def queue(self) -> SyncQueue:
         return self._queue
 
-    def enqueue(self, method: str, path: str, body: Optional[dict] = None) -> str:
+    def enqueue(self, method: str, path: str, body: dict | None = None) -> str:
         return self._queue.enqueue(method, path, body)
 
     async def process_once(self) -> int:

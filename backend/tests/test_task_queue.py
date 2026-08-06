@@ -98,6 +98,55 @@ async def test_queue_mark_running_and_ack():
     assert task.task_id not in q._running
 
 
+# ── Redis-backed queue — idle BRPOP must not crash the worker loop ────────────
+
+
+class _FakeRedis:
+    """Redis stand-in whose brpop raises a socket-style timeout (empty queue)."""
+
+    def __init__(self, exc: Exception | None) -> None:
+        self._exc = exc
+
+    def brpop(self, _key: str, _timeout: int):
+        if self._exc is not None:
+            raise self._exc
+        return
+
+
+@pytest.mark.asyncio
+async def test_redis_dequeue_builtin_timeout_returns_none():
+    from app.tasks.queue import _RedisTaskQueue
+
+    q = _RedisTaskQueue(_FakeRedis(TimeoutError("timed out")))
+    assert await q.dequeue(timeout=5) is None
+
+
+@pytest.mark.asyncio
+async def test_redis_dequeue_redis_timeout_returns_none():
+    import redis as redis_lib
+    from app.tasks.queue import _RedisTaskQueue
+
+    q = _RedisTaskQueue(_FakeRedis(redis_lib.exceptions.TimeoutError("timed out")))
+    assert await q.dequeue(timeout=5) is None
+
+
+@pytest.mark.asyncio
+async def test_redis_dequeue_real_error_propagates():
+    from app.tasks.queue import _RedisTaskQueue
+
+    q = _RedisTaskQueue(_FakeRedis(RuntimeError("connection broken")))
+    with pytest.raises(RuntimeError, match="connection broken"):
+        await q.dequeue(timeout=5)
+
+
+@pytest.mark.asyncio
+async def test_redis_dequeue_none_result_returns_none():
+    from app.tasks.queue import _RedisTaskQueue
+
+    q = _RedisTaskQueue(_FakeRedis(None))  # brpop returns None when queue idle
+    assert await q.dequeue(timeout=5) is None
+
+
 # ── Registry ─────────────────────────────────────────────────────────────────
 
 

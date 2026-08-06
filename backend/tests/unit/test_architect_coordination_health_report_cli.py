@@ -13,12 +13,16 @@ from scripts.architect.coordination import (
     ENGINE_CONTRACTS,
     build_coordination,
     persist_coordination,
+)
+from scripts.architect.coordination import (
     render_markdown as render_coordination,
 )
 from scripts.architect.core import MATURITY_LEVELS, maturity_level
 from scripts.architect.health import (
     measure_health,
     persist_health,
+)
+from scripts.architect.health import (
     render_markdown as render_health,
 )
 from scripts.architect.report import build_report

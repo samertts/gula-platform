@@ -1,5 +1,6 @@
-import pytest
 from platform.core.kernel import Kernel, KernelConfig
+
+import pytest
 
 
 @pytest.fixture

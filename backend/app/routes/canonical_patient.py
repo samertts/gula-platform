@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.canonical_patient import CanonicalPatient
 from ..models.lab_user import LabUser
-from ..security.dependencies import require_permission
 from ..mpi.canonical_service import (
     get_canonical_by_citizen,
     get_canonical_by_patient,
@@ -16,6 +15,7 @@ from ..mpi.canonical_service import (
     link_patient,
     merge_canonicals,
 )
+from ..security.dependencies import require_permission
 
 router = APIRouter(prefix="/api/v1/canonical-patients", tags=["canonical-patients"])
 

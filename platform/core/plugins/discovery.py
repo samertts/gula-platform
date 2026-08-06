@@ -4,9 +4,6 @@ import logging
 import os
 from typing import Any
 
-from platform.core.plugins.registry import PluginRegistry
-from platform.core.plugins.sandbox import PluginSandbox
-
 
 def discover_plugins(search_paths: list[str]) -> dict[str, Any]:
     plugins = {}

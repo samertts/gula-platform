@@ -100,11 +100,12 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REGISTRY: ${{ env.REGISTRY }}
           REPO_OWNER: ${{ github.repository_owner }}
+          REPO_DIR: ${{ vars.REPO_DIR }}
         run: |
           ssh gula-server << DEPLOY_SCRIPT
             set -euo pipefail
 
-            REPO_DIR="/home/samertts/gula-platform"
+            REPO_DIR="${REPO_DIR:-/home/samertts/gula-platform}"
             IMAGE_TAG="${IMAGE_TAG}"
             IMAGE_PREFIX="${IMAGE_PREFIX}"
             REGISTRY="${REGISTRY}"
@@ -191,6 +192,10 @@ jobs:
               echo "RABBITMQ_URL=amqp://gula:\${RABBIT_PASS}@rabbitmq:5672/gula" >> .env
             fi
 
+            # ── Capture the currently-deployed image tag (for rollback) ──
+            PREVIOUS_TAG="\$(grep -oP '^GULA_IMAGE_TAG=\K.*' .env | head -1 || echo '')"
+            log "Previous image tag: \${PREVIOUS_TAG:-none}"
+
             # ── Inject pre-built image tag so compose uses GHCR images ──
             sed -i '/^GULA_IMAGE_TAG=/d' .env
             echo "GULA_IMAGE_TAG=\${IMAGE_TAG}" >> .env
@@ -259,7 +264,29 @@ jobs:
 
               log "Rolling back to \$PREVIOUS_COMMIT"
               git reset --hard "\$PREVIOUS_COMMIT"
-              \$COMPOSE up -d --remove-orphans
+              # Restore the previous image tag and pull it, so rollback runs the
+              # exact previously-deployed images rather than the broken new ones.
+              if [ -n "\${PREVIOUS_TAG}" ]; then
+                sed -i "/^GULA_IMAGE_TAG=/d" .env
+                echo "GULA_IMAGE_TAG=\${PREVIOUS_TAG}" >> .env
+                log "Restored previous image tag: \${PREVIOUS_TAG}"
+              fi
+              \$COMPOSE -f "\$COMPOSE_FILE" pull --ignore-pull-failures
+              \$COMPOSE -f "\$COMPOSE_FILE" up -d --remove-orphans
+              log "Rollback completed — re-running health verification"
+              ok=0
+              for i in \$(seq 1 24); do
+                if curl -fsS --max-time 5 http://127.0.0.1:8080/health >/dev/null 2>&1; then
+                  ok=1
+                  log "Rollback health check passed on attempt \$i"
+                  break
+                fi
+                sleep 5
+              done
+              if [ "\$ok" -ne 1 ]; then
+                log "CRITICAL: Rollback also failed health check"
+                \$COMPOSE ps
+              fi
               exit 1
             fi
 
