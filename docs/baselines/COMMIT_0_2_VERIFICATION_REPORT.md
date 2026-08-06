@@ -1,6 +1,6 @@
 # Commit 0.2 Verification Report
 
-**Commit:** (pending) — `feat(domain-platform): architecture policy engine foundation (ADR-027)`
+**Commit:** `7205c4d1` — `feat(domain-platform): architecture policy engine foundation (ADR-027)`
 **Branch:** `remediate-security-001`
 **Date:** 2026-08-06
 
