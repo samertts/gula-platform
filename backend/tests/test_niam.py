@@ -6,7 +6,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from app._compat import UTC
-from app.identity.events import IdentityEventBus, event_bus
 from app.identity.models.account import Account, AccountStatus, AccountType
 from app.identity.models.assignment import Assignment, AssignmentStatus
 from app.identity.models.audit import AuditAction, IdentityAuditEntry
@@ -34,6 +33,8 @@ from app.identity.services.device_service import DeviceService
 from app.identity.services.person_service import PersonService
 from app.identity.services.session_service import SessionService
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from shared.events import EventBus, events
 
 
 @pytest.fixture
@@ -436,7 +437,7 @@ class TestPolicyEngine:
 
 
 class TestEventBus:
-    """Verify event bus stub."""
+    """Verify canonical shared event bus."""
 
     def test_event_bus_publish_subscribe(self):
         results = []
@@ -444,8 +445,8 @@ class TestEventBus:
         def handler(payload):
             results.append(payload)
 
-        event_bus.subscribe("test.event", handler)
-        event_bus.publish("test.event", {"key": "value"})
+        events.subscribe("test.event", handler)
+        events.emit("test.event", {"key": "value"})
         assert len(results) == 1
         assert results[0]["key"] == "value"
 
@@ -458,10 +459,10 @@ class TestEventBus:
         def h2(payload):
             results.append("h2")
 
-        bus = IdentityEventBus()
+        bus = EventBus()
         bus.subscribe("multi", h1)
         bus.subscribe("multi", h2)
-        bus.publish("multi", {})
+        bus.emit("multi", {})
         assert results == ["h1", "h2"]
 
 

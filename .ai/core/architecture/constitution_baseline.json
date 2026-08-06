@@ -82,11 +82,6 @@
       "signal": "class\\s+\\w*(?:QRCoder|QRGenerator|QrService)\\b"
     },
     {
-      "rule_id": "events",
-      "path": "backend/app/identity/events.py",
-      "signal": "class\\s+\\w*(?:EventBus|EventEmitter|MessageBus)\\b"
-    },
-    {
       "rule_id": "notifications",
       "path": "backend/app/identity/notifications/routes.py",
       "signal": "def\\s+send_notification\\s*\\("
