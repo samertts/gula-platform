@@ -5,20 +5,43 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
+from ..security.dependencies import require_permission
 from .engine import CertificationEngine
 from .enums import CertificationDimension, MetricCategory, ReleaseGate
 from .metrics import MetricsCollector
 from .release_gates import ReleaseGateChecker
 from .report import generate_pdf_report
 
-router = APIRouter(prefix="/certification", tags=["certification"])
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
-engine = CertificationEngine()
+router = APIRouter(
+    prefix="/certification",
+    tags=["certification"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
+
+engine = CertificationEngine(project_root=str(PROJECT_ROOT))
 metrics_collector = MetricsCollector()
 gate_checker = ReleaseGateChecker()
+
+
+def _safe_target(module_path: str | None) -> Path:
+    """Resolve a module path and reject any target outside the platform root."""
+    if module_path is None:
+        return PROJECT_ROOT
+    candidate = Path(module_path)
+    if not candidate.is_absolute():
+        candidate = PROJECT_ROOT / candidate
+    try:
+        candidate = candidate.resolve()
+    except (OSError, RuntimeError):
+        raise HTTPException(status_code=403, detail="Invalid module path") from None
+    if candidate != PROJECT_ROOT and PROJECT_ROOT not in candidate.parents:
+        raise HTTPException(status_code=403, detail="Path is outside the platform root")
+    return candidate
 
 
 class ReleaseCheckRequest(BaseModel):
@@ -44,14 +67,14 @@ class DimensionCheck(BaseModel):
 
 @router.post("/evaluate/{module_path:path}")
 async def evaluate_module(module_path: str | None = None):
-    target = Path(module_path) if module_path else Path.cwd()
+    target = _safe_target(module_path)
     report = engine.evaluate_module(str(target))
     return report.to_dict()
 
 
 @router.get("/level/{module_path:path}")
 async def get_certification_level(module_path: str | None = None):
-    target = Path(module_path) if module_path else Path.cwd()
+    target = _safe_target(module_path)
     level = engine.get_certification_level(str(target))
     return {
         "module_path": str(target),
@@ -64,7 +87,7 @@ async def get_report(
     module_path: str | None = None,
     format: str = Query("json", pattern="^(json|markdown|html|pdf)$"),
 ):
-    target = Path(module_path) if module_path else Path.cwd()
+    target = _safe_target(module_path)
     report = engine.evaluate_module(str(target))
 
     if format == "json":
@@ -183,7 +206,7 @@ async def get_dimension_checks(dimension: CertificationDimension):
     evaluator_cls = engine.evaluators.get(dimension)
     if evaluator_cls is None:
         raise HTTPException(status_code=404, detail=f"Unknown dimension: {dimension}")
-    evaluator = evaluator_cls(Path.cwd())
+    evaluator = evaluator_cls(PROJECT_ROOT)
     result = evaluator.evaluate()
     return {
         "dimension": dimension.value,

@@ -619,6 +619,12 @@ class TestPhase17Diagnostics:
         assert all(audit.present for audit in audits)
         assert all(audit.health == "healthy" for audit in audits)
 
+    def test_audit_components_present_regardless_of_cwd(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        audits = diagnostics.audit_components()
+        assert all(audit.present for audit in audits)
+        assert all(audit.health == "healthy" for audit in audits)
+
     def test_engine_contract_findings_empty(self):
         assert diagnostics.audit_engine_contract() == []
 

@@ -9,6 +9,7 @@ and never applied automatically.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from scripts.governor.self_governance import ImprovementProposal, generate_proposals
 
@@ -28,6 +29,7 @@ class ComponentAudit:
 
 
 def _component_present(component: str) -> bool:
+    repo_root = Path(__file__).resolve().parent.parent.parent
     markers = {
         "kernel": ["scripts/kernel"],
         "governor": ["scripts/governor"],
@@ -42,9 +44,7 @@ def _component_present(component: str) -> bool:
         "memory": [".ai/core/memory", "docs/brain/PROJECT_BRAIN.md"],
         "infrastructure": ["docker-compose.yml", ".github/workflows", "Makefile"],
     }[component]
-    from pathlib import Path
-
-    return any(Path(marker).exists() for marker in markers)
+    return any((repo_root / marker).exists() for marker in markers)
 
 
 def audit_components(registry: dict | None = None) -> list[ComponentAudit]:

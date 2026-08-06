@@ -212,7 +212,7 @@ jobs:
 
       - name: Run Locust benchmark
         run: |
-          locust -f tests/performance/locustfile.py \
+          locust -f tests/load/locustfile.py \
             --host http://127.0.0.1:8000 \
             --headless \
             --users 50 \

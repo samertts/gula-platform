@@ -1,5 +1,5 @@
 {
-  "discovered_at": "2026-08-06T11:58:06.947944+00:00",
+  "discovered_at": "2026-08-06T18:00:17.474512+00:00",
   "assumptions": {
     "active_user_fraction": 0.1,
     "requests_per_active_user_per_day": 50,
