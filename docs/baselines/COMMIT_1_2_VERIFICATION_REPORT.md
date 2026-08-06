@@ -1,6 +1,6 @@
 # Commit 1.2 Verification Report
 
-**Commit:** `PENDING` — `refactor(identity): archive dead shared.events reimplementation (ADR-028)`
+**Commit:** `576ade1d` — `refactor(identity): archive dead shared.events reimplementation (ADR-028)`
 **Branch:** `remediate-security-001`
 **Date:** 2026-08-07
 
