@@ -1,7 +1,7 @@
 # Commit 0.2 Verification Report
 
 **Commit:** `7205c4d1` + `4789b4af` — `feat(domain-platform): architecture policy engine foundation (ADR-027)`
-**Strengthening commit:** (pending)
+**Strengthening commit:** `1173d8b4`
 **Branch:** `remediate-security-001`
 **Date:** 2026-08-06
 
