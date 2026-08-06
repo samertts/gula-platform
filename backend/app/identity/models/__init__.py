@@ -4,6 +4,16 @@ from app.identity.certificates.models import (
     CertificateRevocationList,
     DigitalCertificate,
 )
+from app.identity.workspaces.models import (
+    Workspace,
+    WorkspaceDelegation,
+    WorkspaceDepartment,
+    WorkspaceInvitation,
+    WorkspaceMembership,
+    WorkspacePermissionTemplate,
+    WorkspaceRole,
+    WorkspaceTeam,
+)
 
 from .account import Account, AccountStatus, AccountType
 from .assignment import Assignment, AssignmentStatus
@@ -46,4 +56,12 @@ __all__ = [
     "Person",
     "ProfessionalLicense",
     "UserSession",
+    "Workspace",
+    "WorkspaceDelegation",
+    "WorkspaceDepartment",
+    "WorkspaceInvitation",
+    "WorkspaceMembership",
+    "WorkspacePermissionTemplate",
+    "WorkspaceRole",
+    "WorkspaceTeam",
 ]

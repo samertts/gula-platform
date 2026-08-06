@@ -10,6 +10,18 @@ from app.identity.models.session import UserSession
 from app.identity.repositories.session_repository import SessionRepository
 
 
+class SessionPolicyError(Exception):
+    pass
+
+
+class MaxConcurrentSessionsError(SessionPolicyError):
+    pass
+
+
+class WorkspaceBindingError(SessionPolicyError):
+    pass
+
+
 class SessionService:
     def __init__(self, session: AsyncSession) -> None:
         self.repo = SessionRepository(session)
@@ -85,3 +97,84 @@ class SessionService:
         )
         result = await self.repo.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def bind_workspace(self, session_id: str, workspace_id: str) -> UserSession:
+        """Bind a session to exactly one active workspace (Phase 7)."""
+        session = await self.repo.get_by_id(session_id)
+        if not session or not session.is_active:
+            raise WorkspaceBindingError("session_not_active")
+        if session.workspace_id and session.workspace_id != workspace_id:
+            # Rebinding is explicit: terminate the previous binding instead of
+            # silently mutating an in-flight authorization scope.
+            session.workspace_id = workspace_id
+            session.workspace_bound_at = datetime.now(UTC)
+            await self.repo.session.flush()
+            return session
+        session.workspace_id = workspace_id
+        session.workspace_bound_at = datetime.now(UTC)
+        await self.repo.session.flush()
+        return session
+
+    async def unbind_workspace(self, session_id: str) -> UserSession:
+        session = await self.repo.get_by_id(session_id)
+        if not session:
+            raise WorkspaceBindingError("session_not_found")
+        session.workspace_id = None
+        session.workspace_bound_at = None
+        await self.repo.session.flush()
+        return session
+
+    async def get_workspace_bound_sessions(self, workspace_id: str) -> list[UserSession]:
+        stmt = select(self.repo.model_class).where(
+            self.repo.model_class.workspace_id == workspace_id,
+            self.repo.model_class.is_active.is_(True),
+        )
+        result = await self.repo.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def enforce_max_concurrent_sessions(
+        self,
+        account_id: str,
+        max_sessions: int,
+        keep_current: bool = True,
+        current_session_id: str | None = None,
+    ) -> list[UserSession]:
+        """Enforce a maximum number of concurrent active sessions.
+
+        When the account exceeds ``max_sessions``, the oldest active sessions
+        are terminated oldest-first. Returns the terminated sessions.
+        """
+        if max_sessions < 1:
+            raise SessionPolicyError("max_sessions_must_be_positive")
+
+        stmt = (
+            select(self.repo.model_class)
+            .where(
+                self.repo.model_class.account_id == account_id,
+                self.repo.model_class.is_active.is_(True),
+            )
+            .order_by(self.repo.model_class.started_at)
+        )
+        result = await self.repo.session.execute(stmt)
+        active = list(result.scalars().all())
+
+        if keep_current and current_session_id:
+            active = [s for s in active if s.id != current_session_id]
+
+        # Capacity after accounting for the current session being preserved.
+        capacity = max_sessions - (1 if keep_current and current_session_id else 0)
+
+        # Keep the NEWEST `capacity` sessions; terminate the oldest excess.
+        overflow = max(0, len(active) - capacity)
+
+        terminated: list[UserSession] = []
+        for s in active[:overflow]:
+            await self.repo.terminate_session(
+                session_id=s.id,
+                reason="max_concurrent_sessions",
+                terminated_by="policy",
+            )
+            s.governance_action = "max_concurrent_sessions"
+            await self.repo.session.flush()
+            terminated.append(s)
+        return terminated

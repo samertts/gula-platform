@@ -51,3 +51,11 @@ class UserSession(IdentityBaseEntity):
     governance_action = Column(String(50), nullable=True)
     risk_score_at_login = Column(Integer, nullable=True)
     risk_level_at_login = Column(String(20), nullable=True)
+
+    # Session-to-workspace binding (Phase 7): a session may be bound to exactly
+    # one active workspace selected after login. Permission enforcement outside
+    # that workspace is denied at the authorization layer.
+    workspace_id = Column(
+        String(26), ForeignKey("niam_workspaces.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    workspace_bound_at = Column(DateTime(timezone=True), nullable=True)
