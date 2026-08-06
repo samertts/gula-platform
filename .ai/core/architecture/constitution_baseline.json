@@ -227,29 +227,9 @@
       "signal": "class\\s+\\w*(?:WorkflowEngine|WorkflowManager|WorkflowExecutor)\\b"
     },
     {
-      "rule_id": "audit",
-      "path": "backend/app/platform/audit.py",
-      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
-    },
-    {
-      "rule_id": "cache",
-      "path": "backend/app/platform/caching.py",
-      "signal": "class\\s+\\w*(?:CacheBackend|CacheService|RedisCache)\\b"
-    },
-    {
-      "rule_id": "identity",
-      "path": "backend/app/platform/identity.py",
-      "signal": "class\\s+\\w*(?:IdentityService|IdentityProvider|LoginService|AuthService|AuthenticationService)\\b"
-    },
-    {
       "rule_id": "notifications",
       "path": "backend/app/platform/notifications.py",
       "signal": "class\\s+\\w*(?:NotificationService|NotificationCenter|Notifier|NotificationSender)\\b"
-    },
-    {
-      "rule_id": "search_engine",
-      "path": "backend/app/platform/search.py",
-      "signal": "class\\s+\\w*(?:SearchService|SearchIndex|SearchEngine)\\b"
     },
     {
       "rule_id": "identity",

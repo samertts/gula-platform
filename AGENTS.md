@@ -7,6 +7,28 @@
 All AI agents (Claude Code, ChatGPT, Gemini, OpenCode, GitHub Copilot, and future agents)
 working on this repository MUST automatically enforce the following rules.
 
+## Structural Migration Constitution — PROGRAM-MIGRATION-001 (ADR-028)
+
+> **Full text:** `docs/constitution/33_STRUCTURAL_MIGRATION_CONSTITUTION.md` +
+> `docs/adr/ADR-028-structural-migration.md`. Applies to every structural
+> migration commit (Commit 1.x series).
+
+1. **Behavior preservation is mandatory** — runtime, API, business rules,
+   security, authorization, audit, and database behavior never change.
+2. **Every deletion must be evidence-based** — unused / superseded /
+   duplicated / intentionally deprecated, justified in the report.
+3. **Backend remains the authoritative source of truth** — verify OpenAPI
+   compatibility, frontend consumers, client types, permissions, request/
+   response models, route compatibility after every migration.
+4. **Migration Impact Report is mandatory per commit** — files removed/moved/
+   replaced, duplicate code eliminated, LOC reduction, dependency changes,
+   API impact, frontend impact, rollback procedure.
+5. **Prefer moving before deleting** — archive first, delete after verification.
+6. **Every migration must remain independently reversible** — a single
+   `git revert` restores the previous state.
+7. **One commit at a time** — after each commit run the complete verification
+   cycle, produce the report, STOP, and await explicit approval.
+
 ## Permanent Platform Constitution — PROGRAM-CONSTITUTION-001
 
 > **Full text:** `AI_OPERATING_CONSTITUTION.md` Section 2.
