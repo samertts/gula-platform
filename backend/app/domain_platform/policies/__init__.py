@@ -27,18 +27,20 @@ from app.domain_platform.policies.core import (
 from app.domain_platform.policies.dormancy_policy import DormancyPolicy
 from app.domain_platform.policies.future import FUTURE_POLICIES
 
-# The canonical governance catalog (ADR-027). Order = registry run order.
+# The canonical governance catalog (ADR-027). Ordered alphabetically by name
+# = the canonical run order; a lockstep test keeps the registry names
+# identical to it.
 POLICY_CATALOG: tuple[str, ...] = (
+    "api_governance_policy",
+    "cross_domain_communication_policy",
+    "data_governance_policy",
+    "dependency_policy",
+    "domain_ownership_policy",
     "dormancy_policy",
     "lifecycle_policy",
-    "domain_ownership_policy",
     "production_readiness_policy",
-    "shared_core_policy",
-    "dependency_policy",
-    "cross_domain_communication_policy",
-    "api_governance_policy",
     "security_policy",
-    "data_governance_policy",
+    "shared_core_policy",
 )
 
 

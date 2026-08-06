@@ -8,8 +8,9 @@ Design:
 * a *policy* is any object satisfying the :class:`Policy` protocol
   (``name``, ``description``, ``enabled``, ``evaluate(context)``) — adding a
   new governance rule is adding one module, never an engine change;
-* the :class:`PolicyEngine` runs every *enabled* policy in registration
-  order, applies baseline waivers, and aggregates a deterministic verdict;
+* the :class:`PolicyEngine` runs every *enabled* policy in canonical
+  (name-sorted) order regardless of registration sequence, applies baseline
+  waivers, and aggregates a deterministic verdict;
 * each :class:`PolicyResult` carries machine-readable findings plus a
   human-readable summary; :class:`PolicyReport` renders both a JSON payload
   and a Markdown report;
@@ -149,16 +150,15 @@ class PolicyResult:
 class PolicyContext:
     """The inputs a policy evaluates against.
 
-    Policies read only what they need from the context; unknown inputs are
-    ignored, so the context can grow without breaking existing policies.
-    ``domains``/``dormancy_source`` are typed via TYPE_CHECKING to avoid
-    circular imports while keeping the engine domain-platform independent.
+    Policies read only what they need from the context; fields are typed via
+    TYPE_CHECKING to avoid circular imports while keeping the engine
+    domain-platform independent. No unused or open-ended fields are exposed
+    (ADR-027): the context carries exactly the inputs implemented policies
+    consume.
     """
 
     domains: list[DomainManifest] | None = None
     dormancy_source: DormancySource | None = None
-    repo_root: pathlib.Path | None = None
-    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @runtime_checkable
@@ -178,7 +178,13 @@ class Policy(Protocol):
 
 
 class PolicyRegistry:
-    """Ordered registry of policies. Registration order is the run order."""
+    """Registry of policies.
+
+    Canonical order (policy ``name``) is used for every observable output —
+    ``names()``, ``enabled()``, ``to_manifest()`` — so execution order and
+    reports are deterministic regardless of registration sequence or
+    execution environment (ADR-027).
+    """
 
     def __init__(self) -> None:
         self._policies: dict[str, Policy] = {}
@@ -196,15 +202,18 @@ class PolicyRegistry:
             raise KeyError(f"unknown policy: {name}") from exc
 
     def names(self) -> list[str]:
-        return list(self._policies)
+        return sorted(self._policies)
 
     def enabled(self) -> list[Policy]:
-        return [p for p in self._policies.values() if p.enabled]
+        return sorted(
+            (p for p in self._policies.values() if p.enabled),
+            key=lambda p: p.name,
+        )
 
     def to_manifest(self) -> list[dict[str, Any]]:
         return [
             {"name": p.name, "description": p.description, "enabled": bool(p.enabled)}
-            for p in self._policies.values()
+            for p in sorted(self._policies.values(), key=lambda p: p.name)
         ]
 
     def __contains__(self, name: str) -> bool:
@@ -321,9 +330,11 @@ class PolicyBaseline:
 class PolicyReport:
     """The full governance report: manifest + per-policy results.
 
-    Deterministic by construction: no timestamps or durations, fixed
-    registration order, stable finding order. Two runs over the same context
-    produce byte-identical JSON and Markdown (ADR-027).
+    Deterministic by construction: no timestamps, durations, randomness, or
+    unordered collections — status is derived from findings, findings are
+    emitted in stable order, and policies run in canonical name order. Two
+    runs over the same context produce byte-identical JSON and Markdown
+    (ADR-027).
     """
 
     version: str
@@ -382,8 +393,9 @@ class PolicyReport:
 
 
 class PolicyEngine:
-    """Runs every enabled policy in registration order and aggregates a
-    deterministic verdict. The single governance entry point (ADR-027)."""
+    """Runs every enabled policy in canonical (name-sorted) order and
+    aggregates a deterministic verdict. The single governance entry point
+    (ADR-027)."""
 
     def __init__(
         self,

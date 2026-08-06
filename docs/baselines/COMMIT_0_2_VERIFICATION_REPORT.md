@@ -2,6 +2,7 @@
 
 **Commit:** `7205c4d1` + `4789b4af` — `feat(domain-platform): architecture policy engine foundation (ADR-027)`
 **Strengthening commit:** `1173d8b4`
+**Hardening commit:** (pending)
 **Branch:** `remediate-security-001`
 **Date:** 2026-08-06
 
@@ -60,9 +61,9 @@ everything, so the repo verdict stays **PASS**.
 
 | Suite | Result |
 |---|---|
-| Complete backend suite (`pytest tests/`, clean env) | **4990 passed / 0 failed / 148 warnings** in 621.05 s (10:21) |
-| Policy Engine tests | **68 passed** |
-| Dormancy + domain + policy + architecture scope | **203 passed** |
+| Complete backend suite (`pytest tests/`, clean env) | **4993 passed / 0 failed / 148 warnings** in 609.73 s (10:09) |
+| Policy Engine tests | **71 passed** |
+| Dormancy + domain + policy + architecture scope | **206 passed** |
 | Frontend suite (`vitest run`) | **122 passed (9 files)** |
 
 ## 4. Build Status
@@ -118,9 +119,9 @@ endpoint, model, or guard:
 
 | Metric | Before (Commit 0.1) | After (Commit 0.2) | Δ |
 |---|---|---|---|
-| Backend suite | 4,922 passed / 0 failed | 4,990 passed / 0 failed | **+68** |
+| Backend suite | 4,922 passed / 0 failed | 4,993 passed / 0 failed | **+71** |
 | Governance policies | 1 rule (inlined in check 10) | **10 policies** (1 enabled, 9 registered future) | +9 scaffolded |
-| Policy Engine tests | 0 | 68 | +68 |
+| Policy Engine tests | 0 | 71 | +71 |
 | Certification checks | 10 | 10 | unchanged |
 | Ruff (backend/app) | 379 | 379 | 0 new |
 | Architecture gate | PASS | PASS (+ Policy Engine section) | — |
@@ -169,6 +170,52 @@ endpoint, model, or guard:
     execution-order determinism, registry⇄catalog lockstep
     (`TestRealisticRegressionScenarios`). ✔
 
+## 10A. Final Architecture Hardening Pass
+
+Applied and re-verified end-to-end (all 8 hardening requirements):
+
+1. **Engine stays infrastructure, not a framework** — audited every
+   abstraction in `policies/core.py`. Removed the two unused, open-ended
+   `PolicyContext` fields (`repo_root`, `extra`) — future-proofing with no
+   current value. Everything else is exercised by an implemented policy or a
+   report: Protocol, severity/status, finding/result, registry, waiver/
+   baseline, report, engine. No plugin/DI/reflection/loading machinery.
+2. **Open/Closed Principle** — adding a policy = implement the `Policy`
+   interface + register it + set `enabled`; the engine never changes.
+   Verified by `test_new_policy_joins_without_engine_modification` (a
+   brand-new `naming_convention_policy` joins `build_default_registry()`
+   and gates a FAIL without touching `PolicyEngine`).
+3. **Complete determinism** — no timestamps, durations, randomness, or
+   unordered collections in any output. `PolicyReport`/`PolicyResult` carry
+   none; status is derived from findings; findings are emitted in stable
+   order. Verified by `test_output_has_no_environment_dependent_fields`
+   (JSON contains none of `generated_at`/`duration`/`elapsed`/`timestamp`/
+   `random`/`perf_counter`) plus the byte-identical CLI `diff`.
+4. **Deterministic execution order** — the registry now exposes canonical
+   (name-sorted) order for `names()`, `enabled()`, and `to_manifest()`, so
+   execution order and reports are independent of registration sequence or
+   environment. `POLICY_CATALOG` is sorted to match. Verified by
+   `test_execution_order_is_canonical_not_registration_order` and
+   `test_output_identical_regardless_of_registration_sequence` (two
+   registries, different registration order → identical `to_dict`).
+5. **Single implementation** — Certification (check 10), the Architecture
+   Gate (`run_policy_gate`), CLI (`architecture-policy`), and CI
+   (`ai-governance.yml`) all consume the same `PolicyEngine`/
+   `DormancyPolicy` modules; no duplicated business logic
+   (`TestSingleImplementation`).
+6. **Accidental-complexity review** — result of the audit above; the only
+   removal was the two unused `PolicyContext` fields. No duplicated logic,
+   no hidden coupling (certification→policies import is the documented
+   ADR-027 delegation), no speculative abstractions retained.
+7. **Frontend ↔ Backend sync** — Backend is the single source of truth.
+   OpenAPI byte-identical (1,696 paths, paths + components unchanged);
+   request/response models unchanged; no frontend references to the policy
+   engine; zero frontend files changed; frontend routes and permissions
+   untouched.
+8. **Complete verification cycle re-run** — see sections 3–9 below with the
+   updated numbers (4993 backend, 71 policy, 206 scope, gates PASS, ruff
+   baseline 379, OpenAPI byte-identical).
+
 ## 11. Rollback Readiness
 
 - Revert: `git revert <commit>` — additive, no schema/data/API change.
@@ -177,10 +224,11 @@ endpoint, model, or guard:
 
 ## 12. Verdict
 
-**GREEN.** Full suite 4,990 passed / 0 failed; both gates PASS (Policy Engine
+**GREEN.** Full suite 4,993 passed / 0 failed; both gates PASS (Policy Engine
 now inside the architecture gate); build PASS; API surface byte-identical;
 Frontend↔Backend consistent (no mismatch); ruff baseline 379 unchanged; policy
-engine output is byte-identical across runs; config-only enablement and
-single-implementation guaranteed by dedicated tests.
+engine output is byte-identical across runs and across registration
+sequences; OCP and single-implementation guaranteed by dedicated tests;
+accidental-complexity audit clean (two unused `PolicyContext` fields removed).
 Commit 0.2 is complete. Ready to proceed to **Commit 1.1** — **pending
 explicit user approval**.

@@ -45,8 +45,9 @@ contract and registering it — **never an engine change**.
 
 ### Engine behavior
 
-- `PolicyEngine.run(context)` executes every *enabled* policy in
-  registration order (deterministic), then applies baseline waivers.
+- `PolicyEngine.run(context)` executes every *enabled* policy in canonical
+  (name-sorted) order — independent of registration sequence or environment —
+  then applies baseline waivers.
 - Each `PolicyResult` carries `status` (`pass`/`warn`/`fail`/`skipped`/
   `error`), the worst `severity` (`info`/`minor`/`major`/`critical`),
   machine-readable `findings`, and a human-readable `summary`.
@@ -55,10 +56,15 @@ contract and registering it — **never an engine change**.
 - Verdict aggregation: any `fail`/`error` → gate FAIL; any `warn` →
   gate WARN; otherwise PASS. Critical/major findings fail; minor findings
   warn; info findings pass.
-- **Deterministic output.** Reports carry no timestamps or durations;
-  status is derived from findings and findings are emitted in a stable
-  order. Two runs over the same context produce byte-identical JSON and
-  Markdown — required for CI diffing and reproducible governance.
+- **Deterministic output.** Reports carry no timestamps, durations,
+  randomness, or unordered collections; status is derived from findings,
+  findings are emitted in a stable order, and policies run in canonical name
+  order regardless of registration sequence. Two runs over the same context
+  produce byte-identical JSON and Markdown — required for CI diffing and
+  reproducible governance.
+- **Open/Closed.** Adding a policy = implement the `Policy` interface +
+  register it + set `enabled` — never a change to `PolicyEngine` or the
+  registry machinery (verified by test).
 
 ### Waivers / baselines
 

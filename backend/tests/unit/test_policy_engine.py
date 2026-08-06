@@ -188,11 +188,11 @@ class TestSeverityAndStatus:
 
 
 class TestPolicyRegistry:
-    def test_register_get_names_in_order(self):
+    def test_register_get_names_in_canonical_order(self):
         registry = PolicyRegistry()
         registry.register(_StubPolicy("b"))
         registry.register(_StubPolicy("a"))
-        assert registry.names() == ["b", "a"]
+        assert registry.names() == ["a", "b"]
         assert registry.get("b").name == "b"
 
     def test_duplicate_registration_rejected(self):
@@ -205,20 +205,21 @@ class TestPolicyRegistry:
         with pytest.raises(KeyError):
             PolicyRegistry().get("nope")
 
-    def test_enabled_returns_only_enabled_in_order(self):
+    def test_enabled_returns_only_enabled_in_canonical_order(self):
         registry = PolicyRegistry()
         registry.register(_StubPolicy("one", enabled=False))
         registry.register(_StubPolicy("two", enabled=True))
         registry.register(_StubPolicy("three", enabled=True))
-        assert [p.name for p in registry.enabled()] == ["two", "three"]
+        assert [p.name for p in registry.enabled()] == ["three", "two"]
 
-    def test_to_manifest_documents_catalog(self):
+    def test_to_manifest_is_canonically_ordered(self):
         registry = PolicyRegistry()
-        registry.register(_StubPolicy("a", enabled=True))
-        registry.register(_StubPolicy("b", enabled=False))
+        registry.register(_StubPolicy("b", enabled=True))
+        registry.register(_StubPolicy("a", enabled=False))
         manifest = registry.to_manifest()
-        assert manifest[0] == {"name": "a", "description": "a test policy", "enabled": True}
-        assert manifest[1]["enabled"] is False
+        assert [m["name"] for m in manifest] == ["a", "b"]
+        assert manifest[0] == {"name": "a", "description": "a test policy", "enabled": False}
+        assert manifest[1]["enabled"] is True
 
     def test_default_registry_is_catalog_lockstep(self):
         registry = build_default_registry()
@@ -230,10 +231,10 @@ class TestPolicyRegistry:
 
 
 class TestPolicyEngine:
-    def test_runs_enabled_policies_in_registration_order(self):
+    def test_runs_enabled_policies_in_canonical_order(self):
         registry = PolicyRegistry()
-        registry.register(_StubPolicy("first", status=PolicyStatus.PASS))
         registry.register(_StubPolicy("second", status=PolicyStatus.WARN))
+        registry.register(_StubPolicy("first", status=PolicyStatus.PASS))
         report = PolicyEngine(registry=registry).run(PolicyContext())
         assert [r.policy for r in report.results] == ["first", "second"]
 
@@ -292,6 +293,15 @@ class TestPolicyEngine:
         second = PolicyEngine(registry=build_default_registry()).run(context)
         assert first.to_dict() == second.to_dict()
         assert first.render_markdown() == second.render_markdown()
+
+    def test_output_has_no_environment_dependent_fields(self):
+        report = PolicyEngine(registry=build_default_registry()).run(
+            PolicyContext(domains=list_domains(), dormancy_source=load_default_dormancy_source())
+        )
+        data = json.dumps(report.to_dict())
+        for forbidden in ("generated_at", "duration", "elapsed", "timestamp", "random", "perf_counter"):
+            assert forbidden not in data
+        assert [m["name"] for m in report.to_dict()["registered_policies"]] == list(POLICY_CATALOG)
 
 
 # ── Baselines / waivers ─────────────────────────────────────────────────────
@@ -600,13 +610,27 @@ class TestRealisticRegressionScenarios:
         assert report.verdict == "FAIL"
         assert [r.policy for r in report.results] == ["dormancy_policy", "hard_gate"]
 
-    def test_execution_order_is_registration_order(self):
+    def test_execution_order_is_canonical_not_registration_order(self):
         registry = PolicyRegistry()
         registry.register(_StubPolicy("zeta"))
         registry.register(_StubPolicy("alpha"))
         registry.register(_StubPolicy("gamma"))
         report = PolicyEngine(registry=registry).run(PolicyContext())
-        assert [r.policy for r in report.results] == ["zeta", "alpha", "gamma"]
+        assert [r.policy for r in report.results] == ["alpha", "gamma", "zeta"]
+
+    def test_output_identical_regardless_of_registration_sequence(self):
+        first = PolicyRegistry()
+        first.register(_StubPolicy("zeta"))
+        first.register(_StubPolicy("alpha"))
+        first.register(_StubPolicy("gamma"))
+        second = PolicyRegistry()
+        second.register(_StubPolicy("gamma"))
+        second.register(_StubPolicy("zeta"))
+        second.register(_StubPolicy("alpha"))
+        a = PolicyEngine(registry=first).run(PolicyContext()).to_dict()
+        b = PolicyEngine(registry=second).run(PolicyContext()).to_dict()
+        assert a == b
+        assert [r["policy"] for r in a["results"]] == ["alpha", "gamma", "zeta"]
 
 
 # ── Configuration-only enablement (no engine redesign) ─────────────────────
@@ -640,6 +664,43 @@ class TestConfigOnlyEnablement:
             assert report.verdict == "PASS"
         finally:
             shared_core.enabled = False
+
+    def test_new_policy_joins_without_engine_modification(self):
+        class _UpperCasePolicy:
+            """A brand-new governance rule implemented outside the engine."""
+
+            name = "naming_convention_policy"
+            description = "Domain codes must be lower_snake (OCP verification)."
+            enabled = True
+
+            def evaluate(self, context: PolicyContext) -> PolicyResult:
+                findings = [
+                    _finding(
+                        code="NAMING-001",
+                        severity=PolicySeverity.MAJOR,
+                        message=f"domain '{m.code}' must be lower_snake",
+                        domain=m.code,
+                    )
+                    for m in (context.domains or [])
+                    if m.code != m.code.lower()
+                ]
+                return PolicyResult(
+                    policy=self.name,
+                    status=compute_status(findings),
+                    summary=f"{len(findings)} naming violation(s)",
+                    findings=findings,
+                )
+
+        assert isinstance(_UpperCasePolicy(), Policy)
+        registry = build_default_registry()
+        registry.register(_UpperCasePolicy())
+        report = PolicyEngine(registry=registry).run(
+            PolicyContext(domains=[_manifest(code="Laboratory")])
+        )
+        naming = next(r for r in report.results if r.policy == "naming_convention_policy")
+        assert naming.status is PolicyStatus.FAIL
+        assert naming.findings[0].code == "NAMING-001"
+        assert report.verdict == "FAIL"
 
 
 # ── Single implementation: gate == certification == engine ────────────────
@@ -680,7 +741,9 @@ class TestSingleImplementation:
 class TestFuturePolicies:
     def test_catalog_has_ten_policies(self):
         assert len(POLICY_CATALOG) == 10
-        assert POLICY_CATALOG[0] == "dormancy_policy"
+        assert len(set(POLICY_CATALOG)) == 10
+        assert tuple(sorted(POLICY_CATALOG)) == POLICY_CATALOG
+        assert POLICY_CATALOG[0] == "api_governance_policy"
 
     def test_default_registry_enables_only_dormancy(self):
         registry = build_default_registry()
