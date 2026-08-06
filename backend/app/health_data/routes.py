@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.health_data.canonical import map_patient
 from app.health_data.data_lake.catalog import DataLakeCatalog
@@ -20,8 +20,13 @@ from app.health_data.governance.audit import DataAccessAuditTrail
 from app.health_data.governance.lineage import LineageTracker
 from app.health_data.governance.policies import GovernancePolicy, PolicyEngine
 from app.health_data.warehouse.service import WarehouseQuery, WarehouseService
+from app.security.dependencies import get_current_user
 
-router = APIRouter(prefix="/health-data", tags=["Health Data"])
+router = APIRouter(
+    prefix="/health-data",
+    tags=["Health Data"],
+    dependencies=[Depends(get_current_user)],
+)
 
 _catalog = DataLakeCatalog()
 _storage = LocalStorageBackend()

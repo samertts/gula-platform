@@ -1,5 +1,5 @@
 {
-  "discovered_at": "2026-08-06T18:00:16.092695+00:00",
+  "discovered_at": "2026-08-06T18:57:21.340437+00:00",
   "adr_files": [],
   "decisions": [
     {
@@ -25,7 +25,7 @@
         "One deployable unit, clear module boundaries",
         "Services extracted only when measured"
       ],
-      "created_at": "2026-08-06T18:00:16.091094+00:00"
+      "created_at": "2026-08-06T18:57:21.339855+00:00"
     },
     {
       "decision_id": "AD-fhir-r4",
@@ -50,7 +50,7 @@
         "FHIR R4 resources as the canonical clinical contract",
         "HL7 messaging preserved at device and hospital boundaries"
       ],
-      "created_at": "2026-08-06T18:00:16.091254+00:00"
+      "created_at": "2026-08-06T18:57:21.339964+00:00"
     },
     {
       "decision_id": "AD-multi-tenant-isolation",
@@ -75,7 +75,7 @@
         "Tenant-scoped access control",
         "Lab-level isolation enforced in every query"
       ],
-      "created_at": "2026-08-06T18:00:16.091360+00:00"
+      "created_at": "2026-08-06T18:57:21.340039+00:00"
     },
     {
       "decision_id": "AD-postgresql-redis",
@@ -100,7 +100,7 @@
         "PostgreSQL primary store",
         "Redis caching and task queue"
       ],
-      "created_at": "2026-08-06T18:00:16.091737+00:00"
+      "created_at": "2026-08-06T18:57:21.340103+00:00"
     },
     {
       "decision_id": "AD-immutable-audit-log",
@@ -125,7 +125,7 @@
         "Append-only audit records",
         "Verification capability on every record"
       ],
-      "created_at": "2026-08-06T18:00:16.091877+00:00"
+      "created_at": "2026-08-06T18:57:21.340160+00:00"
     },
     {
       "decision_id": "AD-offline-first",
@@ -150,7 +150,7 @@
         "Local-first data capture",
         "Synchronization via outbox/event bus"
       ],
-      "created_at": "2026-08-06T18:00:16.092296+00:00"
+      "created_at": "2026-08-06T18:57:21.340215+00:00"
     },
     {
       "decision_id": "AD-arabic-first",
@@ -175,7 +175,7 @@
         "Arabic as primary language",
         "RTL layout throughout frontend-v3"
       ],
-      "created_at": "2026-08-06T18:00:16.092459+00:00"
+      "created_at": "2026-08-06T18:57:21.340267+00:00"
     },
     {
       "decision_id": "AD-identity-platform",
@@ -200,7 +200,7 @@
         "Central identity authority",
         "RBAC and ABAC authorization"
       ],
-      "created_at": "2026-08-06T18:00:16.092555+00:00"
+      "created_at": "2026-08-06T18:57:21.340318+00:00"
     },
     {
       "decision_id": "AD-event-bus",
@@ -225,7 +225,7 @@
         "Domain events on a shared bus",
         "Outbox pattern for reliable publishing"
       ],
-      "created_at": "2026-08-06T18:00:16.092620+00:00"
+      "created_at": "2026-08-06T18:57:21.340369+00:00"
     },
     {
       "decision_id": "AD-national-ehr",
@@ -250,7 +250,7 @@
         "FHIR R4 national contracts",
         "Government integration gateways"
       ],
-      "created_at": "2026-08-06T18:00:16.092678+00:00"
+      "created_at": "2026-08-06T18:57:21.340420+00:00"
     }
   ]
 }

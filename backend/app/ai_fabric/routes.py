@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.ai_fabric.agents.base import AgentContext
 from app.ai_fabric.governance import EvaluationDimension, PromptStatus, PromptVersion
@@ -13,10 +13,15 @@ from app.ai_fabric.public_health import (
 )
 from app.ai_fabric.rag import SearchMode
 from app.ai_fabric.sdk import UnifiedAISDK
+from app.security.dependencies import get_current_user
 
 logger = logging.getLogger("gula.ai_fabric.routes")
 
-router = APIRouter(prefix="/ai/fabric", tags=["AI Fabric"])
+router = APIRouter(
+    prefix="/ai/fabric",
+    tags=["AI Fabric"],
+    dependencies=[Depends(get_current_user)],
+)
 sdk = UnifiedAISDK()
 
 

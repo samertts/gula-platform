@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from ..security.dependencies import get_current_user
 from . import PlatformRegistry
 
 logger = logging.getLogger("gula.platform.routes")
 
-router = APIRouter(prefix="/platform", tags=["platform"])
+router = APIRouter(
+    prefix="/platform",
+    tags=["platform"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 @router.get("/health")

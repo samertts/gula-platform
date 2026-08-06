@@ -1,9 +1,10 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 
+from ..security.dependencies import get_current_user
 from .events import EVENT_REGISTRY, get_event_catalog
 from .fhir import get_capability_statement, get_fhir_profiles, get_structure_definitions
 from .generator import ContractGenerator
@@ -11,7 +12,11 @@ from .models import ContractExport
 
 logger = logging.getLogger("gula.contracts.router")
 
-router = APIRouter(prefix="/contracts", tags=["contracts"])
+router = APIRouter(
+    prefix="/contracts",
+    tags=["contracts"],
+    dependencies=[Depends(get_current_user)],
+)
 
 _generator = ContractGenerator()
 

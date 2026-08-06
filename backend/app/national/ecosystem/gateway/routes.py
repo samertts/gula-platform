@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Body, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 
+from ....security.dependencies import get_current_user
 from .policies import GatewayPolicyEngine, PolicyDecision
 
 logger = logging.getLogger("gula.ecosystem.gateway")
 
-router = APIRouter(prefix="/gateway", tags=["API Gateway"])
+router = APIRouter(
+    prefix="/gateway",
+    tags=["API Gateway"],
+    dependencies=[Depends(get_current_user)],
+)
 
 _engine = GatewayPolicyEngine()
 
