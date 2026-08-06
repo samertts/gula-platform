@@ -44,7 +44,7 @@ import pytest
 from app.database import Base, get_db
 from app.security.auth import create_token, hash_password
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -97,6 +97,24 @@ def _session_engine():
     with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as _f:
         _db_path = _f.name
     engine = create_engine(f"sqlite:///{_db_path}", connect_args={"check_same_thread": False})
+
+    def _sqlite_fast_pragmas(dbapi_conn, _record):
+        # WSL2/virtual-disk environments: the default rollback journal forces an
+        # fsync per DDL statement (~1300 statements across 457 tables), turning
+        # create_all into a multi-minute I/O stall (D-state) that looks like a
+        # hang. Keeping the journal in RAM and disabling fsync preserves the
+        # exact same SQLite locking/transaction semantics (journal location does
+        # not change lock behavior) while removing the disk-journal write path.
+        # This is test infrastructure only; the DB is a throwaway temp file.
+        try:
+            cur = dbapi_conn.cursor()
+            cur.execute("PRAGMA journal_mode=MEMORY")
+            cur.execute("PRAGMA synchronous=OFF")
+            cur.close()
+        except Exception:
+            pass
+
+    event.listen(engine, "connect", _sqlite_fast_pragmas)
     # Import ALL models via app.main — registers Base + NationalBase + all
     # other domain models on their respective metadata namespaces.  This
     # must happen BEFORE table creation so the combined DDL metadata can
