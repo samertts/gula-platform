@@ -95,11 +95,7 @@ def write_policy_baseline() -> int:
                     }
                 )
     POLICY_BASELINE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    payload = {
-        "note": "Acknowledged Architecture Policy Engine findings (ADR-027). "
-                "Do not grow this list.",
-        "waivers": waivers,
-    }
+    payload = {"waivers": waivers}
     POLICY_BASELINE_PATH.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(
         f"policy baseline written: {POLICY_BASELINE_PATH} "

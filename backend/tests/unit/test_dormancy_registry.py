@@ -381,14 +381,14 @@ class TestDormancyCertificationCheck:
         check = next(c for c in result.checks if c.check == "dormancy_policy")
         assert check.passed is True
 
-    def test_undeclared_module_is_advisory(self):
+    def test_undeclared_module_warns_with_minor_finding(self):
         engine = DomainCertificationEngine()
         manifest = _manifest(modules=["backend/app/lims/models.py"])
         result = engine.certify_domain(manifest)
         assert result.passed is True
         check = next(c for c in result.checks if c.check == "dormancy_policy")
         assert check.passed is True
-        assert check.severity == "info"
+        assert check.severity == "minor"
         assert "implicitly active_development" in check.details
 
     def test_archived_module_owned_fails(self):

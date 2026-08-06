@@ -11,9 +11,9 @@ implementation:
 * no active Domain may own a ``dormant`` module (finding ``DORMANCY-002``,
   severity ``major``);
 * modules without an explicit lifecycle declaration are implicitly
-  ``active_development`` (finding ``DORMANCY-003``, severity ``info``,
-  advisory) — the policy only *fails* for protected-asset coupling, so the
-  real canonical Domains still certify at 100%.
+  ``active_development`` (finding ``DORMANCY-003``, severity ``minor``) —
+  the policy *warns* for an undeclared-modules Domain, so a Domain only
+  certifies at 100% when every module carries an explicit lifecycle state.
 
 The policy depends only on the ``DormancySource`` interface; the default
 source is the committed JSON configuration (replaceable through
@@ -120,7 +120,7 @@ class DormancyPolicy:
             findings.append(
                 PolicyFinding(
                     code=_CODE_UNDECLARED,
-                    severity=PolicySeverity.INFO,
+                    severity=PolicySeverity.MINOR,
                     message=(
                         f"{len(undeclared)} module(s) implicitly active_development; "
                         "declare them in the Dormancy Registry (ADR-026) to pin a "

@@ -1,6 +1,7 @@
 # Commit 0.2 Verification Report
 
-**Commit:** `7205c4d1` — `feat(domain-platform): architecture policy engine foundation (ADR-027)`
+**Commit:** `7205c4d1` + `4789b4af` — `feat(domain-platform): architecture policy engine foundation (ADR-027)`
+**Strengthening commit:** (pending)
 **Branch:** `remediate-security-001`
 **Date:** 2026-08-06
 
@@ -15,18 +16,19 @@ policy, and nine further policies are registered for future enablement.
 
 | File | Change |
 |---|---|
-| `backend/app/domain_platform/policies/core.py` | New: Policy Engine — `Policy` Protocol, `PolicySeverity`/`PolicyStatus`, `PolicyFinding`/`PolicyResult`, `PolicyContext`, `PolicyRegistry`, `PolicyWaiver`/`PolicyBaseline` (waivers), `PolicyReport` (JSON + Markdown), `PolicyEngine` (deterministic run loop) |
+| `backend/app/domain_platform/policies/core.py` | New: Policy Engine — `Policy` Protocol, `PolicySeverity`/`PolicyStatus`, `PolicyFinding`/`PolicyResult`, `PolicyContext`, `PolicyRegistry`, `PolicyWaiver`/`PolicyBaseline` (waivers), `PolicyReport` (JSON + Markdown), `PolicyEngine` (deterministic run loop, **no timestamps/durations** — byte-reproducible output) |
 | `backend/app/domain_platform/policies/dormancy_policy.py` | New: `DormancyPolicy` — the first implemented policy (ports certification check-10 semantics) |
 | `backend/app/domain_platform/policies/future.py` | New: 9 registered-but-disabled future policies (lifecycle, domain ownership, production readiness, shared core, dependency, cross-domain comms, API governance, security, data governance) |
 | `backend/app/domain_platform/policies/__init__.py` | New: `POLICY_CATALOG` (10 names), `build_default_registry()` |
-| `backend/app/domain_platform/certification.py` | Check 10 delegates to `DormancyPolicy` (backward compatible; 10 checks unchanged) |
-| `scripts/architecture/policy.py` | New: repository-mode engine runner + `policy` / `policy-json` / `policy-baseline` commands |
+| `backend/app/domain_platform/certification.py` | Check 10 delegates to `DormancyPolicy` (backward compatible; 10 checks unchanged); WARN now maps to `passed=True` so undeclared-module Domains still certify |
+| `backend/app/domain_platform/policies/dormancy_policy.py` | `DORMANCY-003` severity `info`→`minor`: an undeclared-modules Domain now **WARNs** instead of silently passing |
+| `scripts/architecture/policy.py` | New: repository-mode engine runner + `policy` / `policy-json` / `policy-baseline` commands; baseline payload is purely the waiver list (deterministic) |
 | `scripts/architecture/gate.py` | `run_all_gates()` now includes a `policies` section from the engine |
 | `scripts/architecture/cli.py`, `scripts/architecture.py`, `scripts/kernel/cli.py` | New commands wired: `architecture-policy`, `architecture-policy-json`, `architecture-policy-baseline` |
 | `.github/workflows/ai-governance.yml` | New CI step: `architecture-policy` (ADR-027) |
-| `.ai/core/policies/policy_baseline.json` | Committed empty waiver baseline (acknowledged-debt mechanism) |
-| `docs/adr/ADR-027-architecture-policy-engine.md` | New ADR; `ADR-026` updated with the ADR-027 delegation note |
-| `backend/tests/unit/test_policy_engine.py` | New: **54 tests** |
+| `.ai/core/policies/policy_baseline.json` | Committed empty waiver baseline (`{"waivers": []}` — no note text, byte-stable) |
+| `docs/adr/ADR-027-architecture-policy-engine.md` | New ADR (determinism clause added); `ADR-026` updated with the ADR-027 delegation + WARN note |
+| `backend/tests/unit/test_policy_engine.py` | New: **68 tests** (was 54; + realistic regression scenarios, determinism, config-only enablement, single-implementation) |
 
 ## 2. Policy Engine Verification (dedicated)
 
@@ -40,14 +42,27 @@ policy, and nine further policies are registered for future enablement.
   executed by the engine.
 - waivers: `PolicyBaseline` loads `.ai/core/policies/policy_baseline.json`
   (empty); any un-acknowledged finding still fails the gate.
+- **Deterministic output (byte-identical across runs):** `policy-json`
+  produced twice → `diff` empty; `policy` (Markdown) twice → `diff` empty.
+  Reports contain no `generated_at` / `duration_ms` fields; status is derived
+  from findings; findings are emitted in stable order.
+
+### WARN semantics (DORMANCY-003)
+
+An undeclared-modules Domain now produces a `minor` finding → policy
+`WARN` (was `info` advisory-pass). Certification check 10 maps
+`PASS`/`WARN` → `passed=True`, so canonical 11/11 certification is
+unchanged; the Architecture Gate verdict would surface a WARN for any
+Domain that does not declare every module. All 11 canonical Domains declare
+everything, so the repo verdict stays **PASS**.
 
 ## 3. Final Test Summary
 
 | Suite | Result |
 |---|---|
-| Complete backend suite (`pytest tests/`, clean env) | **4976 passed / 0 failed / 148 warnings** in 594.24 s (9:54) |
-| Policy Engine tests | **54 passed** |
-| Commit 0.1 dormancy + domain + architecture tests | **135 passed** (unchanged — full backward compatibility) |
+| Complete backend suite (`pytest tests/`, clean env) | **4990 passed / 0 failed / 148 warnings** in 621.05 s (10:21) |
+| Policy Engine tests | **68 passed** |
+| Dormancy + domain + policy + architecture scope | **203 passed** |
 | Frontend suite (`vitest run`) | **122 passed (9 files)** |
 
 ## 4. Build Status
@@ -103,9 +118,9 @@ endpoint, model, or guard:
 
 | Metric | Before (Commit 0.1) | After (Commit 0.2) | Δ |
 |---|---|---|---|
-| Backend suite | 4,922 passed / 0 failed | 4,976 passed / 0 failed | **+54** |
+| Backend suite | 4,922 passed / 0 failed | 4,990 passed / 0 failed | **+68** |
 | Governance policies | 1 rule (inlined in check 10) | **10 policies** (1 enabled, 9 registered future) | +9 scaffolded |
-| Policy Engine tests | 0 | 54 | +54 |
+| Policy Engine tests | 0 | 68 | +68 |
 | Certification checks | 10 | 10 | unchanged |
 | Ruff (backend/app) | 379 | 379 | 0 new |
 | Architecture gate | PASS | PASS (+ Policy Engine section) | — |
@@ -125,19 +140,34 @@ endpoint, model, or guard:
    implemented, nine registered-but-disabled (no rule bodies, no fake logic).
    ✔
 4. **Deterministic results** — fixed registration order, sorted findings,
-   stable summaries; verified by `test_results_are_deterministic`. ✔
+   stable summaries, **no timestamps/durations**; two runs produce
+   byte-identical JSON and Markdown (verified by
+   `test_report_is_byte_identical_across_runs`,
+   `test_separate_engines_produce_identical_output`, and CLI `diff`). ✔
 5. **Machine-readable + human-readable output** — JSON (`to_dict`) and
    Markdown (`render_markdown`) from one report. ✔
 6. **Severity levels** — `info`/`minor`/`major`/`critical`; critical/major
-   fail, minor warns, info passes. ✔
-7. **Waivers/baselines** — `PolicyBaseline` (committed JSON); waived findings
-   never block, un-acknowledged findings always fail. ✔
+   fail, minor warns, info passes. DORMANCY-003 is `minor` (WARN). ✔
+7. **Waivers/baselines** — `PolicyBaseline` (committed JSON, `{"waivers":[]}`
+   only); waived findings never block, un-acknowledged findings always fail. ✔
 8. **Independently testable** — interface fakes + per-policy unit tests
-   (54 tests). ✔
+   (68 tests). ✔
 9. **Backward compatible** — certification engine callers unchanged, 10
    checks, 11/11 CERTIFIED, all Commit 0.1 tests green. ✔
 10. **Not over-engineered** — static Protocol + registry, no plugin/DSL
     machinery; future policies are configuration. ✔
+11. **Config-only enablement** — flipping a policy's `enabled` flag (stub or
+    registered future) executes it without touching engine/registry
+    (`test_flipping_enabled_flag_executes_without_engine_change`,
+    `test_future_policy_enabled_by_configuration`). ✔
+12. **Single implementation** — `run_policy_gate()` report equals a fresh
+    engine run; certification check 10 uses the same `DormancyPolicy` rule as
+    the gate; no duplicated governance logic (`TestSingleImplementation`). ✔
+13. **Realistic regression scenarios** — PASS declared-active, WARN
+    undeclared, FAIL dormant-owned (major), FAIL archived + retired-owned
+    (critical), waiver→PASS (`waived==1`), multi-policy verdict aggregation,
+    execution-order determinism, registry⇄catalog lockstep
+    (`TestRealisticRegressionScenarios`). ✔
 
 ## 11. Rollback Readiness
 
@@ -147,8 +177,10 @@ endpoint, model, or guard:
 
 ## 12. Verdict
 
-**GREEN.** Full suite 4,976 passed / 0 failed; both gates PASS (Policy Engine
+**GREEN.** Full suite 4,990 passed / 0 failed; both gates PASS (Policy Engine
 now inside the architecture gate); build PASS; API surface byte-identical;
-Frontend↔Backend consistent (no mismatch); ruff baseline 379 unchanged.
+Frontend↔Backend consistent (no mismatch); ruff baseline 379 unchanged; policy
+engine output is byte-identical across runs; config-only enablement and
+single-implementation guaranteed by dedicated tests.
 Commit 0.2 is complete. Ready to proceed to **Commit 1.1** — **pending
 explicit user approval**.

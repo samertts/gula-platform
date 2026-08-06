@@ -53,8 +53,12 @@ contract and registering it — **never an engine change**.
 - `PolicyReport` renders both a JSON payload (for CI and tooling) and a
   Markdown report (for humans).
 - Verdict aggregation: any `fail`/`error` → gate FAIL; any `warn` →
-  gate WARN (advisory); otherwise PASS. Critical/major findings fail;
-  minor findings warn; info findings pass.
+  gate WARN; otherwise PASS. Critical/major findings fail; minor findings
+  warn; info findings pass.
+- **Deterministic output.** Reports carry no timestamps or durations;
+  status is derived from findings and findings are emitted in a stable
+  order. Two runs over the same context produce byte-identical JSON and
+  Markdown — required for CI diffing and reproducible governance.
 
 ### Waivers / baselines
 

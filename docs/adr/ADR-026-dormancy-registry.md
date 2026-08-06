@@ -91,9 +91,13 @@ The Domain Certification engine (`certification.py`) now runs a 10th check,
   frozen strategic asset must not be coupled to live Domain code;
 - modules without an explicit declaration are implicitly
   `active_development` (the platform is actively developed) and reported as
-  advisory — the registry only *fails* a Domain for protected-asset coupling,
-  so the real 11 canonical Domains still certify at 100% while the archive
-  set stays protected.
+  a `minor` finding (WARN, non-blocking) — the registry only *fails* a Domain
+  for protected-asset coupling, so the real 11 canonical Domains still certify
+  at 100% while the archive set stays protected. A Domain that *warns* for
+  undeclared modules still passes certification check 10 (its ``severity``
+  reads ``minor`` and the summary explains why), so canonical certification is
+  unaffected; the Architecture Gate surfaces the WARN at the verdict level
+  (ADR-027).
 
 The check implementation is the first **Architecture Policy** (see
 [ADR-027](ADR-027-architecture-policy-engine.md)): `certification.py`

@@ -285,7 +285,7 @@ class DomainCertificationEngine:
         )
         return CheckResult(
             check="dormancy_policy",
-            passed=result.status is PolicyStatus.PASS,
+            passed=result.status in (PolicyStatus.PASS, PolicyStatus.WARN),
             severity=str(result.severity.value),
             details=result.summary,
         )

@@ -41,6 +41,7 @@ from app.domain_platform.policies import (
     build_default_registry,
     compute_status,
 )
+from app.domain_platform.policies.dormancy_policy import DormancyPolicy
 
 MANDATORY_SHARED_CORE = {"identity", "authentication", "authorization", "audit", "event_bus"}
 
@@ -272,6 +273,26 @@ class TestPolicyEngine:
         second = PolicyEngine(registry=registry).run(PolicyContext())
         assert [r.to_dict() for r in first.results] == [r.to_dict() for r in second.results]
 
+    def test_report_is_byte_identical_across_runs(self):
+        registry = build_default_registry()
+        context = PolicyContext(domains=list_domains(), dormancy_source=load_default_dormancy_source())
+        first = PolicyEngine(registry=registry).run(context)
+        second = PolicyEngine(registry=registry).run(context)
+        assert first.to_dict() == second.to_dict()
+        assert json.dumps(first.to_dict(), indent=2, sort_keys=True) == json.dumps(
+            second.to_dict(), indent=2, sort_keys=True
+        )
+        assert first.render_markdown() == second.render_markdown()
+        assert "generated_at" not in first.to_dict()
+        assert "duration_ms" not in first.results[0].to_dict()
+
+    def test_separate_engines_produce_identical_output(self):
+        context = PolicyContext(domains=list_domains(), dormancy_source=load_default_dormancy_source())
+        first = PolicyEngine(registry=build_default_registry()).run(context)
+        second = PolicyEngine(registry=build_default_registry()).run(context)
+        assert first.to_dict() == second.to_dict()
+        assert first.render_markdown() == second.render_markdown()
+
 
 # ── Baselines / waivers ─────────────────────────────────────────────────────
 
@@ -448,17 +469,20 @@ class TestDormancyPolicyThroughEngine:
         assert finding.code == "DORMANCY-002"
         assert finding.severity is PolicySeverity.MAJOR
 
-    def test_undeclared_modules_are_advisory(self):
+    def test_undeclared_modules_warn_with_minor_finding(self):
         registry = build_default_registry()
         context = PolicyContext(
             domains=[_manifest(modules=["backend/app/lims/models.py"])],
             dormancy_source=load_default_dormancy_source(),
         )
         report = PolicyEngine(registry=registry).run(context)
-        assert report.verdict == "PASS"
+        assert report.verdict == "WARN"
         dormancy = next(r for r in report.results if r.policy == "dormancy_policy")
-        assert dormancy.status is PolicyStatus.PASS
-        assert dormancy.findings[0].code == "DORMANCY-003"
+        assert dormancy.status is PolicyStatus.WARN
+        assert dormancy.passed is False
+        finding = dormancy.findings[0]
+        assert finding.code == "DORMANCY-003"
+        assert finding.severity is PolicySeverity.MINOR
         assert "implicitly active_development" in dormancy.summary
 
     def test_policy_respects_injected_source(self):
@@ -469,6 +493,185 @@ class TestDormancyPolicyThroughEngine:
         report = PolicyEngine(registry=registry).run(context)
         assert report.verdict == "FAIL"
         assert report.results[0].findings[0].severity is PolicySeverity.CRITICAL
+
+
+# ── Realistic regression scenarios (Commit 0.2 strengthening) ──────────────
+
+
+class TestRealisticRegressionScenarios:
+    """PASS / WARN / FAIL per the DORMANCY-001..003 contract, waivers, and
+    verdict aggregation over several policies at once."""
+
+    def test_declared_active_domain_passes(self):
+        source = DormancyRegistry()
+        source.register("backend/app/lims", ModuleLifecycleState.active_development, "test")
+        context = PolicyContext(
+            domains=[_manifest(modules=["backend/app/lims/models.py"])],
+            dormancy_source=source,
+        )
+        report = PolicyEngine(registry=build_default_registry()).run(context)
+        assert report.verdict == "PASS"
+        dormancy = next(r for r in report.results if r.policy == "dormancy_policy")
+        assert dormancy.status is PolicyStatus.PASS
+        assert dormancy.findings == []
+
+    def test_undeclared_modules_warn(self):
+        source = DormancyRegistry()
+        source.register("backend/app/lims", ModuleLifecycleState.active_development, "test")
+        context = PolicyContext(
+            domains=[_manifest(modules=["backend/app/inventory/models.py"])],
+            dormancy_source=source,
+        )
+        report = PolicyEngine(registry=build_default_registry()).run(context)
+        assert report.verdict == "WARN"
+        dormancy = next(r for r in report.results if r.policy == "dormancy_policy")
+        assert dormancy.status is PolicyStatus.WARN
+        assert dormancy.findings[0].code == "DORMANCY-003"
+        assert dormancy.findings[0].severity is PolicySeverity.MINOR
+
+    def test_dormant_owned_fails_major(self):
+        source = DormancyRegistry()
+        source.register("backend/app/national_data", ModuleLifecycleState.dormant, "test")
+        context = PolicyContext(
+            domains=[_manifest(modules=["backend/app/national_data/etl.py"])],
+            dormancy_source=source,
+        )
+        report = PolicyEngine(registry=build_default_registry()).run(context)
+        assert report.verdict == "FAIL"
+        dormancy = next(r for r in report.results if r.policy == "dormancy_policy")
+        assert dormancy.status is PolicyStatus.FAIL
+        assert dormancy.severity is PolicySeverity.MAJOR
+        assert dormancy.findings[0].code == "DORMANCY-002"
+
+    def test_archived_owned_fails_critical(self):
+        source = DormancyRegistry()
+        source.register("edge_agent", ModuleLifecycleState.archived, "test")
+        context = PolicyContext(
+            domains=[_manifest(modules=["edge_agent/src/main.py"])],
+            dormancy_source=source,
+        )
+        report = PolicyEngine(registry=build_default_registry()).run(context)
+        assert report.verdict == "FAIL"
+        dormancy = next(r for r in report.results if r.policy == "dormancy_policy")
+        assert dormancy.status is PolicyStatus.FAIL
+        assert dormancy.severity is PolicySeverity.CRITICAL
+        assert dormancy.findings[0].code == "DORMANCY-001"
+
+    def test_retired_owned_fails_critical(self):
+        source = DormancyRegistry()
+        source.register("legacy_sdk", ModuleLifecycleState.retired, "test")
+        context = PolicyContext(
+            domains=[_manifest(modules=["legacy_sdk/client.py"])],
+            dormancy_source=source,
+        )
+        report = PolicyEngine(registry=build_default_registry()).run(context)
+        assert report.verdict == "FAIL"
+        dormancy = next(r for r in report.results if r.policy == "dormancy_policy")
+        assert dormancy.status is PolicyStatus.FAIL
+        assert dormancy.findings[0].code == "DORMANCY-001"
+
+    def test_waiver_of_dormancy_finding_restores_pass(self):
+        source = DormancyRegistry()
+        source.register("backend/app/national_data", ModuleLifecycleState.dormant, "test")
+        context = PolicyContext(
+            domains=[_manifest(modules=["backend/app/national_data/etl.py"])],
+            dormancy_source=source,
+        )
+        baseline = PolicyBaseline([PolicyWaiver("dormancy_policy", "DORMANCY-002")])
+        report = PolicyEngine(registry=build_default_registry(), baseline=baseline).run(context)
+        assert report.verdict == "PASS"
+        dormancy = next(r for r in report.results if r.policy == "dormancy_policy")
+        assert dormancy.status is PolicyStatus.PASS
+        assert dormancy.waived == 1
+
+    def test_multiple_policies_aggregate_verdict(self):
+        source = DormancyRegistry()
+        source.register("backend/app/lims", ModuleLifecycleState.active_development, "test")
+        registry = PolicyRegistry()
+        registry.register(DormancyPolicy(dormancy_source=source))
+        registry.register(
+            _StubPolicy(
+                "hard_gate",
+                status=PolicyStatus.FAIL,
+                findings=[_finding(code="H-1", severity=PolicySeverity.CRITICAL)],
+            )
+        )
+        report = PolicyEngine(registry=registry).run(PolicyContext(domains=[_manifest()]))
+        assert report.verdict == "FAIL"
+        assert [r.policy for r in report.results] == ["dormancy_policy", "hard_gate"]
+
+    def test_execution_order_is_registration_order(self):
+        registry = PolicyRegistry()
+        registry.register(_StubPolicy("zeta"))
+        registry.register(_StubPolicy("alpha"))
+        registry.register(_StubPolicy("gamma"))
+        report = PolicyEngine(registry=registry).run(PolicyContext())
+        assert [r.policy for r in report.results] == ["zeta", "alpha", "gamma"]
+
+
+# ── Configuration-only enablement (no engine redesign) ─────────────────────
+
+
+class TestConfigOnlyEnablement:
+    def test_flipping_enabled_flag_executes_without_engine_change(self):
+        stub = _StubPolicy("gated", enabled=False)
+        registry = PolicyRegistry().register(stub)
+        engine = PolicyEngine(registry=registry)
+        assert engine.run(PolicyContext()).results == []
+        assert stub.calls == 0
+
+        stub.enabled = True
+        report = engine.run(PolicyContext())
+        assert stub.calls == 1
+        assert report.results[0].policy == "gated"
+        assert report.verdict == "PASS"
+
+    def test_future_policy_enabled_by_configuration(self):
+        registry = build_default_registry()
+        shared_core = registry.get("shared_core_policy")
+        assert shared_core.enabled is False
+        shared_core.enabled = True
+        try:
+            report = PolicyEngine(registry=registry).run(PolicyContext())
+            names = [r.policy for r in report.results]
+            assert "shared_core_policy" in names
+            skipped = next(r for r in report.results if r.policy == "shared_core_policy")
+            assert skipped.status is PolicyStatus.SKIPPED
+            assert report.verdict == "PASS"
+        finally:
+            shared_core.enabled = False
+
+
+# ── Single implementation: gate == certification == engine ────────────────
+
+
+class TestSingleImplementation:
+    def test_gate_report_equals_fresh_engine_report(self):
+        from scripts.architecture.policy import run_policy_gate
+
+        context = PolicyContext(
+            domains=list_domains(),
+            dormancy_source=load_default_dormancy_source(),
+        )
+        direct = PolicyEngine(registry=build_default_registry()).run(context)
+        assert run_policy_gate()["report"] == direct.to_dict()
+
+    def test_certification_uses_the_same_dormancy_rule(self):
+        from app.domain_platform.policies.dormancy_policy import DormancyPolicy
+
+        context = PolicyContext(
+            domains=list_domains(),
+            dormancy_source=load_default_dormancy_source(),
+        )
+        gate_status = next(
+            r for r in PolicyEngine(registry=build_default_registry()).run(context).results
+            if r.policy == "dormancy_policy"
+        ).status
+        policy_status = DormancyPolicy().evaluate(context).status
+        certified = DomainCertificationEngine().platform_certification(list_domains())
+        assert gate_status is PolicyStatus.PASS
+        assert policy_status is PolicyStatus.PASS
+        assert certified["verdict"] == "CERTIFIED"
 
 
 # ── Future policies (catalog lockstep, disabled) ───────────────────────────
@@ -520,18 +723,19 @@ class TestBackwardCompatibility:
 
     def test_check_10_delegation_preserves_semantics(self):
         engine = DomainCertificationEngine()
-        for modules, expected_severity in [
-            (["ai/agent.py"], "critical"),
-            (["backend/app/national_data"], "major"),
-            (["platform"], "info"),
-            ([], "info"),
+        for modules, expected_severity, expected_passed in [
+            (["ai/agent.py"], "critical", False),
+            (["backend/app/national_data"], "major", False),
+            (["platform"], "info", True),
+            (["backend/app/lims/models.py"], "minor", True),
+            ([], "info", True),
         ]:
             manifest = _manifest(modules=modules)
             check = next(
                 c for c in engine.certify_domain(manifest).checks if c.check == "dormancy_policy"
             )
             assert check.severity == expected_severity
-            assert check.passed == (expected_severity == "info")
+            assert check.passed == expected_passed
 
     def test_canonical_platform_still_certified(self):
         verdict = DomainCertificationEngine().platform_certification(list_domains())

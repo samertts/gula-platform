@@ -25,12 +25,9 @@ from __future__ import annotations
 
 import json
 import pathlib
-import time
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
-
-from app.domain_platform.core import utcnow
 
 if TYPE_CHECKING:
     from app.domain_platform.core import DomainManifest
@@ -114,13 +111,16 @@ class PolicyFinding:
 
 @dataclass
 class PolicyResult:
-    """Outcome of evaluating one policy against one context."""
+    """Outcome of evaluating one policy against one context.
+
+    The result carries no timestamps or durations: governance output must be
+    byte-for-byte reproducible for a given context (ADR-027).
+    """
 
     policy: str
     status: PolicyStatus
     summary: str
     findings: list[PolicyFinding] = field(default_factory=list)
-    duration_ms: int = 0
     waived: int = 0
 
     @property
@@ -140,7 +140,6 @@ class PolicyResult:
             "status": str(self.status.value),
             "severity": str(self.severity.value),
             "summary": self.summary,
-            "duration_ms": self.duration_ms,
             "waived": self.waived,
             "findings": [f.to_dict() for f in self.findings],
         }
@@ -311,7 +310,6 @@ class PolicyBaseline:
             status=compute_status(kept),
             summary=result.summary,
             findings=kept,
-            duration_ms=result.duration_ms,
             waived=waived,
         )
 
@@ -321,10 +319,14 @@ class PolicyBaseline:
 
 @dataclass
 class PolicyReport:
-    """The full governance report: manifest + per-policy results."""
+    """The full governance report: manifest + per-policy results.
+
+    Deterministic by construction: no timestamps or durations, fixed
+    registration order, stable finding order. Two runs over the same context
+    produce byte-identical JSON and Markdown (ADR-027).
+    """
 
     version: str
-    generated_at: str
     registered: list[dict[str, Any]]
     results: list[PolicyResult]
 
@@ -341,7 +343,6 @@ class PolicyReport:
         return {
             "engine": "architecture_policy_engine",
             "version": self.version,
-            "generated_at": self.generated_at,
             "verdict": self.verdict,
             "registered_policies": self.registered,
             "results": [r.to_dict() for r in self.results],
@@ -353,7 +354,6 @@ class PolicyReport:
             "# Architecture Policy Engine",
             "",
             f"- engine version: `{self.version}`",
-            f"- generated at: `{self.generated_at}`",
             f"- registered policies: {len(self.registered)} "
             f"({enabled} enabled, {len(self.results)} executed)",
             f"- **verdict: {self.verdict}**",
@@ -394,15 +394,12 @@ class PolicyEngine:
         self.baseline = baseline or PolicyBaseline()
 
     def run(self, context: PolicyContext) -> PolicyReport:
-        results: list[PolicyResult] = []
-        for policy in self.registry.enabled():
-            started = time.perf_counter()
-            result = policy.evaluate(context)
-            result.duration_ms = max(0, round((time.perf_counter() - started) * 1000))
-            results.append(self.baseline.waive(result))
+        results: list[PolicyResult] = [
+            self.baseline.waive(policy.evaluate(context))
+            for policy in self.registry.enabled()
+        ]
         return PolicyReport(
             version=POLICY_ENGINE_VERSION,
-            generated_at=utcnow().isoformat(),
             registered=self.registry.to_manifest(),
             results=results,
         )
