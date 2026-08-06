@@ -47,6 +47,8 @@ ENGINES: tuple[str, ...] = (
     "deployer",
     "learner",
     "optimizer",
+    "architect",
+    "domain",
 )
 
 # Engineering surfaces mapped to the engine that owns them.

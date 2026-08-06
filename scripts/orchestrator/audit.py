@@ -44,6 +44,17 @@ SYSTEMS: dict[str, tuple[str, ...]] = {
         "scripts/optimizer.py",
         "scripts/optimizer/core.py",
     ),
+    "architect": (
+        "scripts/architect.py",
+        "scripts/architect/core.py",
+        "scripts/architect/cli.py",
+    ),
+    "domain": (
+        "scripts/domains.py",
+        "scripts/domains/core.py",
+        "scripts/domains/cli.py",
+        "backend/app/domain_platform/core.py",
+    ),
     "knowledge": (
         ".ai/core/registry/REGISTRY.md",
         ".ai/core/index/INDEX.md",

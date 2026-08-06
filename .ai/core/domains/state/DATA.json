@@ -1,0 +1,2899 @@
+{
+  "manifests": [
+    {
+      "code": "laboratory",
+      "name_en": "GULA Laboratory",
+      "name_ar": "مختبر غولا",
+      "version": "1.0.0",
+      "workspace_type": "laboratory",
+      "description": "Laboratory information management: orders, samples, analyzers, quality control, results, and clinical review.",
+      "blueprint": {
+        "entities": [
+          "Order",
+          "Sample",
+          "Analyzer",
+          "TestDefinition",
+          "Result",
+          "QCLevel"
+        ],
+        "services": [
+          "lab_service",
+          "sample_service",
+          "test_result_service",
+          "quality_control_service"
+        ],
+        "policies": [
+          "iso_15189",
+          "clsi_policy",
+          "cap_policy"
+        ],
+        "api": [
+          "/lab/orders",
+          "/lab/samples",
+          "/lab/results",
+          "/qc"
+        ],
+        "events": [
+          "order.created",
+          "sample.collected",
+          "result.verified"
+        ],
+        "workflows": [
+          "order_workflow",
+          "sample_workflow",
+          "verification_workflow"
+        ],
+        "reports": [
+          "lab_workload_report",
+          "qc_summary_report"
+        ],
+        "ui": [
+          "laboratory_dashboard",
+          "order_entry",
+          "result_review"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/lims/events.py",
+        "app/lims/exceptions.py",
+        "app/lims/fhir_mappers.py",
+        "app/lims/integration/astm.py",
+        "app/lims/integration/device_registry.py",
+        "app/lims/integration/hl7.py",
+        "app/lims/integration/simulator.py",
+        "app/lims/models.py",
+        "app/lims/quality.py",
+        "app/lims/routes.py",
+        "app/lims/services.py",
+        "app/lims/state_machine.py",
+        "app/lims/workflows.py"
+      ],
+      "tables": [
+        "lims_auto_validation_rules",
+        "lims_calibrations",
+        "lims_chain_of_custody",
+        "lims_consumables",
+        "lims_containers",
+        "lims_delta_check_rules",
+        "lims_departments",
+        "lims_electronic_signatures",
+        "lims_eqa",
+        "lims_equipment_logs",
+        "lims_instrument_models",
+        "lims_instruments",
+        "lims_iqc",
+        "lims_lots",
+        "lims_maintenance",
+        "lims_manufacturers",
+        "lims_orders",
+        "lims_panel_tests",
+        "lims_panels",
+        "lims_qc_programs",
+        "lims_reagents",
+        "lims_reference_ranges",
+        "lims_report_attachments",
+        "lims_reports",
+        "lims_result_releases",
+        "lims_result_validations",
+        "lims_results",
+        "lims_sections",
+        "lims_specimen_catalog",
+        "lims_specimens",
+        "lims_storage",
+        "lims_suppliers",
+        "lims_temperature_logs",
+        "lims_transportation",
+        "lims_workstations"
+      ],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    },
+    {
+      "code": "pharmacy",
+      "name_en": "GULA Pharmacy",
+      "name_ar": "صيدلية غولا",
+      "version": "1.0.0",
+      "workspace_type": "pharmacy",
+      "description": "Pharmacy inventory, dispensing, clinical verification, and prescription fulfillment.",
+      "blueprint": {
+        "entities": [
+          "Medication",
+          "Inventory",
+          "Dispensing",
+          "Prescription"
+        ],
+        "services": [
+          "pharmacy_service",
+          "inventory_service",
+          "dispensing_service"
+        ],
+        "policies": [
+          "prescription_policy",
+          "stock_control_policy"
+        ],
+        "api": [
+          "/pharmacy/medications",
+          "/pharmacy/dispense"
+        ],
+        "events": [
+          "medication.dispensed",
+          "inventory.low"
+        ],
+        "workflows": [
+          "dispensing_workflow"
+        ],
+        "reports": [
+          "pharmacy_stock_report",
+          "dispensing_report"
+        ],
+        "ui": [
+          "pharmacy_dashboard",
+          "dispensing_screen"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/pharmacy/base.py",
+        "app/pharmacy/clinical.py",
+        "app/pharmacy/dispensing.py",
+        "app/pharmacy/enums.py",
+        "app/pharmacy/inventory.py",
+        "app/pharmacy/models.py",
+        "app/pharmacy/routes.py",
+        "app/pharmacy/services.py"
+      ],
+      "tables": [
+        "pharmacy_allergy_rules",
+        "pharmacy_clinical_guidelines",
+        "pharmacy_contraindication_rules",
+        "pharmacy_dispense_queue",
+        "pharmacy_dispense_records",
+        "pharmacy_dose_guidelines",
+        "pharmacy_drug_batches",
+        "pharmacy_drug_catalog",
+        "pharmacy_drug_interaction_rules",
+        "pharmacy_drug_monitoring",
+        "pharmacy_drug_returns",
+        "pharmacy_drug_suppliers",
+        "pharmacy_inventory_forecasts",
+        "pharmacy_inventory_transfer_items",
+        "pharmacy_inventory_transfers",
+        "pharmacy_prescription_items",
+        "pharmacy_prescriptions",
+        "pharmacy_recalls",
+        "pharmacy_stock_levels",
+        "pharmacy_stock_movements",
+        "pharmacy_stores",
+        "pharmacy_warehouses",
+        "pharmacy_waste_records"
+      ],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    },
+    {
+      "code": "radiology",
+      "name_en": "GULA Radiology",
+      "name_ar": "أشعة غولا",
+      "version": "1.0.0",
+      "workspace_type": "radiology",
+      "description": "Radiology workflow, PACS, imaging studies, AI-assisted reads, and modality integration.",
+      "blueprint": {
+        "entities": [
+          "Study",
+          "Modality",
+          "Image",
+          "RadiologyReport"
+        ],
+        "services": [
+          "radiology_service",
+          "pacs_service",
+          "ai_assisted_read"
+        ],
+        "policies": [
+          "dicom_policy",
+          "radiation_safety_policy"
+        ],
+        "api": [
+          "/radiology/studies",
+          "/radiology/reports"
+        ],
+        "events": [
+          "study.ordered",
+          "study.completed"
+        ],
+        "workflows": [
+          "study_workflow"
+        ],
+        "reports": [
+          "radiology_throughput_report"
+        ],
+        "ui": [
+          "radiology_dashboard",
+          "study_viewer"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/radiology/ai.py",
+        "app/radiology/base.py",
+        "app/radiology/device.py",
+        "app/radiology/enums.py",
+        "app/radiology/models.py",
+        "app/radiology/pacs.py",
+        "app/radiology/routes.py",
+        "app/radiology/services.py"
+      ],
+      "tables": [
+        "radiology_ai_jobs",
+        "radiology_appointments",
+        "radiology_critical_findings",
+        "radiology_dicom_storage",
+        "radiology_dicom_studies",
+        "radiology_exams",
+        "radiology_image_annotations",
+        "radiology_image_measurements",
+        "radiology_image_shares",
+        "radiology_images",
+        "radiology_modality_devices",
+        "radiology_mpps",
+        "radiology_orders",
+        "radiology_protocols",
+        "radiology_report_templates",
+        "radiology_reports",
+        "radiology_series",
+        "radiology_worklist_entries"
+      ],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    },
+    {
+      "code": "hospital",
+      "name_en": "GULA Hospital",
+      "name_ar": "مستشفى غولا",
+      "version": "1.0.0",
+      "workspace_type": "hospital",
+      "description": "Hospital operations: encounters, admissions, departments, beds, nursing, and care continuum.",
+      "blueprint": {
+        "entities": [
+          "Encounter",
+          "Admission",
+          "Department",
+          "Bed",
+          "CarePlan"
+        ],
+        "services": [
+          "hospital_service",
+          "encounter_service",
+          "care_continuum_service"
+        ],
+        "policies": [
+          "admission_policy",
+          "care_continuum_policy"
+        ],
+        "api": [
+          "/hospital/encounters",
+          "/hospital/admissions"
+        ],
+        "events": [
+          "encounter.started",
+          "patient.admitted"
+        ],
+        "workflows": [
+          "admission_workflow",
+          "discharge_workflow"
+        ],
+        "reports": [
+          "hospital_census_report"
+        ],
+        "ui": [
+          "hospital_dashboard",
+          "patient_flow"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/hospital/base.py"
+      ],
+      "tables": [],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    },
+    {
+      "code": "blood_bank",
+      "name_en": "GULA Blood Bank",
+      "name_ar": "بنك الدم",
+      "version": "1.0.0",
+      "workspace_type": "blood_bank",
+      "description": "Blood donation, component processing, compatibility, and transfusion safety.",
+      "blueprint": {
+        "entities": [
+          "Donation",
+          "BloodUnit",
+          "Component",
+          "Crossmatch"
+        ],
+        "services": [
+          "blood_bank_service",
+          "compatibility_service"
+        ],
+        "policies": [
+          "transfusion_safety_policy",
+          "donor_safety_policy"
+        ],
+        "api": [
+          "/blood-bank/donations",
+          "/blood-bank/units"
+        ],
+        "events": [
+          "blood.donated",
+          "blood.unit_released"
+        ],
+        "workflows": [
+          "donation_workflow",
+          "transfusion_workflow"
+        ],
+        "reports": [
+          "blood_inventory_report"
+        ],
+        "ui": [
+          "blood_bank_dashboard"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/blood_bank/api/routes.py",
+        "app/blood_bank/application/service.py",
+        "app/blood_bank/compatibility.py",
+        "app/blood_bank/domain/entities.py",
+        "app/blood_bank/domain/enums.py",
+        "app/blood_bank/domain/events.py",
+        "app/blood_bank/exceptions.py",
+        "app/blood_bank/infrastructure/models.py"
+      ],
+      "tables": [
+        "blood_bank_components",
+        "blood_bank_crossmatches",
+        "blood_bank_donations",
+        "blood_bank_donor_deferrals",
+        "blood_bank_donors",
+        "blood_bank_inventory",
+        "blood_bank_inventory_movements",
+        "blood_bank_requests",
+        "blood_bank_screening_results",
+        "blood_bank_transfusions",
+        "blood_bank_units"
+      ],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    },
+    {
+      "code": "public_health",
+      "name_en": "GULA Public Health",
+      "name_ar": "الصحة العامة",
+      "version": "1.0.0",
+      "workspace_type": "public_health",
+      "description": "Population surveillance, notifiable diseases, immunization, and epidemic response.",
+      "blueprint": {
+        "entities": [
+          "SurveillanceCase",
+          "Immunization",
+          "Outbreak",
+          "Alert"
+        ],
+        "services": [
+          "surveillance_service",
+          "immunization_service"
+        ],
+        "policies": [
+          "notifiable_disease_policy",
+          "epidemic_response_policy"
+        ],
+        "api": [
+          "/public-health/cases",
+          "/public-health/alerts"
+        ],
+        "events": [
+          "case.reported",
+          "outbreak.declared"
+        ],
+        "workflows": [
+          "surveillance_workflow"
+        ],
+        "reports": [
+          "surveillance_dashboard_report"
+        ],
+        "ui": [
+          "public_health_dashboard"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/public_health/api/routes.py",
+        "app/public_health/application/service.py",
+        "app/public_health/domain/entities.py",
+        "app/public_health/domain/enums.py",
+        "app/public_health/domain/events.py",
+        "app/public_health/exceptions.py",
+        "app/public_health/infrastructure/models.py"
+      ],
+      "tables": [
+        "ph_disease_cases",
+        "ph_environmental_health",
+        "ph_immunization_records",
+        "ph_outbreak_alerts",
+        "ph_reports",
+        "ph_surveillance_signals"
+      ],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    },
+    {
+      "code": "insurance",
+      "name_en": "GULA Insurance",
+      "name_ar": "التأمين الصحي",
+      "version": "1.0.0",
+      "workspace_type": "insurance",
+      "description": "Health insurance eligibility, claims, pricing, pre-authorization, and fraud detection.",
+      "blueprint": {
+        "entities": [
+          "Policy",
+          "Claim",
+          "Coverage",
+          "PreAuthorization"
+        ],
+        "services": [
+          "insurance_service",
+          "claims_service",
+          "fraud_service"
+        ],
+        "policies": [
+          "claims_policy",
+          "fraud_detection_policy"
+        ],
+        "api": [
+          "/insurance/claims",
+          "/insurance/eligibility"
+        ],
+        "events": [
+          "claim.submitted",
+          "claim.approved"
+        ],
+        "workflows": [
+          "claims_workflow",
+          "preauth_workflow"
+        ],
+        "reports": [
+          "claims_report"
+        ],
+        "ui": [
+          "insurance_dashboard"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/insurance/api/claims.py",
+        "app/insurance/api/coverage_check.py",
+        "app/insurance/api/coverages.py",
+        "app/insurance/api/network.py",
+        "app/insurance/api/payments.py",
+        "app/insurance/api/policies.py",
+        "app/insurance/api/providers.py",
+        "app/insurance/api/referrals.py",
+        "app/insurance/domain/enums.py",
+        "app/insurance/domain/members.py",
+        "app/insurance/domain/models.py",
+        "app/insurance/domain/network.py",
+        "app/insurance/domain/referral.py",
+        "app/insurance/domain/services.py",
+        "app/insurance/financial/engine.py",
+        "app/insurance/services/coverage_engine.py"
+      ],
+      "tables": [
+        "ins_appeals",
+        "ins_authorizations",
+        "ins_benefit_package_items",
+        "ins_benefit_packages",
+        "ins_benefit_utilization",
+        "ins_cards",
+        "ins_claim_items",
+        "ins_claims",
+        "ins_coverage_periods",
+        "ins_coverages",
+        "ins_deductible_tracking",
+        "ins_dependents",
+        "ins_electronic_cards",
+        "ins_fee_schedule",
+        "ins_fraud_alerts",
+        "ins_geographic_coverage",
+        "ins_medical_services",
+        "ins_members",
+        "ins_network_providers",
+        "ins_network_services",
+        "ins_payments",
+        "ins_policies",
+        "ins_provider_accreditations",
+        "ins_provider_availability",
+        "ins_provider_contracts",
+        "ins_providers",
+        "ins_referral_history",
+        "ins_referral_validations",
+        "ins_referrals",
+        "ins_settlements"
+      ],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    },
+    {
+      "code": "emergency",
+      "name_en": "GULA Emergency",
+      "name_ar": "الطوارئ",
+      "version": "1.0.0",
+      "workspace_type": "hospital",
+      "description": "Emergency medical services, triage, and critical care response.",
+      "blueprint": {
+        "entities": [
+          "EMSIncident",
+          "Triage",
+          "CriticalPatient"
+        ],
+        "services": [
+          "ems_service",
+          "critical_care_service"
+        ],
+        "policies": [
+          "triage_policy",
+          "critical_care_policy"
+        ],
+        "api": [
+          "/emergency/incidents",
+          "/emergency/triage"
+        ],
+        "events": [
+          "emergency.incident",
+          "critical.patient_admitted"
+        ],
+        "workflows": [
+          "triage_workflow"
+        ],
+        "reports": [
+          "emergency_response_report"
+        ],
+        "ui": [
+          "emergency_dashboard"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/critical_care/api/routes.py",
+        "app/critical_care/application/service.py",
+        "app/critical_care/domain/entities.py",
+        "app/critical_care/domain/enums.py",
+        "app/critical_care/domain/events.py",
+        "app/critical_care/exceptions.py",
+        "app/critical_care/infrastructure/models.py",
+        "app/ems/api/routes.py",
+        "app/ems/application/service.py",
+        "app/ems/domain/entities.py",
+        "app/ems/domain/enums.py",
+        "app/ems/domain/events.py",
+        "app/ems/exceptions.py",
+        "app/ems/infrastructure/models.py"
+      ],
+      "tables": [
+        "critical_care_admissions",
+        "critical_care_alerts",
+        "critical_care_assessments",
+        "critical_care_beds",
+        "critical_care_daily_checklists",
+        "critical_care_device_integrations",
+        "critical_care_early_warning_scores",
+        "critical_care_fluid_balance",
+        "critical_care_infusions",
+        "critical_care_rounds",
+        "critical_care_scores",
+        "critical_care_ventilator_settings",
+        "critical_care_vital_signs",
+        "ems_ambulance_crew",
+        "ems_ambulances",
+        "ems_crew_shifts",
+        "ems_disaster_events",
+        "ems_dispatch_assignments",
+        "ems_epcr",
+        "ems_hospital_status",
+        "ems_incident_commands",
+        "ems_incidents",
+        "ems_mass_casualty_incidents",
+        "ems_shelters",
+        "ems_triage_assessments"
+      ],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    },
+    {
+      "code": "research",
+      "name_en": "GULA Research",
+      "name_ar": "البحث العلمي",
+      "version": "1.0.0",
+      "workspace_type": "research",
+      "description": "Clinical research, data science, biobank, and evidence generation.",
+      "blueprint": {
+        "entities": [
+          "ResearchStudy",
+          "Cohort",
+          "BiobankSample"
+        ],
+        "services": [
+          "research_service",
+          "biomedical_service",
+          "data_science_service"
+        ],
+        "policies": [
+          "research_ethics_policy",
+          "data_minimization_policy"
+        ],
+        "api": [
+          "/research/studies"
+        ],
+        "events": [
+          "study.registered"
+        ],
+        "workflows": [
+          "study_workflow"
+        ],
+        "reports": [
+          "research_metrics_report"
+        ],
+        "ui": [
+          "research_dashboard"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/biomedical/api/routes.py",
+        "app/biomedical/application/service.py",
+        "app/biomedical/domain/entities.py",
+        "app/biomedical/domain/enums.py",
+        "app/biomedical/domain/events.py",
+        "app/biomedical/exceptions.py",
+        "app/biomedical/infrastructure/models.py",
+        "app/research_platform/ai_assisted.py",
+        "app/research_platform/base.py",
+        "app/research_platform/bi_dashboards.py",
+        "app/research_platform/data_lake.py",
+        "app/research_platform/data_science.py",
+        "app/research_platform/enums.py",
+        "app/research_platform/epidemiology.py",
+        "app/research_platform/gis.py",
+        "app/research_platform/integration.py",
+        "app/research_platform/kpi_engine.py",
+        "app/research_platform/open_apis.py",
+        "app/research_platform/population_health.py",
+        "app/research_platform/precision_health.py",
+        "app/research_platform/privacy.py",
+        "app/research_platform/registries.py",
+        "app/research_platform/research.py",
+        "app/research_platform/routes.py",
+        "app/research_platform/sdk.py"
+      ],
+      "tables": [
+        "biomed_calibrations",
+        "biomed_devices",
+        "biomed_incidents",
+        "biomed_maintenance_schedules",
+        "biomed_performance_verifications",
+        "biomed_recalls",
+        "biomed_safety_inspections",
+        "biomed_service_contracts",
+        "biomed_spare_parts",
+        "biomed_technicians",
+        "biomed_vendors",
+        "biomed_work_orders",
+        "rp_consent_records",
+        "rp_data_access_requests",
+        "rp_research_datasets",
+        "rp_research_institutions",
+        "rp_research_projects",
+        "rp_research_publications",
+        "rp_study_cohorts"
+      ],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    },
+    {
+      "code": "citizen_portal",
+      "name_en": "GULA Citizen Portal",
+      "name_ar": "بوابة المواطن",
+      "version": "1.0.0",
+      "workspace_type": "citizen",
+      "description": "Citizen self-service: appointments, certificates, results, and personal health records (read-only over operational Domains).",
+      "blueprint": {
+        "entities": [
+          "CitizenAppointment",
+          "CitizenHealthRecord"
+        ],
+        "services": [
+          "citizen_platform_service"
+        ],
+        "policies": [
+          "citizen_read_only_policy"
+        ],
+        "api": [
+          "/citizen/appointments",
+          "/citizen/records"
+        ],
+        "events": [
+          "citizen.appointment_booked"
+        ],
+        "workflows": [
+          "appointment_workflow"
+        ],
+        "reports": [
+          "citizen_activity_report"
+        ],
+        "ui": [
+          "citizen_portal"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/citizen_platform/accessibility.py",
+        "app/citizen_platform/appointments.py",
+        "app/citizen_platform/base.py",
+        "app/citizen_platform/certificates.py",
+        "app/citizen_platform/emergency.py",
+        "app/citizen_platform/enums.py",
+        "app/citizen_platform/family.py",
+        "app/citizen_platform/identity.py",
+        "app/citizen_platform/integration.py",
+        "app/citizen_platform/laboratory.py",
+        "app/citizen_platform/medications.py",
+        "app/citizen_platform/notifications.py",
+        "app/citizen_platform/offline.py",
+        "app/citizen_platform/phr.py",
+        "app/citizen_platform/portal.py",
+        "app/citizen_platform/preventive.py",
+        "app/citizen_platform/privacy.py",
+        "app/citizen_platform/radiology.py",
+        "app/citizen_platform/routes.py",
+        "app/citizen_platform/sdk.py",
+        "app/citizen_platform/telemedicine.py"
+      ],
+      "tables": [],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    },
+    {
+      "code": "provider_portal",
+      "name_en": "GULA Provider Portal",
+      "name_ar": "بوابة مقدمي الرعاية",
+      "version": "1.0.0",
+      "workspace_type": "professional",
+      "description": "Provider workspace for professionals to operate across the Domains they are privileged in (no domain administration).",
+      "blueprint": {
+        "entities": [
+          "ProviderProfile",
+          "ProviderSchedule"
+        ],
+        "services": [
+          "provider_portal_service"
+        ],
+        "policies": [
+          "provider_no_admin_policy"
+        ],
+        "api": [
+          "/provider/portal"
+        ],
+        "events": [
+          "provider.activity"
+        ],
+        "workflows": [
+          "provider_workflow"
+        ],
+        "reports": [
+          "provider_activity_report"
+        ],
+        "ui": [
+          "provider_portal"
+        ]
+      },
+      "contracts": [],
+      "shared_core": {
+        "identity": "shared_core",
+        "authentication": "shared_core",
+        "authorization": "shared_core",
+        "organizations": "shared_core",
+        "audit": "shared_core",
+        "notifications": "shared_core",
+        "workflow_engine": "shared_core",
+        "rule_engine": "shared_core",
+        "barcode_engine": "shared_core",
+        "qr_engine": "shared_core",
+        "search_engine": "shared_core",
+        "reporting_framework": "shared_core",
+        "document_engine": "shared_core",
+        "files": "shared_core",
+        "media": "shared_core",
+        "scheduler": "shared_core",
+        "localization": "shared_core",
+        "monitoring": "shared_core",
+        "logging": "shared_core",
+        "api_gateway": "shared_core",
+        "fhir_engine": "shared_core",
+        "event_bus": "shared_core",
+        "settings": "shared_core"
+      },
+      "modules": [
+        "app/identity/professional_registry/models.py",
+        "app/identity/professional_registry/routes.py",
+        "app/identity/professional_registry/services.py"
+      ],
+      "tables": [
+        "niam_professional_registry"
+      ],
+      "lifecycle_state": "installed",
+      "certification": "uncertified"
+    }
+  ],
+  "isolation": {
+    "domain_imports": {
+      "laboratory": [],
+      "pharmacy": [],
+      "radiology": [],
+      "hospital": [],
+      "blood_bank": [],
+      "public_health": [],
+      "insurance": [],
+      "emergency": [],
+      "research": [],
+      "citizen_portal": [],
+      "provider_portal": []
+    },
+    "cross_domain": [],
+    "circular": [],
+    "shared_state": [],
+    "permission_leaks": [],
+    "db_coupling": [],
+    "table_overlaps": [],
+    "passes": true
+  },
+  "certifications": [
+    {
+      "domain_code": "laboratory",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    },
+    {
+      "domain_code": "pharmacy",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    },
+    {
+      "domain_code": "radiology",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    },
+    {
+      "domain_code": "hospital",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    },
+    {
+      "domain_code": "blood_bank",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    },
+    {
+      "domain_code": "public_health",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    },
+    {
+      "domain_code": "insurance",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    },
+    {
+      "domain_code": "emergency",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    },
+    {
+      "domain_code": "research",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    },
+    {
+      "domain_code": "citizen_portal",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    },
+    {
+      "domain_code": "provider_portal",
+      "version": "1.0.0",
+      "passed": true,
+      "score": 100,
+      "checks": [
+        {
+          "check": "no_duplicated_business_logic",
+          "passed": true,
+          "severity": "info",
+          "details": "domain services are unique within the blueprint"
+        },
+        {
+          "check": "no_duplicated_infrastructure",
+          "passed": true,
+          "severity": "info",
+          "details": "no Shared Core reimplementation detected"
+        },
+        {
+          "check": "no_direct_database_coupling",
+          "passed": true,
+          "severity": "info",
+          "details": "no direct engine/session creation"
+        },
+        {
+          "check": "no_circular_dependencies",
+          "passed": true,
+          "severity": "info",
+          "details": "no circular dependency within the Domain"
+        },
+        {
+          "check": "no_permission_leakage",
+          "passed": true,
+          "severity": "info",
+          "details": "API surface stays inside its own namespace"
+        },
+        {
+          "check": "no_cross_domain_administration",
+          "passed": true,
+          "severity": "info",
+          "details": "no Domain administers another Domain"
+        },
+        {
+          "check": "no_shared_mutable_state",
+          "passed": true,
+          "severity": "info",
+          "details": "no mutable module-level state"
+        },
+        {
+          "check": "shared_core_usage_100",
+          "passed": true,
+          "severity": "info",
+          "details": "23 Shared Core services consumed, zero reimplementation"
+        },
+        {
+          "check": "backward_compatibility",
+          "passed": true,
+          "severity": "info",
+          "details": "version 1.0.0 is a valid SemVer release"
+        }
+      ]
+    }
+  ],
+  "platform_certification": {
+    "domains": [
+      {
+        "domain_code": "laboratory",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      },
+      {
+        "domain_code": "pharmacy",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      },
+      {
+        "domain_code": "radiology",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      },
+      {
+        "domain_code": "hospital",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      },
+      {
+        "domain_code": "blood_bank",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      },
+      {
+        "domain_code": "public_health",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      },
+      {
+        "domain_code": "insurance",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      },
+      {
+        "domain_code": "emergency",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      },
+      {
+        "domain_code": "research",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      },
+      {
+        "domain_code": "citizen_portal",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      },
+      {
+        "domain_code": "provider_portal",
+        "version": "1.0.0",
+        "passed": true,
+        "score": 100,
+        "checks": [
+          {
+            "check": "no_duplicated_business_logic",
+            "passed": true,
+            "severity": "info",
+            "details": "domain services are unique within the blueprint"
+          },
+          {
+            "check": "no_duplicated_infrastructure",
+            "passed": true,
+            "severity": "info",
+            "details": "no Shared Core reimplementation detected"
+          },
+          {
+            "check": "no_direct_database_coupling",
+            "passed": true,
+            "severity": "info",
+            "details": "no direct engine/session creation"
+          },
+          {
+            "check": "no_circular_dependencies",
+            "passed": true,
+            "severity": "info",
+            "details": "no circular dependency within the Domain"
+          },
+          {
+            "check": "no_permission_leakage",
+            "passed": true,
+            "severity": "info",
+            "details": "API surface stays inside its own namespace"
+          },
+          {
+            "check": "no_cross_domain_administration",
+            "passed": true,
+            "severity": "info",
+            "details": "no Domain administers another Domain"
+          },
+          {
+            "check": "no_shared_mutable_state",
+            "passed": true,
+            "severity": "info",
+            "details": "no mutable module-level state"
+          },
+          {
+            "check": "shared_core_usage_100",
+            "passed": true,
+            "severity": "info",
+            "details": "23 Shared Core services consumed, zero reimplementation"
+          },
+          {
+            "check": "backward_compatibility",
+            "passed": true,
+            "severity": "info",
+            "details": "version 1.0.0 is a valid SemVer release"
+          }
+        ]
+      }
+    ],
+    "passed": 11,
+    "total": 11,
+    "score": 100,
+    "verdict": "CERTIFIED"
+  },
+  "lifecycle": {
+    "laboratory": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "laboratory",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523040+00:00"
+        }
+      ]
+    },
+    "pharmacy": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "pharmacy",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523084+00:00"
+        }
+      ]
+    },
+    "radiology": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "radiology",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523114+00:00"
+        }
+      ]
+    },
+    "hospital": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "hospital",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523138+00:00"
+        }
+      ]
+    },
+    "blood_bank": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "blood_bank",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523161+00:00"
+        }
+      ]
+    },
+    "public_health": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "public_health",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523182+00:00"
+        }
+      ]
+    },
+    "insurance": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "insurance",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523203+00:00"
+        }
+      ]
+    },
+    "emergency": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "emergency",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523224+00:00"
+        }
+      ]
+    },
+    "research": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "research",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523244+00:00"
+        }
+      ]
+    },
+    "citizen_portal": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "citizen_portal",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523263+00:00"
+        }
+      ]
+    },
+    "provider_portal": {
+      "state": "installed",
+      "version": "1.0.0",
+      "history": [
+        {
+          "domain_code": "provider_portal",
+          "action": "install",
+          "from_state": "created",
+          "to_state": "installed",
+          "version": "1.0.0",
+          "at": "2026-08-06T04:28:40.523284+00:00"
+        }
+      ]
+    }
+  },
+  "blueprint_sections": [
+    "entities",
+    "services",
+    "policies",
+    "api",
+    "events",
+    "workflows",
+    "reports",
+    "ui"
+  ],
+  "lifecycle_transitions": {
+    "installed": [
+      "active",
+      "retired"
+    ],
+    "active": [
+      "suspended",
+      "upgrading",
+      "failed"
+    ],
+    "suspended": [
+      "active",
+      "retired",
+      "upgrading"
+    ],
+    "upgrading": [
+      "active",
+      "suspended",
+      "failed"
+    ],
+    "failed": [
+      "installed",
+      "retired"
+    ],
+    "retired": []
+  },
+  "workspace_bindings": {
+    "laboratory": "laboratory",
+    "pharmacy": "pharmacy",
+    "radiology": "radiology",
+    "hospital": "hospital",
+    "blood_bank": "blood_bank",
+    "public_health": "public_health",
+    "insurance": "insurance",
+    "emergency": "hospital",
+    "research": "research",
+    "citizen_portal": "citizen",
+    "provider_portal": "professional"
+  },
+  "shared_core": [
+    {
+      "service": "identity",
+      "provider": "backend/app/identity",
+      "description": "NIAM identity registry (person, enterprise, machine, guest)."
+    },
+    {
+      "service": "authentication",
+      "provider": "backend/app/identity/api/auth.py",
+      "description": "Authentication (password, passkeys, OTP, OAuth2, OIDC, smart cards)."
+    },
+    {
+      "service": "authorization",
+      "provider": "backend/app/identity/services/authorization_service.py",
+      "description": "RBAC + ABAC + workspace-scoped permission checks."
+    },
+    {
+      "service": "organizations",
+      "provider": "backend/app/identity/models/niam_organization.py",
+      "description": "Ministry/Directorate/Hospital/Laboratory hierarchy + org guard."
+    },
+    {
+      "service": "audit",
+      "provider": "backend/app/identity/models/audit.py",
+      "description": "Immutable, hash-chained audit log for every platform event."
+    },
+    {
+      "service": "notifications",
+      "provider": "backend/app/notifications",
+      "description": "Push, email, SMS, in-app notification delivery."
+    },
+    {
+      "service": "workflow_engine",
+      "provider": "backend/app/workflows",
+      "description": "Workflow engine for multi-step clinical and operational flows."
+    },
+    {
+      "service": "rule_engine",
+      "provider": "shared/rules_engine",
+      "description": "Deterministic business/clinical rule engine."
+    },
+    {
+      "service": "barcode_engine",
+      "provider": "shared/barcode",
+      "description": "Barcode generation and decoding."
+    },
+    {
+      "service": "qr_engine",
+      "provider": "shared/qr",
+      "description": "QR generation and decoding."
+    },
+    {
+      "service": "search_engine",
+      "provider": "backend/app/capabilities/search_service",
+      "description": "Unified search engine over platform records."
+    },
+    {
+      "service": "reporting_framework",
+      "provider": "backend/app/capabilities/reporting_service",
+      "description": "Report generation framework (domain reports build on it)."
+    },
+    {
+      "service": "document_engine",
+      "provider": "backend/app/capabilities/document_management",
+      "description": "Clinical and administrative document management."
+    },
+    {
+      "service": "files",
+      "provider": "shared/storage",
+      "description": "File storage and retrieval (MinIO / object storage)."
+    },
+    {
+      "service": "media",
+      "provider": "shared/storage",
+      "description": "Image and media asset handling."
+    },
+    {
+      "service": "scheduler",
+      "provider": "shared/scheduler.py",
+      "description": "Recurring job scheduling (domain workflows consume it)."
+    },
+    {
+      "service": "localization",
+      "provider": "shared/localization.py",
+      "description": "Arabic-first localization and i18n."
+    },
+    {
+      "service": "monitoring",
+      "provider": "backend/app/services/metrics_service.py",
+      "description": "Metrics, health checks, Prometheus endpoints."
+    },
+    {
+      "service": "logging",
+      "provider": "shared/logging",
+      "description": "Structured logging and tracing."
+    },
+    {
+      "service": "api_gateway",
+      "provider": "backend/app/routes",
+      "description": "Gateway routing, versioning, rate limiting."
+    },
+    {
+      "service": "fhir_engine",
+      "provider": "backend/app/fhir",
+      "description": "FHIR R4 engine (resources, profiles, mappers, validation)."
+    },
+    {
+      "service": "event_bus",
+      "provider": "shared/events",
+      "description": "Event bus for async cross-domain events."
+    },
+    {
+      "service": "settings",
+      "provider": "backend/app/config.py",
+      "description": "Platform configuration and settings."
+    }
+  ],
+  "shared_core_names": [
+    "identity",
+    "authentication",
+    "authorization",
+    "organizations",
+    "audit",
+    "notifications",
+    "workflow_engine",
+    "rule_engine",
+    "barcode_engine",
+    "qr_engine",
+    "search_engine",
+    "reporting_framework",
+    "document_engine",
+    "files",
+    "media",
+    "scheduler",
+    "localization",
+    "monitoring",
+    "logging",
+    "api_gateway",
+    "fhir_engine",
+    "event_bus",
+    "settings"
+  ],
+  "certification_checks": [
+    "no_duplicated_business_logic",
+    "no_duplicated_infrastructure",
+    "no_direct_database_coupling",
+    "no_circular_dependencies",
+    "no_permission_leakage",
+    "no_cross_domain_administration",
+    "no_shared_mutable_state",
+    "shared_core_usage_100",
+    "backward_compatibility"
+  ],
+  "source_roots": {
+    "laboratory": [
+      "app/lims"
+    ],
+    "pharmacy": [
+      "app/pharmacy"
+    ],
+    "radiology": [
+      "app/radiology"
+    ],
+    "hospital": [
+      "app/hospital"
+    ],
+    "blood_bank": [
+      "app/blood_bank"
+    ],
+    "public_health": [
+      "app/public_health"
+    ],
+    "insurance": [
+      "app/insurance"
+    ],
+    "emergency": [
+      "app/ems",
+      "app/critical_care"
+    ],
+    "research": [
+      "app/research_platform",
+      "app/biomedical"
+    ],
+    "citizen_portal": [
+      "app/citizen_platform"
+    ],
+    "provider_portal": [
+      "app/identity/professional_registry"
+    ]
+  }
+}

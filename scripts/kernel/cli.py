@@ -350,6 +350,13 @@ def _architect_commands() -> dict[str, object]:
     return architect_cli.ARCHITECT_COMMANDS
 
 
+def _domains_commands() -> dict[str, object]:
+    """Lazily import the Domain Platform CLI (PROGRAM-STABLE-004)."""
+    from scripts.domains import cli as domains_cli
+
+    return domains_cli.DOMAINS_COMMANDS
+
+
 COMMANDS = {
     "audit": run_audit,
     "state": run_state,
@@ -474,6 +481,12 @@ COMMANDS = {
     "architect-report": _architect_commands()["architect-report"],
     "architect-run": _architect_commands()["architect-run"],
     "architect-check": _architect_commands()["architect-check"],
+    "domain-audit": _domains_commands()["domain-audit"],
+    "domain-isolate": _domains_commands()["domain-isolate"],
+    "domain-certify": _domains_commands()["domain-certify"],
+    "domain-docs": _domains_commands()["domain-docs"],
+    "domain-report": _domains_commands()["domain-report"],
+    "domain-check": _domains_commands()["domain-check"],
 }
 
 

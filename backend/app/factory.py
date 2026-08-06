@@ -801,6 +801,10 @@ def _register_routes(app: FastAPI) -> None:
 
     app.include_router(get_niam_router())
 
+    from .domain_platform import get_router as get_domain_platform_router
+
+    app.include_router(get_domain_platform_router())
+
     from .routes.authorization import router as authorization_router
 
     app.include_router(authorization_router)
