@@ -57,6 +57,9 @@ jobs:
       - name: Architecture Constitution Gate (PROGRAM-ALPHA — hard gate)
         run: python3 scripts/architecture.py check
 
+      - name: Architecture Policy Engine (ADR-027)
+        run: python3 scripts/architecture.py policy
+
   brain-refresh:
     name: Brain Auto-Refresh (post-merge)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

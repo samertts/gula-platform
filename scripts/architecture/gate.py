@@ -137,8 +137,16 @@ def run_all_gates() -> dict[str, Any]:
     constitution = run_constitution_gate()
     domain = run_domain_gate()
     country = run_country_agnostic_scan()
+    from scripts.architecture.policy import run_policy_gate
+
+    policies = run_policy_gate()
     new_country = new_country_findings(country)
-    passed = constitution["passes"] and domain["certified"] and not new_country
+    passed = (
+        constitution["passes"]
+        and domain["certified"]
+        and not new_country
+        and policies["passes"]
+    )
     return {
         "constitution": constitution,
         "domain": domain,
@@ -147,6 +155,7 @@ def run_all_gates() -> dict[str, Any]:
             "new_findings": new_country,
             "passes": not new_country,
         },
+        "policies": policies,
         "passed": passed,
         "verdict": "PASS" if passed else "FAIL",
     }
@@ -162,6 +171,7 @@ def _print_result(result: dict[str, Any]) -> None:
     c = result["constitution"]
     d = result["domain"]
     ca = result["country_agnostic"]
+    p = result["policies"]
     print(f"Architecture Constitution gate: {result['verdict']}")
     print(f"  Shared Core scan: {c['total_findings']} findings "
           f"({c['baseline_acknowledged']} acknowledged, {len(c['new_findings'])} new)")
@@ -172,6 +182,11 @@ def _print_result(result: dict[str, Any]) -> None:
     print(f"  Country-agnostic: {'PASS' if ca['passes'] else str(len(ca['new_findings'])) + ' NEW violations'}")
     for v in ca["new_findings"]:
         print(f"    NEW: {v['path']}: {v['marker']}")
+    print(f"  Policy Engine: {p['verdict']} "
+          f"({len(p['report']['results'])} enabled policy/policies evaluated)")
+    for r in p["report"]["results"]:
+        if r["status"] != "pass":
+            print(f"    {r['policy']}: {r['status']} — {r['summary']}")
 
 
 def write_baseline() -> int:

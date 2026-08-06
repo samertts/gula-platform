@@ -9,6 +9,9 @@ Commands:
   architecture-docs         regenerate all master PROGRAM-ALPHA documents
   architecture-baseline     acknowledge the CURRENT findings as known debt
   architecture-check        full gate + certification verdict (CI hard gate)
+  architecture-policy       run the Architecture Policy Engine (human report)
+  architecture-policy-json  run the Architecture Policy Engine (JSON report)
+  architecture-policy-baseline acknowledge CURRENT policy findings as debt
 """
 
 from __future__ import annotations
@@ -23,6 +26,11 @@ from scripts.architecture.gate import (
     run_all_gates,
     run_country_agnostic_scan,
     write_baseline,
+)
+from scripts.architecture.policy import (
+    cmd_policy,
+    cmd_policy_json,
+    write_policy_baseline,
 )
 from scripts.architecture.report import generate_certification, generate_constitution
 
@@ -84,7 +92,19 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="architecture", description=__doc__)
     parser.add_argument(
         "command",
-        choices=["scan", "gate", "country", "report", "constitution", "docs", "baseline", "check"],
+        choices=[
+            "scan",
+            "gate",
+            "country",
+            "report",
+            "constitution",
+            "docs",
+            "baseline",
+            "check",
+            "policy",
+            "policy-json",
+            "policy-baseline",
+        ],
     )
     args = parser.parse_args(argv)
     return {
@@ -96,6 +116,9 @@ def main(argv: list[str] | None = None) -> int:
         "docs": cmd_docs,
         "baseline": write_baseline,
         "check": cmd_check,
+        "policy": cmd_policy,
+        "policy-json": cmd_policy_json,
+        "policy-baseline": write_policy_baseline,
     }[args.command]()
 
 
@@ -108,6 +131,9 @@ ARCHITECTURE_COMMANDS = {
     "architecture-docs": cmd_docs,
     "architecture-baseline": write_baseline,
     "architecture-check": cmd_check,
+    "architecture-policy": cmd_policy,
+    "architecture-policy-json": cmd_policy_json,
+    "architecture-policy-baseline": write_policy_baseline,
 }
 
 

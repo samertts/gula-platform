@@ -31,6 +31,9 @@ Commands:
     constitution regenerate ARCHITECTURE_CONSTITUTION.md
     baseline    acknowledge the CURRENT finding set as known debt
     check       full gate, assert PASS (CI hard gate)
+    policy      run the Architecture Policy Engine (human report, ADR-027)
+    policy-json run the Architecture Policy Engine (JSON report)
+    policy-baseline acknowledge CURRENT policy findings as known debt
 """
 
 

@@ -502,6 +502,9 @@ COMMANDS = {
     "architecture-docs": _architecture_commands()["architecture-docs"],
     "architecture-baseline": _architecture_commands()["architecture-baseline"],
     "architecture-check": _architecture_commands()["architecture-check"],
+    "architecture-policy": _architecture_commands()["architecture-policy"],
+    "architecture-policy-json": _architecture_commands()["architecture-policy-json"],
+    "architecture-policy-baseline": _architecture_commands()["architecture-policy-baseline"],
 }
 
 

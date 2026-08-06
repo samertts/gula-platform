@@ -95,6 +95,11 @@ The Domain Certification engine (`certification.py`) now runs a 10th check,
   so the real 11 canonical Domains still certify at 100% while the archive
   set stays protected.
 
+The check implementation is the first **Architecture Policy** (see
+[ADR-027](ADR-027-architecture-policy-engine.md)): `certification.py`
+delegates to the shared `DormancyPolicy` module, so certification, the
+Architecture Gate and CI enforce the identical rule through one engine.
+
 ## Consequences
 
 **Positive:**

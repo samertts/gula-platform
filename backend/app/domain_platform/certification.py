@@ -14,6 +14,10 @@ The certification engine validates, for every Domain and for the platform:
  10. Dormancy policy respected (every Domain module is declared, and no
      active Domain owns an archived/retired strategic asset)
 
+Check 10 is the first Architecture Policy: it delegates to the shared
+``DormancyPolicy`` module (ADR-027) so certification, the Architecture Gate
+and CI enforce exactly the same rule through one implementation.
+
 A Domain receives an independent, auditable certification verdict.
 """
 
@@ -23,13 +27,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.domain_platform.core import DomainManifest
-from app.domain_platform.dormancy import (
-    DormancySource,
-    ModuleLifecycleState,
-    build_dormancy_source,
-)
+from app.domain_platform.dormancy import DormancySource, build_dormancy_source
 from app.domain_platform.isolation import DomainIsolationReport, IsolationValidator
 from app.domain_platform.manifest import CANONICAL_DOMAINS
+from app.domain_platform.policies import PolicyContext, PolicyStatus
+from app.domain_platform.policies.dormancy_policy import DormancyPolicy
 from app.domain_platform.shared_core import is_infrastructure_reimplementation
 from app.domain_platform.versioning import parse_version
 
@@ -269,60 +271,23 @@ class DomainCertificationEngine:
                 details=str(exc),
             )
 
-    # ── check 10: dormancy policy (ADR-026) ────────────────────────────────
+    # ── check 10: dormancy policy (ADR-026 / ADR-027) ─────────────────────
 
     def check_dormancy_policy(self, manifest: DomainManifest) -> CheckResult:
-        protected_owned: list[tuple[str, str]] = []
-        for module in manifest.modules:
-            record = self.dormancy_registry.find_record(module)
-            if record is not None and record.state in (
-                ModuleLifecycleState.dormant,
-                ModuleLifecycleState.archived,
-                ModuleLifecycleState.retired,
-            ):
-                protected_owned.append((module, str(record.state.value)))
-        retired_owned = [m for m, _s in protected_owned if _s != "dormant"]
-        if protected_owned:
-            if retired_owned:
-                return CheckResult(
-                    check="dormancy_policy",
-                    passed=False,
-                    severity="critical",
-                    details=(
-                        "active Domain owns archived/retired strategic assets: "
-                        + ", ".join(retired_owned)
-                    ),
-                )
-            dormant_owned = [m for m, _s in protected_owned]
-            return CheckResult(
-                check="dormancy_policy",
-                passed=False,
-                severity="major",
-                details=(
-                    "active Domain owns dormant strategic assets: "
-                    + ", ".join(dormant_owned)
-                ),
-            )
-        undeclared = self.dormancy_registry.undeclared(manifest.modules)
-        if undeclared:
-            return CheckResult(
-                check="dormancy_policy",
-                passed=True,
-                severity="info",
-                details=(
-                    f"{len(undeclared)} module(s) implicitly active_development; "
-                    "declare them in the Dormancy Registry (ADR-026) to pin a "
-                    "non-active lifecycle state"
-                ),
-            )
+        """Delegates to the shared DormancyPolicy (the first Architecture Policy).
+
+        Certification, the Architecture Gate and CI run the identical rule
+        implementation; this adapter only maps the policy result onto the
+        ``CheckResult`` shape Phase 7 consumers expect (backward compatible).
+        """
+        result = DormancyPolicy(self.dormancy_registry).evaluate(
+            PolicyContext(domains=[manifest])
+        )
         return CheckResult(
             check="dormancy_policy",
-            passed=True,
-            severity="info",
-            details=(
-                "no protected strategic asset is coupled to the Domain; "
-                "every Domain module has a declared lifecycle state"
-            ),
+            passed=result.status is PolicyStatus.PASS,
+            severity=str(result.severity.value),
+            details=result.summary,
         )
 
     # ── full certification ──────────────────────────────────────────────────
