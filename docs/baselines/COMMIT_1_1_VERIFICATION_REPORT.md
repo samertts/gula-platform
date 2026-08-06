@@ -1,6 +1,6 @@
 # Commit 1.1 Verification Report
 
-**Commit:** `[filled at commit time]` — `refactor(platform): archive dead Shared Core reimplementation facades (ADR-028)`
+**Commit:** `4b115f32` — `refactor(platform): archive dead Shared Core reimplementation facades (ADR-028)`
 **Branch:** `remediate-security-001`
 **Date:** 2026-08-07
 
