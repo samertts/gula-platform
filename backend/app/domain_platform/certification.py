@@ -11,6 +11,8 @@ The certification engine validates, for every Domain and for the platform:
   7. No shared mutable state
   8. Shared Core usage 100%
   9. Backward compatibility maintained
+ 10. Dormancy policy respected (every Domain module is declared, and no
+     active Domain owns an archived/retired strategic asset)
 
 A Domain receives an independent, auditable certification verdict.
 """
@@ -21,6 +23,11 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.domain_platform.core import DomainManifest
+from app.domain_platform.dormancy import (
+    DormancySource,
+    ModuleLifecycleState,
+    build_dormancy_source,
+)
 from app.domain_platform.isolation import DomainIsolationReport, IsolationValidator
 from app.domain_platform.manifest import CANONICAL_DOMAINS
 from app.domain_platform.shared_core import is_infrastructure_reimplementation
@@ -36,6 +43,7 @@ CERTIFICATION_CHECKS: tuple[str, ...] = (
     "no_shared_mutable_state",
     "shared_core_usage_100",
     "backward_compatibility",
+    "dormancy_policy",
 )
 
 # Severity ordering used for verdict computation.
@@ -91,8 +99,15 @@ class DomainCertification:
 class DomainCertificationEngine:
     """Runs the Phase 7 certification for every Domain."""
 
-    def __init__(self, isolation_report: DomainIsolationReport | None = None) -> None:
+    def __init__(
+        self,
+        isolation_report: DomainIsolationReport | None = None,
+        dormancy_registry: DormancySource | None = None,
+    ) -> None:
         self.isolation_report = isolation_report
+        self.dormancy_registry: DormancySource = (
+            dormancy_registry or build_dormancy_source("canonical")
+        )
         self._modules_source: dict[str, str] = {}
 
     def set_module_sources(self, sources: dict[str, str]) -> None:
@@ -254,6 +269,62 @@ class DomainCertificationEngine:
                 details=str(exc),
             )
 
+    # ── check 10: dormancy policy (ADR-026) ────────────────────────────────
+
+    def check_dormancy_policy(self, manifest: DomainManifest) -> CheckResult:
+        protected_owned: list[tuple[str, str]] = []
+        for module in manifest.modules:
+            record = self.dormancy_registry.find_record(module)
+            if record is not None and record.state in (
+                ModuleLifecycleState.dormant,
+                ModuleLifecycleState.archived,
+                ModuleLifecycleState.retired,
+            ):
+                protected_owned.append((module, str(record.state.value)))
+        retired_owned = [m for m, _s in protected_owned if _s != "dormant"]
+        if protected_owned:
+            if retired_owned:
+                return CheckResult(
+                    check="dormancy_policy",
+                    passed=False,
+                    severity="critical",
+                    details=(
+                        "active Domain owns archived/retired strategic assets: "
+                        + ", ".join(retired_owned)
+                    ),
+                )
+            dormant_owned = [m for m, _s in protected_owned]
+            return CheckResult(
+                check="dormancy_policy",
+                passed=False,
+                severity="major",
+                details=(
+                    "active Domain owns dormant strategic assets: "
+                    + ", ".join(dormant_owned)
+                ),
+            )
+        undeclared = self.dormancy_registry.undeclared(manifest.modules)
+        if undeclared:
+            return CheckResult(
+                check="dormancy_policy",
+                passed=True,
+                severity="info",
+                details=(
+                    f"{len(undeclared)} module(s) implicitly active_development; "
+                    "declare them in the Dormancy Registry (ADR-026) to pin a "
+                    "non-active lifecycle state"
+                ),
+            )
+        return CheckResult(
+            check="dormancy_policy",
+            passed=True,
+            severity="info",
+            details=(
+                "no protected strategic asset is coupled to the Domain; "
+                "every Domain module has a declared lifecycle state"
+            ),
+        )
+
     # ── full certification ──────────────────────────────────────────────────
 
     def certify_domain(self, manifest: DomainManifest) -> DomainCertification:
@@ -268,6 +339,7 @@ class DomainCertificationEngine:
             self.check_no_shared_mutable_state(manifest, isolation),
             self.check_shared_core_usage(manifest, isolation),
             self.check_backward_compatibility(manifest),
+            self.check_dormancy_policy(manifest),
         ]
         return DomainCertification(
             domain_code=manifest.code,

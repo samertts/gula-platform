@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import pytest
-from app.domain_platform.binding import WorkspaceBinding, WorkspaceBindingError, WorkspaceBindingRegistry
+from app.domain_platform.binding import (
+    WorkspaceBinding,
+    WorkspaceBindingError,
+    WorkspaceBindingRegistry,
+)
 from app.domain_platform.certification import CERTIFICATION_CHECKS, DomainCertificationEngine
 from app.domain_platform.contracts import ContractRegistry, CrossDomainGateway
 from app.domain_platform.core import (
@@ -33,8 +37,8 @@ from app.domain_platform.shared_core import (
     is_shared_core_import,
 )
 from app.domain_platform.versioning import (
-    InvalidVersionError,
     DomainVersionRegistry,
+    InvalidVersionError,
     compare_versions,
     is_compatible,
     parse_version,
@@ -64,7 +68,7 @@ def _manifest(code: str = "laboratory", **overrides) -> DomainManifest:
         "version": "1.0.0",
         "workspace_type": workspace,
         "description": "test",
-        "shared_core": {svc: "shared_core" for svc in MANDATORY_SHARED_CORE},
+        "shared_core": dict.fromkeys(MANDATORY_SHARED_CORE, "shared_core"),
     }
     base.update(overrides)
     return DomainManifest(**base)
@@ -542,7 +546,8 @@ class TestIsolation:
 
 class TestCertification:
     def test_certification_checks_complete(self):
-        assert len(CERTIFICATION_CHECKS) == 9
+        assert len(CERTIFICATION_CHECKS) == 10
+        assert CERTIFICATION_CHECKS[-1] == "dormancy_policy"
 
     def test_certify_clean_domain(self):
         engine = DomainCertificationEngine()
