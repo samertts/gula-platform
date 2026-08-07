@@ -1,6 +1,6 @@
 # GULA-ARCHITECT-001 — Enterprise Autonomous Architecture & Strategic Decision Engine Implementation Report
 
-Generated: **2026-08-07T10:26:47.466714+00:00**
+Generated: **2026-08-07T12:24:29.626737+00:00**
 
 ## Mission
 Make, document, and review the architectural decisions that preserve the GULA national platform constitution — FHIR R4, HL7, ISO 15189, CAP, CLSI, multi-tenancy, RBAC/ABAC, immutable audit log, offline-first, national deployment compatibility, Arabic-first, Ministry/Directorate/Hospital/Laboratory hierarchy, Identity Platform, Analyzer Integration, Event Bus, Clinical Safety, and national health platform compatibility. The Architect never writes production features; it only makes, documents, and reviews decisions.
@@ -38,10 +38,10 @@ Make, document, and review the architectural decisions that preserve the GULA na
 
 - **Break circular dependencies** — 8 finding(s) to address
 - **Enforce layer discipline (routes -> services -> models)** — 12 finding(s) to address
-- **Mitigate risk** `RISK-54FB6A54`: Identity platform coupling to national federation roadmap
-- **Mitigate risk** `RISK-7F3FF999`: Offline-first sync conflicts across governorate partitions
-- **Mitigate risk** `RISK-7D76C0A3`: Governorate data residency and national aggregation conflict
-- **Mitigate risk** `RISK-E11BA8C2`: Analyzer protocol fragmentation across laboratory hardware
+- **Mitigate risk** `RISK-61C81441`: Identity platform coupling to national federation roadmap
+- **Mitigate risk** `RISK-88C65A87`: Offline-first sync conflicts across governorate partitions
+- **Mitigate risk** `RISK-4A6566A6`: Governorate data residency and national aggregation conflict
+- **Mitigate risk** `RISK-14F66E46`: Analyzer protocol fragmentation across laboratory hardware
 
 ## Scale Projection (1M users)
 
@@ -49,12 +49,12 @@ Make, document, and review the architectural decisions that preserve the GULA na
 
 ## Risk Register (top exposures)
 
-- `RISK-54FB6A54` **Identity platform coupling to national federation roadmap** — probability high, impact high, exposure 9, priority critical
-- `RISK-7F3FF999` **Offline-first sync conflicts across governorate partitions** — probability high, impact high, exposure 9, priority critical
-- `RISK-7D76C0A3` **Governorate data residency and national aggregation conflict** — probability medium, impact critical, exposure 8, priority high
-- `RISK-E11BA8C2` **Analyzer protocol fragmentation across laboratory hardware** — probability high, impact medium, exposure 6, priority high
-- `RISK-377E8260` **Circular dependencies in the backend (8 found)** — probability medium, impact high, exposure 6, priority high
-- `RISK-C1325D94` **Database and storage growth at national scale** — probability medium, impact high, exposure 6, priority high
+- `RISK-61C81441` **Identity platform coupling to national federation roadmap** — probability high, impact high, exposure 9, priority critical
+- `RISK-88C65A87` **Offline-first sync conflicts across governorate partitions** — probability high, impact high, exposure 9, priority critical
+- `RISK-4A6566A6` **Governorate data residency and national aggregation conflict** — probability medium, impact critical, exposure 8, priority high
+- `RISK-14F66E46` **Analyzer protocol fragmentation across laboratory hardware** — probability high, impact medium, exposure 6, priority high
+- `RISK-75C478D5` **Circular dependencies in the backend (8 found)** — probability medium, impact high, exposure 6, priority high
+- `RISK-471EEC34` **Database and storage growth at national scale** — probability medium, impact high, exposure 6, priority high
 
 ## AI Coordination Contracts
 

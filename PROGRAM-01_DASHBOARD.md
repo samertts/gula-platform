@@ -40,7 +40,7 @@
 | M8 | Duplicate Implementations | 38 remaining findings (duplicates being removed one per commit) | Decreasing |
 | M9 | ADR Count | **34 ADRs** (incl. ADR-027/028/029 governing this phase; ADR-030/031/032/033/034/035/036 planned) | Increasing |
 | M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–1.14 | Stable |
-| M11 | Certification Level | **0 / 6 waves** certified (Wave 1 **complete** — certification report pending approval) | Pending |
+| M11 | Certification Level | **0 / 6 waves** certified (Wave 1 **complete** — certification report written, **PASS WITH OBSERVATIONS**; pending approval) | Pending |
 
 \* False-positive fixes (1.4, 1.5) removed baseline entries via signal-precision
 corrections rather than code migration; counted as finding removals, not
@@ -71,7 +71,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 
 | Wave | Orders | Status | Baseline target | Certification |
 |---|---|---|---|---|
-| **Wave 1** — Low-risk archive & false positives | 1–11 | **COMPLETE** (all 11 orders done: #38, #51, #3, #6, #7, #17+#42, #20, #22, #27+#28, #25, #39) | 48 → 37 | **Pending — report + approval** |
+| **Wave 1** — Low-risk archive & false positives | 1–11 | **COMPLETE** (all 11 orders done: #38, #51, #3, #6, #7, #17+#42, #20, #22, #27+#28, #25, #39) | 57 → 38 (19 removed) | **PASS WITH OBSERVATIONS** (`PROGRAM-01_WAVE1_CERTIFICATION.md`) — pending approval |
 | **Wave 2** — Canonical Provider Promotion | 12 | Not started | → 36 | — |
 | **Wave 3** — Canonical Provider Completions | 13–15 | Not started | → 33 | — |
 | **Wave 4** — High-risk infrastructure | 16–19 | Not started | → 29 | — |
@@ -95,7 +95,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | 63d2f2bf (1.11) | #22 risk_based_auth_service | Archive | 43 → 42 |
 | 9f52dc2a (1.12) | #27 EmergencyQRService + #28 Persisted* | Archive | 42 → 40 |
 | c5ada270 (1.13) | #25 workflow_runtime WorkflowNotifier | Archive | 40 → 39 |
-| *(1.14, pending hash)* | #39 national/workflows WorkflowEngine + 5 subclasses | Archive | 39 → 38 |
+| ff04022c (1.14) | #39 national/workflows WorkflowEngine + 5 subclasses | Archive | 39 → 38 |
 
 ---
 
