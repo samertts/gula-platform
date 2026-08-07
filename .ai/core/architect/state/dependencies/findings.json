@@ -1,5 +1,5 @@
 {
-  "discovered_at": "2026-08-07T14:07:25.062083+00:00",
+  "discovered_at": "2026-08-07T21:32:30.794426+00:00",
   "edges": [
     {
       "source": "routes",
@@ -10,7 +10,7 @@
   ],
   "findings": [
     {
-      "finding_id": "DEP-2FA62896",
+      "finding_id": "DEP-2BFF32D2",
       "kind": "skip-layer",
       "source": "routes",
       "target": "models",

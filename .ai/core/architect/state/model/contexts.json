@@ -1,5 +1,5 @@
 {
-  "discovered_at": "2026-08-07T14:07:08.038534+00:00",
+  "discovered_at": "2026-08-07T21:32:18.998313+00:00",
   "contexts": [
     {
       "name": "lab",
@@ -17,7 +17,7 @@
       "data_flow": "Lab catalog, tiers, employees, equipment",
       "control_flow": "Lab CRUD operations and capability registration",
       "trust_boundary": "internal",
-      "discovered_at": "2026-08-07T14:07:08.037023+00:00"
+      "discovered_at": "2026-08-07T21:32:18.997526+00:00"
     }
   ]
 }
