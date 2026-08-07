@@ -101,7 +101,7 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 | 19 | `citizen_platform/identity.py` — `HealthIdentityService` (national-id verify) | `backend/app/identity` (NIAM) | Different stack; citizen-portal national-id verification | **Retain as Domain-Owned** | L | S | L | No | — |
 | 20 | `national/services/identity_service.py` — `IdentityService` (dead route layer) | NIAM CitizenRegistry | Overlaps canonical; **dead** (unwired route) | **DONE — Commit 1.10** archived `national/services/identity_service.py` + its only production consumer (unwired `national/api/routes/identity.py`, part of never-registered `national_router`) + their tests | L | S | L | No | 7 |
 | 21 | `services/authorization_service.py` — `IdentityService.get_identity_context` | NIAM identity context | Analogous but legacy lab-UI scoped | **Retain as Domain-Owned** | M | M | L | No | 22 |
-| 22 | `services/risk_based_auth_service.py` — `RiskBasedAuthService` (dead) | `identity/adaptive_auth` (live) | Canonical equivalent is live; finding is dead | **Archive and Re-point** | L | S | L | No | 8 |
+| 22 | `services/risk_based_auth_service.py` — `RiskBasedAuthService` (dead) | `identity/adaptive_auth` (live) | Canonical equivalent is live; finding is dead | **DONE — Commit 1.11** archived `services/risk_based_auth_service.py` (300 L) + its tests (`tests/test_risk_based_auth.py`, `tests/unit/test_risk_based_auth_service.py`) to `archive/platform-shared-core/`; zero live consumers (no `__init__.py` re-export existed) | L | S | L | No | 8 |
  | 51 | `services/mobile_service.py` — `verify_password` | `shared/auth` (via `security/auth.py`) | **Already canonical** — imports and calls the shared bcrypt fn; signal matched the call site, not a definition (fixed via `def\s+`-only signals, Commits 1.5) | **False Positive** (remove with evidence) | L | S | L | No | 2 |
 
 ### 2.7 Notifications (6)
@@ -265,7 +265,7 @@ broken national route surface.
 | 5 | #7 national security audit (broken) | Archive | L | No |
 | 6 | #17 ESB message_bus + #42 APIAuth.check_permission (dead) | Delete | L | No | **DONE — Commit 1.9** |
 | 7 | #20 national identity_service (dead route) | Archive | L | No | **DONE — Commit 1.10** |
-| 8 | #22 risk_based_auth_service (dead) | Archive | L | No |
+| 8 | #22 risk_based_auth_service (dead) | Archive | L | No | **DONE — Commit 1.11** |
 | 9 | #27 EmergencyQRService + #28 Persisted* twins (dead) | Archive | L | No |
 | 10 | #25 workflow_runtime orphan interfaces | Archive | L | No |
 | 11 | #39 national/workflows/base.py (dead ABC) | Archive | L | No |
@@ -433,14 +433,22 @@ continues to fail any NEW finding.
   check PASS). **Also fixed** a pre-existing broken perf test mock
   (`test_service_perf.py`, verified failing on the clean tree). Baseline
   44 → 43.
+- **Commit 1.11 (Wave 1, order 8):** `services/risk_based_auth_service.py`
+  (`RiskBasedAuthService`, finding #22) was proven dead — zero production
+  importers repo-wide (no `__init__.py` re-export existed; `backend/app`
+  contains no reference outside the module itself). The dead cluster (service
+  300 L + its tests `tests/test_risk_based_auth.py` 288 L +
+  `tests/unit/test_risk_based_auth_service.py` 317 L = 905 L) was archived
+  byte-for-byte via `git mv` to `archive/platform-shared-core/`. Canonical:
+  `identity/adaptive_auth` (live; orphan check PASS). Baseline 43 → 42.
 
 ## 10. Next Action
 
-Commits 1.4–1.10 executed: two false positives removed (#38, #51) and five
+Commits 1.4–1.11 executed: two false positives removed (#38, #51) and six
 dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel `AuditLogger`,
 #7 national `SecurityAuditService`, #17 ESB `message_bus` + #42 `APIAuth` +
-dead `APIGateway`, #20 national `identity_service` + unwired route + tests;
-baseline 51 → 43). Next: continue **Wave 1, order 8** — #22
-`risk_based_auth_service` (dead) archive, run the full verification cycle,
-commit, and continue without stopping (Wave 1 continuous-execution mode per
-Program Director approval).
+dead `APIGateway`, #20 national `identity_service` + unwired route + tests,
+#22 `risk_based_auth_service` + tests; baseline 51 → 42). Next: continue
+**Wave 1, order 9** — #27 `EmergencyQRService` + #28 `Persisted*` twins (dead)
+archive, run the full verification cycle, commit, and continue without stopping
+(Wave 1 continuous-execution mode per Program Director approval).

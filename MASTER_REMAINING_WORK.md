@@ -6,7 +6,7 @@
 > finding. Migration is performed only when correctness can be proven, and
 > never changes observable behaviour.
 
-## 1. Shared Core consolidation findings (43)
+## 1. Shared Core consolidation findings (42)
 
 Detected by `architecture-scan` across `backend/app` + `shared/`. These are
 legacy reimplementation candidates awaiting migration to their authoritative
@@ -24,7 +24,7 @@ behaviour-preserving migration.
 | `document_engine` | A new document/PDF engine outside the platform document core. | 8 |
 | `encryption` | A new encryption/crypto implementation outside shared/security. | 2 |
 | `events` | A new event bus outside shared/events. | 2 |
-| `identity` | A new identity/authentication implementation outside the NIAM identity platform. | 3 |
+| `identity` | A new identity/authentication implementation outside the NIAM identity platform. | 2 |
 | `notifications` | A new notification delivery system outside the platform notification core. | 6 |
 | `qr_engine` | A new QR generator/decoder outside shared/qr. | 3 |
 | `rule_engine` | A new business-rules engine outside the platform rules core. | 1 |
@@ -57,7 +57,6 @@ behaviour-preserving migration.
 - [`events`] `backend/app/kernel/runtime_sdk.py`
 - [`identity`] `backend/app/citizen_platform/identity.py`
 - [`identity`] `backend/app/services/authorization_service.py`
-- [`identity`] `backend/app/services/risk_based_auth_service.py`
 - [`notifications`] `backend/app/citizen_platform/notifications.py`
 - [`notifications`] `backend/app/identity/notifications/routes.py`
 - [`notifications`] `backend/app/identity/notifications/services.py`

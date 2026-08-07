@@ -7,7 +7,7 @@
 
 | Check | Result |
 |---|---|
-| Shared Core reimplementation scan | **PASS** — 43 findings (43 acknowledged legacy) |
+| Shared Core reimplementation scan | **PASS** — 42 findings (42 acknowledged legacy) |
 | New (unacknowledged) findings | **0** |
 
 New findings:

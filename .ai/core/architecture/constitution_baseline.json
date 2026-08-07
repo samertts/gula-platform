@@ -210,11 +210,6 @@
       "rule_id": "audit",
       "path": "backend/app/services/authorization_service.py",
       "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
-    },
-    {
-      "rule_id": "identity",
-      "path": "backend/app/services/risk_based_auth_service.py",
-      "signal": "class\\s+\\w*(?:IdentityService|IdentityProvider|LoginService|AuthService|AuthenticationService)\\b"
     }
   ],
   "country_findings": [

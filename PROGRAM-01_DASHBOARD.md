@@ -26,21 +26,21 @@
 
 ---
 
-## 2. Current State (as of Commit 1.10)
+## 2. Current State (as of Commit 1.11)
 
 | # | Metric | Current value | Trend |
 |---|---|---|---|
-| M1 | Architecture Health | **PASS** (43 ack, 0 new · domain 11/11 · country PASS · policy PASS) | Stable |
-| M2 | Technical Debt | 379 ruff baseline (fixed); active-tree LOC **−1250** cumulative | Improving |
-| M3 | Remaining Findings | **43** (from 57 original) | ↓ 14 removed |
-| M4 | Shared Core Progress | **14 / 57** original findings migrated (11 archives + 1 promotion + 2 false-positive fixes); **43 remain** | Increasing |
-| M5 | Migration Progress | **8 implementation migrations certified** (1.1–1.3, 1.6–1.10) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
+| M1 | Architecture Health | **PASS** (42 ack, 0 new · domain 11/11 · country PASS · policy PASS) | Stable |
+| M2 | Technical Debt | 379 ruff baseline (fixed); active-tree LOC **−2151** cumulative | Improving |
+| M3 | Remaining Findings | **42** (from 57 original) | ↓ 15 removed |
+| M4 | Shared Core Progress | **15 / 57** original findings migrated (12 archives + 1 promotion + 2 false-positive fixes); **42 remain** | Increasing |
+| M5 | Migration Progress | **9 implementation migrations certified** (1.1–1.3, 1.6–1.11) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
 | M6 | Production Readiness | backend 0 fail (75 national + 111 governance + 124 route tests; boot 119 routes); ruff 379 baseline; tsc 0; eslint 0; validate fast PASS | Stable |
-| M7 | Repository Size | active LOC shrinking; archive = **12 modules** (+338 LOC national identity cluster) | Active ↓ |
-| M8 | Duplicate Implementations | 43 remaining findings (duplicates being removed one per commit) | Decreasing |
+| M7 | Repository Size | active LOC shrinking; archive = **13 modules** (+905 LOC risk-based-auth cluster) | Active ↓ |
+| M8 | Duplicate Implementations | 42 remaining findings (duplicates being removed one per commit) | Decreasing |
 | M9 | ADR Count | **34 ADRs** (incl. ADR-027/028/029 governing this phase; ADR-030/031/032/033/034/035/036 planned) | Increasing |
-| M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–1.10 | Stable |
-| M11 | Certification Level | **0 / 6 waves** certified (Wave 1 in progress: orders 7 done, 8–11 pending) | Pending |
+| M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–1.11 | Stable |
+| M11 | Certification Level | **0 / 6 waves** certified (Wave 1 in progress: orders 8 done, 9–11 pending) | Pending |
 
 \* False-positive fixes (1.4, 1.5) removed baseline entries via signal-precision
 corrections rather than code migration; counted as finding removals, not
@@ -54,7 +54,7 @@ archives.
 | audit | 5 | #6 AuditLogger (1.7), #7 national SecurityAuditService (1.8) archived |
 | events | 2 (#18 Strategic Exception + #48 Retain, Wave 6) | #17 ESB message_bus archived (Commit 1.9) |
 | authorization | 2 (#21+#30 legacy path, Wave 5) | #42 APIAuth archived (Commit 1.9) |
-| identity | 3 (#19 Retain, #21 Retain, #22 archived next) | #20 national IdentityService archived (Commit 1.10) |
+| identity | 2 (#19 Retain, #21 Retain) | #20 national IdentityService archived (Commit 1.10), #22 risk_based_auth_service archived (Commit 1.11) |
 | dependency_injection | 1 | — (Retain, Wave 6) |
 | search_engine | 4 | #38 false-positive removed (Commit 1.4) |
 | authentication | 2 | #51 false-positive removed (Commit 1.5) |
@@ -68,7 +68,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 
 | Wave | Orders | Status | Baseline target | Certification |
 |---|---|---|---|---|
-| **Wave 1** — Low-risk archive & false positives | 1–11 | **IN PROGRESS** (orders 1–7 done: #38, #51, #3, #6, #7, #17+#42, #20) | 48 → 37 | Not certified |
+| **Wave 1** — Low-risk archive & false positives | 1–11 | **IN PROGRESS** (orders 1–8 done: #38, #51, #3, #6, #7, #17+#42, #20, #22) | 48 → 37 | Not certified |
 | **Wave 2** — Canonical Provider Promotion | 12 | Not started | → 36 | — |
 | **Wave 3** — Canonical Provider Completions | 13–15 | Not started | → 33 | — |
 | **Wave 4** — High-risk infrastructure | 16–19 | Not started | → 29 | — |
@@ -89,7 +89,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | 94cb3279 (1.8) | #7 SecurityAuditService | Archive | 47 → 46 |
 | 33e1a22f (1.9) | #17 ESBMessageBus + #42 APIAuth | Archive | 46 → 44 |
 | c6f906d8 (1.10) | #20 national IdentityService | Archive | 44 → 43 |
-| *(1.11, pending hash)* | #22 risk_based_auth_service | Archive | 43 → 42 |
+| 63d2f2bf (1.11) | #22 risk_based_auth_service | Archive | 43 → 42 |
 
 ---
 
