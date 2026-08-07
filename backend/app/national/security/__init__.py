@@ -1,5 +1,4 @@
 from .abac import ABACDecision, ABACEngine, AccessRequest, Attribute, AttributeCategory
-from .audit import SecurityAuditEvent, SecurityAuditService
 from .break_glass import BreakGlassAccess, BreakGlassReason, BreakGlassService
 from .consent_enforcement import ConsentCheckResult, ConsentEnforcementService
 from .emergency_access import EmergencyAccessRecord, EmergencyAccessService
@@ -47,8 +46,6 @@ __all__ = [
     "PurposeOfUseEngine",
     "PurposeOfUseValidation",
     "RBACEngine",
-    "SecurityAuditEvent",
-    "SecurityAuditService",
     "SensitiveRecordService",
     "SensitivityLevel",
     "VIPAccessAttempt",

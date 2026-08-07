@@ -6,7 +6,7 @@
 > finding. Migration is performed only when correctness can be proven, and
 > never changes observable behaviour.
 
-## 1. Shared Core consolidation findings (47)
+## 1. Shared Core consolidation findings (46)
 
 Detected by `architecture-scan` across `backend/app` + `shared/`. These are
 legacy reimplementation candidates awaiting migration to their authoritative
@@ -17,7 +17,7 @@ behaviour-preserving migration.
 
 | Capability | Issue | Findings |
 |---|---|---|
-| `audit` | A new audit-log implementation outside the platform audit core. | 6 |
+| `audit` | A new audit-log implementation outside the platform audit core. | 5 |
 | `authorization` | A new RBAC/ABAC permission implementation outside the platform. | 3 |
 | `barcode_engine` | A new barcode generator/decoder outside shared/barcode. | 1 |
 | `dependency_injection` | A new DI container outside shared/di_container. | 1 |
@@ -36,7 +36,6 @@ behaviour-preserving migration.
 
 - [`audit`] `backend/app/document_intelligence/application/interfaces.py`
 - [`audit`] `backend/app/document_intelligence/application/wiring.py`
-- [`audit`] `backend/app/national/security/audit.py`
 - [`audit`] `backend/app/national/task_engine/domain/repository.py`
 - [`audit`] `backend/app/national/task_engine/infrastructure/repository.py`
 - [`audit`] `backend/app/services/authorization_service.py`
@@ -96,9 +95,10 @@ Allowed only inside the national layer (`backend/app/national`, `backend/app/nhd
    `backend/app/identity/notifications/`, `backend/app/citizen_platform/notifications.py`
    and `backend/app/national/notification_platform/` onto the platform
    notification core (`backend/app/notifications`).
-2. **Audit consolidation** — fold `backend/app/platform/audit.py`,
-   `backend/app/national/security/audit.py`, and document-intelligence audit
-   onto the NIAM immutable audit core.
+2. **Audit consolidation** — fold `backend/app/platform/audit.py`
+   (archived, Commit 1.1) and `backend/app/national/security/audit.py`
+   (archived, Commit 1.8) and document-intelligence audit
+   (in progress, Wave 1/4) onto the NIAM immutable audit core.
 3. **Authorization consolidation** — unify `backend/app/services/authorization_service.py`
    with the NIAM authorization service; audit platform/identity duplicate RBAC/ABAC.
 4. **Engine consolidation** — kernel scheduler/event-bus/DI and identity

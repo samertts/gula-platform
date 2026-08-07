@@ -26,21 +26,21 @@
 
 ---
 
-## 2. Current State (as of Commit 1.7)
+## 2. Current State (as of Commit 1.8)
 
 | # | Metric | Current value | Trend |
 |---|---|---|---|
-| M1 | Architecture Health | **PASS** (47 ack, 0 new · domain 11/11 · country PASS · policy PASS) | Stable |
-| M2 | Technical Debt | 379 ruff baseline (fixed); active-tree LOC **−527** cumulative | Improving |
-| M3 | Remaining Findings | **47** (from 57 original) | ↓ 10 removed |
-| M4 | Shared Core Progress | **10 / 57** original findings migrated (7 archives + 1 promotion + 2 false-positive fixes); **47 remain** | Increasing |
-| M5 | Migration Progress | **5 implementation migrations certified** (1.1, 1.2, 1.3, 1.6, 1.7) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
+| M1 | Architecture Health | **PASS** (46 ack, 0 new · domain 11/11 · country PASS · policy PASS) | Stable |
+| M2 | Technical Debt | 379 ruff baseline (fixed); active-tree LOC **−599** cumulative | Improving |
+| M3 | Remaining Findings | **46** (from 57 original) | ↓ 11 removed |
+| M4 | Shared Core Progress | **11 / 57** original findings migrated (8 archives + 1 promotion + 2 false-positive fixes); **46 remain** | Increasing |
+| M5 | Migration Progress | **6 implementation migrations certified** (1.1, 1.2, 1.3, 1.6, 1.7, 1.8) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
 | M6 | Production Readiness | backend ≥ 4993 tests 0 fail; ruff 379 baseline; tsc 0; eslint 0; validate fast PASS | Stable |
-| M7 | Repository Size | active LOC shrinking; archive = **7 modules** (79 LOC encryption + 42 LOC audit archives) | Active ↓ |
-| M8 | Duplicate Implementations | 47 remaining findings (duplicates being removed one per commit) | Decreasing |
+| M7 | Repository Size | active LOC shrinking; archive = **8 modules** (+75 LOC national audit module) | Active ↓ |
+| M8 | Duplicate Implementations | 46 remaining findings (duplicates being removed one per commit) | Decreasing |
 | M9 | ADR Count | **34 ADRs** (incl. ADR-027/028/029 governing this phase; ADR-030/031/032/033/034/035/036 planned) | Increasing |
-| M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–1.7 | Stable |
-| M11 | Certification Level | **0 / 6 waves** certified (Wave 1 in progress: orders 4 done, 5–11 pending) | Pending |
+| M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–1.8 | Stable |
+| M11 | Certification Level | **0 / 6 waves** certified (Wave 1 in progress: orders 5 done, 6–11 pending) | Pending |
 
 \* False-positive fixes (1.4, 1.5) removed baseline entries via signal-precision
 corrections rather than code migration; counted as finding removals, not
@@ -51,7 +51,7 @@ archives.
 | Capability | Original findings | Remaining | Migrated |
 |---|---|---|---|
 | encryption | 3 | 2 (#1, #2 in Wave 5) | #3 archived (Commit 1.6) |
-| audit | 7 | 6 | #6 AuditLogger archived (Commit 1.7) |
+| audit | 7 | 5 | #6 AuditLogger (1.7), #7 national SecurityAuditService (1.8) archived |
 | dependency_injection | 1 | 1 | — (Retain, Wave 6) |
 | search_engine | 2 | 1 (#35+#36 Wave 3) | #38 false-positive removed (Commit 1.4) |
 | authentication | 3 | 2 | #51 false-positive removed (Commit 1.5) |
@@ -65,7 +65,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 
 | Wave | Orders | Status | Baseline target | Certification |
 |---|---|---|---|---|
-| **Wave 1** — Low-risk archive & false positives | 1–11 | **IN PROGRESS** (orders 1–4 done: #38, #51, #3, #6) | 48 → 37 | Not certified |
+| **Wave 1** — Low-risk archive & false positives | 1–11 | **IN PROGRESS** (orders 1–5 done: #38, #51, #3, #6, #7) | 48 → 37 | Not certified |
 | **Wave 2** — Canonical Provider Promotion | 12 | Not started | → 36 | — |
 | **Wave 3** — Canonical Provider Completions | 13–15 | Not started | → 33 | — |
 | **Wave 4** — High-risk infrastructure | 16–19 | Not started | → 29 | — |
@@ -83,6 +83,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | 2ceb373c (1.5) | #51 auth (false positive) | Signal fix | 50 → 49 |
 | bf52a744 (1.6) | #3 EncryptedSyncStore | Archive | 49 → 48 |
 | 6c35ead6 (1.7) | #6 AuditLogger | Archive | 48 → 47 |
+| *(1.8, pending hash)* | #7 SecurityAuditService | Archive | 47 → 46 |
 
 ---
 

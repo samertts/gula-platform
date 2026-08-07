@@ -393,14 +393,23 @@ continues to fail any NEW finding.
   `archive/platform-shared-core/document_intelligence_audit_logger.py`
   (Commit 1.1/1.2/1.6 precedent). Canonical provider:
   `identity/services/audit_service.py` (hash-chained, 3+ active consumers —
-  orphan check PASS). `EncryptionService` (#1) and `IntegrityChecker` (not a
+  orphan check PASS).   `EncryptionService` (#1) and `IntegrityChecker` (not a
   finding) in the same module were untouched. Baseline 48 → 47.
+- **Commit 1.8 (Wave 1, order 5):** `backend/app/national/security/audit.py`
+  (whole dead module — `SecurityAuditEvent` + `SecurityAuditService`) was
+  proven dead (zero production importers; sole consumer was the
+  `national/security/__init__.py` re-export, removed with the move) and
+  archived byte-for-byte via `git mv` (rename detected, 0 insertions/0
+  deletions — Commit 1.1/1.2 precedent) to
+  `archive/platform-shared-core/national_security_audit.py`. Canonical
+  provider: `identity/services/audit_service.py` (orphan check PASS — 3+
+  active consumers). The rest of `national/security/` (abac, rbac,
+  break_glass, etc.) was untouched. Baseline 47 → 46.
 
 ## 10. Next Action
 
-Commits 1.4–1.7 executed: two false positives removed (#38 via case-sensitive
-`search_engine` signal; #51 via definition-only `authentication` signals) and
-two dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel
-`AuditLogger`; baseline 51 → 47). Next: begin **Wave 1, order 5** — #7
-`national/security/audit.py::SecurityAuditService` archive, run the full
-verification cycle, commit, and STOP.
+Commits 1.4–1.8 executed: two false positives removed (#38, #51) and three
+dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel `AuditLogger`,
+#7 national `SecurityAuditService`; baseline 51 → 46). Next: begin **Wave 1,
+order 6** — #17 ESB `message_bus` + #42 `APIAuth.check_permission` delete
+(dead, evidence-based), run the full verification cycle, commit, and STOP.

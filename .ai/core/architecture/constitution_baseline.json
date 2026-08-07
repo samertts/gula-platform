@@ -177,11 +177,6 @@
       "signal": "def\\s+evaluate_rule\\s*\\("
     },
     {
-      "rule_id": "audit",
-      "path": "backend/app/national/security/audit.py",
-      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
-    },
-    {
       "rule_id": "identity",
       "path": "backend/app/national/services/identity_service.py",
       "signal": "class\\s+\\w*(?:IdentityService|IdentityProvider|LoginService|AuthService|AuthenticationService)\\b"

@@ -515,9 +515,10 @@ Allowed only inside the national layer (`backend/app/national`, `backend/app/nhd
    `backend/app/identity/notifications/`, `backend/app/citizen_platform/notifications.py`
    and `backend/app/national/notification_platform/` onto the platform
    notification core (`backend/app/notifications`).
-2. **Audit consolidation** — fold `backend/app/platform/audit.py`,
-   `backend/app/national/security/audit.py`, and document-intelligence audit
-   onto the NIAM immutable audit core.
+2. **Audit consolidation** — fold `backend/app/platform/audit.py`
+   (archived, Commit 1.1) and `backend/app/national/security/audit.py`
+   (archived, Commit 1.8) and document-intelligence audit
+   (in progress, Wave 1/4) onto the NIAM immutable audit core.
 3. **Authorization consolidation** — unify `backend/app/services/authorization_service.py`
    with the NIAM authorization service; audit platform/identity duplicate RBAC/ABAC.
 4. **Engine consolidation** — kernel scheduler/event-bus/DI and identity
