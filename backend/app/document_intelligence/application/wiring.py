@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import Any
 
 from sqlalchemy.orm import sessionmaker
@@ -64,12 +65,75 @@ _provider_manager: OcrProviderManager | None = None
 _document_repo: DocumentRepository | None = None
 
 
-class DefaultAuditService(AuditService):
+class CanonicalAuditAdapter(AuditService):
+    """Composition-root adapter: doc-intel AuditService ABC over the canonical
+    identity AuditService (immutable hash-chained, DB-backed). The Shared Core
+    `audit` implementation is owned by `app.identity.services.audit_service`;
+    this thin adapter only maps the retained domain interface onto it.
+    Fail-closed: if the async session cannot persist, the call raises — audit
+    is never silently dropped.
+    """
+
+    def __init__(self, session_factory: Callable[[], Any]) -> None:
+        self._session_factory = session_factory
+
     async def log_event(self, event_type: str, document_id: Any, details: dict) -> None:
-        logger.info("AUDIT: %s [%s] %s", event_type, document_id, details)
+        from app.identity.services.audit_service import AuditService
+
+        async with self._session_factory() as session:
+            await AuditService(session).record_event(
+                action=str(event_type),
+                target_type="document",
+                target_id=str(document_id),
+                metadata=details,
+            )
+            await session.commit()
 
     async def get_document_history(self, document_id: Any) -> list[dict]:
-        return []
+        from sqlalchemy import select
+
+        from app.identity.models.audit import IdentityAuditEntry
+
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(IdentityAuditEntry)
+                .where(
+                    IdentityAuditEntry.target_type == "document",
+                    IdentityAuditEntry.target_id == str(document_id),
+                )
+                .order_by(IdentityAuditEntry.occurred_at),
+            )
+            return [entry.to_dict() for entry in result.scalars().all()]
+
+
+def _default_async_session_factory() -> Callable[[], Any]:
+    """Lazy async session factory derived from the platform DATABASE_URL
+    (defaults to the doc-intel sqlite database, mirroring build_orchestrator).
+    The async engine is created only on the first session request, so calling
+    build_orchestrator() never touches the database."""
+
+    import os
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    url = os.environ.get("DATABASE_URL", "sqlite:///docint.db")
+    if url.startswith("postgresql://"):
+        async_url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif url.startswith("sqlite://"):
+        async_url = url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+    else:
+        async_url = url
+
+    _engine = None
+
+    def _factory() -> Any:
+        nonlocal _engine
+        if _engine is None:
+            _engine = create_async_engine(async_url, poolclass=NullPool)
+        return async_sessionmaker(_engine, expire_on_commit=False)()
+
+    return _factory
 
 
 class DefaultEncryptionService(EncryptionService):
@@ -984,6 +1048,7 @@ class DefaultRemediationService(RemediationService):
 def build_orchestrator(
     session_factory: sessionmaker | None = None,
     storage_path: str = "/data/documents",
+    audit_session_factory: Callable[[], Any] | None = None,
 ) -> DocumentIntelligenceOrchestrator:
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -1053,7 +1118,7 @@ def build_orchestrator(
     SqlVersionRepository(session_factory)
 
     encryptor = DefaultEncryptionService()
-    audit = DefaultAuditService()
+    audit = CanonicalAuditAdapter(audit_session_factory or _default_async_session_factory())
     events = DefaultPipelineEventPublisher()
     parser = DefaultDocumentParser()
     preprocessor = DefaultImagePreprocessor()
