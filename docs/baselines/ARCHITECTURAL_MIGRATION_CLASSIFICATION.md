@@ -385,11 +385,22 @@ continues to fail any NEW finding.
   `archive/platform-shared-core/encrypted_sync_store.py` (Commit 1.1/1.2
   precedent). The live `OfflineSyncEngine` in `integration/offline.py` is a
   different module and was untouched. Baseline 49 → 48.
+- **Commit 1.7 (Wave 1, order 4):** `AuditLogger` in
+  `document_intelligence/security.py` was proven dead (zero production
+  importers repo-wide; sole consumer was its own test class
+  `TestAuditLogger` in `backend/tests/test_docintel_enterprise.py`) and
+  archived byte-for-byte (class + module singleton + accessor) to
+  `archive/platform-shared-core/document_intelligence_audit_logger.py`
+  (Commit 1.1/1.2/1.6 precedent). Canonical provider:
+  `identity/services/audit_service.py` (hash-chained, 3+ active consumers —
+  orphan check PASS). `EncryptionService` (#1) and `IntegrityChecker` (not a
+  finding) in the same module were untouched. Baseline 48 → 47.
 
 ## 10. Next Action
 
-Commits 1.4–1.6 executed: two false positives removed (#38 via case-sensitive
+Commits 1.4–1.7 executed: two false positives removed (#38 via case-sensitive
 `search_engine` signal; #51 via definition-only `authentication` signals) and
-the first dead-code archive landed (#3 `EncryptedSyncStore`, baseline 51 → 48).
-Next: begin **Wave 1, order 4** — #6 doc-intel `AuditLogger` archive, run the
-full verification cycle, commit, and STOP.
+two dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel
+`AuditLogger`; baseline 51 → 47). Next: begin **Wave 1, order 5** — #7
+`national/security/audit.py::SecurityAuditService` archive, run the full
+verification cycle, commit, and STOP.

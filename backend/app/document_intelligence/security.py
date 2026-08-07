@@ -6,7 +6,6 @@ import logging
 import os
 import re
 import time
-import uuid
 from datetime import UTC, datetime
 from typing import Any
 
@@ -118,50 +117,6 @@ class RateLimiter:
             self._buckets.pop(key, None)
         else:
             self._buckets.clear()
-
-
-class AuditLogger:
-    def __init__(self):
-        self._entries: list[dict[str, Any]] = []
-
-    async def log(
-        self,
-        action: str,
-        entity_type: str,
-        entity_id: str,
-        actor: str,
-        changes: dict[str, Any] | None = None,
-        metadata: dict[str, Any] | None = None,
-    ):
-        entry = {
-            "id": str(uuid.uuid4()),
-            "timestamp": datetime.now(UTC).isoformat(),
-            "action": action,
-            "entity_type": entity_type,
-            "entity_id": entity_id,
-            "actor": actor,
-            "changes": changes or {},
-            "metadata": metadata or {},
-        }
-        self._entries.append(entry)
-        logger.info("Audit: %s %s %s by %s", action, entity_type, entity_id, actor)
-        return entry
-
-    def get_entries(self, entity_id: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
-        if entity_id:
-            return [e for e in self._entries if e["entity_id"] == entity_id][-limit:]
-        return self._entries[-limit:]
-
-    def search(self, query: str) -> list[dict[str, Any]]:
-        q = query.lower()
-        return [e for e in self._entries if q in json.dumps(e, default=str).lower()]
-
-
-_audit_logger = AuditLogger()
-
-
-def get_audit_logger() -> AuditLogger:
-    return _audit_logger
 
 
 class IntegrityChecker:

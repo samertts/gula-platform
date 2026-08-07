@@ -130,12 +130,10 @@ from .performance import (
     ProcessingTimeTracker,
 )
 from .security import (
-    AuditLogger,
     EncryptionService,
     InputValidator,
     IntegrityChecker,
     RateLimiter,
-    get_audit_logger,
 )
 
 __all__ = [
@@ -143,7 +141,6 @@ __all__ = [
     "AlertManager",
     "ArchiveStatus",
     "AsyncMemoizer",
-    "AuditLogger",
     "BackupEntry",
     "BackupManifest",
     "BackupScheduler",
@@ -261,7 +258,6 @@ __all__ = [
     "WebhookRegistrationModel",
     "WorkerPool",
     "build_orchestrator",
-    "get_audit_logger",
     "get_document_repo",
     "get_logger",
     "get_metrics",

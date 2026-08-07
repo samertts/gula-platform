@@ -6,7 +6,7 @@
 > finding. Migration is performed only when correctness can be proven, and
 > never changes observable behaviour.
 
-## 1. Shared Core consolidation findings (48)
+## 1. Shared Core consolidation findings (47)
 
 Detected by `architecture-scan` across `backend/app` + `shared/`. These are
 legacy reimplementation candidates awaiting migration to their authoritative
@@ -17,7 +17,7 @@ behaviour-preserving migration.
 
 | Capability | Issue | Findings |
 |---|---|---|
-| `audit` | A new audit-log implementation outside the platform audit core. | 7 |
+| `audit` | A new audit-log implementation outside the platform audit core. | 6 |
 | `authorization` | A new RBAC/ABAC permission implementation outside the platform. | 3 |
 | `barcode_engine` | A new barcode generator/decoder outside shared/barcode. | 1 |
 | `dependency_injection` | A new DI container outside shared/di_container. | 1 |
@@ -36,7 +36,6 @@ behaviour-preserving migration.
 
 - [`audit`] `backend/app/document_intelligence/application/interfaces.py`
 - [`audit`] `backend/app/document_intelligence/application/wiring.py`
-- [`audit`] `backend/app/document_intelligence/security.py`
 - [`audit`] `backend/app/national/security/audit.py`
 - [`audit`] `backend/app/national/task_engine/domain/repository.py`
 - [`audit`] `backend/app/national/task_engine/infrastructure/repository.py`

@@ -39,7 +39,6 @@ from app.document_intelligence.performance import (
     ProcessingTimeTracker,
 )
 from app.document_intelligence.security import (
-    AuditLogger,
     EncryptionService,
     InputValidator,
     IntegrityChecker,
@@ -553,34 +552,6 @@ class TestRateLimiter:
         rl._buckets["k2"] = []
         rl.reset()
         assert rl._buckets == {}
-
-
-class TestAuditLogger:
-    @pytest.mark.asyncio
-    async def test_log_entry(self):
-        al = AuditLogger()
-        entry = await al.log(
-            action="view",
-            entity_type="document",
-            entity_id="doc-123",
-            actor="user-1",
-            changes={"status": "viewed"},
-        )
-        assert entry["action"] == "view"
-        assert entry["entity_type"] == "document"
-        assert entry["actor"] == "user-1"
-
-    def test_get_entries(self):
-        al = AuditLogger()
-        asyncio.run(al.log("create", "doc", "1", "user"))
-        entries = al.get_entries("1")
-        assert len(entries) == 1
-
-    def test_search(self):
-        al = AuditLogger()
-        asyncio.run(al.log("delete", "doc", "2", "admin", metadata={"reason": "cleanup"}))
-        results = al.search("cleanup")
-        assert len(results) == 1
 
 
 class TestIntegrityChecker:

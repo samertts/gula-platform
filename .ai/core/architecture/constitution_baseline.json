@@ -67,11 +67,6 @@
       "signal": "class\\s+\\w*(?:SearchService|SearchIndex|SearchEngine)\\b"
     },
     {
-      "rule_id": "audit",
-      "path": "backend/app/document_intelligence/security.py",
-      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
-    },
-    {
       "rule_id": "encryption",
       "path": "backend/app/document_intelligence/security.py",
       "signal": "\\bFernet\\s*\\("
