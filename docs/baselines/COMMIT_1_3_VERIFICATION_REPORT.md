@@ -1,6 +1,6 @@
 # Commit 1.3 Verification Report
 
-**Commit:** `<pending>` — `refactor(workflows): migrate live identity/workflows engine to canonical app.workflows (ADR-028)`
+**Commit:** `b393aac3` — `refactor(workflows): migrate live identity/workflows engine to canonical app.workflows (ADR-028)`
 **Branch:** `remediate-security-001`
 **Date:** 2026-08-07
 
