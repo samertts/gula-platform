@@ -16,9 +16,9 @@ from app.national.task_engine.domain.enums import (
     TaskPriority,
 )
 from app.national.task_engine.infrastructure.repository import (
+    CanonicalTaskAuditRepository,
     SQLAlchemyNationalTaskRepository,
     SQLAlchemyTaskAssignmentRepository,
-    SQLAlchemyTaskAuditLogRepository,
     SQLAlchemyTaskCommentRepository,
     SQLAlchemyTaskEscalationRepository,
     SQLAlchemyTaskQueueRepository,
@@ -37,7 +37,7 @@ def _get_service() -> TaskEngineService:
         escalation_repo=SQLAlchemyTaskEscalationRepository(),
         sla_repo=SQLAlchemyTaskSLARepository(),
         comment_repo=SQLAlchemyTaskCommentRepository(),
-        audit_repo=SQLAlchemyTaskAuditLogRepository(),
+        audit_repo=CanonicalTaskAuditRepository(),
     )
 
 

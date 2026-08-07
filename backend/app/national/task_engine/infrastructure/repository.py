@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
 
@@ -8,6 +9,7 @@ from sqlalchemy import desc, text
 from app.database import SessionLocal
 from app.national.task_engine.domain.entities import (
     NationalTask,
+    TaskAuditLog,
 )
 from app.national.task_engine.domain.repository import (
     NationalTaskRepository,
@@ -263,15 +265,96 @@ class SQLAlchemyTaskCommentRepository(TaskCommentRepository):
         return []
 
 
-class SQLAlchemyTaskAuditLogRepository(TaskAuditLogRepository):
-    async def save(self, log: Any) -> Any:
+def _default_async_session_factory() -> Callable[[], Any]:
+    """Lazy async session factory derived from the platform DATABASE_URL.
+
+    Mirrors the doc-intel canonical-audit wiring (ADR-031): the async engine is
+    created only on the first session request, so constructing the repository
+    never touches the database. Fail-closed — a session that cannot persist
+    raises instead of silently dropping the audit row.
+    """
+
+    import os
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from sqlalchemy.pool import NullPool
+
+    url = os.environ.get("DATABASE_URL", "sqlite:///task_engine.db")
+    if url.startswith("postgresql://"):
+        async_url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    elif url.startswith("sqlite://"):
+        async_url = url.replace("sqlite://", "sqlite+aiosqlite://", 1)
+    else:
+        async_url = url
+
+    _engine = None
+
+    def _factory() -> Any:
+        nonlocal _engine
+        if _engine is None:
+            _engine = create_async_engine(async_url, poolclass=NullPool)
+        return async_sessionmaker(_engine, expire_on_commit=False)()
+
+    return _factory
+
+
+class CanonicalTaskAuditRepository(TaskAuditLogRepository):
+    """Composition-root adapter: task_engine `TaskAuditLogRepository` ABC over
+    the canonical identity `AuditService` (immutable hash-chained, DB-backed).
+    The Shared Core `audit` implementation is owned by
+    `app.identity.services.audit_service`; this thin adapter only maps the
+    retained domain interface onto it.
+    Fail-closed: if the async session cannot persist, the call raises — audit
+    is never silently dropped.
+    """
+
+    def __init__(self, session_factory: Callable[[], Any] | None = None) -> None:
+        self._session_factory = session_factory or _default_async_session_factory()
+
+    async def save(self, log: TaskAuditLog) -> TaskAuditLog:
+        from app.identity.services.audit_service import AuditService
+
+        metadata: dict[str, Any] = {
+            "task_audit_log_id": log.id,
+            "previous_status": log.previous_status,
+            "new_status": log.new_status,
+            "details": log.details,
+        }
+        async with self._session_factory() as session:
+            await AuditService(session).record_event(
+                action=str(log.action),
+                actor_id=log.actor_id,
+                target_type="task",
+                target_id=str(log.task_id),
+                metadata=metadata,
+            )
+            await session.commit()
         return log
 
-    async def find_by_task(self, task_id: str) -> list:
-        return []
+    async def find_by_task(self, task_id: str) -> list[TaskAuditLog]:
+        from sqlalchemy import select
 
-    async def find_by_user(self, user_id: str) -> list:
-        return []
+        from app.identity.models.audit import IdentityAuditEntry
 
-    async def list(self, skip: int = 0, limit: int = 100, filters: dict | None = None) -> list:
-        return []
+        async with self._session_factory() as session:
+            result = await session.execute(
+                select(IdentityAuditEntry).where(
+                    IdentityAuditEntry.target_type == "task",
+                    IdentityAuditEntry.target_id == str(task_id),
+                ),
+            )
+            return [self._entry_to_log(entry) for entry in result.scalars().all()]
+
+    @staticmethod
+    def _entry_to_log(entry: Any) -> TaskAuditLog:
+        metadata = entry.extra_data or {}
+        return TaskAuditLog(
+            id=str(metadata.get("task_audit_log_id") or entry.id),
+            task_id=str(entry.target_id or ""),
+            action=entry.action or "",
+            actor_id=entry.actor_id,
+            previous_status=metadata.get("previous_status"),
+            new_status=metadata.get("new_status"),
+            details=metadata.get("details") or {},
+            created_at=entry.occurred_at,
+        )
