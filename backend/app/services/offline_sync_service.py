@@ -4,7 +4,6 @@ import hashlib
 import json
 import logging
 import time
-import zlib
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -267,60 +266,3 @@ class OfflineSyncEngine:
             return False
         expected = self._sign_operation(op.operation_id, op.data, op.device_id)
         return op.signature == expected
-
-
-class EncryptedSyncStore:
-    def __init__(self, encryption_key: str = ""):
-        self._key = encryption_key
-        self._store: dict[str, bytes] = {}
-
-    def put(self, key: str, value: dict[str, Any]) -> None:
-        raw = json.dumps(value).encode()
-        compressed = zlib.compress(raw)
-        encrypted = self._encrypt(compressed)
-        self._store[key] = encrypted
-
-    def get(self, key: str) -> dict[str, Any] | None:
-        encrypted = self._store.get(key)
-        if not encrypted:
-            return None
-        try:
-            decrypted = self._decrypt(encrypted)
-            decompressed = zlib.decompress(decrypted)
-            return json.loads(decompressed)
-        except Exception as exc:
-            logger.error("Failed to decrypt/deserialize key %s: %s", key, exc)
-            return None
-
-    def delete(self, key: str) -> bool:
-        return self._store.pop(key, None) is not None
-
-    def list_keys(self) -> list[str]:
-        return list(self._store.keys())
-
-    def clear(self) -> None:
-        self._store.clear()
-
-    def _encrypt(self, data: bytes) -> bytes:
-        if not self._key:
-            return data
-        from cryptography.fernet import Fernet
-
-        key = self._derive_key()
-        f = Fernet(key)
-        return f.encrypt(data)
-
-    def _decrypt(self, data: bytes) -> bytes:
-        if not self._key:
-            return data
-        from cryptography.fernet import Fernet
-
-        key = self._derive_key()
-        f = Fernet(key)
-        return f.decrypt(data)
-
-    def _derive_key(self) -> bytes:
-        raw = hashlib.sha256(self._key.encode()).digest()
-        import base64
-
-        return base64.urlsafe_b64encode(raw)

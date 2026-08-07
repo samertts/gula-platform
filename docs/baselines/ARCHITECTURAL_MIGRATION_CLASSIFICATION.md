@@ -378,11 +378,18 @@ continues to fail any NEW finding.
   scanner signal precision (`case_sensitive: True` on the `search_engine` rule)
   plus baseline + master-doc regeneration. This document remains analysis;
   Commit 1.4 is the first execution commit.
+- **Commit 1.6 (Wave 1, order 3):** `EncryptedSyncStore` in
+  `services/offline_sync_service.py` was proven dead (zero production importers
+  repo-wide; sole consumer was its own test class `TestEncryptedSyncStore` in
+  `backend/tests/test_offline_sync.py`) and archived byte-for-byte to
+  `archive/platform-shared-core/encrypted_sync_store.py` (Commit 1.1/1.2
+  precedent). The live `OfflineSyncEngine` in `integration/offline.py` is a
+  different module and was untouched. Baseline 49 → 48.
 
 ## 10. Next Action
 
-Commits 1.4–1.5 executed: both false positives removed (#38 via case-sensitive
-`search_engine` signal; #51 via definition-only `authentication` signals;
-baseline 51 → 49). Next: begin **Wave 1, order 3** — the first dead-code
-archive from Wave 1's low-risk list (per §6 ordering), run the full verification
-cycle, commit, and STOP.
+Commits 1.4–1.6 executed: two false positives removed (#38 via case-sensitive
+`search_engine` signal; #51 via definition-only `authentication` signals) and
+the first dead-code archive landed (#3 `EncryptedSyncStore`, baseline 51 → 48).
+Next: begin **Wave 1, order 4** — #6 doc-intel `AuditLogger` archive, run the
+full verification cycle, commit, and STOP.

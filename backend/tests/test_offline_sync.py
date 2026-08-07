@@ -2,7 +2,6 @@
 
 from app.services.offline_sync_service import (
     ConflictResolution,
-    EncryptedSyncStore,
     OfflineSyncEngine,
     SyncOperation,
 )
@@ -313,48 +312,3 @@ class TestOfflineSyncEngine:
             user_id="u1",
         )
         assert op2.vector_clock["d1"] == 2
-
-
-class TestEncryptedSyncStore:
-    def test_put_and_get(self):
-        store = EncryptedSyncStore(encryption_key="test-key-32-chars-long!!")
-        store.put("test-key", {"name": "Test", "value": 42})
-        result = store.get("test-key")
-        assert result is not None
-        assert result["name"] == "Test"
-        assert result["value"] == 42
-
-    def test_get_missing(self):
-        store = EncryptedSyncStore()
-        result = store.get("nonexistent")
-        assert result is None
-
-    def test_delete(self):
-        store = EncryptedSyncStore()
-        store.put("del-key", {"data": "to-delete"})
-        assert store.delete("del-key")
-        assert store.get("del-key") is None
-
-    def test_list_keys(self):
-        store = EncryptedSyncStore()
-        store.put("k1", {"d": 1})
-        store.put("k2", {"d": 2})
-        keys = store.list_keys()
-        assert "k1" in keys
-        assert "k2" in keys
-
-    def test_clear(self):
-        store = EncryptedSyncStore()
-        store.put("k1", {"d": 1})
-        store.put("k2", {"d": 2})
-        store.clear()
-        assert len(store.list_keys()) == 0
-
-    def test_encryption_integrity(self):
-        store = EncryptedSyncStore(encryption_key="my-secure-key-12345")
-        store.put("sensitive", {"national_id": "1234567890"})
-        stored = store._store["sensitive"]
-        raw = store.get("sensitive")
-        assert raw is not None
-        assert raw["national_id"] == "1234567890"
-        assert stored != b'{"national_id": "1234567890"}'
