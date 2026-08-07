@@ -59,7 +59,6 @@
 | `/national/scheduling-platform` | NationalSchedulingPlatformApiPageLazy | RoleGuard | adminRoles | |
 | `/national/search-platform` | NationalSearchPlatformApiPageLazy | RoleGuard | adminRoles | |
 | `/national/task-engine` | NationalTaskEngineApiPageLazy | RoleGuard | adminRoles | |
-| `/national/workflow-runtime` | NationalWorkflowRuntimeApiPageLazy | RoleGuard | adminRoles | |
 | `/niam/adaptive-auth` | NiamAdaptiveAuthPage | RoleGuard | adminRoles | |
 | `/niam/certificates` | NiamCertificatesPage | RoleGuard | adminRoles | |
 | `/niam/federation` | NiamFederationPage | RoleGuard | adminRoles | |

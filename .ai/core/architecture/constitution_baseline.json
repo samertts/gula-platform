@@ -32,11 +32,6 @@
       "signal": "def\\s+generate_pdf\\s*\\("
     },
     {
-      "rule_id": "audit",
-      "path": "backend/app/document_intelligence/application/wiring.py",
-      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
-    },
-    {
       "rule_id": "scheduler",
       "path": "backend/app/document_intelligence/backup_dr.py",
       "signal": "class\\s+\\w*(?:Scheduler|JobManager|CronEngine)\\b"
@@ -117,24 +112,9 @@
       "signal": "class\\s+\\w*(?:SearchService|SearchIndex|SearchEngine)\\b"
     },
     {
-      "rule_id": "notifications",
-      "path": "backend/app/national/notification_platform/api/routes.py",
-      "signal": "def\\s+send_notification\\s*\\("
-    },
-    {
       "rule_id": "audit",
       "path": "backend/app/national/task_engine/domain/repository.py",
       "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
-    },
-    {
-      "rule_id": "audit",
-      "path": "backend/app/national/task_engine/infrastructure/repository.py",
-      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
-    },
-    {
-      "rule_id": "workflow_engine",
-      "path": "backend/app/national/workflow_runtime/api/routes.py",
-      "signal": "def\\s+execute_workflow\\s*\\("
     },
     {
       "rule_id": "notifications",

@@ -1006,7 +1006,7 @@
 | NM-002 | National LIMS | lims/ | National LIMS management |
 | NM-003 | Rules Engine | national/rules_engine/ | Business rules execution |
 | NM-004 | Background Platform | national/background_platform/ | Background job orchestration |
-| NM-005 | Workflow Runtime | national/workflow_runtime/ | Workflow engine |
+| NM-005 | Workflow Engine (canonical) | backend/app/workflows/engine.py → `/niam/workflows` | Workflow engine (archived broken `national/workflow_runtime/`, ADR-036) |
 | NM-006 | Task Engine | national/task_engine/ | Distributed task execution |
 | NM-007 | Notification Platform | national/notification_platform/ | National notification system |
 | NM-008 | Document Platform | national/document_platform/ | Document management |

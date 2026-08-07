@@ -2,8 +2,8 @@
 
 **Permanent program metrics for the Structural Migration.**
 **Status:** Active
-**Date:** 2026-08-07
-**Baseline:** `.ai/core/architecture/constitution_baseline.json` — **31 acknowledged findings** (+ 2 country findings)
+**Date:** 2026-08-08
+**Baseline:** `.ai/core/architecture/constitution_baseline.json` — **27 acknowledged findings** (+ 2 country findings)
 **Authority:** PROGRAM-01 Execution Framework §7 (metric definitions, owners, trend rules).
 
 ---
@@ -26,21 +26,21 @@
 
 ---
 
-## 2. Current State (as of Wave 3 — certified)
+## 2. Current State (as of Wave 4 — order 19 done)
 
 | # | Metric | Current value | Trend |
 |---|---|---|---|
-| M1 | Architecture Health | **PASS** (31 ack, 0 new · domain 11/11 · country PASS · policy PASS) | Stable |
+| M1 | Architecture Health | **PASS** (27 ack, 0 new · domain 11/11 · country PASS · policy PASS) | Stable |
 | M2 | Technical Debt | 378 ruff baseline (fixed); active-tree LOC **−2151** cumulative (service archives only); engine promoted (+0 net) | Improving |
-| M3 | Remaining Findings | **31** (from 57 original) | ↓ 26 removed |
-| M4 | Shared Core Progress | **26 / 57** original findings migrated (15 archives + 3 promotions + 2 false-positive fixes + 1 in-place class archive + 3 completion orders [#24+#49 Commit 3.1, #35+#36 Commit 3.2, #46+#47 Commit 3.3]); **31 remain** | Increasing |
-| M5 | Migration Progress | **16 implementation migrations certified** (1.1–1.3, 1.6–1.14, 2.1, 3.1, 3.2, 3.3) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
-| M6 | Production Readiness | backend 0 fail (5030 passed; boot 119 routes); ruff 378 baseline; tsc 0; eslint 0 | Stable |
-| M7 | Repository Size | active LOC shrinking; archive = **30 non-test modules** (+7 workflows +2 test files; −364 active LOC) | Active ↓ |
-| M8 | Duplicate Implementations | 31 remaining findings (removed/promoted one per commit) | Decreasing |
-| M9 | ADR Count | **37 ADRs** (incl. ADR-027/028/029/032/033/035 governing this phase; ADR-030/031/034/036 planned) | Increasing |
-| M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–3.3 | Stable |
-| M11 | Certification Level | **3 / 6 waves certified** (Wave 1 + Wave 2 **PASS WITH OBSERVATIONS**, approved; **Wave 3 CERTIFIED** `WAVE_3_CERTIFICATION.md`) | Increasing |
+| M3 | Remaining Findings | **27** (from 57 original) | ↓ 30 removed |
+| M4 | Shared Core Progress | **30 / 57** original findings migrated (15 archives + 3 promotions + 2 false-positive fixes + 1 in-place class archive + 6 completion orders [#24+#49 Commit 3.1, #35+#36 Commit 3.2, #46+#47 Commit 3.3, #5 order 16, #9 order 17, #50 order 18, #44 Commit 3.6]); **27 remain** | Increasing |
+| M5 | Migration Progress | **20 implementation migrations certified** (1.1–1.3, 1.6–1.14, 2.1, 3.1, 3.2, 3.3, orders 16–19) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
+| M6 | Production Readiness | backend 0 fail (5066 passed; boot 118 routes); ruff 378 baseline; tsc 0; eslint 0 | Stable |
+| M7 | Repository Size | active LOC shrinking; archive = **44 non-test modules** (+15 workflow_runtime/WorkflowRuntime platform; −364 active LOC) | Active ↓ |
+| M8 | Duplicate Implementations | 27 remaining findings (removed/promoted one per commit) | Decreasing |
+| M9 | ADR Count | **38 ADRs** (incl. ADR-027/028/029/032/033/035/036 governing this phase; ADR-031 used by orders 16–17; ADR-030/034 planned) | Increasing |
+| M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–3.6 | Stable |
+| M11 | Certification Level | **3 / 6 waves certified** (Wave 1 + Wave 2 **PASS WITH OBSERVATIONS**, approved; **Wave 3 CERTIFIED** `WAVE_3_CERTIFICATION.md`); Wave 4 order 19 complete, awaiting Wave 4 certification | Increasing |
 
 \* False-positive fixes (1.4, 1.5) removed baseline entries via signal-precision
 corrections rather than code migration; counted as finding removals, not
@@ -51,13 +51,13 @@ archives.
 | Capability | Remaining | Migrated (this program) |
 |---|---|---|
 | encryption | 2 (#1, #2 in Wave 5) | #3 archived (Commit 1.6) |
-| audit | 5 | #6 AuditLogger (1.7), #7 national SecurityAuditService (1.8) archived |
+| audit | 3 (#5 Retain, #9 Retain, #4 Wave 5) | #6 AuditLogger (1.7), #7 national SecurityAuditService (1.8) archived; #5 doc-intel + #9 task_engine audit re-pointed to canonical (orders 16–17, ADR-031, Commits 5b52e7a1/f0715216) |
 | events | 2 (#18 Strategic Exception + #48 Retain, Wave 6) | #17 ESB message_bus archived (Commit 1.9) |
 | authorization | 2 (#21+#30 legacy path, Wave 5) | #42 APIAuth archived (Commit 1.9) |
 | identity | 2 (#19 Retain, #21 Retain) | #20 national IdentityService archived (Commit 1.10), #22 risk_based_auth_service archived (Commit 1.11) |
 | qr_engine | 1 (#41 Retain) | #27 EmergencyQRService + #28 PersistedEmergencyQRService archived (Commit 1.12) |
-| notifications | 3 (#23 Retain, #50 Wave 4, #26 Retain) | #25 workflow_runtime WorkflowNotifier archived (Commit 1.13); #24+#49 queue promoted to `backend/app/notifications` (Commit 3.1, ADR-032) |
-| workflow_engine | 1 (#44 Wave 4) | #39 national/workflows WorkflowEngine + 5 dormant subclasses archived (Commit 1.14) |
+| notifications | 2 (#23 Retain, #26 Retain) | #25 workflow_runtime WorkflowNotifier archived (Commit 1.13); #24+#49 queue promoted to `backend/app/notifications` (Commit 3.1, ADR-032); #50 national adapters re-pointed to canonical (order 18, Commit 70d77d5b, ADR-032) |
+| workflow_engine | **0** | #39 national/workflows WorkflowEngine + 5 dormant subclasses archived (Commit 1.14); **#44 broken `national/workflow_runtime` archived (Commit 3.6, ADR-036)** — canonical `backend/app/workflows` only |
 | rule_engine | 0 | #43 ExpressionEngine promoted to `shared/rules_engine/engine.py` (Commit 2.1, ADR-035) |
 | dependency_injection | 1 | — (Retain, Wave 6) |
 | search_engine | 2 (#34, #37 Retain as Domain-Owned) | #38 false-positive removed (Commit 1.4); #35+#36 doc-intel search promoted to `capabilities/search_service` (Commit 3.2, ADR-033) |
@@ -75,9 +75,9 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 |---|---|---|---|---|
 | **Wave 1** — Low-risk archive & false positives | 1–11 | **COMPLETE** (all 11 orders done: #38, #51, #3, #6, #7, #17+#42, #20, #22, #27+#28, #25, #39) | 57 → 38 (19 removed) | **PASS WITH OBSERVATIONS** (`PROGRAM-01_WAVE1_CERTIFICATION.md`) — approved |
 | **Wave 2** — Canonical Provider Promotion | 12 | **COMPLETE** (order 12: #43 ExpressionEngine promoted, ADR-035) | 38 → 37 (1 promoted) | **PASS WITH OBSERVATIONS** (`PROGRAM-01_WAVE2_CERTIFICATION.md`) — approved |
-| **Wave 3** — Canonical Provider Completions | 13–15 | **COMPLETE & CERTIFIED** (order 13: #24+#49 notifications queue promoted, ADR-032, Commit 3.1; order 14: #35+#36 doc-intel search promoted, ADR-033, Commit 3.2; order 15: #46+#47 document PDF wired, ADR-033, Commit 3.3) | 37 → 35 (order 13); 35 → 33 (order 14); 33 → **31** (order 15) | **CERTIFIED** (`WAVE_3_CERTIFICATION.md`) — pending approval |
-| **Wave 4** — High-risk infrastructure | 16–19 | Not started | → 29 | — |
-| **Wave 5** — National Platform migrations | 20–22 | Not started | → 26 | — |
+| **Wave 3** — Canonical Provider Completions | 13–15 | **COMPLETE & CERTIFIED** (order 13: #24+#49 notifications queue promoted, ADR-032, Commit 3.1; order 14: #35+#36 doc-intel search promoted, ADR-033, Commit 3.2; order 15: #46+#47 document PDF wired, ADR-033, Commit 3.3) | 37 → 35 (order 13); 35 → 33 (order 14); 33 → **31** (order 15) | **CERTIFIED** (`WAVE_3_CERTIFICATION.md`) |
+| **Wave 4** — High-risk infrastructure | 16–19 | **IN PROGRESS** — orders 16–19 committed: #5 doc-intel audit (ADR-031, 5b52e7a1), #9 task_engine audit (ADR-031, f0715216), #50 notification adapters (ADR-032, 70d77d5b), **#44 workflow_runtime archived (ADR-036, Commit 3.6)** | 31 → 27 | Awaiting Wave 4 certification (`COMMIT_3_6_VERIFICATION_REPORT.md` produced) |
+| **Wave 5** — National Platform migrations | 20–22 | Not started | → 24 | — |
 | **Wave 6** — Kernel exception + Retain register | 23–24 | Not started | → **0 actionable** | Program certification gate |
 
 **Commit log (this program):**
@@ -104,6 +104,10 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | _ (3.2) | #35+#36 doc-intel search → `capabilities/search_service` (ADR-033) | Completion | 35 → 33 |
 | 537ee5d8 (3.3) | #46+#47 document PDF → canonical `shared/pdf` via `capabilities/document_management/pdf_generator.py` (ADR-033) | Completion | 33 → 31 |
 | _ (3.4) | Wave 3 certification docs | Docs | 31 |
+| 5b52e7a1 (order 16) | #5 doc-intel audit → canonical identity AuditService (ADR-031) | Re-point | 31 |
+| f0715216 (order 17) | #9 task_engine audit → canonical identity AuditService (ADR-031) | Re-point | 31 |
+| 70d77d5b (order 18) | #50 national notification adapters → canonical `backend/app/notifications` (ADR-032) | Re-point | 31 |
+| _ (3.6) | #44 broken `national/workflow_runtime` (0-byte service, 500-surface) → canonical `backend/app/workflows` (ADR-036) | Archive | **31 → 27** |
 
 ---
 
@@ -114,7 +118,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | Open escalations | 0 |
 | STOPs (blocking) | 0 |
 | Behavior mismatches | 0 |
-| API incompatibilities | 0 (OpenAPI byte-identical throughout) |
+| API incompatibilities | 0 — OpenAPI byte-identical through Commit 3.3; Commit 3.6 removed only the broken `/national/workflows/*` 500-surface (−22 methods / −19 paths, documented in `COMMIT_3_6_VERIFICATION_REPORT.md`) |
 | Frontend incompatibilities | 0 |
 | Security regressions | 0 |
 | Baseline growth incidents | 0 |

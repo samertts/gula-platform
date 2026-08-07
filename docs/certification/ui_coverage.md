@@ -14,7 +14,7 @@
 | AI | AIPage, AiPlatformPage, AiFabricPage | ✅ |
 | Enterprise | Hospital, Edge, Financial (dormant), NationalData, Integration + connectors | ✅ |
 | NIAM | Governance, Trust, Lifecycle, Federation, Certificates, Workflows, AdaptiveAuth | ✅ |
-| National | background/document/ecosystem(+gateway)/notification/observability/rules/scheduling/search/task/workflow-runtime platforms, OpsMetrics | ✅ |
+| National | background/document/ecosystem(+gateway)/notification/observability/rules/scheduling/search/task platforms, OpsMetrics | ✅ |
 | Capabilities | clinical-foundation, document-management, encounter-management, healthcare-consent, provider-management, reporting-service, search-service, storage-service, workflow-engine | ✅ |
 | Systems (dormant gated) | ai-fabric, biomedical, blood-bank, certification, citizen-platform, command-center, command-intelligence, control-plane, critical-care, ems, health-data, kernel, lifecycle-platform, pharmacy, pilot-platform, platform, public-health | ✅ routed |
 

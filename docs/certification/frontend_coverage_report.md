@@ -64,7 +64,6 @@
 | Scheduling (national.scheduling_platform.api) | ✅ | ✅ | ❌ | ✅ | 27 |
 | Search Platform (national.search_platform.api) | ✅ | ✅ | ❌ | ✅ | 14 |
 | Task Engine (national.task_engine.api) | ✅ | ✅ | ❌ | ✅ | 29 |
-| Workflow Runtime (national.workflow_runtime.api) | ✅ | ✅ | ❌ | ✅ | 22 |
 | Pharmacy (pharmacy) | ✅ | ✅ | ❌ | ❌ | 34 |
 | Pilot Platform (pilot_platform.api) | ✅ | ✅ | ❌ | ❌ | 14 |
 | Platform (platform) | ✅ | ✅ | ❌ | ❌ | 3 |

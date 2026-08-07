@@ -1,12 +1,12 @@
 # MASTER_REMAINING_WORK — acknowledged debt and migration plan
 
-> PROGRAM-ALPHA | regenerated 2026-08-07
+> PROGRAM-ALPHA | regenerated 2026-08-08
 > Everything below is tracked, deterministic debt. It is **blocked from
 > growing** — the Architecture Constitution gate fails any PR that adds a new
 > finding. Migration is performed only when correctness can be proven, and
 > never changes observable behaviour.
 
-## 1. Shared Core consolidation findings (31)
+## 1. Shared Core consolidation findings (27)
 
 Detected by `architecture-scan` across `backend/app` + `shared/`. These are
 legacy reimplementation candidates awaiting migration to their authoritative
@@ -17,7 +17,7 @@ behaviour-preserving migration.
 
 | Capability | Issue | Findings |
 |---|---|---|
-| `audit` | A new audit-log implementation outside the platform audit core. | 5 |
+| `audit` | A new audit-log implementation outside the platform audit core. | 3 |
 | `authorization` | A new RBAC/ABAC permission implementation outside the platform. | 2 |
 | `barcode_engine` | A new barcode generator/decoder outside shared/barcode. | 1 |
 | `dependency_injection` | A new DI container outside shared/di_container. | 1 |
@@ -25,18 +25,15 @@ behaviour-preserving migration.
 | `encryption` | A new encryption/crypto implementation outside shared/security. | 2 |
 | `events` | A new event bus outside shared/events. | 2 |
 | `identity` | A new identity/authentication implementation outside the NIAM identity platform. | 2 |
-| `notifications` | A new notification delivery system outside the platform notification core. | 3 |
+| `notifications` | A new notification delivery system outside the platform notification core. | 2 |
 | `qr_engine` | A new QR generator/decoder outside shared/qr. | 1 |
 | `scheduler` | A new scheduler outside shared/scheduler. | 3 |
 | `search_engine` | A new search implementation outside the platform search core. | 2 |
-| `workflow_engine` | A new workflow engine outside the platform workflow core. | 1 |
 
 ### Full list
 
 - [`audit`] `backend/app/document_intelligence/application/interfaces.py`
-- [`audit`] `backend/app/document_intelligence/application/wiring.py`
 - [`audit`] `backend/app/national/task_engine/domain/repository.py`
-- [`audit`] `backend/app/national/task_engine/infrastructure/repository.py`
 - [`audit`] `backend/app/services/authorization_service.py`
 - [`authorization`] `backend/app/control_plane/policy/enforcer.py`
 - [`authorization`] `backend/app/services/authorization_service.py`
@@ -55,7 +52,6 @@ behaviour-preserving migration.
 - [`identity`] `backend/app/citizen_platform/identity.py`
 - [`identity`] `backend/app/services/authorization_service.py`
 - [`notifications`] `backend/app/citizen_platform/notifications.py`
-- [`notifications`] `backend/app/national/notification_platform/api/routes.py`
 - [`notifications`] `backend/app/platform/notifications.py`
 - [`qr_engine`] `backend/app/national/document_platform/application/service.py`
 - [`scheduler`] `backend/app/document_intelligence/backup_dr.py`
@@ -63,7 +59,6 @@ behaviour-preserving migration.
 - [`scheduler`] `backend/app/kernel/background/scheduler.py`
 - [`search_engine`] `backend/app/document_intelligence/application/interfaces.py`
 - [`search_engine`] `backend/app/national/fhir/search.py`
-- [`workflow_engine`] `backend/app/national/workflow_runtime/api/routes.py`
 
 ## 2. Country-specific hard-coding (2)
 

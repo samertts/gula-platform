@@ -1,6 +1,6 @@
 # WORKSPACE_ARCHITECTURE — one identity, unlimited workspaces
 
-> PROGRAM-ALPHA Phase 5 | regenerated 2026-08-07
+> PROGRAM-ALPHA Phase 5 | regenerated 2026-08-08
 
 ## 1. Model
 

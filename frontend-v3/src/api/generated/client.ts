@@ -956,30 +956,6 @@ export const national_task_engine_apiApi = {
     api.post(`/national/tasks/${params.task_id}/complete`, data).then(r => r.data),
 };
 
-// ── national.workflow_runtime.api ──
-
-export const national_workflow_runtime_apiApi = {
-  createDefinition: (data: unknown) =>
-    api.post(`/national/workflows/definitions`, data).then(r => r.data),
-  listDefinitions: () =>
-    api.get(`/national/workflows/definitions`).then(r => r.data),
-  getDefinition: (params: Record<string, string | number>) =>
-    api.get(`/national/workflows/definitions/${params.definition_id}`).then(r => r.data),
-  deleteDefinition: (params: Record<string, string | number>) =>
-    api.delete(`/national/workflows/definitions/${params.definition_id}`).then(r => r.data),
-  executeWorkflow: (data: unknown, params: Record<string, string | number>) =>
-    api.post(`/national/workflows/definitions/${params.definition_id}/execute`, data).then(r => r.data),
-  executeByType: (data: unknown) =>
-    api.post(`/national/workflows/execute`, data).then(r => r.data),
-  listExecutions: () =>
-    api.get(`/national/workflows/executions`).then(r => r.data),
-  getExecution: (params: Record<string, string | number>) =>
-    api.get(`/national/workflows/executions/${params.execution_id}`).then(r => r.data),
-  cancelExecution: (data: unknown, params: Record<string, string | number>) =>
-    api.post(`/national/workflows/executions/${params.execution_id}/cancel`, data).then(r => r.data),
-  pauseExecution: (data: unknown, params: Record<string, string | number>) =>
-    api.post(`/national/workflows/executions/${params.execution_id}/pause`, data).then(r => r.data),
-};
 
 // ── notifications ──
 
@@ -3509,72 +3485,6 @@ export function useNational_task_engine_apiCompleteTask() {
   return useMutation({
     mutationFn: (variables: { data: unknown; params: Record<string, string | number> }) => national_task_engine_apiApi.completeTask(variables.data, variables.params),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['national_task_engine_api'] }),
-  });
-}
-export function useNational_workflow_runtime_apiCreateDefinition() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: unknown) => national_workflow_runtime_apiApi.createDefinition(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['national_workflow_runtime_api'] }),
-  });
-}
-export function useNational_workflow_runtime_apiListDefinitions() {
-  return useQuery({
-    queryKey: ['national_workflow_runtime_api', 'listDefinitions'],
-    queryFn: () => national_workflow_runtime_apiApi.listDefinitions(),
-  });
-}
-export function useNational_workflow_runtime_apiGetDefinition(params: Record<string, string | number>) {
-  return useQuery({
-    queryKey: ['national_workflow_runtime_api', 'getDefinition', params],
-    queryFn: ({ queryKey: [, , p] }) => national_workflow_runtime_apiApi.getDefinition(p as Record<string, string | number>),
-  });
-}
-export function useNational_workflow_runtime_apiDeleteDefinition() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (params: Record<string, string | number>) => national_workflow_runtime_apiApi.deleteDefinition(params),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['national_workflow_runtime_api'] }),
-  });
-}
-export function useNational_workflow_runtime_apiExecuteWorkflow() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (variables: { data: unknown; params: Record<string, string | number> }) => national_workflow_runtime_apiApi.executeWorkflow(variables.data, variables.params),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['national_workflow_runtime_api'] }),
-  });
-}
-export function useNational_workflow_runtime_apiExecuteByType() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (data: unknown) => national_workflow_runtime_apiApi.executeByType(data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['national_workflow_runtime_api'] }),
-  });
-}
-export function useNational_workflow_runtime_apiListExecutions() {
-  return useQuery({
-    queryKey: ['national_workflow_runtime_api', 'listExecutions'],
-    queryFn: () => national_workflow_runtime_apiApi.listExecutions(),
-  });
-}
-export function useNational_workflow_runtime_apiGetExecution(params: Record<string, string | number>) {
-  return useQuery({
-    queryKey: ['national_workflow_runtime_api', 'getExecution', params],
-    queryFn: ({ queryKey: [, , p] }) => national_workflow_runtime_apiApi.getExecution(p as Record<string, string | number>),
-  });
-}
-export function useNational_workflow_runtime_apiCancelExecution() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (variables: { data: unknown; params: Record<string, string | number> }) => national_workflow_runtime_apiApi.cancelExecution(variables.data, variables.params),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['national_workflow_runtime_api'] }),
-  });
-}
-export function useNational_workflow_runtime_apiPauseExecution() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (variables: { data: unknown; params: Record<string, string | number> }) => national_workflow_runtime_apiApi.pauseExecution(variables.data, variables.params),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['national_workflow_runtime_api'] }),
   });
 }
 export function useNotificationsSendNotification() {

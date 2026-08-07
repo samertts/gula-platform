@@ -182,7 +182,6 @@ Each vertical slice follows the pattern: `routes.py` → `services.py` → `mode
 | Module | Depends On | Used By | Circular Deps | Coupling |
 |--------|-----------|---------|---------------|----------|
 | `national/rules_engine/` | `database.py`, `models/*`, `security/` | `factory.py` | None | Medium |
-| `national/workflow_runtime/` | `database.py`, `models/*`, `security/` | `factory.py` | None | Medium |
 | `national/scheduling_platform/` | `database.py`, `models/*`, `security/` | `factory.py` | None | Medium |
 | `national/search_platform/` | `database.py`, `models/*`, `security/` | `factory.py` | None | Medium |
 | `national/observability/` | `database.py`, `models/*`, `security/` | `factory.py` | None | Medium |
@@ -413,7 +412,6 @@ backend/app/
 │
 ├── national/                    — National Health Platform (31 sub-packages)
 │   ├── rules_engine/api/routes.py
-│   ├── workflow_runtime/api/routes.py
 │   ├── scheduling_platform/api/routes.py
 │   ├── search_platform/api/routes.py
 │   ├── observability/api/routes.py

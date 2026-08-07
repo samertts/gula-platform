@@ -135,7 +135,7 @@ Custom state machines, approval chains, and automation flows.
 |-----------|----------|----------|
 | WorkflowRuntimeAPI | `kernel/runtime_sdk.py` | Custom multi-step workflows |
 | Order State Machine | `domain/order_state.py` | Custom order states |
-| Workflow Engine | `national/workflow_runtime/` | Complex BPMN-style workflows |
+| Workflow Engine | `backend/app/workflows/engine.py` → `/niam/workflows` | Complex BPMN-style workflows |
 | Saga Pattern | `WorkflowRuntimeAPI` with compensation | Distributed transactions |
 
 **Example — Custom order approval workflow:**

@@ -38,7 +38,6 @@
 | Offline sync / edge | edge (fleet mgmt) | INTERRUPTED — no sync UI |
 | Clinical intelligence | ai, ai-platform (read-only) | INTERRUPTED — no release gating UI |
 | National notifications | national page (read-only) | INTERRUPTED — no send/template UI |
-| Workflow runtime | workflow-runtime (GET-only) | INTERRUPTED — no execution controls |
 | Capabilities workflow_engine (stub) | workflow-engine (GET-only) | INTERRUPTED |
 
 **Workflow parity: 0/22 complete in UI, 12/22 interrupted, 10/22 missing.**

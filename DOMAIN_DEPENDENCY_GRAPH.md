@@ -1,6 +1,6 @@
 # DOMAIN_DEPENDENCY_GRAPH — topology of the GULA platform
 
-> PROGRAM-ALPHA | regenerated 2026-08-07
+> PROGRAM-ALPHA | regenerated 2026-08-08
 > 11 Domains, **0 declared versioned
 > contracts**, cross-domain movement restricted to public APIs, FHIR R4, HL7,
 > contracts, and the Event Bus.

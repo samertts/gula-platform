@@ -2,12 +2,16 @@
 
 ## Overview
 
-The platform uses a **workflow engine** in `app/national/workflows/` with
-a `WorkflowRuntime` in `app/national/workflow_runtime/`. Each workflow is a
-state machine with typed steps and compensation support.
+The platform uses a **workflow engine** in `app/national/workflows/` with a
+canonical runtime: `backend/app/workflows/engine.py::WorkflowEngine`, exposed
+over HTTP at **`/niam/workflows`** (via `app/identity/workflows/routes.py`).
+Each workflow is a state machine with typed steps and compensation support.
+The earlier broken `app/national/workflow_runtime/` package (0-byte service)
+was archived in Commit 3.6 (ADR-036); the canonical engine is the single live
+workflow implementation.
 
 **Workflow Base:** `app/national/workflows/base.py`  
-**Runtime:** `app/national/workflow_runtime/`  
+**Runtime:** `backend/app/workflows/engine.py` → `/niam/workflows`  
 **Workflow Implementations:**
 - `patient_registration.py`
 - `encounter_workflow.py`
@@ -483,12 +487,17 @@ class BaseWorkflow(ABC):
 
 ### Workflow Runtime
 
-The runtime (`app/national/workflow_runtime/`) provides:
+The canonical runtime (`backend/app/workflows/engine.py`, exposed at
+`/niam/workflows`) provides:
 - **Persistence** — workflow state stored in database for recovery
 - **Scheduling** — delayed steps, timeout handling
 - **Event emission** — state transitions published to event bus
 - **Retry** — configurable retry policy per step
 - **Audit** — all state transitions recorded in audit log
+
+(The archived `national/workflow_runtime/` package never provided any of these
+at runtime — its `application/service.py` was 0 bytes; every wired
+`/national/workflows/*` handler returned HTTP 500. Archived per ADR-036.)
 
 ### Cross-Cutting Concerns
 
@@ -498,6 +507,6 @@ The runtime (`app/national/workflow_runtime/`) provides:
 | **Audit** | Every state transition logged |
 | **Timeout** | Configurable per step (default 30s) |
 | **Retry** | 3 retries with exponential backoff |
-| **Persistence** | Workflow state in `workflow_runtime` tables |
+| **Persistence** | Workflow state in canonical `workflow` tables (`app/workflows/models.py`) |
 | **Notifications** | State changes published to event bus |
 | **Concurrency** | Per-patient serial execution via patient_id lock |

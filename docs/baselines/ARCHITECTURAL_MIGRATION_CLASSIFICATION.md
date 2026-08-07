@@ -299,7 +299,7 @@ broken national route surface.
 | 16 | #5 doc-intel DefaultAuditService (no-op → canonical) | Archive (behavior-additive) | M | ADR-031 |
 | 17 | #9 task_engine silent audit drop → canonical | Archive (behavior-additive) | M | ADR-031 |
 | 18 | #50 national notification adapters fabricating success → canonical | Completion | **H** | ADR-032 |
-| 19 | #44 workflow_runtime wired-but-500 → canonical engine | Archive | M | ADR-036 |
+| 19 | #44 workflow_runtime wired-but-500 → canonical engine | Archive | M | ADR-036 | ✅ **DONE — Commit 3.6** |
 
 ### Wave 5 — National Platform migrations (Commits 1.17–1.19)
 *National-layer code; heavier coordination. Strategic Exceptions registered first.*

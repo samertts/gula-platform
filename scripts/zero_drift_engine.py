@@ -85,7 +85,6 @@ DOMAIN_LABELS: dict[str, dict[str, str]] = {
     "national.scheduling_platform.api": {"label": "الجدولة الوطنية", "en": "Scheduling", "icon": "Calendar", "section": "national"},
     "national.search_platform.api": {"label": "البحث الوطني", "en": "Search Platform", "icon": "Search", "section": "national"},
     "national.task_engine.api": {"label": "محرك المهام", "en": "Task Engine", "icon": "ListChecks", "section": "national"},
-    "national.workflow_runtime.api": {"label": "تشغيل سير العمل", "en": "Workflow Runtime", "icon": "PlayCircle", "section": "national"},
     "pharmacy": {"label": "الصيدلة", "en": "Pharmacy", "icon": "Pill", "section": "enterprise"},
     "pilot_platform.api": {"label": "المنصة التجريبية", "en": "Pilot Platform", "icon": "FlaskConical", "section": "admin"},
     "platform": {"label": "المنصة", "en": "Platform", "icon": "LayoutGrid", "section": "admin"},

@@ -632,10 +632,6 @@ def _register_routes(app: FastAPI) -> None:
 
     app.include_router(background_router)
 
-    from .national.workflow_runtime.api.routes import router as workflow_router
-
-    app.include_router(workflow_router)
-
     from .national.task_engine.api.routes import router as task_router
 
     app.include_router(task_router)

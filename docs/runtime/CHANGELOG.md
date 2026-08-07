@@ -1,5 +1,18 @@
 # Changelog — National Platform Runtime
 
+## PROGRAM-01 Commit 3.6 (2026-08-08)
+
+### Removed — Workflow Runtime (`backend/app/national/workflow_runtime/`)
+
+Archived per ADR-036 (finding #44). The package was wired-but-broken: its
+`application/service.py` was 0 bytes, so every `/national/workflows/*` handler
+raised ImportError and returned HTTP 500. The canonical live engine
+(`backend/app/workflows/engine.py::WorkflowEngine`, exposed at `/niam/workflows`)
+is the single workflow implementation. All 15 files were preserved via
+`git mv` into `archive/platform-shared-core/` with provenance headers
+(ADR-028 archive-first, single-`git revert` reversible). No schema or data
+change; the `national_workflow_*` tables were never reachable.
+
 ## runtime-platform-v1.0 (2026-07-14)
 
 ### Added — 9 National Platform Runtime Modules

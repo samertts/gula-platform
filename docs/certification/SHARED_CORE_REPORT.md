@@ -22,6 +22,7 @@
 | Rule-engine domain | `shared/rules_engine/domain` | `app/kernel/rules_runtime.py` (direct), `app/national/rules_engine/domain` (re-export) | 0 — breaks the former `app.kernel ↔ app.national` import cycle |
 | PDF / document | `shared/pdf/generator.py` (reportlab: `generate_result_pdf`, `generate_pdf`) | `citizen_platform/laboratory.py` (direct), `capabilities/document_management/pdf_generator.py` `SharedPdfGenerator` (thin adapter over the canonical generator, wired into the national document platform `POST /national/documents/{id}/generate-pdf`, Commit 3.3/ADR-033) | 0 active — the national `generate_pdf` delegator/handler signals were vacated; domain `PDFGenerator` ABC retained (#14) |
 | Search | `backend/app/capabilities/search_service` | `DefaultSearchIndexer`, `DefaultSearchService`, `InfrastructureSemanticSearchService` (promoted from doc-intel, Commit 3.2/ADR-033), wired `/search-service` router; doc-intel `application/wiring.py` (re-pointed) | 1 canonical + 2 retained domain-owned ABCs/FHIR engine (#34/#37) — documented |
+| Workflow engine | `backend/app/workflows/engine.py` (`WorkflowEngine`, `def_id`-keyed, exposed at `/niam/workflows` via `identity/workflows/routes.py`) | NIAM `WorkflowsPage`, identity workflows router | 0 active — the wired-but-broken `national/workflow_runtime` duplicate (0-byte service, every `/national/workflows/*` handler returned HTTP 500) was **archived in Commit 3.6/ADR-036** (#44); `platform/workflow.py` dead code archived with it |
 
 ## Duplication findings
 
@@ -35,7 +36,8 @@
    `services.py`/`models.py`/`routes.py`, promoted from `identity/notifications` by
    Commit 3.1/ADR-032) plus the national notification platform (`national/notification_platform`).
    The former 3-layer legacy/NIAM/national split is now 2: canonical vs national — documented
-   evolutionary layers; the national platform is a Wave 4 finding (#50).
+   evolutionary layers. The national platform's fabricating adapters were re-pointed to the
+   canonical provider by Wave 4 order 18 (ADR-032, finding #50).
 3. Search implementation lives in the canonical `backend/app/capabilities/search_service`
    (`DefaultSearchIndexer`/`DefaultSearchService`/`InfrastructureSemanticSearchService`,
    promoted from `document_intelligence` by Commit 3.2/ADR-033) behind the wired
@@ -50,6 +52,14 @@
    (renamed `export_document_pdf`/`export_pdf`), so the platform has exactly one PDF concretion.
    The domain `PDFGenerator` ABC (`national/document_platform/application/interfaces.py`, #14) is
    retained as a domain-owned contract.
+5. Workflow runtime lives in the canonical `backend/app/workflows/engine.py` (`WorkflowEngine`,
+   exposed at `/niam/workflows`). The `national/workflow_runtime` package (finding #44) was
+   **wired-but-broken**: its `application/service.py` was 0 bytes, so all 20
+   `/national/workflows/*` handlers raised ImportError / HTTP 500. It was archived in
+   Commit 3.6/ADR-036 (all 15 files preserved under `archive/platform-shared-core/` with
+   provenance headers; `platform/workflow.py` dead code archived with it). The frontend national
+   page, generated-client section, nav entry, and script registries were removed/re-pointed
+   atomically. The canonical engine is the single live workflow implementation.
 
 ## Verdict
 

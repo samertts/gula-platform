@@ -97,6 +97,7 @@ Links to related ADRs, Constitution sections, or code.
 | [ADR-032](ADR-032-notifications-queue-completion.md) | Notifications Queue Completion (identity queue → `backend/app/notifications`) | Accepted | 2026-08-07 |
 | [ADR-033](ADR-033-search-pdf-completion.md) | Search & PDF Completion (doc-intel search → `capabilities/search_service`; national document PDF → `shared/pdf`) | Accepted | 2026-08-07 |
 | [ADR-035](ADR-035-rule-engine-promotion.md) | Rule Engine Promotion (ExpressionEngine → `shared/rules_engine`) | Accepted | 2026-08-07 |
+| [ADR-036](ADR-036-workflow-runtime-retirement.md) | Workflow Runtime Retirement (broken national workflow_runtime → canonical `backend/app/workflows`) | Accepted | 2026-08-08 |
 
 ## Constitution Reference
 

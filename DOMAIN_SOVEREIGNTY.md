@@ -1,6 +1,6 @@
 # DOMAIN_SOVEREIGNTY — The 11 GULA Domains
 
-> PROGRAM-ALPHA Phase 3 | regenerated 2026-08-07
+> PROGRAM-ALPHA Phase 3 | regenerated 2026-08-08
 > **11 sovereign Domains, all certified
 > 11/11 at 100%, isolation PASS.**
 

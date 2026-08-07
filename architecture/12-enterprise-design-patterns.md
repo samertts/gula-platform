@@ -433,7 +433,7 @@ Saga Coordinator
 
 - `backend/app/lims/workflows.py` — LIMS workflow orchestration
 - `backend/app/national/workflows/` — National workflows
-- `backend/app/national/workflow_runtime/` — Workflow runtime engine
+- `backend/app/workflows/engine.py` — Canonical `WorkflowEngine` (exposed at `/niam/workflows`; broken `national/workflow_runtime/` archived in Commit 3.6, ADR-036)
 - `backend/app/kernel/background/` — Background job orchestration
 - `shared/workflow/engine.py` — Workflow engine
 

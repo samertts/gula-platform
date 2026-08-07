@@ -868,21 +868,6 @@ def generate_api_client() -> str:
             ("POST", "/national/tasks/{task_id}/complete", "completeTask", "detail"),
         ],
     },
-    "national.workflow_runtime.api": {
-        "prefix": "/national/workflows",
-        "endpoints": [
-            ("POST", "/national/workflows/definitions", "createDefinition", "detail"),
-            ("GET", "/national/workflows/definitions", "listDefinitions", "list"),
-            ("GET", "/national/workflows/definitions/{definition_id}", "getDefinition", "detail"),
-            ("DELETE", "/national/workflows/definitions/{definition_id}", "deleteDefinition", "detail"),
-            ("POST", "/national/workflows/definitions/{definition_id}/execute", "executeWorkflow", "detail"),
-            ("POST", "/national/workflows/execute", "executeByType", "detail"),
-            ("GET", "/national/workflows/executions", "listExecutions", "list"),
-            ("GET", "/national/workflows/executions/{execution_id}", "getExecution", "detail"),
-            ("POST", "/national/workflows/executions/{execution_id}/cancel", "cancelExecution", "detail"),
-            ("POST", "/national/workflows/executions/{execution_id}/pause", "pauseExecution", "detail"),
-        ],
-    },
     "pharmacy": {
         "prefix": "/pharmacy/dispense-queue",
         "endpoints": [

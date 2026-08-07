@@ -265,7 +265,6 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
     { label: "الجدولة الوطنية", path: "/national/scheduling-platform", icon: "Calendar", permissions: ["dashboard:read"] },
     { label: "البحث الوطني", path: "/national/search-platform", icon: "Search", permissions: ["dashboard:read"] },
     { label: "محرك المهام", path: "/national/task-engine", icon: "ListChecks", permissions: ["dashboard:read"] },
-    { label: "تشغيل سير العمل", path: "/national/workflow-runtime", icon: "PlayCircle", permissions: ["dashboard:read"] },
     { label: "مؤشرات التشغيل", path: "/ops-metrics", icon: "Gauge", permissions: ["system:admin"] }
   ],
   systems: [
