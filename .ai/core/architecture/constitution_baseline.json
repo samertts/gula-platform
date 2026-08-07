@@ -237,11 +237,6 @@
       "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
     },
     {
-      "rule_id": "search_engine",
-      "path": "backend/app/services/clinical_service.py",
-      "signal": "class\\s+\\w*(?:SearchService|SearchIndex|SearchEngine)\\b"
-    },
-    {
       "rule_id": "authentication",
       "path": "backend/app/services/mobile_service.py",
       "signal": "verify_password\\s*\\("

@@ -79,6 +79,31 @@ class TestScan:
         c.write_text("class NotificationService:\n    pass\n", encoding="utf-8")
         assert scan([tmp_path]) == []
 
+    def test_search_engine_signal_is_case_sensitive(self, tmp_path: Path):
+        """ResearchService is a research-registry CRUD class, not a search
+        engine: the class-name signal must require the literal capital-S
+        Search token so embedded lowercase 'search' never false-positives."""
+        (tmp_path / "svc").mkdir(parents=True)
+        ok = tmp_path / "svc" / "research.py"
+        ok.write_text("class ResearchService:\n    pass\n", encoding="utf-8")
+        assert scan([tmp_path]) == []
+
+    def test_search_engine_signal_still_flags_real_search_classes(self, tmp_path: Path):
+        (tmp_path / "svc").mkdir(parents=True)
+        for name in ("SearchService", "DefaultSearchService", "FHIRSearchEngine"):
+            f = tmp_path / "svc" / f"{name.lower()}.py"
+            f.write_text(f"class {name}:\n    pass\n", encoding="utf-8")
+        findings = scan([tmp_path])
+        assert len(findings) == 3
+        assert all(f.rule_id == "search_engine" for f in findings)
+
+    def test_non_case_sensitive_rules_keep_ignoring_case(self, tmp_path: Path):
+        (tmp_path / "svc").mkdir(parents=True)
+        f = tmp_path / "svc" / "notifier.py"
+        f.write_text("class notificationService:\n    pass\n", encoding="utf-8")
+        findings = scan([tmp_path])
+        assert any(f2.rule_id == "notifications" for f2 in findings)
+
 
 class TestBaseline:
     def test_new_findings_excludes_acknowledged(self, tmp_path: Path):

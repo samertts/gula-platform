@@ -1,13 +1,13 @@
 # Architecture Certification — PROGRAM-ALPHA Phase 9
 
 > Verdict: **PASS**
-> Generated 2026-08-06 by `scripts/architecture`.
+> Generated 2026-08-07 by `scripts/architecture`.
 
 ## 1. Architecture Constitution gate
 
 | Check | Result |
 |---|---|
-| Shared Core reimplementation scan | **PASS** — 57 findings (57 acknowledged legacy) |
+| Shared Core reimplementation scan | **PASS** — 50 findings (50 acknowledged legacy) |
 | New (unacknowledged) findings | **0** |
 
 New findings:

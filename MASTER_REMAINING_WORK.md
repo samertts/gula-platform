@@ -6,7 +6,7 @@
 > finding. Migration is performed only when correctness can be proven, and
 > never changes observable behaviour.
 
-## 1. Shared Core consolidation findings (51)
+## 1. Shared Core consolidation findings (50)
 
 Detected by `architecture-scan` across `backend/app` + `shared/`. These are
 legacy reimplementation candidates awaiting migration to their authoritative
@@ -30,7 +30,7 @@ behaviour-preserving migration.
 | `qr_engine` | A new QR generator/decoder outside shared/qr. | 3 |
 | `rule_engine` | A new business-rules engine outside the platform rules core. | 1 |
 | `scheduler` | A new scheduler outside shared/scheduler. | 3 |
-| `search_engine` | A new search implementation outside the platform search core. | 5 |
+| `search_engine` | A new search implementation outside the platform search core. | 4 |
 | `workflow_engine` | A new workflow engine outside the platform workflow core. | 2 |
 
 ### Full list
@@ -83,7 +83,6 @@ behaviour-preserving migration.
 - [`search_engine`] `backend/app/document_intelligence/application/service.py`
 - [`search_engine`] `backend/app/document_intelligence/infrastructure/services.py`
 - [`search_engine`] `backend/app/national/fhir/search.py`
-- [`search_engine`] `backend/app/services/clinical_service.py`
 - [`workflow_engine`] `backend/app/national/workflow_runtime/api/routes.py`
 - [`workflow_engine`] `backend/app/national/workflows/base.py`
 

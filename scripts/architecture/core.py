@@ -158,6 +158,7 @@ RULES: dict[str, dict[str, object]] = {
     },
     "search_engine": {
         "description": "A new search implementation outside the platform search core.",
+        "case_sensitive": True,
         "signals": (
             r"class\s+\w*(?:SearchService|SearchIndex|SearchEngine)\b",
             r"def\s+full_text_search\s*\(",
@@ -280,8 +281,9 @@ def scan(roots: Iterable[Path]) -> list[ConstitutionFinding]:
                 text = path.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
+            flags = 0 if rule.get("case_sensitive") else re.IGNORECASE
             for signal in rule["signals"]:
-                if re.search(signal, text, re.IGNORECASE):
+                if re.search(signal, text, flags):
                     findings.append(
                         ConstitutionFinding(rule_id=rule_id, path=rel, signal=signal)
                     )
