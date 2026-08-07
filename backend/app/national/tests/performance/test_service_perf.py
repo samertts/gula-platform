@@ -13,6 +13,7 @@ async def test_register_citizen_performance(sample_citizen_data):
     mock_repo = Mock()
     mock_repo.get_by_health_number = AsyncMock(return_value=None)
     mock_repo.create = AsyncMock()
+    mock_repo.db.query.return_value.filter.return_value.with_for_update.return_value.first.return_value = None
     service = CitizenService(mock_repo)
     start = time.time()
     for _ in range(100):

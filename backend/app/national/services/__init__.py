@@ -12,7 +12,6 @@ from .encounter_service import (
     update_encounter,
 )
 from .family_service import FamilyService
-from .identity_service import IdentityService
 from .observation_service import (
     create_observation,
     delete_observation,
@@ -29,7 +28,6 @@ __all__ = [
     "CitizenService",
     "ClinicalDecisionSupportEngine",
     "FamilyService",
-    "IdentityService",
     "ReferenceService",
     "cancel_encounter",
     "complete_encounter",

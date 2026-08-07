@@ -1,15 +1,15 @@
 {
-  "generated_at": "2026-08-07T09:52:25.289310+00:00",
+  "generated_at": "2026-08-07T10:14:36.255483+00:00",
   "repo": {
     "name": "gula-platform",
     "root": "/home/samertts/workspace/projects/gula-platform",
-    "git_head": "1a2dcaeb docs(verification): record Commit 1.8 hash"
+    "git_head": "961e1ca6 docs(verification): record Commit 1.9 hash"
   },
   "counts": {
     "modules": {
       "backend/app": {
-        "python_files": 1823,
-        "lines": 273596
+        "python_files": 1819,
+        "lines": 273255
       },
       "shared": {
         "python_files": 148,
@@ -40,7 +40,7 @@
         "lines": 0
       }
     },
-    "routes": 2233,
+    "routes": 2228,
     "migrations": 56,
     "migrations_head": "20260806_0001",
     "services": {
@@ -56,7 +56,7 @@
       "frontend-v3": 9
     },
     "docs": {
-      "docs_markdown_files": 601,
+      "docs_markdown_files": 602,
       "adr_count": 59,
       "constitution_docs": 48
     },
@@ -106,7 +106,7 @@
     "PROGRAM-07M-REPORT"
   ],
   "source_freshness": {
-    "newest_source_mtime": 1786096003.1187115,
-    "brain_mtime": 1786094661.2338014
+    "newest_source_mtime": 1786097526.8180833,
+    "brain_mtime": 1786096348.2869718
   }
 }

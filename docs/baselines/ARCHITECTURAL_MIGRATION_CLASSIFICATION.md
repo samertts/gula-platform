@@ -99,7 +99,7 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 | # | Current implementation | Canonical provider | Behavioral equivalence | Class | Risk | Effort | Rollback | ADR | Order |
 |---|---|---|---|---|---|---|---|---|---|
 | 19 | `citizen_platform/identity.py` — `HealthIdentityService` (national-id verify) | `backend/app/identity` (NIAM) | Different stack; citizen-portal national-id verification | **Retain as Domain-Owned** | L | S | L | No | — |
-| 20 | `national/services/identity_service.py` — `IdentityService` (dead route layer) | NIAM CitizenRegistry | Overlaps canonical; **dead** (unwired route) | **Archive and Re-point** | L | S | L | No | 7 |
+| 20 | `national/services/identity_service.py` — `IdentityService` (dead route layer) | NIAM CitizenRegistry | Overlaps canonical; **dead** (unwired route) | **DONE — Commit 1.10** archived `national/services/identity_service.py` + its only production consumer (unwired `national/api/routes/identity.py`, part of never-registered `national_router`) + their tests | L | S | L | No | 7 |
 | 21 | `services/authorization_service.py` — `IdentityService.get_identity_context` | NIAM identity context | Analogous but legacy lab-UI scoped | **Retain as Domain-Owned** | M | M | L | No | 22 |
 | 22 | `services/risk_based_auth_service.py` — `RiskBasedAuthService` (dead) | `identity/adaptive_auth` (live) | Canonical equivalent is live; finding is dead | **Archive and Re-point** | L | S | L | No | 8 |
  | 51 | `services/mobile_service.py` — `verify_password` | `shared/auth` (via `security/auth.py`) | **Already canonical** — imports and calls the shared bcrypt fn; signal matched the call site, not a definition (fixed via `def\s+`-only signals, Commits 1.5) | **False Positive** (remove with evidence) | L | S | L | No | 2 |
@@ -253,7 +253,7 @@ broken national route surface.
 
 ## 6. Migration Roadmap — Execution Waves
 
-### Wave 1 — Low-risk Archive & False-Positive removals (Commits 1.4–1.9)
+### Wave 1 — Low-risk Archive & False-Positive removals (Commits 1.4–1.10)
 *Pure dead code + stale baselines; no runtime path touched. Baseline 51 → 46.*
 
 | Order | Finding | Class | Risk | ADR |
@@ -264,7 +264,7 @@ broken national route surface.
 | 4 | #6 doc-intel AuditLogger | Archive | L | No |
 | 5 | #7 national security audit (broken) | Archive | L | No |
 | 6 | #17 ESB message_bus + #42 APIAuth.check_permission (dead) | Delete | L | No | **DONE — Commit 1.9** |
-| 7 | #20 national identity_service (dead route) | Archive | L | No |
+| 7 | #20 national identity_service (dead route) | Archive | L | No | **DONE — Commit 1.10** |
 | 8 | #22 risk_based_auth_service (dead) | Archive | L | No |
 | 9 | #27 EmergencyQRService + #28 Persisted* twins (dead) | Archive | L | No |
 | 10 | #25 workflow_runtime orphan interfaces | Archive | L | No |
@@ -418,12 +418,29 @@ continues to fail any NEW finding.
   via the `/integration/catalog` route (`integration/routes.py:142` lazy
   import) and was NOT touched; `portal.py` (dormant, not a finding) stayed.
   Baseline 46 → 44.
+- **Commit 1.10 (Wave 1, order 7):** `national/services/identity_service.py`
+  (`IdentityService`, finding #20) was proven dead — its **only** production
+  consumer is `national/api/routes/identity.py` (5 endpoints:
+  `/national/identity/newborn|foreigner|visitor|unknown|merge`), which lives
+  in the `national_router` aggregator (`national/api/routes/__init__.py`)
+  that is **never registered** (verified: boot test shows 0 `/national/identity`
+  routes; the factory-wired national identity router is the *different*
+  `app/routes/national_identity.py`, which does not use this service). The
+  dead cluster (service 87 L + unwired route 157 L + their tests 94 L) was
+  archived byte-for-byte via `git mv` to `archive/platform-shared-core/`;
+  re-exports removed from `national/services/__init__.py` and
+  `national/api/routes/__init__.py`. Canonical: NIAM CitizenRegistry (orphan
+  check PASS). **Also fixed** a pre-existing broken perf test mock
+  (`test_service_perf.py`, verified failing on the clean tree). Baseline
+  44 → 43.
 
 ## 10. Next Action
 
-Commits 1.4–1.9 executed: two false positives removed (#38, #51) and four
-dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel
-`AuditLogger`, #7 national `SecurityAuditService`, #17 ESB `message_bus` +
-#42 `APIAuth` + dead `APIGateway`; baseline 51 → 44). Next: begin **Wave 1,
-order 7** — the next unexecuted order in the classification table (Wave 1
-residuals), run the full verification cycle, commit, and STOP.
+Commits 1.4–1.10 executed: two false positives removed (#38, #51) and five
+dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel `AuditLogger`,
+#7 national `SecurityAuditService`, #17 ESB `message_bus` + #42 `APIAuth` +
+dead `APIGateway`, #20 national `identity_service` + unwired route + tests;
+baseline 51 → 43). Next: continue **Wave 1, order 8** — #22
+`risk_based_auth_service` (dead) archive, run the full verification cycle,
+commit, and continue without stopping (Wave 1 continuous-execution mode per
+Program Director approval).
