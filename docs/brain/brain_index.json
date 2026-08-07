@@ -1,19 +1,19 @@
 {
-  "generated_at": "2026-08-07T10:14:36.255483+00:00",
+  "generated_at": "2026-08-07T14:16:13.626758+00:00",
   "repo": {
     "name": "gula-platform",
     "root": "/home/samertts/workspace/projects/gula-platform",
-    "git_head": "961e1ca6 docs(verification): record Commit 1.9 hash"
+    "git_head": "09773f84 refactor(national): promote identity notifications to canonical provider (ADR-032) + Commit 3.1 verification"
   },
   "counts": {
     "modules": {
       "backend/app": {
-        "python_files": 1819,
-        "lines": 273255
+        "python_files": 1807,
+        "lines": 272088
       },
       "shared": {
-        "python_files": 148,
-        "lines": 15054
+        "python_files": 149,
+        "lines": 15295
       },
       "services": {
         "python_files": 52,
@@ -44,8 +44,8 @@
     "migrations": 56,
     "migrations_head": "20260806_0001",
     "services": {
-      "service_files": 40,
-      "total_lines": 16641
+      "service_files": 39,
+      "total_lines": 16341
     },
     "models": 30,
     "tests": {
@@ -56,8 +56,8 @@
       "frontend-v3": 9
     },
     "docs": {
-      "docs_markdown_files": 602,
-      "adr_count": 59,
+      "docs_markdown_files": 611,
+      "adr_count": 62,
       "constitution_docs": 48
     },
     "ci_workflows": 26,
@@ -96,6 +96,8 @@
     "PROGRAM-01_CERTIFICATION_MODEL",
     "PROGRAM-01_DASHBOARD",
     "PROGRAM-01_EXECUTION_FRAMEWORK",
+    "PROGRAM-01_WAVE1_CERTIFICATION",
+    "PROGRAM-01_WAVE2_CERTIFICATION",
     "PROGRAM-02",
     "PROGRAM-02A",
     "PROGRAM-03",
@@ -106,7 +108,7 @@
     "PROGRAM-07M-REPORT"
   ],
   "source_freshness": {
-    "newest_source_mtime": 1786097526.8180833,
-    "brain_mtime": 1786096348.2869718
+    "newest_source_mtime": 1786110768.1447597,
+    "brain_mtime": 1786097682.189156
   }
 }
