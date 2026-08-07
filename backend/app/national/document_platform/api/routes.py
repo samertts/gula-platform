@@ -54,7 +54,14 @@ def _get_service(db: Session = Depends(get_db)) -> DocumentPlatformService:
         attachment_repository=att_repo,
         retention_rule_repository=ret_repo,
         event_bus=event_bus,
+        pdf_generator=_pdf_generator(),
     )
+
+
+def _pdf_generator():
+    from app.capabilities.document_management.pdf_generator import SharedPdfGenerator
+
+    return SharedPdfGenerator()
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -516,8 +523,12 @@ async def archive_document(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
-@router.post("/{document_id}/generate-pdf")
-async def generate_pdf(
+@router.post(
+    "/{document_id}/generate-pdf",
+    operation_id="generate_pdf_national_documents__document_id__generate_pdf_post",
+    summary="Generate Pdf",
+)
+async def export_document_pdf(
     document_id: str,
     body: dict[str, Any] | None = None,
     service: DocumentPlatformService = Depends(_get_service),
@@ -525,7 +536,7 @@ async def generate_pdf(
     if body is None:
         body = {}
     try:
-        pdf_bytes = await service.generate_pdf(document_id, template=body.get("template", ""))
+        pdf_bytes = await service.export_pdf(document_id, template=body.get("template", ""))
         return {"document_id": document_id, "pdf_size_bytes": len(pdf_bytes), "generated": True}
     except DocumentNotFoundError as e:
         raise HTTPException(

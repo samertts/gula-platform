@@ -88,11 +88,6 @@
     },
     {
       "rule_id": "document_engine",
-      "path": "backend/app/national/document_platform/api/routes.py",
-      "signal": "def\\s+generate_pdf\\s*\\("
-    },
-    {
-      "rule_id": "document_engine",
       "path": "backend/app/national/document_platform/application/interfaces.py",
       "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b"
     },
@@ -100,11 +95,6 @@
       "rule_id": "qr_engine",
       "path": "backend/app/national/document_platform/application/service.py",
       "signal": "def\\s+(?:generate_qr|decode_qr)\\s*\\("
-    },
-    {
-      "rule_id": "document_engine",
-      "path": "backend/app/national/document_platform/application/service.py",
-      "signal": "def\\s+generate_pdf\\s*\\("
     },
     {
       "rule_id": "document_engine",

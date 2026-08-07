@@ -464,7 +464,7 @@ class DocumentPlatformService:
 
         return result
 
-    async def generate_pdf(
+    async def export_pdf(
         self,
         document_id: str,
         template: str = "",
