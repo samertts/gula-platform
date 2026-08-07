@@ -73,7 +73,7 @@ breaks tests, weakens security, or duplicates infrastructure.
 |---|---|
 | Domain certification (9 checks / Domain) | **11/11** |
 | Isolation (imports, cycles, shared state, permissions, DB, tables) | **PASS** |
-| Shared Core reimplementation scan | **46 findings, 46 acknowledged** |
+| Shared Core reimplementation scan | **44 findings, 44 acknowledged** |
 | Cross-domain administration | **0** |
 | Country-agnostic | **PASS** |
 | Architecture Constitution gate | **PASS** |

@@ -87,16 +87,6 @@
       "signal": "class\\s+\\w*(?:NotificationService|NotificationCenter|Notifier|NotificationSender)\\b"
     },
     {
-      "rule_id": "authorization",
-      "path": "backend/app/integration/api_management/auth.py",
-      "signal": "def\\s+check_permission\\s*\\("
-    },
-    {
-      "rule_id": "events",
-      "path": "backend/app/integration/esb/message_bus.py",
-      "signal": "class\\s+\\w*(?:EventBus|EventEmitter|MessageBus)\\b"
-    },
-    {
       "rule_id": "scheduler",
       "path": "backend/app/kernel/background/cron.py",
       "signal": "class\\s+\\w*(?:Scheduler|JobManager|CronEngine)\\b"

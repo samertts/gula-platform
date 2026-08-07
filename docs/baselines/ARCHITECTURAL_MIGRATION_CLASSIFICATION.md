@@ -87,7 +87,7 @@ belong in Wave 4 (completion of capability scaffolds).
 
 | # | Current implementation | Canonical provider | Behavioral equivalence | Class | Risk | Effort | Rollback | ADR | Order |
 |---|---|---|---|---|---|---|---|---|---|
-| 17 | `integration/esb/message_bus.py` — `ESBMessageBus` (async, DLQ) | `shared/events` (sync pub/sub) | Canonical is a strict subset; finding is **dead** (never instantiated) | **Archive and Re-point** (delete with evidence) | L | S | L | No | 6 |
+| 17 | `integration/esb/message_bus.py` — `ESBMessageBus` (async, DLQ) | `shared/events` (sync pub/sub) | Canonical is a strict subset; finding is **dead** (never instantiated) | **DONE — Commit 1.9** archived to `archive/platform-shared-core/esb_message_bus.py` (no live consumers; re-exports removed) | L | S | L | No | 6 |
 | 18 | `kernel/event_bus/bus.py` — `EventBus` (809-L: store/outbox/DLQ/replay) | `shared/events` (41-L sync) | Canonical is a strict subset; kernel bus is LIVE backbone (6+ services) | **Strategic Exception** | H* | L | L* | **Yes** | — |
 | 48 | `kernel/runtime_sdk.py` — `publish_event` (facade over kernel bus) | `shared/events` | Facade, not reimplementation — false positive | **Retain as Domain-Owned** (false positive) | L | L | L | No | — |
 
@@ -129,7 +129,7 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 |---|---|---|---|---|---|---|---|---|---|
 | 29 | `control_plane/policy/enforcer.py` — `PolicyEnforcer` | `security/abac.py`, `shared/rbac` | Component-governance policy, NOT user access control | **Retain as Domain-Owned** | L | S | L | No | — |
 | 30 | `services/authorization_service.py` — `PermissionService/RoleService/PolicyService` (DB-backed) | `identity/services/authorization_service.py` (canonical) | Parallel ABAC (Policy.evaluate_policies) duplicates `security/abac.py` | **Retain as Domain-Owned** | M | M | L | Yes | 22 |
-| 42 | `integration/api_management/auth.py` — `APIAuth.check_permission` (in-memory API-key+HMAC) | `identity/services/authorization_service.py`, `shared/rbac` | Different mechanism (machine API-key vs person RBAC); **dead** — `APIGateway`/`APIPortal` never instantiated, zero callers/tests | **Archive and Re-point** (delete with evidence) | L | S | L | No | 6 |
+| 42 | `integration/api_management/auth.py` — `APIAuth.check_permission` (in-memory API-key+HMAC) | `identity/services/authorization_service.py`, `shared/rbac` | Different mechanism (machine API-key vs person RBAC); **dead** — `APIGateway`/`APIPortal` never instantiated, zero callers/tests | **DONE — Commit 1.9** archived to `archive/platform-shared-core/api_management_auth.py` (with dead `api_management_gateway.py`, its only consumer) | L | S | L | No | 6 |
 
 ### 2.10 Scheduler (3)
 
@@ -253,7 +253,7 @@ broken national route surface.
 
 ## 6. Migration Roadmap — Execution Waves
 
-### Wave 1 — Low-risk Archive & False-Positive removals (Commits 1.4–1.8)
+### Wave 1 — Low-risk Archive & False-Positive removals (Commits 1.4–1.9)
 *Pure dead code + stale baselines; no runtime path touched. Baseline 51 → 46.*
 
 | Order | Finding | Class | Risk | ADR |
@@ -263,21 +263,21 @@ broken national route surface.
 | 3 | #3 offline_sync EncryptedSyncStore | Archive | L | No |
 | 4 | #6 doc-intel AuditLogger | Archive | L | No |
 | 5 | #7 national security audit (broken) | Archive | L | No |
-| 6 | #17 ESB message_bus + #42 APIAuth.check_permission (dead) | Delete | L | No |
+| 6 | #17 ESB message_bus + #42 APIAuth.check_permission (dead) | Delete | L | No | **DONE — Commit 1.9** |
 | 7 | #20 national identity_service (dead route) | Archive | L | No |
 | 8 | #22 risk_based_auth_service (dead) | Archive | L | No |
 | 9 | #27 EmergencyQRService + #28 Persisted* twins (dead) | Archive | L | No |
 | 10 | #25 workflow_runtime orphan interfaces | Archive | L | No |
 | 11 | #39 national/workflows/base.py (dead ABC) | Archive | L | No |
 
-### Wave 2 — Canonical Provider Promotion (Commit 1.9)
+### Wave 2 — Canonical Provider Promotion (Commit 1.10)
 *ADR-035 first. Promote the only complete implementation into canonical path.*
 
 | Order | Finding | Class | Risk | ADR |
 |---|---|---|---|---|
 | 12 | #43 ExpressionEngine → `shared/rules_engine` | **Promotion** | M | ADR-035 |
 
-### Wave 3 — Canonical Provider Completions (Commits 1.10–1.12)
+### Wave 3 — Canonical Provider Completions (Commits 1.11–1.13)
 *Complete the canonical provider, then migrate. ADR-032/033 first.*
 
 | Order | Finding | Class | Risk | ADR |
@@ -286,7 +286,7 @@ broken national route surface.
 | 14 | #35+#36 doc-intel search → capabilities/search_service | Completion | M | ADR-033 |
 | 15 | #46+#47 national document PDF → shared/pdf | Completion | M | ADR-033 |
 
-### Wave 4 — High-risk infrastructure (Commits 1.13–1.15)
+### Wave 4 — High-risk infrastructure (Commits 1.14–1.16)
 *Live paths, behavior-additive or broken-but-wired. Every commit needs explicit approval.*
 
 | Order | Finding | Class | Risk | ADR |
@@ -296,7 +296,7 @@ broken national route surface.
 | 18 | #50 national notification adapters fabricating success → canonical | Completion | **H** | ADR-032 |
 | 19 | #44 workflow_runtime wired-but-500 → canonical engine | Archive | M | ADR-036 |
 
-### Wave 5 — National Platform migrations (Commits 1.16–1.18)
+### Wave 5 — National Platform migrations (Commits 1.17–1.19)
 *National-layer code; heavier coordination. Strategic Exceptions registered first.*
 
 | Order | Finding | Class | Risk | ADR |
@@ -305,7 +305,7 @@ broken national route surface.
 | 21 | #1 doc-intel EncryptionService | Archive | L | No |
 | 22 | #21+#30 legacy authorization (strategic path: NIAM) | Retain | M | ADR-034 |
 
-### Wave 6 — Kernel Strategic Exception + Domain-Owned register (Commit 1.19)
+### Wave 6 — Kernel Strategic Exception + Domain-Owned register (Commit 1.20)
 *No code movement — documentation + gate recognition.*
 
 | Order | Finding | Class | Risk | ADR |
@@ -405,11 +405,25 @@ continues to fail any NEW finding.
   provider: `identity/services/audit_service.py` (orphan check PASS — 3+
   active consumers). The rest of `national/security/` (abac, rbac,
   break_glass, etc.) was untouched. Baseline 47 → 46.
+- **Commit 1.9 (Wave 1, order 6):** `integration/esb/message_bus.py`
+  (`ESBMessageBus`, finding #17) and `integration/api_management/auth.py`
+  (`APIAuth`, finding #42) were proven dead (zero production consumers,
+  zero tests; sole consumers were the package `__init__.py` re-exports,
+  removed with the moves). `api_management/gateway.py` (`APIGateway` — the
+  only consumer of `APIAuth`) was provably dead too and archived in the same
+  commit to keep the package import-clean (behavior preservation). All three
+  archived byte-for-byte via `git mv` to `archive/platform-shared-core/`
+  (`esb_message_bus.py`, `api_management_auth.py`, `api_management_gateway.py`).
+  **Live code preserved:** `api_management/catalog.py` (`APICatalog`) is live
+  via the `/integration/catalog` route (`integration/routes.py:142` lazy
+  import) and was NOT touched; `portal.py` (dormant, not a finding) stayed.
+  Baseline 46 → 44.
 
 ## 10. Next Action
 
-Commits 1.4–1.8 executed: two false positives removed (#38, #51) and three
-dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel `AuditLogger`,
-#7 national `SecurityAuditService`; baseline 51 → 46). Next: begin **Wave 1,
-order 6** — #17 ESB `message_bus` + #42 `APIAuth.check_permission` delete
-(dead, evidence-based), run the full verification cycle, commit, and STOP.
+Commits 1.4–1.9 executed: two false positives removed (#38, #51) and four
+dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel
+`AuditLogger`, #7 national `SecurityAuditService`, #17 ESB `message_bus` +
+#42 `APIAuth` + dead `APIGateway`; baseline 51 → 44). Next: begin **Wave 1,
+order 7** — the next unexecuted order in the classification table (Wave 1
+residuals), run the full verification cycle, commit, and STOP.

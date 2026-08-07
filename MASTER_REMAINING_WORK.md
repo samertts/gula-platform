@@ -6,7 +6,7 @@
 > finding. Migration is performed only when correctness can be proven, and
 > never changes observable behaviour.
 
-## 1. Shared Core consolidation findings (46)
+## 1. Shared Core consolidation findings (44)
 
 Detected by `architecture-scan` across `backend/app` + `shared/`. These are
 legacy reimplementation candidates awaiting migration to their authoritative
@@ -18,12 +18,12 @@ behaviour-preserving migration.
 | Capability | Issue | Findings |
 |---|---|---|
 | `audit` | A new audit-log implementation outside the platform audit core. | 5 |
-| `authorization` | A new RBAC/ABAC permission implementation outside the platform. | 3 |
+| `authorization` | A new RBAC/ABAC permission implementation outside the platform. | 2 |
 | `barcode_engine` | A new barcode generator/decoder outside shared/barcode. | 1 |
 | `dependency_injection` | A new DI container outside shared/di_container. | 1 |
 | `document_engine` | A new document/PDF engine outside the platform document core. | 8 |
 | `encryption` | A new encryption/crypto implementation outside shared/security. | 2 |
-| `events` | A new event bus outside shared/events. | 3 |
+| `events` | A new event bus outside shared/events. | 2 |
 | `identity` | A new identity/authentication implementation outside the NIAM identity platform. | 4 |
 | `notifications` | A new notification delivery system outside the platform notification core. | 6 |
 | `qr_engine` | A new QR generator/decoder outside shared/qr. | 3 |
@@ -40,7 +40,6 @@ behaviour-preserving migration.
 - [`audit`] `backend/app/national/task_engine/infrastructure/repository.py`
 - [`audit`] `backend/app/services/authorization_service.py`
 - [`authorization`] `backend/app/control_plane/policy/enforcer.py`
-- [`authorization`] `backend/app/integration/api_management/auth.py`
 - [`authorization`] `backend/app/services/authorization_service.py`
 - [`barcode_engine`] `backend/app/models/sample.py`
 - [`dependency_injection`] `backend/app/kernel/runtime/di_container.py`
@@ -54,7 +53,6 @@ behaviour-preserving migration.
 - [`document_engine`] `backend/app/national/document_platform/infrastructure/repository.py`
 - [`encryption`] `backend/app/document_intelligence/security.py`
 - [`encryption`] `backend/app/national/ecosystem/transformation/engine.py`
-- [`events`] `backend/app/integration/esb/message_bus.py`
 - [`events`] `backend/app/kernel/event_bus/bus.py`
 - [`events`] `backend/app/kernel/runtime_sdk.py`
 - [`identity`] `backend/app/citizen_platform/identity.py`
