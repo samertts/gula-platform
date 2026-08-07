@@ -237,11 +237,6 @@
       "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
     },
     {
-      "rule_id": "authentication",
-      "path": "backend/app/services/mobile_service.py",
-      "signal": "verify_password\\s*\\("
-    },
-    {
       "rule_id": "encryption",
       "path": "backend/app/services/offline_sync_service.py",
       "signal": "\\bFernet\\s*\\("

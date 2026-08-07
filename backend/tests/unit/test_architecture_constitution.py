@@ -104,6 +104,28 @@ class TestScan:
         findings = scan([tmp_path])
         assert any(f2.rule_id == "notifications" for f2 in findings)
 
+    def test_authentication_signal_flags_definitions_not_call_sites(self, tmp_path: Path):
+        """verify_password/create_access_token signals must match definitions
+        only, so files importing and CALLING the canonical provider are not
+        flagged (Commit 1.5)."""
+        (tmp_path / "svc").mkdir(parents=True)
+        caller = tmp_path / "svc" / "caller.py"
+        caller.write_text(
+            "from ..security.auth import verify_password\n"
+            "ok = verify_password(plain, hashed)\n",
+            encoding="utf-8",
+        )
+        assert scan([tmp_path]) == []
+
+    def test_authentication_signal_still_flags_real_definitions(self, tmp_path: Path):
+        (tmp_path / "svc").mkdir(parents=True)
+        for name in ("verify_password", "create_access_token"):
+            f = tmp_path / "svc" / f"{name}.py"
+            f.write_text(f"def {name}(value):\n    return value\n", encoding="utf-8")
+        findings = scan([tmp_path])
+        assert len(findings) == 2
+        assert all(f2.rule_id == "authentication" for f2 in findings)
+
 
 class TestBaseline:
     def test_new_findings_excludes_acknowledged(self, tmp_path: Path):

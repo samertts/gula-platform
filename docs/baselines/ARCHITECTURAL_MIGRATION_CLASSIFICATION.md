@@ -102,7 +102,7 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 | 20 | `national/services/identity_service.py` — `IdentityService` (dead route layer) | NIAM CitizenRegistry | Overlaps canonical; **dead** (unwired route) | **Archive and Re-point** | L | S | L | No | 7 |
 | 21 | `services/authorization_service.py` — `IdentityService.get_identity_context` | NIAM identity context | Analogous but legacy lab-UI scoped | **Retain as Domain-Owned** | M | M | L | No | 22 |
 | 22 | `services/risk_based_auth_service.py` — `RiskBasedAuthService` (dead) | `identity/adaptive_auth` (live) | Canonical equivalent is live; finding is dead | **Archive and Re-point** | L | S | L | No | 8 |
-| 51 | `services/mobile_service.py` — `verify_password` | `shared/auth` (via `security/auth.py`) | **Already canonical** — imports and calls the shared bcrypt fn | **False Positive** (remove with evidence) | L | S | L | No | 2 |
+ | 51 | `services/mobile_service.py` — `verify_password` | `shared/auth` (via `security/auth.py`) | **Already canonical** — imports and calls the shared bcrypt fn; signal matched the call site, not a definition (fixed via `def\s+`-only signals, Commits 1.5) | **False Positive** (remove with evidence) | L | S | L | No | 2 |
 
 ### 2.7 Notifications (6)
 
@@ -325,7 +325,9 @@ continues to fail any NEW finding.
 1. **False positives / signal-precision first** (#38, #51): zero-risk,
    evidence-based; 51 → 49. (#38 required fixing the `search_engine` rule to
    case-sensitive so embedded lowercase "search" in `ResearchService` no longer
-   false-positives — Commits 1.4.)
+   false-positives — Commits 1.4. #51 required the `authentication` rule's
+   `verify_password`/`create_access_token` signals to match definitions only,
+   so canonical call sites are not flagged — Commits 1.5.)
 2. **Dead-code archives before live migrations** (Wave 1): each is a single
    `git revert`; builds confidence; every commit verified end-to-end.
 3. **Promotion before completion** (Wave 2 before Wave 3): promotion is
@@ -358,10 +360,10 @@ continues to fail any NEW finding.
 - Classification derived from four parallel codebase analyses + independent
   verification of critical claims:
   - False positive #51 (import chain → `shared/auth` canonical) verified by
-    direct scanner execution; #38 identified as a **signal-precision bug** in
-    `scripts/architecture/core.py` (IGNORECASE matching of `class\s+\w*(?:Search
-    Service|…)` flags `ResearchService`), fixed by a case-sensitive
-    `search_engine` rule (Commits 1.4, baseline 51 → 50).
+    direct scanner execution: the `authentication` rule matched the `verify_password`
+    **call site** in `mobile_service.py` (imported from `security/auth.py`, the
+    canonical wrapper of `shared/auth`); the two non-`def\s+` function signals
+    were fixed to definition-only (Commits 1.5, baseline 51 → 49).
   - #44 (0-byte `service.py`) and #50 (8 adapters returning fabricated
     `success=True`) verified by direct file inspection.
 - Canonical completeness verified per provider: `shared/security/encryption.py`
@@ -379,7 +381,8 @@ continues to fail any NEW finding.
 
 ## 10. Next Action
 
-Commit 1.4 executed: false-positive #38 removed via case-sensitive `search_engine`
-signal fix (baseline 51 → 50). Next: begin **Wave 1, order 2** — remove false
-positive #51 with the evidence gathered here, run the full verification cycle,
-commit, and STOP.
+Commits 1.4–1.5 executed: both false positives removed (#38 via case-sensitive
+`search_engine` signal; #51 via definition-only `authentication` signals;
+baseline 51 → 49). Next: begin **Wave 1, order 3** — the first dead-code
+archive from Wave 1's low-risk list (per §6 ordering), run the full verification
+cycle, commit, and STOP.

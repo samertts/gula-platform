@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-08-07T07:59:37.810005+00:00",
+  "generated_at": "2026-08-07T08:14:11.858101+00:00",
   "repo": {
     "name": "gula-platform",
     "root": "/home/samertts/workspace/projects/gula-platform",
-    "git_head": "f48f1b97 docs(adr): record ADR-029 canonical provider promotion for workflow engine"
+    "git_head": "7ec3536c refactor(architecture): remove search_engine false positive (Commit 1.4)"
   },
   "counts": {
     "modules": {
@@ -103,7 +103,7 @@
     "PROGRAM-07M-REPORT"
   ],
   "source_freshness": {
-    "newest_source_mtime": 1786089180.2859683,
-    "brain_mtime": 1786028031.1490989
+    "newest_source_mtime": 1786090366.0292428,
+    "brain_mtime": 1786089585.2751021
   }
 }

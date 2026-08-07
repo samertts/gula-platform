@@ -101,8 +101,8 @@ RULES: dict[str, dict[str, object]] = {
         "description": "A new password/JWT/MFA/SSO implementation outside shared/auth + NIAM.",
         "signals": (
             r"class\s+\w*(?:JwtProvider|TokenService|MfaService|SsoProvider)\b",
-            r"create_access_token\s*\(",
-            r"verify_password\s*\(",
+            r"def\s+create_access_token\s*\(",
+            r"def\s+verify_password\s*\(",
         ),
     },
     "authorization": {
