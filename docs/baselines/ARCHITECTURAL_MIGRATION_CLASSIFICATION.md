@@ -4,6 +4,7 @@
 **Date:** 2026-08-07
 **Baseline:** `.ai/core/architecture/constitution_baseline.json` — 51 findings (+ 2 country findings)
 **Decision model:** 5-class classification, established by Commit 1.3 (ADR-029 Canonical Provider Promotion)
+**Progress:** 51 → **37** acknowledged findings (Wave 1 certified PASS WITH OBSERVATIONS; Wave 2 order 12 #43 promoted, Commit 2.1)
 
 ---
 
@@ -160,7 +161,7 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 
 | # | Current implementation | Canonical provider | Behavioral equivalence | Class | Risk | Effort | Rollback | ADR | Order |
 |---|---|---|---|---|---|---|---|---|---|
-| 43 | `national/rules_engine/domain/expression_engine.py` — `ExpressionEngine.evaluate_rule` (complete) | `shared/rules_engine` (**domain types only — no engine**) | Finding is the ONLY real `evaluate_rule` in the platform | **Canonical Provider Promotion** | M | M | L | Yes | 12 |
+| 43 | `national/rules_engine/domain/expression_engine.py` — `ExpressionEngine.evaluate_rule` (complete) | `shared/rules_engine` (**domain types only — no engine**) | Finding is the ONLY real `evaluate_rule` in the platform | **DONE — Commit 2.1** promoted (ADR-029/ADR-035): `git mv` `expression_engine.py` → `shared/rules_engine/engine.py` (history preserved); imports re-pointed to `shared.rules_engine.domain.*` + `datetime.UTC`; 3 consumers re-pointed atomically (service.py, simulation.py, package `__init__`); old namespace vacated (no facade); 14 new regression tests; canonical provider now types + engine; baseline 38 → 37; OpenAPI unchanged, backend 4954 pass / 0 fail | L | M | L | Yes | 12 |
 
 ### 2.14 Barcode (1)
 
@@ -249,6 +250,10 @@ touches delivery semantics (clinical-safety). ADR-034 documents retained
 domain-owned code so the gate can acknowledge it. ADR-036 retires a wired-but-
 broken national route surface.
 
+> **Wave 1 certified (PASS WITH OBSERVATIONS)** and **Wave 2 order 12 (ADR-035)
+> complete** — see `PROGRAM-01_WAVE1_CERTIFICATION.md` and
+> `docs/baselines/COMMIT_2_1_VERIFICATION_REPORT.md`.
+
 ---
 
 ## 6. Migration Roadmap — Execution Waves
@@ -270,12 +275,12 @@ broken national route surface.
 | 10 | #25 workflow_runtime orphan interfaces | Archive | L | No | **DONE — Commit 1.13** |
 | 11 | #39 national/workflows/base.py (dead ABC) | Archive | L | No | **DONE — Commit 1.14** |
 
-### Wave 2 — Canonical Provider Promotion (Commit 1.10)
+### Wave 2 — Canonical Provider Promotion (Commit 2.1)
 *ADR-035 first. Promote the only complete implementation into canonical path.*
 
 | Order | Finding | Class | Risk | ADR |
 |---|---|---|---|---|
-| 12 | #43 ExpressionEngine → `shared/rules_engine` | **Promotion** | M | ADR-035 |
+| 12 | #43 ExpressionEngine → `shared/rules_engine` | **Promotion** | M | ADR-035 | **DONE — Commit 2.1** |
 
 ### Wave 3 — Canonical Provider Completions (Commits 1.11–1.13)
 *Complete the canonical provider, then migrate. ADR-032/033 first.*
@@ -493,9 +498,17 @@ dead `APIGateway`, #20 national `identity_service` + unwired route + tests,
 #22 `risk_based_auth_service` + tests, #27 `EmergencyQRService` + #28
 `PersistedEmergencyQRService`, #25 `workflow_runtime` `WorkflowNotifier`,
 #39 `national/workflows` `WorkflowEngine` + 5 dormant subclasses;
-baseline 51 → 38). **Wave 1 is now complete** (all 11 orders done).
-Next: run the full **Wave 1 Certification Report** per `PROGRAM-01_CERTIFICATION_MODEL.md`
-(verification matrix, health trend, rollback summary, one verdict: PASS /
-PASS WITH OBSERVATIONS / REQUIRES CHANGES / FAILED), then **STOP and await
-explicit Program Director approval** before starting Wave 2 (#43 canonical
-provider promotion, ADR-035 first).
+baseline 51 → 38). **Wave 1 complete** (all 11 orders) and **certified PASS
+WITH OBSERVATIONS** (`PROGRAM-01_WAVE1_CERTIFICATION.md`).
+
+**Commit 2.1 executed** (Wave 2, order 12): #43 `ExpressionEngine` promoted
+via `git mv` to `shared/rules_engine/engine.py` (ADR-035, canonical provider
+now types + engine), consumers re-pointed atomically, 14 new regression
+tests; baseline 38 → 37. Full evidence:
+`docs/baselines/COMMIT_2_1_VERIFICATION_REPORT.md`.
+
+Next: run the full **Wave 2 Certification Report** per
+`PROGRAM-01_CERTIFICATION_MODEL.md` (verification matrix, health trend,
+rollback summary, one verdict), then **STOP and await explicit Program
+Director approval** before starting Wave 3 (orders 13–15, ADR-032/033 first:
+#24/#49/#50 notifications completion, #35/#36/#46/#47 capability scaffolds).

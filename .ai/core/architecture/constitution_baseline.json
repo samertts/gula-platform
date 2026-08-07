@@ -152,11 +152,6 @@
       "signal": "def\\s+send_notification\\s*\\("
     },
     {
-      "rule_id": "rule_engine",
-      "path": "backend/app/national/rules_engine/domain/expression_engine.py",
-      "signal": "def\\s+evaluate_rule\\s*\\("
-    },
-    {
       "rule_id": "audit",
       "path": "backend/app/national/task_engine/domain/repository.py",
       "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"

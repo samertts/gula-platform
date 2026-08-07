@@ -26,21 +26,21 @@
 
 ---
 
-## 2. Current State (as of Commit 1.14)
+## 2. Current State (as of Commit 2.1)
 
 | # | Metric | Current value | Trend |
 |---|---|---|---|
-| M1 | Architecture Health | **PASS** (38 ack, 0 new · domain 11/11 · country PASS · policy PASS) | Stable |
-| M2 | Technical Debt | 379 ruff baseline (fixed); active-tree LOC **−2151** cumulative (service archives only) | Improving |
-| M3 | Remaining Findings | **38** (from 57 original) | ↓ 19 removed |
-| M4 | Shared Core Progress | **19 / 57** original findings migrated (15 archives + 1 promotion + 2 false-positive fixes + 1 in-place class archive); **38 remain** | Increasing |
-| M5 | Migration Progress | **12 implementation migrations certified** (1.1–1.3, 1.6–1.14) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
-| M6 | Production Readiness | backend 0 fail (75 national + 111 governance + 124 route tests; boot 119 routes); ruff 379 baseline; tsc 0; eslint 0; validate fast PASS | Stable |
+| M1 | Architecture Health | **PASS** (37 ack, 0 new · domain 11/11 · country PASS · policy PASS) | Stable |
+| M2 | Technical Debt | 379 ruff baseline (fixed); active-tree LOC **−2151** cumulative (service archives only); engine promoted (+0 net) | Improving |
+| M3 | Remaining Findings | **37** (from 57 original) | ↓ 20 removed |
+| M4 | Shared Core Progress | **20 / 57** original findings migrated (15 archives + 2 promotions + 2 false-positive fixes + 1 in-place class archive); **37 remain** | Increasing |
+| M5 | Migration Progress | **13 implementation migrations certified** (1.1–1.3, 1.6–1.14, 2.1) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
+| M6 | Production Readiness | backend 0 fail (4954 passed; boot 119 routes); ruff 379 baseline; tsc 0; eslint 0 | Stable |
 | M7 | Repository Size | active LOC shrinking; archive = **30 non-test modules** (+7 workflows +2 test files; −364 active LOC) | Active ↓ |
-| M8 | Duplicate Implementations | 38 remaining findings (duplicates being removed one per commit) | Decreasing |
-| M9 | ADR Count | **34 ADRs** (incl. ADR-027/028/029 governing this phase; ADR-030/031/032/033/034/035/036 planned) | Increasing |
-| M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–1.14 | Stable |
-| M11 | Certification Level | **0 / 6 waves** certified (Wave 1 **complete** — certification report written, **PASS WITH OBSERVATIONS**; pending approval) | Pending |
+| M8 | Duplicate Implementations | 37 remaining findings (removed/promoted one per commit) | Decreasing |
+| M9 | ADR Count | **35 ADRs** (incl. ADR-027/028/029 governing this phase + ADR-035 accepted; ADR-030/031/032/033/034/036 planned) | Increasing |
+| M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–2.1 | Stable |
+| M11 | Certification Level | **1 / 6 waves** certified (Wave 1 **PASS WITH OBSERVATIONS**, approved); Wave 2 **complete** — certification report pending | Increasing |
 
 \* False-positive fixes (1.4, 1.5) removed baseline entries via signal-precision
 corrections rather than code migration; counted as finding removals, not
@@ -58,6 +58,7 @@ archives.
 | qr_engine | 1 (#41 Retain) | #27 EmergencyQRService + #28 PersistedEmergencyQRService archived (Commit 1.12) |
 | notifications | 5 (#23 Retain, #24+#49 Wave 2/3, #50 Wave 4, #26 Retain) | #25 workflow_runtime WorkflowNotifier archived (Commit 1.13) |
 | workflow_engine | 1 (#44 Wave 4) | #39 national/workflows WorkflowEngine + 5 dormant subclasses archived (Commit 1.14) |
+| rule_engine | 0 | #43 ExpressionEngine promoted to `shared/rules_engine/engine.py` (Commit 2.1, ADR-035) |
 | dependency_injection | 1 | — (Retain, Wave 6) |
 | search_engine | 4 | #38 false-positive removed (Commit 1.4) |
 | authentication | 2 | #51 false-positive removed (Commit 1.5) |
@@ -71,7 +72,8 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 
 | Wave | Orders | Status | Baseline target | Certification |
 |---|---|---|---|---|
-| **Wave 1** — Low-risk archive & false positives | 1–11 | **COMPLETE** (all 11 orders done: #38, #51, #3, #6, #7, #17+#42, #20, #22, #27+#28, #25, #39) | 57 → 38 (19 removed) | **PASS WITH OBSERVATIONS** (`PROGRAM-01_WAVE1_CERTIFICATION.md`) — pending approval |
+| **Wave 1** — Low-risk archive & false positives | 1–11 | **COMPLETE** (all 11 orders done: #38, #51, #3, #6, #7, #17+#42, #20, #22, #27+#28, #25, #39) | 57 → 38 (19 removed) | **PASS WITH OBSERVATIONS** (`PROGRAM-01_WAVE1_CERTIFICATION.md`) — approved |
+| **Wave 2** — Canonical Provider Promotion | 12 | **COMPLETE** (order 12: #43 ExpressionEngine promoted, ADR-035) | 38 → 37 (1 promoted) | **Pending — report + approval** |
 | **Wave 2** — Canonical Provider Promotion | 12 | Not started | → 36 | — |
 | **Wave 3** — Canonical Provider Completions | 13–15 | Not started | → 33 | — |
 | **Wave 4** — High-risk infrastructure | 16–19 | Not started | → 29 | — |
@@ -96,6 +98,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | 9f52dc2a (1.12) | #27 EmergencyQRService + #28 Persisted* | Archive | 42 → 40 |
 | c5ada270 (1.13) | #25 workflow_runtime WorkflowNotifier | Archive | 40 → 39 |
 | ff04022c (1.14) | #39 national/workflows WorkflowEngine + 5 subclasses | Archive | 39 → 38 |
+| *(2.1, pending hash)* | #43 ExpressionEngine → `shared/rules_engine/engine.py` | Promotion | 38 → 37 |
 
 ---
 

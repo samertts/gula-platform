@@ -26,7 +26,6 @@ from app.national.rules_engine.domain.events import (
     RuleSimulationEvent,
     RuleViolationEvent,
 )
-from app.national.rules_engine.domain.expression_engine import ExpressionEngine
 from app.national.rules_engine.domain.repository import RuleRepository
 from app.national.rules_engine.domain.simulation import SimulationEngine
 from app.national.rules_engine.exceptions import (
@@ -35,6 +34,7 @@ from app.national.rules_engine.exceptions import (
     RuleVersionError,
 )
 from app.notifications.service import NotificationService
+from shared.rules_engine.engine import ExpressionEngine
 
 logger = logging.getLogger("gula.national.rules_engine")
 

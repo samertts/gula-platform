@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from app._compat import UTC
-from app.national.rules_engine.domain.entities import (
+from shared.rules_engine.domain.entities import (
     RuleCondition,
     RuleDefinition,
     RuleEvaluationResult,
 )
-from app.national.rules_engine.domain.enums import Operator, RuleOutcome, RuleSeverity
+from shared.rules_engine.domain.enums import Operator, RuleOutcome, RuleSeverity
 
 
 @dataclass

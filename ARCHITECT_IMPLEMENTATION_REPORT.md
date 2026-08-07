@@ -1,6 +1,6 @@
 # GULA-ARCHITECT-001 — Enterprise Autonomous Architecture & Strategic Decision Engine Implementation Report
 
-Generated: **2026-08-07T12:24:29.626737+00:00**
+Generated: **2026-08-07T12:54:20.366880+00:00**
 
 ## Mission
 Make, document, and review the architectural decisions that preserve the GULA national platform constitution — FHIR R4, HL7, ISO 15189, CAP, CLSI, multi-tenancy, RBAC/ABAC, immutable audit log, offline-first, national deployment compatibility, Arabic-first, Ministry/Directorate/Hospital/Laboratory hierarchy, Identity Platform, Analyzer Integration, Event Bus, Clinical Safety, and national health platform compatibility. The Architect never writes production features; it only makes, documents, and reviews decisions.
@@ -24,7 +24,7 @@ Make, document, and review the architectural decisions that preserve the GULA na
 - Architecture surfaces audited: **16/16** present
 - Bounded contexts modeled: **12**
 - Cross-context relationships: **4**
-- Strategic decisions recorded: **10** (10 accepted) against 33 ADR files
+- Strategic decisions recorded: **10** (10 accepted) against 34 ADR files
 - Dependency findings: **20** (8 circular, 12 skip-layer, 0 lock-in)
 - Evolution roadmap milestones: **9**
 - Architectural risks: **11**
@@ -38,10 +38,10 @@ Make, document, and review the architectural decisions that preserve the GULA na
 
 - **Break circular dependencies** — 8 finding(s) to address
 - **Enforce layer discipline (routes -> services -> models)** — 12 finding(s) to address
-- **Mitigate risk** `RISK-61C81441`: Identity platform coupling to national federation roadmap
-- **Mitigate risk** `RISK-88C65A87`: Offline-first sync conflicts across governorate partitions
-- **Mitigate risk** `RISK-4A6566A6`: Governorate data residency and national aggregation conflict
-- **Mitigate risk** `RISK-14F66E46`: Analyzer protocol fragmentation across laboratory hardware
+- **Mitigate risk** `RISK-9BA92B0C`: Identity platform coupling to national federation roadmap
+- **Mitigate risk** `RISK-64BDF118`: Offline-first sync conflicts across governorate partitions
+- **Mitigate risk** `RISK-D25F419D`: Governorate data residency and national aggregation conflict
+- **Mitigate risk** `RISK-016725DA`: Analyzer protocol fragmentation across laboratory hardware
 
 ## Scale Projection (1M users)
 
@@ -49,12 +49,12 @@ Make, document, and review the architectural decisions that preserve the GULA na
 
 ## Risk Register (top exposures)
 
-- `RISK-61C81441` **Identity platform coupling to national federation roadmap** — probability high, impact high, exposure 9, priority critical
-- `RISK-88C65A87` **Offline-first sync conflicts across governorate partitions** — probability high, impact high, exposure 9, priority critical
-- `RISK-4A6566A6` **Governorate data residency and national aggregation conflict** — probability medium, impact critical, exposure 8, priority high
-- `RISK-14F66E46` **Analyzer protocol fragmentation across laboratory hardware** — probability high, impact medium, exposure 6, priority high
-- `RISK-75C478D5` **Circular dependencies in the backend (8 found)** — probability medium, impact high, exposure 6, priority high
-- `RISK-471EEC34` **Database and storage growth at national scale** — probability medium, impact high, exposure 6, priority high
+- `RISK-9BA92B0C` **Identity platform coupling to national federation roadmap** — probability high, impact high, exposure 9, priority critical
+- `RISK-64BDF118` **Offline-first sync conflicts across governorate partitions** — probability high, impact high, exposure 9, priority critical
+- `RISK-D25F419D` **Governorate data residency and national aggregation conflict** — probability medium, impact critical, exposure 8, priority high
+- `RISK-016725DA` **Analyzer protocol fragmentation across laboratory hardware** — probability high, impact medium, exposure 6, priority high
+- `RISK-E72DCB72` **Circular dependencies in the backend (8 found)** — probability medium, impact high, exposure 6, priority high
+- `RISK-3FD4D842` **Database and storage growth at national scale** — probability medium, impact high, exposure 6, priority high
 
 ## AI Coordination Contracts
 

@@ -1,3 +1,5 @@
+from shared.rules_engine.engine import EvaluationResult, ExpressionEngine
+
 from .application.service import RulesEngineService
 from .domain.entities import (
     RuleAction,
@@ -25,7 +27,6 @@ from .domain.events import (
     RuleUpdatedEvent,
     RuleViolationEvent,
 )
-from .domain.expression_engine import EvaluationResult, ExpressionEngine
 from .domain.repository import RuleRepository
 from .domain.simulation import SimulationEngine
 from .exceptions import (

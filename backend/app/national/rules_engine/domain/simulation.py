@@ -9,7 +9,7 @@ from app.national.rules_engine.domain.entities import (
     RuleDefinition,
     RuleEvaluationContext,
 )
-from app.national.rules_engine.domain.expression_engine import ExpressionEngine
+from shared.rules_engine.engine import ExpressionEngine
 
 
 @dataclass
