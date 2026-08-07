@@ -92,11 +92,6 @@
       "signal": "class\\s+\\w*(?:NotificationService|NotificationCenter|Notifier|NotificationSender)\\b"
     },
     {
-      "rule_id": "workflow_engine",
-      "path": "backend/app/identity/workflows/engine.py",
-      "signal": "class\\s+\\w*(?:WorkflowEngine|WorkflowManager|WorkflowExecutor)\\b"
-    },
-    {
       "rule_id": "authorization",
       "path": "backend/app/integration/api_management/auth.py",
       "signal": "def\\s+check_permission\\s*\\("

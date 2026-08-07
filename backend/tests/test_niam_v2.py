@@ -399,7 +399,7 @@ class TestWorkflowModels:
     """Verify workflow engine models."""
 
     def test_workflow_definition_model(self):
-        from app.identity.workflows.models import WorkflowDefinition
+        from app.workflows.models import WorkflowDefinition
 
         wd = WorkflowDefinition(
             uuid=str(uuid.uuid4()),
@@ -414,7 +414,7 @@ class TestWorkflowModels:
         assert wd.workflow_type == "approval"
 
     def test_workflow_instance_model(self):
-        from app.identity.workflows.models import WorkflowInstance
+        from app.workflows.models import WorkflowInstance
 
         wi = WorkflowInstance(
             uuid=str(uuid.uuid4()),
@@ -431,7 +431,7 @@ class TestWorkflowModels:
         assert wi.status == "pending"
 
     def test_workflow_approval_model(self):
-        from app.identity.workflows.models import WorkflowApproval
+        from app.workflows.models import WorkflowApproval
 
         wa = WorkflowApproval(
             uuid=str(uuid.uuid4()),

@@ -6,8 +6,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
-
-from .engine import WorkflowEngine
+from app.workflows.engine import WorkflowEngine
 
 router = APIRouter(prefix="/workflows", tags=["NIAM Workflows"])
 
