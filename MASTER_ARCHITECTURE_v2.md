@@ -1,6 +1,6 @@
 # MASTER_ARCHITECTURE_v2 — GULA National Healthcare Platform
 
-> PROGRAM-ALPHA | regenerated 2026-08-06 by `scripts/architecture/docs.py`
+> PROGRAM-ALPHA | regenerated 2026-08-07 by `scripts/architecture/docs.py`
 > Platform verdict: **PASS** — Domains **11/11**,
 > isolation **PASS**.
 
@@ -73,7 +73,7 @@ breaks tests, weakens security, or duplicates infrastructure.
 |---|---|
 | Domain certification (9 checks / Domain) | **11/11** |
 | Isolation (imports, cycles, shared state, permissions, DB, tables) | **PASS** |
-| Shared Core reimplementation scan | **57 findings, 57 acknowledged** |
+| Shared Core reimplementation scan | **51 findings, 51 acknowledged** |
 | Cross-domain administration | **0** |
 | Country-agnostic | **PASS** |
 | Architecture Constitution gate | **PASS** |

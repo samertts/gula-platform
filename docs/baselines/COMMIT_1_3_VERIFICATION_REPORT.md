@@ -345,3 +345,19 @@ Canonical providers touched by this migration:
 - This is the first live-component migration: behavior preservation was
   verified via byte-identical OpenAPI + identical 4993-test suite, not just
   dead-code evidence.
+
+## 12. Governing Documents (this promotion)
+
+This migration is formally classified as a **Canonical Provider Promotion**
+(not a Shared Core removal). The governing planning and decision artifacts:
+
+- **`docs/adr/ADR-029-canonical-provider-promotion.md`** — the ADR that
+  changes the canonical ownership of the Workflow Engine and defines
+  Canonical Provider Promotion as a recognized ADR-028 migration mode.
+- **`docs/baselines/CANONICAL_PROMOTION_PLAN_WORKFLOW_ENGINE.md`** — the
+  pre-implementation promotion plan: why the canonical candidates are
+  insufficient, why the live engine is the long-term owner, migration /
+  compatibility / namespace / import / backward-compat strategy, and
+  Domain Platform / Shared Core / Architecture Constitution implications.
+- **`docs/adr/README.md`** — ADR index updated (ADR-026..029).
+

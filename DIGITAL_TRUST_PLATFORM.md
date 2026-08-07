@@ -1,6 +1,6 @@
 # DIGITAL_TRUST_PLATFORM — NIAM (Program-Stable-003 + Phase 6)
 
-> PROGRAM-ALPHA Phase 6 | regenerated 2026-08-06
+> PROGRAM-ALPHA Phase 6 | regenerated 2026-08-07
 
 ## 1. Vision
 

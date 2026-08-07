@@ -90,6 +90,10 @@ Links to related ADRs, Constitution sections, or code.
 | [ADR-023](ADR-023-laboratory-desktop.md) | National Laboratory Desktop Professional | Accepted | 2026-07-15 |
 | [ADR-024](ADR-024-Platform-Constitution.md) | Platform Constitution | Accepted | 2026-07-16 |
 | [ADR-025](ADR-025-data-preservation-constitution.md) | Data Preservation Constitution | Accepted | 2026-07-22 |
+| [ADR-026](ADR-026-dormancy-registry.md) | Dormancy Registry | Accepted | 2026-08-06 |
+| [ADR-027](ADR-027-architecture-policy-engine.md) | Architecture Policy Engine | Accepted | 2026-08-06 |
+| [ADR-028](ADR-028-structural-migration.md) | Structural Migration Rules | Accepted | 2026-08-07 |
+| [ADR-029](ADR-029-canonical-provider-promotion.md) | Canonical Provider Promotion | Accepted | 2026-08-07 |
 
 ## Constitution Reference
 
