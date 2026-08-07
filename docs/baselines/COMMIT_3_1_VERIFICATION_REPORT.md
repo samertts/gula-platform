@@ -3,145 +3,194 @@
 **Finding:** #24 + #49 — `notifications`
 **Class:** Canonical Provider Completion (ADR-029, ADR-032)
 **Commit:** 3.1
-**Date:** 2026-08-07
+**Date:** 2026-08-07 (finalized 2026-08-07)
 **Baseline:** 37 → 35 acknowledged findings
 
 ---
 
-## 1. Migration Summary
+## 1. Executive Summary
 
-| Item | Detail |
-|---|---|
-| Finding | `identity/notifications/services.py` — `NotificationService` (queue-only, #24) and `identity/notifications/routes.py` — `send_notification` (queue-only, #49) |
-| Canonical provider | `backend/app/notifications` (was delivery-only; now delivery + queue + templates + preferences) |
-| Why completion | The canonical provider delivers but has no persistence; the finding is the **ONLY DB-backed notification queue/template/preference layer in the platform** (`niam_notif_*` tables, migration `20260723_0002`), backing the live `/niam/notifications/*` API. The two are **complementary halves** — promote the missing half, then re-point. |
-| Action | `git mv` `models.py`/`services.py`/`routes.py` → `app/notifications/` (history preserved); queue class renamed `NotificationService` → `NotificationQueueService`; consumers re-pointed atomically |
-| ADR | ADR-032 accepted first (notifications queue completion); governed by ADR-029 (completion) + ADR-028 (migration) |
+The identity notification **queue** (`identity/notifications/services.py`, #24) and
+**queue-only send route** (`identity/notifications/routes.py` `send_notification`, #49)
+were promoted into the canonical `backend/app/notifications` provider, which previously
+held only the synchronous delivery half. The move is a pure **completion**: the queue is
+the ONLY DB-backed notification persistence layer (`niam_notif_*` tables, migration
+`20260723_0002`) and remains the backing store of the live `/niam/notifications/*` API.
+The old namespace is fully vacated with no facade; the queue class was renamed
+`NotificationService` → `NotificationQueueService` to remove a name collision with the
+canonical sync delivery `NotificationService`.
 
-## 2. Reimplementation Evidence
+**Result:** architecture constitution findings **37 → 35**, OpenAPI contract
+byte-identical (2028 methods / 1696 paths), full backend suite **4977 passed / 0 failed**,
+all gates PASS. **VERDICT: APPROVED for commit.**
 
-- **Not a removal:** the queue layer is live — 11 route handlers mounted at
-  `/niam/notifications/*` via the NIAM router, backed by real DB tables.
-- **Not an archive:** no canonical queue existed; `backend/app/notifications`
-  was delivery-only (`service.py`, Telegram channels).
-- **Complementary halves:** canonical delivers; finding queues. Ownership
-  correction completes the canonical provider with its missing persistence
-  half, satisfying the constitution signal (`notifications` →
-  `backend/app/notifications`) at its source.
-- **Consumer inventory (complete):** `rg "identity.notifications"` across
-  `backend/app` + `backend/tests` → exactly 2 references: the NIAM router
-  import and `test_niam_v2.py` (2 model imports). Package `__init__.py` was
-  empty (0 bytes) — not a public API.
+## 2. Files Changed
 
-## 3. Migration Impact Report
+**Moved via `git mv` (history preserved):**
 
-**Files moved (git mv, history preserved):**
-
-- `backend/app/identity/notifications/models.py` → `backend/app/notifications/models.py` (76 LOC)
-- `backend/app/identity/notifications/services.py` → `backend/app/notifications/services.py` (285 LOC)
-- `backend/app/identity/notifications/routes.py` → `backend/app/notifications/routes.py` (198 LOC)
-- `backend/app/identity/notifications/__init__.py` — removed (empty, not a public API)
+| From | To | LOC |
+|---|---|---|
+| `backend/app/identity/notifications/models.py` | `backend/app/notifications/models.py` | 76 |
+| `backend/app/identity/notifications/services.py` | `backend/app/notifications/services.py` | 285 |
+| `backend/app/identity/notifications/routes.py` | `backend/app/notifications/routes.py` | 198 |
+| `backend/app/identity/notifications/__init__.py` | removed (empty, not public API) | 0 |
 
 **Source edits (behavior-preserving):**
 
-- `app/notifications/services.py` — class renamed `NotificationService` →
-  `NotificationQueueService` (required: the canonical package already defines a
-  different `NotificationService` in `service.py`, exported by `__init__.py`).
-- `app/notifications/routes.py` — 11 `NotificationService(db)` →
-  `NotificationQueueService(db)`; relative `.services` import updated.
-- `backend/app/identity/api/router.py` — import re-pointed to
-  `app.notifications.routes`; `include_router(notifications_routes)`.
-- `backend/tests/test_niam_v2.py` — 2 model imports re-pointed to
-  `app.notifications.models`.
+- `backend/app/notifications/services.py` — class `NotificationService` →
+  `NotificationQueueService` (name collision with canonical sync `NotificationService`
+  in `app/notifications/service.py`, exported by `__init__.py`).
+- `backend/app/notifications/routes.py` — 11 `NotificationService(db)` →
+  `NotificationQueueService(db)`; relative import updated.
+- `backend/app/identity/api/router.py` — import re-pointed to `app.notifications.routes`;
+  `router.include_router(notifications_routes)`.
+- `backend/tests/test_niam_v2.py` — 2 model imports re-pointed to `app.notifications.models`.
 
-**Retained dependency (documented, behavior-required):**
+**Added:**
 
-- `app/notifications/models.py` still extends `IdentityBaseEntity`
-  (`app.identity.base`): its `before_insert` listener resolves the `id=...`
-  Ellipsis placeholder used by every call site, and it provides `to_dict()`,
-  `created_at`, `updated_at` matching the `niam_notif_*` tables. `app.identity`
-  is platform infrastructure (NIAM), not one of the 11 healthcare domains; the
-  dependency does not invert the domain graph (see ADR-032 Decision 4).
+- `backend/tests/unit/test_notifications_queue_promoted.py` — 23 regression tests.
 
-**New regression test:**
+**Governance artifacts (regenerated):**
 
-- `backend/tests/unit/test_notifications_queue_promoted.py` — 23 tests:
-  canonical import paths + vacated old namespace, unchanged table names, base
-  class + Ellipsis-id resolution, `to_dict`, and `NotificationQueueService`
-  behavior (send/send_template rendering/None, mark_sent/delivered/read +
-  not-found, get_pending, preferences get/update-create/update, create_template
-  inactive-by-default, list_templates, queue-for-recipient) + router
-  prefix/tags/mount.
+- `.ai/core/architecture/constitution_baseline.json` (37 → 35), `docs/api/backend_inventory.json`
+  (787 endpoints / 53 route files / 146 model files), ADR-032 + ADR-033,
+  `docs/adr/README.md`, classification, dashboard, Shared Core report, verification report.
 
-**Old namespace:** `app.identity.notifications` vacated (no facade per
-ADR-029 Rule 4); zero in-repo references remain (verified by repo-wide grep).
-
-**API impact:** NONE — `/niam/notifications/*` paths, methods, parameters, and
-response shapes byte-identical. OpenAPI diff vs pre-change: **identical**
-(2028 methods / 1696 paths; 9 `/niam/notifications` paths).
-
-**Frontend impact:** NONE (no frontend files changed; byte-identical OpenAPI
-contract → generated client unchanged).
-
-**Dependency changes:** NONE (all moved modules already imported by the backend).
-
-**DB changes:** NONE — `niam_notif_*` tables and migration
-`20260723_0002_niam_completion_tables.py` untouched.
-
-**LOC delta:** net 0 (move) + 23 new test LOC.
-
-## 4. Canonical-Provider Orphan Check
+## 3. Canonical Provider Verification
 
 | Provider | Check | Result |
 |---|---|---|
 | `backend/app/notifications` | delivery (`service.py`) + promoted queue (`models/services/routes.py`); no competing duplicate remains | **PASS** |
-| `backend/app/identity/notifications` | vacated; zero in-repo references | **PASS** |
-| NIAM router | `app/identity/api/router.py` re-pointed; `/niam/notifications/*` still mounted via factory niam include | **PASS** |
+| `backend/app/identity/notifications` | vacated; zero in-repo references (repo-wide grep) | **PASS** |
+| NIAM router | `app/identity/api/router.py` re-pointed; `/niam/notifications/*` still mounted | **PASS** |
+| Consumer inventory | exactly 2 references existed pre-move (router import + `test_niam_v2.py`), both re-pointed | **PASS** |
+| Retained dependency | `app/notifications/models.py` extends `IdentityBaseEntity` (behavior-required: Ellipsis `id` resolution + `to_dict()` + audit columns) — documented exception in ADR-032; `app.identity` is platform infrastructure, not a healthcare domain | **PASS** |
 
-## 5. Behavior Preservation
+## 4. Before vs After Metrics
 
-- **Boot:** app boots, **119 routes** (identical to Wave 2 final state).
-- **OpenAPI:** byte-identical contract (2028 methods / 1696 paths), verified by
-  a before/after OpenAPI diff.
-- **Regression suite:** backend **4977 passed / 0 failed** (4954 baseline +
-  23 new queue tests), 148 warnings, 9m34s.
-- **DB:** no DDL change; `id=...` Ellipsis resolution and `to_dict()` semantics
-  verified by regression tests.
-- **Ruff:** clean on all changed scope (1 I001 auto-fixed in router.py).
-
-## 6. Verification Matrix (Commit 3.1)
-
-| # | Verification | Result |
+| Metric | Before (Wave 2) | After (Commit 3.1) |
 |---|---|---|
-| 1 | Architecture Constitution | **PASS** — 35 findings (35 ack, **0 new**) |
-| 2 | Policy Engine | **PASS** |
-| 3 | Domain Certification | **PASS** — 11/11, isolation PASS |
-| 4 | OpenAPI | **PASS** — before/after diff identical (2028 methods / 1696 paths) |
-| 5 | Generated Clients | **PASS** — no contract/model change |
-| 6 | Frontend Compatibility | **PASS** — no frontend files changed; OpenAPI identical |
-| 7 | Permissions | **PASS** — no route/permission touched |
-| 8 | Database Compatibility | **PASS** — no DDL change |
-| 9 | Behavior Preservation | **PASS** — boot 119 + 23 regression tests + byte-identical OpenAPI |
-| 10 | Performance | **PASS** — no hot-path change (move only) |
-| 11 | Regression Tests | **PASS** — 4977 passed / 0 failed |
-| 12 | Build Validation | **PASS** — boot 119 routes; all touched modules import cleanly |
-| 13 | Repository Health | **PASS** — ruff 0 on changed scope |
-| 14 | Inventory | **PASS** — `docs/api/backend_inventory.json` regenerated (identity/notifications removed) |
-| 15 | Orphan Check | **PASS** — §4 |
+| Architecture findings | 37 | **35** (−2: #24, #49) |
+| OpenAPI paths | 1696 | 1696 (identical) |
+| OpenAPI methods | 2028 | 2028 (identical) |
+| Route entries (boot) | 119 | 119 |
+| Backend tests | 4954 passed / 0 failed | **4977 passed / 0 failed** (+23) |
+| `app/notifications` surface | delivery only | delivery + queue + templates + preferences |
+| Notification persistence layers | 3 (legacy/NIAM/national) | 2 (canonical/national) |
+| Warnings | 148 | 148 |
+| Full-suite runtime | ~9m | **10m45s** (645.71s) |
 
-## 7. Baseline & Rollback
+## 5. Architecture Metrics
 
-- Baseline regenerated: 37 → **35** acknowledged findings
-  (`constitution_baseline.json`; 2 country findings unchanged).
-- **Rollback class:** M (single `git revert <hash>` restores all moved files,
-  the class rename, and the re-pointed consumers atomically; no data or schema
-  involved — tables unchanged).
+| Metric | Value |
+|---|---|
+| Constitution findings | 35 acknowledged, **0 new** |
+| Baseline delta | 37 → 35 (−2) |
+| Country-agnostic scan | PASS |
+| Policy Engine | PASS (1 enabled policy evaluated) |
+| Shared Core catalog | 50 services (unchanged) |
 
-## 8. Report Trail
+## 6. Shared Core Findings (35 acknowledged, 0 new)
 
-- ADR-032 (this completion): `docs/adr/ADR-032-notifications-queue-completion.md`
-- Classification §2.7 + §10 (marked DONE): `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATION.md`
-- Dashboard: `PROGRAM-01_DASHBOARD.md`
-- Shared Core report: `docs/certification/SHARED_CORE_REPORT.md`
-- Inventory: `docs/api/backend_inventory.json` (regenerated)
-- ADR index: `docs/adr/README.md`
+`scripts/architecture.py gate` → **PASS**:
+
+```
+Shared Core scan: 35 findings (35 acknowledged, 0 new)
+Domain certification: 11/11 (isolation PASS)
+Country-agnostic: PASS
+Policy Engine: PASS (1 enabled policy/policies evaluated)
+```
+
+No new reimplementation signals introduced by this commit. Baseline regenerated to
+35 records; `identity/notifications` absent from `constitution_baseline.json`.
+
+## 7. Domain Certification
+
+| Check | Result |
+|---|---|
+| Domain certification | **11/11** PASS |
+| Domain isolation | PASS (0 findings in all 6 categories) |
+| Cross-domain administration | none introduced (move within platform infra layer) |
+
+## 8. Backend Test Results
+
+Full suite with PostgreSQL:
+
+```
+DATABASE_URL=postgresql://postgres:gula_dev_2026@172.18.0.3:5432/gula
+backend/tests — 4977 passed, 148 warnings in 645.71s (10:45)
+```
+
+- **4977 passed / 0 failed** (4954 baseline + 23 notifications-queue promotion tests).
+- Related suites (niam_v2 + promoted + architecture + domain): 161 passed.
+- No new warnings attributable to the migration.
+
+## 9. Frontend Verification
+
+- **No frontend files changed** by Commit 3.1.
+- OpenAPI contract byte-identical → generated client (`frontend-v3/src/api/generated/client.ts`)
+  unchanged.
+- `tsc --noEmit`: **0 errors** (exit 0).
+- ESLint baseline unchanged (no frontend diff).
+
+## 10. OpenAPI Compatibility
+
+- **PASS** — before/after spec diff **byte-identical** (2028 methods / 1696 paths),
+  method-level params (name/in/required/schema.type) verified equal.
+- Post-move re-check on live boot: 1696 paths, including **9** `/niam/notifications/*`
+  paths (pending, send, send-template, templates, preferences/{id}, queue/{id}/sent,
+  queue/{id}/delivered, queue/{id}/read, queue/{recipient_id}).
+- Duplicate Operation ID warnings (connectors routes) are pre-existing and unrelated.
+
+## 11. Build Status
+
+| Check | Result |
+|---|---|
+| Backend boot with PG | **PASS** — 119 route entries, "All platform routes registered" |
+| PostgreSQL | **PASS** — PG 16.14 @ `172.18.0.3:5432`, `gula` DB, 351 tables, single alembic head |
+| Ruff (changed scope) | **PASS** — 0 violations |
+| py_compile / imports | **PASS** — all touched modules import cleanly |
+| Inventory regeneration | **PASS** — `backend_inventory.json` (787 endpoints / 53 route files / 146 model files) |
+| Frontend tsc | **PASS** — 0 errors |
+
+## 12. Rollback Procedure
+
+- **Rollback class:** M (single `git revert <hash>`).
+- Reverts: 3 file moves (back to `app/identity/notifications/`), the class rename, the
+  re-pointed consumers, the regression tests, the ADRs, and the regenerated baseline
+  (37 findings) **atomically**.
+- No data involved — DB tables and DDL (`niam_notif_*`, migration `20260723_0002`) are
+  untouched by this commit, so no data migration or coordination is required.
+
+## 13. Risks
+
+| Risk | Severity | Mitigation |
+|---|---|---|
+| `IdentityBaseEntity` coupling persists in promoted models | Low | Documented ADR-032 decision; `app.identity` is platform infra, not a domain; revisit if NIAM is ever extracted |
+| Name collision (two `NotificationService`s) | Medium | Resolved via `NotificationQueueService` rename + regression test asserting canonical import path |
+| PG reachable only at container IP `172.18.0.3:5432` | Low (env) | `DATABASE_URL` documented; localhost refused is a host-network artifact, not a code issue |
+| Engine state-file regeneration noise on gate runs | Low | Governance JSONs restored to committed state; gate verdict is the signal |
+
+## 14. Unexpected Observations
+
+1. **`app.routes` deferred-routing quirk:** `ENV=test` boot lists 119 entries as deferred
+   `_IncludedRouter` objects (only 4 eager top-level paths); recursive traversal shows 0
+   APIRoutes until materialization. Contract verified via the authoritative OpenAPI spec
+   instead (1696 paths), not `app.routes`.
+2. **Re-running the gate regenerates synthetic engine state** (optimizer benchmark entries
+   OPT-000077..079, orchestrator registry rows, timestamp churn across 15 governance JSONs).
+   These are engine self-test artifacts, not program data; restored to committed state.
+3. **`gula-backend` container has been `Exited` for 7 days** — verification was run against
+   the host venv + live PG container, not the stale container.
+
+## 15. Final Certification Verdict
+
+**APPROVED.**
+
+- Constitution gate PASS (35 ack, 0 new) · Domain 11/11 · Country-agnostic PASS.
+- OpenAPI byte-identical · Boot 119 routes · Full suite **4977 passed / 0 failed**.
+- Ruff clean · Frontend tsc 0 · Baseline 37 → **35**.
+- Rollback = single `git revert` (class M, no data).
+
+Commit 3.1 (order 13) is complete. Commit 3.2 (order 14, search) and Commit 3.3
+(order 15, PDF) shall not begin without explicit approval.
