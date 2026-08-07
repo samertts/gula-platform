@@ -73,7 +73,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | Wave | Orders | Status | Baseline target | Certification |
 |---|---|---|---|---|
 | **Wave 1** — Low-risk archive & false positives | 1–11 | **COMPLETE** (all 11 orders done: #38, #51, #3, #6, #7, #17+#42, #20, #22, #27+#28, #25, #39) | 57 → 38 (19 removed) | **PASS WITH OBSERVATIONS** (`PROGRAM-01_WAVE1_CERTIFICATION.md`) — approved |
-| **Wave 2** — Canonical Provider Promotion | 12 | **COMPLETE** (order 12: #43 ExpressionEngine promoted, ADR-035) | 38 → 37 (1 promoted) | **Pending — report + approval** |
+| **Wave 2** — Canonical Provider Promotion | 12 | **COMPLETE** (order 12: #43 ExpressionEngine promoted, ADR-035) | 38 → 37 (1 promoted) | **PASS WITH OBSERVATIONS** (`PROGRAM-01_WAVE2_CERTIFICATION.md`) — pending approval |
 | **Wave 2** — Canonical Provider Promotion | 12 | Not started | → 36 | — |
 | **Wave 3** — Canonical Provider Completions | 13–15 | Not started | → 33 | — |
 | **Wave 4** — High-risk infrastructure | 16–19 | Not started | → 29 | — |
@@ -98,7 +98,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | 9f52dc2a (1.12) | #27 EmergencyQRService + #28 Persisted* | Archive | 42 → 40 |
 | c5ada270 (1.13) | #25 workflow_runtime WorkflowNotifier | Archive | 40 → 39 |
 | ff04022c (1.14) | #39 national/workflows WorkflowEngine + 5 subclasses | Archive | 39 → 38 |
-| *(2.1, pending hash)* | #43 ExpressionEngine → `shared/rules_engine/engine.py` | Promotion | 38 → 37 |
+| c4f99768 (2.1) | #43 ExpressionEngine → `shared/rules_engine/engine.py` | Promotion | 38 → 37 |
 
 ---
 
