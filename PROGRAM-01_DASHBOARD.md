@@ -82,7 +82,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | 7ec3536c (1.4) | #38 search (false positive) | Signal fix | 51 → 50 |
 | 2ceb373c (1.5) | #51 auth (false positive) | Signal fix | 50 → 49 |
 | bf52a744 (1.6) | #3 EncryptedSyncStore | Archive | 49 → 48 |
-| *(1.7, pending hash)* | #6 AuditLogger | Archive | 48 → 47 |
+| 6c35ead6 (1.7) | #6 AuditLogger | Archive | 48 → 47 |
 
 ---
 
