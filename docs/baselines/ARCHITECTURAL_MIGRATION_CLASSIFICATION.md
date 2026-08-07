@@ -153,7 +153,7 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 
 | # | Current implementation | Canonical provider | Behavioral equivalence | Class | Risk | Effort | Rollback | ADR | Order |
 |---|---|---|---|---|---|---|---|---|---|
-| 39 | `national/workflows/base.py` — `WorkflowEngine[T]` (ABC + 5 dormant subclasses) | `backend/app/workflows` (live promoted engine) | Dead (test-only consumers); canonical complete | **Archive and Re-point** | L | S | L | No | 11 |
+| 39 | `national/workflows/base.py` — `WorkflowEngine[T]` (ABC + 5 dormant subclasses) | `backend/app/workflows` (live promoted engine) | Dead (test-only consumers); canonical complete | **DONE — Commit 1.14** archived whole `national/workflows/` package (`base.py` + 5 subclasses + `__init__.py`, 364 L) + its only consumers (`app/national/tests/unit/test_workflows.py`, `app/national/tests/identity_merge/test_merge_workflow.py`, 129 L) via `git mv` to `archive/platform-shared-core/national_workflows_*.py`; zero production importers (verified: only the non-collected dormant test tree imports this package; canonical `backend/app/workflows` + `shared/workflow` live consumers unchanged) | L | S | L | No | 11 |
 | 44 | `national/workflow_runtime/api/routes.py` — `execute_workflow` (20 endpoints) | `backend/app/workflows` | **Wired but broken** — service.py is 0 bytes → every call raises ImportError | **Archive and Re-point** | M | M | L | Yes | 19 |
 
 ### 2.13 Rule Engine (1)
@@ -268,7 +268,7 @@ broken national route surface.
 | 8 | #22 risk_based_auth_service (dead) | Archive | L | No | **DONE — Commit 1.11** |
 | 9 | #27 EmergencyQRService + #28 Persisted* twins (dead) | Archive | L | No | **DONE — Commit 1.12** |
 | 10 | #25 workflow_runtime orphan interfaces | Archive | L | No | **DONE — Commit 1.13** |
-| 11 | #39 national/workflows/base.py (dead ABC) | Archive | L | No |
+| 11 | #39 national/workflows/base.py (dead ABC) | Archive | L | No | **DONE — Commit 1.14** |
 
 ### Wave 2 — Canonical Provider Promotion (Commit 1.10)
 *ADR-035 first. Promote the only complete implementation into canonical path.*
@@ -467,16 +467,35 @@ continues to fail any NEW finding.
   `WorkflowTimerHandler`) are not Shared Core findings and remain in place
   (dormant module preservation). Canonical: `backend/app/workflows` (live;
   orphan check PASS). Baseline 40 → 39.
+- **Commit 1.14 (Wave 1, order 11):** `national/workflows/base.py` (`WorkflowEngine[T]`,
+  finding #39) and its 5 dormant subclasses were proven dead — the package has
+  **zero production importers** (verified via AST import scan across
+  `backend/app`, `backend/tests`, `shared`, `scripts`, `frontend-v3`); its only
+  consumers are two test files inside the **non-collected** dormant tree
+  `app/national/tests/` (CI collects `backend/tests/` only). The whole dead
+  cluster was archived via `git mv`: the 7 package files (base.py 85 L +
+  patient_registration 89 L + encounter 63 L + merge_identity 36 L +
+  death_registration 36 L + referral 36 L + `__init__.py` 19 L = 364 L) plus
+  the two dead test files (test_workflows 88 L + test_merge_workflow 41 L =
+  129 L) → 493 L total, `archive/platform-shared-core/national_workflows_*.py` /
+  `test_national_workflows*.py`. Canonical `backend/app/workflows` (live
+  promoted engine) + `shared/workflow` (kernel surface) have live consumers and
+  were unchanged (orphan check PASS). The dormant `workflow_runtime/` package
+  is unaffected (its `WorkflowStepStatus` comes from its own `domain/enums.py`,
+  not from the workflows package). Baseline 39 → 38.
 
 ## 10. Next Action
 
-Commits 1.4–1.13 executed: two false positives removed (#38, #51) and eight
+Commits 1.4–1.14 executed: two false positives removed (#38, #51) and nine
 dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel `AuditLogger`,
 #7 national `SecurityAuditService`, #17 ESB `message_bus` + #42 `APIAuth` +
 dead `APIGateway`, #20 national `identity_service` + unwired route + tests,
 #22 `risk_based_auth_service` + tests, #27 `EmergencyQRService` + #28
-`PersistedEmergencyQRService`, #25 `workflow_runtime` `WorkflowNotifier`;
-baseline 51 → 39). Next: continue
-**Wave 1, order 11** — #39 `national/workflows/base.py` dead ABC archive, run
-the full verification cycle, commit, and continue without stopping (Wave 1
-continuous-execution mode per Program Director approval).
+`PersistedEmergencyQRService`, #25 `workflow_runtime` `WorkflowNotifier`,
+#39 `national/workflows` `WorkflowEngine` + 5 dormant subclasses;
+baseline 51 → 38). **Wave 1 is now complete** (all 11 orders done).
+Next: run the full **Wave 1 Certification Report** per `PROGRAM-01_CERTIFICATION_MODEL.md`
+(verification matrix, health trend, rollback summary, one verdict: PASS /
+PASS WITH OBSERVATIONS / REQUIRES CHANGES / FAILED), then **STOP and await
+explicit Program Director approval** before starting Wave 2 (#43 canonical
+provider promotion, ADR-035 first).
