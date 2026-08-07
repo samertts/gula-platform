@@ -86,7 +86,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | bf52a744 (1.6) | #3 EncryptedSyncStore | Archive | 49 → 48 |
 | 6c35ead6 (1.7) | #6 AuditLogger | Archive | 48 → 47 |
 | 94cb3279 (1.8) | #7 SecurityAuditService | Archive | 47 → 46 |
-| *(1.9, pending hash)* | #17 ESBMessageBus + #42 APIAuth | Archive | 46 → 44 |
+| 33e1a22f (1.9) | #17 ESBMessageBus + #42 APIAuth | Archive | 46 → 44 |
 
 ---
 
