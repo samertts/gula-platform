@@ -3,7 +3,7 @@
 **Permanent program metrics for the Structural Migration.**
 **Status:** Active
 **Date:** 2026-08-07
-**Baseline:** `.ai/core/architecture/constitution_baseline.json` — **33 acknowledged findings** (+ 2 country findings)
+**Baseline:** `.ai/core/architecture/constitution_baseline.json` — **31 acknowledged findings** (+ 2 country findings)
 **Authority:** PROGRAM-01 Execution Framework §7 (metric definitions, owners, trend rules).
 
 ---
@@ -26,21 +26,21 @@
 
 ---
 
-## 2. Current State (as of Commit 3.2)
+## 2. Current State (as of Wave 3 — certified)
 
 | # | Metric | Current value | Trend |
 |---|---|---|---|
-| M1 | Architecture Health | **PASS** (33 ack, 0 new · domain 11/11 · country PASS · policy PASS) | Stable |
+| M1 | Architecture Health | **PASS** (31 ack, 0 new · domain 11/11 · country PASS · policy PASS) | Stable |
 | M2 | Technical Debt | 378 ruff baseline (fixed); active-tree LOC **−2151** cumulative (service archives only); engine promoted (+0 net) | Improving |
-| M3 | Remaining Findings | **33** (from 57 original) | ↓ 24 removed |
-| M4 | Shared Core Progress | **24 / 57** original findings migrated (15 archives + 3 promotions + 2 false-positive fixes + 1 in-place class archive + 2 completion orders [#24+#49 Commit 3.1, #35+#36 Commit 3.2]); **33 remain** | Increasing |
-| M5 | Migration Progress | **15 implementation migrations certified** (1.1–1.3, 1.6–1.14, 2.1, 3.1, 3.2) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
-| M6 | Production Readiness | backend 0 fail (5017 passed; boot 119 routes); ruff 378 baseline; tsc 0; eslint 0 | Stable |
+| M3 | Remaining Findings | **31** (from 57 original) | ↓ 26 removed |
+| M4 | Shared Core Progress | **26 / 57** original findings migrated (15 archives + 3 promotions + 2 false-positive fixes + 1 in-place class archive + 3 completion orders [#24+#49 Commit 3.1, #35+#36 Commit 3.2, #46+#47 Commit 3.3]); **31 remain** | Increasing |
+| M5 | Migration Progress | **16 implementation migrations certified** (1.1–1.3, 1.6–1.14, 2.1, 3.1, 3.2, 3.3) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
+| M6 | Production Readiness | backend 0 fail (5030 passed; boot 119 routes); ruff 378 baseline; tsc 0; eslint 0 | Stable |
 | M7 | Repository Size | active LOC shrinking; archive = **30 non-test modules** (+7 workflows +2 test files; −364 active LOC) | Active ↓ |
-| M8 | Duplicate Implementations | 33 remaining findings (removed/promoted one per commit) | Decreasing |
+| M8 | Duplicate Implementations | 31 remaining findings (removed/promoted one per commit) | Decreasing |
 | M9 | ADR Count | **37 ADRs** (incl. ADR-027/028/029/032/033/035 governing this phase; ADR-030/031/034/036 planned) | Increasing |
-| M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–3.2 | Stable |
-| M11 | Certification Level | **2 / 6 waves certified** (Wave 1 + Wave 2 **PASS WITH OBSERVATIONS**, approved); Wave 3 **in progress** (Commit 3.2 done — approval pending) | Increasing |
+| M10 | Risk Trend | 0 open escalations; no STOPs in Commits 1.1–3.3 | Stable |
+| M11 | Certification Level | **3 / 6 waves certified** (Wave 1 + Wave 2 **PASS WITH OBSERVATIONS**, approved; **Wave 3 CERTIFIED** `WAVE_3_CERTIFICATION.md`) | Increasing |
 
 \* False-positive fixes (1.4, 1.5) removed baseline entries via signal-precision
 corrections rather than code migration; counted as finding removals, not
@@ -62,6 +62,7 @@ archives.
 | dependency_injection | 1 | — (Retain, Wave 6) |
 | search_engine | 2 (#34, #37 Retain as Domain-Owned) | #38 false-positive removed (Commit 1.4); #35+#36 doc-intel search promoted to `capabilities/search_service` (Commit 3.2, ADR-033) |
 | authentication | 2 | #51 false-positive removed (Commit 1.5) |
+| document_engine | 6 (#12, #13, #15, #16 repositories + #14, #45 interfaces — all Retain as Domain-Owned) | #46 routes + #47 service PDF wired to canonical `shared/pdf` via `capabilities/document_management/pdf_generator.py` (Commit 3.3, ADR-033) |
 | *remaining capabilities* | *—* | *by roadmap* |
 
 Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATION.md` §2.
@@ -74,7 +75,7 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 |---|---|---|---|---|
 | **Wave 1** — Low-risk archive & false positives | 1–11 | **COMPLETE** (all 11 orders done: #38, #51, #3, #6, #7, #17+#42, #20, #22, #27+#28, #25, #39) | 57 → 38 (19 removed) | **PASS WITH OBSERVATIONS** (`PROGRAM-01_WAVE1_CERTIFICATION.md`) — approved |
 | **Wave 2** — Canonical Provider Promotion | 12 | **COMPLETE** (order 12: #43 ExpressionEngine promoted, ADR-035) | 38 → 37 (1 promoted) | **PASS WITH OBSERVATIONS** (`PROGRAM-01_WAVE2_CERTIFICATION.md`) — approved |
-| **Wave 3** — Canonical Provider Completions | 13–15 | **IN PROGRESS** (order 13 DONE: #24+#49 notifications queue promoted, ADR-032, Commit 3.1; order 14 DONE: #35+#36 doc-intel search promoted, ADR-033, Commit 3.2; order 15 pending) | 37 → 35 (order 13); 35 → 33 (order 14); → **31** (end of wave) | — |
+| **Wave 3** — Canonical Provider Completions | 13–15 | **COMPLETE & CERTIFIED** (order 13: #24+#49 notifications queue promoted, ADR-032, Commit 3.1; order 14: #35+#36 doc-intel search promoted, ADR-033, Commit 3.2; order 15: #46+#47 document PDF wired, ADR-033, Commit 3.3) | 37 → 35 (order 13); 35 → 33 (order 14); 33 → **31** (order 15) | **CERTIFIED** (`WAVE_3_CERTIFICATION.md`) — pending approval |
 | **Wave 4** — High-risk infrastructure | 16–19 | Not started | → 29 | — |
 | **Wave 5** — National Platform migrations | 20–22 | Not started | → 26 | — |
 | **Wave 6** — Kernel exception + Retain register | 23–24 | Not started | → **0 actionable** | Program certification gate |
@@ -101,6 +102,8 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | 231e343b (2.2) | Wave 2 certification doc | Docs | 37 |
 | _ (3.1) | #24+#49 identity notification queue → `backend/app/notifications` (ADR-032) | Completion | 37 → 35 |
 | _ (3.2) | #35+#36 doc-intel search → `capabilities/search_service` (ADR-033) | Completion | 35 → 33 |
+| 537ee5d8 (3.3) | #46+#47 document PDF → canonical `shared/pdf` via `capabilities/document_management/pdf_generator.py` (ADR-033) | Completion | 33 → 31 |
+| _ (3.4) | Wave 3 certification docs | Docs | 31 |
 
 ---
 

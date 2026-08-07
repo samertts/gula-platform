@@ -20,6 +20,7 @@
 | Observability | `shared/metrics`, `shared/tracing`, `shared/logging` | telemetry, OTel | 0 |
 | Declarative metadata (national+EHR) | `shared/models/base.py` (`SharedBase`) | `app/national/base.py` (re-export `NationalBase`), `app/ehr/base.py` (`EHRBase`) | 0 — single metadata; breaks the former `app.ehr ↔ app.national` import cycle |
 | Rule-engine domain | `shared/rules_engine/domain` | `app/kernel/rules_runtime.py` (direct), `app/national/rules_engine/domain` (re-export) | 0 — breaks the former `app.kernel ↔ app.national` import cycle |
+| PDF / document | `shared/pdf/generator.py` (reportlab: `generate_result_pdf`, `generate_pdf`) | `citizen_platform/laboratory.py` (direct), `capabilities/document_management/pdf_generator.py` `SharedPdfGenerator` (thin adapter over the canonical generator, wired into the national document platform `POST /national/documents/{id}/generate-pdf`, Commit 3.3/ADR-033) | 0 active — the national `generate_pdf` delegator/handler signals were vacated; domain `PDFGenerator` ABC retained (#14) |
 | Search | `backend/app/capabilities/search_service` | `DefaultSearchIndexer`, `DefaultSearchService`, `InfrastructureSemanticSearchService` (promoted from doc-intel, Commit 3.2/ADR-033), wired `/search-service` router; doc-intel `application/wiring.py` (re-pointed) | 1 canonical + 2 retained domain-owned ABCs/FHIR engine (#34/#37) — documented |
 
 ## Duplication findings
@@ -42,6 +43,13 @@
    ABCs in `document_intelligence/application/interfaces.py` (#34) and the national FHIR search
    engine (#37) are classified **Retain as Domain-Owned** — interface contracts and national-layer
    logic respectively, not duplicates.
+4. Document PDF generation lives in the canonical `shared/pdf/generator.py`. The national
+   document platform endpoint `POST /national/documents/{id}/generate-pdf` is wired to it via the
+   canonical adapter `capabilities/document_management/pdf_generator.py` (`SharedPdfGenerator`,
+   Commit 3.3/ADR-033) — the `generate_pdf` signals in the national routes/service were vacated
+   (renamed `export_document_pdf`/`export_pdf`), so the platform has exactly one PDF concretion.
+   The domain `PDFGenerator` ABC (`national/document_platform/application/interfaces.py`, #14) is
+   retained as a domain-owned contract.
 
 ## Verdict
 

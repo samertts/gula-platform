@@ -4,7 +4,7 @@
 **Date:** 2026-08-07
 **Baseline:** `.ai/core/architecture/constitution_baseline.json` — 51 findings (+ 2 country findings)
 **Decision model:** 5-class classification, established by Commit 1.3 (ADR-029 Canonical Provider Promotion)
-**Progress:** 51 → **33** acknowledged findings (Wave 1 certified PASS WITH OBSERVATIONS; Wave 2 order 12 #43 promoted, Commit 2.1; Wave 3 order 13 #24+#49 notifications queue promoted, Commit 3.1; Wave 3 order 14 #35+#36 search promoted, Commit 3.2)
+**Progress:** 51 → **31** acknowledged findings (Wave 1 certified PASS WITH OBSERVATIONS; Wave 2 order 12 #43 promoted, Commit 2.1; Wave 3 order 13 #24+#49 notifications queue promoted, Commit 3.1; Wave 3 order 14 #35+#36 search promoted, Commit 3.2; Wave 3 order 15 #46+#47 document PDF wired, Commit 3.3 — **Wave 3 CERTIFIED**)
 
 ---
 
@@ -75,8 +75,8 @@ kernel boot with no behavior gain. ADR to document kernel-domain retention.
 | 15 | `national/document_platform/domain/repository.py` — `DocumentRepository(ABC)` | `capabilities/document_management` (stub) | Interface only | **Retain as Domain-Owned** | L | S | L | No | — |
 | 16 | `national/document_platform/infrastructure/repository.py` — `SQLAlchemyDocumentRepository` (real) | same (stub) | Canonical is a stub; live repo is real | **Retain as Domain-Owned** | M | M | M | Yes | — |
 | 45 | `document_intelligence/application/interfaces.py` — `generate_pdf` (abstract) | `shared/pdf/generator.py` (real) | Abstract only, zero concrete impls | **Retain as Domain-Owned** | L | S | L | No | — |
-| 46 | `national/document_platform/api/routes.py` — `generate_pdf` (live endpoint → 422) | `shared/pdf/generator.py` (real) | Canonical complete; endpoint needs wiring | **Canonical Provider Completion** | M | S | L | Yes | 15 |
-| 47 | `national/document_platform/application/service.py` — `generate_pdf` (delegator to None) | `shared/pdf/generator.py` (real) | Same as #46 | **Canonical Provider Completion** | M | S | L | Yes | 15 |
+| 46 | `national/document_platform/api/routes.py` — `generate_pdf` (live endpoint → 422) | `shared/pdf/generator.py` (real) | Canonical complete; endpoint needs wiring | **Canonical Provider Completion** | M | S | L | Yes | 15 | ✅ **DONE — Commit 3.3** (ADR-033): handler renamed `export_document_pdf` with `operation_id`/`summary` pinned; `_get_service` now injects `SharedPdfGenerator()` (canonical adapter), so the live endpoint returns a real PDF (was 422); 13 new regression tests; OpenAPI byte-identical; baseline 33 → 31 |
+| 47 | `national/document_platform/application/service.py` — `generate_pdf` (delegator to None) | `shared/pdf/generator.py` (real) | Same as #46 | **Canonical Provider Completion** | M | S | L | Yes | 15 | ✅ **DONE — Commit 3.3** (ADR-033): delegator renamed `export_pdf` (body unchanged, None-guard preserved); concretion now the single canonical adapter `capabilities/document_management/pdf_generator.py` (`SharedPdfGenerator`, thin wrapper over `shared/pdf/generator.py` via `asyncio.to_thread`) |
 
 Note on #13/#16: canonical `capabilities/document_management` and
 `capabilities/search_service` **routers ARE registered** in factory.py
@@ -177,7 +177,7 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 |---|---|---|
 | **Archive and Re-point** | **16** | 1, 2, 3, 5, 6, 7, 9, 17, 20, 22, 25, 27, 28, 39, 42, 44 |
 | **Canonical Provider Promotion** | **1** | 43 |
-| **Canonical Provider Completion** | **3** | 46, 47, 50 |
+| **Canonical Provider Completion** | **1** | 50 |
 | **Retain as Domain-Owned** | **24** | 4, 8, 10, 11, 12, 13, 14, 15, 16, 19, 21, 23, 26, 29, 30, 31, 32, 33, 34, 37, 40, 41, 45, 48 |
 | **Strategic Exception** | **1** | 18 |
 | **False Positive** (evidence-based removal) | **2** | 38, 51 |
@@ -288,8 +288,8 @@ broken national route surface.
 | Order | Finding | Class | Risk | ADR |
 |---|---|---|---|---|
 | 13 | #24+#49 identity notification queue → canonical | Completion | M | ADR-032 | ✅ **DONE — Commit 3.1** (37 → 35) |
-| 14 | #35+#36 doc-intel search → capabilities/search_service | Completion | M | ADR-033 |
-| 15 | #46+#47 national document PDF → shared/pdf | Completion | M | ADR-033 |
+| 14 | #35+#36 doc-intel search → capabilities/search_service | Completion | M | ADR-033 | ✅ **DONE — Commit 3.2** (35 → 33) |
+| 15 | #46+#47 national document PDF → shared/pdf | Completion | M | ADR-033 | ✅ **DONE — Commit 3.3** (33 → 31) |
 
 ### Wave 4 — High-risk infrastructure (Commits 1.14–1.16)
 *Live paths, behavior-additive or broken-but-wired. Every commit needs explicit approval.*
@@ -507,11 +507,12 @@ now types + engine), consumers re-pointed atomically, 14 new regression
 tests; baseline 38 → 37. Full evidence:
 `docs/baselines/COMMIT_2_1_VERIFICATION_REPORT.md`.
 
-Next: Wave 3 in progress — order 13 (#24+#49) notifications queue promoted
-(Commit 3.1, ADR-032, baseline 37 → 35); order 14 (#35/#36 doc-intel
-search) promoted (Commit 3.2, ADR-033, baseline 35 → 33). Remaining Wave 3
-order 15 (#46/#47 national document PDF; ADR-033), then
-Wave 3 Certification, then **STOP and await explicit Program Director
-approval** before starting Wave 4 (orders 16–19: #5/#9 behavior-additive
+Next: **Wave 3 COMPLETE & CERTIFIED** — order 13 (#24+#49) notifications queue
+promoted (Commit 3.1, ADR-032, baseline 37 → 35); order 14 (#35/#36 doc-intel
+search) promoted (Commit 3.2, ADR-033, baseline 35 → 33); order 15 (#46/#47
+national document PDF) wired to canonical shared/pdf (Commit 3.3, ADR-033,
+baseline 33 → 31). Full evidence: `docs/baselines/WAVE_3_CERTIFICATION.md` +
+`COMMIT_3_{1,2,3}_VERIFICATION_REPORT.md`. **STOP — await explicit Program
+Director approval** before starting Wave 4 (orders 16–19: #5/#9 behavior-additive
 audit re-points ADR-031, #50 national notification adapters ADR-032,
 #44 workflow_runtime ADR-036).

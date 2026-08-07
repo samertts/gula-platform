@@ -77,7 +77,7 @@ The following Shared Core capabilities already contain legacy reimplementation
 candidates. They are tracked for migration and are **blocked from growing**:
 new files matching a rule fail the gate, even while legacy files remain.
 
-- **acknowledged findings:** 33 across 13 rule(s)
+- **acknowledged findings:** 31 across 13 rule(s)
   (`audit, authorization, barcode_engine, dependency_injection, document_engine, encryption, events, identity, notifications, qr_engine, scheduler, search_engine, workflow_engine`)
 
 See `MASTER_REMAINING_WORK.md` for the migration plan for each item.
