@@ -9,7 +9,7 @@
 | RBAC / roles / permissions | `shared/rbac/permissions.py` | `backend/app/security/rbac.py` (re-export), routes via `require_permission`, frontend `permissions/index.ts` | 0 (national enum RBAC = separate deliberate national layer) |
 | Identity / auth contracts | `shared/auth`, `shared/identity` | NIAM + LIMS identity services | 0 |
 | Audit | `shared/audit` | `services/audit_service.py`, `platform/audit.py` | 0 active duplicates |
-| Notifications | `shared/notifications` | `notifications/service.py` (legacy), NIAM `identity/notifications`, national notification platform | 3 intentional layers (legacy/NIAM/national) — documented |
+| Notifications | `shared/notifications`, `backend/app/notifications` | `notifications/service.py` (delivery), `notifications/services.py` `NotificationQueueService` (queue — promoted from NIAM, Commit 3.1/ADR-032), national notification platform | 2 intentional layers (delivery+queue in canonical `backend/app/notifications` / national platform) — documented |
 | Barcode / QR | `shared/barcode`, `shared/qr` | `services/pdf_report.py`, patient-card, public result | 0 active |
 | Cache | `shared/cache` | `security/redis_client.py` `_LazyCache`, `services/stats_service.py` | 0 |
 | Events / bus | `shared/events` | outbox service, worker, factory | 0 |
@@ -28,8 +28,12 @@
    duplication** — it is the national-government authorization model (different scope: national
    officers vs LIMS staff), isolated in the national bounded context. Tracked for future
    unification via contract mapping.
-2. Notification delivery exists in 3 layers (legacy `/notify`, NIAM, national platform) —
-   documented evolutionary layers; each has distinct scope and delivery channels.
+2. Notification delivery lives in the canonical `backend/app/notifications` package
+   (sync delivery in `service.py` + DB-backed queue/templates/preferences in
+   `services.py`/`models.py`/`routes.py`, promoted from `identity/notifications` by
+   Commit 3.1/ADR-032) plus the national notification platform (`national/notification_platform`).
+   The former 3-layer legacy/NIAM/national split is now 2: canonical vs national — documented
+   evolutionary layers; the national platform is a Wave 4 finding (#50).
 
 ## Verdict
 

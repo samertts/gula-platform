@@ -94,6 +94,9 @@ Links to related ADRs, Constitution sections, or code.
 | [ADR-027](ADR-027-architecture-policy-engine.md) | Architecture Policy Engine | Accepted | 2026-08-06 |
 | [ADR-028](ADR-028-structural-migration.md) | Structural Migration Rules | Accepted | 2026-08-07 |
 | [ADR-029](ADR-029-canonical-provider-promotion.md) | Canonical Provider Promotion | Accepted | 2026-08-07 |
+| [ADR-032](ADR-032-notifications-queue-completion.md) | Notifications Queue Completion (identity queue → `backend/app/notifications`) | Accepted | 2026-08-07 |
+| [ADR-033](ADR-033-search-pdf-completion.md) | Search & PDF Completion (doc-intel search → `capabilities/search_service`; national document PDF → `shared/pdf`) | Accepted | 2026-08-07 |
+| [ADR-035](ADR-035-rule-engine-promotion.md) | Rule Engine Promotion (ExpressionEngine → `shared/rules_engine`) | Accepted | 2026-08-07 |
 
 ## Constitution Reference
 

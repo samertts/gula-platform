@@ -67,16 +67,6 @@
       "signal": "\\bFernet\\s*\\("
     },
     {
-      "rule_id": "notifications",
-      "path": "backend/app/identity/notifications/routes.py",
-      "signal": "def\\s+send_notification\\s*\\("
-    },
-    {
-      "rule_id": "notifications",
-      "path": "backend/app/identity/notifications/services.py",
-      "signal": "class\\s+\\w*(?:NotificationService|NotificationCenter|Notifier|NotificationSender)\\b"
-    },
-    {
       "rule_id": "scheduler",
       "path": "backend/app/kernel/background/cron.py",
       "signal": "class\\s+\\w*(?:Scheduler|JobManager|CronEngine)\\b"

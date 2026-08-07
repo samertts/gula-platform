@@ -6,7 +6,7 @@
       "endpoints": [
         {
           "method": "GET",
-          "path": "/ai/fabric/health",
+          "path": "/health",
           "function": "fabric_health",
           "module": "ai_fabric",
           "params": [],
@@ -19,7 +19,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/chat",
+          "path": "/chat",
           "function": "fabric_chat",
           "module": "ai_fabric",
           "params": [],
@@ -32,7 +32,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/embed",
+          "path": "/embed",
           "function": "fabric_embed",
           "module": "ai_fabric",
           "params": [],
@@ -45,7 +45,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/gateway/providers",
+          "path": "/gateway/providers",
           "function": "list_providers",
           "module": "ai_fabric",
           "params": [],
@@ -58,7 +58,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/gateway/cost",
+          "path": "/gateway/cost",
           "function": "gateway_cost",
           "module": "ai_fabric",
           "params": [],
@@ -71,7 +71,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/local-ai/status",
+          "path": "/local-ai/status",
           "function": "local_ai_status",
           "module": "ai_fabric",
           "params": [],
@@ -84,7 +84,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/rag/query",
+          "path": "/rag/query",
           "function": "rag_query",
           "module": "ai_fabric",
           "params": [],
@@ -97,7 +97,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/rag/index",
+          "path": "/rag/index",
           "function": "rag_index",
           "module": "ai_fabric",
           "params": [],
@@ -110,7 +110,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/knowledge-graph/entity",
+          "path": "/knowledge-graph/entity",
           "function": "kg_entity",
           "module": "ai_fabric",
           "params": [],
@@ -123,7 +123,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/knowledge-graph/related",
+          "path": "/knowledge-graph/related",
           "function": "kg_related",
           "module": "ai_fabric",
           "params": [],
@@ -136,7 +136,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/knowledge-graph/search",
+          "path": "/knowledge-graph/search",
           "function": "kg_search",
           "module": "ai_fabric",
           "params": [],
@@ -149,7 +149,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/knowledge-graph/statistics",
+          "path": "/knowledge-graph/statistics",
           "function": "kg_statistics",
           "module": "ai_fabric",
           "params": [],
@@ -162,7 +162,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/knowledge-graph/traverse",
+          "path": "/knowledge-graph/traverse",
           "function": "kg_traverse",
           "module": "ai_fabric",
           "params": [],
@@ -175,7 +175,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/clinical/analyze",
+          "path": "/clinical/analyze",
           "function": "clinical_analyze",
           "module": "ai_fabric",
           "params": [],
@@ -188,7 +188,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/clinical/summarize",
+          "path": "/clinical/summarize",
           "function": "clinical_summarize",
           "module": "ai_fabric",
           "params": [],
@@ -201,7 +201,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/clinical/drug-interaction",
+          "path": "/clinical/drug-interaction",
           "function": "drug_interaction",
           "module": "ai_fabric",
           "params": [],
@@ -214,7 +214,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/lab/delta-check",
+          "path": "/lab/delta-check",
           "function": "lab_delta_check",
           "module": "ai_fabric",
           "params": [],
@@ -227,7 +227,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/lab/critical-detector",
+          "path": "/lab/critical-detector",
           "function": "lab_critical_detector",
           "module": "ai_fabric",
           "params": [],
@@ -240,7 +240,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/lab/qc-analyze",
+          "path": "/lab/qc-analyze",
           "function": "lab_qc_analyze",
           "module": "ai_fabric",
           "params": [],
@@ -253,7 +253,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/lab/workload-predict",
+          "path": "/lab/workload-predict",
           "function": "lab_workload_predict",
           "module": "ai_fabric",
           "params": [],
@@ -266,7 +266,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/public-health/surveillance",
+          "path": "/public-health/surveillance",
           "function": "ph_surveillance",
           "module": "ai_fabric",
           "params": [],
@@ -279,7 +279,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/public-health/alerts",
+          "path": "/public-health/alerts",
           "function": "ph_alerts",
           "module": "ai_fabric",
           "params": [],
@@ -292,7 +292,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/public-health/outbreak-detect",
+          "path": "/public-health/outbreak-detect",
           "function": "ph_outbreak_detect",
           "module": "ai_fabric",
           "params": [],
@@ -305,7 +305,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/governance/prompt/register",
+          "path": "/governance/prompt/register",
           "function": "gov_prompt_register",
           "module": "ai_fabric",
           "params": [],
@@ -318,7 +318,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/governance/prompt/{name}",
+          "path": "/governance/prompt/{name}",
           "function": "gov_prompt_get",
           "module": "ai_fabric",
           "params": [],
@@ -331,7 +331,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/governance/promote",
+          "path": "/governance/promote",
           "function": "gov_prompt_promote",
           "module": "ai_fabric",
           "params": [],
@@ -344,7 +344,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/governance/model/submit",
+          "path": "/governance/model/submit",
           "function": "gov_model_submit",
           "module": "ai_fabric",
           "params": [],
@@ -357,7 +357,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/governance/model/approve",
+          "path": "/governance/model/approve",
           "function": "gov_model_approve",
           "module": "ai_fabric",
           "params": [],
@@ -370,7 +370,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/governance/evaluate",
+          "path": "/governance/evaluate",
           "function": "gov_evaluate",
           "module": "ai_fabric",
           "params": [],
@@ -383,7 +383,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/governance/constitution",
+          "path": "/governance/constitution",
           "function": "gov_constitution",
           "module": "ai_fabric",
           "params": [],
@@ -396,7 +396,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/observability/statistics",
+          "path": "/observability/statistics",
           "function": "obs_statistics",
           "module": "ai_fabric",
           "params": [],
@@ -409,7 +409,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/observability/errors",
+          "path": "/observability/errors",
           "function": "obs_errors",
           "module": "ai_fabric",
           "params": [],
@@ -422,7 +422,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/observability/daily-usage",
+          "path": "/observability/daily-usage",
           "function": "obs_daily_usage",
           "module": "ai_fabric",
           "params": [],
@@ -435,7 +435,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/observability/model/{model}",
+          "path": "/observability/model/{model}",
           "function": "obs_model_performance",
           "module": "ai_fabric",
           "params": [],
@@ -448,7 +448,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/security/inspect-input",
+          "path": "/security/inspect-input",
           "function": "sec_inspect_input",
           "module": "ai_fabric",
           "params": [],
@@ -461,7 +461,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/security/inspect-output",
+          "path": "/security/inspect-output",
           "function": "sec_inspect_output",
           "module": "ai_fabric",
           "params": [],
@@ -474,7 +474,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/security/redact",
+          "path": "/security/redact",
           "function": "sec_redact",
           "module": "ai_fabric",
           "params": [],
@@ -487,7 +487,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/agents",
+          "path": "/agents",
           "function": "list_agents",
           "module": "ai_fabric",
           "params": [],
@@ -500,7 +500,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/agents/statistics",
+          "path": "/agents/statistics",
           "function": "agent_statistics",
           "module": "ai_fabric",
           "params": [],
@@ -513,7 +513,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/agents/run",
+          "path": "/agents/run",
           "function": "run_agent",
           "module": "ai_fabric",
           "params": [],
@@ -526,7 +526,7 @@
         },
         {
           "method": "POST",
-          "path": "/ai/fabric/agents/initialize-all",
+          "path": "/agents/initialize-all",
           "function": "initialize_agents",
           "module": "ai_fabric",
           "params": [],
@@ -539,7 +539,7 @@
         },
         {
           "method": "GET",
-          "path": "/ai/fabric/gateway/providers/available",
+          "path": "/gateway/providers/available",
           "function": "available_providers",
           "module": "ai_fabric",
           "params": [],
@@ -1813,7 +1813,7 @@
       "endpoints": [
         {
           "method": "POST",
-          "path": "/certification/evaluate/{module_path:path}",
+          "path": "/evaluate/{module_path:path}",
           "function": "evaluate_module",
           "module": "certification",
           "params": [],
@@ -1826,7 +1826,7 @@
         },
         {
           "method": "GET",
-          "path": "/certification/level/{module_path:path}",
+          "path": "/level/{module_path:path}",
           "function": "get_certification_level",
           "module": "certification",
           "params": [],
@@ -1839,7 +1839,7 @@
         },
         {
           "method": "GET",
-          "path": "/certification/report/{module_path:path}",
+          "path": "/report/{module_path:path}",
           "function": "get_report",
           "module": "certification",
           "params": [],
@@ -1852,7 +1852,7 @@
         },
         {
           "method": "GET",
-          "path": "/certification/metrics",
+          "path": "/metrics",
           "function": "get_all_metrics",
           "module": "certification",
           "params": [],
@@ -1865,7 +1865,7 @@
         },
         {
           "method": "GET",
-          "path": "/certification/metrics/{category}",
+          "path": "/metrics/{category}",
           "function": "get_metrics_by_category",
           "module": "certification",
           "params": [],
@@ -1878,7 +1878,7 @@
         },
         {
           "method": "POST",
-          "path": "/certification/release/check",
+          "path": "/release/check",
           "function": "check_release_gates",
           "module": "certification",
           "params": [],
@@ -1891,7 +1891,7 @@
         },
         {
           "method": "POST",
-          "path": "/certification/release/validate",
+          "path": "/release/validate",
           "function": "validate_release",
           "module": "certification",
           "params": [],
@@ -1904,7 +1904,7 @@
         },
         {
           "method": "GET",
-          "path": "/certification/dimensions",
+          "path": "/dimensions",
           "function": "list_dimensions",
           "module": "certification",
           "params": [],
@@ -1917,7 +1917,7 @@
         },
         {
           "method": "GET",
-          "path": "/certification/dimensions/{dimension}/checks",
+          "path": "/dimensions/{dimension}/checks",
           "function": "get_dimension_checks",
           "module": "certification",
           "params": [],
@@ -2992,6 +2992,210 @@
       "services": [],
       "models": []
     },
+    "domain_platform": {
+      "name": "domain_platform",
+      "path": "domain_platform",
+      "endpoints": [
+        {
+          "method": "GET",
+          "path": "/niam/domains/canonical",
+          "function": "canonical_domains",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/niam/domains/register/{code}",
+          "function": "register_domain",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/niam/domains/{code}",
+          "function": "get_domain",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/niam/domains/{code}/activate",
+          "function": "activate_domain",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/niam/domains/{code}/suspend",
+          "function": "suspend_domain",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/niam/domains/{code}/upgrade",
+          "function": "upgrade_domain",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/niam/domains/{code}/rollback",
+          "function": "rollback_domain",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/niam/domains/{code}/versions",
+          "function": "domain_versions",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/niam/domains/{code}/binding",
+          "function": "domain_binding",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/niam/domains/contracts",
+          "function": "register_contract",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/niam/domains/{code}/contracts",
+          "function": "domain_contracts",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/niam/domains/{code}/health",
+          "function": "domain_health",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/niam/domains/{code}/metrics",
+          "function": "domain_metrics",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/niam/domains/{code}/certify",
+          "function": "certify_domain",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/niam/domains/{code}/history",
+          "function": "domain_history",
+          "module": "domain_platform",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "Domain Platform"
+          ]
+        }
+      ],
+      "sub_modules": [],
+      "services": [],
+      "models": []
+    },
     "ems.api": {
       "name": "ems.api",
       "path": "ems/api",
@@ -3332,7 +3536,7 @@
       "endpoints": [
         {
           "method": "GET",
-          "path": "/health-data/catalog",
+          "path": "/catalog",
           "function": "list_catalog",
           "module": "health_data",
           "params": [],
@@ -3345,7 +3549,7 @@
         },
         {
           "method": "GET",
-          "path": "/health-data/catalog/{dataset}",
+          "path": "/catalog/{dataset}",
           "function": "get_dataset_metadata",
           "module": "health_data",
           "params": [],
@@ -3358,7 +3562,7 @@
         },
         {
           "method": "GET",
-          "path": "/health-data/lineage/{entity_type}/{entity_id}",
+          "path": "/lineage/{entity_type}/{entity_id}",
           "function": "get_lineage",
           "module": "health_data",
           "params": [],
@@ -3371,7 +3575,7 @@
         },
         {
           "method": "GET",
-          "path": "/health-data/governance/policies",
+          "path": "/governance/policies",
           "function": "list_policies",
           "module": "health_data",
           "params": [],
@@ -3384,7 +3588,7 @@
         },
         {
           "method": "POST",
-          "path": "/health-data/governance/policies",
+          "path": "/governance/policies",
           "function": "create_policy",
           "module": "health_data",
           "params": [],
@@ -3397,7 +3601,7 @@
         },
         {
           "method": "GET",
-          "path": "/health-data/quality/metrics",
+          "path": "/quality/metrics",
           "function": "get_quality_metrics",
           "module": "health_data",
           "params": [],
@@ -3410,7 +3614,7 @@
         },
         {
           "method": "POST",
-          "path": "/health-data/ingest",
+          "path": "/ingest",
           "function": "trigger_ingestion",
           "module": "health_data",
           "params": [],
@@ -3423,7 +3627,7 @@
         },
         {
           "method": "GET",
-          "path": "/health-data/event-store/events",
+          "path": "/event-store/events",
           "function": "query_event_store",
           "module": "health_data",
           "params": [],
@@ -3436,7 +3640,7 @@
         },
         {
           "method": "GET",
-          "path": "/health-data/warehouse/query",
+          "path": "/warehouse/query",
           "function": "run_warehouse_query",
           "module": "health_data",
           "params": [],
@@ -3449,7 +3653,7 @@
         },
         {
           "method": "POST",
-          "path": "/health-data/canonical/map-patient",
+          "path": "/canonical/map-patient",
           "function": "map_fhir_patient",
           "module": "health_data",
           "params": [],
@@ -3462,7 +3666,7 @@
         },
         {
           "method": "GET",
-          "path": "/health-data/event-store/summary",
+          "path": "/event-store/summary",
           "function": "event_store_summary",
           "module": "health_data",
           "params": [],
@@ -3484,7 +3688,7 @@
       "endpoints": [
         {
           "method": "POST",
-          "path": "/niam/adaptive-auth/evaluate",
+          "path": "/adaptive-auth/evaluate",
           "function": "evaluate_risk",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3497,7 +3701,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/adaptive-auth/risk-history/{account_id}",
+          "path": "/adaptive-auth/risk-history/{account_id}",
           "function": "get_risk_history",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3510,7 +3714,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/adaptive-auth/mfa/challenge",
+          "path": "/adaptive-auth/mfa/challenge",
           "function": "create_mfa_challenge",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3523,7 +3727,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/adaptive-auth/mfa/verify",
+          "path": "/adaptive-auth/mfa/verify",
           "function": "verify_mfa_challenge",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3536,7 +3740,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/adaptive-auth/policies",
+          "path": "/adaptive-auth/policies",
           "function": "list_risk_policies",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3549,7 +3753,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/adaptive-auth/policies",
+          "path": "/adaptive-auth/policies",
           "function": "create_risk_policy",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3562,7 +3766,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/adaptive-auth/policies/{policy_id}",
+          "path": "/adaptive-auth/policies/{policy_id}",
           "function": "update_risk_policy",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3575,7 +3779,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/adaptive-auth/session-policies",
+          "path": "/adaptive-auth/session-policies",
           "function": "list_session_policies",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3588,7 +3792,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/adaptive-auth/session-policies",
+          "path": "/adaptive-auth/session-policies",
           "function": "create_session_policy",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3601,7 +3805,7 @@
         },
         {
           "method": "PUT",
-          "path": "/niam/adaptive-auth/session-policies/{policy_id}",
+          "path": "/adaptive-auth/session-policies/{policy_id}",
           "function": "update_session_policy",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3614,7 +3818,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/adaptive-auth/travel-events/{account_id}",
+          "path": "/adaptive-auth/travel-events/{account_id}",
           "function": "list_travel_events",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3627,7 +3831,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/adaptive-auth/active-sessions/{account_id}",
+          "path": "/adaptive-auth/active-sessions/{account_id}",
           "function": "get_active_session_count",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3640,7 +3844,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/adaptive-auth/detect-new-device",
+          "path": "/adaptive-auth/detect-new-device",
           "function": "detect_new_device",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3653,7 +3857,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/adaptive-auth/enforce-session-policy",
+          "path": "/adaptive-auth/enforce-session-policy",
           "function": "enforce_session_policy",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3666,7 +3870,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/adaptive-auth/check-session-expiry",
+          "path": "/adaptive-auth/check-session-expiry",
           "function": "check_session_expiry",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -3679,7 +3883,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/adaptive-auth/session-valid/{session_id}",
+          "path": "/adaptive-auth/session-valid/{session_id}",
           "function": "is_session_valid",
           "module": "identity.adaptive_auth",
           "params": [],
@@ -4038,6 +4242,67 @@
       "services": [],
       "models": []
     },
+    "identity.citizen_registry": {
+      "name": "identity.citizen_registry",
+      "path": "identity/citizen_registry",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/citizens/providers",
+          "function": "register_provider",
+          "module": "identity.citizen_registry",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Citizen Registry"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/citizens/providers",
+          "function": "list_providers",
+          "module": "identity.citizen_registry",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Citizen Registry"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/citizens/providers/default",
+          "function": "get_default_provider",
+          "module": "identity.citizen_registry",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Citizen Registry"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/citizens/verify-identifier",
+          "function": "verify_identifier",
+          "module": "identity.citizen_registry",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Citizen Registry"
+          ]
+        }
+      ],
+      "sub_modules": [],
+      "services": [],
+      "models": []
+    },
     "identity.compliance": {
       "name": "identity.compliance",
       "path": "identity/compliance",
@@ -4374,340 +4639,6 @@
           "description": "",
           "tags": [
             "NIAM Federation"
-          ]
-        }
-      ],
-      "sub_modules": [],
-      "services": [],
-      "models": []
-    },
-    "identity.governance": {
-      "name": "identity.governance",
-      "path": "identity/governance",
-      "endpoints": [
-        {
-          "method": "POST",
-          "path": "/niam/governance/authorities",
-          "function": "create_authority",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "GET",
-          "path": "/niam/governance/authorities",
-          "function": "list_authorities",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "GET",
-          "path": "/niam/governance/authorities/{authority_id}",
-          "function": "get_authority",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/authorities/{authority_id}/suspend",
-          "function": "suspend_authority",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/authorities/{authority_id}/activate",
-          "function": "activate_authority",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/councils",
-          "function": "create_council",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "GET",
-          "path": "/niam/governance/councils",
-          "function": "list_councils",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "GET",
-          "path": "/niam/governance/councils/{council_id}",
-          "function": "get_council",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/review-boards",
-          "function": "create_review_board",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/policy-approvals",
-          "function": "submit_policy_approval",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "GET",
-          "path": "/niam/governance/policy-approvals/pending/{reviewer_id}",
-          "function": "get_pending_policy_approvals",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/policy-approvals/{workflow_id}/approve",
-          "function": "approve_policy",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/policy-approvals/{workflow_id}/reject",
-          "function": "reject_policy",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/appeals",
-          "function": "submit_appeal",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "GET",
-          "path": "/niam/governance/appeals",
-          "function": "list_appeals",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/appeals/{appeal_id}/assign",
-          "function": "assign_appeal_to_council",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/appeals/{appeal_id}/decide",
-          "function": "decide_appeal",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/suspensions",
-          "function": "suspend_identity",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/suspensions/{suspension_id}/lift",
-          "function": "lift_suspension",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "GET",
-          "path": "/niam/governance/suspensions/active",
-          "function": "list_active_suspensions",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "GET",
-          "path": "/niam/governance/suspensions/history/{person_id}",
-          "function": "get_suspension_history",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/registry",
-          "function": "register_identity",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "GET",
-          "path": "/niam/governance/registry/{person_id}",
-          "function": "get_registration",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/registry/certify",
-          "function": "certify_identity",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/niam/governance/registry/certification/{certification_id}/revoke",
-          "function": "revoke_certification",
-          "module": "identity.governance",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Governance"
           ]
         }
       ],
@@ -5270,151 +5201,99 @@
       "services": [],
       "models": []
     },
-    "identity.notifications": {
-      "name": "identity.notifications",
-      "path": "identity/notifications",
+    "identity.professional_registry": {
+      "name": "identity.professional_registry",
+      "path": "identity/professional_registry",
       "endpoints": [
         {
           "method": "POST",
-          "path": "/notifications/send",
-          "function": "send_notification",
-          "module": "identity.notifications",
+          "path": "/professional-registry/",
+          "function": "register_professional",
+          "module": "identity.professional_registry",
           "params": [],
           "body_schema": null,
           "response_schema": null,
           "description": "",
           "tags": [
-            "NIAM Notifications"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/notifications/templates",
-          "function": "create_template",
-          "module": "identity.notifications",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Notifications"
+            "NIAM Professional Registry"
           ]
         },
         {
           "method": "GET",
-          "path": "/notifications/templates",
-          "function": "list_templates",
-          "module": "identity.notifications",
+          "path": "/professional-registry/{registry_id}",
+          "function": "get_entry",
+          "module": "identity.professional_registry",
           "params": [],
           "body_schema": null,
           "response_schema": null,
           "description": "",
           "tags": [
-            "NIAM Notifications"
+            "NIAM Professional Registry"
           ]
         },
         {
           "method": "GET",
-          "path": "/notifications/queue/{recipient_id}",
-          "function": "get_queue",
-          "module": "identity.notifications",
+          "path": "/professional-registry/person/{person_id}",
+          "function": "list_person_entries",
+          "module": "identity.professional_registry",
           "params": [],
           "body_schema": null,
           "response_schema": null,
           "description": "",
           "tags": [
-            "NIAM Notifications"
+            "NIAM Professional Registry"
           ]
         },
         {
           "method": "POST",
-          "path": "/notifications/queue/{queue_id}/read",
-          "function": "mark_read",
-          "module": "identity.notifications",
+          "path": "/professional-registry/{registry_id}/verify",
+          "function": "verify_entry",
+          "module": "identity.professional_registry",
           "params": [],
           "body_schema": null,
           "response_schema": null,
           "description": "",
           "tags": [
-            "NIAM Notifications"
+            "NIAM Professional Registry"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/professional-registry/{registry_id}/suspend",
+          "function": "suspend_entry",
+          "module": "identity.professional_registry",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Professional Registry"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/professional-registry/{registry_id}/revoke",
+          "function": "revoke_entry",
+          "module": "identity.professional_registry",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Professional Registry"
           ]
         },
         {
           "method": "GET",
-          "path": "/notifications/preferences/{recipient_id}",
-          "function": "get_preferences",
-          "module": "identity.notifications",
+          "path": "/professional-registry/{person_id}/privileges/check",
+          "function": "check_privileges",
+          "module": "identity.professional_registry",
           "params": [],
           "body_schema": null,
           "response_schema": null,
           "description": "",
           "tags": [
-            "NIAM Notifications"
-          ]
-        },
-        {
-          "method": "PUT",
-          "path": "/notifications/preferences/{recipient_id}",
-          "function": "update_preferences",
-          "module": "identity.notifications",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Notifications"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/notifications/send-template",
-          "function": "send_template_notification",
-          "module": "identity.notifications",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Notifications"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/notifications/queue/{queue_id}/sent",
-          "function": "mark_notification_sent",
-          "module": "identity.notifications",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Notifications"
-          ]
-        },
-        {
-          "method": "POST",
-          "path": "/notifications/queue/{queue_id}/delivered",
-          "function": "mark_notification_delivered",
-          "module": "identity.notifications",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Notifications"
-          ]
-        },
-        {
-          "method": "GET",
-          "path": "/notifications/pending",
-          "function": "get_pending_notifications",
-          "module": "identity.notifications",
-          "params": [],
-          "body_schema": null,
-          "response_schema": null,
-          "description": "",
-          "tags": [
-            "NIAM Notifications"
+            "NIAM Professional Registry"
           ]
         }
       ],
@@ -5428,7 +5307,7 @@
       "endpoints": [
         {
           "method": "POST",
-          "path": "/niam/trust/frameworks",
+          "path": "/trust/frameworks",
           "function": "create_framework",
           "module": "identity.trust",
           "params": [],
@@ -5441,7 +5320,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/frameworks",
+          "path": "/trust/frameworks",
           "function": "list_frameworks",
           "module": "identity.trust",
           "params": [],
@@ -5454,7 +5333,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/frameworks/{framework_id}",
+          "path": "/trust/frameworks/{framework_id}",
           "function": "get_framework",
           "module": "identity.trust",
           "params": [],
@@ -5467,7 +5346,7 @@
         },
         {
           "method": "PUT",
-          "path": "/niam/trust/frameworks/{framework_id}",
+          "path": "/trust/frameworks/{framework_id}",
           "function": "update_framework",
           "module": "identity.trust",
           "params": [],
@@ -5480,7 +5359,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/frameworks/{framework_id}/activate",
+          "path": "/trust/frameworks/{framework_id}/activate",
           "function": "activate_framework",
           "module": "identity.trust",
           "params": [],
@@ -5493,7 +5372,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/assurance-profiles",
+          "path": "/trust/assurance-profiles",
           "function": "create_assurance_profile",
           "module": "identity.trust",
           "params": [],
@@ -5506,7 +5385,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/assurance-profiles",
+          "path": "/trust/assurance-profiles",
           "function": "list_assurance_profiles",
           "module": "identity.trust",
           "params": [],
@@ -5519,7 +5398,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/assurance-profiles/{profile_uuid}",
+          "path": "/trust/assurance-profiles/{profile_uuid}",
           "function": "get_assurance_profile",
           "module": "identity.trust",
           "params": [],
@@ -5532,7 +5411,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/assurance-profiles/identity/{identity_id}",
+          "path": "/trust/assurance-profiles/identity/{identity_id}",
           "function": "get_profiles_for_identity",
           "module": "identity.trust",
           "params": [],
@@ -5545,7 +5424,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/assurance-profiles/{profile_uuid}/revoke",
+          "path": "/trust/assurance-profiles/{profile_uuid}/revoke",
           "function": "revoke_assurance_profile",
           "module": "identity.trust",
           "params": [],
@@ -5558,7 +5437,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/anchors",
+          "path": "/trust/anchors",
           "function": "create_anchor",
           "module": "identity.trust",
           "params": [],
@@ -5571,7 +5450,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/anchors",
+          "path": "/trust/anchors",
           "function": "list_anchors",
           "module": "identity.trust",
           "params": [],
@@ -5584,7 +5463,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/anchors/{anchor_id}",
+          "path": "/trust/anchors/{anchor_id}",
           "function": "get_anchor",
           "module": "identity.trust",
           "params": [],
@@ -5597,7 +5476,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/anchors/{anchor_id}/validate",
+          "path": "/trust/anchors/{anchor_id}/validate",
           "function": "validate_anchor_chain",
           "module": "identity.trust",
           "params": [],
@@ -5610,7 +5489,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/anchors/{anchor_id}/revoke",
+          "path": "/trust/anchors/{anchor_id}/revoke",
           "function": "revoke_anchor",
           "module": "identity.trust",
           "params": [],
@@ -5623,7 +5502,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/federation",
+          "path": "/trust/federation",
           "function": "create_federation_trust",
           "module": "identity.trust",
           "params": [],
@@ -5636,7 +5515,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/federation",
+          "path": "/trust/federation",
           "function": "list_federation_trusts",
           "module": "identity.trust",
           "params": [],
@@ -5649,7 +5528,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/federation/{trust_id}",
+          "path": "/trust/federation/{trust_id}",
           "function": "get_federation_trust",
           "module": "identity.trust",
           "params": [],
@@ -5662,7 +5541,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/federation/org/{org_id}",
+          "path": "/trust/federation/org/{org_id}",
           "function": "list_federation_for_org",
           "module": "identity.trust",
           "params": [],
@@ -5675,7 +5554,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/federation/{trust_id}/suspend",
+          "path": "/trust/federation/{trust_id}/suspend",
           "function": "suspend_federation_trust",
           "module": "identity.trust",
           "params": [],
@@ -5688,7 +5567,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/federation/{trust_id}/terminate",
+          "path": "/trust/federation/{trust_id}/terminate",
           "function": "terminate_federation_trust",
           "module": "identity.trust",
           "params": [],
@@ -5701,7 +5580,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/proofing",
+          "path": "/trust/proofing",
           "function": "create_proofing",
           "module": "identity.trust",
           "params": [],
@@ -5714,7 +5593,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/proofing",
+          "path": "/trust/proofing",
           "function": "list_proofing",
           "module": "identity.trust",
           "params": [],
@@ -5727,7 +5606,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/proofing/{proofing_id}",
+          "path": "/trust/proofing/{proofing_id}",
           "function": "get_proofing",
           "module": "identity.trust",
           "params": [],
@@ -5740,7 +5619,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/proofing/person/{person_id}",
+          "path": "/trust/proofing/person/{person_id}",
           "function": "list_proofing_for_person",
           "module": "identity.trust",
           "params": [],
@@ -5753,7 +5632,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/proofing/{proofing_id}/verify",
+          "path": "/trust/proofing/{proofing_id}/verify",
           "function": "verify_proofing",
           "module": "identity.trust",
           "params": [],
@@ -5766,7 +5645,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/proofing/{proofing_id}/reject",
+          "path": "/trust/proofing/{proofing_id}/reject",
           "function": "reject_proofing",
           "module": "identity.trust",
           "params": [],
@@ -5779,7 +5658,7 @@
         },
         {
           "method": "POST",
-          "path": "/niam/trust/evaluations",
+          "path": "/trust/evaluations",
           "function": "create_evaluation",
           "module": "identity.trust",
           "params": [],
@@ -5792,7 +5671,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/evaluations",
+          "path": "/trust/evaluations",
           "function": "list_evaluations",
           "module": "identity.trust",
           "params": [],
@@ -5805,7 +5684,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/evaluations/{evaluation_id}",
+          "path": "/trust/evaluations/{evaluation_id}",
           "function": "get_evaluation",
           "module": "identity.trust",
           "params": [],
@@ -5818,7 +5697,7 @@
         },
         {
           "method": "GET",
-          "path": "/niam/trust/evaluations/target/{target_type}/{target_id}",
+          "path": "/trust/evaluations/target/{target_type}/{target_id}",
           "function": "get_evaluations_for_target",
           "module": "identity.trust",
           "params": [],
@@ -5940,6 +5819,314 @@
           "description": "",
           "tags": [
             "NIAM Workflows"
+          ]
+        }
+      ],
+      "sub_modules": [],
+      "services": [],
+      "models": []
+    },
+    "identity.workspaces": {
+      "name": "identity.workspaces",
+      "path": "identity/workspaces",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/workspaces/",
+          "function": "create_workspace",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/{workspace_id}",
+          "function": "get_workspace",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/identity/{identity_id}",
+          "function": "list_identity_workspaces",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "PATCH",
+          "path": "/workspaces/{workspace_id}",
+          "function": "update_workspace",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/suspend",
+          "function": "suspend_workspace",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/select",
+          "function": "select_workspace",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/roles",
+          "function": "create_role",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/{workspace_id}/roles",
+          "function": "list_roles",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/members",
+          "function": "add_member",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/{workspace_id}/members",
+          "function": "list_members",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/members/{person_id}/remove",
+          "function": "remove_member",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/members/{person_id}/suspend",
+          "function": "suspend_member",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/members/{person_id}/role",
+          "function": "assign_role",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/invitations",
+          "function": "invite_member",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/invitations/{invitation_id}/revoke",
+          "function": "revoke_invitation",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/permission-templates",
+          "function": "create_permission_template",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/{workspace_id}/permission-templates",
+          "function": "list_permission_templates",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/departments",
+          "function": "create_department",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/{workspace_id}/departments",
+          "function": "list_departments",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/teams",
+          "function": "create_team",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/{workspace_id}/teams",
+          "function": "list_teams",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/workspaces/{workspace_id}/delegations",
+          "function": "delegate_authority",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces/{workspace_id}/permissions/check",
+          "function": "check_permission",
+          "module": "identity.workspaces",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Workspaces"
           ]
         }
       ],
@@ -6118,7 +6305,7 @@
       "endpoints": [
         {
           "method": "GET",
-          "path": "/integration/connectors/status",
+          "path": "/status",
           "function": "connectors_status",
           "module": "integration.connectors",
           "params": [],
@@ -6131,7 +6318,7 @@
         },
         {
           "method": "GET",
-          "path": "/integration/connectors/{name}",
+          "path": "/{name}",
           "function": "get_connector",
           "module": "integration.connectors",
           "params": [],
@@ -6144,7 +6331,7 @@
         },
         {
           "method": "POST",
-          "path": "/integration/connectors/{name}/connect",
+          "path": "/{name}/connect",
           "function": "connect_connector",
           "module": "integration.connectors",
           "params": [],
@@ -6157,7 +6344,7 @@
         },
         {
           "method": "POST",
-          "path": "/integration/connectors/{name}/disconnect",
+          "path": "/{name}/disconnect",
           "function": "disconnect_connector",
           "module": "integration.connectors",
           "params": [],
@@ -6170,7 +6357,7 @@
         },
         {
           "method": "GET",
-          "path": "/integration/connectors/{name}/health",
+          "path": "/{name}/health",
           "function": "connector_health",
           "module": "integration.connectors",
           "params": [],
@@ -6183,7 +6370,7 @@
         },
         {
           "method": "POST",
-          "path": "/integration/connectors/{name}/send",
+          "path": "/{name}/send",
           "function": "send_through_connector",
           "module": "integration.connectors",
           "params": [],
@@ -6196,7 +6383,7 @@
         },
         {
           "method": "POST",
-          "path": "/integration/connectors/{name}/configure",
+          "path": "/{name}/configure",
           "function": "configure_connector",
           "module": "integration.connectors",
           "params": [],
@@ -7329,7 +7516,7 @@
       "endpoints": [
         {
           "method": "POST",
-          "path": "/gateway/route",
+          "path": "/route",
           "function": "route_request",
           "module": "national.ecosystem.gateway",
           "params": [],
@@ -7342,7 +7529,7 @@
         },
         {
           "method": "GET",
-          "path": "/gateway/status",
+          "path": "/status",
           "function": "gateway_status",
           "module": "national.ecosystem.gateway",
           "params": [],
@@ -7355,7 +7542,7 @@
         },
         {
           "method": "GET",
-          "path": "/gateway/policies",
+          "path": "/policies",
           "function": "list_policies",
           "module": "national.ecosystem.gateway",
           "params": [],
@@ -7368,7 +7555,7 @@
         },
         {
           "method": "POST",
-          "path": "/gateway/policies",
+          "path": "/policies",
           "function": "create_policy",
           "module": "national.ecosystem.gateway",
           "params": [],
@@ -7381,7 +7568,7 @@
         },
         {
           "method": "PUT",
-          "path": "/gateway/policies/{policy_id}",
+          "path": "/policies/{policy_id}",
           "function": "update_policy",
           "module": "national.ecosystem.gateway",
           "params": [],
@@ -7394,7 +7581,7 @@
         },
         {
           "method": "DELETE",
-          "path": "/gateway/policies/{policy_id}",
+          "path": "/policies/{policy_id}",
           "function": "delete_policy",
           "module": "national.ecosystem.gateway",
           "params": [],
@@ -7407,7 +7594,7 @@
         },
         {
           "method": "GET",
-          "path": "/gateway/catalog",
+          "path": "/catalog",
           "function": "list_api_catalog",
           "module": "national.ecosystem.gateway",
           "params": [],
@@ -7420,7 +7607,7 @@
         },
         {
           "method": "POST",
-          "path": "/gateway/catalog",
+          "path": "/catalog",
           "function": "register_api",
           "module": "national.ecosystem.gateway",
           "params": [],
@@ -9436,6 +9623,158 @@
       "services": [],
       "models": []
     },
+    "notifications": {
+      "name": "notifications",
+      "path": "notifications",
+      "endpoints": [
+        {
+          "method": "POST",
+          "path": "/notifications/send",
+          "function": "send_notification",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/templates",
+          "function": "create_template",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/templates",
+          "function": "list_templates",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/queue/{recipient_id}",
+          "function": "get_queue",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/queue/{queue_id}/read",
+          "function": "mark_read",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/preferences/{recipient_id}",
+          "function": "get_preferences",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        },
+        {
+          "method": "PUT",
+          "path": "/notifications/preferences/{recipient_id}",
+          "function": "update_preferences",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/send-template",
+          "function": "send_template_notification",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/queue/{queue_id}/sent",
+          "function": "mark_notification_sent",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        },
+        {
+          "method": "POST",
+          "path": "/notifications/queue/{queue_id}/delivered",
+          "function": "mark_notification_delivered",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        },
+        {
+          "method": "GET",
+          "path": "/notifications/pending",
+          "function": "get_pending_notifications",
+          "module": "notifications",
+          "params": [],
+          "body_schema": null,
+          "response_schema": null,
+          "description": "",
+          "tags": [
+            "NIAM Notifications"
+          ]
+        }
+      ],
+      "sub_modules": [],
+      "services": [],
+      "models": []
+    },
     "pharmacy": {
       "name": "pharmacy",
       "path": "pharmacy",
@@ -10084,7 +10423,7 @@
       "endpoints": [
         {
           "method": "GET",
-          "path": "/platform/health",
+          "path": "/health",
           "function": "platform_health",
           "module": "platform",
           "params": [],
@@ -10097,7 +10436,7 @@
         },
         {
           "method": "GET",
-          "path": "/platform/modules",
+          "path": "/modules",
           "function": "platform_modules",
           "module": "platform",
           "params": [],
@@ -10110,7 +10449,7 @@
         },
         {
           "method": "GET",
-          "path": "/platform/capabilities",
+          "path": "/capabilities",
           "function": "platform_capabilities",
           "module": "platform",
           "params": [],
@@ -10394,11 +10733,6 @@
       "AccessControlModel",
       "DocumentRetentionModel"
     ],
-    "services/mpi/models.py": [
-      "Citizen",
-      "IdentityClaim",
-      "MergeAudit"
-    ],
     "national_data/models/canonical_document.py": [
       "CanonicalDocument"
     ],
@@ -10525,6 +10859,16 @@
     "national_data/models/warehouse/DimDate.py": [
       "DimDate"
     ],
+    "identity/workspaces/models.py": [
+      "Workspace",
+      "WorkspaceRole",
+      "WorkspaceMembership",
+      "WorkspacePermissionTemplate",
+      "WorkspaceDepartment",
+      "WorkspaceTeam",
+      "WorkspaceInvitation",
+      "WorkspaceDelegation"
+    ],
     "identity/governance/models.py": [
       "IdentityAuthority",
       "DigitalIdentityCouncil",
@@ -10575,11 +10919,6 @@
       "FamilyLink",
       "ConsentRecord"
     ],
-    "identity/notifications/models.py": [
-      "NotificationTemplate",
-      "NotificationQueue",
-      "NotificationPreference"
-    ],
     "identity/federation/models.py": [
       "FederatedProvider",
       "FederatedIdentity",
@@ -10587,6 +10926,9 @@
       "FederatedSession",
       "CrossOrganizationTrust",
       "FederationAgreement"
+    ],
+    "identity/professional_registry/models.py": [
+      "ProfessionalRegistryEntry"
     ],
     "identity/models/identity.py": [
       "IdentityRecord"
@@ -10636,11 +10978,9 @@
       "CertificateRevocationList",
       "APIKey"
     ],
-    "identity/workflows/models.py": [
-      "WorkflowDefinition",
-      "WorkflowInstance",
-      "WorkflowApproval",
-      "WorkflowNotification"
+    "identity/citizen_registry/models.py": [
+      "IdentityProvider",
+      "CitizenIdentityVerification"
     ],
     "national/scheduling_platform/infrastructure/models.py": [
       "NationalAppointment",
@@ -10712,6 +11052,14 @@
       "NationalJobSchedule",
       "NationalJobExecution",
       "NationalJobDependency"
+    ],
+    "domain_platform/models.py": [
+      "DomainRegistration",
+      "DomainInstance",
+      "DomainVersionRecord",
+      "DomainContractRecord",
+      "DomainLifecycleEventRecord",
+      "DomainWorkspaceBindingRecord"
     ],
     "governance/models/health_number.py": [
       "HealthNumberRecord",
@@ -10804,6 +11152,11 @@
       "TrustServiceLog",
       "ComplianceEvidence",
       "ComplianceCheck"
+    ],
+    "notifications/models.py": [
+      "NotificationTemplate",
+      "NotificationQueue",
+      "NotificationPreference"
     ],
     "simulation/models.py": [
       "DigitalTwin",
@@ -10931,6 +11284,11 @@
     "models/tenant.py": [
       "Tenant"
     ],
+    "models/communication_experience.py": [
+      "UserNotification",
+      "NotificationEvent",
+      "UserPreferencesRow"
+    ],
     "models/test_result.py": [
       "TestResult",
       "TestResultCreate",
@@ -11019,6 +11377,11 @@
       "EdgeModelAssignment",
       "EdgePolicy",
       "EdgeEvent"
+    ],
+    "models/mpi.py": [
+      "Citizen",
+      "IdentityClaim",
+      "MergeAudit"
     ],
     "models/lab_user.py": [
       "LabUser"
@@ -11172,9 +11535,15 @@
       "Appeal",
       "FraudAlert",
       "ProviderContract"
+    ],
+    "workflows/models.py": [
+      "WorkflowDefinition",
+      "WorkflowInstance",
+      "WorkflowApproval",
+      "WorkflowNotification"
     ]
   },
-  "total_endpoints": 763,
-  "total_route_files": 50,
-  "total_model_files": 141
+  "total_endpoints": 787,
+  "total_route_files": 53,
+  "total_model_files": 146
 }

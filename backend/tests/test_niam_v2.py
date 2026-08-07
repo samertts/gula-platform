@@ -451,7 +451,7 @@ class TestNotificationModels:
     """Verify notification engine models."""
 
     def test_notification_template_model(self):
-        from app.identity.notifications.models import NotificationTemplate
+        from app.notifications.models import NotificationTemplate
 
         nt = NotificationTemplate(
             uuid=str(uuid.uuid4()),
@@ -467,7 +467,7 @@ class TestNotificationModels:
         assert nt.notification_type == "email"
 
     def test_notification_queue_model(self):
-        from app.identity.notifications.models import NotificationQueue
+        from app.notifications.models import NotificationQueue
 
         nq = NotificationQueue(
             uuid=str(uuid.uuid4()),

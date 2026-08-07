@@ -8,11 +8,11 @@ from app.identity.compliance import routes as compliance_routes
 from app.identity.federation import routes as federation_routes
 from app.identity.governance import routes as governance_routes
 from app.identity.lifecycle import routes as lifecycle_routes
-from app.identity.notifications import routes as notifications_routes
 from app.identity.professional_registry import routes as professional_registry_routes
 from app.identity.trust import routes as trust_routes
 from app.identity.workflows import routes as workflows_routes
 from app.identity.workspaces import routes as workspaces_routes
+from app.notifications.routes import router as notifications_routes
 
 from . import accounts, auth, devices, persons, sessions
 
@@ -29,7 +29,7 @@ router.include_router(lifecycle_routes.router)
 router.include_router(federation_routes.router)
 router.include_router(certificates_routes.router)
 router.include_router(workflows_routes.router)
-router.include_router(notifications_routes.router)
+router.include_router(notifications_routes)
 router.include_router(adaptive_auth_routes.router)
 router.include_router(admin_routes.router)
 router.include_router(compliance_routes.router)

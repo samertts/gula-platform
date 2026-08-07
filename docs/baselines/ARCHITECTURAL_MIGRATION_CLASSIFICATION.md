@@ -4,7 +4,7 @@
 **Date:** 2026-08-07
 **Baseline:** `.ai/core/architecture/constitution_baseline.json` — 51 findings (+ 2 country findings)
 **Decision model:** 5-class classification, established by Commit 1.3 (ADR-029 Canonical Provider Promotion)
-**Progress:** 51 → **37** acknowledged findings (Wave 1 certified PASS WITH OBSERVATIONS; Wave 2 order 12 #43 promoted, Commit 2.1)
+**Progress:** 51 → **35** acknowledged findings (Wave 1 certified PASS WITH OBSERVATIONS; Wave 2 order 12 #43 promoted, Commit 2.1; Wave 3 order 13 #24+#49 notifications queue promoted, Commit 3.1)
 
 ---
 
@@ -110,10 +110,10 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 | # | Current implementation | Canonical provider | Behavioral equivalence | Class | Risk | Effort | Rollback | ADR | Order |
 |---|---|---|---|---|---|---|---|---|---|
 | 23 | `citizen_platform/notifications.py` — `CitizenNotificationService` (in-memory inbox) | `backend/app/notifications` (real delivery, no persistence) | Canonical delivers but has no persistence; this has neither | **Retain as Domain-Owned** (data-loss risk) | M | M | M | Yes | — |
-| 24 | `identity/notifications/services.py` — `NotificationService` (queue-only) | `backend/app/notifications` (delivery) | Complementary halves — canonical delivers, this queues | **Canonical Provider Completion** | M | M | M | Yes | 13 |
+| 24 | `identity/notifications/services.py` — `NotificationService` (queue-only) | `backend/app/notifications` (delivery) | Complementary halves — canonical delivers, this queues | **Canonical Provider Completion** | M | M | M | Yes | 13 | ✅ **DONE — Commit 3.1** (ADR-032): promoted `models/services/routes.py` → `app/notifications/`; queue class renamed `NotificationQueueService`; consumers re-pointed atomically (router, test_niam_v2); models retain `IdentityBaseEntity`; API/OpenAPI byte-identical (2028 methods/1696 paths); baseline 37 → 35 |
 | 25 | `national/workflow_runtime/application/interfaces.py` — `WorkflowNotifier(ABC)` | `backend/app/workflows` (live engine) | Orphan interfaces; service.py is **0 bytes** | **Archive and Re-point** | L | S | L | No | 10 | ✅ **DONE — Commit 1.13** (WorkflowNotifier archived) |
 | 26 | `platform/notifications.py` — `NotificationService` (facade) | `backend/app/notifications` | **Is** the canonical facade — delegates, no duplication | **Retain as Domain-Owned** (false positive) | L | S | L | No | — |
-| 49 | `identity/notifications/routes.py` — `send_notification` (queue-only) | `backend/app/notifications` | Same as #24 | **Canonical Provider Completion** | M | M | M | Yes | 13 |
+| 49 | `identity/notifications/routes.py` — `send_notification` (queue-only) | `backend/app/notifications` | Same as #24 | **Canonical Provider Completion** | M | M | M | Yes | 13 | ✅ **DONE — Commit 3.1** (ADR-032): moved with #24 to `app/notifications/routes.py`, re-mounted unchanged at `/niam/notifications/*` |
 | 50 | `national/notification_platform/api/routes.py` — `send_notification` (16 endpoints) | `backend/app/notifications` | **Adapters fabricate `success=True` without sending** (Email/SMS/Push/WS/InApp/WA/Gov/Fax) | **Canonical Provider Completion** (clinical-safety risk) | **H** | L | M | Yes | 18 |
 
 ### 2.8 QR (3)
@@ -287,7 +287,7 @@ broken national route surface.
 
 | Order | Finding | Class | Risk | ADR |
 |---|---|---|---|---|
-| 13 | #24+#49 identity notification queue → canonical | Completion | M | ADR-032 |
+| 13 | #24+#49 identity notification queue → canonical | Completion | M | ADR-032 | ✅ **DONE — Commit 3.1** (37 → 35) |
 | 14 | #35+#36 doc-intel search → capabilities/search_service | Completion | M | ADR-033 |
 | 15 | #46+#47 national document PDF → shared/pdf | Completion | M | ADR-033 |
 
@@ -507,8 +507,10 @@ now types + engine), consumers re-pointed atomically, 14 new regression
 tests; baseline 38 → 37. Full evidence:
 `docs/baselines/COMMIT_2_1_VERIFICATION_REPORT.md`.
 
-Next: run the full **Wave 2 Certification Report** per
-`PROGRAM-01_CERTIFICATION_MODEL.md` (verification matrix, health trend,
-rollback summary, one verdict), then **STOP and await explicit Program
-Director approval** before starting Wave 3 (orders 13–15, ADR-032/033 first:
-#24/#49/#50 notifications completion, #35/#36/#46/#47 capability scaffolds).
+Next: Wave 3 in progress — order 13 (#24+#49) notifications queue promoted
+(Commit 3.1, ADR-032, baseline 37 → 35). Remaining Wave 3 orders 14–15
+(#35/#36 doc-intel search, #46/#47 national document PDF; ADR-033), then
+Wave 3 Certification, then **STOP and await explicit Program Director
+approval** before starting Wave 4 (orders 16–19: #5/#9 behavior-additive
+audit re-points ADR-031, #50 national notification adapters ADR-032,
+#44 workflow_runtime ADR-036).

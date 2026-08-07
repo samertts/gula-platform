@@ -12,7 +12,7 @@ from app._compat import UTC
 from .models import NotificationPreference, NotificationQueue, NotificationTemplate
 
 
-class NotificationService:
+class NotificationQueueService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
