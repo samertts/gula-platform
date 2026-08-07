@@ -88,7 +88,8 @@ Full per-capability table: `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATIO
 | 6c35ead6 (1.7) | #6 AuditLogger | Archive | 48 → 47 |
 | 94cb3279 (1.8) | #7 SecurityAuditService | Archive | 47 → 46 |
 | 33e1a22f (1.9) | #17 ESBMessageBus + #42 APIAuth | Archive | 46 → 44 |
-| *(1.10, pending hash)* | #20 national IdentityService | Archive | 44 → 43 |
+| c6f906d8 (1.10) | #20 national IdentityService | Archive | 44 → 43 |
+| *(1.11, pending hash)* | #22 risk_based_auth_service | Archive | 43 → 42 |
 
 ---
 

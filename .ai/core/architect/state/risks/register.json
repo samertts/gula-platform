@@ -1,5 +1,5 @@
 {
-  "discovered_at": "2026-08-06T18:57:22.248069+00:00",
+  "discovered_at": "2026-08-07T10:26:48.784632+00:00",
   "levels": [
     "low",
     "medium",
@@ -17,7 +17,7 @@
   ],
   "risks": [
     {
-      "risk_id": "RISK-FAAB4711",
+      "risk_id": "RISK-599ACAF4",
       "area": "identity",
       "title": "Identity platform coupling to national federation roadmap",
       "category": "security",
@@ -27,10 +27,10 @@
       "priority": "critical",
       "status": "open",
       "mitigation": "Adopt the identity platform as the single authority; keep federation adapters behind interfaces.",
-      "created_at": "2026-08-06T18:57:22.247417+00:00"
+      "created_at": "2026-08-07T10:26:48.784181+00:00"
     },
     {
-      "risk_id": "RISK-AEA7A81F",
+      "risk_id": "RISK-0733AA9E",
       "area": "offline",
       "title": "Offline-first sync conflicts across governorate partitions",
       "category": "technical",
@@ -40,10 +40,10 @@
       "priority": "critical",
       "status": "open",
       "mitigation": "Outbox pattern + conflict-resolution policies exercised in pilot.",
-      "created_at": "2026-08-06T18:57:22.247474+00:00"
+      "created_at": "2026-08-07T10:26:48.784220+00:00"
     },
     {
-      "risk_id": "RISK-651AA3D6",
+      "risk_id": "RISK-EEE24CFB",
       "area": "data-residency",
       "title": "Governorate data residency and national aggregation conflict",
       "category": "business",
@@ -53,10 +53,10 @@
       "priority": "high",
       "status": "open",
       "mitigation": "Tenant-aware routing and regional data stores planned for 3-year horizon.",
-      "created_at": "2026-08-06T18:57:22.247528+00:00"
+      "created_at": "2026-08-07T10:26:48.784255+00:00"
     },
     {
-      "risk_id": "RISK-9878A79E",
+      "risk_id": "RISK-21FDF306",
       "area": "analyzer",
       "title": "Analyzer protocol fragmentation across laboratory hardware",
       "category": "technical",
@@ -66,10 +66,10 @@
       "priority": "high",
       "status": "open",
       "mitigation": "Standardize ASTM/HL7 device bridge with validation per result.",
-      "created_at": "2026-08-06T18:57:22.247593+00:00"
+      "created_at": "2026-08-07T10:26:48.784302+00:00"
     },
     {
-      "risk_id": "RISK-FCC0A51A",
+      "risk_id": "RISK-1CA04CA1",
       "area": "capacity",
       "title": "Database and storage growth at national scale",
       "category": "operational",
@@ -79,10 +79,10 @@
       "priority": "high",
       "status": "open",
       "mitigation": "Partition data stores, add read replicas, and archive per retention policy before hitting capacity limits.",
-      "created_at": "2026-08-06T18:57:22.247613+00:00"
+      "created_at": "2026-08-07T10:26:48.784316+00:00"
     },
     {
-      "risk_id": "RISK-C79A0FE4",
+      "risk_id": "RISK-C5D3C9E7",
       "area": "compliance",
       "title": "ISO 15189 / CAP / CLSI audit evidence drift",
       "category": "business",
@@ -92,10 +92,10 @@
       "priority": "high",
       "status": "open",
       "mitigation": "Automate evidence packs in quality gates; continuous validation.",
-      "created_at": "2026-08-06T18:57:22.247504+00:00"
+      "created_at": "2026-08-07T10:26:48.784239+00:00"
     },
     {
-      "risk_id": "RISK-E27CC32A",
+      "risk_id": "RISK-CFD3636F",
       "area": "encryption",
       "title": "ENCRYPTION_KEY rotation without bulk re-encryption",
       "category": "security",
@@ -105,10 +105,10 @@
       "priority": "high",
       "status": "open",
       "mitigation": "Design key rotation with per-record key versioning and lazy re-encryption.",
-      "created_at": "2026-08-06T18:57:22.247550+00:00"
+      "created_at": "2026-08-07T10:26:48.784271+00:00"
     },
     {
-      "risk_id": "RISK-6D0D0999",
+      "risk_id": "RISK-8A7F521E",
       "area": "recovery",
       "title": "Cloud snapshot restore path is not rehearsed",
       "category": "operational",
@@ -118,10 +118,10 @@
       "priority": "high",
       "status": "open",
       "mitigation": "Rehearse restore runbook; verify PITR + WAL recovery end-to-end.",
-      "created_at": "2026-08-06T18:57:22.247572+00:00"
+      "created_at": "2026-08-07T10:26:48.784287+00:00"
     },
     {
-      "risk_id": "RISK-6846AC5F",
+      "risk_id": "RISK-CE88AD71",
       "area": "ai-governance",
       "title": "AI engines drift from the single architectural vision",
       "category": "ai",
@@ -131,10 +131,10 @@
       "priority": "medium",
       "status": "open",
       "mitigation": "The Architect coordinates all six engines; contracts and registers are the single source of truth.",
-      "created_at": "2026-08-06T18:57:22.247633+00:00"
+      "created_at": "2026-08-07T10:26:48.784331+00:00"
     },
     {
-      "risk_id": "RISK-684FE950",
+      "risk_id": "RISK-BDEEF0F3",
       "area": "knowledge-drift",
       "title": "Knowledge coverage lags behind architectural change",
       "category": "knowledge",
@@ -144,7 +144,7 @@
       "priority": "medium",
       "status": "open",
       "mitigation": "Learner records knowledge per mission; brain freshness is a hard CI gate.",
-      "created_at": "2026-08-06T18:57:22.247654+00:00"
+      "created_at": "2026-08-07T10:26:48.784345+00:00"
     }
   ]
 }

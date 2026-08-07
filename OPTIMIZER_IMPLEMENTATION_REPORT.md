@@ -1,6 +1,6 @@
 # GULA-OPTIMIZER-001 — Optimization Engine Implementation Report
 
-Generated: **2026-08-06T19:02:21.332796+00:00**
+Generated: **2026-08-07T06:47:20.420711+00:00**
 
 ## Mission
 Continuously improve performance, scalability, reliability, maintainability, developer experience, and resource efficiency without changing business behavior. Every optimization is measured, verified, documented, reversible, auditable, and safe.
@@ -68,9 +68,9 @@ Every optimization must improve at least one of these baseline metrics without r
 | deployment-valid | pass |
 
 Optimization score: **0/100**
-Verified optimization runs: **19**
-Improved metrics: **19**
-Regressions: **30**
+Verified optimization runs: **25**
+Improved metrics: **25**
+Regressions: **42**
 
 ## Verdict
 
