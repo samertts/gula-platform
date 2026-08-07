@@ -63,28 +63,3 @@ class WorkflowTimerHandler(ABC):
 
     @abstractmethod
     async def cancel_timer(self, timer_id: str) -> None: ...
-
-
-class WorkflowNotifier(ABC):
-    @abstractmethod
-    async def notify_approval_required(
-        self,
-        execution_id: str,
-        step_name: str,
-        roles: list[str],
-    ) -> None: ...
-
-    @abstractmethod
-    async def notify_workflow_failed(
-        self,
-        execution_id: str,
-        workflow_name: str,
-        error: str,
-    ) -> None: ...
-
-    @abstractmethod
-    async def notify_workflow_completed(
-        self,
-        execution_id: str,
-        workflow_name: str,
-    ) -> None: ...

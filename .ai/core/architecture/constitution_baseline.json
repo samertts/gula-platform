@@ -172,11 +172,6 @@
       "signal": "def\\s+execute_workflow\\s*\\("
     },
     {
-      "rule_id": "notifications",
-      "path": "backend/app/national/workflow_runtime/application/interfaces.py",
-      "signal": "class\\s+\\w*(?:NotificationService|NotificationCenter|Notifier|NotificationSender)\\b"
-    },
-    {
       "rule_id": "workflow_engine",
       "path": "backend/app/national/workflows/base.py",
       "signal": "class\\s+\\w*(?:WorkflowEngine|WorkflowManager|WorkflowExecutor)\\b"

@@ -110,7 +110,7 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 |---|---|---|---|---|---|---|---|---|---|
 | 23 | `citizen_platform/notifications.py` — `CitizenNotificationService` (in-memory inbox) | `backend/app/notifications` (real delivery, no persistence) | Canonical delivers but has no persistence; this has neither | **Retain as Domain-Owned** (data-loss risk) | M | M | M | Yes | — |
 | 24 | `identity/notifications/services.py` — `NotificationService` (queue-only) | `backend/app/notifications` (delivery) | Complementary halves — canonical delivers, this queues | **Canonical Provider Completion** | M | M | M | Yes | 13 |
-| 25 | `national/workflow_runtime/application/interfaces.py` — `WorkflowNotifier(ABC)` | `backend/app/workflows` (live engine) | Orphan interfaces; service.py is **0 bytes** | **Archive and Re-point** | L | S | L | No | 10 |
+| 25 | `national/workflow_runtime/application/interfaces.py` — `WorkflowNotifier(ABC)` | `backend/app/workflows` (live engine) | Orphan interfaces; service.py is **0 bytes** | **Archive and Re-point** | L | S | L | No | 10 | ✅ **DONE — Commit 1.13** (WorkflowNotifier archived) |
 | 26 | `platform/notifications.py` — `NotificationService` (facade) | `backend/app/notifications` | **Is** the canonical facade — delegates, no duplication | **Retain as Domain-Owned** (false positive) | L | S | L | No | — |
 | 49 | `identity/notifications/routes.py` — `send_notification` (queue-only) | `backend/app/notifications` | Same as #24 | **Canonical Provider Completion** | M | M | M | Yes | 13 |
 | 50 | `national/notification_platform/api/routes.py` — `send_notification` (16 endpoints) | `backend/app/notifications` | **Adapters fabricate `success=True` without sending** (Email/SMS/Push/WS/InApp/WA/Gov/Fax) | **Canonical Provider Completion** (clinical-safety risk) | **H** | L | M | Yes | 18 |
@@ -267,7 +267,7 @@ broken national route surface.
 | 7 | #20 national identity_service (dead route) | Archive | L | No | **DONE — Commit 1.10** |
 | 8 | #22 risk_based_auth_service (dead) | Archive | L | No | **DONE — Commit 1.11** |
 | 9 | #27 EmergencyQRService + #28 Persisted* twins (dead) | Archive | L | No | **DONE — Commit 1.12** |
-| 10 | #25 workflow_runtime orphan interfaces | Archive | L | No |
+| 10 | #25 workflow_runtime orphan interfaces | Archive | L | No | **DONE — Commit 1.13** |
 | 11 | #39 national/workflows/base.py (dead ABC) | Archive | L | No |
 
 ### Wave 2 — Canonical Provider Promotion (Commit 1.10)
@@ -457,15 +457,26 @@ continues to fail any NEW finding.
   removed (`shared.security.hmac` from identity.py; `hmac`/`QRCodeRecord`/
   `QRCodeRepository`/`timedelta` from the persistence module). Canonical:
   `shared/qr` (orphan check PASS — live consumers unchanged). Baseline 42 → 40.
+- **Commit 1.13 (Wave 1, order 10):** `WorkflowNotifier` (ABC, finding #25) in
+  `national/workflow_runtime/application/interfaces.py` was proven dead — the
+  whole `workflow_runtime/application/` package has zero importers repo-wide
+  (the only workflow_runtime lazy import, `api/routes.py`, targets the dormant
+  `app.national.n.application.service`, not this package). The class was
+  extracted byte-for-byte into `archive/platform-shared-core/workflow_runtime_notifier.py`.
+  The other orphan ABCs (`WorkflowStepExecutor`, `WorkflowApprovalHandler`,
+  `WorkflowTimerHandler`) are not Shared Core findings and remain in place
+  (dormant module preservation). Canonical: `backend/app/workflows` (live;
+  orphan check PASS). Baseline 40 → 39.
 
 ## 10. Next Action
 
-Commits 1.4–1.12 executed: two false positives removed (#38, #51) and seven
+Commits 1.4–1.13 executed: two false positives removed (#38, #51) and eight
 dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel `AuditLogger`,
 #7 national `SecurityAuditService`, #17 ESB `message_bus` + #42 `APIAuth` +
 dead `APIGateway`, #20 national `identity_service` + unwired route + tests,
 #22 `risk_based_auth_service` + tests, #27 `EmergencyQRService` + #28
-`PersistedEmergencyQRService`; baseline 51 → 40). Next: continue
-**Wave 1, order 10** — #25 `workflow_runtime` orphan interfaces (`WorkflowNotifier`
-ABC) archive, run the full verification cycle, commit, and continue without
-stopping (Wave 1 continuous-execution mode per Program Director approval).
+`PersistedEmergencyQRService`, #25 `workflow_runtime` `WorkflowNotifier`;
+baseline 51 → 39). Next: continue
+**Wave 1, order 11** — #39 `national/workflows/base.py` dead ABC archive, run
+the full verification cycle, commit, and continue without stopping (Wave 1
+continuous-execution mode per Program Director approval).

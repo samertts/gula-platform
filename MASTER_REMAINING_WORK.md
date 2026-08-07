@@ -6,7 +6,7 @@
 > finding. Migration is performed only when correctness can be proven, and
 > never changes observable behaviour.
 
-## 1. Shared Core consolidation findings (40)
+## 1. Shared Core consolidation findings (39)
 
 Detected by `architecture-scan` across `backend/app` + `shared/`. These are
 legacy reimplementation candidates awaiting migration to their authoritative
@@ -25,7 +25,7 @@ behaviour-preserving migration.
 | `encryption` | A new encryption/crypto implementation outside shared/security. | 2 |
 | `events` | A new event bus outside shared/events. | 2 |
 | `identity` | A new identity/authentication implementation outside the NIAM identity platform. | 2 |
-| `notifications` | A new notification delivery system outside the platform notification core. | 6 |
+| `notifications` | A new notification delivery system outside the platform notification core. | 5 |
 | `qr_engine` | A new QR generator/decoder outside shared/qr. | 1 |
 | `rule_engine` | A new business-rules engine outside the platform rules core. | 1 |
 | `scheduler` | A new scheduler outside shared/scheduler. | 3 |
@@ -61,7 +61,6 @@ behaviour-preserving migration.
 - [`notifications`] `backend/app/identity/notifications/routes.py`
 - [`notifications`] `backend/app/identity/notifications/services.py`
 - [`notifications`] `backend/app/national/notification_platform/api/routes.py`
-- [`notifications`] `backend/app/national/workflow_runtime/application/interfaces.py`
 - [`notifications`] `backend/app/platform/notifications.py`
 - [`qr_engine`] `backend/app/national/document_platform/application/service.py`
 - [`rule_engine`] `backend/app/national/rules_engine/domain/expression_engine.py`
