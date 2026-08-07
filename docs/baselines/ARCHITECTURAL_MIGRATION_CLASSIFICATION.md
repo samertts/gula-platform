@@ -119,8 +119,8 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 
 | # | Current implementation | Canonical provider | Behavioral equivalence | Class | Risk | Effort | Rollback | ADR | Order |
 |---|---|---|---|---|---|---|---|---|---|
-| 27 | `citizen_platform/identity.py` — `EmergencyQRService` (in-memory token) | `shared/qr` (real image gen) | Different scheme (token-verify, not image); **dead** | **Archive and Re-point** | L | S | L | No | 9 |
-| 28 | `governance/services/citizen_platform_persistence.py` — `PersistedEmergencyQRService` (DB, orphaned) | `shared/qr` | Dead twin of dead class | **Archive and Re-point** | L | S | L | No | 9 |
+| 27 | `citizen_platform/identity.py` — `EmergencyQRService` (in-memory token) | `shared/qr` (real image gen) | Different scheme (token-verify, not image); **dead** | **DONE — Commit 1.12** archived `EmergencyQR` + `EmergencyQRService` (in-memory token scheme) to `archive/platform-shared-core/citizen_platform_emergency_qr.py`; zero consumers (only `HealthIdentityService` is imported from this module); unused `hmac` import removed | L | S | L | No | 9 |
+| 28 | `governance/services/citizen_platform_persistence.py` — `PersistedEmergencyQRService` (DB, orphaned) | `shared/qr` | Dead twin of dead class | **DONE — Commit 1.12** archived `PersistedEmergencyQRService` to `archive/platform-shared-core/citizen_platform_persisted_emergency_qr.py`; module keeps its non-finding classes (`PersistedIdentityRecoveryService`, `PersistedGuardianService`, `PersistedFamilyAccountService`); unused imports (`hmac`, `QRCodeRecord`, `QRCodeRepository`, `timedelta`) removed | L | S | L | No | 9 |
 | 41 | `national/document_platform/application/service.py` — `generate_qr` (doc-verify token) | `shared/qr` | Document verification token, not image QR | **Retain as Domain-Owned** | L | S | L | No | — |
 
 ### 2.9 Authorization / RBAC / ABAC (3)
@@ -266,7 +266,7 @@ broken national route surface.
 | 6 | #17 ESB message_bus + #42 APIAuth.check_permission (dead) | Delete | L | No | **DONE — Commit 1.9** |
 | 7 | #20 national identity_service (dead route) | Archive | L | No | **DONE — Commit 1.10** |
 | 8 | #22 risk_based_auth_service (dead) | Archive | L | No | **DONE — Commit 1.11** |
-| 9 | #27 EmergencyQRService + #28 Persisted* twins (dead) | Archive | L | No |
+| 9 | #27 EmergencyQRService + #28 Persisted* twins (dead) | Archive | L | No | **DONE — Commit 1.12** |
 | 10 | #25 workflow_runtime orphan interfaces | Archive | L | No |
 | 11 | #39 national/workflows/base.py (dead ABC) | Archive | L | No |
 
@@ -441,14 +441,31 @@ continues to fail any NEW finding.
   `tests/unit/test_risk_based_auth_service.py` 317 L = 905 L) was archived
   byte-for-byte via `git mv` to `archive/platform-shared-core/`. Canonical:
   `identity/adaptive_auth` (live; orphan check PASS). Baseline 43 → 42.
+- **Commit 1.12 (Wave 1, order 9):** `EmergencyQRService` (+ its `EmergencyQR`
+  dataclass, finding #27) in `citizen_platform/identity.py` was proven dead —
+  the module's only externally-imported symbol is `HealthIdentityService`
+  (consumed by `citizen_platform/sdk.py` and `integration.py`, finding #19,
+  Retain); `EmergencyQRService`/`EmergencyQR` had zero other consumers. Its
+  DB twin `PersistedEmergencyQRService` (finding #28) in
+  `governance/services/citizen_platform_persistence.py` was proven dead — the
+  whole module has zero importers, and the class had zero consumers. Both were
+  extracted byte-for-byte into `archive/platform-shared-core/`
+  (`citizen_platform_emergency_qr.py`, `citizen_platform_persisted_emergency_qr.py`).
+  Non-finding code preserved in place: `HealthIdentityService`/`IdentityRecoveryService`
+  (identity.py) and `PersistedIdentityRecoveryService`/`PersistedGuardianService`/
+  `PersistedFamilyAccountService` (persistence module). Now-unused imports
+  removed (`shared.security.hmac` from identity.py; `hmac`/`QRCodeRecord`/
+  `QRCodeRepository`/`timedelta` from the persistence module). Canonical:
+  `shared/qr` (orphan check PASS — live consumers unchanged). Baseline 42 → 40.
 
 ## 10. Next Action
 
-Commits 1.4–1.11 executed: two false positives removed (#38, #51) and six
+Commits 1.4–1.12 executed: two false positives removed (#38, #51) and seven
 dead-code archives landed (#3 `EncryptedSyncStore`, #6 doc-intel `AuditLogger`,
 #7 national `SecurityAuditService`, #17 ESB `message_bus` + #42 `APIAuth` +
 dead `APIGateway`, #20 national `identity_service` + unwired route + tests,
-#22 `risk_based_auth_service` + tests; baseline 51 → 42). Next: continue
-**Wave 1, order 9** — #27 `EmergencyQRService` + #28 `Persisted*` twins (dead)
-archive, run the full verification cycle, commit, and continue without stopping
-(Wave 1 continuous-execution mode per Program Director approval).
+#22 `risk_based_auth_service` + tests, #27 `EmergencyQRService` + #28
+`PersistedEmergencyQRService`; baseline 51 → 40). Next: continue
+**Wave 1, order 10** — #25 `workflow_runtime` orphan interfaces (`WorkflowNotifier`
+ABC) archive, run the full verification cycle, commit, and continue without
+stopping (Wave 1 continuous-execution mode per Program Director approval).

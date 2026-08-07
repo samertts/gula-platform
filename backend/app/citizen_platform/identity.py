@@ -9,7 +9,6 @@ from typing import Any
 from app._compat import UTC
 from app.national.services.citizen_service import CitizenService as NationalCitizenService
 from shared.security.encryption import decrypt_national_id, encrypt_national_id
-from shared.security.hmac import hmac_sign, hmac_verify
 
 logger = logging.getLogger("gula.citizen.identity")
 
@@ -25,16 +24,6 @@ class IdentityDocument:
     expires_at: str = ""
     verified: bool = False
     metadata: dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass
-class EmergencyQR:
-    qr_id: str = ""
-    citizen_id: str = ""
-    token: str = ""
-    created_at: str = ""
-    expires_at: str = ""
-    active: bool = True
 
 
 @dataclass
@@ -93,51 +82,6 @@ class HealthIdentityService:
             {"national_id_hash": secure_token},
         )
         return secure_token
-
-
-class EmergencyQRService:
-    def __init__(self, hmac_key: str, qr_expiry_hours: int = 24) -> None:
-        self._hmac_key = hmac_key
-        self._qr_expiry_hours = qr_expiry_hours
-        self._qrs: dict[str, EmergencyQR] = {}
-
-    def generate_qr(self, citizen_id: str) -> EmergencyQR:
-        qr_id = str(uuid.uuid4())
-        raw = f"{citizen_id}:{qr_id}:{datetime.now(UTC).isoformat()}"
-        token = hmac_sign(raw, self._hmac_key)
-        created = datetime.now(UTC)
-        expires = created.replace(hour=created.hour + self._qr_expiry_hours)
-        qr = EmergencyQR(
-            qr_id=qr_id,
-            citizen_id=citizen_id,
-            token=token,
-            created_at=created.isoformat(),
-            expires_at=expires.isoformat(),
-        )
-        self._qrs[qr_id] = qr
-        return qr
-
-    def verify_qr_token(self, qr_id: str, token: str) -> dict[str, Any]:
-        qr = self._qrs.get(qr_id)
-        if not qr:
-            return {"valid": False, "reason": "qr_not_found"}
-        if not qr.active:
-            return {"valid": False, "reason": "qr_deactivated"}
-        now = datetime.now(UTC)
-        if qr.expires_at and now.isoformat() > qr.expires_at:
-            return {"valid": False, "reason": "qr_expired"}
-        data = token.rsplit(".", 1)[0] if "." in token else token
-        sig = token.rsplit(".", 1)[1] if "." in token else ""
-        if not hmac_verify(data, sig, self._hmac_key):
-            return {"valid": False, "reason": "signature_mismatch"}
-        return {"valid": True, "citizen_id": qr.citizen_id}
-
-    def deactivate_qr(self, qr_id: str) -> bool:
-        qr = self._qrs.get(qr_id)
-        if not qr:
-            return False
-        qr.active = False
-        return True
 
 
 class IdentityRecoveryService:

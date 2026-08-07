@@ -7,11 +7,6 @@
       "signal": "class\\s+\\w*(?:IdentityService|IdentityProvider|LoginService|AuthService|AuthenticationService)\\b"
     },
     {
-      "rule_id": "qr_engine",
-      "path": "backend/app/citizen_platform/identity.py",
-      "signal": "class\\s+\\w*(?:QRCoder|QRGenerator|QrService)\\b"
-    },
-    {
       "rule_id": "notifications",
       "path": "backend/app/citizen_platform/notifications.py",
       "signal": "class\\s+\\w*(?:NotificationService|NotificationCenter|Notifier|NotificationSender)\\b"
@@ -70,11 +65,6 @@
       "rule_id": "encryption",
       "path": "backend/app/document_intelligence/security.py",
       "signal": "\\bFernet\\s*\\("
-    },
-    {
-      "rule_id": "qr_engine",
-      "path": "backend/app/governance/services/citizen_platform_persistence.py",
-      "signal": "class\\s+\\w*(?:QRCoder|QRGenerator|QrService)\\b"
     },
     {
       "rule_id": "notifications",
