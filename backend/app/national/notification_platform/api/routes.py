@@ -152,8 +152,13 @@ def _template_to_dict(t: NotificationTemplate) -> dict[str, Any]:
     }
 
 
-@router.post("/send", status_code=status.HTTP_201_CREATED)
-async def send_notification(
+@router.post(
+    "/send",
+    status_code=status.HTTP_201_CREATED,
+    operation_id="send_notification_national_notifications_send_post",
+    summary="Send Notification",
+)
+async def send_platform_notification(
     body: SendRequest,
     service: NotificationPlatformService = Depends(_get_service),
 ) -> dict[str, Any]:

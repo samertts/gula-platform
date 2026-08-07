@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
@@ -8,6 +9,38 @@ from typing import Any
 from app.national.notification_platform.domain.enums import NotificationChannel
 
 logger = logging.getLogger("gula.national.notification_platform.adapters")
+
+
+async def _canonical_deliver(
+    channel: str,
+    recipient: str,
+    subject: str,
+    body: str,
+) -> SendResult:
+    """Deliver through the canonical Shared Core notifications provider.
+
+    The canonical NotificationService wraps the shared sender with a circuit
+    breaker and returns NotificationResult(success, ...). Mapping is fail-closed:
+    a provider exception or non-success result yields SendResult(success=False).
+    """
+    from app.notifications import get_service
+
+    try:
+        result = await asyncio.to_thread(
+            get_service().send,
+            channel,
+            recipient,
+            subject=subject,
+            body=body,
+        )
+    except Exception as exc:
+        logger.error("[%s] canonical delivery raised for %s: %s", channel, recipient, exc)
+        return SendResult(success=False, error=str(exc))
+
+    if result.success:
+        return SendResult(success=True)
+    logger.error("[%s] canonical delivery failed for %s: %s", channel, recipient, result.error)
+    return SendResult(success=False, error=result.error or "Delivery failed")
 
 
 @dataclass
@@ -45,8 +78,7 @@ class EmailAdapter(NotificationChannelAdapter):
         body: str,
         metadata: dict[str, Any] | None = None,
     ) -> SendResult:
-        logger.info("[EMAIL] Sending to %s — subject=%s body_len=%d", recipient, subject, len(body))
-        return SendResult(success=True, provider_message_id=f"email_{recipient[:8]}")
+        return await _canonical_deliver(self.channel.value, recipient, subject, body)
 
 
 class SMSAdapter(NotificationChannelAdapter):
@@ -61,8 +93,7 @@ class SMSAdapter(NotificationChannelAdapter):
         body: str,
         metadata: dict[str, Any] | None = None,
     ) -> SendResult:
-        logger.info("[SMS] Sending to %s — body_len=%d", recipient, len(body))
-        return SendResult(success=True, provider_message_id=f"sms_{recipient[:8]}")
+        return await _canonical_deliver(self.channel.value, recipient, subject, body)
 
 
 class PushAdapter(NotificationChannelAdapter):
@@ -77,8 +108,7 @@ class PushAdapter(NotificationChannelAdapter):
         body: str,
         metadata: dict[str, Any] | None = None,
     ) -> SendResult:
-        logger.info("[PUSH] Sending to %s — title=%s", recipient, subject)
-        return SendResult(success=True, provider_message_id=f"push_{recipient[:8]}")
+        return await _canonical_deliver(self.channel.value, recipient, subject, body)
 
 
 class WebSocketAdapter(NotificationChannelAdapter):
@@ -93,8 +123,7 @@ class WebSocketAdapter(NotificationChannelAdapter):
         body: str,
         metadata: dict[str, Any] | None = None,
     ) -> SendResult:
-        logger.info("[WEBSOCKET] Sending to %s — payload_size=%d", recipient, len(body))
-        return SendResult(success=True, provider_message_id=f"ws_{recipient[:8]}")
+        return await _canonical_deliver(self.channel.value, recipient, subject, body)
 
 
 class InAppAdapter(NotificationChannelAdapter):
@@ -109,8 +138,7 @@ class InAppAdapter(NotificationChannelAdapter):
         body: str,
         metadata: dict[str, Any] | None = None,
     ) -> SendResult:
-        logger.info("[IN_APP] Sending to user %s — subject=%s", recipient, subject)
-        return SendResult(success=True, provider_message_id=f"inapp_{recipient[:8]}")
+        return await _canonical_deliver(self.channel.value, recipient, subject, body)
 
 
 class WhatsAppAdapter(NotificationChannelAdapter):
@@ -125,8 +153,7 @@ class WhatsAppAdapter(NotificationChannelAdapter):
         body: str,
         metadata: dict[str, Any] | None = None,
     ) -> SendResult:
-        logger.info("[WHATSAPP] Sending to %s — body_len=%d", recipient, len(body))
-        return SendResult(success=True, provider_message_id=f"wa_{recipient[:8]}")
+        return await _canonical_deliver(self.channel.value, recipient, subject, body)
 
 
 class TelegramAdapter(NotificationChannelAdapter):
@@ -169,13 +196,7 @@ class GovernmentGatewayAdapter(NotificationChannelAdapter):
         body: str,
         metadata: dict[str, Any] | None = None,
     ) -> SendResult:
-        logger.info(
-            "[GOVERNMENT_GATEWAY] Sending to %s — subject=%s body_len=%d",
-            recipient,
-            subject,
-            len(body),
-        )
-        return SendResult(success=True, provider_message_id=f"gov_{recipient[:8]}")
+        return await _canonical_deliver(self.channel.value, recipient, subject, body)
 
 
 class WebhookAdapter(NotificationChannelAdapter):
@@ -225,10 +246,7 @@ class FaxAdapter(NotificationChannelAdapter):
         body: str,
         metadata: dict[str, Any] | None = None,
     ) -> SendResult:
-        logger.info(
-            "[FAX] Sending to %s — subject=%s pages=%d", recipient, subject, len(body) // 2000 + 1,
-        )
-        return SendResult(success=True, provider_message_id=f"fax_{recipient[:8]}")
+        return await _canonical_deliver(self.channel.value, recipient, subject, body)
 
 
 __all__ = [
