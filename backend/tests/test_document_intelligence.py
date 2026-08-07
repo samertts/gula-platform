@@ -8,6 +8,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
+from app.capabilities.search_service.semantic import InfrastructureSemanticSearchService
 from app.document_intelligence.application.service import (
     DefaultClassifierService,
     DefaultEntityExtractionService,
@@ -15,7 +16,6 @@ from app.document_intelligence.application.service import (
     DefaultIngestionService,
     DefaultKnowledgePipelineService,
     DefaultOcrPipelineService,
-    DefaultSearchService,
     DocumentIntelligenceOrchestrator,
 )
 from app.document_intelligence.application.wiring import DefaultDocumentClassifier
@@ -105,7 +105,6 @@ from app.document_intelligence.infrastructure.services import (
     InfrastructureKnowledgeGraphService,
     InfrastructureNationalArchiveService,
     InfrastructureObservabilityService,
-    InfrastructureSemanticSearchService,
     InfrastructureVersioningService,
     InfrastructureWebhookService,
 )

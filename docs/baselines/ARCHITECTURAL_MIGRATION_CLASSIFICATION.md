@@ -4,7 +4,7 @@
 **Date:** 2026-08-07
 **Baseline:** `.ai/core/architecture/constitution_baseline.json` — 51 findings (+ 2 country findings)
 **Decision model:** 5-class classification, established by Commit 1.3 (ADR-029 Canonical Provider Promotion)
-**Progress:** 51 → **35** acknowledged findings (Wave 1 certified PASS WITH OBSERVATIONS; Wave 2 order 12 #43 promoted, Commit 2.1; Wave 3 order 13 #24+#49 notifications queue promoted, Commit 3.1)
+**Progress:** 51 → **33** acknowledged findings (Wave 1 certified PASS WITH OBSERVATIONS; Wave 2 order 12 #43 promoted, Commit 2.1; Wave 3 order 13 #24+#49 notifications queue promoted, Commit 3.1; Wave 3 order 14 #35+#36 search promoted, Commit 3.2)
 
 ---
 
@@ -145,8 +145,8 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 | # | Current implementation | Canonical provider | Behavioral equivalence | Class | Risk | Effort | Rollback | ADR | Order |
 |---|---|---|---|---|---|---|---|---|---|
 | 34 | `document_intelligence/application/interfaces.py` — `SearchService(ABC)` | `capabilities/search_service` (stub routes) | Interface only | **Retain as Domain-Owned** | L | S | L | No | — |
-| 35 | `document_intelligence/application/service.py` — `DefaultSearchService` (in-memory) | same (stub) | Real impl behind un-initialized orchestrator | **Canonical Provider Completion** | M | M | M | Yes | 14 |
-| 36 | `document_intelligence/infrastructure/services.py` — `InfrastructureSemanticSearchService` | same (stub) | Real impl, dormant orchestrator | **Canonical Provider Completion** | M | M | M | Yes | 14 |
+| 35 | `document_intelligence/application/service.py` — `DefaultSearchService` (in-memory) | same (stub) | Real impl behind un-initialized orchestrator | **DONE — Commit 3.2** promoted `DefaultSearchService` + `DefaultSearchIndexer` + `InfrastructureSemanticSearchService` into canonical `capabilities/search_service` (ADR-033): indexer/search/semantic modules verbatim, standalone exceptions (no domain import), composition root, stub router re-wired to the in-memory indexer (real index/list/update/delete); `wiring.py` re-pointed atomically; old namespace vacated (no facade); 40 new regression tests; baseline 35 → 33; OpenAPI unchanged, backend 5017 pass / 0 fail | M | M | M | Yes | 14 |
+| 36 | `document_intelligence/infrastructure/services.py` — `InfrastructureSemanticSearchService` | same (stub) | Real impl, dormant orchestrator | **DONE — Commit 3.2** (same promotion as #35; semantic module moved verbatim, test fixture re-pointed) | M | M | M | Yes | 14 |
 | 37 | `national/fhir/search.py` — `FHIRSearchEngine` (in-memory) | `backend/app/fhir` | Re-exported public API (`app/fhir/__init__.py`) | **Retain as Domain-Owned** | L | S | L | No | — |
  | 38 | `services/clinical_service.py` — `ResearchService` (research-registry CRUD) | `capabilities/search_service` | **Scanner signal-precision bug** — IGNORECASE matches embedded lowercase "search"; fixed via case-sensitive `search_engine` rule (Commits 1.4) | **False Positive** (remove with evidence) | L | S | L | No | 1 |
 
@@ -177,7 +177,7 @@ L/L/L. ADR-required to register the kernel event bus as a Strategic Exception.
 |---|---|---|
 | **Archive and Re-point** | **16** | 1, 2, 3, 5, 6, 7, 9, 17, 20, 22, 25, 27, 28, 39, 42, 44 |
 | **Canonical Provider Promotion** | **1** | 43 |
-| **Canonical Provider Completion** | **7** | 24, 35, 36, 46, 47, 49, 50 |
+| **Canonical Provider Completion** | **3** | 46, 47, 50 |
 | **Retain as Domain-Owned** | **24** | 4, 8, 10, 11, 12, 13, 14, 15, 16, 19, 21, 23, 26, 29, 30, 31, 32, 33, 34, 37, 40, 41, 45, 48 |
 | **Strategic Exception** | **1** | 18 |
 | **False Positive** (evidence-based removal) | **2** | 38, 51 |
@@ -508,8 +508,9 @@ tests; baseline 38 → 37. Full evidence:
 `docs/baselines/COMMIT_2_1_VERIFICATION_REPORT.md`.
 
 Next: Wave 3 in progress — order 13 (#24+#49) notifications queue promoted
-(Commit 3.1, ADR-032, baseline 37 → 35). Remaining Wave 3 orders 14–15
-(#35/#36 doc-intel search, #46/#47 national document PDF; ADR-033), then
+(Commit 3.1, ADR-032, baseline 37 → 35); order 14 (#35/#36 doc-intel
+search) promoted (Commit 3.2, ADR-033, baseline 35 → 33). Remaining Wave 3
+order 15 (#46/#47 national document PDF; ADR-033), then
 Wave 3 Certification, then **STOP and await explicit Program Director
 approval** before starting Wave 4 (orders 16–19: #5/#9 behavior-additive
 audit re-points ADR-031, #50 national notification adapters ADR-032,

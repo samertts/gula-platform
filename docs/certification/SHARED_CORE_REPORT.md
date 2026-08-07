@@ -20,6 +20,7 @@
 | Observability | `shared/metrics`, `shared/tracing`, `shared/logging` | telemetry, OTel | 0 |
 | Declarative metadata (national+EHR) | `shared/models/base.py` (`SharedBase`) | `app/national/base.py` (re-export `NationalBase`), `app/ehr/base.py` (`EHRBase`) | 0 — single metadata; breaks the former `app.ehr ↔ app.national` import cycle |
 | Rule-engine domain | `shared/rules_engine/domain` | `app/kernel/rules_runtime.py` (direct), `app/national/rules_engine/domain` (re-export) | 0 — breaks the former `app.kernel ↔ app.national` import cycle |
+| Search | `backend/app/capabilities/search_service` | `DefaultSearchIndexer`, `DefaultSearchService`, `InfrastructureSemanticSearchService` (promoted from doc-intel, Commit 3.2/ADR-033), wired `/search-service` router; doc-intel `application/wiring.py` (re-pointed) | 1 canonical + 2 retained domain-owned ABCs/FHIR engine (#34/#37) — documented |
 
 ## Duplication findings
 
@@ -34,6 +35,13 @@
    Commit 3.1/ADR-032) plus the national notification platform (`national/notification_platform`).
    The former 3-layer legacy/NIAM/national split is now 2: canonical vs national — documented
    evolutionary layers; the national platform is a Wave 4 finding (#50).
+3. Search implementation lives in the canonical `backend/app/capabilities/search_service`
+   (`DefaultSearchIndexer`/`DefaultSearchService`/`InfrastructureSemanticSearchService`,
+   promoted from `document_intelligence` by Commit 3.2/ADR-033) behind the wired
+   `/search-service` router. The retained `SearchIndexer`/`SearchService`/`SemanticSearchService`
+   ABCs in `document_intelligence/application/interfaces.py` (#34) and the national FHIR search
+   engine (#37) are classified **Retain as Domain-Owned** — interface contracts and national-layer
+   logic respectively, not duplicates.
 
 ## Verdict
 

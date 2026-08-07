@@ -32,11 +32,6 @@
       "signal": "def\\s+generate_pdf\\s*\\("
     },
     {
-      "rule_id": "search_engine",
-      "path": "backend/app/document_intelligence/application/service.py",
-      "signal": "class\\s+\\w*(?:SearchService|SearchIndex|SearchEngine)\\b"
-    },
-    {
       "rule_id": "audit",
       "path": "backend/app/document_intelligence/application/wiring.py",
       "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
@@ -55,11 +50,6 @@
       "rule_id": "document_engine",
       "path": "backend/app/document_intelligence/infrastructure/repository.py",
       "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b"
-    },
-    {
-      "rule_id": "search_engine",
-      "path": "backend/app/document_intelligence/infrastructure/services.py",
-      "signal": "class\\s+\\w*(?:SearchService|SearchIndex|SearchEngine)\\b"
     },
     {
       "rule_id": "encryption",
