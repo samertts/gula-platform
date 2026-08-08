@@ -18,8 +18,13 @@ from app.pilot_platform.exceptions import (
     PilotNotFoundError,
     ReadinessAssessmentNotFoundError,
 )
+from app.security.dependencies import get_current_user
 
-router = APIRouter(prefix="/pilot-platform", tags=["National Pilot Deployment & Readiness"])
+router = APIRouter(
+    prefix="/pilot-platform",
+    tags=["National Pilot Deployment & Readiness"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> PilotPlatformService:

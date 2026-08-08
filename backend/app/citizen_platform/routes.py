@@ -7,10 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.security.dependencies import get_current_user
 
 logger = logging.getLogger("gula.citizen.routes")
 
-router = APIRouter(prefix="/citizen-platform", tags=["citizen-platform"])
+router = APIRouter(
+    prefix="/citizen-platform",
+    tags=["citizen-platform"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _get_sdk(request: Any) -> Any:

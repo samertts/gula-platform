@@ -29,8 +29,13 @@ from app.national.background_platform.infrastructure.repository import (
     SQLAlchemyJobRepository,
     SQLAlchemyJobScheduleRepository,
 )
+from app.security.dependencies import get_current_user
 
-router = APIRouter(prefix="/national/jobs", tags=["National Background Platform"])
+router = APIRouter(
+    prefix="/national/jobs",
+    tags=["National Background Platform"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> JobService:

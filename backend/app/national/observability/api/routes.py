@@ -23,8 +23,13 @@ from app.national.observability.infrastructure.repository import (
     SQLAlchemyServiceGraphRepository,
     SQLAlchemyTraceSpanRepository,
 )
+from app.security.dependencies import get_current_user
 
-router = APIRouter(prefix="/national/observability", tags=["National Observability"])
+router = APIRouter(
+    prefix="/national/observability",
+    tags=["National Observability"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> ObservabilityService:

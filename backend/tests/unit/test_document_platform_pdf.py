@@ -160,6 +160,7 @@ class TestDocumentPdfRoute:
     @pytest.fixture
     def client(self):
         from app.national.document_platform.api import routes as document_routes
+        from app.security.dependencies import get_current_user
         from fastapi import FastAPI
         from fastapi.testclient import TestClient
 
@@ -173,7 +174,11 @@ class TestDocumentPdfRoute:
         def override_service():
             return service
 
+        def override_user():
+            return {"id": 1, "role": "admin"}
+
         app.dependency_overrides[document_routes._get_service] = override_service
+        app.dependency_overrides[get_current_user] = override_user
         return TestClient(app), service
 
     def test_router_path_and_operation_id(self, client):

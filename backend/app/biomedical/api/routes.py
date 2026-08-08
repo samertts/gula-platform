@@ -11,8 +11,13 @@ from app.biomedical.exceptions import (
     WorkOrderNotFoundError,
 )
 from app.database import get_db
+from app.security.dependencies import get_current_user
 
-router = APIRouter(prefix="/biomedical", tags=["National Medical Device Platform"])
+router = APIRouter(
+    prefix="/biomedical",
+    tags=["National Medical Device Platform"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> BiomedicalService:

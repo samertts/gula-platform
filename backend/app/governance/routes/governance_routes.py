@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.security.dependencies import get_current_user
 from app.security.rbac import require_role
 
 from ..enums import (
@@ -35,7 +36,11 @@ from ..services.laboratory_service import LaboratoryGovernanceService
 from ..services.security_governance_service import SecurityGovernanceService
 from ..services.workforce_service import WorkforceGovernanceService
 
-router = APIRouter(prefix="/governance", tags=["governance"])
+router = APIRouter(
+    prefix="/governance",
+    tags=["governance"],
+    dependencies=[Depends(get_current_user)],
+)
 
 admin_dep = Depends(require_role("master_admin", "ministry_admin", "national_admin"))
 elevated_dep = Depends(

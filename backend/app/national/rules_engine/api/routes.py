@@ -25,8 +25,13 @@ from app.national.rules_engine.exceptions import (
     RuleVersionError,
 )
 from app.national.rules_engine.infrastructure.repository import SQLAlchemyRuleRepository
+from app.security.dependencies import get_current_user
 
-router = APIRouter(prefix="/national/rules", tags=["National Rules Engine"])
+router = APIRouter(
+    prefix="/national/rules",
+    tags=["National Rules Engine"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> RulesEngineService:

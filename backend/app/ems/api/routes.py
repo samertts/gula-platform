@@ -14,8 +14,13 @@ from app.ems.exceptions import (
     InvalidIncidentStateError,
     ePCRNotFoundError,
 )
+from app.security.dependencies import get_current_user
 
-router = APIRouter(prefix="/ems", tags=["National EMS Platform"])
+router = APIRouter(
+    prefix="/ems",
+    tags=["National EMS Platform"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> EMSService:

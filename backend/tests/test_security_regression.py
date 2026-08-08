@@ -487,3 +487,47 @@ class TestNationalAnalyticsRequireAuth:
             assert res.status_code in (401, 403), (
                 f"{path} allowed for lab admin (status {res.status_code})"
             )
+
+
+# ─── Phase 14.M — National platform routers require authentication ───────────
+
+
+class TestNationalPlatformsRequireAuth:
+    """National-level platforms (research, blood-bank, integration, national
+    search/documents/notifications/jobs/rules/scheduling/observability, citizen,
+    ecosystem, governance, command-center, critical-care, EMS, lifecycle, pilot,
+    public-health, biomedical) must never be reachable anonymously."""
+
+    PROTECTED_PATHS = (
+        "/research/population/demographics",
+        "/research/kpis",
+        "/research/dashboards/executive",
+        "/blood-bank/crossmatch/compatible-groups/O+",
+        "/integration/gateways",
+        "/integration/monitoring/dashboard",
+        "/national/search/facets",
+        "/national/documents/",
+        "/national/notifications/",
+        "/national/jobs/",
+        "/national/rules/",
+        "/national/scheduling/appointments",
+        "/national/observability/health/status",
+        "/citizen-platform/dashboard/1",
+        "/ecosystem/connectors",
+        "/governance/connectors",
+        "/governance/nodes/1",
+        "/command-center/dashboard",
+        "/critical-care/dashboard",
+        "/ems/dashboard",
+        "/lifecycle/dashboard",
+        "/pilot-platform/dashboard",
+        "/public-health/dashboard",
+        "/biomedical/dashboard",
+    )
+
+    def test_protected_paths_reject_anonymous(self, client):
+        for path in self.PROTECTED_PATHS:
+            res = client.get(path)
+            assert res.status_code in (401, 403), (
+                f"{path} reachable anonymously (status {res.status_code})"
+            )

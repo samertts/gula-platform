@@ -35,8 +35,13 @@ from app.national.notification_platform.infrastructure.repository import (
     SQLAlchemyNotificationRepository,
     SQLAlchemyNotificationTemplateRepository,
 )
+from app.security.dependencies import get_current_user
 
-router = APIRouter(prefix="/national/notifications", tags=["National Notifications"])
+router = APIRouter(
+    prefix="/national/notifications",
+    tags=["National Notifications"],
+    dependencies=[Depends(get_current_user)],
+)
 
 
 class SendRequest(BaseModel):
