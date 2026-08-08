@@ -17,7 +17,7 @@ from scripts.orchestrator.core import (
     TaskStatus,
 )
 
-STATUS_PATH = REPO_ROOT / "MISSION_STATUS.md"
+STATUS_PATH = REPO_ROOT / "docs/programs/MISSION_STATUS.md"
 
 BLOCKED_PENALTY = 5.0
 FAILURE_PENALTY = 10.0

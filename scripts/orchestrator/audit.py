@@ -13,7 +13,7 @@ from typing import Any
 
 from scripts.kernel.core import REPO_ROOT
 
-ORCHESTRATOR_AUDIT_PATH = REPO_ROOT / "ORCHESTRATOR_AUDIT_REPORT.md"
+ORCHESTRATOR_AUDIT_PATH = REPO_ROOT / "docs/reports/ORCHESTRATOR_AUDIT_REPORT.md"
 
 SYSTEMS: dict[str, tuple[str, ...]] = {
     "kernel": (

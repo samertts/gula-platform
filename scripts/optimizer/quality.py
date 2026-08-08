@@ -91,8 +91,8 @@ def _security_preserved() -> bool:
 
 
 def _documentation_updated() -> bool:
-    return (REPO_ROOT / "OPTIMIZER_AUDIT_REPORT.md").exists() and (
-        REPO_ROOT / "OPTIMIZER_IMPLEMENTATION_REPORT.md"
+    return (REPO_ROOT / "docs/reports/OPTIMIZER_AUDIT_REPORT.md").exists() and (
+        REPO_ROOT / "docs/reports/OPTIMIZER_IMPLEMENTATION_REPORT.md"
     ).exists()
 
 

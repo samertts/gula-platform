@@ -13,7 +13,7 @@ from typing import Any
 
 from scripts.kernel.core import REPO_ROOT, Finding, Severity
 
-REVIEWER_AUDIT_PATH = REPO_ROOT / "REVIEWER_AUDIT_REPORT.md"
+REVIEWER_AUDIT_PATH = REPO_ROOT / "docs/reports/REVIEWER_AUDIT_REPORT.md"
 
 
 @dataclass
@@ -63,7 +63,7 @@ def audit_current_process() -> list[AuditArea]:
         "architecture": [
             "docs/architecture/*.md",
             "docs/adr/*.md",
-            "ARCHITECTURE.md",
+            "docs/architecture/ARCHITECTURE.md",
         ],
         "security": [
             "backend/app/security/*.py",

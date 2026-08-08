@@ -21,7 +21,7 @@ lead maintainer and contributor community.
 - Ensures Platform Constitution compliance
 
 #### Maintainers
-See [MAINTAINERS.md](MAINTAINERS.md) for current maintainers and their
+See [MAINTAINERS.md](docs/governance/MAINTAINERS.md) for current maintainers and their
 responsibilities.
 
 #### Contributors

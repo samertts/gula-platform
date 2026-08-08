@@ -6,11 +6,11 @@
 
 - [README](README.md) — Quick start and overview
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Contributor guide
-- [ARCHITECTURE.md](ARCHITECTURE.md) — System architecture
+- [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) — System architecture
 - [GOVERNANCE.md](GOVERNANCE.md) — Project governance
 - [CLAUDE.md](CLAUDE.md) — Full developer guide
 - [CHANGELOG.md](CHANGELOG.md) — Release history
-- [ROADMAP.md](ROADMAP.md) — Development roadmap
+- [ROADMAP.md](docs/governance/ROADMAP.md) — Development roadmap
 - [docs/](docs/) — ADRs, specifications, and reference
 
 ### Community
@@ -47,7 +47,7 @@ designed for the Iraqi healthcare system.
 ### Is it production-ready?
 
 Yes. The platform includes production-grade security, monitoring, backup,
-and disaster recovery features. See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
+and disaster recovery features. See [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) for details.
 
 ### How do I get started?
 

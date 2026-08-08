@@ -14,7 +14,7 @@ Maintainers are responsible for:
 - Triaging and responding to issues
 - Ensuring code quality and test coverage
 - Managing releases and versioning
-- Enforcing the [Code of Conduct](CODE_OF_CONDUCT.md)
+- Enforcing the [Code of Conduct](../../CODE_OF_CONDUCT.md)
 - Maintaining project documentation
 - Onboarding new contributors
 - Ensuring Platform Constitution compliance
@@ -33,8 +33,8 @@ To become a maintainer:
 
 - Respond to PRs and issues within 5 business days
 - Participate in quarterly maintainer syncs
-- Uphold the project's [Governance](GOVERNANCE.md) model
-- Follow the [Contributing Guide](CONTRIBUTING.md)
+- Uphold the project's [Governance](../../GOVERNANCE.md) model
+- Follow the [Contributing Guide](../../CONTRIBUTING.md)
 
 ## Emeritus Maintainers
 

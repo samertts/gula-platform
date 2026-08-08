@@ -18,7 +18,7 @@ from scripts.orchestrator.core import (
     read_json,
 )
 
-REPORT_PATH = REPO_ROOT / "ORCHESTRATOR_IMPLEMENTATION_REPORT.md"
+REPORT_PATH = REPO_ROOT / "docs/reports/ORCHESTRATOR_IMPLEMENTATION_REPORT.md"
 
 
 def _missions_scan() -> list[dict]:

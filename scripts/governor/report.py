@@ -103,6 +103,6 @@ by unit tests, documented in `docs/governor/`, and integrated into
 
 def write_report(path=None) -> str:
     """Write the enterprise report to the repository root."""
-    path = path or (REPO_ROOT / "GOVERNOR_IMPLEMENTATION_REPORT.md")
+    path = path or (REPO_ROOT / "docs/reports/GOVERNOR_IMPLEMENTATION_REPORT.md")
     path.write_text(render_report(), encoding="utf-8")
     return str(path)

@@ -209,16 +209,16 @@ def operating_status_markdown() -> str:
 def write_enterprise_report() -> list[str]:
     """Write all three Phase 18 reports and return their paths."""
     paths: list[str] = []
-    implementation_path = REPO_ROOT / "KERNEL_IMPLEMENTATION_REPORT.md"
+    implementation_path = REPO_ROOT / "docs/reports/KERNEL_IMPLEMENTATION_REPORT.md"
     implementation_path.write_text(implementation_markdown(), encoding="utf-8")
     paths.append(str(implementation_path))
 
     readiness = compute_readiness()
-    readiness_path = REPO_ROOT / "ENTERPRISE_READINESS_SCORE.md"
+    readiness_path = REPO_ROOT / "docs/general/ENTERPRISE_READINESS_SCORE.md"
     readiness_path.write_text(readiness_markdown(readiness), encoding="utf-8")
     paths.append(str(readiness_path))
 
-    status_path = REPO_ROOT / "AI_OPERATING_STATUS.md"
+    status_path = REPO_ROOT / "docs/general/AI_OPERATING_STATUS.md"
     status_path.write_text(operating_status_markdown(), encoding="utf-8")
     paths.append(str(status_path))
     return paths

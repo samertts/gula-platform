@@ -30,7 +30,7 @@ import sys
 from . import report
 from .core import REPO_ROOT
 
-_AUDIT_PATH = REPO_ROOT / "KERNEL_AUDIT_REPORT.md"
+_AUDIT_PATH = REPO_ROOT / "docs/reports/KERNEL_AUDIT_REPORT.md"
 
 
 def run_audit() -> int:

@@ -119,7 +119,7 @@ The platform follows a **monolith-first** deployment strategy: the backend monol
 in `backend/app/` is the production target, while a parallel microservices tree
 (`services/`) exists for future decomposition.
 
-See [ARCHITECTURE.md](ARCHITECTURE.md) for a detailed architecture description.
+See [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) for a detailed architecture description.
 
 ## Stack
 
@@ -260,8 +260,8 @@ The project includes:
 > hardcode or commit credentials. The backend fails startup in production
 > when `RESEND_API_KEY` is missing.
 
-See [PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md) and
-[DEPLOYMENT_PLATFORMS.md](DEPLOYMENT_PLATFORMS.md) for details.
+See [PRODUCTION_DEPLOYMENT.md](docs/production/PRODUCTION_DEPLOYMENT.md) and
+[DEPLOYMENT_PLATFORMS.md](docs/production/DEPLOYMENT_PLATFORMS.md) for details.
 
 ## Project Structure
 
@@ -309,13 +309,13 @@ Full policy: `docs/constitution/COST_GOVERNANCE.md`
 ## Key Documents
 
 - [CHANGELOG.md](CHANGELOG.md) — Release history
-- [ARCHITECTURE.md](ARCHITECTURE.md) — System architecture
+- [ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) — System architecture
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Contributor guide
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — Community standards
 - [SECURITY.md](SECURITY.md) — Vulnerability reporting
 - [GOVERNANCE.md](GOVERNANCE.md) — Project governance
 - [SUPPORT.md](SUPPORT.md) — Getting help
-- [ROADMAP.md](ROADMAP.md) — Development roadmap
+- [ROADMAP.md](docs/governance/ROADMAP.md) — Development roadmap
 - [CLAUDE.md](CLAUDE.md) — Developer guide
 
 ## Contributing
@@ -327,7 +327,7 @@ We welcome contributions of all kinds! Please see:
 - [Security Policy](SECURITY.md) — vulnerability reporting
 - [Support](SUPPORT.md) — getting help
 - [Governance](GOVERNANCE.md) — project governance model
-- [Roadmap](ROADMAP.md) — planned features and milestones
+- [Roadmap](docs/governance/ROADMAP.md) — planned features and milestones
 
 ## License
 

@@ -14,7 +14,7 @@ from typing import Any
 from scripts.builder.core import utcnow
 from scripts.kernel.core import REPO_ROOT
 
-BUILDER_IMPLEMENTATION_REPORT = REPO_ROOT / "BUILDER_IMPLEMENTATION_REPORT.md"
+BUILDER_IMPLEMENTATION_REPORT = REPO_ROOT / "docs/reports/BUILDER_IMPLEMENTATION_REPORT.md"
 
 
 @dataclass

@@ -13,7 +13,7 @@ from scripts.kernel.core import REPO_ROOT
 from scripts.reviewer.core import STATE_DIR, Decision, ReviewReport, write_json
 from scripts.reviewer.decision import decide, summary_lines
 
-REVIEWER_REPORT_PATH = REPO_ROOT / "REVIEWER_IMPLEMENTATION_REPORT.md"
+REVIEWER_REPORT_PATH = REPO_ROOT / "docs/reports/REVIEWER_IMPLEMENTATION_REPORT.md"
 
 
 def run(report: ReviewReport) -> Path:

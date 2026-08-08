@@ -21,16 +21,17 @@ def run_audit() -> int:
     findings = audit.audit_findings()
     subsystems = audit.scan_subsystems()
     markdown = audit.render_audit_markdown(findings, subsystems)
-    path = REPO_ROOT / "GOVERNOR_AUDIT_REPORT.md"
+    path = REPO_ROOT / "docs/reports/GOVERNOR_AUDIT_REPORT.md"
     path.write_text(markdown, encoding="utf-8")
     print(f"[OK] GOVERNOR_AUDIT_REPORT.md written ({len(findings)} findings)")
     return 0
 
 
 def run_authority() -> int:
-    """Phase 1: produce AUTHORITY_MAP.md at the repository root."""
+    """Phase 1: produce AUTHORITY_MAP.md under docs/architecture/."""
     markdown = authority_map_markdown()
-    path = REPO_ROOT / "AUTHORITY_MAP.md"
+    path = REPO_ROOT / "docs" / "architecture" / "AUTHORITY_MAP.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(markdown, encoding="utf-8")
     print("[OK] AUTHORITY_MAP.md written")
     return 0

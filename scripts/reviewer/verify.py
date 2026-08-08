@@ -34,7 +34,7 @@ from scripts.reviewer.core import (
     write_json,
 )
 
-REVIEWER_VERIFY_PATH = REPO_ROOT / "REVIEWER_VERIFY_REPORT.md"
+REVIEWER_VERIFY_PATH = REPO_ROOT / "docs/reports/REVIEWER_VERIFY_REPORT.md"
 ORCHESTRATOR_REGISTRY = REPO_ROOT / ".ai" / "core" / "orchestrator" / "history" / "registry.json"
 BUILDER_CHECKPOINT_DIR = REPO_ROOT / ".ai" / "core" / "builder" / "state" / "checkpoints"
 

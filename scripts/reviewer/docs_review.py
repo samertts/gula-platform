@@ -27,7 +27,7 @@ def check_core_docs(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
     findings: list[ReviewFinding] = []
     required = {
         "README.md": "project readme",
-        "ARCHITECTURE.md": "architecture overview",
+        "docs/architecture/ARCHITECTURE.md": "architecture overview",
         "SECURITY.md": "security policy",
         "LICENSE": "license",
     }
@@ -35,8 +35,8 @@ def check_core_docs(repo: Path = REPO_ROOT) -> list[ReviewFinding]:
         if not (repo / name).exists():
             findings.append(ReviewFinding(
                 "documentation", Severity.MEDIUM, f"Missing {label}",
-                detail=f"{name} not found at repo root",
-                evidence="repo root",
+                detail=f"{name} not found at expected path",
+                evidence="repo",
                 suggested_fix=f"add {name} with the {label}",
             ))
     return findings

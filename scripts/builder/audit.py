@@ -14,7 +14,7 @@ from typing import Any
 
 from scripts.kernel.core import REPO_ROOT, Finding, Severity
 
-BUILDER_AUDIT_PATH = REPO_ROOT / "BUILDER_AUDIT_REPORT.md"
+BUILDER_AUDIT_PATH = REPO_ROOT / "docs/reports/BUILDER_AUDIT_REPORT.md"
 
 
 @dataclass
