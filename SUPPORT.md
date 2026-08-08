@@ -35,7 +35,7 @@ via GitHub Issues or Discussions.
 1. Search [existing issues](https://github.com/samertts/gula-platform/issues)
    to see if your question has already been addressed.
 2. Check the [documentation](docs/) for relevant guides.
-3. Review the [troubleshooting guide](docs/troubleshooting.md) if available.
+3. Review the [documentation index](docs/README.md) for troubleshooting guides.
 
 ## FAQ
 
