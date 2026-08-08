@@ -94,8 +94,11 @@ Links to related ADRs, Constitution sections, or code.
 | [ADR-027](ADR-027-architecture-policy-engine.md) | Architecture Policy Engine | Accepted | 2026-08-06 |
 | [ADR-028](ADR-028-structural-migration.md) | Structural Migration Rules | Accepted | 2026-08-07 |
 | [ADR-029](ADR-029-canonical-provider-promotion.md) | Canonical Provider Promotion | Accepted | 2026-08-07 |
+| [ADR-030](ADR-030-kernel-domain-register.md) | Kernel Domain Register (event bus Strategic Exception; DI/scheduler/cron Retain) | Accepted | 2026-08-08 |
+| [ADR-031](ADR-031-audit-repoint-canonical.md) | Audit Re-Point to Canonical (doc-intel + task_engine audit → canonical identity AuditService) | Accepted | 2026-08-07 |
 | [ADR-032](ADR-032-notifications-queue-completion.md) | Notifications Queue Completion (identity queue → `backend/app/notifications`) | Accepted | 2026-08-07 |
 | [ADR-033](ADR-033-search-pdf-completion.md) | Search & PDF Completion (doc-intel search → `capabilities/search_service`; national document PDF → `shared/pdf`) | Accepted | 2026-08-07 |
+| [ADR-034](ADR-034-retain-as-domain-owned-register.md) | Retain-as-Domain-Owned Register (authorization, audit, document, search, notifications, barcode/QR frozen) | Accepted | 2026-08-08 |
 | [ADR-035](ADR-035-rule-engine-promotion.md) | Rule Engine Promotion (ExpressionEngine → `shared/rules_engine`) | Accepted | 2026-08-07 |
 | [ADR-036](ADR-036-workflow-runtime-retirement.md) | Workflow Runtime Retirement (broken national workflow_runtime → canonical `backend/app/workflows`) | Accepted | 2026-08-08 |
 

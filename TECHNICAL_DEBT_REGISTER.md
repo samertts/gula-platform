@@ -1,14 +1,14 @@
-# TECHNICAL DEBT REGISTER — PROGRAM-01 (Pre-Wave-5 Review)
+# TECHNICAL DEBT REGISTER — PROGRAM-01 (FINAL — LOCKED)
 
 > **Owner:** Autonomous Chief Software Architect / Program Director
-> **Scope:** Executive-review snapshot of all known Shared Core findings (27) + non-finding technical debt
-> **Basis:** `.ai/core/architecture/constitution_baseline.json` (regenerated at Commit 3.6), `ARCHITECTURAL_MIGRATION_CLASSIFICATION.md`, `ARCHITECTURE_CONSTITUTION.md`
-> **Gate state:** Shared Core 27/27 acknowledged (0 new); Domain 11/11; Country PASS; Policy PASS
-> **Decision point:** Pre-Wave-5 — this register feeds the Go/No-Go recommendation in `PROGRAM_01_EXECUTIVE_REVIEW.md`
+> **Scope:** Frozen register of all Shared Core findings (25 remaining) + program-level technical debt
+> **Basis:** `.ai/core/architecture/constitution_baseline.json` (FINAL, 25 findings with states), `ARCHITECTURAL_MIGRATION_CLASSIFICATION.md`, `ARCHITECTURE_CONSTITUTION.md`
+> **Gate state:** Shared Core **25/25** acknowledged (0 new); Domain 11/11; Country PASS; Policy PASS
+> **Status:** PROGRAM-01 FINAL CLOSURE — every finding frozen to exactly one state (Domain-Owned / Strategic Exception / False Positive / Deferred); no unresolved classification.
 
 ---
 
-## 1. Per-Finding Register (27 findings)
+## 1. Per-Finding Register (25 frozen + 2 resolved)
 
 Legend — **Class (current):** R = Retain as Domain-Owned, SE = Strategic Exception,
 A = Archive pending, FP = False positive (evidence-based). **Runtime:** LIVE = reachable
@@ -70,12 +70,12 @@ FACADE = delegating wrapper, no duplication. **Recommended:** where the finding 
 | 32 | `kernel/background/cron.py` — `CronEngine` (registry only) | CronEngine | R | LIVE (kernel bootloader) | L | Retain, folded into kernel-domain ADR-030 | 030 | 6 |
 | 33 | `kernel/background/scheduler.py` — `Scheduler` (269-L composition root) | Scheduler | R | LIVE (kernel bootloader) | L | Retain, folded into kernel-domain ADR-030 | 030 | 6 |
 
-### 1.8 encryption (2) — **the only remaining actionables**
+### 1.8 encryption (2) — **RESOLVED in PROGRAM-01 FINAL CLOSURE (Wave 5)**
 
-| # | Path | Signal | Class | Runtime | Risk | Rec. Action | ADR | Wave |
-|---|---|---|---|---|---|---|---|---|
-| 1 | `document_intelligence/security.py` — `EncryptionService` / Fernet | Fernet | A | DORMANT orchestrator; reachable via `wiring.py` `DefaultEncryptionService` | L | **Archive (module surgery)** — delegate to `shared/security` / `backend/app/security`; keep behavior | No | 5 |
-| 2 | `national/ecosystem/transformation/engine.py` — Fernet usage | Fernet | A | LIVE (ecosystem wired; `routes.py` instantiates `TransformationEngine`) | L | **Archive (module surgery)** — carve Fernet out to canonical encryption | No | 5 |
+| # | Path | Signal | Class | Runtime | Risk | Rec. Action | ADR | Wave | Status |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | `document_intelligence/security.py` — `EncryptionService` / Fernet | Fernet | A | DORMANT orchestrator; reachable via `wiring.py` `DefaultEncryptionService` | L | **Module surgery** — delegate to canonical `shared/security/encryption.py` `encrypt_bytes`/`decrypt_bytes` | No | 5 | ✅ **RESOLVED** |
+| 2 | `national/ecosystem/transformation/engine.py` — Fernet usage | Fernet | A | LIVE (ecosystem wired; `routes.py` instantiates `TransformationEngine`) | L | **Module surgery** — carve Fernet out to canonical `shared/security/encryption.py` `encrypt_value`/`decrypt_value` (SHA-256 derivation preserved) | No | 5 | ✅ **RESOLVED** |
 
 ### 1.9 events (2)
 
@@ -104,36 +104,42 @@ FACADE = delegating wrapper, no duplication. **Recommended:** where the finding 
 
 ### 1.13 Summary of recommended disposition
 
-| Disposition | Count | Findings |
-|---|---|---|
-| **Archive (module surgery)** — Wave 5, only actionables | 2 | #1, #2 |
-| **Strategic Exception** — Wave 6 (ADR-030) | 1 | #18 |
-| **Retain — kernel domain register** — Wave 6 (ADR-030) | 3 | #11, #32, #33 |
-| **Retain — domain-owned register** — Wave 6 (ADR-034) | 21 | #4, #8, #10, #12, #13, #14, #15, #16, #19, #21, #23, #26, #29, #30, #31, #34, #37, #40, #41, #45, #48 |
-| **Total** | **27** | (2 archive + 1 SE + 3 kernel retain + 21 domain register; of the 21, #26 and #48 are de-facto canonical facades / false positives documented with evidence) |
+| Disposition | Count | Findings | State |
+|---|---|---|---|
+| **RESOLVED — module surgery (Wave 5, FINAL CLOSURE)** | 2 | #1, #2 | ✅ done — canonical delegation, behavior preserved |
+| **Strategic Exception** (ADR-030) | 1 | #18 | frozen |
+| **Retain — kernel domain register** (ADR-030) | 3 | #11, #32, #33 | frozen |
+| **Retain — domain-owned register** (ADR-034) | 19 | #4, #8, #10, #12, #13, #14, #15, #16, #19, #21, #23, #29, #30, #31, #34, #37, #40, #41, #45 | frozen |
+| **False positive / canonical facade** (register) | 2 | #26, #48 | frozen |
+| **Total frozen** | **25** | — | all 25 frozen, 0 unresolved |
 
-**Result after Wave 5 + Wave 6:** 27 → **0 actionable findings**. The gate continues to
-fail any NEW finding (deterministic baseline). No production code is proposed for
-deletion beyond the two encryption module surgeries (#1 dormant, #2 live-but-carve-out).
+**PROGRAM-01 result:** 51 findings → **2 resolved in FINAL CLOSURE** + **25 frozen**
+(19 Domain-Owned + 1 Strategic Exception + 3 kernel-domain register + 2 False Positive)
+→ **0 actionable**. The gate continues to fail any NEW finding (deterministic baseline).
 
 ---
 
-## 2. Non-Finding Technical Debt (program-level)
+## 2. Non-Finding Technical Debt (program-level) — FROZEN
 
-| ID | Area | Item | Owner | Target |
-|---|---|---|---|---|
-| TD-01 | Deployment | Docker Compose v2 unavailable on host; multi-container orchestration uses raw `docker`; CI-dependent | DevOps | Compose v2 on CI runner |
-| TD-02 | CI/CD | No automated release pipeline / versioning for backend+frontend artifacts; K8s manifests (43) not exercised by CI | DevOps | Release workflow |
-| TD-03 | Observability | Frontend `/metrics` page WARN remains (PROGRAM-011 burn-down carry-over) | FE | Q4 |
-| TD-04 | DR | Cloud snapshot restore WARN remains (S3 restore untested live) | DevOps | Q4 |
-| TD-05 | Security | ENCRYPTION_KEY rotation re-encryption WARN remains (tool exists, rotate-guard tested, live rotation unexercised) | Sec | Q4 |
-| TD-06 | Quality | 71 N999 module-name violations (mostly dormant `national_data/models/warehouse/` star-schema) — advisory | Eng | Backlog |
-| TD-07 | Quality | `mypy` full-backend timeout (capabilities/ modules) — per-module config recommended | Eng | Backlog |
-| TD-08 | Quality | 62 `backref=` remain in inactive bounded contexts — advisory | Eng | Backlog |
-| TD-09 | Frontend | 67 inactive bounded-context pages untranslated (i18n) — dormant contexts only | FE | Backlog |
-| TD-10 | Governance | `platform/notifications.py` facade + `kernel/runtime_sdk.py` re-exports keep dormant signal surface (documented as de-facto canonical) | Arch | Baseline |
-| TD-11 | Governance | Zero-drift engine regenerates 30+ tracked files (incl. docs) even on `--help` — churn risk; governed via reverted state | Arch | Baseline |
-| TD-12 | Testing | Integration suite requires live PG container at `172.18.0.3:5432` (localhost refused) — CI must pin network | DevOps | CI |
+Every debt has a unique ID, description, severity, owner, target program, priority, status,
+and estimated effort.
+
+| ID | Description | Severity | Owner | Target Program | Priority | Status | Effort |
+|---|---|---|---|---|---|---|---|
+| TD-01 | Docker Compose v2 unavailable on host; multi-container orchestration uses raw `docker` | Medium | DevOps | PROGRAM-02 | High | Open | 2 d |
+| TD-02 | No automated release pipeline / versioning for backend+frontend artifacts; 43 K8s manifests not exercised by CI | Medium | DevOps | PROGRAM-02 | High | Open | 5 d |
+| TD-03 | Frontend `/metrics` page WARN remains (PROGRAM-011 burn-down carry-over) | Low | FE | PROGRAM-02 | Medium | Open | 2 d |
+| TD-04 | Cloud snapshot restore WARN remains (S3 restore untested live) | High | DevOps | PROGRAM-02 | High | Open | 3 d |
+| TD-05 | ENCRYPTION_KEY rotation re-encryption WARN remains (tool + rotate-guard exist; live rotation unexercised) | High | Sec | PROGRAM-02 | High | Open | 3 d |
+| TD-06 | 71 N999 module-name violations (mostly dormant `national_data/models/warehouse/` star-schema) — advisory | Low | Eng | PROGRAM-02 | Low | Open | 4 d |
+| TD-07 | `mypy` full-backend timeout (capabilities/ modules) — per-module config recommended | Low | Eng | PROGRAM-02 | Medium | Open | 2 d |
+| TD-08 | 62 `backref=` remain in inactive bounded contexts — advisory | Low | Eng | PROGRAM-02 | Low | Open | 3 d |
+| TD-09 | 67 inactive bounded-context pages untranslated (i18n) — dormant contexts only | Low | FE | PROGRAM-02 | Low | Open | 5 d |
+| TD-10 | `platform/notifications.py` facade + `kernel/runtime_sdk.py` re-exports keep dormant signal surface (documented de-facto canonical) | Low | Arch | PROGRAM-01 baseline | — | **Frozen** (False Positive) | 0 |
+| TD-11 | Zero-drift engine regenerates 30+ tracked files (incl. docs) even on `--help` — churn risk; governed via reverted state | Low | Arch | PROGRAM-01 baseline | — | **Frozen** (accepted) | 0 |
+| TD-12 | Integration suite requires live PG container at `172.18.0.3:5432` (localhost refused) — CI must pin network | Medium | DevOps | PROGRAM-02 | High | Open | 1 d |
+
+**Count:** 12 identified, 0 unidentified. **Open:** 10 (all target PROGRAM-02). **Frozen in baseline:** 2 (TD-10, TD-11 — documented accepted).
 
 ---
 
@@ -145,7 +151,8 @@ files + `platform/workflow.py` with provenance headers — verified. Independent
 
 ## 4. Provenance / Sources
 
-- `.ai/core/architecture/constitution_baseline.json` — the 27 findings (authoritative)
+- `.ai/core/architecture/constitution_baseline.json` — the 25 frozen findings + 2 resolved (authoritative)
 - `docs/baselines/ARCHITECTURAL_MIGRATION_CLASSIFICATION.md` — class/risk/effort/ADR per finding
 - `docs/baselines/COMMIT_3_6_VERIFICATION_REPORT.md` — Commit 3.6 evidence
+- `backend/tests/test_encryption_canonical.py` — Wave-5 regression evidence (#1, #2 resolved)
 - `MASTER_REMAINING_WORK.md` — capability-level view

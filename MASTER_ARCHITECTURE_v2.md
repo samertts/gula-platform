@@ -3,6 +3,10 @@
 > PROGRAM-ALPHA | regenerated 2026-08-08 by `scripts/architecture/docs.py`
 > Platform verdict: **PASS** — Domains **11/11**,
 > isolation **PASS**.
+>
+> **PROGRAM-01 FINAL CLOSURE — ARCHITECTURE LOCKED.** Baseline frozen
+> (25 acknowledged + 2 resolved = 0 actionable).
+> See `PROGRAM_01_FINAL_CERTIFICATION.md`.
 
 ## 1. Mission
 
@@ -73,7 +77,7 @@ breaks tests, weakens security, or duplicates infrastructure.
 |---|---|
 | Domain certification (9 checks / Domain) | **11/11** |
 | Isolation (imports, cycles, shared state, permissions, DB, tables) | **PASS** |
-| Shared Core reimplementation scan | **27 findings, 27 acknowledged** |
+| Shared Core reimplementation scan | **25 findings, 25 acknowledged** |
 | Cross-domain administration | **0** |
 | Country-agnostic | **PASS** |
 | Architecture Constitution gate | **PASS** |

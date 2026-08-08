@@ -26,6 +26,12 @@ def generate_constitution() -> __import__("pathlib").Path:
 > **PROGRAM-ALPHA, Phase 7.** Permanent architectural gates. Every Pull Request
 > that touches application code MUST pass the `architecture-check` gate in CI.
 > A PR **automatically fails** if it introduces any violation of the rules below.
+>
+> **PROGRAM-01 FINAL CLOSURE — ARCHITECTURE LOCKED.** Baseline frozen at
+> **{len(baseline)} acknowledged findings** (19 Domain-Owned, 1 Strategic
+> Exception, 3 kernel-domain register, 2 False Positive) + **2 resolved**
+> (encryption) = **0 actionable**. The gate now fails on ANY new or re-grown
+> finding. See `PROGRAM_01_FINAL_CERTIFICATION.md`.
 
 ## 1. Preamble
 
@@ -115,6 +121,10 @@ def generate_certification(result: dict[str, Any] | None = None) -> __import__("
 
 > Verdict: **{result['verdict']}**
 > Generated {datetime.date.today().isoformat()} by `scripts/architecture`.
+>
+> **PROGRAM-01 FINAL CLOSURE — ARCHITECTURE LOCKED.** Baseline frozen at
+> {c['baseline_acknowledged']} acknowledged findings + **2 resolved** (encryption)
+> = **0 actionable**. Gate fails on any NEW finding.
 
 ## 1. Architecture Constitution gate
 

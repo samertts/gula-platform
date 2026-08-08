@@ -14,7 +14,7 @@
 | Cache | `shared/cache` | `security/redis_client.py` `_LazyCache`, `services/stats_service.py` | 0 |
 | Events / bus | `shared/events` | outbox service, worker, factory | 0 |
 | Health checks | `shared/health` | `main.py` health endpoints, `services/metrics_service.py` | 0 |
-| Security (encryption) | `shared/security` | `backend/app/security/encryption.py` | 0 |
+| Security (encryption) | `shared/security` | `backend/app/security/encryption.py` (delegating wrapper), `document_intelligence/security.py` `EncryptionService` (delegates to `encrypt_bytes`/`decrypt_bytes` — Wave 5 FINAL CLOSURE #1), `national/ecosystem/transformation/engine.py` `EncryptionEngine` AES-256 branch (delegates to `encrypt_value`/`decrypt_value`, SHA-256 derivation preserved — Wave 5 FINAL CLOSURE #2) | 0 active — last two `Fernet(` duplicates in `backend/app` removed in PROGRAM-01 FINAL CLOSURE |
 | Scheduler / workflow | `shared/scheduler`, `shared/workflow` | tasks, workflows | 0 |
 | DI container | `shared/di_container` | factory wiring | 0 |
 | Observability | `shared/metrics`, `shared/tracing`, `shared/logging` | telemetry, OTel | 0 |
@@ -60,8 +60,19 @@
    provenance headers; `platform/workflow.py` dead code archived with it). The frontend national
    page, generated-client section, nav entry, and script registries were removed/re-pointed
    atomically. The canonical engine is the single live workflow implementation.
+6. Encryption lives in the canonical `shared/security/encryption.py`. The last two `Fernet(`
+   constructions in `backend/app` — the doc-intel `EncryptionService` (#1) and the ecosystem
+   `EncryptionEngine` AES-256 branch (#2) — were migrated to canonical delegation in
+   **PROGRAM-01 FINAL CLOSURE** (Wave 5 orders 20–21): both now round-trip through
+   `encrypt_value`/`decrypt_value`/`encrypt_bytes`/`decrypt_bytes`; the ecosystem SHA-256 key
+   derivation is preserved so existing ciphertext stays decryptable and new tokens are
+   byte-identical. Regression coverage: `backend/tests/test_encryption_canonical.py` (9 tests).
 
 ## Verdict
 
 **Shared Core is unique and authoritative for all cross-cutting concerns. No duplicated
 infrastructure in active code.**
+
+**PROGRAM-01 FINAL CLOSURE:** baseline **25 frozen findings** (19 Domain-Owned, 1 Strategic
+Exception, 3 kernel-domain register, 2 False Positive) + **2 resolved** (encryption) = **0
+actionable**. Architecture **LOCKED**. The deterministic gate continues to fail any NEW finding.

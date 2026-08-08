@@ -2,12 +2,16 @@
 
 > Verdict: **PASS**
 > Generated 2026-08-08 by `scripts/architecture`.
+>
+> **PROGRAM-01 FINAL CLOSURE — ARCHITECTURE LOCKED.** Baseline frozen at
+> 25 acknowledged findings + **2 resolved** (encryption)
+> = **0 actionable**. Gate fails on any NEW finding.
 
 ## 1. Architecture Constitution gate
 
 | Check | Result |
 |---|---|
-| Shared Core reimplementation scan | **PASS** — 27 findings (27 acknowledged legacy) |
+| Shared Core reimplementation scan | **PASS** — 25 findings (25 acknowledged legacy) |
 | New (unacknowledged) findings | **0** |
 
 New findings:

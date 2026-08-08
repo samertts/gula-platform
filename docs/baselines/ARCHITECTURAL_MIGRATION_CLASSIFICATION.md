@@ -4,7 +4,7 @@
 **Date:** 2026-08-07
 **Baseline:** `.ai/core/architecture/constitution_baseline.json` — 51 findings (+ 2 country findings)
 **Decision model:** 5-class classification, established by Commit 1.3 (ADR-029 Canonical Provider Promotion)
-**Progress:** 51 → **31** acknowledged findings (Wave 1 certified PASS WITH OBSERVATIONS; Wave 2 order 12 #43 promoted, Commit 2.1; Wave 3 order 13 #24+#49 notifications queue promoted, Commit 3.1; Wave 3 order 14 #35+#36 search promoted, Commit 3.2; Wave 3 order 15 #46+#47 document PDF wired, Commit 3.3 — **Wave 3 CERTIFIED**)
+**Progress:** 51 → **25 frozen + 2 resolved = 0 actionable** (Wave 1 certified PASS WITH OBSERVATIONS; Wave 2 order 12 #43 promoted, Commit 2.1; Wave 3 order 13 #24+#49 notifications queue promoted, Commit 3.1; Wave 3 order 14 #35+#36 search promoted, Commit 3.2; Wave 3 order 15 #46+#47 document PDF wired, Commit 3.3 — **Wave 3 CERTIFIED**; Wave 4 order 19 #44 workflow_runtime retired, Commit 3.6 — **Wave 4 CERTIFIED**; FINAL CLOSURE orders 20–21 #1+#2 encryption module surgery — **PROGRAM-01 ARCHITECTURE LOCKED**)
 
 ---
 
@@ -250,6 +250,11 @@ touches delivery semantics (clinical-safety). ADR-034 documents retained
 domain-owned code so the gate can acknowledge it. ADR-036 retires a wired-but-
 broken national route surface.
 
+> **PROGRAM-01 FINAL CLOSURE:** ADR-030 (Kernel Domain Register) and ADR-034
+> (Retain-as-Domain-Owned Register) are **Accepted** — they froze the remaining
+> findings in Wave 5 orders 22–24. Baseline is **25 frozen + 2 resolved = 0
+> actionable**, architecture **LOCKED**.
+
 > **Wave 1 certified (PASS WITH OBSERVATIONS)** and **Wave 2 order 12 (ADR-035)
 > complete** — see `PROGRAM-01_WAVE1_CERTIFICATION.md` and
 > `docs/baselines/COMMIT_2_1_VERIFICATION_REPORT.md`.
@@ -318,10 +323,21 @@ broken national route surface.
 | 23 | #18 kernel EventBus (**Strategic Exception**); #11/#32/#33 kernel DI/Scheduler/Cron (**Retain**, folded into same kernel-domain ADR) | Exception + Retain | — | ADR-030 |
 | 24 | #4,8,10,12,13,14,15,16,19,21,23,26,29,30,31,34,37,40,41,45,48 | Retain (register) | — | ADR-034 |
 
-**Result after all waves:** baseline 51 → **0 actionable findings** (2 false
-positives removed; 16 archived; 1 promoted; 7 completed; 1 strategic exception;
-24 retained-as-domain-owned documented in the baseline register). The gate
-continues to fail any NEW finding.
+### FINAL CLOSURE — PROGRAM-01 Wave 5 executed (Order 20+21)
+*The two encryption actionables completed; remaining findings frozen.*
+
+| Order | Finding | Class | Status |
+|---|---|---|---|
+| 20 | #2 ecosystem `EncryptionEngine` AES-256 branch → canonical `shared/security/encryption.py::encrypt_value/decrypt_value` (SHA-256 derivation preserved, tokens byte-identical) | Module surgery | ✅ **DONE — PROGRAM-01 FINAL CLOSURE** |
+| 21 | #1 doc-intel `EncryptionService` → canonical `shared/security/encryption.py::encrypt_bytes/decrypt_bytes` (bytes-preserving canonical helpers added) | Module surgery | ✅ **DONE — PROGRAM-01 FINAL CLOSURE** |
+| 22 | #21+#30 legacy authorization | Retain | 🔒 **FROZEN (Domain-Owned, ADR-034)** |
+| 23 | #18 Strategic Exception; #11/#32/#33 kernel Retain | Exception + Retain | 🔒 **FROZEN (ADR-030)** |
+| 24 | remaining domain-owned register | Retain | 🔒 **FROZEN (ADR-034)** |
+
+**FINAL result:** baseline 51 → **25 frozen findings + 2 resolved in FINAL CLOSURE = 0 actionable**
+(2 false positives removed; 16 archived; 1 promoted; 7 completed; 2 encryption module
+surgeries; 1 strategic exception; 25 frozen-with-state). The gate continues to fail any
+NEW finding. **PROGRAM-01 Architecture LOCKED.**
 
 ---
 

@@ -1,140 +1,155 @@
 {
-  "note": "Known Shared Core reimplementation + country-hardening debt awaiting migration (MASTER_REMAINING_WORK.md). Do not grow this list.",
+  "note": "Shared Core reimplementation + country-hardening debt register — PROGRAM-01 FINAL CLOSURE (LOCKED). Resolved this program: false positives (#38, #51), archives (#3, #5, #6, #7, #9, #17, #20, #22, #25, #27, #28, #39, #42, #44), promotion (#43), canonical completions (#24, #35, #36, #46, #47, #49, #50), and encryption module surgeries (#1, #2 — Wave 5, PROGRAM-01 FINAL). Remaining entries are frozen with exactly one state each (Domain-Owned / Strategic Exception / False Positive). Do not grow this list.",
   "findings": [
     {
       "rule_id": "identity",
       "path": "backend/app/citizen_platform/identity.py",
-      "signal": "class\\s+\\w*(?:IdentityService|IdentityProvider|LoginService|AuthService|AuthenticationService)\\b"
+      "signal": "class\\s+\\w*(?:IdentityService|IdentityProvider|LoginService|AuthService|AuthenticationService)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "notifications",
       "path": "backend/app/citizen_platform/notifications.py",
-      "signal": "class\\s+\\w*(?:NotificationService|NotificationCenter|Notifier|NotificationSender)\\b"
+      "signal": "class\\s+\\w*(?:NotificationService|NotificationCenter|Notifier|NotificationSender)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "authorization",
       "path": "backend/app/control_plane/policy/enforcer.py",
-      "signal": "class\\s+\\w*(?:Rbac|Abac|PermissionService|PolicyEnforcer)\\b"
+      "signal": "class\\s+\\w*(?:Rbac|Abac|PermissionService|PolicyEnforcer)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "audit",
       "path": "backend/app/document_intelligence/application/interfaces.py",
-      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
+      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "search_engine",
       "path": "backend/app/document_intelligence/application/interfaces.py",
-      "signal": "class\\s+\\w*(?:SearchService|SearchIndex|SearchEngine)\\b"
+      "signal": "class\\s+\\w*(?:SearchService|SearchIndex|SearchEngine)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "document_engine",
       "path": "backend/app/document_intelligence/application/interfaces.py",
-      "signal": "def\\s+generate_pdf\\s*\\("
+      "signal": "def\\s+generate_pdf\\s*\\(",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "scheduler",
       "path": "backend/app/document_intelligence/backup_dr.py",
-      "signal": "class\\s+\\w*(?:Scheduler|JobManager|CronEngine)\\b"
+      "signal": "class\\s+\\w*(?:Scheduler|JobManager|CronEngine)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "document_engine",
       "path": "backend/app/document_intelligence/domain/repository.py",
-      "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b"
+      "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "document_engine",
       "path": "backend/app/document_intelligence/infrastructure/repository.py",
-      "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b"
-    },
-    {
-      "rule_id": "encryption",
-      "path": "backend/app/document_intelligence/security.py",
-      "signal": "\\bFernet\\s*\\("
+      "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "scheduler",
       "path": "backend/app/kernel/background/cron.py",
-      "signal": "class\\s+\\w*(?:Scheduler|JobManager|CronEngine)\\b"
+      "signal": "class\\s+\\w*(?:Scheduler|JobManager|CronEngine)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "scheduler",
       "path": "backend/app/kernel/background/scheduler.py",
-      "signal": "class\\s+\\w*(?:Scheduler|JobManager|CronEngine)\\b"
+      "signal": "class\\s+\\w*(?:Scheduler|JobManager|CronEngine)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "events",
       "path": "backend/app/kernel/event_bus/bus.py",
-      "signal": "class\\s+\\w*(?:EventBus|EventEmitter|MessageBus)\\b"
+      "signal": "class\\s+\\w*(?:EventBus|EventEmitter|MessageBus)\\b",
+      "state": "Strategic Exception"
     },
     {
       "rule_id": "dependency_injection",
       "path": "backend/app/kernel/runtime/di_container.py",
-      "signal": "class\\s+\\w*(?:DiContainer|ServiceLocator)\\b"
+      "signal": "class\\s+\\w*(?:DiContainer|ServiceLocator)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "events",
       "path": "backend/app/kernel/runtime_sdk.py",
-      "signal": "def\\s+publish_event\\s*\\("
+      "signal": "def\\s+publish_event\\s*\\(",
+      "state": "False Positive"
     },
     {
       "rule_id": "barcode_engine",
       "path": "backend/app/models/sample.py",
-      "signal": "def\\s+(?:create_barcode|generate_barcode|decode_barcode)\\s*\\("
+      "signal": "def\\s+(?:create_barcode|generate_barcode|decode_barcode)\\s*\\(",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "document_engine",
       "path": "backend/app/national/document_platform/application/interfaces.py",
-      "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b"
+      "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "qr_engine",
       "path": "backend/app/national/document_platform/application/service.py",
-      "signal": "def\\s+(?:generate_qr|decode_qr)\\s*\\("
+      "signal": "def\\s+(?:generate_qr|decode_qr)\\s*\\(",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "document_engine",
       "path": "backend/app/national/document_platform/domain/repository.py",
-      "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b"
+      "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "document_engine",
       "path": "backend/app/national/document_platform/infrastructure/repository.py",
-      "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b"
-    },
-    {
-      "rule_id": "encryption",
-      "path": "backend/app/national/ecosystem/transformation/engine.py",
-      "signal": "\\bFernet\\s*\\("
+      "signal": "class\\s+\\w*(?:DocumentManager|PdfGenerator|DocumentRepository)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "search_engine",
       "path": "backend/app/national/fhir/search.py",
-      "signal": "class\\s+\\w*(?:SearchService|SearchIndex|SearchEngine)\\b"
+      "signal": "class\\s+\\w*(?:SearchService|SearchIndex|SearchEngine)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "audit",
       "path": "backend/app/national/task_engine/domain/repository.py",
-      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
+      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "notifications",
       "path": "backend/app/platform/notifications.py",
-      "signal": "class\\s+\\w*(?:NotificationService|NotificationCenter|Notifier|NotificationSender)\\b"
+      "signal": "class\\s+\\w*(?:NotificationService|NotificationCenter|Notifier|NotificationSender)\\b",
+      "state": "False Positive"
     },
     {
       "rule_id": "identity",
       "path": "backend/app/services/authorization_service.py",
-      "signal": "class\\s+\\w*(?:IdentityService|IdentityProvider|LoginService|AuthService|AuthenticationService)\\b"
+      "signal": "class\\s+\\w*(?:IdentityService|IdentityProvider|LoginService|AuthService|AuthenticationService)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "authorization",
       "path": "backend/app/services/authorization_service.py",
-      "signal": "class\\s+\\w*(?:Rbac|Abac|PermissionService|PolicyEnforcer)\\b"
+      "signal": "class\\s+\\w*(?:Rbac|Abac|PermissionService|PolicyEnforcer)\\b",
+      "state": "Domain-Owned"
     },
     {
       "rule_id": "audit",
       "path": "backend/app/services/authorization_service.py",
-      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b"
+      "signal": "class\\s+\\w*(?:AuditService|AuditLogger|AuditLogRepository)\\b",
+      "state": "Domain-Owned"
     }
   ],
   "country_findings": [

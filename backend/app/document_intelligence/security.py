@@ -20,16 +20,14 @@ class EncryptionService:
         self._key = base64.urlsafe_b64encode(raw[:32])
 
     def encrypt(self, data: bytes) -> bytes:
-        from cryptography.fernet import Fernet
+        from shared.security.encryption import encrypt_bytes
 
-        f = Fernet(self._key)
-        return f.encrypt(data)
+        return encrypt_bytes(data, self._key)
 
     def decrypt(self, data: bytes) -> bytes:
-        from cryptography.fernet import Fernet
+        from shared.security.encryption import decrypt_bytes
 
-        f = Fernet(self._key)
-        return f.decrypt(data)
+        return decrypt_bytes(data, self._key)
 
 
 class InputValidator:

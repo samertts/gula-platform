@@ -31,6 +31,25 @@ def decrypt_value(token: str, key: str) -> str:
         raise ValueError(f"Invalid or corrupted ciphertext: {exc}") from exc
 
 
+def encrypt_bytes(data: bytes, key: str | bytes) -> bytes:
+    f = _get_fernet(key)
+    if f is None:
+        raise ValueError("Encryption key is required")
+    return f.encrypt(data)
+
+
+def decrypt_bytes(token: bytes, key: str | bytes) -> bytes:
+    from cryptography.fernet import InvalidToken
+
+    f = _get_fernet(key)
+    if f is None:
+        raise ValueError("Encryption key is required")
+    try:
+        return f.decrypt(token)
+    except InvalidToken as exc:
+        raise ValueError(f"Invalid or corrupted ciphertext: {exc}") from exc
+
+
 def encrypt_national_id(nid: str, encryption_key: str, hmac_key: str) -> str:
     from shared.security.hmac import hmac_sign
     encrypted = encrypt_value(nid, encryption_key)

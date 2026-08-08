@@ -564,13 +564,12 @@ class EncryptionEngine:
         if algorithm == "AES-256":
             import base64
 
-            from cryptography.fernet import Fernet
+            from shared.security.encryption import encrypt_value
 
             derived_key = base64.urlsafe_b64encode(
                 hashlib.sha256(key.encode() if isinstance(key, str) else key).digest(),
             )
-            f = Fernet(derived_key)
-            return f.encrypt(data.encode()).decode()
+            return encrypt_value(data, derived_key)
         if algorithm == "RSA":
             from cryptography.hazmat.backends import default_backend
             from cryptography.hazmat.primitives import hashes as crypto_hashes
@@ -596,13 +595,12 @@ class EncryptionEngine:
         if algorithm == "AES-256":
             import base64
 
-            from cryptography.fernet import Fernet
+            from shared.security.encryption import decrypt_value
 
             derived_key = base64.urlsafe_b64encode(
                 hashlib.sha256(key.encode() if isinstance(key, str) else key).digest(),
             )
-            f = Fernet(derived_key)
-            return f.decrypt(data.encode()).decode()
+            return decrypt_value(data, derived_key)
         if algorithm == "RSA":
             from cryptography.hazmat.backends import default_backend
             from cryptography.hazmat.primitives import hashes as crypto_hashes

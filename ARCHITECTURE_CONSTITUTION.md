@@ -1,8 +1,14 @@
 # Architecture Constitution — GULA National Healthcare Platform
-
+ 
 > **PROGRAM-ALPHA, Phase 7.** Permanent architectural gates. Every Pull Request
 > that touches application code MUST pass the `architecture-check` gate in CI.
 > A PR **automatically fails** if it introduces any violation of the rules below.
+>
+> **PROGRAM-01 FINAL CLOSURE — ARCHITECTURE LOCKED.** Baseline frozen at
+> **25 acknowledged findings** (19 Domain-Owned, 1 Strategic
+> Exception, 3 kernel-domain register, 2 False Positive) + **2 resolved**
+> (encryption) = **0 actionable**. The gate now fails on ANY new or re-grown
+> finding. See `PROGRAM_01_FINAL_CERTIFICATION.md`.
 
 ## 1. Preamble
 
@@ -77,8 +83,8 @@ The following Shared Core capabilities already contain legacy reimplementation
 candidates. They are tracked for migration and are **blocked from growing**:
 new files matching a rule fail the gate, even while legacy files remain.
 
-- **acknowledged findings:** 27 across 12 rule(s)
-  (`audit, authorization, barcode_engine, dependency_injection, document_engine, encryption, events, identity, notifications, qr_engine, scheduler, search_engine`)
+- **acknowledged findings:** 25 across 11 rule(s)
+  (`audit, authorization, barcode_engine, dependency_injection, document_engine, events, identity, notifications, qr_engine, scheduler, search_engine`)
 
 See `MASTER_REMAINING_WORK.md` for the migration plan for each item.
 
