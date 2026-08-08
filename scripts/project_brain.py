@@ -319,7 +319,7 @@ Completed/known programs referenced in the repository:
 - Kubernetes: `k8s/`, `helm/`
 - Terraform: `terraform/`
 - Edge: `edge_agent/`, `EDGE_PLATFORM.md`
-- National: `nhop-platform/`, `docs/national/`, `docs/sndhs/`
+- National: `archive/legacy/nhop-platform/`, `docs/national/`, `docs/sndhs/`
 - Android: `mobile/`; CI: `mobile-android.yml`
 - Web: frontend-v3 → `vercel.json`; PWA: `frontend-pwa.yml`
 

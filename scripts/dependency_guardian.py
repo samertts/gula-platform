@@ -53,7 +53,7 @@ PYTHON_REQUIREMENT_FILES: list[Path] = [
     REPO_ROOT / "backend" / "requirements.txt",
     REPO_ROOT / "backend" / "requirements-dev.txt",
     REPO_ROOT / "backend" / "requirements-lock.txt",
-    REPO_ROOT / "nhop-platform" / "requirements.txt",
+    REPO_ROOT / "archive" / "legacy" / "nhop-platform" / "requirements.txt",
     REPO_ROOT / "edge_agent" / "requirements.txt",
 ]
 
@@ -65,7 +65,7 @@ _SHORT_NAMES = {
     "backend/requirements.txt": "backend",
     "backend/requirements-dev.txt": "backend-dev",
     "backend/requirements-lock.txt": "backend-lock",
-    "nhop-platform/requirements.txt": "nhop",
+    "archive/legacy/nhop-platform/requirements.txt": "nhop",
     "edge_agent/requirements.txt": "edge",
 }
 

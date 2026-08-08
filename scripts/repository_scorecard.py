@@ -357,7 +357,7 @@ def _score_documentation() -> AxisResult:
     ax.add_check("Root README", len(readme_root) > 0, f"{len(readme_root)} root README file(s)")
 
     # 3b. README per major module
-    module_dirs = ["backend/app", "services", "frontend-v3", "client", "docs", "scripts", "nhop-platform", "edge_agent", "ai"]
+    module_dirs = ["backend/app", "services", "frontend-v3", "client", "docs", "scripts", "archive/legacy/nhop-platform", "edge_agent", "ai"]
     modules_with_readme = 0
     for mod in module_dirs:
         d = REPO_ROOT / mod
