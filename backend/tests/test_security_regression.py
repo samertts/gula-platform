@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import os
 import time
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from app._compat import UTC
@@ -531,3 +532,132 @@ class TestNationalPlatformsRequireAuth:
             assert res.status_code in (401, 403), (
                 f"{path} reachable anonymously (status {res.status_code})"
             )
+
+
+# ─── Phase 14.N — NIAM identity surface requires authentication ──────────────
+
+
+def _niam_token(account_uuid: str, identity_id: str) -> dict:
+    token = create_token(
+        {"jti": f"niam-{uuid.uuid4().hex}", "account_uuid": account_uuid, "identity_id": identity_id}
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+def _make_niam_account(db, status: str = "active", locked: bool = False):
+    from datetime import datetime as _dt
+
+    from app._compat import UTC
+    from app.identity.models.account import Account
+
+    account = Account(
+        uuid=str(uuid.uuid4()),
+        identity_id=f"ID-{uuid.uuid4().hex[:12]}",
+        status=status,
+        is_active=True,
+        is_locked=locked,
+        locked_until=_dt.now(UTC) + timedelta(hours=1) if locked else None,
+        account_type="human",
+    )
+    db.add(account)
+    db.commit()
+    return account
+
+
+class TestNiamRequiresAuth:
+    """The NIAM identity surface (persons, accounts, sessions, devices,
+    governance, trust, lifecycle, federation, certificates, workflows,
+    notifications, adaptive-auth, admin, compliance, workspaces, citizen and
+    professional registries) must never be reachable anonymously. Only the
+    public authentication flows (/auth/login, /auth/refresh) and /niam/health
+    remain open."""
+
+    PROTECTED_GET_PATHS = (
+        "/niam/persons/1234abcd",
+        "/niam/sessions/account/1234abcd",
+        "/niam/governance/authorities",
+        "/niam/trust/frameworks",
+        "/niam/lifecycle/enterprise/1234abcd",
+        "/niam/federation/providers",
+        "/niam/certificates/authorities",
+        "/niam/workflows/definitions",
+        "/niam/notifications/templates",
+        "/niam/adaptive-auth/policies",
+        "/niam/admin/subscriptions/1234abcd",
+        "/niam/compliance/frameworks",
+        "/niam/workspaces/identity/1234abcd",
+        "/niam/citizens/providers",
+        "/niam/professional-registry/person/1234abcd",
+    )
+
+    PROTECTED_MUTATION_PATHS = (
+        "/niam/auth/logout?session_uuid=abc",
+        "/niam/devices/register?person_uuid=abc&device_fingerprint=fp",
+        "/niam/accounts/abc/lock?reason=test",
+        "/niam/sessions/abc/terminate?reason=test",
+    )
+
+    def test_protected_get_paths_reject_anonymous(self, client):
+        for path in self.PROTECTED_GET_PATHS:
+            res = client.get(path)
+            assert res.status_code in (401, 403), (
+                f"{path} reachable anonymously (status {res.status_code})"
+            )
+
+    def test_protected_mutation_paths_reject_anonymous(self, client):
+        for path in self.PROTECTED_MUTATION_PATHS:
+            res = client.post(path)
+            assert res.status_code in (401, 403), (
+                f"{path} reachable anonymously (status {res.status_code})"
+            )
+
+    def test_public_niam_endpoints_stay_public(self, client):
+        health = client.get("/niam/health")
+        assert health.status_code == 200
+        assert health.json()["status"] == "healthy"
+
+        login = client.post("/niam/auth/login", json={"login": "nobody", "password": "wrong"})
+        assert login.status_code == 401
+        assert login.json().get("detail") == "Invalid credentials", (
+            "/auth/login must remain reachable (service-level rejection, not auth gate)"
+        )
+
+        refresh = client.post("/niam/auth/refresh?refresh_token=bogus-token")
+        assert refresh.status_code == 401
+        assert refresh.json().get("detail") == "Invalid or expired refresh token", (
+            "/auth/refresh must remain reachable"
+        )
+
+    def test_niam_account_token_accepted(self, client, db):
+        account = _make_niam_account(db)
+        res = client.get(
+            "/niam/trust/frameworks",
+            headers=_niam_token(account.uuid, account.identity_id),
+        )
+        assert res.status_code == 200, f"valid NIAM token rejected: {res.status_code} {res.text}"
+
+    def test_lab_token_accepted_on_niam(self, client, sec_lab):
+        admin = sec_lab["admin"]
+        res = client.get(
+            "/niam/trust/frameworks",
+            headers=_hdr(admin.id, sec_lab["lab"].id, role="admin"),
+        )
+        assert res.status_code == 200, (
+            f"legacy lab token rejected on NIAM surface: {res.status_code} {res.text}"
+        )
+
+    def test_suspended_account_token_rejected(self, client, db):
+        account = _make_niam_account(db, status="suspended")
+        res = client.get(
+            "/niam/trust/frameworks",
+            headers=_niam_token(account.uuid, account.identity_id),
+        )
+        assert res.status_code in (401, 403)
+
+    def test_locked_account_token_rejected(self, client, db):
+        account = _make_niam_account(db, locked=True)
+        res = client.get(
+            "/niam/trust/frameworks",
+            headers=_niam_token(account.uuid, account.identity_id),
+        )
+        assert res.status_code in (401, 403)

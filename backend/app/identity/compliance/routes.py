@@ -3,8 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
 from app.identity.compliance.services import ComplianceService
+from app.identity.security import get_current_identity
 
-router = APIRouter(prefix="/compliance", tags=["NIAM Compliance"])
+router = APIRouter(
+    prefix="/compliance",
+    tags=["NIAM Compliance"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 @router.post("/frameworks")

@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
+from app.identity.security import get_current_identity
 
 from .services import (
     CitizenRegistryError,
@@ -12,7 +13,11 @@ from .services import (
     UnsupportedIdentifierTypeError,
 )
 
-router = APIRouter(prefix="/citizens", tags=["NIAM Citizen Registry"])
+router = APIRouter(
+    prefix="/citizens",
+    tags=["NIAM Citizen Registry"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 @router.post("/providers")

@@ -11,8 +11,13 @@ from app.identity.federation.services import (
     FederationAgreementService,
     FederationService,
 )
+from app.identity.security import get_current_identity
 
-router = APIRouter(prefix="/federation", tags=["NIAM Federation"])
+router = APIRouter(
+    prefix="/federation",
+    tags=["NIAM Federation"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 @router.post("/providers")

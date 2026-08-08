@@ -9,8 +9,13 @@ from app.identity.certificates.services import (
     CertificateAuthorityService,
     CertificateService,
 )
+from app.identity.security import get_current_identity
 
-router = APIRouter(prefix="/certificates", tags=["NIAM Certificates"])
+router = APIRouter(
+    prefix="/certificates",
+    tags=["NIAM Certificates"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 @router.post("/issue")

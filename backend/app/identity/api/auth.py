@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
+from app.identity.security import get_current_identity
 from app.identity.services.authentication_service import AuthenticationService
 
 router = APIRouter(prefix="/auth", tags=["NIAM Auth"])
@@ -53,7 +54,10 @@ async def refresh(
     return result
 
 
-@router.post("/logout")
+@router.post(
+    "/logout",
+    dependencies=[Depends(get_current_identity)],
+)
 async def logout(
     session_uuid: str,
     db: AsyncSession = Depends(get_db),

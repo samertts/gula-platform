@@ -2,9 +2,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
+from app.identity.security import get_current_identity
 from app.identity.services.session_service import SessionService
 
-router = APIRouter(prefix="/sessions", tags=["NIAM Sessions"])
+router = APIRouter(
+    prefix="/sessions",
+    tags=["NIAM Sessions"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 @router.get("/account/{account_id}")

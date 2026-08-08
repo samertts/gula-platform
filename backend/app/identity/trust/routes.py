@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
+from app.identity.security import get_current_identity
 
 from .services import (
     AssuranceService,
@@ -17,7 +18,11 @@ from .services import (
     TrustFrameworkService,
 )
 
-router = APIRouter(prefix="/trust", tags=["NIAM Trust"])
+router = APIRouter(
+    prefix="/trust",
+    tags=["NIAM Trust"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 # ── Trust Frameworks ──────────────────────────────────────────────────────────

@@ -7,10 +7,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
+from app.identity.security import get_current_identity
 
 from .services import NotificationQueueService
 
-router = APIRouter(prefix="/notifications", tags=["NIAM Notifications"])
+router = APIRouter(
+    prefix="/notifications",
+    tags=["NIAM Notifications"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 @router.post("/send")

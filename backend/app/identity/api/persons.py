@@ -4,9 +4,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
+from app.identity.security import get_current_identity
 from app.identity.services.person_service import PersonService
 
-router = APIRouter(prefix="/persons", tags=["NIAM Persons"])
+router = APIRouter(
+    prefix="/persons",
+    tags=["NIAM Persons"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 @router.post("/")

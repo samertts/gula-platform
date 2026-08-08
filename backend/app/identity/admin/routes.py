@@ -3,8 +3,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
 from app.identity.admin.services import EnterprisePortalService
+from app.identity.security import get_current_identity
 
-router = APIRouter(prefix="/admin", tags=["NIAM Admin"])
+router = APIRouter(
+    prefix="/admin",
+    tags=["NIAM Admin"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 @router.post("/portals")

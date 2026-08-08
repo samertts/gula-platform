@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
+from app.identity.security import get_current_identity
 
 from .services import (
     AppealService,
@@ -16,7 +17,11 @@ from .services import (
     SuspensionService,
 )
 
-router = APIRouter(prefix="/governance", tags=["NIAM Governance"])
+router = APIRouter(
+    prefix="/governance",
+    tags=["NIAM Governance"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 # ── Authorities ────────────────────────────────────────────────────────────────

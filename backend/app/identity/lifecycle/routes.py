@@ -14,8 +14,13 @@ from app.identity.lifecycle.services import (
     GuardianService,
     WorkforceService,
 )
+from app.identity.security import get_current_identity
 
-router = APIRouter(prefix="/lifecycle", tags=["NIAM Lifecycle"])
+router = APIRouter(
+    prefix="/lifecycle",
+    tags=["NIAM Lifecycle"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 # ──────────────────────────────────────────────
 #  Enterprise Registration

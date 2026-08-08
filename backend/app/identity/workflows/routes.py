@@ -6,9 +6,14 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
+from app.identity.security import get_current_identity
 from app.workflows.engine import WorkflowEngine
 
-router = APIRouter(prefix="/workflows", tags=["NIAM Workflows"])
+router = APIRouter(
+    prefix="/workflows",
+    tags=["NIAM Workflows"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 @router.post("/definitions")
