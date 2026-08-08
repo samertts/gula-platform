@@ -7,7 +7,7 @@ outdated packages, and cross-manifest conflicts.
 
 Checks performed:
   1. Python vulnerability scan  — pip-audit on all requirements files
-  2. npm vulnerability scan     — npm audit on frontend-v2
+  2. npm vulnerability scan     — npm audit on frontend-v3
   3. Outdated Python packages   — pip list --outdated parsing
   4. Cross-manifest conflicts   — version mismatches between requirements.txt
      and pyproject.toml / requirements-dev.txt etc.
@@ -58,7 +58,7 @@ PYTHON_REQUIREMENT_FILES: list[Path] = [
 ]
 
 PYPROJECT = REPO_ROOT / "pyproject.toml"
-FRONTEND_DIR = REPO_ROOT / "frontend-v2"
+FRONTEND_DIR = REPO_ROOT / "frontend-v3"
 PACKAGE_JSON = FRONTEND_DIR / "package.json"
 
 _SHORT_NAMES = {
@@ -776,12 +776,12 @@ def print_human_report(guard: GuardReport) -> int:
     if guard.npm_report:
         nr = guard.npm_report
         if nr.parse_error:
-            print(f"  {_c('red', '✗')}  frontend-v2  {_c('red', nr.parse_error)}")
+            print(f"  {_c('red', '✗')}  frontend-v3  {_c('red', nr.parse_error)}")
             total_errors += 1
         else:
             pkg_count = len(nr.packages)
             npm_status = _c("green", "✓") if nr.passed else _c("red", "✗")
-            print(f"  {npm_status}  frontend-v2  ({pkg_count} packages)")
+            print(f"  {npm_status}  frontend-v3  ({pkg_count} packages)")
 
             if nr.audit_error:
                 print(f"         {_c('red', '✘')}  audit error: {nr.audit_error}")
