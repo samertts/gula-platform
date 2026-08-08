@@ -35,7 +35,7 @@
 | M3 | Remaining Findings | **27** (from 57 original) | ↓ 30 removed |
 | M4 | Shared Core Progress | **30 / 57** original findings migrated (15 archives + 3 promotions + 2 false-positive fixes + 1 in-place class archive + 6 completion orders [#24+#49 Commit 3.1, #35+#36 Commit 3.2, #46+#47 Commit 3.3, #5 order 16, #9 order 17, #50 order 18, #44 Commit 3.6]); **27 remain** | Increasing |
 | M5 | Migration Progress | **20 implementation migrations certified** (1.1–1.3, 1.6–1.14, 2.1, 3.1, 3.2, 3.3, orders 16–19) + **2 signal-precision fixes** (1.4, 1.5) | Increasing |
-| M6 | Production Readiness | backend 0 fail (5066 passed; boot 118 routes); ruff 378 baseline; tsc 0; eslint 0 | Stable |
+| M6 | Production Readiness | backend 0 fail (5080 passed; boot 118 routes); ruff 378 baseline; tsc 0; eslint 0 | Stable |
 | M7 | Repository Size | active LOC shrinking; archive = **44 non-test modules** (+15 workflow_runtime/WorkflowRuntime platform; −364 active LOC) | Active ↓ |
 | M8 | Duplicate Implementations | 27 remaining findings (removed/promoted one per commit) | Decreasing |
 | M9 | ADR Count | **38 ADRs** (incl. ADR-027/028/029/032/033/035/036 governing this phase; ADR-031 used by orders 16–17; ADR-030/034 planned) | Increasing |

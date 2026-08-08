@@ -1,6 +1,6 @@
 # COMMIT 3.6 VERIFICATION REPORT — Program-01 Wave 4 (Workflow Runtime Retirement)
 
-- **Order:** 19 (ADR-036) · **Commit:** (pending) · **Branch:** `remediate-security-001`
+- **Order:** 19 (ADR-036) · **Commit:** `6aadb55c` · **Branch:** `remediate-security-001`
 - **Finding:** #44 (`workflow_engine` — `national/workflow_runtime` wired-but-500) → **31 → 27**
 - **Scope:** Archive the broken national `workflow_runtime` package (0-byte service → every
   `/national/workflows/*` handler raised ImportError / HTTP 500) and re-point consumers to the
@@ -21,7 +21,7 @@ frontend national page, generated-client section, nav entry, and the
 generator/zero-drift registries were re-pointed/removed atomically. The
 canonical live engine (`/niam/workflows`) is the single workflow implementation.
 **Architecture gate: PASS (27 findings, 27 ack, 0 new) · Full backend suite
-5066 passed / 0 failed · OpenAPI −22 methods / −19 paths, all and only the
+5080 passed / 0 failed · OpenAPI −22 methods / −19 paths, all and only the
 `/national/workflows/*` broken surface · Boot 118 routes · 14 new regression
 tests.**
 
@@ -91,7 +91,7 @@ findings. Gate re-run: **PASS (27 ack, 0 new)**. Master docs
 
 | Suite | Result |
 |---|---|
-| Full backend (`ENV=test` + PG) | **5066 passed / 0 failed** (600.65s) |
+| Full backend (`ENV=test` + PG) | **5080 passed / 0 failed** (658.54s) |
 | Frontend unit (`vitest run`) | **122 passed / 0 failed** (9 files) |
 | Ruff (backend) | 378 errors (< 379 baseline; factory.py clean) |
 | `tsc --noEmit` | **0 errors** |
@@ -143,7 +143,7 @@ findings. Gate re-run: **PASS (27 ack, 0 new)**. Master docs
 |---|---|
 | Backend boot | 118 route entries (was 119 — the removed `include_router`) |
 | Architecture gate | **PASS** — 27 findings (27 ack, **0 new**), domain 11/11 isolation PASS, country-agnostic PASS, policy PASS |
-| Full backend suite | **5066 passed / 0 failed** |
+| Full backend suite | **5080 passed / 0 failed** |
 | Frontend unit | 122 passed |
 | ruff / tsc / eslint | 378 / 0 / 0 |
 
@@ -167,7 +167,7 @@ acknowledges the workflow_runtime finding again). No data or schema is touched.
 **PASS** — the broken national `workflow_runtime` 500-surface is retired with
 full evidence; the canonical `WorkflowEngine` at `/niam/workflows` is the single
 live workflow implementation; architecture gate PASS (27 ack, 0 new); full
-backend suite 5066 passed / 0 failed; 14 new regression tests; every deletion is
+backend suite 5080 passed / 0 failed; 14 new regression tests; every deletion is
 evidence-based; the migration is independently reversible. **STOP — awaiting
 explicit Program Director approval before Wave 5 (orders 20+, national-layer
 migrations).**
