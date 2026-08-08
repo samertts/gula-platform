@@ -6,7 +6,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 AI_CORE = REPO_ROOT / ".ai" / "core"
-OUTPUT = REPO_ROOT / "AI_HEALTH_DASHBOARD.md"
+OUTPUT = REPO_ROOT / "docs" / "dashboard" / "AI_HEALTH_DASHBOARD.md"
 
 def count_files(d, ext="*.md"):
     if not d.exists(): return 0
@@ -134,6 +134,7 @@ def generate():
     a(f"*Dashboard generated: {now.isoformat()}*")
     a("*Regenerate: python3 scripts/generate_dashboard.py*")
 
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text("\n".join(lines), encoding="utf-8")
     print(f"Dashboard generated: {OUTPUT}")
 

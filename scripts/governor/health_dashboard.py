@@ -108,7 +108,8 @@ def render_dashboard(report: HealthReport | None = None) -> str:
 
 def write_dashboard(path=None) -> str:
     """Write the dashboard to the repository root (AI_HEALTH_DASHBOARD.md)."""
-    path = path or (REPO_ROOT / "AI_HEALTH_DASHBOARD.md")
+    path = path or (REPO_ROOT / "docs" / "dashboard" / "AI_HEALTH_DASHBOARD.md")
     markdown = render_dashboard(collect_health())
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(markdown, encoding="utf-8")
     return str(path)
