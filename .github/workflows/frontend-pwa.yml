@@ -4,13 +4,11 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'frontend-v2/**'
       - 'frontend-v3/**'
       - '.github/workflows/frontend-pwa.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'frontend-v2/**'
       - 'frontend-v3/**'
   workflow_dispatch:
     inputs:
@@ -45,7 +43,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: frontend-v2
+        working-directory: frontend-v3
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -55,13 +53,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: frontend-v2/package-lock.json
+          cache-dependency-path: frontend-v3/package-lock.json
 
       - name: Cache node_modules
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
-          path: frontend-v2/node_modules
-          key: node-modules-${{ hashFiles('frontend-v2/package-lock.json') }}
+          path: frontend-v3/node_modules
+          key: node-modules-${{ hashFiles('frontend-v3/package-lock.json') }}
           restore-keys: |
             node-modules-
 
@@ -75,13 +73,13 @@ jobs:
         run: npx tsc --noEmit 2>/dev/null || echo "No TypeScript check configured"
 
       - name: Run tests
-        run: npm test -- --watchAll=false --ci 2>/dev/null || echo "No test script configured"
+        run: npm test 2>/dev/null || echo "No test script configured"
 
       - name: Build PWA
         run: npm run build
         env:
           CI: true
-          REACT_APP_API_BASE_URL: ${{ github.ref == 'refs/heads/main' && 'https://api.gulaplatform.com/api/v1/' || 'https://staging-api.gulaplatform.com/api/v1/' }}
+          VITE_API_BASE_URL: ${{ github.ref == 'refs/heads/main' && 'https://api.gulaplatform.com/api/v1/' || 'https://staging-api.gulaplatform.com/api/v1/' }}
           REACT_APP_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           REACT_APP_GA_ID: ${{ secrets.GA_MEASUREMENT_ID }}
           REACT_APP_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
@@ -95,7 +93,7 @@ jobs:
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: pwa-build
-          path: frontend-v2/build/
+          path: frontend-v3/dist/
           if-no-files-found: error
           retention-days: 7
 
@@ -103,7 +101,7 @@ jobs:
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
         with:
           name: pwa-source-maps
-          path: frontend-v2/build/static/js/*.map
+          path: frontend-v3/dist/assets/*.map
           if-no-files-found: warn
           retention-days: 3
 
@@ -115,7 +113,7 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: frontend-v2
+        working-directory: frontend-v3
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -134,7 +132,7 @@ jobs:
       - name: Run Lighthouse CI
         uses: GoogleChrome/lighthouse-ci-action@b0d0393e1f8e0e3091ad580b53d6411d7a1ae74d
         with:
-          configPath: frontend-v2/lighthouse.config.json
+          configPath: frontend-v3/lighthouse.config.json
           temporaryPublicStorage: true
           uploadArtifacts: true
           runs: 3
@@ -161,7 +159,7 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: pwa-build
-          path: frontend-v2/build/
+          path: frontend-v3/dist/
 
       - name: Deploy to Vercel (Preview)
         env:
@@ -204,7 +202,7 @@ jobs:
         uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
         with:
           name: pwa-build
-          path: frontend-v2/build/
+          path: frontend-v3/dist/
 
       - name: Deploy to Vercel (Production)
         env:
@@ -220,6 +218,6 @@ jobs:
           SENTRY_PROJECT: frontend-pwa
         run: |
           npx @sentry/cli releases new ${{ github.ref_name }}
-          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps build/static/js/
+          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps frontend-v3/dist/assets/
           npx @sentry/cli releases set-commits ${{ github.ref_name }} --auto
           npx @sentry/cli releases finalize ${{ github.ref_name }}
