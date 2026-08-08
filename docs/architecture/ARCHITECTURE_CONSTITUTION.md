@@ -1,5 +1,5 @@
 # Architecture Constitution — GULA National Healthcare Platform
- 
+
 > **PROGRAM-ALPHA, Phase 7.** Permanent architectural gates. Every Pull Request
 > that touches application code MUST pass the `architecture-check` gate in CI.
 > A PR **automatically fails** if it introduces any violation of the rules below.
