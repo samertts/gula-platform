@@ -40,9 +40,9 @@ consolidating three previous repositories:
 
 | Former Repo | Location | Role |
 |-------------|----------|------|
-| `samertts/gula-platform` | `backend/`, `services/`, `nhop-platform/`, `ai/` | Core platform (source of truth) |
+| `samertts/gula-platform` | `backend/`, `services/`, `archive/legacy/nhop-platform/`, `ai/` | Core platform (source of truth) |
 | `samertts/LabLink-Core` | `services/device_bridge/` | Lab instrument integration (ASTM/HL7) |
-| `samertts/Front-end-` | `frontend-v2/` | Rich React + Firebase UI |
+| `samertts/Front-end-` | `archive/frontend-v2/` | Rich React + Firebase UI |
 
 Production stack: **FastAPI monolith** (`backend/app/`, Python 3.12) backed by
 PostgreSQL 16/17 + Redis 7; **App version 2.5.0** (`config.py`).
@@ -145,13 +145,13 @@ gula-platform/
 ├── governance/           # constitution-as-code engines (Free/OSS-First, ADR, procurement)
 ├── security/             # security framework docs + modules
 ├── frontend-v3/          # CURRENT frontend (React, Arabic-first RTL)
-├── frontend-v2/          # legacy rich React SPA (maintained, not primary)
-├── frontend/             # static HTML PWA (offline-capable)
+├── archive/frontend-v2/  # legacy rich React SPA (archived, ADR-028)
+├── archive/legacy/frontend/  # static HTML PWA (archived, ADR-028)
 ├── client/               # tRPC + React SPA
 ├── mobile/               # Android (Flutter?)
 ├── services/             # device_bridge (ASTM/HL7) + future microservice stubs
 ├── ai/                   # clinical AI modules (top-level)
-├── nhop-platform/        # National Health Oversight Platform (port 8100)
+├── archive/legacy/nhop-platform/  # National Health Oversight Platform (archived, ADR-028)
 ├── edge_agent/           # off-site/offline edge computing agent
 ├── scripts/              # 80+ operational + governance scripts
 ├── docs/                 # constitution, architecture, sndhs, brain, ai governance, ...
@@ -374,7 +374,7 @@ Locally: `make ci` replicates syntax-gate + lint + docker build.
 | DigitalOcean | `digitalocean/` | `scripts/deploy.sh` |
 | Render | `render.yaml` | PaaS alternative |
 | Cloudflare | `cloudflare/` | edge workers / CDN |
-| National | `nhop-platform/`, `docs/sndhs/` | governorate deployment |
+| National | `archive/legacy/nhop-platform/`, `docs/sndhs/` | governorate deployment |
 
 Env files: `.env.example` (template, tracked), `.env` (secrets, gitignored),
 `.env.production` (no real secrets). `make secrets-gen` prints strong values.

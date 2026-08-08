@@ -515,7 +515,7 @@ dast:
 dependency-scan:
 	@echo "=== Dependency Scan ==="
 	cd backend && safety check -r requirements.txt --full-report 2>/dev/null || true
-	cd frontend-v2 && npm audit --audit-level=high 2>/dev/null || true
+	cd frontend-v3 && npm audit --audit-level=high 2>/dev/null || true
 
 secret-scan:
 	@echo "=== Secret Scan ==="

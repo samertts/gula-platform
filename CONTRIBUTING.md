@@ -146,7 +146,7 @@ security(auth): patch JWT token validation
 
 ```bash
 # Navigate to the frontend directory
-cd frontend-v2
+cd frontend-v3
 
 # Install dependencies
 npm install

@@ -77,7 +77,7 @@
 
 ---
 
-## 2. Node.js Frontend (`frontend-v2/`)
+## 2. Node.js Frontend (`archive/frontend-v2/`)
 
 ### Core
 
@@ -199,7 +199,7 @@ This SBOM was generated from:
 - `backend/requirements.txt`
 - `backend/requirements-dev.txt`
 - `backend/requirements-lock.txt`
-- `frontend-v2/package.json`
+- `archive/frontend-v2/package.json`
 - `contracts/sdk/typescript/package.json`
 - `contracts/sdk/python/setup.py`
 - `docker-compose.yml`
