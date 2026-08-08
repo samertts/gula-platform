@@ -452,3 +452,38 @@ class TestAuditWriteRequiresAuth:
             "Anonymous traffic produced write-action audit entries — "
             "an unauthenticated mutation path may exist."
         )
+
+
+# ─── Phase 14.L — National governance analytics require authorization ────────
+
+
+class TestNationalAnalyticsRequireAuth:
+    """National-level aggregate analytics (workforce, equipment, quality, TAT
+    across all governorates) must never be reachable anonymously or by
+    non-national roles."""
+
+    ANALYTICS_PATHS = (
+        "/governance/analytics/national",
+        "/governance/analytics/governorate?governorate=baghdad",
+        "/governance/analytics/laboratory/1",
+        "/governance/analytics/laboratories",
+        "/governance/analytics/workforce",
+        "/governance/analytics/equipment",
+        "/governance/analytics/quality",
+        "/governance/analytics/tat",
+    )
+
+    def test_analytics_endpoints_reject_anonymous(self, client):
+        for path in self.ANALYTICS_PATHS:
+            res = client.get(path)
+            assert res.status_code in (401, 403), (
+                f"{path} reachable anonymously (status {res.status_code})"
+            )
+
+    def test_analytics_endpoints_reject_lab_admin(self, client):
+        headers = _hdr(user_id=99901, lab_id=7, role="admin")
+        for path in self.ANALYTICS_PATHS:
+            res = client.get(path, headers=headers)
+            assert res.status_code in (401, 403), (
+                f"{path} allowed for lab admin (status {res.status_code})"
+            )

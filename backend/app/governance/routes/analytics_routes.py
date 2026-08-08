@@ -2,10 +2,17 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.security.rbac import require_role
 
 from ..services.analytics_service import NationalAnalyticsService
 
-router = APIRouter(prefix="/governance/analytics", tags=["governance_analytics"])
+router = APIRouter(
+    prefix="/governance/analytics",
+    tags=["governance_analytics"],
+    dependencies=[
+        Depends(require_role("master_admin", "ministry_admin", "national_admin"))
+    ],
+)
 
 
 @router.get("/national")
