@@ -1,0 +1,3 @@
+.opencode/skills/convert-documents-to-markdown/FILE-INVENTORY.txt
+.opencode/skills/convert-documents-to-markdown/GULA-INTEGRATION.md
+.opencode/skills/convert-documents-to-markdown/SKILL.md

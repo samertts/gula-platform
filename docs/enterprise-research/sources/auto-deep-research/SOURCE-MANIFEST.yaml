@@ -1,0 +1,32 @@
+source:
+  repository: https://github.com/HKUDS/Auto-Deep-Research.git
+  imported_at: "2026-08-08T12:21:02Z"
+
+classification:
+  type: architecture-reference
+  runtime_dependency: false
+  direct_import: false
+  status: research-only
+
+target:
+  component: GULA Research Engine
+
+candidate_capabilities:
+  - research-planning
+  - query-decomposition
+  - multi-source-search
+  - source-tracking
+  - citation
+  - report-synthesis
+  - agent-orchestration
+
+required-gula-hardening:
+  - provenance
+  - evidence-mapping
+  - independent-verification
+  - contradiction-detection
+  - source-ranking
+  - temporal-validation
+  - human-review
+  - immutable-audit
+  - reproducibility

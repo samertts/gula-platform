@@ -1,0 +1,6 @@
+graph LR
+    app["App Shell\nsrc/App.tsx"] -->|"routes"| pages["Pages\nsrc/pages/"]
+    app -->|"lazy import"| layouts["Layouts\nsrc/layouts/"]
+    pages -->|"calls"| api["API Client\nsrc/api/"]
+    api -->|"axios + Bearer"| backend["FastAPI /api"]
+    pages -->|"state"| contexts["Contexts\nsrc/contexts/"]

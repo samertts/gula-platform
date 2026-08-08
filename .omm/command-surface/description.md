@@ -1,0 +1,1 @@
+Governance CLI surface via Kernel (scripts/kernel/cli.py): 9 engine families (architect, orchestrator, optimizer, deployer, learner, reviewer, builder, domain, architecture) plus validation/brain commands. Engines are deterministic, tested (900+ engine tests), and each exposes run/check commands.

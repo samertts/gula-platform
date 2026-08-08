@@ -1,0 +1,1 @@
+React Router 8 Arabic-first SPA. Auth guard on every app route; pages lazy-loaded. Surfaces: dashboard, clinical workflows (patients/orders/results), quality control, admin, AI fabric, health data, integration connectors, NIAM identity/workspaces. Generated client sections removed for archived national surfaces.

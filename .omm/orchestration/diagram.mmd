@@ -1,0 +1,8 @@
+graph LR
+    pub["Publishers\nclinical, lab, workflow"] -->|"publish"| streams["Redis Streams\noutbox pattern"]
+    streams -->|"consume"| outbox["Outbox Service\ncore/auto_repair.py"]
+    outbox -->|"dispatch"| consumers["Consumers\nnotifications, sync, scheduler"]
+    queue["Lazy Task Queue\ntasks/queue.py"] -->|"enqueue"| workers["Background Workers"]
+    scheduler["Scheduler\nshared/scheduler.py"] -->|"cron"| jobs["Periodic Jobs\nbackup, metrics, repairs"]
+    consumers -->|"auto-repair"| outbox
+    jobs -->|"health"| health["Self-heal\nscripts/self_heal.py"]

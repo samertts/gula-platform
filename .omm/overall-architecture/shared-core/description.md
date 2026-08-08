@@ -1,0 +1,1 @@
+One authoritative 50-service Shared Core registry (SHARED_CORE_CATALOG). Canonical providers for identity, notifications, audit, authorization, workflow, rules engine, search, encryption (AES-256), cache, events, DI, scheduler, document engines. Shared Python package importable by backend, edge_agent, ai modules.

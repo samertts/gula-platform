@@ -1,0 +1,1 @@
+Arabic-first (RTL), Python 3.12 fixed, PostgreSQL source of truth via SQLAlchemy + Alembic, no new vendor coupling, free/open-source/self-hosted-first, behavior preservation on any migration, immutable audit log, no cross-domain administration.

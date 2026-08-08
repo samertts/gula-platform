@@ -1,0 +1,1 @@
+Ingestion path: lab analyzer / external systems → validated pipeline → canonical FHIR/HL7 models → PostgreSQL 16; change events → Redis Streams outbox → consumers (scheduler, notifications, sync). Read path: warehouse + stats services → metrics and national reports. Sensitive fields encrypted via canonical EncryptionEngine (AES-256) with deterministic SHA-256 derivation.

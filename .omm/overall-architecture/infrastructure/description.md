@@ -1,0 +1,1 @@
+Self-hosted: PostgreSQL 16 (351 tables), Redis 7, MinIO/S3 object storage, Redis Streams event bus with outbox pattern. Docker multi-stage images, hardened compose, K8s manifests, health/ready/deep probes, Prometheus metrics, OTLP tracing.

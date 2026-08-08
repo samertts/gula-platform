@@ -1,0 +1,11 @@
+graph LR
+    root["/ \nLogin / redirect"] -->|"auth guard"| dash["Dashboard\ndashboard/"]
+    root -->|"auth guard"| clinical["Clinical\npatients, orders, results"]
+    root -->|"auth guard"| qc["Quality Control\nquality-control/"]
+    root -->|"auth guard"| admin["Admin\nadmin/"]
+    root -->|"auth guard"| ai["AI Fabric\nai-fabric/"]
+    root -->|"auth guard"| health["Health Data\nhealth-data/"]
+    root -->|"auth guard"| integration["Integrations\nintegration/"]
+    root -->|"auth guard"| identity["Identity / Workspaces\nniam/"]
+    clinical -->|"lazy"| subpages["Patient detail, order flow"]
+    dash -->|"lazy"| widgets["Stats, abnormal alerts"]

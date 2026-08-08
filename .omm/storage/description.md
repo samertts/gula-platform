@@ -1,0 +1,1 @@
+Multi-store topology: PostgreSQL 16 authoritative relational store (351 tables in live gula DB, 56-migration linear Alembic chain), Redis 7 for cache/streams/queues (lazy client with in-memory fallback), MinIO/S3 for backups (WAL→S3, RPO ~1 min) and documents, local filesystem storage backend for the health-data data lake.

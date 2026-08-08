@@ -1,0 +1,1 @@
+Arabic-first React + TypeScript SPA (frontend-v3). Vite build, React Router 8, RTL layout, axios client attaching Bearer token from localStorage. Pages for clinical workflows, dashboard, quality control, AI fabric, health data, integration connectors. 122 component/hook tests.

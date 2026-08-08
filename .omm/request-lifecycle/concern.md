@@ -1,0 +1,1 @@
+Pre-program remediation found 7 routers with zero auth (certification + 6 admin surfaces: ai-fabric, gateway, connectors, health-data, contracts, platform); all have been secured with router-level dependencies. Audit of remaining "NO IMPORT MATCH" routers still pending.

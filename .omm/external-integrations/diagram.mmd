@@ -1,0 +1,8 @@
+graph LR
+    analyzers["Lab Analyzers"] -->|"HL7 / device drivers"| integration["Integration Connectors\nintegration/connectors/"]
+    gateway["Ecosystem Gateway\nnational/ecosystem/gateway/"] -->|"policies + route"| partners["Partner Systems"]
+    esb["Government ESB (archived)"] -->|"read-only reference"| archive["archive/\nesb-message-bus"]
+    ai["AI Fabric\nai_fabric/"] -->|"embed/rag/chat"| llm["LLM Providers (self-hosted Ollama preferred)"]
+    email["Posta (self-hosted email)\n~/gula-infrastructure/posta"] -->|"SMTP"| posta["Email Delivery"]
+    integration -->|"send/configure"| endpoints["External APIs"]
+    gateway -->|"auth+policy"| integration

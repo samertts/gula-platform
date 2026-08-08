@@ -1,0 +1,11 @@
+graph TD
+    kernel["Kernel CLI\nscripts/kernel/cli.py"] -->|"architect-*"| architect["Architect Engine\nscripts/architect/"]
+    kernel -->|"orchestrator-*"| orchestrator["Orchestrator\nscripts/orchestrator/"]
+    kernel -->|"optimizer-*"| optimizer["Optimizer\nscripts/optimizer/"]
+    kernel -->|"deployer-*"| deployer["Deployer\nscripts/deployer/"]
+    kernel -->|"learner-*"| learner["Learner\nscripts/learner/"]
+    kernel -->|"reviewer-*"| reviewer["Reviewer\nscripts/reviewer/"]
+    kernel -->|"builder-*"| builder["Builder\nscripts/builder/"]
+    kernel -->|"domain-*"| domain["Domain Platform\nscripts/domains/"]
+    kernel -->|"architecture-*"| architecture["Architecture Constitution\nscripts/architecture/"]
+    kernel -->|"validate / brain"| validation["Validation Engine\nscripts/enterprise_validation_engine.py"]

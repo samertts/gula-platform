@@ -1,0 +1,22 @@
+source:
+  repository: https://github.com/cathrynlavery/diagram-design
+  imported_at: 2026-08-08T10:57:16Z
+
+skill:
+  name: diagram-design
+  path: skills/diagram-design
+  status: external-foundation
+  purpose:
+    - architecture-diagrams
+    - sequence-diagrams
+    - data-flow
+    - security-documentation
+    - technical-documentation
+    - ADR-support
+    - GULA-architecture-visualization
+  restrictions:
+    - no-runtime-dependency
+    - no-clinical-data
+    - no-secrets
+    - no-unverified-architecture
+    - GULA-constitution-has-priority

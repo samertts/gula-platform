@@ -1,0 +1,1 @@
+Backend is the authoritative source of truth; OpenAPI compatibility must hold on every change; offline-first sync queues must reconcile deterministically; encrypted ciphertexts must round-trip identically.

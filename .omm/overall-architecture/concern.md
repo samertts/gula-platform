@@ -1,0 +1,1 @@
+Large monorepo (200+ backend modules) with dormant legacy surfaces (archive/) that must remain mergeable but not activated. 25 acknowledged Shared Core reimplementation findings are frozen debt; any NEW finding fails the architecture gate. UI coverage of dormant contexts is untranslated.

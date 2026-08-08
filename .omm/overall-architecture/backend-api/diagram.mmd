@@ -1,0 +1,9 @@
+graph LR
+    factory["App Factory\nbackend/app/factory.py"] -->|"include_router"| domains["11 Canonical Domains\nbackend/app/*"]
+    factory -->|"include_router"| niam["NIAM Identity\nbackend/app/identity/"]
+    factory -->|"include_router"| national["National Layer\nbackend/app/national/"]
+    factory -->|"include_router"| ai["AI Fabric\nbackend/app/ai_fabric/"]
+    domains -->|"import"| sharedcore["Shared Core\nshared/"]
+    niam -->|"import"| sharedcore
+    national -->|"import"| sharedcore
+    ai -->|"import"| sharedcore

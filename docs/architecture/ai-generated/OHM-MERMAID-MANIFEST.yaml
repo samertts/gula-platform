@@ -1,0 +1,28 @@
+tool:
+  name: oh-my-mermaid
+  repository: https://github.com/oh-my-mermaid/oh-my-mermaid
+  license: MIT
+  installed_at: "2026-08-08T12:28:39Z"
+
+purpose:
+  - codebase-understanding
+  - architecture-documentation
+  - data-flow-visualization
+  - integration-visualization
+  - architecture-review
+
+status:
+  type: development-tool
+  runtime_dependency: false
+  production_dependency: false
+  architecture_source_of_truth: false
+
+generated_artifacts:
+  location: .omm/
+
+review_required: true
+
+security:
+  secrets_in_diagrams: forbidden
+  clinical_data_in_diagrams: forbidden
+  private_identifiers_in_diagrams: forbidden

@@ -1,0 +1,1 @@
+Connections outside the core: lab analyzer integration (HL7/device drivers), ecosystem gateway (policy-routed partner exchanges), AI fabric (RAG/embed/chat toward self-hosted LLMs — Ollama first), self-hosted Posta email, and legacy government ESB retained read-only in archive/.

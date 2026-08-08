@@ -1,0 +1,33 @@
+graph LR
+    subgraph frontend["Frontend"]
+        web["Web App\nfrontend-v3/"]
+        mobile["Mobile\nmobile/"]
+        desktop["Hospital Desktop\nhospital_desktop/"]
+    end
+    subgraph backend["Backend"]
+        api["FastAPI Gateway\nbackend/app/factory.py"]
+        identity["Identity Platform\nbackend/app/identity/"]
+        clinical["Clinical Domain\nbackend/app/clinical/"]
+        capabilities["Capabilities\nbackend/app/capabilities/"]
+        sharedcore["Shared Core\nshared/"]
+    end
+    subgraph infra["Infrastructure"]
+        pg[("PostgreSQL 16")]
+        redis[("Redis 7")]
+        s3[("MinIO / S3")]
+        broker[("Event Bus\nRedis Streams")]
+    end
+    web -->|"/api JWT"| api
+    mobile -->|"/api JWT"| api
+    desktop -->|"/api JWT"| api
+    api -->|"requests"| identity
+    api -->|"requests"| clinical
+    api -->|"requests"| capabilities
+    identity --> sharedcore
+    clinical --> sharedcore
+    capabilities --> sharedcore
+    backend -->|"SQLAlchemy"| pg
+    backend -->|"redis client"| redis
+    backend -->|"storage"| s3
+    backend -->|"publish/subscribe"| broker
+    broker -->|"outbox → consumers"| backend

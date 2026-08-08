@@ -1,0 +1,1 @@
+Event-driven backbone: Redis Streams with outbox pattern (publish → outbox → consumers), lazy background task queue, scheduler for periodic jobs (backup, metrics, outbox poll 2s), and self-heal engine (600s action cooldown) that restores outbox backlog and repairs degraded components.

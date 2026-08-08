@@ -1,0 +1,1 @@
+FastAPI app assembled by factory.py. 2045+ routes registered via include_router across domains, NIAM identity, capabilities, national layer. Middleware: request ID, CORS allowlist, rate limiting, auth, tracing, JSON logging, audit hash-chain.

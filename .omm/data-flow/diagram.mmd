@@ -1,0 +1,10 @@
+graph LR
+    ingest["Ingestion\nhealth-data, lab analyzers"] -->|"validate/sanitize"| pipeline["Ingestion Pipeline\ncapabilities/ + health_data/"]
+    pipeline -->|"canonical mapping"| canonical["Canonical Models\nFHIR R4 / HL7"]
+    canonical -->|"persist"| db[("PostgreSQL 16")]
+    canonical -->|"events"| outbox["Outbox\nRedis Streams"]
+    outbox -->|"consumer"| consumers["Workers\nscheduler, notifications"]
+    db -->|"read"| query["Query / Analytics\nwarehouse, stats"]
+    query -->|"aggregate"| metrics["Metrics / Reports"]
+    consumers -->|"notify"| client["Web / Mobile / Email"]
+    db -->|"encrypt/decrypt"| crypto["EncryptionEngine\nshared/security/encryption.py"]

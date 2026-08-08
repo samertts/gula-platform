@@ -1,0 +1,7 @@
+graph LR
+    pg[("PostgreSQL 16\n281+ tables\n351 total in gula db")] -->|"Alembic migrations\n56-chain"| models["SQLAlchemy Models\nbackend/app/*/models.py"]
+    redis[("Redis 7\ncache + streams + queue")] -->|"lazy client"| cache["Cache\nsecurity/redis_client.py"]
+    s3[("MinIO / S3\nbackups + documents")] -->|"backup manager"| backup["shared/backup/"]
+    fs[("Local filesystem\nhealth-data lake")] -->|"LocalStorageBackend"| lake["Data Lake\nhealth_data/data_lake/"]
+    models -->|"FK constraints"| pg
+    cache -->|"fallback"| memory["In-memory fallback"]

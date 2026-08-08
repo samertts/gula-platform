@@ -1,0 +1,12 @@
+graph LR
+    client["Web/Mobile Client"] -->|"HTTPS + JWT"| edge["nginx / gateway"]
+    edge -->|"reverse proxy"| middleware["FastAPI Middleware\nrequest-id, CORS, rate-limit, tracing"]
+    middleware -->|"extract token"| auth["get_current_user\nsecurity/dependencies.py"]
+    auth -->|"verify + RBAC"| permission["require_permission\nshared/rbac/"]
+    permission -->|"authorized"| route["Route Handler\nbackend/app/*/routes.py"]
+    route -->|"business logic"| service["Domain Service\nbackend/app/*/services.py"]
+    service -->|"SQLAlchemy"| db[("PostgreSQL 16")]
+    service -->|"cache/queue"| redis[("Redis 7")]
+    route -->|"JSON response"| middleware
+    middleware -->|"audit event"| audit["Audit Hash-Chain"]
+    middleware -->|"200/4xx/5xx"| client
