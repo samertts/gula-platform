@@ -225,7 +225,7 @@ frontend:
   name: gula-frontend
   replicaCount: 2
   image:
-    repository: frontend-v2
+    repository: frontend
     tag: ""
     pullPolicy: ""
     pullSecrets:
