@@ -288,10 +288,10 @@ updates:
       - "samertts"
 
   # ============================================================================
-  # Docker — NHOP Platform
+  # Docker — NHOP Platform (archived tree)
   # ============================================================================
   - package-ecosystem: "docker"
-    directory: "/nhop-platform/"
+    directory: "/archive/legacy/nhop-platform/"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -309,10 +309,10 @@ updates:
       - "samertts"
 
   # ============================================================================
-  # Docker — Platform
+  # Docker — Platform (archived tree)
   # ============================================================================
   - package-ecosystem: "docker"
-    directory: "/platform/"
+    directory: "/archive/legacy/platform/"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -725,7 +725,7 @@ updates:
       - "samertts"
 
   - package-ecosystem: "pip"
-    directory: "/nhop-platform/"
+    directory: "/archive/legacy/nhop-platform/"
     schedule:
       interval: "weekly"
       day: "monday"

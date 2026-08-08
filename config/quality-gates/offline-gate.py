@@ -8,7 +8,7 @@ import sys
 PASS = 0
 FAIL = 1
 
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend-v2")
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "frontend-v3")
 
 
 def main() -> int:
