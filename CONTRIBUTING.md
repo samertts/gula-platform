@@ -8,7 +8,7 @@ everyone. Please take a moment to review this guide.
 ```bash
 git clone https://github.com/samertts/gula-platform
 cd gula-platform
-python3.11 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r backend/requirements.txt
 cp .env.example .env  # edit as needed

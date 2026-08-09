@@ -10,12 +10,35 @@ backend/app/routes/ @samertts
 backend/app/services/ @samertts
 backend/app/models/ @samertts
 backend/app/security/ @samertts
+backend/app/identity/ @samertts
+backend/app/domain_platform/ @samertts
+backend/migrations/ @samertts
+backend/tests/ @samertts
+
+# Shared core
+shared/ @samertts
+
+# Frontend
+frontend-v3/ @samertts
+
+# Mobile
+mobile/ @samertts
+
+# Contracts & SDKs
+contracts/ @samertts
+
+# Services
+services/ @samertts
 
 # Configuration
 .github/ @samertts
 config/ @samertts
 docker/ @samertts
 k8s/ @samertts
+
+# CI/CD
+.github/workflows/ @samertts
+Makefile @samertts
 
 # Documentation
 *.md @samertts
@@ -25,10 +48,8 @@ docs/ @samertts
 terraform/ @samertts
 helm/ @samertts
 
-# CI/CD
-.github/workflows/ @samertts
-Makefile @samertts
+# Governance & engineering tooling
+scripts/ @samertts
 
-# Frontend
-frontend/ @samertts
-frontend-v2/ @samertts
+# Archived legacy trees (ADR-028) — owned by the maintainer; do not resurrect
+archive/ @samertts

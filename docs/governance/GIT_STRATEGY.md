@@ -1,24 +1,25 @@
 # GIT STRATEGY
 
 **Program:** PROGRAM-REPO-01 v1.0 — Repository Engineering & Open Source Excellence
-**Phase:** 3 / 8 — Git Strategy (ANALYSIS ONLY — no mutations, no commits)
+**Phase:** 3 / 8 — Git Strategy
 **Date:** 2026-08-08
-**Status:** DRAFT — awaiting Program Director approval before execution
+**Status:** EXECUTED (Wave 4) — branch/tag/version cleanup complete 2026-08-08; this
+document is now the authoritative git strategy for the repository.
 
 ---
 
-## 1. Current State (from Phase 1 Audit)
+## 1. Current State (from Phase 1 Audit, post-Wave-4 execution)
 
 | Metric | Value | Verdict |
 |---|---|---|
-| Commits | 814 | healthy volume for 5 months |
+| Commits | ~850 | healthy volume for 5 months |
 | Merge commits | 120 (14.7%) | violates AGENTS.md "rebase over merge" |
-| Branches | 125 (62 local + 63 remote) | **excessive**; 60+ stale `claude/*` 3–5 months old |
-| Branches merged into main (remote) | 2 | near-zero cleanup ever done |
-| Tags | 38 (feature-tag flood, 2 RC, 1 v2.1.0) | no release discipline |
+| Branches | 2 remote (`main`, `remediate-security-001`) | **clean** — 61 stale branches archived to `refs/archive/branches/*` (Wave 4) |
+| Branches merged into main (remote) | 2 | cleanup completed (Wave 4) |
+| Tags | 3 (`v1.0.0-RC1`, `v1.0.0-RC2`, `v2.1.0-engineering-factory`) | semver stream; 35 feature tags archived to `refs/archive/tags/*` (Wave 4) |
 | `.git` size | 144 MB (68.73 MiB pack) | 5 garbage `tmp_pack_*` objects present |
-| Current branch | `remediate-security-001` (ahead 1, behind 1 of origin) | un-pushed work pending |
-| Version markers | `VERSION`=RC2, package.json=1.0.0 | drift (see §5) |
+| Current branch | `remediate-security-001` (synced with origin) | — |
+| Version markers | `VERSION`=1.0.0, package.json=1.0.0 | **aligned** (Wave 4 single-source sync) |
 
 ## 2. Guiding Principles
 
@@ -64,8 +65,17 @@ Delete (locally and remotely) any branch that is:
 
 ## 5. Tag & Versioning Strategy
 
-### 5.1 Problem
-38 tags: ~30 are feature-domain tags (`national-*-v1.0`, `platform-*-v1.0`, `foundation-v1.0`, `governance-v1.0`, etc.) — a one-time feature-tagging ceremony, not a release stream. Only `v1.0.0-RC1`, `v1.0.0-RC2`, `v2.1.0-*` resemble releases. `VERSION`=1.0.0-RC2 conflicts with root `package.json`=1.0.0.
+### 5.1 Problem (resolved Wave 4)
+The tag stream was a feature-tag flood: 38 tags, ~30 feature-domain tags
+(`national-*-v1.0`, `platform-*-v1.0`, `foundation-v1.0`, `governance-v1.0`,
+etc.) — a one-time feature-tagging ceremony, not a release stream. Only
+`v1.0.0-RC1`, `v1.0.0-RC2`, `v2.1.0-*` resembled releases. `VERSION`=1.0.0-RC2
+conflicted with root `package.json`=1.0.0.
+
+**Executed (2026-08-08, PD-approved):** 35 non-semver feature tags archived to
+`refs/archive/tags/*` and deleted; semver stream (`vX.Y.Z`) now the only tag
+pattern (aligned with `release.yml`'s `v*` validation); `VERSION` synced to
+1.0.0 matching `package.json` and the backend/frontend package surfaces.
 
 ### 5.2 Proposed policy (SemVer 2.0 + GitHub Releases)
 - **Release tags only:** `vX.Y.Z` (+ optional `-rc.N` pre-release). Every release tag must have a GitHub Release (CHANGELOG section + assets).
@@ -101,8 +111,8 @@ feature/*   ╲──────────╱  short-lived, PR → main
 
 ## 8. Success Criteria
 
-- Branch count ≤ 5 active; all ambiguous branches archived as refs.
+- Branch count ≤ 5 active; all ambiguous branches archived as refs. **DONE — 2 remote branches.**
 - `git count-objects` pack ≤ ~70 MiB; zero garbage tmp packs.
-- Tags = clean SemVer stream; `VERSION` == package.json == latest release tag.
+- Tags = clean SemVer stream; `VERSION` == package.json == latest release tag. **DONE — 3 semver tags; VERSION=1.0.0.**
 - `git fsck --full` clean.
 - Zero history rewrites; `git log` linear on `main`.

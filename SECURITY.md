@@ -4,29 +4,41 @@
 
 | Version | Supported |
 | ------- | --------- |
-| 2.5.x   | ✅ Active development |
-| 2.4.x   | ✅ Security patches |
-| 2.3.x   | ✅ Security patches |
-| 2.2.x   | ✅ Security patches |
-| 2.1.x   | ✅ Security patches |
-| 2.0.x   | ❌ End of life |
-| < 2.0   | ❌ End of life |
+| 1.0.x   | ✅ Active development (v1.0.0) |
+| 1.0.0-RC2 | ✅ Security patches (release candidate) |
+| 1.0.0-RC1 | ❌ End of life |
+| < 1.0   | ❌ End of life |
 
 ## Reporting a Vulnerability
 
 We take the security of GULA Platform seriously. If you believe you have found
 a security vulnerability, please report it to us as described below.
 
-### Private Disclosure Process
+### Coordinated Disclosure
 
-**Please do not report security vulnerabilities through public GitHub issues.**
+This project follows **coordinated (responsible) disclosure**:
 
-Instead, please report them via email:
+1. Report privately first — do **not** create a public GitHub issue.
+2. We acknowledge within **48 hours** and triage within **5 business days**.
+3. We develop, test, and release a fix (timeline below).
+4. We publish a [GitHub Security Advisory](https://github.com/samertts/gula-platform/security/advisories)
+   and a `SECURITY` entry in `CHANGELOG.md` **after** the fix ships.
+
+### Private Disclosure Channels
+
+Prefer **GitHub Security Advisories** (recommended — creates a private
+vulnerability report linked to the repo):
+
+- **GitHub**: https://github.com/samertts/gula-platform/security/advisories/new
+  (select "Report a vulnerability")
+
+Or report privately via email:
 
 **security@gulaplatform.com**
 
 You should receive a response within 48 hours. If you do not, please follow up
-to ensure we received your message.
+to ensure we received your message. Include `[SECURITY]` in the email subject
+and **do not** include exploit payloads that could harm production systems.
 
 ### What to Include
 

@@ -55,6 +55,23 @@ version scheme follows [Semantic Versioning](https://semver.org/).
 Stable v1.0 certification (PROGRAM-06 + PROGRAM-STABLE-001/002). Recommended
 version tag: `v1.0.0`.
 
+### Release Engineering (PROGRAM-REPO-01 Wave 4)
+- Version single-source aligned to **1.0.0**: `VERSION`, backend
+  `APP_VERSION` + `pyproject.toml`, `frontend-v3/package.json` +
+  `package-lock.json` (root `package.json` + TS SDK already 1.0.0).
+- Release stream normalized to semver `v*` tags: 35 non-semver feature tags
+  archived to `refs/archive/tags/*` (recoverable); `v1.0.0-RC1`,
+  `v1.0.0-RC2`, `v2.1.0-engineering-factory` retained.
+- Branch hygiene: 61 stale remote branches archived to
+  `refs/archive/branches/*`; `main` + `remediate-security-001` remain.
+- Root derived artifacts removed: `skills-lock.json` (git rm, zero
+  dependencies), root `openapi.json` (untracked regenerable spec).
+  Deployment/build surfaces (`vercel.json`, `tsconfig.json`,
+  `package-lock.json`) intentionally retained.
+- OSS governance refreshed: SECURITY.md coordinated disclosure (GitHub
+  Security Advisories), CODEOWNERS re-pointed to live trees, CONTRIBUTING
+  Python 3.12 alignment.
+
 ### Fixed
 - `mobileApi.info()` now calls `/mobile/app-info` (was `/auth/mobile/app-info`,
   a runtime 404 — parity defect found by PROGRAM-06 live route diff)
