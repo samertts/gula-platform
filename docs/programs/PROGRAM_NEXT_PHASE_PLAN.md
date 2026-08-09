@@ -1,5 +1,8 @@
 # PROGRAM NEXT-PHASE PLAN — Identity, Authorization, Clinical Safety
 **Status:** PLANNING ONLY — no implementation, no code, no migrations, no APIs, no UI
+**Authority:** Approved by the Program Director as the authoritative successor
+program to PROGRAM-REPO-01 (ADR-037, 2026-08-10). Wave A is NOT authorized by
+this plan; each wave requires separate Program Director authorization.
 **Date:** 2026-08-09
 **Prerequisite:** PROGRAM-REPO-01 certified complete
 
@@ -132,5 +135,6 @@ gated on stakeholder sign-off.
 
 ---
 
-**This document is planning only. Await Program Director approval before any
+**This document is planning only. Approved as the authoritative successor
+program (ADR-037). Await Program Director authorization before any
 next-program execution.**

@@ -101,6 +101,7 @@ Links to related ADRs, Constitution sections, or code.
 | [ADR-034](ADR-034-retain-as-domain-owned-register.md) | Retain-as-Domain-Owned Register (authorization, audit, document, search, notifications, barcode/QR frozen) | Accepted | 2026-08-08 |
 | [ADR-035](ADR-035-rule-engine-promotion.md) | Rule Engine Promotion (ExpressionEngine → `shared/rules_engine`) | Accepted | 2026-08-07 |
 | [ADR-036](ADR-036-workflow-runtime-retirement.md) | Workflow Runtime Retirement (broken national workflow_runtime → canonical `backend/app/workflows`) | Accepted | 2026-08-08 |
+| [ADR-037](ADR-037-next-program-authority.md) | Next Program Authority (PROGRAM_NEXT_PHASE_PLAN supersedes legacy PROGRAM-02 label) | Accepted | 2026-08-10 |
 
 ## Constitution Reference
 
