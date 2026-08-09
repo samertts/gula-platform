@@ -32,6 +32,10 @@ from app.identity.services.authentication_service import AuthenticationService
 from app.identity.services.device_service import DeviceService
 from app.identity.services.person_service import PersonService
 from app.identity.services.session_service import SessionService
+from app.identity.workspaces.services import (
+    WorkspaceIsolationError,
+    WorkspaceService,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.events import EventBus, events
@@ -410,10 +414,10 @@ class TestServices:
 
 
 class TestPolicyEngine:
-    """Verify policy engine stub."""
+    """Verify policy engine stub fails closed (U-0.5)."""
 
     @pytest.mark.asyncio
-    async def test_policy_evaluate_default(self):
+    async def test_policy_evaluate_default_denies(self):
         engine = PolicyEngine()
         ctx = PolicyContext(
             subject_id="u1",
@@ -422,7 +426,29 @@ class TestPolicyEngine:
             resource_type="lab_result",
         )
         result = await engine.evaluate(ctx)
-        assert result is True
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_policy_evaluate_action_denies(self):
+        engine = PolicyEngine()
+        ctx = PolicyContext(
+            subject_id="u1",
+            subject_type="user",
+            action="read",
+            resource_type="lab_result",
+        )
+        assert await engine.evaluate_action(None, ctx) == "deny"
+
+    @pytest.mark.asyncio
+    async def test_policy_filter_resources_returns_none(self):
+        engine = PolicyEngine()
+        ctx = PolicyContext(
+            subject_id="u1",
+            subject_type="user",
+            action="read",
+            resource_type="lab_result",
+        )
+        assert await engine.filter_resources(["a", "b"], ctx) == []
 
     def test_policy_context_defaults(self):
         ctx = PolicyContext(
@@ -607,3 +633,60 @@ class TestAuditActions:
         }
         missing = required - actions
         assert not missing, f"Missing audit actions: {missing}"
+
+
+class TestWorkspaceDelegationAuthorization:
+    """Delegation operations require workspace administration (U-0.5)."""
+
+    @pytest.mark.asyncio
+    async def test_delegate_authority_denied_for_non_admin_actor(self, mock_session):
+        service = WorkspaceService(mock_session)
+        member = MagicMock()
+        member.status = "active"
+        member.role_name = "member"
+        with patch.object(
+            service, "_find_member_by_identity", new=AsyncMock(return_value=member)
+        ), pytest.raises(WorkspaceIsolationError):
+            await service.delegate_authority(
+                workspace_id="ws-1",
+                delegated_from_person_id="p-1",
+                delegated_to_person_id="p-2",
+                permissions=["lab:read"],
+                actor_identity_id="u-nonadmin",
+            )
+        mock_session.add.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_delegate_authority_allowed_for_admin_actor(self, mock_session):
+        service = WorkspaceService(mock_session)
+        member = MagicMock()
+        member.status = "active"
+        member.role_name = "admin"
+        with patch.object(
+            service, "_find_member_by_identity", new=AsyncMock(return_value=member)
+        ):
+            delegation = await service.delegate_authority(
+                workspace_id="ws-1",
+                delegated_from_person_id="p-1",
+                delegated_to_person_id="p-2",
+                permissions=["lab:read"],
+                actor_identity_id="u-admin",
+            )
+        assert delegation.workspace_id == "ws-1"
+        assert delegation.permissions == ["lab:read"]
+        mock_session.add.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_delegate_authority_denied_when_actor_not_member(self, mock_session):
+        service = WorkspaceService(mock_session)
+        with patch.object(
+            service, "_find_member_by_identity", new=AsyncMock(return_value=None)
+        ), pytest.raises(WorkspaceIsolationError):
+            await service.delegate_authority(
+                workspace_id="ws-1",
+                delegated_from_person_id="p-1",
+                delegated_to_person_id="p-2",
+                permissions=["lab:read"],
+                actor_identity_id="u-outsider",
+            )
+        mock_session.add.assert_not_called()

@@ -620,7 +620,12 @@ class WorkspaceService:
         delegated_to_person_id: str,
         permissions: list[str],
         end_at: datetime | None = None,
+        actor_identity_id: str | None = None,
     ) -> WorkspaceDelegation:
+        if actor_identity_id and not await self.has_role(
+            workspace_id, actor_identity_id, {"owner", "admin"}
+        ):
+            raise WorkspaceIsolationError("actor_not_workspace_admin")
         delegation = WorkspaceDelegation(
             id=...,
             uuid=str(uuid.uuid4()),

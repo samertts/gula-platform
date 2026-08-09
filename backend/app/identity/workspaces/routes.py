@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
-from app.identity.security import get_current_identity
+from app.identity.security import get_actor_identity_id, get_current_identity
 
 from .services import WorkspaceError, WorkspaceIsolationError, WorkspaceService
 
@@ -75,12 +75,12 @@ async def list_identity_workspaces(identity_id: str, db: AsyncSession = Depends(
 @router.patch("/{workspace_id}")
 async def update_workspace(
     workspace_id: str,
-    actor_identity_id: str,
     name_en: str | None = None,
     name_ar: str | None = None,
     description: str | None = None,
     settings: str | None = None,
     db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     import json
 
@@ -101,7 +101,9 @@ async def update_workspace(
 
 @router.post("/{workspace_id}/suspend")
 async def suspend_workspace(
-    workspace_id: str, actor_identity_id: str, db: AsyncSession = Depends(get_db)
+    workspace_id: str,
+    db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     service = WorkspaceService(db)
     try:
@@ -126,11 +128,11 @@ async def select_workspace(
 @router.post("/{workspace_id}/roles")
 async def create_role(
     workspace_id: str,
-    actor_identity_id: str,
     name: str,
     permissions: str,
     description: str | None = None,
     db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     import json
 
@@ -158,11 +160,11 @@ async def list_roles(workspace_id: str, db: AsyncSession = Depends(get_db)):
 @router.post("/{workspace_id}/members")
 async def add_member(
     workspace_id: str,
-    actor_identity_id: str,
     identity_id: str,
     person_id: str,
     role_name: str,
     db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     service = WorkspaceService(db)
     try:
@@ -187,7 +189,10 @@ async def list_members(workspace_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/{workspace_id}/members/{person_id}/remove")
 async def remove_member(
-    workspace_id: str, person_id: str, actor_identity_id: str, db: AsyncSession = Depends(get_db)
+    workspace_id: str,
+    person_id: str,
+    db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     service = WorkspaceService(db)
     try:
@@ -199,7 +204,10 @@ async def remove_member(
 
 @router.post("/{workspace_id}/members/{person_id}/suspend")
 async def suspend_member(
-    workspace_id: str, person_id: str, actor_identity_id: str, db: AsyncSession = Depends(get_db)
+    workspace_id: str,
+    person_id: str,
+    db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     service = WorkspaceService(db)
     try:
@@ -213,9 +221,9 @@ async def suspend_member(
 async def assign_role(
     workspace_id: str,
     person_id: str,
-    actor_identity_id: str,
     role_name: str,
     db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     service = WorkspaceService(db)
     try:
@@ -228,11 +236,11 @@ async def assign_role(
 @router.post("/{workspace_id}/invitations")
 async def invite_member(
     workspace_id: str,
-    actor_identity_id: str,
     invitee_email: str,
     role_name: str,
     invitee_person_id: str | None = None,
     db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     service = WorkspaceService(db)
     try:
@@ -252,8 +260,8 @@ async def invite_member(
 async def revoke_invitation(
     workspace_id: str,
     invitation_id: str,
-    actor_identity_id: str,
     db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     service = WorkspaceService(db)
     try:
@@ -268,11 +276,11 @@ async def revoke_invitation(
 @router.post("/{workspace_id}/permission-templates")
 async def create_permission_template(
     workspace_id: str,
-    actor_identity_id: str,
     name: str,
     permissions: str,
     description: str | None = None,
     db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     import json
 
@@ -300,12 +308,12 @@ async def list_permission_templates(workspace_id: str, db: AsyncSession = Depend
 @router.post("/{workspace_id}/departments")
 async def create_department(
     workspace_id: str,
-    actor_identity_id: str,
     name_en: str,
     name_ar: str,
     dept_type: str | None = None,
     head_person_id: str | None = None,
     db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     service = WorkspaceService(db)
     try:
@@ -332,12 +340,12 @@ async def list_departments(workspace_id: str, db: AsyncSession = Depends(get_db)
 @router.post("/{workspace_id}/teams")
 async def create_team(
     workspace_id: str,
-    actor_identity_id: str,
     name_en: str,
     name_ar: str,
     department_id: str | None = None,
     leader_person_id: str | None = None,
     db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     service = WorkspaceService(db)
     try:
@@ -369,6 +377,7 @@ async def delegate_authority(
     permissions: str,
     end_at: datetime | None = None,
     db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     import json
 
@@ -380,6 +389,7 @@ async def delegate_authority(
             delegated_to_person_id=delegated_to_person_id,
             permissions=json.loads(permissions) if permissions else [],
             end_at=end_at,
+            actor_identity_id=actor_identity_id,
         )
     except Exception as exc:
         raise _handle(exc) from exc
@@ -388,8 +398,16 @@ async def delegate_authority(
 
 @router.get("/{workspace_id}/permissions/check")
 async def check_permission(
-    workspace_id: str, identity_id: str, permission: str, db: AsyncSession = Depends(get_db)
+    workspace_id: str,
+    identity_id: str,
+    permission: str,
+    db: AsyncSession = Depends(get_db),
+    actor_identity_id: str = Depends(get_actor_identity_id),
 ):
     service = WorkspaceService(db)
+    if identity_id != actor_identity_id:
+        actor = await service.has_role(workspace_id, actor_identity_id, {"owner", "admin"})
+        if not actor:
+            raise HTTPException(status_code=403, detail="not_workspace_administrator")
     allowed = await service.check_permission(workspace_id, identity_id, permission)
     return {"allowed": allowed, "workspace_id": workspace_id, "permission": permission}

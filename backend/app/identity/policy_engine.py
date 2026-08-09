@@ -1,7 +1,32 @@
+"""DEPRECATED — identity policy engine stub (fail-closed).
+
+.. warning::
+    This module is **deprecated**. The allow-by-default behavior it used to
+    expose has been removed: every decision now defaults to **DENY**.
+
+    Use the canonical authorization services instead:
+
+    * :class:`app.services.authorization_service.AuthorizationCheckService`
+    * :class:`app.services.authorization_service.PolicyService`
+
+    ``PolicyContext`` is kept only for backward compatibility with existing
+    call sites and tests; ``PolicyEngine`` now fails closed so it can never
+    silently grant access.
+"""
+
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from typing import Any
+
+warnings.warn(
+    "app.identity.policy_engine is deprecated; use "
+    "AuthorizationCheckService/PolicyService from "
+    "app.services.authorization_service instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 
 @dataclass
@@ -17,14 +42,14 @@ class PolicyContext:
 
 class PolicyEngine:
     async def evaluate(self, context: PolicyContext) -> bool:
-        return True
+        return False
 
     async def evaluate_action(self, policy: Any, context: PolicyContext) -> str:
-        return "allow"
+        return "deny"
 
     async def filter_resources(
         self,
         resources: list[Any],
         context: PolicyContext,
     ) -> list[Any]:
-        return resources
+        return []

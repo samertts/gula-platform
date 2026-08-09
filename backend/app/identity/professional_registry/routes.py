@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
-from app.identity.security import get_current_identity
+from app.identity.security import get_actor_identity_id, get_current_identity
 
 from .services import ProfessionalRegistryService, RegistryError
 
@@ -71,9 +71,9 @@ async def list_person_entries(person_id: str, db: AsyncSession = Depends(get_db)
 @router.post("/{registry_id}/verify")
 async def verify_entry(
     registry_id: str,
-    verified_by: str,
     verification_method: str = "authority_confirmation",
     db: AsyncSession = Depends(get_db),
+    verified_by: str = Depends(get_actor_identity_id),
 ):
     service = ProfessionalRegistryService(db)
     try:
@@ -89,7 +89,10 @@ async def verify_entry(
 
 @router.post("/{registry_id}/suspend")
 async def suspend_entry(
-    registry_id: str, reason: str, actor: str, db: AsyncSession = Depends(get_db)
+    registry_id: str,
+    reason: str,
+    db: AsyncSession = Depends(get_db),
+    actor: str = Depends(get_actor_identity_id),
 ):
     service = ProfessionalRegistryService(db)
     try:
@@ -101,7 +104,10 @@ async def suspend_entry(
 
 @router.post("/{registry_id}/revoke")
 async def revoke_entry(
-    registry_id: str, reason: str, actor: str, db: AsyncSession = Depends(get_db)
+    registry_id: str,
+    reason: str,
+    db: AsyncSession = Depends(get_db),
+    actor: str = Depends(get_actor_identity_id),
 ):
     service = ProfessionalRegistryService(db)
     try:

@@ -98,3 +98,21 @@ async def get_current_identity(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid token payload",
     )
+
+
+async def get_actor_identity_id(
+    principal: NIAMPrincipal = Depends(get_current_identity),
+) -> str:
+    """Return the authenticated actor's NIAM identity id.
+
+    The actor is always derived from the verified token principal — never from
+    a client-supplied parameter. Only identity-domain accounts map to a NIAM
+    identity; legacy lab tokens cannot act as an NIAM workspace, professional
+    registry, or governance actor.
+    """
+    if isinstance(principal, Account):
+        return principal.identity_id
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="Lab tokens cannot perform NIAM actor operations",
+    )

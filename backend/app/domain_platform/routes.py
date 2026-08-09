@@ -13,8 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
 from app.domain_platform.services import DomainError, DomainService
+from app.identity.security import get_current_identity
 
-router = APIRouter(prefix="/niam/domains", tags=["Domain Platform"])
+router = APIRouter(
+    prefix="/niam/domains",
+    tags=["Domain Platform"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 
 def _service(db: AsyncSession = Depends(get_db)) -> DomainService:

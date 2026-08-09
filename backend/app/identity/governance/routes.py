@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_niam_db as get_db
-from app.identity.security import get_current_identity
+from app.identity.security import get_actor_identity_id, get_current_identity
 
 from .services import (
     AppealService,
@@ -231,8 +231,8 @@ def create_review_board(
 @router.post("/policy-approvals")
 def submit_policy_approval(
     policy_id: str,
-    submitted_by: str,
     db: AsyncSession = Depends(get_db),
+    submitted_by: str = Depends(get_actor_identity_id),
 ):
     service = PolicyApprovalService(db)
     entity = service.submit_policy(
@@ -271,8 +271,8 @@ def get_pending_policy_approvals(
 @router.post("/policy-approvals/{workflow_id}/approve")
 def approve_policy(
     workflow_id: str,
-    approved_by: str,
     db: AsyncSession = Depends(get_db),
+    approved_by: str = Depends(get_actor_identity_id),
 ):
     service = PolicyApprovalService(db)
     entity = service.approve_policy(workflow_id, approved_by)
@@ -288,9 +288,9 @@ def approve_policy(
 @router.post("/policy-approvals/{workflow_id}/reject")
 def reject_policy(
     workflow_id: str,
-    rejected_by: str,
     reason: str,
     db: AsyncSession = Depends(get_db),
+    rejected_by: str = Depends(get_actor_identity_id),
 ):
     service = PolicyApprovalService(db)
     entity = service.reject_policy(workflow_id, rejected_by, reason)
@@ -370,9 +370,9 @@ def assign_appeal_to_council(
 def decide_appeal(
     appeal_id: str,
     decision: str,
-    decided_by: str,
     notes: str | None = None,
     db: AsyncSession = Depends(get_db),
+    decided_by: str = Depends(get_actor_identity_id),
 ):
     service = AppealService(db)
     entity = service.make_decision(appeal_id, decision, decided_by, notes)
@@ -390,9 +390,9 @@ def suspend_identity(
     identity_id: str,
     reason: str,
     severity: str = "medium",
-    suspended_by: str | None = None,
     duration_hours: int | None = None,
     db: AsyncSession = Depends(get_db),
+    suspended_by: str = Depends(get_actor_identity_id),
 ):
     service = SuspensionService(db)
     entity = service.suspend_identity(
@@ -414,9 +414,9 @@ def suspend_identity(
 @router.post("/suspensions/{suspension_id}/lift")
 def lift_suspension(
     suspension_id: str,
-    lifted_by: str,
     reason: str | None = None,
     db: AsyncSession = Depends(get_db),
+    lifted_by: str = Depends(get_actor_identity_id),
 ):
     service = SuspensionService(db)
     entity = service.lift_suspension(suspension_id, lifted_by, reason)
@@ -478,8 +478,8 @@ def register_identity(
     person_id: str,
     identity_id: str,
     registry_type: str = "citizen",
-    registered_by: str | None = None,
     db: AsyncSession = Depends(get_db),
+    registered_by: str = Depends(get_actor_identity_id),
 ):
     service = RegistryService(db)
     entity = service.register_identity(
@@ -518,10 +518,10 @@ def certify_identity(
     certification_number: str | None = None,
     issue_date: datetime | None = None,
     expiry_date: datetime | None = None,
-    verified_by: str | None = None,
     verification_method: str | None = None,
     digital_signature: str | None = None,
     db: AsyncSession = Depends(get_db),
+    verified_by: str = Depends(get_actor_identity_id),
 ):
     service = RegistryService(db)
     entity = service.certify_identity(
