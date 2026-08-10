@@ -56,6 +56,8 @@ class AuditAction(StrEnum):
     bootstrap_completed = "bootstrap_completed"
     authority_created = "authority_created"
     authority_suspended = "authority_suspended"
+    authority_boundary_enforced = "authority_boundary_enforced"
+    authority_boundary_denied = "authority_boundary_denied"
     council_created = "council_created"
     appeal_submitted = "appeal_submitted"
     appeal_decided = "appeal_decided"
