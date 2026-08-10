@@ -86,3 +86,58 @@ class ProfessionalRegistryEntry(IdentityBaseEntity):
     attachments = Column(JSON, nullable=True)
     notes = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+
+
+class AuthorizationScopeType(StrEnum):
+    """Jurisdictional scope of a professional authorization."""
+
+    national = "national"
+    directorate = "directorate"
+    facility = "facility"
+
+
+class AuthorizationStatus(StrEnum):
+    active = "active"
+    suspended = "suspended"
+    revoked = "revoked"
+    expired = "expired"
+
+
+class ProfessionalAuthorization(IdentityBaseEntity):
+    """Separable operational authorization derived from a registry entry.
+
+    The registry entry records *identity* (who the professional is and whether
+    the issuing authority verified them). The authorization records *privilege*
+    (what scope the professional may operate in, for how long). They are kept
+    separable: an authorization is issued only from a verified, non-expired
+    entry, and any registry-level suspension/revocation automatically invalidates
+    every derived authorization through :meth:`is_authorized`.
+    """
+
+    __tablename__ = "niam_professional_authorizations"
+
+    uuid = Column(String(36), unique=True, nullable=False, index=True)
+    authorization_id = Column(String(100), unique=True, nullable=False, index=True)
+    registry_id = Column(
+        String(26),
+        ForeignKey("niam_professional_registry.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    person_id = Column(
+        String(26), ForeignKey("niam_persons.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    profession = Column(String(50), nullable=False, index=True)
+
+    scope_type = Column(String(30), default="national", nullable=False, index=True)
+    scope_id = Column(String(26), nullable=True, index=True)
+
+    status = Column(String(20), default="active", nullable=False, index=True)
+    status_reason = Column(Text, nullable=True)
+
+    granted_at = Column(DateTime(timezone=True), nullable=False)
+    granted_by = Column(String(100), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+
+    is_active = Column(Boolean, default=True, nullable=False)
