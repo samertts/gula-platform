@@ -75,6 +75,8 @@ async def get_current_identity(
         if account.status in (
             AccountStatus.suspended.value,
             AccountStatus.deactivated.value,
+            AccountStatus.revoked.value,
+            AccountStatus.retired.value,
         ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,

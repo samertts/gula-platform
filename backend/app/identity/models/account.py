@@ -17,6 +17,8 @@ class AccountStatus(StrEnum):
     active = "active"
     locked = "locked"
     suspended = "suspended"
+    revoked = "revoked"
+    retired = "retired"
     deactivated = "deactivated"
     pending_verification = "pending_verification"
 

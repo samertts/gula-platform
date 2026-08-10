@@ -133,11 +133,13 @@ class TestAccountLifecycleTransitions:
     async def test_suspend_transition_allowed_and_audited(self):
         session = MagicMock()
         session.flush = AsyncMock()
+        session.execute = AsyncMock(side_effect=_mock_execute_rows([]))
         account = _account()
         svc = AccountService(session)
-        with patch.object(svc.repo, "get_by_id", new_callable=AsyncMock) as m, patch.object(
-            svc, "_audit_transition", new_callable=AsyncMock
-        ) as audit:
+        with (
+            patch.object(svc.repo, "get_by_id", new_callable=AsyncMock) as m,
+            patch.object(svc, "_audit_transition", new_callable=AsyncMock) as audit,
+        ):
             m.return_value = account
             result = await svc.suspend_account(account.id, "policy violation", "admin-1")
         assert result is not None
@@ -162,8 +164,9 @@ class TestAccountLifecycleTransitions:
         session.flush = AsyncMock()
         account = _account(status=AccountStatus.suspended.value)
         svc = AccountService(session)
-        with patch.object(svc.repo, "get_by_id", new_callable=AsyncMock) as m, patch.object(
-            svc, "_audit_transition", new_callable=AsyncMock
+        with (
+            patch.object(svc.repo, "get_by_id", new_callable=AsyncMock) as m,
+            patch.object(svc, "_audit_transition", new_callable=AsyncMock),
         ):
             m.return_value = account
             result = await svc.activate_account(account.id, "restored after review")
@@ -200,12 +203,12 @@ class TestSessionPolicyEnforcement:
             return result
 
         session.execute.side_effect = fake_execute
-        with patch.object(
-            svc, "get_session_policy", new_callable=AsyncMock, return_value=policy
-        ), patch.object(
-            svc, "get_active_session_count", new_callable=AsyncMock, return_value=1
-        ), patch.object(
-            svc, "terminate_previous_sessions", new_callable=AsyncMock, return_value=1
+        with (
+            patch.object(svc, "get_session_policy", new_callable=AsyncMock, return_value=policy),
+            patch.object(svc, "get_active_session_count", new_callable=AsyncMock, return_value=1),
+            patch.object(
+                svc, "terminate_previous_sessions", new_callable=AsyncMock, return_value=1
+            ),
         ):
             result = await svc.enforce_session_policy("a1", "human")
         assert result["action"] == "terminated_previous"
@@ -216,10 +219,9 @@ class TestSessionPolicyEnforcement:
         session = MagicMock()
         policy = _policy(terminate_previous_on_new_login=False, max_sessions=1)
         svc = SessionGovernanceService(session)
-        with patch.object(
-            svc, "get_session_policy", new_callable=AsyncMock, return_value=policy
-        ), patch.object(
-            svc, "get_active_session_count", new_callable=AsyncMock, return_value=1
+        with (
+            patch.object(svc, "get_session_policy", new_callable=AsyncMock, return_value=policy),
+            patch.object(svc, "get_active_session_count", new_callable=AsyncMock, return_value=1),
         ):
             result = await svc.enforce_session_policy("a1", "human")
         assert result["action"] == "block_new_session"
@@ -231,12 +233,12 @@ class TestSessionPolicyEnforcement:
         session.flush = AsyncMock()
         policy = _policy(max_sessions=2, allow_concurrent=True)
         svc = SessionGovernanceService(session)
-        with patch.object(
-            svc, "get_session_policy", new_callable=AsyncMock, return_value=policy
-        ), patch.object(
-            svc, "get_active_session_count", new_callable=AsyncMock, return_value=2
-        ), patch.object(
-            svc, "terminate_previous_sessions", new_callable=AsyncMock, return_value=1
+        with (
+            patch.object(svc, "get_session_policy", new_callable=AsyncMock, return_value=policy),
+            patch.object(svc, "get_active_session_count", new_callable=AsyncMock, return_value=2),
+            patch.object(
+                svc, "terminate_previous_sessions", new_callable=AsyncMock, return_value=1
+            ),
         ):
             result = await svc.enforce_session_policy("a1", "human")
         assert result["action"] == "terminated_previous"
@@ -260,9 +262,12 @@ class TestSessionPolicyEnforcement:
         session.execute = AsyncMock(side_effect=_mock_execute_rows([old]))
         from app.identity.services.audit_service import AuditService
 
-        with patch.object(
-            AuditService, "_get_last_entry_hash", new_callable=AsyncMock, return_value=None
-        ), patch.object(svc, "_audit_policy_termination", new_callable=AsyncMock) as audit:
+        with (
+            patch.object(
+                AuditService, "_get_last_entry_hash", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(svc, "_audit_policy_termination", new_callable=AsyncMock) as audit,
+        ):
             count = await svc.terminate_previous_sessions("a1", excess=1)
         assert count == 1
         assert old.is_active is False
@@ -278,16 +283,19 @@ class TestLoginAuditWiring:
         session.flush = AsyncMock()
         account = _account(mfa_enabled=True, email="a@test.local")
         svc = AuthenticationService(session)
-        with patch.object(
-            svc.account_service, "authenticate", new_callable=AsyncMock, return_value=account
-        ), patch.object(
-            svc.session_governance,
-            "enforce_session_policy",
-            new_callable=AsyncMock,
-            return_value={"enforced": True, "action": "allowed", "policy_id": "p-1"},
-        ), patch.object(svc, "_audit", new_callable=AsyncMock) as audit, patch.object(
-            svc.session_repo, "create", new_callable=AsyncMock
-        ) as create:
+        with (
+            patch.object(
+                svc.account_service, "authenticate", new_callable=AsyncMock, return_value=account
+            ),
+            patch.object(
+                svc.session_governance,
+                "enforce_session_policy",
+                new_callable=AsyncMock,
+                return_value={"enforced": True, "action": "allowed", "policy_id": "p-1"},
+            ),
+            patch.object(svc, "_audit", new_callable=AsyncMock) as audit,
+            patch.object(svc.session_repo, "create", new_callable=AsyncMock) as create,
+        ):
             result = await svc.login("a@test.local", "SecurePass123!@#")
         assert result is not None
         audit.assert_awaited()
@@ -302,13 +310,18 @@ class TestLoginAuditWiring:
     async def test_login_failure_audited(self):
         session = MagicMock()
         svc = AuthenticationService(session)
-        with patch.object(
-            svc.account_service, "authenticate", new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            svc.account_service, "find_by_email", new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            svc.account_service, "find_by_username", new_callable=AsyncMock, return_value=None
-        ), patch.object(svc, "_audit", new_callable=AsyncMock) as audit:
+        with (
+            patch.object(
+                svc.account_service, "authenticate", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(
+                svc.account_service, "find_by_email", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(
+                svc.account_service, "find_by_username", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(svc, "_audit", new_callable=AsyncMock) as audit,
+        ):
             result = await svc.login("bad@test.local", "wrong")
         assert result is None
         assert audit.await_args.kwargs["action"] == "login_failed"
@@ -317,13 +330,18 @@ class TestLoginAuditWiring:
     async def test_login_failure_unknown_account_audits_no_target(self):
         session = MagicMock()
         svc = AuthenticationService(session)
-        with patch.object(
-            svc.account_service, "authenticate", new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            svc.account_service, "find_by_email", new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            svc.account_service, "find_by_username", new_callable=AsyncMock, return_value=None
-        ), patch.object(svc, "_audit", new_callable=AsyncMock) as audit:
+        with (
+            patch.object(
+                svc.account_service, "authenticate", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(
+                svc.account_service, "find_by_email", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(
+                svc.account_service, "find_by_username", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(svc, "_audit", new_callable=AsyncMock) as audit,
+        ):
             await svc.login("nobody@test.local", "wrong")
         assert audit.await_args.kwargs["target_id"] is None
 
@@ -332,13 +350,18 @@ class TestLoginAuditWiring:
         session = MagicMock()
         account = _account(email="blocked@test.local")
         svc = AuthenticationService(session)
-        with patch.object(
-            svc.account_service, "authenticate", new_callable=AsyncMock, return_value=None
-        ), patch.object(
-            svc.account_service, "find_by_email", new_callable=AsyncMock, return_value=account
-        ), patch.object(
-            svc.account_service, "find_by_username", new_callable=AsyncMock, return_value=None
-        ), patch.object(svc, "_audit", new_callable=AsyncMock) as audit:
+        with (
+            patch.object(
+                svc.account_service, "authenticate", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(
+                svc.account_service, "find_by_email", new_callable=AsyncMock, return_value=account
+            ),
+            patch.object(
+                svc.account_service, "find_by_username", new_callable=AsyncMock, return_value=None
+            ),
+            patch.object(svc, "_audit", new_callable=AsyncMock) as audit,
+        ):
             await svc.login("blocked@test.local", "wrong")
         assert audit.await_args.kwargs["target_id"] == account.id
 
@@ -347,14 +370,18 @@ class TestLoginAuditWiring:
         session = MagicMock()
         account = _account(email="b@test.local")
         svc = AuthenticationService(session)
-        with patch.object(
-            svc.account_service, "authenticate", new_callable=AsyncMock, return_value=account
-        ), patch.object(
-            svc.session_governance,
-            "enforce_session_policy",
-            new_callable=AsyncMock,
-            return_value={"action": "block_new_session"},
-        ), patch.object(svc, "_audit", new_callable=AsyncMock):
+        with (
+            patch.object(
+                svc.account_service, "authenticate", new_callable=AsyncMock, return_value=account
+            ),
+            patch.object(
+                svc.session_governance,
+                "enforce_session_policy",
+                new_callable=AsyncMock,
+                return_value={"action": "block_new_session"},
+            ),
+            patch.object(svc, "_audit", new_callable=AsyncMock),
+        ):
             result = await svc.login("b@test.local", "SecurePass123!@#")
         assert result is None
 
@@ -375,9 +402,10 @@ class TestNiamAuthorizationRbac:
             is_active=True,
         )
         svc = AuthorizationService(session)
-        with patch.object(
-            svc.assignment_repo, "find_by_person_id", new_callable=AsyncMock
-        ) as m, patch.object(svc, "_is_license_ok", new_callable=AsyncMock, return_value=True):
+        with (
+            patch.object(svc.assignment_repo, "find_by_person_id", new_callable=AsyncMock) as m,
+            patch.object(svc, "_is_license_ok", new_callable=AsyncMock, return_value=True),
+        ):
             m.return_value = [assignment]
             assert await svc.has_permission("p-1", "results:read") is True
             assert await svc.has_permission("p-1", "system:admin") is False
@@ -398,9 +426,10 @@ class TestNiamAuthorizationRbac:
             is_active=True,
         )
         svc = AuthorizationService(session)
-        with patch.object(
-            svc.assignment_repo, "find_by_person_id", new_callable=AsyncMock
-        ) as m, patch.object(svc, "_is_license_ok", new_callable=AsyncMock, return_value=True):
+        with (
+            patch.object(svc.assignment_repo, "find_by_person_id", new_callable=AsyncMock) as m,
+            patch.object(svc, "_is_license_ok", new_callable=AsyncMock, return_value=True),
+        ):
             m.return_value = [assignment]
             assert await svc.has_permission("p-1", "results:read", "org-1") is True
             assert await svc.has_permission("p-1", "results:read", "org-other") is False
@@ -438,9 +467,7 @@ class TestNiamAuthorizationRbac:
         result.scalars.return_value.all.return_value = [expired]
         session.execute.return_value = result
         svc = AuthorizationService(session)
-        with patch.object(
-            svc.assignment_repo, "find_by_person_id", new_callable=AsyncMock
-        ) as m:
+        with patch.object(svc.assignment_repo, "find_by_person_id", new_callable=AsyncMock) as m:
             m.return_value = [assignment]
             assert await svc.has_permission("p-1", "results:read") is False
 
@@ -477,9 +504,7 @@ class TestNiamAuthorizationRbac:
         result.scalars.return_value.all.return_value = [valid]
         session.execute.return_value = result
         svc = AuthorizationService(session)
-        with patch.object(
-            svc.assignment_repo, "find_by_person_id", new_callable=AsyncMock
-        ) as m:
+        with patch.object(svc.assignment_repo, "find_by_person_id", new_callable=AsyncMock) as m:
             m.return_value = [assignment]
             assert await svc.has_permission("p-1", "results:read") is True
 
