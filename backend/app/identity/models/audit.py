@@ -49,6 +49,7 @@ class AuditAction(StrEnum):
     breach_detected = "breach_detected"
     organization_created = "organization_created"
     organization_updated = "organization_updated"
+    organization_hierarchy_changed = "organization_hierarchy_changed"
     license_issued = "license_issued"
     license_suspended = "license_suspended"
     bootstrap_started = "bootstrap_started"

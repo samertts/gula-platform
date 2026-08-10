@@ -12,9 +12,33 @@ from app.identity.organizations.guard import (
     OrganizationAccessDeniedError,
     OrganizationAccessGuard,
 )
+from app.identity.organizations.hierarchy import (
+    ORG_HIERARCHY_LAYERS,
+    HierarchyLayer,
+    OrganizationHierarchyError,
+    OrganizationHierarchyService,
+    OrgHierarchyNode,
+    ancestor_ids,
+    descendant_ids,
+    effective_scope_ids,
+    layer_index,
+    layer_name_for,
+    would_create_cycle,
+)
 
 __all__ = [
+    "ORG_HIERARCHY_LAYERS",
+    "HierarchyLayer",
+    "OrgHierarchyNode",
     "OrganizationAccessDecision",
     "OrganizationAccessDeniedError",
     "OrganizationAccessGuard",
+    "OrganizationHierarchyError",
+    "OrganizationHierarchyService",
+    "ancestor_ids",
+    "descendant_ids",
+    "effective_scope_ids",
+    "layer_index",
+    "layer_name_for",
+    "would_create_cycle",
 ]
