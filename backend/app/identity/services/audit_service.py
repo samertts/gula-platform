@@ -158,14 +158,23 @@ class AuditService:
         await self.session.flush()
         return entry
 
-    async def verify_chain_integrity(self) -> list[dict]:
-        stmt = (
-            select(IdentityAuditEntry)
-            .where(IdentityAuditEntry.entry_hash.isnot(None))
-            .order_by(IdentityAuditEntry.occurred_at)
-        )
-        result = await self.session.execute(stmt)
-        entries = list(result.scalars().all())
+    async def verify_chain_integrity(
+        self,
+        entries: list[IdentityAuditEntry] | None = None,
+    ) -> list[dict]:
+        """Verify the identity audit hash chain; return anomalies.
+
+        Read-only — never rewrites or repairs entries. If ``entries`` is
+        provided it must be the full hashed chain ordered by occurred_at.
+        """
+        if entries is None:
+            stmt = (
+                select(IdentityAuditEntry)
+                .where(IdentityAuditEntry.entry_hash.isnot(None))
+                .order_by(IdentityAuditEntry.occurred_at, IdentityAuditEntry.id)
+            )
+            result = await self.session.execute(stmt)
+            entries = list(result.scalars().all())
         violations = []
         for i, entry in enumerate(entries):
             expected_previous = entries[i - 1].entry_hash if i > 0 else None
@@ -202,3 +211,51 @@ class AuditService:
                     }
                 )
         return violations
+
+    async def verify_chain_report(self) -> dict:
+        """Full read-only integrity report for the identity audit hash chain.
+
+        Reports every anomaly class — recomputed-hash mismatches, previous-hash
+        chain breaks, and unhashed entries interleaved after the chain started.
+        It never auto-rewrites: anomalies are surfaced for review, not repaired.
+        """
+        stmt = select(IdentityAuditEntry).order_by(
+            IdentityAuditEntry.occurred_at, IdentityAuditEntry.id
+        )
+        result = await self.session.execute(stmt)
+        entries = list(result.scalars().all())
+        total = len(entries)
+        hashed = [e for e in entries if e.entry_hash]
+        unhashed = [e for e in entries if not e.entry_hash]
+
+        first_hashed_index: int | None = None
+        for index, entry in enumerate(entries):
+            if entry.entry_hash:
+                first_hashed_index = index
+                break
+
+        unhashed_anomalies: list[dict] = []
+        for index, entry in enumerate(entries):
+            if entry.entry_hash:
+                continue
+            if first_hashed_index is None or index <= first_hashed_index:
+                continue
+            unhashed_anomalies.append(
+                {
+                    "id": entry.id,
+                    "uuid": entry.uuid,
+                    "reason": "unhashed_entry_after_chain_start",
+                }
+            )
+
+        violations = await self.verify_chain_integrity(entries=hashed)
+        anomalies = list(violations) + unhashed_anomalies
+        return {
+            "total_entries": total,
+            "hashed_entries": len(hashed),
+            "unhashed_entries": len(unhashed),
+            "anomalies": len(anomalies),
+            "integrity_ok": not anomalies,
+            "violations": violations,
+            "unhashed_anomalies": unhashed_anomalies,
+        }
