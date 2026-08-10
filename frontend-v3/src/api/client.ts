@@ -1,6 +1,14 @@
 import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from "axios";
+import { isDemoSessionActive } from "@/demo/session";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
+
+export class DemoModeBlockedError extends Error {
+  constructor() {
+    super("Demo mode is read-only: API access is disabled");
+    this.name = "DemoModeBlockedError";
+  }
+}
 
 class ApiClient {
   private instance: AxiosInstance;
@@ -22,6 +30,9 @@ class ApiClient {
   }
 
   private handleRequest(config: InternalAxiosRequestConfig) {
+    if (isDemoSessionActive()) {
+      return Promise.reject(new DemoModeBlockedError());
+    }
     const token = localStorage.getItem("access_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;

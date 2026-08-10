@@ -3,7 +3,8 @@ import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import { useAuth, MFAChallengeRequired } from "@/contexts/AuthContext";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, Input, Button } from "@/components/ui";
-import { FlaskConical, ShieldCheck } from "lucide-react";
+import { FlaskConical, ShieldCheck, Eye } from "lucide-react";
+import { demoConfig } from "@/demo/config";
 
 export function LoginPage() {
   const { t } = useTranslation();
@@ -150,6 +151,19 @@ export function LoginPage() {
             {t("auth.login")}
           </Button>
         </form>
+        <div className="mt-4 space-y-2 border-t pt-4">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={!demoConfig.enabled}
+            onClick={() => navigate("/demo")}
+          >
+            <Eye className="h-4 w-4" />
+            {t("demo.enter")}
+          </Button>
+          <p className="text-center text-xs text-muted-foreground">{t("demo.loginHint")}</p>
+        </div>
       </CardContent>
     </Card>
   );

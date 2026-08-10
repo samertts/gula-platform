@@ -5,6 +5,11 @@ import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { LoadingSpinner } from "@/components/shared/PageComponents";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import type { UserRole } from "@/types";
+import { demoConfig } from "@/demo/config";
+
+const DemoLoginPage = lazy(() => import("@/demo/DemoLoginPage").then((m) => ({ default: m.DemoLoginPage })));
+const DemoLayout = lazy(() => import("@/demo/DemoLayout").then((m) => ({ default: m.DemoLayout })));
+const DemoDashboardPage = lazy(() => import("@/demo/DemoDashboardPage").then((m) => ({ default: m.DemoDashboardPage })));
 
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
 const PublicResultPage = lazy(() => import("@/pages/public-result/PublicResultPage").then(m => ({ default: m.PublicResultPage })));
@@ -98,6 +103,11 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 
 function LazyPage({ children }: { children: ReactNode }) {
   return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>;
+}
+
+function DemoGate({ children }: { children: ReactNode }) {
+  if (!demoConfig.enabled) return <Navigate to="/login" replace />;
+  return <>{children}</>;
 }
 
 const adminRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'ministry_admin', 'province_admin'];
@@ -207,6 +217,27 @@ export const router = createBrowserRouter([
       { path: "public-health", element: <RoleGuard roles={adminRoles}><LazyPage><PublicHealthApiPageLazy /></LazyPage></RoleGuard> },
       { path: "admin", element: <Navigate to="/admin/labs" replace /> },
     ],
+  },
+  {
+    path: "/demo",
+    element: (
+      <DemoGate>
+        <LazyPage>
+          <DemoLoginPage />
+        </LazyPage>
+      </DemoGate>
+    ),
+  },
+  {
+    path: "/demo/:profile",
+    element: (
+      <DemoGate>
+        <LazyPage>
+          <DemoLayout />
+        </LazyPage>
+      </DemoGate>
+    ),
+    children: [{ index: true, element: <DemoDashboardPage /> }],
   },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);
