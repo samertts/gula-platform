@@ -102,6 +102,7 @@ Links to related ADRs, Constitution sections, or code.
 | [ADR-035](ADR-035-rule-engine-promotion.md) | Rule Engine Promotion (ExpressionEngine → `shared/rules_engine`) | Accepted | 2026-08-07 |
 | [ADR-036](ADR-036-workflow-runtime-retirement.md) | Workflow Runtime Retirement (broken national workflow_runtime → canonical `backend/app/workflows`) | Accepted | 2026-08-08 |
 | [ADR-037](ADR-037-next-program-authority.md) | Next Program Authority (PROGRAM_NEXT_PHASE_PLAN supersedes legacy PROGRAM-02 label) | Accepted | 2026-08-10 |
+| [ADR-038](ADR-038-abac-route-enforcement.md) | ABAC Route Enforcement (bind certified ABAC engine to protected HTTP routes via `require_abac`) | Accepted | 2026-08-10 |
 
 ## Constitution Reference
 

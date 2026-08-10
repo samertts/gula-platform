@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_niam_db as get_db
 from app.identity.security import get_current_identity
 from app.identity.services.authentication_service import AuthenticationService
+from app.security.abac_enforcement import require_abac
 
 router = APIRouter(prefix="/auth", tags=["NIAM Auth"])
 
@@ -56,7 +57,10 @@ async def refresh(
 
 @router.post(
     "/logout",
-    dependencies=[Depends(get_current_identity)],
+    dependencies=[
+        Depends(get_current_identity),
+        Depends(require_abac("niam:auth")),
+    ],
 )
 async def logout(
     session_uuid: str,
