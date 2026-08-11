@@ -9,6 +9,12 @@ from .account import Account, AccountStatus, AccountType
 from .assignment import Assignment, AssignmentStatus
 from .audit import IdentityAuditEntry
 from .credential import Credential, CredentialType
+from .citizen_relationship import (
+    CitizenRelationship,
+    CitizenRelationshipSource,
+    CitizenRelationshipStatus,
+    CitizenRelationshipType,
+)
 from .device import Device
 from .employment import Employment, EmploymentStatus
 from .enterprise_account import EnterpriseAccount
@@ -32,6 +38,10 @@ __all__ = [
     "CertificateRevocationList",
     "Credential",
     "CredentialType",
+    "CitizenRelationship",
+    "CitizenRelationshipSource",
+    "CitizenRelationshipStatus",
+    "CitizenRelationshipType",
     "Device",
     "DigitalCertificate",
     "Employment",
