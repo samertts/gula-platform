@@ -2,7 +2,11 @@
 
 **التاريخ:** 2026-08-11
 
-**الحالة:** Implemented locally; pending explicit commit/push verification.
+**الحالة:** Implemented, committed, and pushed to the Wave 3 review branch.
+
+**Commit:** `c5b630f91218729127f5c0fcb2a62282b6c4b5e0`
+
+**Remote branch:** `wave3-identity-dependency-hardening-20260811`
 
 ## Scope
 
@@ -30,7 +34,7 @@
 | Migration rollback drill | downgrade إلى `20260811_0001` ثم re-upgrade إلى `20260811_0002 (head)` نجح. |
 | Backend full suite | `2301 passed, 251 warnings`؛ التحذيرات موجودة في أجزاء قائمة وليست failures. |
 | frontend-v3 | typecheck وproduction build نجحا بعد إضافة صفحة/route/permissions/i18n. |
-| Git safety | لم تُلمس ملفات `.audit/ci-fix.patch` و`.audit/ci-repair.patch` غير المتتبعة. |
+| Git safety | لم تُلمس ملفات `.audit/ci-fix.patch` و`.audit/ci-repair.patch` غير المتتبعة، وبقيت خارج commit. |
 
 ## Residual risks and next gates
 
