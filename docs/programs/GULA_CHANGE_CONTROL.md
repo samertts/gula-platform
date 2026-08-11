@@ -36,21 +36,36 @@ ADR-037.
 | # | Class | Change | Commit | Notes |
 |---|---|---|---|---|
 | CR-1 | A | Full repository audit (DISCOVER→VERIFY→AUDIT→CLASSIFY→MAP→PLAN→STOP) | — | Read-only; zero production changes |
-| CR-2 | B | `GULA_CURRENT_REPOSITORY_STATE.md` | PENDING | Evidence: S1–S9, C1–C4, risks R-01..R-14 |
-| CR-3 | B | `GULA_MASTER_GAP_MATRIX.md` | PENDING | 7 surfaces, priority P0–P3 |
-| CR-4 | B | `GULA_TARGET_ARCHITECTURE.md` | PENDING | Target blueprint |
-| CR-5 | B | `GULA_APPLICATION_ECOSYSTEM.md` | PENDING | Web/Android/iOS/Desktop/store/experimental |
-| CR-6 | B | `GULA_MASTER_EXECUTION_PLAN.md` | PENDING | Waves 0–17, PD-gated |
-| CR-7 | B | `GULA_RISK_REGISTER.md` | PENDING | R-01 CRITICAL, 5 HIGH, 7 MEDIUM, 2 LOW + governance |
-| CR-8 | B | `GULA_DEPENDENCY_GRAPH.md` | PENDING | L0–L3 layers + risks |
-| CR-9 | B | `GULA_CHANGE_CONTROL.md` | PENDING | This document |
-| CR-10 | B | `GULA_FINAL_REPORT.md` | PENDING | 15-point deliverable |
+| CR-2 | B | `GULA_CURRENT_REPOSITORY_STATE.md` | `05fd61df` | Evidence: S1–S9, C1–C4, risks R-01..R-14 |
+| CR-3 | B | `GULA_MASTER_GAP_MATRIX.md` | `05fd61df` | 7 surfaces, priority P0–P3 |
+| CR-4 | B | `GULA_TARGET_ARCHITECTURE.md` | `05fd61df` | Target blueprint |
+| CR-5 | B | `GULA_APPLICATION_ECOSYSTEM.md` | `05fd61df` | Web/Android/iOS/Desktop/store/experimental |
+| CR-6 | B | `GULA_MASTER_EXECUTION_PLAN.md` | `05fd61df` | Waves 0–17, PD-gated |
+| CR-7 | B | `GULA_RISK_REGISTER.md` | `05fd61df` | R-01 CRITICAL, 5 HIGH, 7 MEDIUM, 2 LOW + governance |
+| CR-8 | B | `GULA_DEPENDENCY_GRAPH.md` | `05fd61df` | L0–L3 layers + risks |
+| CR-9 | B | `GULA_CHANGE_CONTROL.md` | `05fd61df` | This document |
+| CR-10 | B | `GULA_FINAL_REPORT.md` | `05fd61df` | 15-point deliverable |
 
-**Non-goals of this session (explicitly NOT changed):**
-- No production code, routes, models, migrations, or workflows modified.
-- No branch created/deleted; no push performed.
+### Wave 1 remediation session 2026-08-11 (branch `remediate-security-001`)
+
+| # | Class | Change | Commit | Notes |
+|---|---|---|---|---|
+| CR-11 | D | **S1** — Gate `/api/ai/operations` + `/api/ai/providers` with `system:admin`; remove active Ollama probing; `/providers` response trimmed to declared `AIProviderStatus` contract (no `base_url`/`available_models`/`cost`/`source`); legacy detection = config-only | `dde4faec` | 7 regression tests `test_ai_admin_routes_auth.py`; OpenAPI HTTPBearer on both paths; ruff clean |
+| CR-12 | D | **S2** — Gate `POST /insurance/lookup` with `require_permission("patients:read")`; immutable audit (`insurance_lookup` action, actor role + IP) + commit | `d1c5b1f7` | 6 regression tests `test_insurance_route_auth.py`; ruff clean |
+| CR-13 | D | **S7** — `.github/workflows/build-images.yml` duplicate `push:` keys merged into single `push:` (restores main-branch build trigger) | `bb50c60f` | All 26 workflows parse OK via `yaml.safe_load` |
+| CR-14 | D | **S8** — Create missing `frontend-v3/lighthouse.config.json` referenced by `frontend-pwa.yml` (staticDistDir `./build`, `lighthouse:no-pwa`) | `eecd74d3` | CI config fix |
+| CR-15 | D | **S9** — `mobile-ios.yml` `check-build-system` job gates lint/test/ui-test; fails fast referencing D-1 deferral | `b6be6ecf` | Job graph: check-build-system → lint/test/ui-test → build → upload-to-testflight |
+| CR-16 | D | **F-07/L-01** — Public `/privacy` + `/terms` pages (6-section privacy policy, 10-section terms), full ar/en i18n, footer links on AuthLayout, top-level public routes (no auth) | `173a9350` | 30 i18n keys/lang; tsc 0, vite build OK, vitest 171/171, eslint 0 |
+
+**Wave 1 decisions (documented, reversible):** D-1 defer iOS rebuild (gate CI, keep scaffold); D-2 defer Desktop drift fix (documented only). S3/S5/S6/C4 remain PENDING (not started — see `GULA_MASTER_EXECUTION_PLAN.md`).
+
+**Non-goals of the Wave 1 remediation session (explicitly NOT changed):**
+- No destructive operations: no data drops, no breaking API removals, no license/service changes, no credential exposure.
 - No `git stash` content touched (`stash@{0}` preserved).
 - Concurrent branches (`manus/admin-workspace-20260811`, `security-hardening-demo-alignment`, `wave0-audit-hardening-20260811`) untouched; `origin/main` NOT merged.
+- S3/S5/S6/C4 not started (deferred beyond this wave).
+
+**Wave 1 non-goals (audit session only, historical):** audit session committed docs only — zero production code/workflows modified; no push performed during audit.
 
 ## 4. Commit Procedure (for pending docs)
 
