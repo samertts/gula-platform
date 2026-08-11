@@ -14,8 +14,8 @@ export function EmergencyResponse() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card><div className="text-center"><div className="text-3xl font-bold text-red-400 text-4xl">٣</div><div className="text-sm text-slate-400">طوارئ نشطة</div></div></Card>
         <Card><div className="text-center"><div className="text-3xl font-bold text-yellow-400">١٢</div><div className="text-sm text-slate-400">فرق استجابة</div></div></Card>
-        <Card><div className="text-center"><div className="text-3xl font-bold text-green-400">٤٥</div><div className="text-sm text-slate-400">سيارة إسعاف</div></Card>
-        <Card><div className="text-center"><div className="text-3xl font-bold text-blue-400">٨٩٪</div><div className="text-sm text-slate-400">جاهزية</div></Card>
+        <Card><div className="text-center"><div className="text-3xl font-bold text-green-400">٤٥</div><div className="text-sm text-slate-400">سيارة إسعاف</div></div></Card>
+        <Card><div className="text-center"><div className="text-3xl font-bold text-blue-400">٨٩٪</div><div className="text-sm text-slate-400">جاهزية</div></div></Card>
       </div>
 
       <Card title="حالات الطوارئ النشطة">

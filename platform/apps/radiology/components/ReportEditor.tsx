@@ -101,7 +101,7 @@ export function ReportEditor({
         <div style={{ display: 'grid', gap: 16 }}>
           <div>
             <div className="input-label">التاريخ السريري</div>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{report.clinical_history || '—'}</div>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-primary)' }}>{report.clinical_history || '—'}</p>
           </div>
           <div>
             <div className="input-label">التقنية</div>

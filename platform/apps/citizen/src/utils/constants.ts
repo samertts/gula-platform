@@ -4,8 +4,6 @@ export const APP_VERSION = '2.1.0';
 export const COMPANY_NAME = 'GULA Health';
 
 export const STORAGE_KEYS = {
-  AUTH_TOKEN: 'gula_citizen_token',
-  REFRESH_TOKEN: 'gula_citizen_refresh',
   USER_DATA: 'gula_citizen_user',
   OFFLINE_DATA: 'gula_offline_data',
   SYNC_TIMESTAMP: 'gula_sync_ts',

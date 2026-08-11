@@ -108,10 +108,11 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          charts: ['recharts'],
-          pwa: ['workbox-precaching', 'workbox-routing', 'workbox-strategies', 'workbox-background-sync'],
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) return 'vendor';
+          if (id.includes('node_modules/recharts')) return 'charts';
+          if (id.includes('node_modules/workbox-')) return 'pwa';
+          return undefined;
         },
       },
     },

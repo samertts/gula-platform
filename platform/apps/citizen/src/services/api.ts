@@ -7,19 +7,14 @@ interface RequestOptions extends RequestInit {
   offlinePriority?: 'high' | 'normal' | 'low';
 }
 
-let authToken: string | null = localStorage.getItem('gula_citizen_token');
-
-export function setAuthToken(token: string | null) {
-  authToken = token;
-  if (token) {
-    localStorage.setItem('gula_citizen_token', token);
-  } else {
-    localStorage.removeItem('gula_citizen_token');
-  }
+// Browser authentication is carried only by the server-issued HttpOnly cookie.
+// These compatibility functions deliberately do not retain or return credentials.
+export function setAuthToken(_token: string | null) {
+  return undefined;
 }
 
 export function getAuthToken(): string | null {
-  return authToken;
+  return null;
 }
 
 let offlineDB: IDBPDatabase | null = null;
@@ -51,9 +46,8 @@ export async function apiRequest<T = unknown>(
     ...(fetchOptions.headers as Record<string, string>),
   };
 
-  if (!skipAuth && authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
+  // Do not construct Authorization headers in the browser; authentication uses HttpOnly cookies.
+  void skipAuth;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -75,6 +69,7 @@ export async function apiRequest<T = unknown>(
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...fetchOptions,
+      credentials: 'include',
       headers,
       signal: controller.signal,
     });
@@ -169,9 +164,13 @@ export async function processOfflineQueue() {
     }
 
     try {
+      const safeHeaders = { ...(req.headers || {}) } as Record<string, string>;
+      delete safeHeaders.Authorization;
+      delete safeHeaders.authorization;
       const response = await fetch(req.url, {
         method: req.method,
-        headers: req.headers,
+        credentials: 'include',
+        headers: safeHeaders,
         body: req.body,
       });
       if (response.ok) {
@@ -221,9 +220,7 @@ export async function uploadFile(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${API_BASE}${endpoint}`);
-    if (authToken) {
-      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
-    }
+    xhr.withCredentials = true;
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) {
         onProgress(Math.round((e.loaded / e.total) * 100));

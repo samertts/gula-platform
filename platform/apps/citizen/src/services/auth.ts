@@ -1,10 +1,11 @@
-import { apiRequest, setAuthToken, getAuthToken } from './api';
+import { apiRequest, setAuthToken } from './api';
+import { ApiError } from './api';
 import type { CitizenUser } from '../types';
 import { openDB } from 'idb';
 
 interface AuthResponse {
-  token: string;
-  refreshToken: string;
+  token?: string;
+  refreshToken?: string;
   user: CitizenUser;
 }
 
@@ -22,7 +23,7 @@ export async function loginWithNationalId(
     method: 'POST',
     body: JSON.stringify({ nationalId, otp }),
   });
-  setAuthToken(response.token);
+  setAuthToken(null);
   await storeUserData(response.user);
   return response;
 }
@@ -49,7 +50,7 @@ export async function verifyOTP(
     method: 'POST',
     body: JSON.stringify({ verificationId, otp }),
   });
-  setAuthToken(response.token);
+  setAuthToken(null);
   await storeUserData(response.user);
   return response;
 }
@@ -68,26 +69,21 @@ export async function registerCitizen(
     method: 'POST',
     body: JSON.stringify(data),
   });
-  setAuthToken(response.token);
+  setAuthToken(null);
   await storeUserData(response.user);
   return response;
 }
 
-export async function refreshToken(): Promise<string | null> {
-  const refreshTokenStr = localStorage.getItem('gula_citizen_refresh');
-  if (!refreshTokenStr) return null;
-
+export async function refreshToken(): Promise<boolean> {
   try {
-    const response = await apiRequest<{ token: string }>('/auth/citizen/refresh', {
+    await apiRequest('/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({ refreshToken: refreshTokenStr }),
       skipAuth: true,
     });
-    setAuthToken(response.token);
-    return response.token;
+    return true;
   } catch {
     logout();
-    return null;
+    return false;
   }
 }
 
@@ -99,7 +95,11 @@ export async function getCurrentUser(): Promise<CitizenUser | null> {
     const response = await apiRequest<{ user: CitizenUser }>('/auth/citizen/me');
     await storeUserData(response.user);
     return response.user;
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      await clearStoredUser();
+      return null;
+    }
     return cached;
   }
 }
@@ -115,7 +115,7 @@ export async function updateProfile(data: Partial<CitizenUser>): Promise<Citizen
 
 export function logout(): void {
   setAuthToken(null);
-  localStorage.removeItem('gula_citizen_refresh');
+  void apiRequest('/auth/logout', { method: 'POST', skipAuth: true }).catch(() => undefined);
   localStorage.removeItem('gula_citizen_user');
 }
 
@@ -123,20 +123,31 @@ async function storeUserData(user: CitizenUser): Promise<void> {
   try {
     const db = await openDB('gula-citizen-offline', 1);
     await db.put('cache', { key: 'current_user', data: user, timestamp: Date.now() });
-    localStorage.setItem('gula_citizen_user', JSON.stringify(user));
   } catch {
-    localStorage.setItem('gula_citizen_user', JSON.stringify(user));
+    // Offline user display cache is non-authoritative and contains no credentials.
+  }
+}
+
+async function clearStoredUser(): Promise<void> {
+  localStorage.removeItem('gula_citizen_user');
+  try {
+    const db = await openDB('gula-citizen-offline', 1);
+    await db.delete('cache', 'current_user');
+  } catch {
+    // Cache cleanup is best effort; it must never recreate authentication state.
   }
 }
 
 async function getStoredUser(): Promise<CitizenUser | null> {
   try {
-    const raw = localStorage.getItem('gula_citizen_user');
-    if (raw) return JSON.parse(raw);
+    const db = await openDB('gula-citizen-offline', 1);
+    const cached = await db.get('cache', 'current_user');
+    if (cached?.data) return cached.data as CitizenUser;
   } catch {}
   return null;
 }
 
 export function isAuthenticated(): boolean {
-  return !!getAuthToken() || !!localStorage.getItem('gula_citizen_user');
+  // The provider's server session bootstrap is the only authoritative signal.
+  return false;
 }

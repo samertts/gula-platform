@@ -8,23 +8,18 @@ interface RequestOptions extends RequestInit {
   timeout?: number;
 }
 
-let authToken: string | null = localStorage.getItem('gula_lab_token');
-let refreshToken: string | null = localStorage.getItem('gula_lab_refresh_token');
-
-export function setAuthToken(token: string | null) {
-  authToken = token;
-  if (token) localStorage.setItem('gula_lab_token', token);
-  else localStorage.removeItem('gula_lab_token');
+// Authentication is carried only by the server-issued HttpOnly cookies.
+// Keep these compatibility exports for existing callers without retaining secrets.
+export function setAuthToken(_token: string | null) {
+  return undefined;
 }
 
 export function getAuthToken(): string | null {
-  return authToken;
+  return null;
 }
 
-export function setRefreshToken(token: string | null) {
-  refreshToken = token;
-  if (token) localStorage.setItem('gula_lab_refresh_token', token);
-  else localStorage.removeItem('gula_lab_refresh_token');
+export function setRefreshToken(_token: string | null) {
+  return undefined;
 }
 
 let offlineDB: IDBPDatabase | null = null;
@@ -58,9 +53,8 @@ export async function apiRequest<T = unknown>(
     ...(fetchOptions.headers as Record<string, string>),
   };
 
-  if (!skipAuth && authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
+  // Do not construct Authorization headers in the browser; cookies are HttpOnly.
+  void skipAuth;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -82,18 +76,19 @@ export async function apiRequest<T = unknown>(
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...fetchOptions,
+      credentials: 'include',
       headers,
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
 
-    if (response.status === 401 && refreshToken) {
+    if (response.status === 401 && !skipAuth && endpoint !== '/auth/refresh') {
       const refreshed = await tryRefreshToken();
       if (refreshed) {
-        headers['Authorization'] = `Bearer ${authToken}`;
         const retryResponse = await fetch(`${API_BASE}${endpoint}`, {
           ...fetchOptions,
+          credentials: 'include',
           headers,
           signal: AbortSignal.timeout(timeout),
         });
@@ -149,18 +144,10 @@ async function tryRefreshToken(): Promise<boolean> {
   try {
     const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
     });
-    if (response.ok) {
-      const data = await response.json();
-      setAuthToken(data.accessToken);
-      setRefreshToken(data.refreshToken);
-      return true;
-    }
-    setAuthToken(null);
-    setRefreshToken(null);
-    return false;
+    return response.ok;
   } catch {
     return false;
   }
@@ -173,7 +160,7 @@ async function queueOfflineRequest(endpoint: string, options: RequestOptions) {
   await db.add('requests', {
     url: `${API_BASE}${endpoint}`,
     method: options.method || 'GET',
-    headers: options.headers as Record<string, string>,
+    headers: sanitizeHeaders(options.headers as Record<string, string>),
     body: options.body,
     timestamp: Date.now(),
     retryCount: 0,
@@ -221,7 +208,8 @@ export async function processOfflineQueue() {
     try {
       const response = await fetch(req.url, {
         method: req.method,
-        headers: { ...req.headers, 'Content-Type': 'application/json' },
+        credentials: 'include',
+        headers: { ...sanitizeHeaders(req.headers), 'Content-Type': 'application/json' },
         body: req.body,
       });
 
@@ -269,7 +257,7 @@ export async function uploadFile(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${API_BASE}${endpoint}`);
-    if (authToken) xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
+    xhr.withCredentials = true;
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
     };
@@ -280,6 +268,13 @@ export async function uploadFile(
     xhr.onerror = () => reject(new Error('Upload failed'));
     xhr.send(formData(file));
   });
+}
+
+function sanitizeHeaders(headers: Record<string, string> | undefined): Record<string, string> {
+  const safe = { ...(headers || {}) };
+  delete safe.Authorization;
+  delete safe.authorization;
+  return safe;
 }
 
 function formData(file: File): FormData {

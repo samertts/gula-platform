@@ -37,24 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function initAuth() {
     try {
-      const token = localStorage.getItem('gula_hospital_token');
-      const stored = localStorage.getItem('gula_hospital_user');
-
-      if (stored) {
-        setUser(JSON.parse(stored));
-      }
-
-      if (token) {
-        try {
-          const currentUser = await apiRequest<HospitalUser>('/auth/me');
-          setUser(currentUser);
-          localStorage.setItem('gula_hospital_user', JSON.stringify(currentUser));
-        } catch {
-          localStorage.removeItem('gula_hospital_token');
-          localStorage.removeItem('gula_hospital_refresh');
-          localStorage.removeItem('gula_hospital_user');
-        }
-      }
+      const response = await apiRequest<{ user: HospitalUser }>('/auth/session');
+      setUser(response.user);
     } catch {
       // offline
     } finally {
@@ -62,24 +46,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const login = useCallback((token: string, refreshToken: string, userData: HospitalUser) => {
-    setAuthToken(token, refreshToken);
+  const login = useCallback((_token: string, _refreshToken: string, userData: HospitalUser) => {
+    // Backend login establishes the HttpOnly cookies; retain only display state.
+    setAuthToken(null, null);
     setUser(userData);
-    localStorage.setItem('gula_hospital_user', JSON.stringify(userData));
   }, []);
 
   const logout = useCallback(() => {
+    void apiRequest('/auth/logout', { method: 'POST', skipAuth: true }).catch(() => undefined);
     setAuthToken(null, null);
     setUser(null);
-    localStorage.removeItem('gula_hospital_user');
   }, []);
 
   const updateUser = useCallback((updates: Partial<HospitalUser>) => {
     setUser(prev => {
       if (!prev) return null;
-      const updated = { ...prev, ...updates };
-      localStorage.setItem('gula_hospital_user', JSON.stringify(updated));
-      return updated;
+      return { ...prev, ...updates };
     });
   }, []);
 

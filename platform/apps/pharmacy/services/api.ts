@@ -7,16 +7,13 @@ interface ApiOptions {
   signal?: AbortSignal
 }
 
-let authToken: string | null = localStorage.getItem('pharmacy_token')
-
-export function setToken(token: string | null) {
-  authToken = token
-  if (token) localStorage.setItem('pharmacy_token', token)
-  else localStorage.removeItem('pharmacy_token')
+// Authentication is carried only by server-issued HttpOnly cookies.
+export function setToken(_token: string | null) {
+  return undefined
 }
 
 export function getToken(): string | null {
-  return authToken
+  return null
 }
 
 export async function apiRequest<T = unknown>(
@@ -30,22 +27,21 @@ export async function apiRequest<T = unknown>(
     ...headers,
   }
 
-  if (authToken) h.Authorization = `Bearer ${authToken}`
-
   if (body && !(body instanceof FormData)) {
     h['Content-Type'] = 'application/json'
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
     method,
+    credentials: 'include',
     headers: h,
     body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
     signal,
   })
 
   if (res.status === 401) {
-    setToken(null)
-    window.location.href = '/pharmacy/login'
+    // The server session is authoritative; redirect without client-side token handling.
+    window.location.assign('/pharmacy/login?reason=session-expired')
     throw new Error('Unauthorized')
   }
 
