@@ -9,14 +9,17 @@
 [![GitHub Contributors](https://img.shields.io/github/contributors/samertts/gula-platform)](https://github.com/samertts/gula-platform/graphs/contributors)
 
 Arabic-first healthcare platform for Iraqi medical laboratories — an open-source
-Laboratory Information Management System (LIMS) and national healthcare platform.
+**Laboratory Information System (LIS)** and national healthcare platform.
+
+> **Product direction:** GULA LIS is the primary product and operating mission of GULA Platform. The web application, Android application, and iOS application are unified clients of the same account, organization context, laboratory workflow, and audit policy. Other healthcare domains remain extensible workspaces rather than separate products.
+
+The primary workflow covers patient registration, laboratory orders, specimen receipt and barcode chain of custody, result entry, physician review, controlled release, critical alerts, reporting, and auditable administration. Arabic and English are first-class interface languages, including full RTL support for Arabic.
 
 ---
 
 ## Overview
 
-GULA Platform is a production-grade healthcare information system designed for
-Iraqi medical laboratories. It provides end-to-end laboratory management —
+GULA Platform is a production-grade healthcare information system designed first and foremost as **GULA LIS** for Iraqi medical laboratories. It provides end-to-end laboratory management —
 from order entry and specimen tracking to result reporting and instrument
 integration — with Arabic-first UX, offline capability, and enterprise-grade
 security.
@@ -45,7 +48,11 @@ offline-capable, self-hosted design.
 
 ## Features
 
-### Laboratory Management
+### Primary Product — GULA LIS
+- Unified account with role- and organization-scoped access for patients, laboratory staff, physicians, institution administrators, and system administrators
+- Arabic-first web interface with English switching and complete RTL/LTR support
+- Real-time operational dashboard for orders, samples, pending results, critical alerts, and audited activity
+- Patient management with medical record context
 - Order entry and management with CPOE
 - Specimen lifecycle tracking with chain of custody
 - Result entry, verification, amendment with audit trail
@@ -82,6 +89,12 @@ offline-capable, self-hosted design.
 - Kubernetes/Helm for container orchestration
 - Self-healing system with circuit breaker and auto-repair
 - Comprehensive monitoring (Prometheus, Grafana, Loki)
+
+## Product and Client Architecture
+
+GULA is implemented as one product with adaptive clients and workspaces. **Laboratory Workspace** is the first complete operational workspace and is the primary entry point for the public web experience. The shared App Shell provides the account, organization context, workspace switcher, inbox, tasks, notifications, privacy, and settings surfaces. A client must never treat hidden UI controls as authorization; every sensitive operation is enforced on the server through role, permission, and context checks.
+
+The current managed web implementation lives in the companion project `gula-web-suite` and is intended to be synchronized with this repository's backend, domain contracts, native mobile clients, and deployment documentation. See [docs/LIS_PRODUCT_PRIMARY.md](docs/LIS_PRODUCT_PRIMARY.md) for the product contract and migration boundary.
 
 ## Architecture
 
