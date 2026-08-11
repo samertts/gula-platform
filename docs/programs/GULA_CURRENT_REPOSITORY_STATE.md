@@ -20,7 +20,7 @@
 | Current hardening | committed and pushed | commit `2fb4fd11` على `wave0-audit-hardening-20260811`، ويشمل 52 مساراً |
 | Remote branch | منشأ ومدفوع | `origin/wave0-audit-hardening-20260811` عند `2fb4fd11` |
 | Source base | محفوظ دون تعديل | `origin/security-hardening-demo-alignment` عند `69035da5` |
-| Main | غير مستهدف بالدمج | `origin/main` عند `8ff3eb6d` |
+| Main | غير مستهدف بالدمج | `origin/main` عند `e1168ffc` وقت آخر تحقق |
 | Tags | موجودة | `v1.0.0-RC1`, `v1.0.0-RC2`, `v2.1.0-engineering-factory` |
 | Generated local data | مستبعد من Git | `backend/*.db` و`backend.pid` ضمن `.gitignore` |
 | Native release | غير متحقق | لا توجد شهادة Android/Windows EXE من هذه البيئة |
@@ -45,7 +45,7 @@
 
 ## المخاطر المعروفة
 
-ما يزال Wave 4 HARD STOP قائماً للأعمال التدميرية، بما في ذلك حذف فروع `claude/*`، إعادة تسمية `frontend-v3`، حذف ملفات الجذر الحساسة، تغيير سلوك النشر، أو إنشاء GitHub Release. هذه الوثيقة لا تمنح اعتماداً لتلك الأعمال. المخاطر التشغيلية المفتوحة هي PostgreSQL load وRedis HA وbackup/restore وnative builds وغياب unit tests فعلية للواجهة، إضافة إلى 251 تحذيراً غير حاجز في Backend.
+ما يزال Wave 4 HARD STOP قائماً للأعمال التدميرية، بما في ذلك حذف فروع `claude/*`، إعادة تسمية `frontend-v3`، حذف ملفات الجذر الحساسة، تغيير سلوك النشر، أو إنشاء GitHub Release. هذه الوثيقة لا تمنح اعتماداً لتلك الأعمال. المخاطر التشغيلية المفتوحة هي PostgreSQL load وRedis HA وbackup/restore وnative builds وغياب unit tests فعلية للواجهة، إضافة إلى 251 تحذيراً غير حاجز في Backend. بعد الدفع، أبلغ GitHub عن 135 تنبيهاً مفتوحاً في default branch، منها 3 حرجة و47 عالية و74 متوسطة و11 منخفضة؛ لم يسمح التكامل بقراءة تفاصيل Dependabot، لذلك تُسجل كخطر supply-chain يحتاج فتح Security/Dependabot في GitHub.
 
 ## قرار Wave 0
 

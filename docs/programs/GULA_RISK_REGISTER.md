@@ -22,6 +22,7 @@
 | R-016 | destructive Wave 4 operation accidentally executed | HARD STOP | P0 | Program Director | do not prune/rename/delete/release without recorded scope approval | explicit approval |
 | R-017 | frontend unit coverage absent | Vitest passes with no tests | P2 | Web QA | add component/API/security/E2E tests | web quality gate |
 | R-018 | hot operational tables grow without archival | lifecycle configs partial | P2 | Data/DBA | retention/archive/legal hold/partitioning and metrics | data lifecycle review |
+| R-019 | GitHub reports 135 open Dependabot vulnerabilities on default branch (3 critical, 47 high, 74 moderate, 11 low); alert details unavailable to current integration | OPEN / NOT TRIAGED | P0 | Security/DevOps | open GitHub Security/Dependabot, map each manifest, patch or pin, rerun all audits, document exceptions | Dependabot alert export, SBOM, npm/pip/Gradle audits |
 
 ## قرار المخاطر
 
