@@ -104,6 +104,16 @@ button { cursor: pointer; }
 }
 
 .patient-health-timeline { min-height: 420px; }
+.admin-layout { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.admin-layout .data-panel { min-height: 420px; }
+.admin-list { padding-top: 4px; }
+.admin-row { display: flex; align-items: center; gap: 10px; min-height: 70px; padding: 11px 0; border-bottom: 1px solid #edf2f0; }
+.admin-row:last-child { border-bottom: 0; }
+.admin-row select { min-height: 34px; max-width: 152px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; color: #466266; background: #fff; font-size: 10px; outline: 0; }
+.admin-row select:focus { border-color: #69b7aa; box-shadow: 0 0 0 3px rgba(105,183,170,.14); }
+.admin-error-state { min-height: 260px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 30px; color: #8a6067; text-align: center; }
+.admin-error-state strong { color: #7e4851; font-size: 13px; }.admin-error-state span { max-width: 430px; color: #a0777c; font-size: 11px; line-height: 1.7; }
+.admin-create-form { margin-top: 14px; border-top: 1px solid #edf2f0; background: #fbfdfc; }
 .timeline-list { position: relative; margin-top: 10px; padding-inline-start: 28px; }
 .timeline-list::before { content: ""; position: absolute; inset-inline-start: 8px; top: 15px; bottom: 20px; width: 1px; background: #d9e9e5; }
 .timeline-entry { position: relative; padding: 16px 0 16px 6px; border-bottom: 1px solid #edf2f0; }
@@ -120,3 +130,5 @@ button { cursor: pointer; }
 .timeline-footer { margin-top: 9px; }
 .critical-flag { display: inline-flex; align-items: center; gap: 4px; color: #b45d67; font-size: 10px; font-weight: 700; }
 @media (max-width: 640px) { .timeline-list { padding-inline-start: 24px; }.timeline-entry { padding-inline-start: 3px; }.timeline-marker { inset-inline-start: -24px; }.patient-health-timeline .panel-heading { align-items: flex-start; }.patient-health-timeline .context-pill { font-size: 9px; } }
+@media (max-width: 860px) { .admin-layout { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .admin-row { flex-wrap: wrap; }.admin-row .row-main { min-width: calc(100% - 48px); }.admin-row select, .admin-row .secondary-button { margin-inline-start: 45px; } }
