@@ -14,6 +14,7 @@ from .employment import Employment, EmploymentStatus
 from .enterprise_account import EnterpriseAccount
 from .identity import IdentityRecord, IdentityType
 from .license import LicenseStatus, ProfessionalLicense
+from .legacy_account_link import LegacyAccountLink, LegacyAccountLinkSource, LegacyAccountLinkStatus
 from .machine_identity import MachineIdentity
 from .niam_organization import NIAMOrganization
 from .person import Person
@@ -41,6 +42,9 @@ __all__ = [
     "IdentityRecord",
     "IdentityType",
     "LicenseStatus",
+    "LegacyAccountLink",
+    "LegacyAccountLinkSource",
+    "LegacyAccountLinkStatus",
     "MachineIdentity",
     "NIAMOrganization",
     "Person",

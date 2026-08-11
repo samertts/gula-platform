@@ -206,9 +206,8 @@ let myRole = 'citizen';
 let myLabId = null;
 
 async function fetchJSON(url, opts={}) {
-  const token = localStorage.getItem('token') || '';
   const res = await fetch(API + url, {
-    headers: {'Authorization': `Bearer ${token}`, 'Content-Type':'application/json'},
+    headers: {'Content-Type':'application/json'},
     credentials: 'include',
     ...opts,
   });
@@ -218,8 +217,14 @@ async function fetchJSON(url, opts={}) {
 
 async function init() {
   try {
-    // Load current user info
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    // Load current user info from the HttpOnly-cookie session, if authenticated.
+    let user = {};
+    try {
+      const session = await fetchJSON('/session');
+      user = session.user || {};
+    } catch (e) {
+      // Public visitors can still view the tier catalog.
+    }
     myRole = user.role || 'citizen';
     myLabId = user.lab_id;
 

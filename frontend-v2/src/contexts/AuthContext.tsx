@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { authApi, setTokens, clearTokens, getAccessToken } from '../api';
+import { authApi, clearTokens } from '../api';
 import type { UserInfo } from '../api/types';
 
 interface UserProfileLike {
@@ -34,58 +34,46 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-const USER_KEY = 'gula_user_info';
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<UserInfo | null>(() => {
-    const saved = localStorage.getItem(USER_KEY);
-    return saved ? JSON.parse(saved) : null;
-  });
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const login = useCallback(async (email: string, password: string) => {
+    // The backend sets Secure/HttpOnly access and refresh cookies.
     const response = await authApi.login(email, password);
-    setTokens(response.token, response.refresh_token);
     setUser(response.user);
-    localStorage.setItem(USER_KEY, JSON.stringify(response.user));
   }, []);
 
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
     } catch {
-      // Proceed with local cleanup even if server logout fails
+      // Clear client state even when the server session is already expired.
     }
     clearTokens();
     setUser(null);
-    localStorage.removeItem(USER_KEY);
     localStorage.removeItem('gula_demo_user');
   }, []);
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-    // Verify token is still valid on mount by fetching current user
-    const verify = async () => {
+    let active = true;
+    const verifySession = async () => {
       try {
-    // Try a lightweight check - if 401 occurs, try refresh
-        const storedUser = localStorage.getItem(USER_KEY);
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-        }
+        const session = await authApi.getSession();
+        if (active) setUser(session.user);
       } catch {
-        // Token invalid, clear state
-        clearTokens();
-        setUser(null);
-        localStorage.removeItem(USER_KEY);
+        if (active) {
+          clearTokens();
+          setUser(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     };
-    verify();
+    void verifySession();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const profile = user ? {

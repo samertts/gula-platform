@@ -26,8 +26,10 @@ MIGRATIONS_DIR = pathlib.Path(__file__).parent.parent / "migrations" / "versions
 def _read_migration_meta(path: pathlib.Path) -> dict:
     """Extract revision/down_revision from a migration file without importing it."""
     src = path.read_text()
-    rev_match = re.search(r'^revision\s*=\s*["\']([^"\']+)["\']', src, re.M)
-    down_match = re.search(r"^down_revision\s*=\s*([^\n]+)", src, re.M)
+    # Accept both untyped declarations and valid typed declarations such as
+    # `revision: str = ...` used by the NIAM migration series.
+    rev_match = re.search(r'^revision(?:\s*:\s*[^=]+)?\s*=\s*["\']([^"\']+)["\']', src, re.M)
+    down_match = re.search(r"^down_revision(?:\s*:\s*[^=]+)?\s*=\s*([^\n]+)", src, re.M)
 
     revision = rev_match.group(1) if rev_match else None
 
