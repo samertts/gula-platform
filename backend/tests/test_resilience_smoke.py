@@ -249,18 +249,17 @@ class TestClinicalExemptionFromConcurrencyLimit:
     can't silently start shedding patient-safety traffic.
     """
 
-    def test_clinical_paths_documented_in_main(self):
-        """Read backend/app/main.py and assert the exempt prefixes are listed."""
+    def test_clinical_paths_documented_in_middleware(self):
+        """Read the canonical middleware source and assert exempt prefixes remain listed."""
         import pathlib
-        main_path = pathlib.Path(__file__).parent.parent / "app" / "main.py"
-        src = main_path.read_text()
+        middleware_path = pathlib.Path(__file__).parent.parent / "app" / "middleware.py"
+        src = middleware_path.read_text()
 
-        # The CLAUDE.md-documented exempt prefixes must appear together
-        # near the ConcurrencyLimitMiddleware setup.
+        # The clinical-write exemption is registered in middleware.py, not main.py.
         for clinical_prefix in ("/results", "/orders", "/samples", "/critical-alerts"):
             assert clinical_prefix in src, (
                 f"Clinical-write prefix {clinical_prefix!r} no longer appears in "
-                "main.py — concurrency-limit exemption may have been silently removed."
+                "middleware.py — concurrency-limit exemption may have been silently removed."
             )
 
 

@@ -279,7 +279,7 @@ def upgrade() -> None:
             sa.Column("pixel_spacing", sa.String(50), nullable=True),
             sa.Column("image_orientation", sa.String(200), nullable=True),
             sa.Column("image_position", sa.String(200), nullable=True),
-            sa.Column("series_metadata", JSONB(), nullable=True),
+            sa.Column("series_metadata", JSONB() if op.get_bind().dialect.name == "postgresql" else sa.JSON(), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
             sa.Column("fhir_id", sa.String(64), nullable=True),
             sa.Column("fhir_resource_type", sa.String(32), nullable=True),
@@ -301,7 +301,7 @@ def upgrade() -> None:
             sa.Column("instance_number", sa.Integer(), nullable=True),
             sa.Column("image_type", sa.String(50), nullable=True),
             sa.Column("image_laterality", sa.String(20), nullable=True),
-            sa.Column("image_metadata", JSONB(), nullable=True),
+            sa.Column("image_metadata", JSONB() if op.get_bind().dialect.name == "postgresql" else sa.JSON(), nullable=True),
             sa.Column("file_path", sa.String(500), nullable=True),
             sa.Column("file_size_bytes", sa.BigInteger(), nullable=True),
             sa.Column("storage_class", sa.String(50), nullable=True),
@@ -331,8 +331,8 @@ def upgrade() -> None:
             sa.Column("exam_id", sa.Integer(), sa.ForeignKey("radiology_exams.id", ondelete="CASCADE"), nullable=False),
             sa.Column("annotation_type", sa.String(50), nullable=False),
             sa.Column("label", sa.String(300), nullable=True),
-            sa.Column("coordinates", JSONB(), nullable=False),
-            sa.Column("measurements", JSONB(), nullable=True),
+            sa.Column("coordinates", JSONB() if op.get_bind().dialect.name == "postgresql" else sa.JSON(), nullable=False),
+            sa.Column("measurements", JSONB() if op.get_bind().dialect.name == "postgresql" else sa.JSON(), nullable=True),
             sa.Column("description", sa.Text(), nullable=True),
             sa.Column("created_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
             sa.Column("is_verified", sa.Boolean(), default=False),
@@ -366,7 +366,7 @@ def upgrade() -> None:
             sa.Column("shortest_diameter_mm", sa.Float(), nullable=True),
             sa.Column("volume_ml", sa.Float(), nullable=True),
             sa.Column("recist_category", sa.String(20), nullable=True),
-            sa.Column("reference_point", JSONB(), nullable=True),
+            sa.Column("reference_point", JSONB() if op.get_bind().dialect.name == "postgresql" else sa.JSON(), nullable=True),
             sa.Column("notes", sa.Text(), nullable=True),
             sa.Column("created_by", sa.Integer(), sa.ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True),
             sa.Column("sync_id", sa.String(26), unique=True),
@@ -392,7 +392,7 @@ def upgrade() -> None:
             sa.Column("template_name_ar", sa.String(300), nullable=True),
             sa.Column("modality", sa.String(50), nullable=True),
             sa.Column("body_part", sa.String(100), nullable=True),
-            sa.Column("content_structure", JSONB(), nullable=True),
+            sa.Column("content_structure", JSONB() if op.get_bind().dialect.name == "postgresql" else sa.JSON(), nullable=True),
             sa.Column("default_text", sa.Text(), nullable=True),
             sa.Column("is_active", sa.Boolean(), default=True),
             sa.Column("is_shared", sa.Boolean(), default=False),
@@ -506,14 +506,28 @@ def upgrade() -> None:
 
     # ── Critical Findings FK (deferred—circular dependency) ───────────────────
     if _table_exists("radiology_critical_findings") and _table_exists("radiology_reports"):
-        op.create_foreign_key(
-            "fk_radiology_critical_findings_report_id",
-            "radiology_critical_findings",
-            "radiology_reports",
-            ["report_id"],
-            ["id"],
-            ondelete="SET NULL",
-        )
+        bind = op.get_bind()
+        if bind.dialect.name == "sqlite":
+            with op.batch_alter_table("radiology_critical_findings", schema=None) as batch_op:
+                try:
+                    batch_op.create_foreign_key(
+                        "fk_radiology_critical_findings_report_id",
+                        "radiology_reports",
+                        ["report_id"],
+                        ["id"],
+                        ondelete="SET NULL",
+                    )
+                except Exception:
+                    pass
+        else:
+            op.create_foreign_key(
+                "fk_radiology_critical_findings_report_id",
+                "radiology_critical_findings",
+                "radiology_reports",
+                ["report_id"],
+                ["id"],
+                ondelete="SET NULL",
+            )
 
     # ── Worklist Entries ──────────────────────────────────────────────────────
     if not _table_exists("radiology_worklist_entries"):
@@ -639,8 +653,8 @@ def upgrade() -> None:
             sa.Column("number_of_instances", sa.Integer(), nullable=True),
             sa.Column("referring_physician", sa.String(200), nullable=True),
             sa.Column("performing_physician", sa.String(200), nullable=True),
-            sa.Column("study_metadata", JSONB(), nullable=True),
-            sa.Column("dicom_tags", JSONB(), nullable=True),
+            sa.Column("study_metadata", JSONB() if op.get_bind().dialect.name == "postgresql" else sa.JSON(), nullable=True),
+            sa.Column("dicom_tags", JSONB() if op.get_bind().dialect.name == "postgresql" else sa.JSON(), nullable=True),
             sa.Column("study_size_bytes", sa.BigInteger(), nullable=True),
             sa.Column("is_complete", sa.Boolean(), default=False),
             sa.Column("is_verified", sa.Boolean(), default=False),
@@ -709,7 +723,7 @@ def upgrade() -> None:
             sa.Column("job_type", sa.String(50), nullable=False),
             sa.Column("model_name", sa.String(200), nullable=False),
             sa.Column("model_version", sa.String(50), nullable=True),
-            sa.Column("input_parameters", JSONB(), nullable=True),
+            sa.Column("input_parameters", JSONB() if op.get_bind().dialect.name == "postgresql" else sa.JSON(), nullable=True),
             sa.Column("status", sa.String(20), nullable=False, server_default="queued"),
             sa.Column("priority", sa.Integer(), default=0),
             sa.Column("queued_at", sa.DateTime(timezone=True), nullable=False),
@@ -717,7 +731,7 @@ def upgrade() -> None:
             sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("failed_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("error_message", sa.Text(), nullable=True),
-            sa.Column("result", JSONB(), nullable=True),
+            sa.Column("result", JSONB() if op.get_bind().dialect.name == "postgresql" else sa.JSON(), nullable=True),
             sa.Column("confidence_score", sa.Float(), nullable=True),
             sa.Column("processing_time_ms", sa.Integer(), nullable=True),
             sa.Column("is_reviewed", sa.Boolean(), default=False),

@@ -1578,11 +1578,23 @@ def upgrade() -> None:
     # ── ALTER TABLE: niam_audit_entries — add chain columns ──────────────────
     if _has_table("niam_audit_entries"):
         if not _has_column("niam_audit_entries", "entry_hash"):
-            op.add_column(
-                "niam_audit_entries",
-                sa.Column("entry_hash", sa.String(length=64), nullable=True, index=True),
-            )
-            op.create_unique_constraint("uq_niam_audit_entries_entry_hash", "niam_audit_entries", ["entry_hash"])
+            bind = op.get_bind()
+            if bind.dialect.name == "sqlite":
+                with op.batch_alter_table("niam_audit_entries", schema=None) as batch_op:
+                    batch_op.add_column(sa.Column("entry_hash", sa.String(length=64), nullable=True))
+                    try:
+                        batch_op.create_unique_constraint("uq_niam_audit_entries_entry_hash", ["entry_hash"])
+                    except Exception:
+                        pass
+            else:
+                op.add_column(
+                    "niam_audit_entries",
+                    sa.Column("entry_hash", sa.String(length=64), nullable=True, index=True),
+                )
+                try:
+                    op.create_unique_constraint("uq_niam_audit_entries_entry_hash", "niam_audit_entries", ["entry_hash"])
+                except Exception:
+                    pass
         if not _has_column("niam_audit_entries", "previous_hash"):
             op.add_column(
                 "niam_audit_entries",

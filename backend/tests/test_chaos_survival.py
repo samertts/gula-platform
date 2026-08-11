@@ -272,15 +272,17 @@ class TestBackgroundTaskGate:
         # The conftest sets this BEFORE import; still set in the env now
         assert _os.getenv("FEATURE_BACKGROUND_TASKS") == "false"
 
-    def test_main_module_respects_background_task_gate(self):
-        """app.main reads FEATURE_BACKGROUND_TASKS at startup. If gate
-        broke, the lifespan would spawn background tasks even in tests."""
+    def test_background_gate_is_owned_by_config_and_factory(self):
+        """The runtime gate must remain enforced by config and lifespan wiring."""
         import pathlib
-        main_path = pathlib.Path(__file__).parent.parent / "app" / "main.py"
-        src = main_path.read_text()
-        # Must reference both gates near the lifespan/startup logic
-        assert "RUNTIME_MODE" in src or "runtime_mode" in src.lower()
-        assert "FEATURE_BACKGROUND_TASKS" in src or "background_tasks" in src.lower()
+        base = pathlib.Path(__file__).parent.parent / "app"
+        config_src = (base / "config.py").read_text()
+        factory_src = (base / "factory.py").read_text()
+        assert "RUNTIME_MODE" in config_src
+        assert "FEATURE_BACKGROUND_TASKS" in config_src
+        assert "background_tasks_enabled" in config_src
+        assert "start_background_workers" in factory_src
+        assert "RUNTIME_MODE" in factory_src
 
 
 # ─── Phase 11.H — Health surface still observable during chaos ───────────────

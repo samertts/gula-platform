@@ -124,12 +124,12 @@ elif IS_PRODUCTION and _is_weak_secret(SECRET_KEY):
     sys.exit(1)
 
 JWT_ALGORITHM = "HS256"
-# JWT_EXPIRE_MINUTES is the primary setting (default: 30 min).
+# JWT_EXPIRE_MINUTES is the primary setting (default: 15 min).
 # JWT_EXPIRE_HOURS is kept for backward compatibility; if both are set, MINUTES wins.
-JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "0"))
+JWT_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "15"))
 if not JWT_EXPIRE_MINUTES:
     _legacy_hours = int(os.getenv("JWT_EXPIRE_HOURS", "0"))
-    JWT_EXPIRE_MINUTES = _legacy_hours * 60 if _legacy_hours else 30
+    JWT_EXPIRE_MINUTES = _legacy_hours * 60 if _legacy_hours else 15
 JWT_EXPIRE_HOURS = JWT_EXPIRE_MINUTES // 60 or 1  # kept for cookie max_age calcs
 
 # ─── JWT Refresh Token ───────────────────────────────────────────────────────
@@ -143,7 +143,7 @@ if not REFRESH_TOKEN_SECRET:
         "REFRESH_TOKEN_SECRET not set - using random key. Set it in .env for production.",
     )
 
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
+REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 
 # ─── Encryption ──────────────────────────────────────────────────────────────
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")

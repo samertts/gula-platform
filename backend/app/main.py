@@ -39,19 +39,19 @@ def health():
     """
     from .core.self_healing import health as sys_health
     from .core.startup_guard import system_ready
-    from .database import check_db_connection_detail
 
-    db_status, db_detail = check_db_connection_detail()
+    # Liveness must not open a DB connection on every orchestrator probe.
+    # Use /health/ready or /health/status for dependency validation.
     pool = get_pool_status()
     return {
-        "status": "healthy" if db_status == "ok" else "degraded",
+        "status": "alive",
         "platform": APP_NAME,
         "platform_ar": PLATFORM_NAME_AR,
         "version": APP_VERSION,
         "environment": os.getenv("ENV", "production"),
         "system_ready": system_ready,
-        "database": db_status,  # "ok" | "refused" | "auth_failed" | "timeout" | "error"
-        "database_detail": db_detail,  # human-readable reason for failures
+        "database": "not_checked",
+        "database_detail": "liveness_probe; use /health/ready for dependency readiness",
         "degraded_mode": sys_health.degraded,
         "degradation_level": sys_health.degradation_level.name,
         "circuits": sys_health.to_dict()["circuits"],

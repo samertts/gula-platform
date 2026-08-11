@@ -46,7 +46,12 @@ import urllib3
 
 from backend.app._compat import UTC
 
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+_TLS_VERIFY_SETTING = os.getenv("ASHS_VERIFY_TLS", "true").lower()
+if _TLS_VERIFY_SETTING not in {"true", "false"}:
+    raise RuntimeError("ASHS_VERIFY_TLS must be 'true' or 'false'")
+TLS_VERIFY: bool = _TLS_VERIFY_SETTING == "true"
+if not TLS_VERIFY:
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -140,7 +145,7 @@ def service_running(name: str) -> bool:
 
 def _get(path: str, timeout: int = HEALTH_TIMEOUT) -> dict | None:
     try:
-        r = requests.get(f"{BASE_URL}{path}", timeout=timeout, verify=False)
+        r = requests.get(f"{BASE_URL}{path}", timeout=timeout, verify=TLS_VERIFY)
         if r.status_code == 200:
             return r.json()
         return {"__status": r.status_code}

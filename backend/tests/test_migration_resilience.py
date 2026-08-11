@@ -235,21 +235,15 @@ class TestSchemaConsumerAlignment:
             "DHIS2 /aggregate to return 200."
         )
 
-    def test_dhis2_query_referenced_column_does_not_exist(self):
-        """compliance.py:567 has 'WHERE lab_id = :lab_id' against lab_results.
-        We assert the bug is still there (so PRODUCTION_HARDENING.md remains
-        accurate) — when fixed, this test should be inverted."""
+    def test_dhis2_query_joins_lab_orders_for_tenant_scope(self):
+        """DHIS2 must derive lab scope through lab_orders, not lab_results.lab_id."""
         compliance_path = (
             pathlib.Path(__file__).parent.parent / "app" / "routes" / "compliance.py"
         )
         src = compliance_path.read_text()
-        # The buggy substring
         idx = src.find("FROM lab_results")
         assert idx >= 0
-        snippet = src[idx:idx + 200]
-        # Bug present today: 'WHERE lab_id' inside a `FROM lab_results` block
-        assert "WHERE lab_id" in snippet, (
-            "compliance.py DHIS2 query no longer references lab_results.lab_id — "
-            "either the bug has been fixed (good!) or the query was rewritten "
-            "(also good). Update test_compliance_integrity.py:TestDhis2Aggregate."
-        )
+        snippet = src[idx:idx + 500]
+        assert "JOIN lab_orders ON lab_orders.id = lab_results.order_id" in snippet
+        assert "WHERE lab_orders.lab_id = :lab_id" in snippet
+        assert "WHERE lab_id = :lab_id" not in snippet

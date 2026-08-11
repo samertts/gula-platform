@@ -51,13 +51,22 @@ def upgrade():
     # Extend status check — existing "pending/completed/cancelled" plus new workflow states
     # PostgreSQL: add a partial index to speed up "pending" queries on the dashboard
     bind = op.get_bind()
-    res = bind.execute(text(
-        "SELECT 1 FROM pg_indexes WHERE tablename='lab_orders' AND indexname='ix_lab_orders_status_pending'"
-    )).fetchone()
-    if not res:
-        bind.execute(text(
-            "CREATE INDEX ix_lab_orders_status_pending ON lab_orders (lab_id, created_at DESC) WHERE status = 'pending'"
-        ))
+    dialect_name = bind.dialect.name
+    if dialect_name == "postgresql":
+        res = bind.execute(text(
+            "SELECT 1 FROM pg_indexes WHERE tablename='lab_orders' AND indexname='ix_lab_orders_status_pending'"
+        )).fetchone()
+        if not res:
+            bind.execute(text(
+                "CREATE INDEX ix_lab_orders_status_pending ON lab_orders (lab_id, created_at DESC) WHERE status = 'pending'"
+            ))
+    else:
+        try:
+            bind.execute(text(
+                "CREATE INDEX IF NOT EXISTS ix_lab_orders_status_pending ON lab_orders (lab_id, created_at DESC)"
+            ))
+        except Exception:
+            pass
 
 
 def downgrade():

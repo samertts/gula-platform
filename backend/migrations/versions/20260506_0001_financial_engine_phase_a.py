@@ -130,6 +130,7 @@ def upgrade() -> None:
     # Append-only ledger. `type` ∈ {'fee', 'ad_spend', 'refund', 'credit', 'penalty', ...}.
     # Currency defaults to IQD (Iraqi Dinar) to match existing claims schema.
     if not _has_table("fin_transactions"):
+        meta_col = postgresql.JSONB if op.get_bind().dialect.name == "postgresql" else sa.JSON
         op.create_table(
             "fin_transactions",
             sa.Column("id",          UUID, primary_key=True,
@@ -140,7 +141,7 @@ def upgrade() -> None:
             sa.Column("currency",    sa.String(10),        nullable=True,
                       server_default="IQD"),
             sa.Column("ref_id",      sa.String(64),        nullable=True),
-            sa.Column("meta",        postgresql.JSONB,     nullable=True),
+            sa.Column("meta",        meta_col,             nullable=True),
             sa.Column("created_at",  sa.DateTime(timezone=True),
                       server_default=sa.func.now(), nullable=True),
         )
@@ -214,6 +215,7 @@ def upgrade() -> None:
     # ── 7. fin_fraud_logs ────────────────────────────────────────────────────
     # severity ∈ {'info', 'warn', 'high', 'critical'} (validated in app layer).
     if not _has_table("fin_fraud_logs"):
+        meta_col = postgresql.JSONB if op.get_bind().dialect.name == "postgresql" else sa.JSON
         op.create_table(
             "fin_fraud_logs",
             sa.Column("id",          UUID, primary_key=True,
@@ -222,7 +224,7 @@ def upgrade() -> None:
             sa.Column("campaign_id", UUID,             nullable=True),
             sa.Column("reason",      sa.String(255),   nullable=True),
             sa.Column("severity",    sa.String(20),    nullable=True),
-            sa.Column("meta",        postgresql.JSONB, nullable=True),
+            sa.Column("meta",        meta_col,         nullable=True),
             sa.Column("created_at",  sa.DateTime(timezone=True),
                       server_default=sa.func.now(), nullable=True),
         )

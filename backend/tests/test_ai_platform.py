@@ -162,6 +162,34 @@ class TestKnowledgeGraph:
         assert edge.relationship == "related_to"
         assert edge.weight == 0.5
 
+    def test_create_node_binds_json_values(self):
+        from app.database import SessionLocal
+        from app.models.ai import AIKnowledgeNode
+
+        payload = "quote'); DROP TABLE ai_knowledge_nodes; --"
+        label = "SQL binding regression"
+        db = SessionLocal()
+        try:
+            AIKnowledgeNode.__table__.create(bind=db.get_bind(), checkfirst=True)
+        finally:
+            db.close()
+
+        node = self.kg.create_node(
+            "security-test",
+            label,
+            aliases=[payload],
+            properties={"payload": payload},
+        )
+        assert node.id is not None
+        db = SessionLocal()
+        try:
+            stored = db.query(AIKnowledgeNode).filter(AIKnowledgeNode.label == label).first()
+            assert stored is not None
+            assert stored.aliases == [payload]
+            assert stored.properties["payload"] == payload
+        finally:
+            db.close()
+
 
 # ─── MISSION-04: RAG Pipeline ──────────────────────────────────────────────────
 

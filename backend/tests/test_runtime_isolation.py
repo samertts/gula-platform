@@ -55,16 +55,14 @@ def test_assert_worker_runtime_blocks_api_tests():
 # ── 3. No background tasks spawn when the FastAPI app boots ──────────────────
 
 def test_app_startup_does_not_launch_background_loops(client):
-    """Boot the API via TestClient and verify zero loops were spawned."""
-    from app.main import _bg_tasks
+    """Boot the API and verify the factory refuses worker initialization in tests."""
+    from app.factory import _should_init_background_tasks
 
-    # The TestClient context manager already triggered all startup events.
+    # The TestClient context manager already triggered the current lifespan.
     response = client.get("/health/live")
     assert response.status_code == 200
-    assert _bg_tasks == set(), (
-        f"Test runtime spawned background tasks: "
-        f"{[t.get_name() for t in _bg_tasks]}"
-    )
+    assert _should_init_background_tasks() is False
+    assert gula_config.background_tasks_enabled() is False
 
 
 # ── 4. No new threads beyond the pytest baseline ─────────────────────────────

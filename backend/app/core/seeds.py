@@ -141,7 +141,7 @@ def seed_default_subscriptions(db: Session) -> None:
     labs_without_sub = (
         db.query(Lab)
         .outerjoin(LabSubscription, Lab.id == LabSubscription.lab_id)
-        .filter(LabSubscription.id is None, Lab.is_active)
+        .filter(LabSubscription.id.is_(None), Lab.is_active.is_(True))
         .all()
     )
     for lab in labs_without_sub:

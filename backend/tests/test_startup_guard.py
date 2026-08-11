@@ -277,3 +277,33 @@ class TestStartupTimeout:
         finally:
             cfg.RUNTIME_MODE = saved_mode
             cfg.STARTUP_TIMEOUT_SECONDS = saved_timeout
+
+
+class TestRedisStartupPolicy:
+    """Redis fallback is environment-scoped and must remain fail-closed in production."""
+
+    def test_demo_allows_in_memory_fallback_when_redis_is_unavailable(self):
+        import asyncio
+        import app.config as cfg
+        from app.core import startup_guard
+        from unittest.mock import AsyncMock, patch
+
+        with patch.object(cfg, "ENV", "demo"), patch.dict(
+            os.environ, {"ALLOW_DEGRADED_REDIS": "true"},
+        ), patch("redis.from_url", side_effect=RuntimeError("connection refused")), patch(
+            "app.core.startup_guard.asyncio.sleep", new=AsyncMock(),
+        ):
+            asyncio.run(startup_guard.check_redis(max_retries=2, delay=0))
+
+    def test_production_rejects_unavailable_redis(self):
+        import asyncio
+        import app.config as cfg
+        from app.core import startup_guard
+        from unittest.mock import AsyncMock, patch
+
+        with patch.object(cfg, "ENV", "production"), patch.dict(
+            os.environ, {"ALLOW_DEGRADED_REDIS": "false"},
+        ), patch("redis.from_url", side_effect=RuntimeError("connection refused")), patch(
+            "app.core.startup_guard.asyncio.sleep", new=AsyncMock(),
+        ), pytest.raises(RuntimeError, match="Redis unreachable"):
+            asyncio.run(startup_guard.check_redis(max_retries=2, delay=0))

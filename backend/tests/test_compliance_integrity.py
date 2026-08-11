@@ -460,3 +460,30 @@ class TestMutationsWriteAudit:
         assert last.created_at is not None
         # chain_hash was set during log_action (before commit's tz strip)
         assert last.chain_hash is not None and len(last.chain_hash) == 64
+
+
+class TestAuditTimestampCanonicalization:
+    """Audit hashes must survive dialects that strip timezone metadata."""
+
+    def test_naive_and_aware_utc_timestamps_hash_identically(self):
+        fields = {
+            "id": 7,
+            "user_id": 1,
+            "user_role": "admin",
+            "action": "read",
+            "resource_type": "patient",
+            "resource_id": 9,
+            "details": "same event",
+            "ip_address": "127.0.0.1",
+        }
+        aware = AuditLog(
+            **fields,
+            created_at=datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        )
+        naive = AuditLog(
+            **fields,
+            created_at=datetime(2026, 1, 1, 12, 0, 0),
+        )
+        assert _compute_chain_hash(_GENESIS_HASH, aware) == _compute_chain_hash(
+            _GENESIS_HASH, naive,
+        )

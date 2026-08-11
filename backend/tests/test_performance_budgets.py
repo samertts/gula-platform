@@ -171,18 +171,13 @@ class TestQueryBudgets:
         )
 
     def test_health_endpoint_constant_db_queries(self, client, db_engine):
-        """Health-check loop must execute O(1) DB queries — not O(users)
-        or O(labs) etc. Current baseline is ≤2 queries; tighter than that
-        is preferable but stable is enough to pin against regressions."""
+        """Liveness must not open a DB connection per orchestrator probe."""
         with _count_queries(db_engine) as q:
             res = client.get("/health")
         assert res.status_code == 200
-        # /health is liveness only — must not run per-row scans.
-        # Budget: at most 2 queries (e.g. the readiness probe).
-        assert len(q.queries) <= 2, (
-            f"/health issued {len(q.queries)} DB query(ies) — "
-            "this scales linearly with healthcheck frequency. Current "
-            "baseline is 1; >2 indicates a per-request scan was added."
+        assert len(q.queries) == 0, (
+            f"/health issued {len(q.queries)} DB query(ies); dependency checks "
+            "belong to /health/ready or /health/status."
         )
 
 

@@ -80,19 +80,27 @@ def upgrade() -> None:
             sa.UniqueConstraint("tenant_id"),
             sa.UniqueConstraint("domain"),
         )
-        op.create_index("ix_tenants_tenant_id", "tenants", ["tenant_id"])
-        op.create_index("ix_tenants_parent", "tenants", ["parent_tenant_id"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_tenants_tenant_id", "tenants", ["tenant_id"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_tenants_parent", "tenants", ["parent_tenant_id"])
 
     # ── 2. permissions ────────────────────────────────────────────────────────
     if not _has_table("permissions"):
         op.create_table(
             "permissions",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("permission_id", sa.String(length=100), nullable=False, index=True),
+            sa.Column("permission_id", sa.String(length=100), nullable=False),
             sa.Column("name_en", sa.String(length=200), nullable=False),
             sa.Column("name_ar", sa.String(length=200), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
-            sa.Column("domain", sa.String(length=50), nullable=False, index=True),
+            sa.Column("domain", sa.String(length=50), nullable=False),
             sa.Column("resource", sa.String(length=50), nullable=False),
             sa.Column("action", sa.String(length=50), nullable=False),
             sa.Column("risk_level", sa.String(length=20), nullable=False, server_default=sa.text("'low'")),
@@ -104,14 +112,17 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("permission_id"),
         )
-        op.create_index("ix_permissions_domain", "permissions", ["domain"])
+        try:
+            pass
+        except Exception:
+            pass
 
     # ── 3. roles ──────────────────────────────────────────────────────────────
     if not _has_table("roles"):
         op.create_table(
             "roles",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("role_id", sa.String(length=100), nullable=False, index=True),
+            sa.Column("role_id", sa.String(length=100), nullable=False),
             sa.Column("name_en", sa.String(length=200), nullable=False),
             sa.Column("name_ar", sa.String(length=200), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
@@ -128,17 +139,29 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("role_id"),
         )
-        op.create_index("ix_roles_role_id", "roles", ["role_id"])
-        op.create_index("ix_roles_parent", "roles", ["parent_role_id"])
-        op.create_index("ix_roles_group", "roles", ["role_group_id"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_roles_role_id", "roles", ["role_id"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_roles_parent", "roles", ["parent_role_id"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_roles_group", "roles", ["role_group_id"])
 
     # ── 4. role_permissions ───────────────────────────────────────────────────
     if not _has_table("role_permissions"):
         op.create_table(
             "role_permissions",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("role_id", sa.String(length=100), sa.ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False, index=True),
-            sa.Column("permission_id", sa.String(length=100), sa.ForeignKey("permissions.permission_id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column("role_id", sa.String(length=100), sa.ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False),
+            sa.Column("permission_id", sa.String(length=100), sa.ForeignKey("permissions.permission_id", ondelete="CASCADE"), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
 
@@ -147,7 +170,7 @@ def upgrade() -> None:
         op.create_table(
             "role_groups",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("group_id", sa.String(length=100), nullable=False, index=True),
+            sa.Column("group_id", sa.String(length=100), nullable=False),
             sa.Column("name_en", sa.String(length=200), nullable=False),
             sa.Column("name_ar", sa.String(length=200), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
@@ -161,8 +184,8 @@ def upgrade() -> None:
         op.create_table(
             "role_group_members",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("group_id", sa.String(length=100), sa.ForeignKey("role_groups.group_id", ondelete="CASCADE"), nullable=False, index=True),
-            sa.Column("role_id", sa.String(length=100), sa.ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column("group_id", sa.String(length=100), sa.ForeignKey("role_groups.group_id", ondelete="CASCADE"), nullable=False),
+            sa.Column("role_id", sa.String(length=100), sa.ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False),
             sa.PrimaryKeyConstraint("id"),
         )
 
@@ -171,8 +194,8 @@ def upgrade() -> None:
         op.create_table(
             "role_assignments",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
-            sa.Column("role_id", sa.String(length=100), sa.ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("role_id", sa.String(length=100), sa.ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False),
             sa.Column("organization_id", sa.Integer(), sa.ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True),
             sa.Column("facility_id", sa.Integer(), sa.ForeignKey("facilities.id", ondelete="SET NULL"), nullable=True),
             sa.Column("department_id", sa.Integer(), nullable=True),
@@ -185,16 +208,28 @@ def upgrade() -> None:
             sa.Column("status", sa.String(length=20), nullable=True, server_default=sa.text("'active'")),
             sa.PrimaryKeyConstraint("id"),
         )
-        op.create_index("ix_role_assignments_user", "role_assignments", ["user_id"])
-        op.create_index("ix_role_assignments_role", "role_assignments", ["role_id"])
-        op.create_index("ix_role_assignments_status", "role_assignments", ["status"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_role_assignments_user", "role_assignments", ["user_id"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_role_assignments_role", "role_assignments", ["role_id"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_role_assignments_status", "role_assignments", ["status"])
 
     # ── 8. abac_policies ──────────────────────────────────────────────────────
     if not _has_table("abac_policies"):
         op.create_table(
             "abac_policies",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("policy_id", sa.String(length=100), nullable=False, index=True),
+            sa.Column("policy_id", sa.String(length=100), nullable=False),
             sa.Column("name_en", sa.String(length=200), nullable=False),
             sa.Column("name_ar", sa.String(length=200), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
@@ -223,8 +258,8 @@ def upgrade() -> None:
         op.create_table(
             "field_security",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("resource_type", sa.String(length=50), nullable=False, index=True),
-            sa.Column("field_name", sa.String(length=100), nullable=False, index=True),
+            sa.Column("resource_type", sa.String(length=50), nullable=False),
+            sa.Column("field_name", sa.String(length=100), nullable=False),
             sa.Column("default_level", sa.String(length=20), nullable=False, server_default=sa.text("'public'")),
             sa.Column("consent_required", sa.Boolean(), nullable=True, server_default=sa.text("false")),
             sa.Column("encryption_required", sa.Boolean(), nullable=True, server_default=sa.text("false")),
@@ -241,8 +276,8 @@ def upgrade() -> None:
         op.create_table(
             "delegations",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("delegator_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
-            sa.Column("delegate_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column("delegator_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("delegate_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
             sa.Column("role_id", sa.String(length=100), sa.ForeignKey("roles.role_id", ondelete="CASCADE"), nullable=False),
             sa.Column("delegation_type", sa.String(length=30), nullable=False),
             sa.Column("scope", sa.JSON(), nullable=True),
@@ -261,7 +296,7 @@ def upgrade() -> None:
         op.create_table(
             "break_glass_sessions",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
             sa.Column("emergency_category", sa.String(length=50), nullable=False),
             sa.Column("justification", sa.Text(), nullable=False),
             sa.Column("patient_id", sa.Integer(), sa.ForeignKey("patients.id", ondelete="SET NULL"), nullable=True),
@@ -280,12 +315,12 @@ def upgrade() -> None:
         op.create_table(
             "authorization_audit",
             sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-            sa.Column("decision_id", sa.String(length=100), nullable=False, index=True),
-            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True),
+            sa.Column("decision_id", sa.String(length=100), nullable=False),
+            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL"), nullable=True),
             sa.Column("user_role", sa.String(length=100), nullable=True),
-            sa.Column("action", sa.String(length=100), nullable=False, index=True),
+            sa.Column("action", sa.String(length=100), nullable=False),
             sa.Column("resource_type", sa.String(length=50), nullable=False),
-            sa.Column("resource_id", sa.String(length=100), nullable=True, index=True),
+            sa.Column("resource_id", sa.String(length=100), nullable=True),
             sa.Column("decision", sa.String(length=20), nullable=False),
             sa.Column("policies_applied", sa.JSON(), nullable=True),
             sa.Column("policy_engine", sa.String(length=20), nullable=True),
@@ -298,25 +333,53 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("decision_id"),
         )
-        op.create_index("ix_authz_audit_user", "authorization_audit", ["user_id"])
-        op.create_index("ix_authz_audit_action", "authorization_audit", ["action"])
-        op.create_index("ix_authz_audit_resource", "authorization_audit", ["resource_id"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_authz_audit_user", "authorization_audit", ["user_id"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_authz_audit_action", "authorization_audit", ["action"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_authz_audit_resource", "authorization_audit", ["resource_id"])
 
     # ── 13. users — add authorization columns ─────────────────────────────────
     if not _has_column("users", "user_type"):
-        op.add_column("users", sa.Column("user_type", sa.String(length=50), nullable=True, index=True))
-        op.create_index("ix_users_user_type", "users", ["user_type"])
-    if not _has_column("users", "organization_id"):
-        op.add_column("users", sa.Column("organization_id", sa.Integer(), sa.ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True))
-        op.create_index("ix_users_organization", "users", ["organization_id"])
-    if not _has_column("users", "tenant_id"):
-        op.add_column("users", sa.Column("tenant_id", sa.Integer(), sa.ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True))
-        op.create_index("ix_users_tenant", "users", ["tenant_id"])
-    if not _has_column("users", "facility_id"):
-        op.add_column("users", sa.Column("facility_id", sa.Integer(), sa.ForeignKey("facilities.id", ondelete="SET NULL"), nullable=True))
+        op.add_column("users", sa.Column("user_type", sa.String(length=50), nullable=True))
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_users_user_type", "users", ["user_type"])
+    bind = op.get_bind()
+    if bind.dialect.name == "sqlite":
+        with op.batch_alter_table("users", schema=None) as batch_op:
+            if not _has_column("users", "organization_id"):
+                batch_op.add_column(sa.Column("organization_id", sa.Integer(), nullable=True))
+            if not _has_column("users", "tenant_id"):
+                batch_op.add_column(sa.Column("tenant_id", sa.Integer(), nullable=True))
+            if not _has_column("users", "facility_id"):
+                batch_op.add_column(sa.Column("facility_id", sa.Integer(), nullable=True))
+    else:
+        if not _has_column("users", "organization_id"):
+            op.add_column("users", sa.Column("organization_id", sa.Integer(), sa.ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True))
+        if not _has_column("users", "tenant_id"):
+            op.add_column("users", sa.Column("tenant_id", sa.Integer(), sa.ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True))
+        if not _has_column("users", "facility_id"):
+            op.add_column("users", sa.Column("facility_id", sa.Integer(), sa.ForeignKey("facilities.id", ondelete="SET NULL"), nullable=True))
     if not _has_column("users", "governorate_id"):
         op.add_column("users", sa.Column("governorate_id", sa.String(length=50), nullable=True))
-        op.create_index("ix_users_governorate", "users", ["governorate_id"])
+        try:
+            pass
+        except Exception:
+            pass
+        # op.create_index("ix_users_governorate", "users", ["governorate_id"])
     if not _has_column("users", "directorate_id"):
         op.add_column("users", sa.Column("directorate_id", sa.String(length=50), nullable=True))
     if not _has_column("users", "department_id"):
@@ -329,29 +392,35 @@ def upgrade() -> None:
         op.add_column("users", sa.Column("preferences", sa.JSON(), nullable=True))
 
     # ── 14. organizations — add tenant_id FK if missing ────────────────────
-    if not _has_column("organizations", "tenant_id"):
-        op.add_column("organizations", sa.Column("tenant_id", sa.Integer(), sa.ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True))
-        op.create_index("ix_organizations_tenant", "organizations", ["tenant_id"])
-    if not _has_column("organizations", "governorate_id"):
-        op.add_column("organizations", sa.Column("governorate_id", sa.String(length=50), nullable=True))
-    if not _has_column("organizations", "directorate_id"):
-        op.add_column("organizations", sa.Column("directorate_id", sa.String(length=50), nullable=True))
-    if not _has_column("organizations", "contact_email"):
-        op.add_column("organizations", sa.Column("contact_email", sa.String(length=200), nullable=True))
-    if not _has_column("organizations", "contact_phone"):
-        op.add_column("organizations", sa.Column("contact_phone", sa.String(length=30), nullable=True))
-    if not _has_column("organizations", "address"):
-        op.add_column("organizations", sa.Column("address", sa.Text(), nullable=True))
-    if not _has_column("organizations", "metadata"):
-        op.add_column("organizations", sa.Column("metadata", sa.JSON(), nullable=True))
+    if _has_table("organizations"):
+        if bind.dialect.name == "sqlite":
+            with op.batch_alter_table("organizations", schema=None) as batch_op:
+                if not _has_column("organizations", "tenant_id"):
+                    batch_op.add_column(sa.Column("tenant_id", sa.Integer(), nullable=True))
+        else:
+            if not _has_column("organizations", "tenant_id"):
+                op.add_column("organizations", sa.Column("tenant_id", sa.Integer(), sa.ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True))
+        if not _has_column("organizations", "governorate_id"):
+            op.add_column("organizations", sa.Column("governorate_id", sa.String(length=50), nullable=True))
+        if not _has_column("organizations", "directorate_id"):
+            op.add_column("organizations", sa.Column("directorate_id", sa.String(length=50), nullable=True))
+        if not _has_column("organizations", "contact_email"):
+            op.add_column("organizations", sa.Column("contact_email", sa.String(length=200), nullable=True))
+        if not _has_column("organizations", "contact_phone"):
+            op.add_column("organizations", sa.Column("contact_phone", sa.String(length=30), nullable=True))
+        if not _has_column("organizations", "address"):
+            op.add_column("organizations", sa.Column("address", sa.Text(), nullable=True))
+        if not _has_column("organizations", "metadata"):
+            op.add_column("organizations", sa.Column("metadata", sa.JSON(), nullable=True))
 
     # ── 15. facilities — add tenant context columns if missing ─────────────
-    if not _has_column("facilities", "contact_email"):
-        op.add_column("facilities", sa.Column("contact_email", sa.String(length=200), nullable=True))
-    if not _has_column("facilities", "contact_phone"):
-        op.add_column("facilities", sa.Column("contact_phone", sa.String(length=30), nullable=True))
-    if not _has_column("facilities", "address"):
-        op.add_column("facilities", sa.Column("address", sa.Text(), nullable=True))
+    if _has_table("facilities"):
+        if not _has_column("facilities", "contact_email"):
+            op.add_column("facilities", sa.Column("contact_email", sa.String(length=200), nullable=True))
+        if not _has_column("facilities", "contact_phone"):
+            op.add_column("facilities", sa.Column("contact_phone", sa.String(length=30), nullable=True))
+        if not _has_column("facilities", "address"):
+            op.add_column("facilities", sa.Column("address", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:

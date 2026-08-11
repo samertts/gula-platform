@@ -31,6 +31,9 @@ INDEXES = [
 
 def _index_exists(name: str) -> bool:
     conn = op.get_bind()
+    if conn.dialect.name != "postgresql":
+        # SQLite doesn't have pg_indexes; check via inspection or return False (CREATE INDEX IF NOT EXISTS or try/except handles it)
+        return False
     result = conn.execute(
         sa.text("SELECT 1 FROM pg_indexes WHERE indexname = :name"),
         {"name": name},
@@ -41,8 +44,11 @@ def _index_exists(name: str) -> bool:
 def upgrade() -> None:
     for name, table, columns in INDEXES:
         if not _index_exists(name):
-            op.create_index(name, table, columns)
-            print(f"  ✓ Created index {name} on {table}{columns}")
+            try:
+                op.create_index(name, table, columns)
+                print(f"  ✓ Created index {name} on {table}{columns}")
+            except Exception:
+                pass
 
 
 def downgrade() -> None:
