@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { dashboardApi } from "@/api/endpoints";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui";
-import { Users, ClipboardList, FlaskConical, AlertTriangle } from "lucide-react";
+import { Activity, AlertTriangle, ClipboardList, FlaskConical, ShieldCheck, Users } from "lucide-react";
 
 const statCards = [
   { label: "إجمالي المرضى", key: "total_patients", icon: Users, color: "text-blue-600 bg-blue-100 dark:bg-blue-900/30" },
@@ -11,29 +12,42 @@ const statCards = [
 ];
 
 export function DashboardPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: () => dashboardApi.dashboard(),
+  const { demoMode } = useAuth();
+  const { data, isLoading } = useQuery<Record<string, unknown>>({
+    queryKey: ["dashboard", demoMode ? "demo" : "institution"],
+    queryFn: async () => {
+      if (demoMode) return dashboardApi.demo();
+      const institutionDashboard = await dashboardApi.dashboard();
+      return institutionDashboard as unknown as Record<string, unknown>;
+    },
   });
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">لوحة التحكم</h1>
-        <p className="text-muted-foreground">نظرة عامة على أداء المختبر</p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold text-primary">مركز العمليات</p>
+          <h1 className="text-2xl font-bold tracking-tight">لوحة التحكم</h1>
+          <p className="text-sm text-muted-foreground">نظرة موحّدة على سير العمل والحالة التشغيلية.</p>
+        </div>
+        {demoMode && (
+          <span className="inline-flex items-center gap-2 self-start rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300 sm:self-auto">
+            <ShieldCheck className="h-4 w-4" /> بيانات اصطناعية فقط
+          </span>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card) => (
-          <Card key={card.key}>
-            <CardContent className="flex items-center gap-4 p-6">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-full ${card.color}`}>
+          <Card key={card.key} className="transition-shadow hover:shadow-md">
+            <CardContent className="flex items-center gap-4 p-5">
+              <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${card.color}`}>
                 <card.icon className="h-6 w-6" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">{card.label}</p>
                 <p className="text-2xl font-bold">
-                  {isLoading ? "..." : (data as any)?.[card.key] ?? 0}
+                  {isLoading ? "..." : data?.[card.key] as string | number ?? 0}
                 </p>
               </div>
             </CardContent>
@@ -44,18 +58,18 @@ export function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>الطلبات الأخيرة</CardTitle>
+            <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5 text-primary" /> الطلبات الأخيرة</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">سيتم عرض الطلبات الأخيرة هنا</p>
+            <p className="text-sm text-muted-foreground">سيتم عرض الطلبات الأخيرة هنا ضمن نفس مساحة العمل.</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>النشاط الحديث</CardTitle>
+            <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" /> حالة التشغيل</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">سيتم عرض النشاط الحديث هنا</p>
+            <p className="text-sm text-muted-foreground">حالة الصلاحيات، المزامنة، وسجل التدقيق ستظهر ضمن السياق نفسه.</p>
           </CardContent>
         </Card>
       </div>

@@ -44,7 +44,24 @@ export const authApi = {
     api.post<LoginResponse>("/login", data).then((r) => r.data),
   logout: () => api.post<Record<string, unknown>>("/logout").then((r) => r.data),
   session: () => api.get<{ user: UserInfo; demo_mode: boolean }>("/session").then((r) => r.data),
-  demoAccess: () => api.post<{ user: UserInfo; demo_mode: boolean }>("/demo/access").then((r) => r.data),
+  demoAccess: async () => {
+    await api.post<{ environment: "demo"; expiresInSeconds: number }>("/v1/demo/session");
+    const dashboard = await api.get<{ user: { name: string; role: string; facility: string } }>("/v1/demo/dashboard");
+    return {
+      user: {
+        id: 0,
+        name: dashboard.data.user.name,
+        email: "demo@gula.local",
+        role: "lab_staff",
+        lab_id: null,
+        lab_name: dashboard.data.user.facility,
+        is_verified: true,
+      } satisfies UserInfo,
+      demo_mode: true,
+    };
+  },
+  demoDashboard: () => api.get<Record<string, unknown>>("/v1/demo/dashboard").then((r) => r.data),
+  endDemo: () => api.delete<Record<string, unknown>>("/v1/demo/session").then((r) => r.data),
   requestVerification: (identifier: string) => api.post<Record<string, unknown>>("/auth/verification/request", { identifier }).then((r) => r.data),
   confirmVerification: (identifier: string, code: string) => api.post<Record<string, unknown>>("/auth/verification/confirm", { identifier, code }).then((r) => r.data),
   register: (data: Record<string, unknown>) =>
@@ -72,6 +89,7 @@ export const setupApi = {
 export const dashboardApi = {
   greeting: () => api.get<{ greeting: string; message: string; user_name: string }>("/greeting").then((r) => r.data),
   dashboard: () => api.get<DashboardData>("/dashboard").then((r) => r.data),
+  demo: () => api.get<Record<string, unknown>>("/v1/demo/dashboard").then((r) => r.data),
 };
 
 // ── Patients ──

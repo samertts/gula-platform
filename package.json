@@ -7,13 +7,16 @@
   "scripts": {
     "dev": "tsx watch server/index.ts",
     "build": "tsc && vite build",
+    "build:frontend": "npm --prefix frontend-v3 run build",
     "start": "node dist/server/index.js",
+    "dev:frontend": "npm --prefix frontend-v3 run dev",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "test:watch": "vitest --watch",
     "lint": "eslint . --ext .ts,.tsx",
     "format": "prettier --write .",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "type-check:frontend": "npm --prefix frontend-v3 run typecheck"
   },
   "dependencies": {
     "express": "^5.2.1",
