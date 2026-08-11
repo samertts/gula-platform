@@ -555,6 +555,85 @@ const en = {
     certificates: "Certificates",
     certificatesDesc: "Manage digital certificates and keys",
   },
+  legal: {
+    privacyTitle: "Privacy Policy",
+    privacyUpdated: "Last updated: August 11, 2026",
+    privacyIntro:
+      "The GULA National Health Platform (\"GULA\") respects your privacy. This Privacy Policy explains what information we collect through the Platform, how we use and protect it, and the rights you have over your personal and health data. By using GULA you agree to the practices described in this policy.",
+    privacySection1Title: "1. Information We Collect",
+    privacySection1P1:
+      "Account and identity data — names, national identification numbers, professional registration details, roles, and contact information of authorized users, laboratories, hospitals, and health directorates.",
+    privacySection1P2:
+      "Health and laboratory data — patient demographics, laboratory orders, samples, results, quality-control records, and clinical information processed on behalf of licensed healthcare providers.",
+    privacySection1P3:
+      "Technical data — IP addresses, device and browser information, access logs, and security events collected to operate and protect the Platform.",
+    privacySection2Title: "2. How We Use Information",
+    privacySection2P1:
+      "We use the information to operate the Platform, provide laboratory and diagnostic services, ensure quality and patient safety, generate required national health statistics, and comply with legal, regulatory, and accreditation obligations (including ISO 15189).",
+    privacySection2P2:
+      "Information is processed strictly within the Ministry of Health hierarchy and in accordance with applicable Iraqi law and data-protection requirements.",
+    privacySection3Title: "3. Information Sharing",
+    privacySection3P1:
+      "We do not sell personal or health data. Information is shared only with authorized healthcare providers, health authorities, and regulators within the national hierarchy, and only as required to provide services or comply with law.",
+    privacySection3P2:
+      "Patient-identifiable data is never used for unrelated commercial purposes.",
+    privacySection4Title: "4. Data Retention and Security",
+    privacySection4P1:
+      "Data is retained only as long as required for clinical, legal, and audit purposes, then securely deleted or anonymized. We apply technical and organizational safeguards, including encryption, role-based access control, and an immutable audit log.",
+    privacySection4P2:
+      "Every access to sensitive data is recorded and traceable to an authorized user.",
+    privacySection5Title: "5. Your Rights",
+    privacySection5P1:
+      "In accordance with applicable law, you may request access to, correction of, or deletion of personal data concerning you, and you may lodge a complaint with the competent authority.",
+    privacySection5P2:
+      "To exercise these rights, contact your organization's administrator or the platform authority that controls your records.",
+    privacySection6Title: "6. Contact",
+    privacySection6P1:
+      "For privacy questions, contact the GULA platform administration at privacy@gula.local or through the health directorate responsible for your organization.",
+    termsTitle: "Terms of Use",
+    termsUpdated: "Last updated: August 11, 2026",
+    termsIntro:
+      "These Terms of Use govern your access to and use of the GULA National Health Platform. By accessing or using the Platform you agree to be bound by these Terms. If you do not agree, you may not use the Platform.",
+    termsSection1Title: "1. Acceptance of Terms",
+    termsSection1P1:
+      "You accept these Terms by creating an account, accessing, or using the Platform. These Terms form a binding agreement between you and the GULA platform authority.",
+    termsSection2Title: "2. Eligible Users and Authorized Use",
+    termsSection2P1:
+      "The Platform is available only to authorized users — laboratories, hospitals, health directorates, and individuals acting within their professional role under the Ministry of Health hierarchy.",
+    termsSection2P2:
+      "You agree to use the Platform only for lawful, professional, and authorized purposes, and to access only the data you are permitted to access under your role.",
+    termsSection3Title: "3. Accounts, Credentials, and Security",
+    termsSection3P1:
+      "You are responsible for safeguarding your credentials and for all activity that occurs under your account. You must notify the platform authority immediately of any suspected unauthorized use.",
+    termsSection3P2:
+      "Never share credentials. Accounts are personal and may not be transferred.",
+    termsSection4Title: "4. Prohibited Conduct",
+    termsSection4P1:
+      "You may not: probe, scan, or test the Platform's security without authorization; access data beyond your authorization; interfere with the operation of the Platform; or attempt to bypass authentication, authorization, or audit controls.",
+    termsSection4P2:
+      "Unauthorized access or misuse is a violation of these Terms and may result in suspension, termination, and referral to the competent authorities.",
+    termsSection5Title: "5. Health Data and Professional Responsibility",
+    termsSection5P1:
+      "You remain responsible for the accuracy and quality of data you enter and for clinical decisions made using Platform outputs. The Platform does not replace professional judgment.",
+    termsSection5P2:
+      "Patient confidentiality obligations continue to apply and prevail over these Terms.",
+    termsSection6Title: "6. Disclaimer of Warranties",
+    termsSection6P1:
+      "The Platform is provided \"as is\" and \"as available\". To the extent permitted by law, GULA disclaims all warranties, express or implied, including fitness for a particular purpose.",
+    termsSection7Title: "7. Limitation of Liability",
+    termsSection7P1:
+      "To the maximum extent permitted by applicable law, the platform authority shall not be liable for indirect, incidental, or consequential damages arising from use of the Platform.",
+    termsSection8Title: "8. Termination",
+    termsSection8P1:
+      "We may suspend or terminate your access for violation of these Terms, security incidents, or as required by law. Termination does not relieve you of obligations that survive termination.",
+    termsSection9Title: "9. Changes to These Terms",
+    termsSection9P1:
+      "We may update these Terms from time to time. Continued use of the Platform after changes take effect constitutes acceptance of the updated Terms.",
+    termsSection10Title: "10. Contact",
+    termsSection10P1:
+      "Questions about these Terms may be directed to the GULA platform administration at legal@gula.local.",
+    backToLogin: "Back to login",
+  },
 };
 
 export default en;

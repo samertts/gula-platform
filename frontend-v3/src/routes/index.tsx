@@ -53,6 +53,8 @@ const NiamTrustPage = lazy(() => import("@/pages/niam/TrustPage"));
 const NiamLifecyclePage = lazy(() => import("@/pages/niam/LifecyclePage"));
 const NiamFederationPage = lazy(() => import("@/pages/niam/FederationPage"));
 const NiamCertificatesPage = lazy(() => import("@/pages/niam/CertificatesPage"));
+const PrivacyPolicyPage = lazy(() => import("@/pages/legal/PrivacyPolicyPage").then(m => ({ default: m.PrivacyPolicyPage })));
+const TermsPage = lazy(() => import("@/pages/legal/TermsPage").then(m => ({ default: m.TermsPage })));
 const NiamWorkflowsPage = lazy(() => import("@/pages/niam/WorkflowsPage"));
 const NiamAdaptiveAuthPage = lazy(() => import("@/pages/niam/AdaptiveAuthPage"));
 const AiFabricPageLazy = lazy(() => import("@/pages/ai-fabric/AiFabricPage"));
@@ -238,6 +240,14 @@ export const router = createBrowserRouter([
       </DemoGate>
     ),
     children: [{ index: true, element: <DemoDashboardPage /> }],
+  },
+  {
+    path: "/privacy",
+    element: <LazyPage><PrivacyPolicyPage /></LazyPage>,
+  },
+  {
+    path: "/terms",
+    element: <LazyPage><TermsPage /></LazyPage>,
   },
   { path: "*", element: <Navigate to="/" replace /> },
 ]);

@@ -1,4 +1,4 @@
-import { Outlet } from "react-router";
+import { Outlet, Link } from "react-router";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { Moon, Sun, Languages } from "lucide-react";
@@ -37,6 +37,14 @@ export function AuthLayout() {
           <Outlet />
         </div>
       </main>
+      <footer className="flex h-10 items-center justify-center gap-6 border-t bg-card px-6 text-xs text-muted-foreground">
+        <Link to="/privacy" className="hover:text-foreground">
+          {locale === "ar" ? "سياسة الخصوصية" : "Privacy Policy"}
+        </Link>
+        <Link to="/terms" className="hover:text-foreground">
+          {locale === "ar" ? "شروط الاستخدام" : "Terms of Use"}
+        </Link>
+      </footer>
     </div>
   );
 }
