@@ -55,8 +55,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  check-build-system:
+    name: Verify iOS build system present
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Check for Xcode workspace
+        run: |
+          if [ ! -f "mobile/ios/${{ env.XCODE_WORKSPACE }}" ]; then
+            echo "::error::iOS build system (mobile/ios/${{ env.XCODE_WORKSPACE }}) is MISSING. The Xcode project scaffold is empty — iOS is deferred pending D-1 (see docs/programs/GULA_FINAL_REPORT.md §15). Rebuild the Xcode project + Core Data model before re-enabling this workflow."
+            exit 1
+          fi
+          echo "iOS build system present — proceeding."
+
   lint:
     name: SwiftLint
+    needs: [check-build-system]
     runs-on: macos-14
     timeout-minutes: 10
     defaults:
@@ -84,7 +100,7 @@ jobs:
 
   test:
     name: Test (iOS ${{ matrix.platform }} ${{ matrix.device }})
-    needs: [lint]
+    needs: [check-build-system, lint]
     runs-on: macos-14
     timeout-minutes: 45
     strategy:
@@ -161,7 +177,7 @@ jobs:
 
   ui-test:
     name: UI Tests
-    needs: [lint]
+    needs: [check-build-system, lint]
     runs-on: macos-14
     timeout-minutes: 45
     defaults:
