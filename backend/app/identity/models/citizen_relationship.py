@@ -74,6 +74,8 @@ class CitizenRelationship(IdentityBaseEntity):
     revoked_reason = Column(String(255), nullable=True)
     version = Column(Integer, default=1, nullable=False)
     metadata_ = Column("metadata", JSON, nullable=True)
+    idempotency_key_hash = Column(String(64), nullable=True, unique=True, index=True)
+    request_fingerprint = Column(String(64), nullable=True, index=True)
 
     __table_args__ = (
         CheckConstraint(
