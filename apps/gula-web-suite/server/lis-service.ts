@@ -62,7 +62,7 @@ async function dbOrThrow() {
   return db;
 }
 
-async function writeAudit(db: Db, args: AuditArgs) {
+export async function writeAudit(db: Db, args: AuditArgs) {
   await db.insert(auditLog).values({
     institutionId: args.institutionId,
     actorUserId: args.actorUserId,
