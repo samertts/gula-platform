@@ -4,21 +4,22 @@
 
 **المستودع:** [samertts/gula-platform](https://github.com/samertts/gula-platform)
 
-**الفرع الحالي:** `security-hardening-demo-alignment`
+**الفرع الحالي:** `wave0-audit-hardening-20260811`
 
-**HEAD المحلي:** `2de4932ef33aa104a1b8385a8d5df5391acf351b`
+**HEAD المحلي/المدفوع:** `2fb4fd11` (`security: complete wave 0 audit and hardening`)
 
 ## الحالة التنفيذية
 
-المستودع ليس فارغاً، ويحتوي على Backend واسع مبني على FastAPI وSQLAlchemy/Alembic، واجهة React/Vite حديثة في `frontend-v3`، مسارات واجهة أقدم، Android/Kotlin، Flutter Desktop، ومجموعة كبيرة من خدمات التكامل والبنية التحتية. الفرع المحلي متقدم عن `origin/security-hardening-demo-alignment` بعمل محلي لم يُرفع بعد، بينما `origin/main` عند `8ff3eb6d` وفق الاستعادة الحالية.
+المستودع ليس فارغاً، ويحتوي على Backend واسع مبني على FastAPI وSQLAlchemy/Alembic، واجهة React/Vite حديثة في `frontend-v3`، مسارات واجهة أقدم، Android/Kotlin، Flutter Desktop، ومجموعة كبيرة من خدمات التكامل والبنية التحتية. أُنشئ فرع `wave0-audit-hardening-20260811` من `origin/security-hardening-demo-alignment` بعد رفض الدفع إلى الفرع الأصلي بسبب صلاحية GitHub Actions، ثم دُفع commit التقوية `2fb4fd11` بنجاح. بقي `origin/main` عند `8ff3eb6d` ولم يُدمج شيء فيه.
 
-العمل staged محلياً يتكون من إصلاحات أمنية واعتمادية واختبارات وتقارير وملفات تشغيل. لا توجد تغييرات unstaged وقت إنشاء هذه الوثيقة. لا يوجد worktree ثانٍ ظاهر، ولا توجد إشارة إلى جلسة Git متزامنة أخرى في مساحة العمل؛ ومع ذلك، يجب اعتبار أي ملفات جديدة تظهر بعد هذه النقطة عملاً محتملاً متزامناً وعدم إدراجها تلقائياً.
+تتكون الحزمة المدفوعة من إصلاحات أمنية واعتمادية واختبارات وتقارير وملفات تشغيل. بعد الدفع لا توجد تغييرات tracked غير ملتزمة؛ توجد فقط patch artifacts محلية غير متتبعة (`.audit/ci-fix.patch` و`.audit/ci-repair.patch`) محفوظة خارج commit لأنها تحتوي whitespace تاريخياً وليست مطلوبة لتشغيل المنصة. لا يوجد worktree ثانٍ ظاهر، ولا توجد إشارة إلى جلسة Git متزامنة أخرى في مساحة العمل؛ ومع ذلك، يجب اعتبار أي ملفات جديدة تظهر بعد هذه النقطة عملاً محتملاً متزامناً وعدم إدراجها تلقائياً.
 
 | التصنيف | الحالة الفعلية | الدليل أو النطاق |
 |---|---|---|
 | Certified/previous | موجود | commits `a52340f9` و`93ec5a6a` و`7518e742` موثقة كأعمال Wave 3؛ يجب عدم إبطالها |
-| Current hardening | staged محلياً | 47 مساراً تشمل الأمن، startup، migrations، tests، scripts، وتقارير |
-| Remote branch | لم يتلقَ هذه الحزمة بعد | `origin/security-hardening-demo-alignment` عند `69035da5` |
+| Current hardening | committed and pushed | commit `2fb4fd11` على `wave0-audit-hardening-20260811`، ويشمل 52 مساراً |
+| Remote branch | منشأ ومدفوع | `origin/wave0-audit-hardening-20260811` عند `2fb4fd11` |
+| Source base | محفوظ دون تعديل | `origin/security-hardening-demo-alignment` عند `69035da5` |
 | Main | غير مستهدف بالدمج | `origin/main` عند `8ff3eb6d` |
 | Tags | موجودة | `v1.0.0-RC1`, `v1.0.0-RC2`, `v2.1.0-engineering-factory` |
 | Generated local data | مستبعد من Git | `backend/*.db` و`backend.pid` ضمن `.gitignore` |
@@ -48,4 +49,4 @@
 
 ## قرار Wave 0
 
-تمت استعادة الحالة وتحديد العمل staged والحدود. يسمح ذلك بإنشاء تقارير Wave 0 السبعة والتحقق منها، ثم التوقف وفق التوجيه قبل أي تنفيذ واسع. الدفع إلى فرع التقوية لا يساوي دمجاً في `main` ولا يساوي إصداراً إنتاجياً.
+تمت استعادة الحالة وتحديد العمل المتزامن والحدود، وأُنشئت وثائق Wave 0 السبعة والتحقق منها. دُفعت الحزمة إلى فرع مستقل قابل للمراجعة، ثم توقفت الأعمال الواسعة وفق التوجيه. الدفع إلى فرع التقوية لا يساوي دمجاً في `main` ولا يساوي إصداراً إنتاجياً.
