@@ -375,6 +375,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
         RequestTimingMiddleware,
         SecurityHeadersMiddleware,
     )
+    from .security.csrf import CSRFMiddleware
 
     from .config import MAX_REQUEST_BODY_MB
 
@@ -409,6 +410,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
     )
 
     app.add_middleware(RequestTimingMiddleware)
+    app.add_middleware(CSRFMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
@@ -438,6 +440,7 @@ def _register_routes(app: FastAPI) -> None:
         critical_alerts,
         dashboard,
         device_results,
+        demo,
         ehr,
         ehr_fhir,
         id_scan,
@@ -458,6 +461,7 @@ def _register_routes(app: FastAPI) -> None:
         security,
         setup,
         test_results,
+        verification,
     )
     from .routes import ai as ai_routes
     from .routes import citizen_portal as citizen_portal_routes
@@ -465,7 +469,7 @@ def _register_routes(app: FastAPI) -> None:
     from .routes import tiers as tiers_routes
 
     core_routes = [
-        login, register, setup, metrics, patients, results,
+        login, register, verification, demo, setup, metrics, patients, results,
         test_results, dashboard, labs, samples,
     ]
     feature_routes = [

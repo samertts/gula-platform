@@ -17,19 +17,24 @@ import logging
 from sqlalchemy.orm import Session
 
 from ..models.lab_user import LabUser
+from ..models.user import User
 from ..services.audit_service import log_action
 from .redis_client import cache
 
 logger = logging.getLogger("gula.session")
 
 # Redis key template — keep in sync with dependencies.py
-_PERM_VER_KEY = "user:perm_ver:{user_id}"
+_PERM_VER_KEY = "user:{account_kind}:perm_ver:{user_id}"
 # 31 days — longer than any refresh token
 _PERM_VER_TTL = 86400 * 31
 
 
-def perm_ver_key(user_id: int) -> str:
-    return _PERM_VER_KEY.format(user_id=user_id)
+def _account_kind(user: object) -> str:
+    return "user" if isinstance(user, User) else "lab"
+
+
+def perm_ver_key(user_id: int, account_kind: str = "lab") -> str:
+    return _PERM_VER_KEY.format(account_kind=account_kind, user_id=user_id)
 
 
 def bump_perm_version(
@@ -51,7 +56,7 @@ def bump_perm_version(
     # DB commit is the caller's responsibility (allows batching with other changes)
 
     # Write to Redis immediately so any in-flight request gets the new version
-    cache.set(perm_ver_key(user.id), new_version, ex=_PERM_VER_TTL)
+    cache.set(perm_ver_key(user.id, _account_kind(user)), new_version, ex=_PERM_VER_TTL)
 
     log_action(
         db,
@@ -84,11 +89,11 @@ def warm_perm_version(user: LabUser) -> None:
         cache.set(key, ver, ex=_PERM_VER_TTL)
 
 
-def get_perm_version(user_id: int, db_version: int) -> int:
+def get_perm_version(user_id: int, db_version: int, account_kind: str = "lab") -> int:
     """Return the authoritative perm_version for a user.
     Reads from Redis (fast); falls back to the DB value passed in.
     """
-    cached = cache.get(perm_ver_key(user_id))
+    cached = cache.get(perm_ver_key(user_id, account_kind))
     if cached is not None:
         return int(cached)
     return db_version

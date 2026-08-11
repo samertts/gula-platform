@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
+from ..models.user import User
 from .auth import decode_token, is_token_blacklisted
 from .rbac import get_permissions_for_role
 from .session import get_perm_version
@@ -63,15 +64,26 @@ def get_current_user(
 
     user = db.query(LabUser).filter(LabUser.id == user_id, LabUser.is_active).first()
     if user is None:
+        user = (
+            db.query(User)
+            .filter(User.id == user_id, User.is_active, User.is_verified)
+            .first()
+        )
+    if user is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found, inactive, or unverified",
         )
 
     # ── perm_version check ────────────────────────────────────────────────────
     # Fast path: compare against Redis (O(1)).  Falls back to DB value if Redis
     # has no entry for this user yet (e.g. first request after server restart).
     token_perm_ver = int(payload.get("perm_ver", 1))
-    authoritative_ver = get_perm_version(user.id, user.perm_version or 1)
+    authoritative_ver = get_perm_version(
+        user.id,
+        user.perm_version or 1,
+        account_kind="user" if isinstance(user, User) else "lab",
+    )
     if token_perm_ver != authoritative_ver:
         logger.warning(
             "Permission version mismatch user=%s token_perm_ver=%s authoritative=%s",
@@ -83,7 +95,7 @@ def get_current_user(
         )
 
     # ── Lab active check (skip for master_admin) ──────────────────────────────
-    if user.role != "master_admin":
+    if isinstance(user, LabUser) and user.role != "master_admin":
         lab = db.query(Lab).filter(Lab.id == user.lab_id, Lab.is_active).first()
         if lab is None:
             raise HTTPException(

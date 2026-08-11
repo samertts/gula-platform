@@ -48,6 +48,12 @@ class AuthProvider extends ChangeNotifier {
     return result;
   }
 
+  Future<Map<String, dynamic>> startDemo() async {
+    final result = await _authManager.startDemo();
+    notifyListeners();
+    return result;
+  }
+
   Future<void> logout() async {
     await _authManager.logout();
     notifyListeners();

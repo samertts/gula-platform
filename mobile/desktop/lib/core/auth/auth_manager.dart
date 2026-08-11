@@ -158,14 +158,17 @@ class AuthManager {
   }
 
   Future<void> _processLoginResponse(Map<String, dynamic> data) async {
-    _token = data['token'] as String?;
+    final user = (data['user'] is Map<String, dynamic>)
+        ? data['user'] as Map<String, dynamic>
+        : data;
+    _token = (data['access_token'] ?? data['token']) as String?;
     _refreshToken = data['refresh_token'] as String?;
-    _userId = data['user_id']?.toString();
-    _labId = data['lab_id']?.toString();
-    _userRole = data['role'] as String?;
-    _userName = data['name'] as String?;
-    _userEmail = data['email'] as String?;
-    _userProfile = data['profile'] as Map<String, dynamic>?;
+    _userId = (user['id'] ?? data['user_id'])?.toString();
+    _labId = (user['lab_id'] ?? data['lab_id'])?.toString();
+    _userRole = (user['role'] ?? data['role']) as String?;
+    _userName = (user['name'] ?? user['full_name'] ?? data['name']) as String?;
+    _userEmail = (user['email'] ?? data['email']) as String?;
+    _userProfile = (user['profile'] ?? data['profile']) as Map<String, dynamic>?;
 
     if (_token != null) {
       await _storage.saveToken(_token!);
@@ -188,7 +191,7 @@ class AuthManager {
         data: {'refresh_token': _refreshToken},
       );
       final data = response.data as Map<String, dynamic>;
-      _token = data['token'] as String?;
+      _token = (data['access_token'] ?? data['token']) as String?;
       _refreshToken = data['refresh_token'] as String?;
       if (_token != null) await _storage.saveToken(_token!);
       if (_refreshToken != null) await _storage.saveRefreshToken(_refreshToken!);
@@ -200,8 +203,21 @@ class AuthManager {
 
   Future<void> _validateToken() async {
     try {
-      await _apiClient.get('/auth/me');
+      await _apiClient.get(ApiEndpoints.session);
     } catch (_) {
+      rethrow;
+    }
+  }
+
+  Future<Map<String, dynamic>> startDemo() async {
+    _setStatus(AuthStatus.authenticating);
+    try {
+      final response = await _apiClient.post(ApiEndpoints.demoAccess);
+      final data = response.data as Map<String, dynamic>;
+      await _processLoginResponse(data);
+      return data;
+    } catch (_) {
+      _setStatus(AuthStatus.unauthenticated);
       rethrow;
     }
   }

@@ -12,8 +12,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger("gula.config")
 
 # ─── Environment ─────────────────────────────────────────────────────────────
-ENV = os.getenv("ENV", "production")
+ENV = os.getenv("ENV", "production").lower()
 IS_PRODUCTION = ENV == "production"
+# Demo mode is an explicit deployment boundary. It must never be inferred from
+# a hostname and must be paired with a dedicated database/Redis instance.
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
+USE_SECURE_COOKIES = IS_PRODUCTION or DEMO_MODE
+if IS_PRODUCTION and DEMO_MODE:
+    sys.exit("DEMO_MODE cannot be enabled with ENV=production")
+if DEMO_MODE and os.getenv("DEMO_DATA_ISOLATION_ACK", "false").lower() != "true":
+    sys.exit("DEMO_MODE requires DEMO_DATA_ISOLATION_ACK=true and a dedicated demo database")
 
 # ─── Runtime Isolation ───────────────────────────────────────────────────────
 # RUNTIME_MODE controls what kind of process this is:

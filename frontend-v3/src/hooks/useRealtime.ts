@@ -51,11 +51,9 @@ export function useRealtimeEvents(options: UseRealtimeOptions = {}) {
 
     updateState("connecting");
 
-    const token = localStorage.getItem("access_token");
-    const wsUrl = token ? `${url}?token=${token}` : url;
-
+    // Browser cookies are attached by the user agent; never put JWTs in URLs.
     try {
-      const ws = new WebSocket(wsUrl);
+      const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -133,7 +131,7 @@ export function useServerSentEvents(options: { url?: string; onEvent?: (data: un
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
-    const es = new EventSource(url);
+    const es = new EventSource(url, { withCredentials: true });
     eventSourceRef.current = es;
 
     es.onopen = () => setConnected(true);

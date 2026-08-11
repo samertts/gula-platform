@@ -35,6 +35,7 @@ import type {
   EHRImmunization,
   ClinicalOrder,
   FHIRResource,
+  UserInfo,
 } from "@/types";
 
 // ── Auth ──
@@ -42,6 +43,10 @@ export const authApi = {
   login: (data: LoginRequest) =>
     api.post<LoginResponse>("/login", data).then((r) => r.data),
   logout: () => api.post<Record<string, unknown>>("/logout").then((r) => r.data),
+  session: () => api.get<{ user: UserInfo; demo_mode: boolean }>("/session").then((r) => r.data),
+  demoAccess: () => api.post<{ user: UserInfo; demo_mode: boolean }>("/demo/access").then((r) => r.data),
+  requestVerification: (identifier: string) => api.post<Record<string, unknown>>("/auth/verification/request", { identifier }).then((r) => r.data),
+  confirmVerification: (identifier: string, code: string) => api.post<Record<string, unknown>>("/auth/verification/confirm", { identifier, code }).then((r) => r.data),
   register: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/register", data).then((r) => r.data),
   registerCitizen: (data: Record<string, unknown>) =>

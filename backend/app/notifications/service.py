@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 import logging
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
-from shared.circuit_breaker import CircuitBreaker
+from shared.circuit_breaker import CircuitBreaker, CircuitState
 from shared.notifications.sender import get_sender
 from shared.notifications.template import render_template
 
@@ -28,6 +26,22 @@ class NotificationService:
             recovery_timeout=30,
         )
 
+    def _run_with_circuit(self, fn: Callable[[], bool]) -> tuple[bool, str | None]:
+        if self._circuit_breaker.state == CircuitState.OPEN:
+            return False, "Circuit breaker open"
+
+        def guarded() -> bool:
+            result = fn()
+            if not result:
+                raise RuntimeError("Delivery failed")
+            return True
+
+        try:
+            self._circuit_breaker.call(guarded)
+            return True, None
+        except Exception as exc:
+            return False, str(exc)
+
     def send(
         self,
         channel: str,
@@ -38,50 +52,39 @@ class NotificationService:
         template_data: dict[str, Any] | None = None,
         priority: str = "normal",
     ) -> NotificationResult:
-        if not self._circuit_breaker.allow_request():
-            return NotificationResult(
-                success=False,
-                channel=channel,
-                recipient=to,
-                error="Circuit breaker open",
-            )
-
         if template_id:
             rendered = render_template(template_id, channel, template_data)
             if rendered:
                 subject = rendered.get("subject", subject)
                 body = rendered.get("body", body)
 
-        try:
-            sender = get_sender()
-            result: bool = False
-            if channel == "email":
-                result = sender.send_email(to, subject, body)
-            elif channel == "sms":
-                result = sender.send_sms(to, body)
-            elif channel == "whatsapp":
-                result = sender.send_whatsapp(to, body)
-            elif channel == "push":
-                result = sender.send_push(to, subject, body, template_data)
-            else:
-                return NotificationResult(
-                    success=False,
-                    channel=channel,
-                    recipient=to,
-                    error=f"Unknown channel: {channel}",
-                )
-
-            if result:
-                self._circuit_breaker.record_success()
-                return NotificationResult(success=True, channel=channel, recipient=to)
-            self._circuit_breaker.record_failure()
+        sender = get_sender()
+        if channel == "email":
+            deliver = lambda: sender.send_email(to, subject, body)
+        elif channel == "sms":
+            deliver = lambda: sender.send_sms(to, body)
+        elif channel == "whatsapp":
+            deliver = lambda: sender.send_whatsapp(to, body)
+        elif channel == "push":
+            deliver = lambda: sender.send_push(to, subject, body, template_data)
+        else:
             return NotificationResult(
-                success=False, channel=channel, recipient=to, error="Delivery failed",
+                success=False,
+                channel=channel,
+                recipient=to,
+                error=f"Unknown channel: {channel}",
             )
-        except Exception as exc:
-            self._circuit_breaker.record_failure()
-            logger.error("[NOTIFICATION] %s delivery failed to %s: %s", channel, to, exc)
-            return NotificationResult(success=False, channel=channel, recipient=to, error=str(exc))
+
+        success, error = self._run_with_circuit(deliver)
+        if success:
+            return NotificationResult(success=True, channel=channel, recipient=to)
+        logger.error("[NOTIFICATION] %s delivery failed to %s: %s", channel, to, error)
+        return NotificationResult(
+            success=False,
+            channel=channel,
+            recipient=to,
+            error=error,
+        )
 
     def send_email(self, to: str, subject: str, body: str) -> NotificationResult:
         return self.send("email", to, subject=subject, body=body)
@@ -100,13 +103,12 @@ class NotificationService:
     def send_telegram(self, bot_token: str, chat_id: str, message: str) -> NotificationResult:
         from .telegram import send_telegram
 
-        result = send_telegram(bot_token, chat_id, message)
-        if result:
-            self._circuit_breaker.record_success()
-            return NotificationResult(success=True, channel="telegram", recipient=chat_id)
-        self._circuit_breaker.record_failure()
+        success, error = self._run_with_circuit(lambda: send_telegram(bot_token, chat_id, message))
         return NotificationResult(
-            success=False, channel="telegram", recipient=chat_id, error="Telegram delivery failed",
+            success=success,
+            channel="telegram",
+            recipient=chat_id,
+            error=error,
         )
 
     def send_template(
@@ -125,7 +127,10 @@ class NotificationService:
                 error=f"Template not found: {template_id}",
             )
         return self.send(
-            channel, to, subject=rendered.get("subject", ""), body=rendered.get("body", ""),
+            channel,
+            to,
+            subject=rendered.get("subject", ""),
+            body=rendered.get("body", ""),
         )
 
 
