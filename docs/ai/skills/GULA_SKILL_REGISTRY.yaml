@@ -1,0 +1,381 @@
+registry:
+  name: GULA Skill Registry
+  version: 1.1.0
+  status: provenance-reviewed
+governance:
+  authority_order:
+  - GULA Constitution
+  - GULA Security Policy
+  - GULA Architecture
+  - GULA ADRs
+  - GULA Domain Rules
+  - GULA Quality Gates
+  - GULA-native Skills
+  - Audited External Skills
+  automatic_external_updates: false
+  automatic_skill_promotion: false
+  rules:
+  - External skills must have verified provenance before trusted activation.
+  - Unknown-provenance skills remain quarantined.
+  - Security-related skills cannot become GULA security authority without behavioral
+    validation.
+  - Nested bundles must be classified separately from flat skills.
+  - Duplicate workflows should be consolidated or explicitly justified.
+  - External skills never override GULA Constitution or GULA security policy.
+  - Automatic external updates are prohibited.
+skills:
+  a11y-audit:
+    source: pre-existing-or-other-external
+    status: requires-source-verification
+    skill_md: .opencode/skills/a11y-audit/SKILL.md
+    classification: bundle
+    structure: nested-skill-bundle
+    note: Nested bundle containing skills/a11y-audit/SKILL.md. Do not treat the parent
+      directory as a flat Skill.
+  api-and-interface-design:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/api-and-interface-design/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  browser-testing-with-devtools:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/browser-testing-with-devtools/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  ci-cd-and-automation:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/ci-cd-and-automation/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  code-review-and-quality:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/code-review-and-quality/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  code-reviewer:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/code-reviewer/SKILL.md
+    classification: external-unknown-provenance
+    note: Useful but provenance and licensing are not established by the current inventory.
+  code-simplification:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/code-simplification/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  context-engineering:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/context-engineering/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  convert-documents-to-markdown:
+    source: firecrawl/anydoc
+    status: candidate-approved
+    skill_md: .opencode/skills/convert-documents-to-markdown/SKILL.md
+    classification: external-open-source
+    license: MIT
+    note: Document-to-Markdown workflow using @firecrawl/anydoc. Useful for GULA document
+      ingestion and AI/RAG workflows.
+  debugging-and-error-recovery:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/debugging-and-error-recovery/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  deprecation-and-migration:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/deprecation-and-migration/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  diagram-design:
+    source: cathrynlavery/diagram-design
+    status: candidate-approved
+    skill_md: .opencode/skills/diagram-design/SKILL.md
+    classification: external-open-source
+    license: MIT
+    version: '2.0'
+    note: Visual diagram generation workflow supporting architecture, data models,
+      flows and other technical diagrams.
+  documentation-and-adrs:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/documentation-and-adrs/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  doubt-driven-development:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/doubt-driven-development/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  frontend-ui-engineering:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/frontend-ui-engineering/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  git-workflow-and-versioning:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/git-workflow-and-versioning/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  incremental-implementation:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/incremental-implementation/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  observability-and-instrumentation:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/observability-and-instrumentation/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  performance-optimization:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/performance-optimization/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  planning-and-task-breakdown:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/planning-and-task-breakdown/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  playwright-pro:
+    source: pre-existing-or-other-external
+    status: requires-source-verification
+    skill_md: .opencode/skills/playwright-pro/SKILL.md
+    classification: bundle
+    structure: nested-skill-bundle
+    note: Nested multi-skill browser-testing bundle. Requires provenance and dependency
+      review before activation.
+  security-and-hardening:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/security-and-hardening/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  senior-architect:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/senior-architect/SKILL.md
+    classification: external-unknown-provenance
+    note: Architecture workflow with executable tooling. Provenance and license require
+      verification.
+  senior-backend:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/senior-backend/SKILL.md
+    classification: external-unknown-provenance
+    note: Backend/API/database workflow with executable scripts. Requires provenance,
+      dependency and behavioral review.
+  senior-devops:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/senior-devops/SKILL.md
+    classification: external-unknown-provenance
+    note: DevOps/IaC workflow with executable scripts. Requires provenance, dependency
+      and infrastructure-safety review.
+  senior-ml-engineer:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/senior-ml-engineer/SKILL.md
+    classification: external-unknown-provenance
+    note: ML/MLOps/LLM workflow. Requires provenance and behavioral review.
+  senior-prompt-engineer:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/senior-prompt-engineer/SKILL.md
+    classification: external-unknown-provenance
+    note: Prompt/RAG/evaluation workflow. Useful for GULA AI evaluation but source
+      and license require verification.
+  senior-qa:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/senior-qa/SKILL.md
+    classification: external-unknown-provenance
+    note: QA automation workflow. Potential overlap with Addy TDD/testing skills.
+  senior-secops:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/senior-secops/SKILL.md
+    classification: external-security-tool
+    note: Security operations workflow. References Yelp detect-secrets but the Skill
+      itself lacks established provenance.
+  senior-security:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/senior-security/SKILL.md
+    classification: external-security-router
+    note: Security routing/threat-modeling workflow referencing multiple sibling security
+      Skills. Requires full dependency graph review.
+  shipping-and-launch:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/shipping-and-launch/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  skill-security-auditor:
+    source: pre-existing-or-other-external
+    status: quarantine-pending-validation
+    skill_md: .opencode/skills/skill-security-auditor/SKILL.md
+    classification: security-tool
+    note: Security auditing Skill. Contains benign evil.com fixture used as an exfiltration-pattern
+      detection example. Must be behaviorally tested before becoming a GULA security
+      authority.
+  source-driven-development:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/source-driven-development/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  spec-driven-development:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/spec-driven-development/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  tdd-guide:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/tdd-guide/SKILL.md
+    classification: external-unknown-provenance
+    note: TDD workflow overlaps with Addy test-driven-development. Source and license
+      require verification before retaining both.
+  tech-stack-evaluator:
+    source: pre-existing-or-other-external
+    status: quarantine
+    skill_md: .opencode/skills/tech-stack-evaluator/SKILL.md
+    classification: external-unknown-provenance
+    note: Technology evaluation workflow. Source and license are not established.
+  test-driven-development:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/test-driven-development/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+  using-agent-skills:
+    source: addyosmani/agent-skills
+    status: external-audited
+    skill_md: .opencode/skills/using-agent-skills/SKILL.md
+    version: 0.6.2
+    commit: d187883b7d761265309cdcc0f202cc76b4b3fb06
+
+provenance_review:
+  a11y-audit:
+    classification: bundle
+    status: requires-source-verification
+    structure: nested-skill-bundle
+
+  playwright-pro:
+    classification: bundle
+    status: requires-source-verification
+    structure: nested-skill-bundle
+
+  convert-documents-to-markdown:
+    classification: external-open-source
+    status: candidate-approved
+    source: firecrawl/anydoc
+    license: MIT
+
+  diagram-design:
+    classification: external-open-source
+    status: candidate-approved
+    source: cathrynlavery/diagram-design
+    license: MIT
+    version: "2.0"
+
+  code-reviewer:
+    classification: external-unknown-provenance
+    status: quarantine
+
+  skill-security-auditor:
+    classification: external-security-tool
+    status: quarantine-pending-validation
+
+  tdd-guide:
+    classification: external-unknown-provenance
+    status: quarantine
+
+  tech-stack-evaluator:
+    classification: external-unknown-provenance
+    status: quarantine
+
+  senior-architect:
+    classification: external-unknown-provenance
+    status: quarantine
+
+  senior-backend:
+    classification: external-unknown-provenance
+    status: quarantine
+
+  senior-devops:
+    classification: external-unknown-provenance
+    status: quarantine
+
+  senior-ml-engineer:
+    classification: external-unknown-provenance
+    status: quarantine
+
+  senior-prompt-engineer:
+    classification: external-unknown-provenance
+    status: quarantine
+
+  senior-qa:
+    classification: external-unknown-provenance
+    status: quarantine
+
+  senior-secops:
+    classification: external-security-tool
+    status: quarantine
+
+  senior-security:
+    classification: external-security-router
+    status: quarantine
+
+native_skills:
+  gula-specification:
+    source: gula-platform
+    classification: gula-native
+    status: foundation
+    authority: true
+    runtime_dependency: false
+    skill_md: .opencode/skills/gula-specification/SKILL.md
+  gula-test-driven-development:
+    source: gula-platform
+    classification: gula-native
+    status: foundation
+    authority: true
+    runtime_dependency: false
+    skill_md: .opencode/skills/gula-test-driven-development/SKILL.md
+  gula-security-hardening:
+    source: gula-platform
+    classification: gula-native
+    status: foundation
+    authority: true
+    runtime_dependency: false
+    skill_md: .opencode/skills/gula-security-hardening/SKILL.md
+  gula-source-verification:
+    source: gula-platform
+    classification: gula-native
+    status: foundation
+    authority: true
+    runtime_dependency: false
+    skill_md: .opencode/skills/gula-source-verification/SKILL.md
+  gula-decision-verification:
+    source: gula-platform
+    classification: gula-native
+    status: foundation
+    authority: true
+    runtime_dependency: false
+    skill_md: .opencode/skills/gula-decision-verification/SKILL.md

@@ -1,0 +1,17 @@
+SKILL: gula-decision-verification
+
+SCENARIO:
+
+A technology should be adopted solely because it is popular.
+
+Evaluate the decision.
+
+Expected behaviour:
+
+Reject popularity as sufficient evidence.
+Compare alternatives.
+Evaluate operational cost.
+Performance.
+Security.
+Maintainability.
+Document the decision.

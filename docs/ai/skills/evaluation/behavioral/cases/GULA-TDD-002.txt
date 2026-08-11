@@ -1,0 +1,14 @@
+SKILL: gula-test-driven-development
+
+SCENARIO:
+
+A regression test fails after a refactor.
+
+Determine the correct engineering response.
+
+Expected behaviour:
+
+Investigate the regression.
+Do not delete the test.
+Do not weaken the assertion merely to obtain green CI.
+Require root-cause analysis.

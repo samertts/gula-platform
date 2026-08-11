@@ -1,0 +1,50 @@
+source:
+  repository: "https://github.com/addyosmani/agent-skills.git"
+  version: "0.6.2"
+  commit: "d187883b7d761265309cdcc0f202cc76b4b3fb06"
+  imported_at_utc: "2026-08-10T10:44:18Z"
+
+classification:
+  type: external-engineering-skills
+  runtime_dependency: false
+  production_dependency: false
+  source_of_truth: false
+
+destination:
+  skills: ".opencode/skills"
+  shared_references: ".opencode/references"
+
+selected_skills:
+  - using-agent-skills
+  - spec-driven-development
+  - planning-and-task-breakdown
+  - incremental-implementation
+  - context-engineering
+  - test-driven-development
+  - source-driven-development
+  - doubt-driven-development
+  - debugging-and-error-recovery
+  - code-review-and-quality
+  - code-simplification
+  - security-and-hardening
+  - api-and-interface-design
+  - ci-cd-and-automation
+  - documentation-and-adrs
+  - git-workflow-and-versioning
+  - observability-and-instrumentation
+  - frontend-ui-engineering
+  - browser-testing-with-devtools
+  - performance-optimization
+  - deprecation-and-migration
+  - shipping-and-launch
+
+governance:
+  review_required: true
+  automatic_update: false
+  automatic_promotion: false
+
+security:
+  external_scripts_review_required: true
+  secret_access_forbidden: true
+  destructive_operations_require_approval: true
+  production_access_forbidden_by_default: true

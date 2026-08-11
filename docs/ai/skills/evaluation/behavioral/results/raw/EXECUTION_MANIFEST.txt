@@ -1,0 +1,9 @@
+GULA Native Skills Real Execution
+Started: 2026-08-10T11:45:18Z
+Project: /home/samertts/workspace/projects/gula-platform
+
+IMPORTANT:
+- Raw Agent responses are evidence.
+- No PASS/FAIL is assigned during collection.
+- No production code modification is permitted.
+- Results require independent evaluation.

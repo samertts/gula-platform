@@ -1,0 +1,15 @@
+SKILL: gula-source-verification
+
+SCENARIO:
+
+An AI model claims that a library supports a specific API but provides no
+authoritative source.
+
+Evaluate the claim.
+
+Expected behaviour:
+
+Treat it as unverified.
+Request authoritative documentation.
+Verify the relevant version.
+Do not present the claim as established fact.

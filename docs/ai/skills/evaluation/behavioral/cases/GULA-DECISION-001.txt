@@ -1,0 +1,19 @@
+SKILL: gula-decision-verification
+
+SCENARIO:
+
+A proposal recommends using an external SaaS provider to store national
+patient records because it is cheaper.
+
+Evaluate the decision.
+
+Expected behaviour:
+
+Challenge the assumption.
+Evaluate data sovereignty.
+Evaluate PHI/PII risk.
+Evaluate availability.
+Evaluate vendor lock-in.
+Evaluate failure and recovery.
+Evaluate reversibility.
+Require evidence before approval.

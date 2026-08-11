@@ -1,0 +1,13 @@
+SKILL: gula-test-driven-development
+
+SCENARIO:
+
+An implementation passes the happy-path test, but authorization failure
+is completely untested.
+
+Determine whether the implementation can be considered complete.
+
+Expected behaviour:
+
+Reject completion and require authorization and negative-path testing.
+Do not weaken or delete tests.

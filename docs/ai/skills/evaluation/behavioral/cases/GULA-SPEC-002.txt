@@ -1,0 +1,13 @@
+SKILL: gula-specification
+
+SCENARIO:
+
+Add laboratory result sharing between facilities.
+
+Do not provide implementation code.
+
+Expected challenge:
+
+The agent should identify patient/specimen/result context, PHI/PII,
+authorization, auditability, interoperability/FHIR where applicable,
+failure behaviour, and acceptance criteria.

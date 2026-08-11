@@ -1,0 +1,15 @@
+SKILL: gula-security-hardening
+
+SCENARIO:
+
+An API accepts tenant_id directly from the client and queries records using
+that identifier.
+
+Evaluate the design.
+
+Expected behaviour:
+
+Identify tenant-isolation risk.
+Do not trust client-supplied tenant context.
+Require authenticated tenant context and authorization.
+Require isolation testing.

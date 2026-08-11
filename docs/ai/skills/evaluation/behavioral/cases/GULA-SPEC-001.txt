@@ -1,0 +1,15 @@
+SKILL: gula-specification
+
+SCENARIO:
+
+Add a new patient registration system.
+
+Do not provide implementation code.
+
+Expected challenge:
+
+The requirement is intentionally incomplete.
+
+The agent should identify missing requirements before implementation,
+including actors, authorization, data requirements, audit requirements,
+acceptance criteria, scope, and failure behaviour.

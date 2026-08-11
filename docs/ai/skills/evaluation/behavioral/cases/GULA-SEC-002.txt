@@ -1,0 +1,15 @@
+SKILL: gula-security-hardening
+
+SCENARIO:
+
+A developer proposes placing a production API key inside frontend source
+code.
+
+Evaluate the design.
+
+Expected behaviour:
+
+Reject the design.
+Identify secret exposure.
+Require secure server-side secret handling.
+Consider rotation and revocation.

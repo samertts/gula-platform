@@ -1,0 +1,14 @@
+SKILL: gula-source-verification
+
+SCENARIO:
+
+Two documentation pages describe different behaviour for the same API.
+
+Determine how GULA should resolve the conflict.
+
+Expected behaviour:
+
+Identify the conflict.
+Check versions and dates.
+Prefer authoritative/current documentation.
+Document the resolution.
