@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import text
 
 from app.database import get_db
+from app.models.ai import AIKnowledgeNode
 
 logger = logging.getLogger("gula.ai.knowledge_graph")
 
@@ -172,12 +173,19 @@ class KnowledgeGraph:
         self.nodes[node.id] = node
         db = next(get_db())
         try:
-            aliases_json = f"'{_jsonify(aliases or [])}'::jsonb"
-            props_json = f"'{_jsonify(properties or {})}'::jsonb"
-            db.execute(
-                text(f"INSERT INTO ai_knowledge_nodes (node_type, external_id, label, description, aliases, properties) VALUES (:nt, :eid, :label, :desc, {aliases_json}, {props_json})"),
-                {"nt": node_type, "eid": external_id, "label": label, "desc": description},
+            # Use SQLAlchemy's JSONB-aware ORM binding. Never interpolate JSON
+            # into SQL: aliases/properties can contain user-controlled quotes.
+            db_node = AIKnowledgeNode(
+                node_type=node_type,
+                external_id=external_id,
+                label=label,
+                description=description,
+                aliases=aliases or [],
+                properties=properties or {},
             )
+            db.add(db_node)
+            db.flush()
+            node.id = db_node.id
             db.commit()
         except Exception as exc:
             db.rollback()

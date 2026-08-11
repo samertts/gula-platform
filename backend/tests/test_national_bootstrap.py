@@ -235,10 +235,36 @@ class TestNationalHierarchy:
     def test_platform_facilities_seeded(self, db):
         from app.core.bootstrap.organizations import seed_organizations
         from app.core.bootstrap.facilities import seed_platform_facilities
-        from app.core.bootstrap.models import OrganizationDef
+        from app.core.bootstrap.models import (
+            OrganizationDef,
+            PLATFORM_DIRECTORATE_NAME_AR,
+            PLATFORM_DIRECTORATE_NAME_EN,
+            PLATFORM_HOSPITAL_NAME_AR,
+            PLATFORM_HOSPITAL_NAME_EN,
+            PLATFORM_ORG_NAME_AR,
+            PLATFORM_ORG_NAME_EN,
+        )
         seed_organizations([
-            OrganizationDef(org_id="pf-org", name_en="Org", name_ar="منظمة", org_type="organization"),
-            OrganizationDef(org_id="pf-dir", name_en="Dir", name_ar="مديرية", org_type="directorate", parent_org_id="pf-org"),
+            OrganizationDef(
+                org_id="pf-org",
+                name_en=PLATFORM_ORG_NAME_EN,
+                name_ar=PLATFORM_ORG_NAME_AR,
+                org_type="organization",
+            ),
+            OrganizationDef(
+                org_id="pf-dir",
+                name_en=PLATFORM_DIRECTORATE_NAME_EN,
+                name_ar=PLATFORM_DIRECTORATE_NAME_AR,
+                org_type="directorate",
+                parent_org_id="pf-org",
+            ),
+            OrganizationDef(
+                org_id="pf-hospital",
+                name_en=PLATFORM_HOSPITAL_NAME_EN,
+                name_ar=PLATFORM_HOSPITAL_NAME_AR,
+                org_type="hospital",
+                parent_org_id="pf-org",
+            ),
         ], db=db)
         assert seed_platform_facilities(db=db) > 0
 

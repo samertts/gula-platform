@@ -41,17 +41,19 @@ def _has_index(table: str, index: str) -> bool:
 
 def _enable_pgvector() -> None:
     conn = op.get_bind()
-    result = conn.execute(sa.text("SELECT extname FROM pg_extension WHERE extname = 'vector'")).fetchone()
-    if result is None:
-        try:
+    if conn.dialect.name != "postgresql":
+        return
+    try:
+        result = conn.execute(sa.text("SELECT extname FROM pg_extension WHERE extname = 'vector'")).fetchone()
+        if result is None:
             from sqlalchemy import create_engine as _ce
-            url = str(op.get_bind().engine.url)
+            url = str(conn.engine.url)
             _tmp = _ce(url).connect()
             _tmp.execution_options(isolation_level="AUTOCOMMIT")
             _tmp.execute(sa.text("CREATE EXTENSION IF NOT EXISTS vector"))
             _tmp.close()
-        except Exception:
-            pass
+    except Exception:
+        pass
 
 
 def upgrade() -> None:
@@ -66,10 +68,10 @@ def upgrade() -> None:
             sa.Column("content_id", sa.Integer(), nullable=True),
             sa.Column("content_hash", sa.String(64), nullable=False, index=True),
             sa.Column("text", sa.Text(), nullable=False),
-            sa.Column("embedding", postgresql.ARRAY(sa.Float()), nullable=True),
+            sa.Column("embedding", sa.JSON() if op.get_bind().dialect.name != "postgresql" else sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.ARRAY(sa.Float()), nullable=True),
             sa.Column("model", sa.String(128), nullable=False, server_default="gemini-embedding-exp-03-07"),
             sa.Column("dimensions", sa.Integer(), nullable=False, server_default="768"),
-            sa.Column("metadata", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+            sa.Column("metadata", sa.JSON() if op.get_bind().dialect.name != "postgresql" else sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'")),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("content_type", "content_id", "model", name="uq_ai_embedding_content"),
@@ -83,7 +85,7 @@ def upgrade() -> None:
             sa.Column("user_id", sa.Integer(), sa.ForeignKey("lab_users.id"), nullable=True, index=True),
             sa.Column("session_id", sa.String(128), nullable=False, index=True),
             sa.Column("title", sa.String(256), nullable=True),
-            sa.Column("metadata", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+            sa.Column("metadata", sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'")),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
             sa.PrimaryKeyConstraint("id"),
@@ -96,7 +98,7 @@ def upgrade() -> None:
             sa.Column("conversation_id", sa.Integer(), sa.ForeignKey("ai_conversations.id"), nullable=False, index=True),
             sa.Column("role", sa.String(32), nullable=False),
             sa.Column("content", sa.Text(), nullable=False),
-            sa.Column("metadata", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+            sa.Column("metadata", sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'")),
             sa.Column("token_count", sa.Integer(), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
             sa.PrimaryKeyConstraint("id"),
@@ -112,13 +114,13 @@ def upgrade() -> None:
             sa.Column("agent_name", sa.String(128), nullable=False),
             sa.Column("task", sa.Text(), nullable=False),
             sa.Column("status", sa.String(32), nullable=False, server_default="pending"),
-            sa.Column("result", postgresql.JSONB(), nullable=True),
+            sa.Column("result", sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=True),
             sa.Column("error", sa.Text(), nullable=True),
             sa.Column("duration_ms", sa.Float(), nullable=True),
             sa.Column("token_count", sa.Integer(), nullable=True),
             sa.Column("cost_usd", sa.Float(), nullable=True),
             sa.Column("approval_id", sa.String(64), nullable=True),
-            sa.Column("metadata", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+            sa.Column("metadata", sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'")),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
             sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
             sa.PrimaryKeyConstraint("id"),
@@ -132,8 +134,8 @@ def upgrade() -> None:
             sa.Column("external_id", sa.String(256), nullable=True),
             sa.Column("label", sa.String(512), nullable=False),
             sa.Column("description", sa.Text(), nullable=True),
-            sa.Column("aliases", postgresql.JSONB(), nullable=False, server_default=sa.text("'[]'::jsonb")),
-            sa.Column("properties", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+            sa.Column("aliases", sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=False, server_default=sa.text("'[]'")),
+            sa.Column("properties", sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'")),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("node_type", "external_id", name="uq_ai_knowledge_node"),
@@ -147,7 +149,7 @@ def upgrade() -> None:
             sa.Column("target_id", sa.Integer(), sa.ForeignKey("ai_knowledge_nodes.id"), nullable=False, index=True),
             sa.Column("relationship", sa.String(128), nullable=False, index=True),
             sa.Column("weight", sa.Float(), nullable=False, server_default="1.0"),
-            sa.Column("properties", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+            sa.Column("properties", sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'")),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),
             sa.PrimaryKeyConstraint("id"),
         )
@@ -160,8 +162,8 @@ def upgrade() -> None:
             sa.Column("provider", sa.String(64), nullable=False),
             sa.Column("model_type", sa.String(64), nullable=False),
             sa.Column("version", sa.String(32), nullable=False, server_default="1.0"),
-            sa.Column("capabilities", postgresql.JSONB(), nullable=False, server_default=sa.text("'[]'::jsonb")),
-            sa.Column("config", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+            sa.Column("capabilities", sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=False, server_default=sa.text("'[]'")),
+            sa.Column("config", sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'")),
             sa.Column("is_active", sa.Integer(), nullable=False, server_default="1"),
             sa.Column("max_tokens", sa.Integer(), nullable=True),
             sa.Column("cost_per_1k_input", sa.Float(), nullable=True),
@@ -180,7 +182,7 @@ def upgrade() -> None:
             sa.Column("prompt", sa.Text(), nullable=False),
             sa.Column("response", sa.Text(), nullable=False),
             sa.Column("score", sa.Float(), nullable=True),
-            sa.Column("metrics", postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'::jsonb")),
+            sa.Column("metrics", sa.JSON() if op.get_bind().dialect.name != "postgresql" else postgresql.JSONB(), nullable=False, server_default=sa.text("'{}'")),
             sa.Column("model", sa.String(128), nullable=False),
             sa.Column("duration_ms", sa.Float(), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.text("now()")),

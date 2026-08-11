@@ -106,15 +106,14 @@ class TestCorsTraceHeaderExposure:
     """The frontend needs to read X-Request-ID for correlation. CORS
     ``expose_headers`` must list the trace + version headers."""
 
-    def test_main_module_exposes_trace_headers(self):
-        """The CORS middleware in app/main.py must list expose_headers."""
+    def test_factory_exposes_trace_headers(self):
+        """The CORS middleware owner must list all trace/version headers."""
         import pathlib
-        main_path = pathlib.Path(__file__).parent.parent / "app" / "main.py"
-        src = main_path.read_text()
-        # Must list the three observability headers in expose_headers
+        factory_path = pathlib.Path(__file__).parent.parent / "app" / "factory.py"
+        src = factory_path.read_text()
         for hdr in ("X-Request-ID", "X-Response-Time", "X-API-Version"):
             assert hdr in src, (
-                f"main.py CORS expose_headers missing {hdr!r} — frontend "
+                f"factory.py CORS expose_headers missing {hdr!r} — frontend "
                 "callers will be unable to read this trace header."
             )
 

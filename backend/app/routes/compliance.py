@@ -569,13 +569,14 @@ def get_dhis2_aggregate(
     # Aggregate test counts by type (no patient data)
     test_counts = db.execute(
         text("""
-        SELECT test_name, COUNT(*) as count,
-               SUM(CASE WHEN flag IN ('high', 'critical_high') THEN 1 ELSE 0 END) as abnormal_high,
-               SUM(CASE WHEN flag IN ('low', 'critical_low') THEN 1 ELSE 0 END) as abnormal_low,
-               SUM(CASE WHEN flag = 'normal' OR flag IS NULL THEN 1 ELSE 0 END) as normal
+        SELECT lab_results.test_name, COUNT(*) as count,
+               SUM(CASE WHEN lab_results.flag IN ('high', 'critical_high') THEN 1 ELSE 0 END) as abnormal_high,
+               SUM(CASE WHEN lab_results.flag IN ('low', 'critical_low') THEN 1 ELSE 0 END) as abnormal_low,
+               SUM(CASE WHEN lab_results.flag = 'normal' OR lab_results.flag IS NULL THEN 1 ELSE 0 END) as normal
         FROM lab_results
-        WHERE lab_id = :lab_id
-        GROUP BY test_name
+        JOIN lab_orders ON lab_orders.id = lab_results.order_id
+        WHERE lab_orders.lab_id = :lab_id
+        GROUP BY lab_results.test_name
         ORDER BY count DESC
         LIMIT 50
     """),

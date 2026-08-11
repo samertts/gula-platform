@@ -5,6 +5,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
+from app.models.organization import Organization
 
 from .config import load_bootstrap_config
 from .demo_data import seed_demo_data
@@ -57,10 +58,16 @@ def run_bootstrap(db: Session | None = None) -> dict[str, int]:
         logger.info("Step 3/10: Roles — %d created", role_count)
 
         if cfg.enable_national_bootstrap:
-            ministry_ok = seed_ministry_of_health(db=db)
-            counts["ministry"] = 1 if ministry_ok else 0
-            results["ministry"] = ministry_ok
-            logger.info("Step 4/10: Ministry of Health — %s", "OK" if ministry_ok else "failed")
+            ministry_created = seed_ministry_of_health(db=db)
+            ministry_exists = db.query(Organization).filter(
+                Organization.org_id == "org-iraq-moh",
+            ).first() is not None
+            counts["ministry"] = 1 if ministry_created else 0
+            results["ministry"] = ministry_exists
+            logger.info(
+                "Step 4/10: Ministry of Health — %s",
+                "OK" if ministry_exists else "failed",
+            )
 
             dir_count = seed_health_directorates(db=db)
             counts["directorates"] = dir_count

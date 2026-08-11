@@ -3,15 +3,16 @@ from __future__ import annotations
 import hashlib
 import logging
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from uuid import UUID
 
+from app._compat import UTC
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.lab import Lab
 from app.models.lab_order import LabOrder
-from app.models.lab_result import LabResult
+from app.models.lab_result import LabResult, generate_token, hash_token
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
 from app.models.sample import Sample
@@ -96,13 +97,14 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
             logger.info("Demo data appears to already exist (%d patients) — skipping", existing_patients)
             return counts
 
-        for pd in DEMO_PATIENTS:
+        for index, pd in enumerate(DEMO_PATIENTS, start=1):
             patient = Patient(
                 lab_id=lab.id,
-                name=pd["name"],
+                health_id=f"DEMO-{index:04d}",
+                full_name=pd["name"],
                 phone=pd["phone"],
-                gender=pd["gender"],
-                age=pd["age"],
+                gender="M" if pd["gender"] == "male" else "F",
+                birth_date=date(datetime.now().year - pd["age"], 1, 1),
                 national_id_hash=None,
             )
             db.add(patient)
@@ -141,14 +143,14 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
                 counts["doctors"] += 1
 
         patients = db.query(Patient).filter(Patient.lab_id == lab.id).all()
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
 
         for i, patient in enumerate(patients):
             test = TEST_TYPES_POOL[i % len(TEST_TYPES_POOL)]
-            order_ref = f"DEMO-ORD-{i+1:04d}"
-
             existing_order = db.query(LabOrder).filter(
-                LabOrder.order_id == order_ref,
+                LabOrder.lab_id == lab.id,
+                LabOrder.patient_id == patient.id,
+                LabOrder.doctor_name == "GULA Demo System",
             ).first()
             if existing_order:
                 continue
@@ -156,24 +158,20 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
             order = LabOrder(
                 lab_id=lab.id,
                 patient_id=patient.id,
-                order_id=order_ref,
-                test_code=test["code"],
-                test_name=test["name"],
+                doctor_name="GULA Demo System",
                 status="completed",
                 created_at=now - timedelta(days=i * 2),
-                collection_date=now - timedelta(days=i * 2),
             )
             db.add(order)
             db.flush()
             counts["orders"] += 1
 
             sample = Sample(
-                lab_id=lab.id,
                 order_id=order.id,
-                patient_id=patient.id,
                 sample_type="blood",
-                status="collected",
-                collected_at=now - timedelta(days=i * 2),
+                status="analyzed",
+                collected_by="demo_system",
+                collection_time=now - timedelta(days=i * 2),
             )
             db.add(sample)
             db.flush()
@@ -183,19 +181,18 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
             result_value = round(
                 random.uniform(test["low"] * 0.8, test["high"] * 1.2), 1,
             )
+            token = generate_token()
             result = LabResult(
-                lab_id=lab.id,
                 order_id=order.id,
-                patient_id=patient.id,
-                test_code=test["code"],
                 test_name=test["name"],
-                result=str(result_value),
+                value=result_value,
                 unit=test["unit"],
                 normal_range_low=test["low"],
                 normal_range_high=test["high"],
-                status="verified",
-                verified_by="demo_system",
-                verified_at=now - timedelta(days=i * 2, hours=-2),
+                flag="normal" if test["low"] <= result_value <= test["high"] else "H",
+                token=token,
+                token_hash=hash_token(token),
+                created_at=now - timedelta(days=i * 2, hours=-2),
             )
             db.add(result)
             counts["results"] += 1

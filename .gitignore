@@ -27,6 +27,9 @@ logs/
 # Data
 data/db/
 *.sqlite3
+/backend.pid
+/backend/*.db
+/backend/*.db-*
 
 # Reports
 reports/

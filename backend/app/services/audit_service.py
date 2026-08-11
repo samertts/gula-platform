@@ -45,6 +45,23 @@ _ANCHOR_HMAC_KEY_PREV = os.getenv("AUDIT_ANCHOR_KEY_PREV", "").encode("utf-8")
 _KEY_TAG = f"v{_ANCHOR_KEY_VERSION}"
 
 
+def _canonical_audit_timestamp(value: datetime | None) -> str | None:
+    """Return a dialect-independent UTC timestamp for chain hashing.
+
+    PostgreSQL preserves timezone information while SQLite may return a naive
+    datetime for DateTime(timezone=True). Treating a naive persisted value as
+    UTC makes write-time and verification-time hashes identical across both
+    supported dialects without changing the stored schema.
+    """
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=UTC)
+    else:
+        value = value.astimezone(UTC)
+    return value.isoformat(timespec="microseconds")
+
+
 def _current_anchor_file() -> Path:
     month_tag = datetime.now(UTC).strftime("%Y-%m")
     return _ANCHOR_DIR / f"audit_anchors_{month_tag}.log"
@@ -80,7 +97,7 @@ def _compute_chain_hash(prev_hash: str, entry: AuditLog) -> str:
         "resource_id": entry.resource_id,
         "details": entry.details,
         "ip_address": entry.ip_address,
-        "created_at": entry.created_at.isoformat() if entry.created_at else None,
+        "created_at": _canonical_audit_timestamp(entry.created_at),
     }
     payload = prev_hash + json.dumps(record, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()

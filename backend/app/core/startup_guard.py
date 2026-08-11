@@ -22,6 +22,7 @@ Hybrid Readiness (is_system_ready):
 
 import asyncio
 import logging
+import os
 import time
 
 logger = logging.getLogger("gula.startup")
@@ -184,6 +185,7 @@ async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
     """
     import os
 
+    from ..config import ENV
     from ..database import _DB_ACTION_MAP, check_db_connection_detail
 
     db_url = os.getenv("DATABASE_URL", "")
@@ -193,7 +195,9 @@ async def wait_for_db(max_retries: int = 15, initial_delay: int = 5) -> bool:
     host = parsed.hostname or "unknown"
     port = parsed.port or 5432
 
-    await asyncio.sleep(initial_delay)
+    # Local/demo databases are already provisioned by the launcher; avoid the
+    # production boot delay while retaining exponential retries on failure.
+    await asyncio.sleep(initial_delay if ENV == "production" else 0)
 
     for attempt in range(max_retries):
         status, detail = check_db_connection_detail()
@@ -255,9 +259,14 @@ async def check_redis(max_retries: int = 5, delay: int = 2) -> None:
     """
     import asyncio
 
-    from ..config import REDIS_URL
+    from ..config import ENV, REDIS_URL
+    degraded_allowed = ENV in ("demo", "dev", "test") or os.getenv(
+        "ALLOW_DEGRADED_REDIS", "false",
+    ).lower() == "true"
+    effective_retries = 1 if degraded_allowed else max_retries
+    effective_delay = 0 if degraded_allowed else delay
 
-    for attempt in range(max_retries):
+    for attempt in range(effective_retries):
         try:
             import redis as _redis_check
             r = _redis_check.from_url(REDIS_URL, socket_timeout=2, decode_responses=True)
@@ -268,14 +277,21 @@ async def check_redis(max_retries: int = 5, delay: int = 2) -> None:
         except Exception as exc:
             logger.warning(
                 "[STARTUP GUARD] Redis not ready (attempt %d/%d) — %s — retrying in %ds",
-                attempt + 1, max_retries, exc, delay,
+                attempt + 1, effective_retries, exc, effective_delay,
             )
-        await asyncio.sleep(delay)
+        if effective_delay:
+            await asyncio.sleep(effective_delay)
+
+    if degraded_allowed:
+        logger.warning(
+            "[STARTUP GUARD] Redis unreachable after %d attempts, but ENV=%s permits fallback to in-memory cache.",
+            effective_retries, ENV,
+        )
+        return
 
     raise RuntimeError(
         "[STARTUP GUARD] Redis unreachable after %d attempts. "
-        "Check REDIS_URL / REDIS_PASSWORD and redis container status. "
-        "Without Redis, token blacklisting and rate limiting are per-worker only.",
+        "Check REDIS_URL / REDIS_PASSWORD and redis container status.",
     )
 
 

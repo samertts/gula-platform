@@ -385,3 +385,17 @@ class TestInputValidation:
 if __name__ == "__main__":
     import pytest
     pytest.main([__file__, "-v"])
+
+
+class TestSecurityHeaders:
+    """Security headers are mandatory on every API response."""
+
+    def test_required_headers_are_present(self, client):
+        response = client.get("/health")
+        assert response.status_code == 200
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert response.headers["X-Frame-Options"] == "DENY"
+        assert response.headers["Cross-Origin-Opener-Policy"] == "same-origin"
+        assert response.headers["Cross-Origin-Resource-Policy"] == "same-site"
+        assert "payment=()" in response.headers["Permissions-Policy"]
+        assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]

@@ -96,3 +96,32 @@
 [1]: https://github.com/samertts/gula-platform "مستودع GULA Platform على GitHub"
 [2]: https://www.gula-platform.org/ "الموقع العام لمنصة GULA"
 [3]: https://github.com/advisories/GHSA-qwww-vcr4-c8h2 "React Router RSC Mode CSRF Bypass advisory"
+
+
+## حالة GitHub Actions بعد فتح Pull Request
+
+أنشئ Pull Request رقم [115](https://github.com/samertts/gula-platform/pull/115) للفرع الأساسي من الإصلاحات. نجح النشر التجريبي وFormatting وCodeQL لبعض اللغات، لكن ظهرت فحوص فاشلة كانت موجودة في workflows نفسها: مرجع `subosito/flutter-action@v3` غير موجود، وقائمة `deny-licenses` تحتوي أسماء غير مدعومة، وPWA كان يرفع `frontend-v2/build` رغم أن المشروع المبني هو `frontend-v3/dist`، وPlaywright كان ينتظر المنفذ 5173 بينما CI يشغّل preview على 4173، وCodeQL كان يحاول بناء Swift دون Xcode project، وconstitution workflow كان يحتوي Python inline غير مزاح المسافات.
+
+تم إصلاح هذه النقاط محليًا في commitين غير مدفوعين (`c6f7ca75` و`2de4932e`) وحُفظت الرقعة في `.audit/ci-repair.patch`. رفض GitHub دفع التغيير لأن رمز التكامل لا يملك صلاحية `workflows`، لذلك لا أدعي أن هذه الإصلاحات الآلية موجودة على PR البعيد. يمكن لمالك المستودع تطبيق الرقعة عبر `git am .audit/ci-repair.patch` أو منح صلاحية workflows ثم الدفع.
+
+### وضع العرض التجريبي والتشغيل
+
+يوفر النظام نقطة نهاية مخصصة للدخول التجريبي عبر `POST /demo/access` والتي تمنح جلسة تجريبية آمنة وعالية العزل تحت علامة `demo_mode=true`، مما يتيح للزوار والمستعرضين تصفح كافة واجهات المنصة واستكشاف شاشاتها دون التعرض لبيانات الإنتاج الحقيقية أو تعديل سجلاتها.
+
+وقد جرى ضبط حراس الإقلاع (`Startup Guard`) لمعالجة حالات تباين الاتصال بـ Redis واعتماد وضع الاحتياط الداخلي في بيئات التطوير والعرض (`demo`, `dev`, `test`)، لضمان استقرار الإقلاع الفوري وإرجاع حالة الجاهزية (`{"status": "ready"}`) عبر نقاط الفحص، إلى جانب مطابقة عقود واجهات الـ API مع تطبيقات سطح المكتب (EXE) والهواتف الذكية (Android) والويب لضمان تكامل المنصة عبر مختلف المنصات.
+
+
+## تحديث الجولة الأمنية والأدائية — 11 أغسطس 2026
+
+أُغلقت في هذه الجولة عيوب تشغيلية كانت تمنع الاعتماد العملي لبعض المسارات. أصبح استعلام DHIS2 معزولاً حسب المختبر عبر العلاقة الصحيحة بين `lab_results` و`lab_orders`، وأصبح seed الخاص بالعرض التجريبي متوافقاً مع نماذج `Patient` و`LabOrder` و`Sample` و`LabResult` الحالية وقابلاً للتكرار. كما أُصلح seed الاشتراكات المجاني الذي كان يستخدم مقارنة Python (`is None`) بدلاً من تعبير SQLAlchemy، وصُححت semantics عدّ وزارة الصحة في bootstrap حتى لا يُحسب السجل الموجود كإنشاء جديد.
+
+| الضابط | النتيجة المثبتة | القيد المتبقي |
+|---|---|---|
+| Startup Guard | fallback Redis سريع ومحصور في `demo/dev/test`، بينما الإنتاج يرفض Redis غير المتاح؛ اختبارات السياسة ناجحة | يلزم تمرين outage على نشر PostgreSQL/Redis حقيقي |
+| Audit chain | تطبيع timestamp إلى UTC ISO مع microseconds، واختبار تطابق naive/aware عبر المحركات | يلزم restore/verify على PostgreSQL قبل شهادة الإنتاج |
+| Security headers | إضافة `Cross-Origin-Resource-Policy: same-site` ومنع `payment=()`، مع اختبار response headers | يلزم HTTPS/CSP smoke على النطاق المنشور |
+| Session security | default access token أصبح 15 دقيقة وrefresh token 7 أيام؛ Demo cookies ظهرت `HttpOnly`, `Secure`, `SameSite=Strict` | القيم الصريحة في أسرار النشر يجب مراجعتها قبل الإصدار |
+| Liveness/performance | `/health` أصبح liveness بلا اتصال DB؛ `WEB_CONCURRENCY` يتكيف مع SQLite/PostgreSQL؛ smoke النهائي 120/120 بلا أخطاء | القياس المحلي SQLite، p95≈918ms عند concurrency=20، ولا يمثل PostgreSQL/Redis الإنتاجيين |
+| Quality gates | Backend: 2286 اختباراً ناجحاً و251 تحذيراً غير حاجز؛ Frontend lint/typecheck/test/build ناجحة؛ migration fresh SQLite وصل إلى head | لا توجد unit tests فعلية للواجهة، ولا native Android/Windows build في هذه البيئة |
+
+تظل هذه النتائج **دليلاً تقنياً محلياً وليست تصريح جاهزية إنتاجية أو امتثالاً سريرياً أو قانونياً**. قبل فتح الخدمة العامة، يجب تنفيذ ترقية/استعادة على PostgreSQL، اختبار Redis المشترك متعدد العمال، load/soak على بنية مماثلة للإنتاج، وتمرين backup/restore، ثم بناء Android وWindows EXE في CI أو بيئة native معتمدة.
