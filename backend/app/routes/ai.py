@@ -335,8 +335,8 @@ def analyze_order(
 
 
 @router.get("/operations")
-def list_operations():
-    """List all sandbox-whitelisted operations."""
+def list_operations(current_user=Depends(require_permission("system:admin"))):
+    """List all sandbox-whitelisted operations (platform admins only)."""
     return {
         "whitelisted_operations": AISandbox.registered_operations(),
         "note": "Only these operations can be executed by AI after human approval.",
@@ -344,56 +344,38 @@ def list_operations():
 
 
 @router.get("/providers", summary="حالة مزودي الذكاء الاصطناعي")
-async def list_ai_providers():
-    """Return which AI providers are configured and their reachability status.
-    Useful for operators to verify the fallback chain before going live.
-    """
-    statuses = []
+def list_ai_providers(current_user=Depends(require_permission("system:admin"))):
+    """Return which AI providers are configured (authenticated AI users only).
 
-    # Ollama — test by calling /api/tags (lightweight list-models endpoint)
-    ollama_ok = False
-    ollama_models: list[str] = []
-    try:
-        async with httpx.AsyncClient(timeout=3) as client:
-            r = await client.get(f"{_OLLAMA_BASE_URL}/api/tags")
-            if r.status_code == 200:
-                ollama_ok = True
-                ollama_models = [m["name"] for m in r.json().get("models", [])]
-    except Exception:
-        pass
-    statuses.append(
+    Operational note (security): provider *reachability* is no longer probed
+    here — doing so leaked internal base URLs and model inventory to anyone who
+    could reach the endpoint. Status is derived from configuration only; the
+    fallback chain is exercised lazily during real inference calls.
+    """
+    gemini_info = _google_ai.provider_info()
+    statuses = [
         {
             "name": "ollama",
             "type": "local",
-            "configured": True,
-            "reachable": ollama_ok,
+            "configured": bool(_OLLAMA_BASE_URL),
+            "reachable": None,
             "model": _OLLAMA_CLINICAL_MODEL,
-            "base_url": _OLLAMA_BASE_URL,
-            "available_models": ollama_models,
-            "cost": "free (local)",
         },
-    )
-
-    # Gemini — via google_ai gateway (SDK when available, HTTP fallback)
-    _gemini_info = _google_ai.provider_info()
-    statuses.append(
         {
-            **_gemini_info,
-            "reachable": None,  # not probed (expensive to test)
+            "name": "gemini",
+            "type": "cloud",
+            "configured": bool(gemini_info.get("configured")),
+            "reachable": None,
+            "model": gemini_info.get("clinical_model"),
         },
-    )
-
-    # Groq
-    statuses.append(
         {
             "name": "groq",
             "type": "cloud",
             "configured": bool(_GROQ_KEY),
             "reachable": None,
             "model": "llama-3.1-8b-instant",
-            "cost": "free tier (30 req/min)",
         },
-    )
+    ]
 
     active = next(
         (p["name"] for p in statuses if p.get("configured") and p.get("reachable") is not False),
