@@ -1,6 +1,12 @@
 # GULA Citizen C2 — Relationship Administration Workflow
 
-**الحالة:** Implemented on the Wave 3 review branch; no production relationship creation is performed.
+**الحالة:** Implemented and pushed on the Wave 3 review branch; no production relationship creation is performed.
+
+**Implementation commit:** `3f716aea7ac6158418903ebab897d438a7cfb068`
+
+**Remote branch:** `wave3-identity-dependency-hardening-20260811`
+
+**Evidence:** C1/C2 targeted tests `12 passed`; Backend full suite `2305 passed, 251 warnings`; C2 migration fresh upgrade and downgrade/re-upgrade both passed.
 
 ## Contract
 
