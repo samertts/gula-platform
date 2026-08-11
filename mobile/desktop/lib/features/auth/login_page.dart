@@ -23,6 +23,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   bool _obscurePassword = true;
   bool _rememberMe = false;
   bool _isLoading = false;
+  bool _isDemoLoading = false;
 
   @override
   void dispose() {
@@ -61,6 +62,26 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleDemo() async {
+    setState(() => _isDemoLoading = true);
+    try {
+      final authProvider = ref.read(authProviderProvider);
+      await authProvider.startDemo();
+      if (mounted) context.go('/dashboard');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Demo mode unavailable: ${e.toString().replaceAll('Exception: ', '')}'),
+            backgroundColor: AppColors.warning500,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDemoLoading = false);
     }
   }
 
@@ -166,6 +187,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     isLoading: _isLoading,
                     onPressed: _handleLogin,
                     height: AppDimensions.buttonHeightLg,
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: _isDemoLoading || _isLoading ? null : _handleDemo,
+                    icon: const Icon(Icons.shield_outlined),
+                    label: Text(_isDemoLoading ? 'Opening isolated demo...' : 'View isolated demo'),
+                  ),
+                  const Text(
+                    'Synthetic data only; no production access.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
               ),

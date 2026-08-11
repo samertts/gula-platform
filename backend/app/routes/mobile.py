@@ -15,13 +15,14 @@ from app._compat import UTC
 from ..config import (
     APP_NAME,
     APP_VERSION,
-    IS_PRODUCTION,
     JWT_EXPIRE_HOURS,
     REFRESH_TOKEN_EXPIRE_DAYS,
+    USE_SECURE_COOKIES,
 )
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
+from ..models.user import User
 from ..security.auth import (
     build_token_payload,
     create_refresh_token,
@@ -79,27 +80,35 @@ def refresh_access_token(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
-    user = (
+    lab_user = (
         db.query(LabUser)
-        .filter(
-            LabUser.id == user_id,
-            LabUser.is_active,
-        )
+        .filter(LabUser.id == user_id, LabUser.is_active)
         .first()
     )
+    user = lab_user
+    if user is None:
+        user = (
+            db.query(User)
+            .filter(User.id == user_id, User.is_active, User.is_verified)
+            .first()
+        )
 
     if not user:
-        raise HTTPException(status_code=401, detail="User not found or deactivated")
+        raise HTTPException(status_code=401, detail="User not found, deactivated, or unverified")
 
-    # Verify lab still active
-    if user.role != "master_admin":
+    # Verify lab still active for staff accounts only.
+    if isinstance(user, LabUser) and user.role != "master_admin":
         lab = db.query(Lab).filter(Lab.id == user.lab_id, Lab.is_active).first()
         if not lab:
             raise HTTPException(status_code=403, detail="Laboratory account deactivated")
 
     # perm_version check — reject refresh tokens that pre-date a role change
     token_perm_ver = int(payload.get("perm_ver", 1))
-    authoritative_ver = get_perm_version(user.id, user.perm_version or 1)
+    authoritative_ver = get_perm_version(
+        user.id,
+        user.perm_version or 1,
+        account_kind="user" if isinstance(user, User) else "lab",
+    )
     if token_perm_ver != authoritative_ver:
         raise HTTPException(status_code=401, detail="Permissions updated — please log in again")
 
@@ -107,7 +116,16 @@ def refresh_access_token(
     # This ordering prevents a lost-response scenario where the client retries
     # with the old token and finds it already revoked, forcing a full re-login.
     # A short grace period (30 s) allows in-flight retries to succeed.
-    base_payload = build_token_payload(user)
+    base_payload = (
+        build_token_payload(user)
+        if isinstance(user, LabUser)
+        else {
+            "user_id": user.id,
+            "lab_id": user.lab_id,
+            "role": user.role,
+            "perm_ver": user.perm_version or 1,
+        }
+    )
     new_access_token = create_token(base_payload)
     new_refresh_token = create_refresh_token(base_payload)
 
@@ -137,7 +155,7 @@ def refresh_access_token(
     db.commit()
 
     # Set updated httpOnly cookies for web clients
-    cookie_kwargs = {"httponly": True, "samesite": "strict", "secure": IS_PRODUCTION}
+    cookie_kwargs = {"httponly": True, "samesite": "strict", "secure": USE_SECURE_COOKIES}
     response.set_cookie(
         key="access_token",
         value=new_access_token,
@@ -154,9 +172,11 @@ def refresh_access_token(
     )
 
     return {
+        "access_token": new_access_token,
         "token": new_access_token,
         "refresh_token": new_refresh_token,
         "token_type": "Bearer",
+        "expires_in": JWT_EXPIRE_HOURS * 3600,
     }
 
 

@@ -4,9 +4,11 @@ import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
 import { LoadingSpinner } from "@/components/shared/PageComponents";
 import { RoleGuard } from "@/components/auth/RoleGuard";
+import { useAuth } from "@/contexts/AuthContext";
 import type { UserRole } from "@/types";
 
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then(m => ({ default: m.RegisterPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const PatientsPage = lazy(() => import("@/pages/patients/PatientsPage").then(m => ({ default: m.PatientsPage })));
 const OrdersPage = lazy(() => import("@/pages/orders/OrdersPage").then(m => ({ default: m.OrdersPage })));
@@ -83,8 +85,9 @@ const PlatformPageLazy = lazy(() => import("@/pages/platform/PlatformPage"));
 const PublicHealthApiPageLazy = lazy(() => import("@/pages/public-health/PublicHealthApiPage"));
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const token = localStorage.getItem("access_token");
-  if (!token) return <Navigate to="/login" replace />;
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return <LoadingSpinner />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
@@ -104,6 +107,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <Navigate to="/login" replace /> },
       { path: "login", element: <LazyPage><LoginPage /></LazyPage> },
+      { path: "register", element: <LazyPage><RegisterPage /></LazyPage> },
     ],
   },
   {

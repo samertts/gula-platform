@@ -22,11 +22,12 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  token: string;
+  token?: string;
   access_token?: string;
-  refresh_token: string;
-  token_type: string;
+  refresh_token?: string;
+  token_type?: string;
   user: UserInfo;
+  demo_mode?: boolean;
 }
 
 export interface UserInfo {
@@ -36,6 +37,7 @@ export interface UserInfo {
   role: string;
   lab_id: number | null;
   lab_name: string | null;
+  is_verified?: boolean;
 }
 
 export interface JwtPayload {

@@ -36,7 +36,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app._compat import UTC
 
-from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS
+from ..config import JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS, USE_SECURE_COOKIES
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_order import LabOrder
@@ -95,6 +95,7 @@ def _current_citizen(request: Request, db: Session) -> User:
             User.id == payload["user_id"],
             User.role == "citizen",
             User.is_active,
+            User.is_verified,
         )
         .first()
     )
@@ -156,6 +157,7 @@ def citizen_login(
                 User.email == identifier,
                 User.role == "citizen",
                 User.is_active,
+                User.is_verified,
             )
             .first()
         )
@@ -175,6 +177,7 @@ def citizen_login(
                 else User.phone == phone_digits,
                 User.role == "citizen",
                 User.is_active,
+                User.is_verified,
             )
             .first()
         )
@@ -222,7 +225,7 @@ def citizen_login(
     )
     db.commit()
 
-    cookie_kwargs = {"httponly": True, "samesite": "strict", "secure": IS_PRODUCTION}
+    cookie_kwargs = {"httponly": True, "samesite": "strict", "secure": USE_SECURE_COOKIES}
     response.set_cookie(
         "access_token", access_token, max_age=JWT_EXPIRE_MINUTES * 60, path="/", **cookie_kwargs,
     )

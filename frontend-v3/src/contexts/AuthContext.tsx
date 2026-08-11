@@ -6,7 +6,9 @@ interface AuthContextType {
   user: UserInfo | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  demoMode: boolean;
   login: (data: LoginRequest) => Promise<void>;
+  startDemo: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -15,41 +17,69 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [demoMode, setDemoMode] = useState(false);
 
   useEffect(() => {
-    const stored = localStorage.getItem("user");
-    if (stored) {
+    let mounted = true;
+    const restoreSession = async () => {
       try {
-        setUser(JSON.parse(stored));
+        const session = await authApi.session();
+        if (mounted) {
+          setUser(session.user);
+          setDemoMode(session.demo_mode);
+        }
       } catch {
-        localStorage.removeItem("user");
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+
+    const handleSessionExpired = () => {
+      if (mounted) setUser(null);
+    };
+
+    window.addEventListener("gula:session-expired", handleSessionExpired);
+    void restoreSession();
+    return () => {
+      mounted = false;
+      window.removeEventListener("gula:session-expired", handleSessionExpired);
+    };
   }, []);
 
   const login = async (data: LoginRequest) => {
     const res = await authApi.login(data);
-    localStorage.setItem("access_token", res.token);
-    localStorage.setItem("refresh_token", res.refresh_token);
-    localStorage.setItem("user", JSON.stringify(res.user));
     setUser(res.user);
+    setDemoMode(Boolean(res.demo_mode));
+  };
+
+  const startDemo = async () => {
+    const res = await authApi.demoAccess();
+    setUser(res.user);
+    setDemoMode(true);
   };
 
   const logout = async () => {
     try {
       await authApi.logout();
-    } catch {
     } finally {
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
-      localStorage.removeItem("user");
       setUser(null);
+      setDemoMode(false);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated: !!user,
+        isLoading,
+        demoMode,
+        login,
+        startDemo,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

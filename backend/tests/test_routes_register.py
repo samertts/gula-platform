@@ -114,7 +114,7 @@ class TestLabRegistration:
         "lab_name": "Mesopotamia Medical Lab",
         "admin_name": "Ahmed Hassan",
         "email": "ahmed@meso.lab",
-        "password": "Secure123",
+        "password": "SecurePassword123!",
         "city": "Baghdad",
         "lab_type": "private",
     }
@@ -196,7 +196,7 @@ class TestStaffRegistration:
     _STAFF = {
         "name": "Fatima Zahra",
         "email": "fatima@lab.com",
-        "password": "Staff123",
+        "password": "StaffPassword123!",
         "role": "technician",
     }
 
@@ -206,7 +206,7 @@ class TestStaffRegistration:
         db.flush()
         admin = LabUser(
             lab_id=lab.id, name="Admin", email="admin@lab.com",
-            password_hash=hash_password("Admin123"), role="admin", is_active=True,
+            password_hash=hash_password("AdminPassword123!"), role="admin", is_active=True,
         )
         db.add(admin)
         db.flush()
@@ -249,7 +249,7 @@ class TestStaffRegistration:
         lab, _ = self._setup_active_lab(db)
         tech = LabUser(
             lab_id=lab.id, name="Tech", email="tech@lab.com",
-            password_hash=hash_password("Tech1234"), role="technician", is_active=True,
+            password_hash=hash_password("TechPassword123!"), role="technician", is_active=True,
         )
         db.add(tech)
         db.flush()
@@ -290,7 +290,7 @@ class TestDoctorRegistration:
         "full_name": "Dr. Omar Khalid",
         "email": "omar@clinic.iq",
         "phone": "+9647701234567",
-        "password": "Doctor123",
+        "password": "DoctorPassword123!",
         "license_number": "IQ-MED-2024-001",
         "specialty": "Internal Medicine",
     }

@@ -4,6 +4,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { Moon, Sun, Languages } from "lucide-react";
 import { Button } from "@/components/ui";
+import { GuideAssistant } from "@/components/guide/GuideAssistant";
 
 export function DashboardLayout() {
   const { theme, setTheme } = useTheme();
@@ -41,7 +42,9 @@ export function DashboardLayout() {
         <div className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </div>
-      </main>
+              </main>
+      <GuideAssistant />
     </div>
+
   );
 }

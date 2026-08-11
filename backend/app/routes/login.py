@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
-from ..config import IS_PRODUCTION, JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS
+from ..config import DEMO_MODE, JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS, USE_SECURE_COOKIES
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.user import User
@@ -20,6 +20,7 @@ from ..security.auth import (
     verify_password,
 )
 from ..security.rate_limit import get_client_ip, rate_limit_auth
+from ..security.dependencies import get_current_user
 from ..security.session import bump_perm_version, warm_perm_version
 from ..services.audit_service import log_action
 
@@ -89,6 +90,25 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         )
         db.commit()
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    # Citizen and provider accounts must complete the free verification flow
+    # before any authenticated session is issued. Lab accounts remain gated by
+    # lab approval and privileged-role MFA below.
+    if not isinstance(user, LabUser) and not user.is_verified:
+        log_action(
+            db,
+            action="login_denied_verification",
+            resource_type="auth",
+            user_id=user.id,
+            user_role=user.role,
+            details="Login denied: account verification required",
+            ip_address=client_ip,
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=403,
+            detail="Account verification required before login.",
+        )
 
     # ── Enforce MFA for privileged roles ─────────────────────────────────────
     PRIVILEGED_ROLES = {"master_admin", "ministry_admin", "province_admin"}
@@ -163,7 +183,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     cookie_kwargs = {
         "httponly": True,
         "samesite": "strict",
-        "secure": IS_PRODUCTION,
+        "secure": USE_SECURE_COOKIES,
     }
     response.set_cookie(
         key="access_token",
@@ -181,9 +201,13 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     )
 
     return {
+        # `access_token` is the canonical native-client field; `token` remains
+        # temporarily for older clients while they migrate to secure storage.
+        "access_token": token,
         "token": token,
         "refresh_token": refresh_token,
         "token_type": "Bearer",
+        "expires_in": JWT_EXPIRE_MINUTES * 60,
         "user": {
             "id": user.id,
             "name": user_name,
@@ -191,6 +215,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
             "role": user.role,
             "lab_id": user.lab_id,
             "lab_name": lab_name,
+            "is_verified": bool(getattr(user, "is_verified", True)),
         },
     }
 
@@ -233,6 +258,8 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     # any token whose perm_ver no longer matches the DB value.
     if user_id:
         user = db.query(LabUser).filter(LabUser.id == user_id).first()
+        if user is None:
+            user = db.query(User).filter(User.id == user_id).first()
         if user:
             bump_perm_version(
                 user,
@@ -246,3 +273,29 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/")
     return {"message": "Logged out successfully"}
+
+
+@router.get("/session", summary="Return the authenticated session identity")
+def get_session(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    user = current_user
+    lab_name = None
+    if isinstance(user, LabUser) and user.lab_id:
+        from ..models.lab import Lab
+
+        lab = db.query(Lab).filter(Lab.id == user.lab_id).first()
+        lab_name = lab.name if lab else None
+    return {
+        "user": {
+            "id": user.id,
+            "name": getattr(user, "name", getattr(user, "full_name", "")),
+            "email": user.email,
+            "role": user.role,
+            "lab_id": getattr(user, "lab_id", None),
+            "lab_name": lab_name,
+            "is_verified": bool(getattr(user, "is_verified", True)),
+        },
+        "demo_mode": DEMO_MODE,
+    }
