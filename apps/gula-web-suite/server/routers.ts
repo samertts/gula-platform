@@ -27,6 +27,7 @@ import {
   transitionSample,
   updatePatient,
 } from "./lis-service";
+import { assignUserRole, createLaboratory, getAdminDirectory, setLaboratoryStatus, updateLaboratory } from "./admin-service";
 import {
   canUsePermissionInWorkspace,
   canUseWorkspace,
@@ -144,6 +145,32 @@ export const appRouter = router({
         throw new TRPCError({ code: "FORBIDDEN", message: "Unified medical history is restricted to the patient's own account." });
       }
       return getPatientUnifiedTimeline(ctx.user.id, ctx.user.institutionId);
+    }),
+    admin: router({
+      directory: protectedProcedure.query(({ ctx }) => getAdminDirectory(actorFromContext(ctx))),
+      assignRole: protectedProcedure.input(z.object({
+        userId: z.number().int().positive(),
+        role: z.enum(["patient", "lab_staff", "physician", "institution_admin", "system_admin"]),
+        laboratoryId: z.number().int().positive().optional(),
+        accountStatus: z.enum(["active", "suspended", "pending"]).optional(),
+      })).mutation(({ ctx, input }) => assignUserRole(actorFromContext(ctx), input)),
+      setLaboratoryStatus: protectedProcedure.input(z.object({ laboratoryId: z.number().int().positive(), isActive: z.boolean() }))
+        .mutation(({ ctx, input }) => setLaboratoryStatus(actorFromContext(ctx), input.laboratoryId, input.isActive)),
+      createLaboratory: protectedProcedure.input(z.object({
+        institutionId: z.number().int().positive().optional(),
+        code: z.string().trim().min(1).max(32),
+        nameAr: z.string().trim().min(1).max(255),
+        nameEn: z.string().trim().min(1).max(255),
+        address: z.string().trim().max(2000).optional(),
+      })).mutation(({ ctx, input }) => createLaboratory(actorFromContext(ctx), input)),
+      updateLaboratory: protectedProcedure.input(z.object({
+        id: z.number().int().positive(),
+        code: z.string().trim().min(1).max(32),
+        nameAr: z.string().trim().min(1).max(255),
+        nameEn: z.string().trim().min(1).max(255),
+        address: z.string().trim().max(2000).optional(),
+        isActive: z.boolean(),
+      })).mutation(({ ctx, input }) => updateLaboratory(actorFromContext(ctx), input)),
     }),
     createPatient: protectedProcedure.input(z.object({
       institutionId: z.number().int().positive().optional(),

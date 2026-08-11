@@ -32,9 +32,9 @@ import { trpc } from "@/lib/trpc";
 import type { WorkspaceId } from "@shared/lis-policy";
 
 type Language = "ar" | "en";
-type ViewId = "dashboard" | "health" | "patients" | "orders" | "samples" | "results" | "inbox" | "settings";
+type ViewId = "dashboard" | "health" | "patients" | "orders" | "samples" | "results" | "inbox" | "admin" | "settings";
 
-type QueryState<T> = { data?: T; isLoading: boolean };
+type QueryState<T> = { data?: T; isLoading: boolean; error?: { message: string } | null };
 type WorkspaceData = { id: WorkspaceId; label: { ar: string; en: string }; description: { ar: string; en: string }; accent: string; capabilities: readonly string[] };
 type DashboardData = { workspace: WorkspaceData; counts: { orders: number; samples: number; pendingResults: number; criticalAlerts: number } | null; recentActivity: Array<{ id: number; action: string; entityType: string; outcome: string; createdAt: Date }> };
 type PatientRow = { id: number; medicalRecordNumber: string; firstName: string; lastName: string; sex: string; updatedAt: Date };
@@ -42,6 +42,7 @@ type OrderRow = { id: number; orderNumber: string; priority: string; status: str
 type SampleRow = { id: number; barcode: string; specimenType: string; status: string; version: number; updatedAt: Date };
 type ResultRow = { id: number; value: string | null; status: string; isCritical: number; version: number; updatedAt: Date };
 type PatientTimelineEntry = { id: string; source: "laboratory" | "clinical" | "alerts" | "radiology" | "pharmacy" | "hospital" | "emergency"; kind: string; title: string; detail: string | null; status: string; isCritical: boolean; occurredAt: Date };
+type AdminDirectory = { users: Array<{ id: number; name: string | null; email: string | null; role: string; accountStatus: string; laboratoryId: number | null; updatedAt: Date }>; laboratories: Array<{ id: number; institutionId: number; code: string; nameAr: string; nameEn: string; isActive: number; updatedAt: Date }> };
 type InboxData = {
   notifications: Array<{ id: number; title: string; message: string; status: string; createdAt: Date }>;
   tasks: Array<{ id: number; title: string; description: string | null; priority: string; status: string; createdAt: Date }>;
@@ -68,6 +69,8 @@ const copy = {
     results: "النتائج",
     inbox: "الوارد والمهام",
     settings: "الإعدادات",
+    admin: "الإدارة والصلاحيات",
+    adminHint: "إدارة حسابات المؤسسة والأدوار والمختبرات ضمن نطاقك المصرح.",
     workspaces: "مساحات العمل",
     workspace: "مساحة العمل",
     switchWorkspace: "تبديل مساحة العمل",
@@ -125,6 +128,8 @@ const copy = {
     results: "Results",
     inbox: "Inbox & tasks",
     settings: "Settings",
+    admin: "Administration & access",
+    adminHint: "Manage organization accounts, roles, and laboratories within your authorized scope.",
     workspaces: "Workspaces",
     workspace: "Workspace",
     switchWorkspace: "Switch workspace",
@@ -229,6 +234,11 @@ export default function Home() {
     enabled: isAuthenticated && user?.role === "patient" && view === "health",
     retry: false,
   });
+  const isAdmin = user?.role === "institution_admin" || user?.role === "system_admin";
+  const adminDirectoryQuery = trpc.lis.admin.directory.useQuery(undefined, {
+    enabled: isAuthenticated && isAdmin && view === "admin",
+    retry: false,
+  });
 
   const navigation = [
     { id: "dashboard" as const, label: t.dashboard, icon: LayoutDashboard },
@@ -238,6 +248,7 @@ export default function Home() {
     { id: "samples" as const, label: t.samples, icon: TestTube2 },
     { id: "results" as const, label: t.results, icon: FlaskConical },
     { id: "inbox" as const, label: t.inbox, icon: Inbox },
+    ...(isAdmin ? [{ id: "admin" as const, label: t.admin, icon: ShieldCheck }] : []),
   ];
 
   const chooseView = (nextView: ViewId) => {
@@ -355,6 +366,7 @@ export default function Home() {
           {view === "samples" ? <SamplesView language={language} t={t} query={samplesQuery} user={user} /> : null}
           {view === "results" ? <ResultsView language={language} t={t} query={resultsQuery} user={user} /> : null}
           {view === "inbox" ? <InboxView language={language} t={t} query={inboxQuery} /> : null}
+          {view === "admin" && isAdmin ? <AdminWorkspaceView language={language} query={adminDirectoryQuery} /> : null}
           {view === "settings" ? <SettingsView language={language} t={t} user={user} /> : null}
         </div>
       </main>
@@ -374,11 +386,11 @@ function roleLabel(role: string, language: Language) {
 }
 
 function viewTitle(view: ViewId, t: Copy) {
-  return { dashboard: t.dashboard, health: t.patient, patients: t.patients, orders: t.orders, samples: t.samples, results: t.results, inbox: t.inbox, settings: t.settings }[view];
+  return { dashboard: t.dashboard, health: t.patient, patients: t.patients, orders: t.orders, samples: t.samples, results: t.results, inbox: t.inbox, admin: t.admin, settings: t.settings }[view];
 }
 
 function viewDescription(view: ViewId, t: Copy) {
-  return { dashboard: t.operationalPulseText, health: t.audit, patients: t.patientsHint, orders: t.ordersHint, samples: t.samplesHint, results: t.resultsHint, inbox: t.inboxHint, settings: t.privacy }[view];
+  return { dashboard: t.operationalPulseText, health: t.audit, patients: t.patientsHint, orders: t.ordersHint, samples: t.samplesHint, results: t.resultsHint, inbox: t.inboxHint, admin: t.adminHint, settings: t.privacy }[view];
 }
 
 function LoadingScreen({ language, text }: { language: Language; text: string }) {
@@ -444,6 +456,34 @@ function PatientHealthView({ language, query }: { language: Language; query: Que
       </div>
     </article>)}</div>}
   </section>;
+}
+
+function AdminWorkspaceView({ language, query }: { language: Language; query: QueryState<AdminDirectory> }) {
+  const isArabic = language === "ar";
+  const utils = trpc.useUtils();
+  const assignRole = trpc.lis.admin.assignRole.useMutation({ onSuccess: () => { void utils.lis.admin.directory.invalidate(); } });
+  const setLaboratoryStatus = trpc.lis.admin.setLaboratoryStatus.useMutation({ onSuccess: () => { void utils.lis.admin.directory.invalidate(); } });
+  const createLaboratory = trpc.lis.admin.createLaboratory.useMutation({ onSuccess: () => { void utils.lis.admin.directory.invalidate(); setCreateLabOpen(false); setLabForm({ code: "", nameAr: "", nameEn: "", address: "" }); } });
+  const [createLabOpen, setCreateLabOpen] = useState(false);
+  const [labForm, setLabForm] = useState({ code: "", nameAr: "", nameEn: "", address: "" });
+  const data = query.data;
+  const roles = ["patient", "lab_staff", "physician", "institution_admin", "system_admin"] as const;
+
+  if (query.error) return <div className="panel admin-error-state"><div className="error-icon"><LockKeyhole size={22} /></div><strong>{isArabic ? "تعذر تحميل الدليل الإداري" : "Unable to load the administrative directory"}</strong><span>{query.error.message}</span></div>;
+
+  return <div className="admin-layout">
+    <section className="panel data-panel">
+      <div className="panel-heading"><div className="panel-title-wrap"><div className="panel-heading-icon"><Users size={18} /></div><div><h3>{isArabic ? "دليل المستخدمين" : "User directory"}</h3><p>{isArabic ? "تغيير الدور يتم ضمن مؤسستك ويُسجل في سجل التدقيق." : "Role changes are limited to your organization and recorded in the audit log."}</p></div></div></div>
+      {query.isLoading ? <div className="data-loading"><span /><span /><span /></div> : !data?.users.length ? <EmptyState title={isArabic ? "لا توجد حسابات في النطاق" : "No accounts in scope"} hint={isArabic ? "ستظهر حسابات مؤسستك هنا بعد دعوتها أو تسجيل دخولها." : "Organization accounts appear here after invitation or sign in."} /> : <div className="admin-list">{data.users.map((member) => <article key={member.id} className="admin-row"><div className="row-avatar">{initials(member.name)}</div><div className="row-main"><strong>{member.name || (isArabic ? "حساب بلا اسم" : "Unnamed account")}</strong><span>{member.email || "—"}</span></div><span className="status-chip">{member.accountStatus}</span><select aria-label={isArabic ? "الدور" : "Role"} defaultValue={member.role} onChange={(event) => assignRole.mutate({ userId: member.id, role: event.target.value as typeof roles[number] })}><option value={member.role}>{member.role}</option>{roles.filter((role) => role !== member.role).map((role) => <option key={role} value={role}>{role}</option>)}</select></article>)}</div>}
+      {assignRole.error ? <div className="form-error">{assignRole.error.message}</div> : null}
+    </section>
+    <section className="panel data-panel">
+      <div className="panel-heading"><div className="panel-title-wrap"><div className="panel-heading-icon"><Microscope size={18} /></div><div><h3>{isArabic ? "المختبرات" : "Laboratories"}</h3><p>{isArabic ? "تفعيل أو تعليق المختبرات ضمن المؤسسة الحالية." : "Activate or suspend laboratories within the current organization."}</p></div></div><button className="secondary-button" onClick={() => setCreateLabOpen((value) => !value)}><Plus size={15} /> {isArabic ? "مختبر جديد" : "New lab"}</button></div>
+      {query.isLoading ? <div className="data-loading"><span /><span /><span /></div> : !data?.laboratories.length ? <EmptyState title={isArabic ? "لا توجد مختبرات في النطاق" : "No laboratories in scope"} hint={isArabic ? "ستظهر المختبرات المرتبطة بالمؤسسة هنا." : "Laboratories linked to the organization will appear here."} /> : <div className="admin-list">{data.laboratories.map((lab) => <article key={lab.id} className="admin-row"><div className="row-leading-icon violet"><Microscope size={17} /></div><div className="row-main"><strong>{isArabic ? lab.nameAr : lab.nameEn}</strong><span>{lab.code}</span></div><span className={`status-chip ${lab.isActive ? "approved" : "rejected"}`}>{lab.isActive ? (isArabic ? "نشط" : "Active") : (isArabic ? "معلّق" : "Suspended")}</span><button className="secondary-button" disabled={setLaboratoryStatus.isPending} onClick={() => setLaboratoryStatus.mutate({ laboratoryId: lab.id, isActive: !Boolean(lab.isActive) })}>{lab.isActive ? (isArabic ? "تعليق" : "Suspend") : (isArabic ? "تفعيل" : "Activate")}</button></article>)}</div>}
+      {setLaboratoryStatus.error ? <div className="form-error">{setLaboratoryStatus.error.message}</div> : null}
+      {createLabOpen ? <form className="inline-form admin-create-form" onSubmit={(event) => { event.preventDefault(); createLaboratory.mutate(labForm); }}><div className="form-grid"><label><span>{isArabic ? "رمز المختبر" : "Laboratory code"}</span><input required value={labForm.code} onChange={(event) => setLabForm({ ...labForm, code: event.target.value })} /></label><label><span>{isArabic ? "الاسم بالعربية" : "Arabic name"}</span><input required value={labForm.nameAr} onChange={(event) => setLabForm({ ...labForm, nameAr: event.target.value })} /></label><label><span>{isArabic ? "الاسم بالإنجليزية" : "English name"}</span><input required value={labForm.nameEn} onChange={(event) => setLabForm({ ...labForm, nameEn: event.target.value })} /></label><label><span>{isArabic ? "العنوان" : "Address"}</span><input value={labForm.address} onChange={(event) => setLabForm({ ...labForm, address: event.target.value })} /></label></div>{createLaboratory.error ? <div className="form-error">{createLaboratory.error.message}</div> : null}<button className="primary-button compact" disabled={createLaboratory.isPending}><Save size={15} /> {createLaboratory.isPending ? "…" : (isArabic ? "إنشاء المختبر" : "Create laboratory")}</button></form> : null}
+    </section>
+  </div>;
 }
 
 function PatientsView({ language, t, query, user }: { language: Language; t: Copy; query: QueryState<PatientRow[]>; user: AppUser }) {
