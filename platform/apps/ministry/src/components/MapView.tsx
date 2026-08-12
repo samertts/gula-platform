@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@gula/ui-platform';
 import { X, MapPin } from 'lucide-react';
 import type { RegionData } from '../services/api';
@@ -33,13 +32,13 @@ const governorates = [
 ];
 
 interface MapViewProps {
-  regions: RegionData[];
+  regions?: RegionData[];
   selectedRegion?: string | null;
   onRegionSelect?: (region: RegionData) => void;
   className?: string;
 }
 
-export function MapView({ regions, selectedRegion, onRegionSelect, className }: MapViewProps) {
+export function MapView({ regions = [], selectedRegion, onRegionSelect, className }: MapViewProps) {
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
   const regionMap = new Map(regions.map(r => [r.governorate.toLowerCase(), r]));
 
@@ -86,12 +85,8 @@ export function MapView({ regions, selectedRegion, onRegionSelect, className }: 
         })}
       </svg>
 
-      <AnimatePresence>
         {hoveredRegion && regionMap.get(hoveredRegion) && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
+          <div
             className="absolute bottom-4 right-4 p-4 bg-slate-900/95 backdrop-blur-xl rounded-xl border border-white/10 shadow-2xl"
           >
             <p className="text-xs font-bold text-white">{regionMap.get(hoveredRegion)?.nameAr}</p>
@@ -99,9 +94,8 @@ export function MapView({ regions, selectedRegion, onRegionSelect, className }: 
               <p>عدد الحالات: {regionMap.get(hoveredRegion)?.casesToday}</p>
               <p>نسبة التطعيم: {regionMap.get(hoveredRegion)?.vaccinationRate}%</p>
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
     </div>
   );
 }

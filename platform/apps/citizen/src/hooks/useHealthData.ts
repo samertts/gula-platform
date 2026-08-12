@@ -1,8 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useHealth } from '../contexts/HealthContext';
-import { getLabResults, getRadiologyReports, getPrescriptions, getVaccinations, getMedicalHistory, getHealthScore } from '../services/healthData';
+import { useBackendResource } from '@gula/ui-platform';
+import { getCitizenDashboard, getLabResults, getRadiologyReports, getPrescriptions, getVaccinations, getMedicalHistory, getHealthScore } from '../services/healthData';
+import type { CitizenDashboard } from '../services/healthData';
 import type { LabResult, RadiologyReport, Prescription, Vaccination, HealthRecord, HealthScore } from '../types';
+
+export function useCitizenDashboard() {
+  const { user } = useAuth();
+  const loadDashboard = useCallback(() => getCitizenDashboard(), []);
+  return useBackendResource<CitizenDashboard>(loadDashboard, Boolean(user));
+}
 
 export function useHealthData() {
   const { user } = useAuth();
@@ -30,7 +38,7 @@ export function useHealthData() {
       health.setPrescriptions(prescriptions);
       health.setVaccinations(vaccinations);
       health.setMedicalHistory(history);
-      health.setHealthScore(score);
+      if (score) health.setHealthScore(score);
     } catch (err) {
       setError((err as Error).message);
     } finally {

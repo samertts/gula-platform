@@ -178,4 +178,14 @@ export interface OfflineQueueItem {
   payload: unknown;
   createdAt: string;
   synced: boolean;
+  schemaVersion?: 1;
+  operationId?: string;
+  idempotencyKey?: string;
+  requestFingerprint?: string;
+  expectedVersion?: number;
+  state?: 'pending' | 'syncing' | 'synced' | 'conflict' | 'rejected' | 'failed';
+  attempt?: number;
+  maxAttempts?: number;
+  updatedAt?: string;
+  lastError?: string;
 }

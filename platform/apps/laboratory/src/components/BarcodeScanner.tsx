@@ -26,7 +26,7 @@ export function BarcodeScanner({
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastScannedRef = useRef<string>('');
 
   const handleBarcode = useCallback((barcode: string) => {

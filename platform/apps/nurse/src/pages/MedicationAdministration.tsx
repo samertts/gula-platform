@@ -5,7 +5,9 @@ import { medicationsService } from '@/services/medications';
 import { MedicationVerification } from '@/components/MedicationVerification';
 import type { Medication } from '@/utils/types';
 
-export function MedicationAdministration() {
+type MedicationFilter = 'all' | 'scheduled' | 'given' | 'missed';
+
+function MedicationAdministration() {
   const { user } = useNurse();
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -13,8 +15,11 @@ export function MedicationAdministration() {
   const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
-  const [filter, setFilter] = useState<'all' | 'scheduled' | 'given' | 'missed'>(() => {
-    return (localStorage.getItem('gula-nurse-med-filter') as typeof filter) || 'scheduled';
+  const [filter, setFilter] = useState<MedicationFilter>(() => {
+    const stored = localStorage.getItem('gula-nurse-med-filter');
+    return stored === 'all' || stored === 'scheduled' || stored === 'given' || stored === 'missed'
+      ? stored
+      : 'scheduled';
   });
 
   useEffect(() => {
@@ -210,3 +215,5 @@ export function MedicationAdministration() {
     </div>
   );
 }
+
+export default MedicationAdministration;

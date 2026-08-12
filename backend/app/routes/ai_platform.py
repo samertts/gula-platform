@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -27,7 +28,10 @@ from app.ai.orchestrator import orchestrator
 from app.ai.rag_pipeline import rag
 from app.ai.security import scan_input
 from app.ai.vector_store import vector_store
+from app.database import get_db
+from app.models.patient import Patient
 from app.security.dependencies import get_current_user
+from app._compat import UTC
 
 logger = logging.getLogger("gula.ai.platform")
 
@@ -101,6 +105,11 @@ class KGSearchRequest(BaseModel):
     limit: int = Field(default=20, ge=1, le=100)
 
 
+class DecisionSupportRequest(BaseModel):
+    patient_id: str = Field(..., min_length=1, max_length=64)
+    query: str = Field(..., min_length=1, max_length=2000)
+
+
 # ─── Vector Search Routes ────────────────────────────────────────────────────
 
 
@@ -157,6 +166,7 @@ async def rag_query(
     body: RAGQueryRequest,
     current_user=Depends(get_current_user),
 ):
+    _require_doctor(current_user)
     start = time.monotonic()
     result = await rag.query(
         question=body.question,
@@ -261,11 +271,69 @@ async def execute_agent(
 # ─── Orchestrator Routes ─────────────────────────────────────────────────────
 
 
+@router.post("/decision-support/query", summary="Read-only clinical decision support query")
+async def decision_support_query(
+    body: DecisionSupportRequest,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    _require_doctor(current_user)
+    try:
+        patient_id = int(body.patient_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="patient_id must be a valid patient identifier") from exc
+
+    patient = db.query(Patient).filter(
+        Patient.id == patient_id,
+        Patient.lab_id == current_user.lab_id,
+    ).first()
+    if patient is None:
+        raise HTTPException(status_code=404, detail="Patient not found in the current laboratory")
+
+    result = await orchestrator.process_query(
+        query=body.query,
+        lab_id=current_user.lab_id,
+        user_id=current_user.id,
+    )
+    summary = str(result.get("rag_response") or result.get("response") or "")
+    citations = result.get("citations") if isinstance(result.get("citations"), list) else []
+    guidelines = [
+        {
+            "id": f"citation-{index}",
+            "title": str(citation),
+            "titleAr": str(citation),
+            "source": "GULA RAG",
+            "year": datetime.now(UTC).year,
+            "recommendations": [],
+            "recommendationsAr": [],
+        }
+        for index, citation in enumerate(citations[:20])
+    ]
+    return {
+        "id": f"ds-{patient.id}-{int(time.time() * 1000)}",
+        "patientId": str(patient.id),
+        "query": body.query,
+        "summary": summary,
+        "summaryAr": summary,
+        "recommendations": [],
+        "differentialDiagnosis": [],
+        "relevantGuidelines": guidelines,
+        "drugInteractions": [],
+        "riskFactors": [],
+        "evidenceLevel": "low",
+        "confidence": 0,
+        "createdAt": datetime.now(UTC).isoformat(),
+        "readOnly": True,
+        "disclaimer": "This output is an informational aid and is not a diagnosis or treatment order.",
+    }
+
+
 @router.post("/orchestrate", summary="Route query to appropriate AI subsystem")
 async def orchestrate_query(
     body: OrchestrateRequest,
     current_user=Depends(get_current_user),
 ):
+    _require_doctor(current_user)
     start = time.monotonic()
     result = await orchestrator.process_query(
         query=body.query,

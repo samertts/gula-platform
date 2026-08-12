@@ -71,30 +71,36 @@ class DicomService {
   }
 
   async getStudy(studyUid: string): Promise<DicomStudy> {
-    return api.get<DicomStudy>(`/radiology/studies/${studyUid}`)
+    return api.get<DicomStudy>(`/radiology/studies/${encodeURIComponent(studyUid)}`)
   }
 
   async getSeries(studyUid: string): Promise<StudySeries[]> {
-    return api.get<StudySeries[]>(`/radiology/studies/${studyUid}/series`)
+    return api.get<StudySeries[]>(`/radiology/studies/${encodeURIComponent(studyUid)}/series`)
+  }
+
+  private encodePathSegment(value: string): string {
+    return encodeURIComponent(value)
   }
 
   getWadoUri(studyUid: string, seriesUid: string, instanceUid: string): string {
-    return `${this.wadoUrl}/studies/${studyUid}/series/${seriesUid}/instances/${instanceUid}`
+    return `${this.wadoUrl}/studies/${this.encodePathSegment(studyUid)}/series/${this.encodePathSegment(seriesUid)}/instances/${this.encodePathSegment(instanceUid)}`
   }
 
   getWadoFramesUri(studyUid: string, seriesUid: string, instanceUid: string, frameNumbers: number[]): string {
     const frames = frameNumbers.join(',')
-    return `${this.wadoUrl}/studies/${studyUid}/series/${seriesUid}/instances/${instanceUid}/frames/${frames}`
+    return `${this.wadoUrl}/studies/${this.encodePathSegment(studyUid)}/series/${this.encodePathSegment(seriesUid)}/instances/${this.encodePathSegment(instanceUid)}/frames/${frames}`
   }
 
   getThumbnailUri(studyUid: string, seriesUid: string, instanceUid: string): string {
-    return `${this.wadoUrl}/studies/${studyUid}/series/${seriesUid}/instances/${instanceUid}/thumbnail`
+    return `${this.wadoUrl}/studies/${this.encodePathSegment(studyUid)}/series/${this.encodePathSegment(seriesUid)}/instances/${this.encodePathSegment(instanceUid)}/thumbnail`
   }
 
   async retrieveInstance(studyUid: string, seriesUid: string, instanceUid: string): Promise<ArrayBuffer> {
     const response = await fetch(this.getWadoUri(studyUid, seriesUid, instanceUid), {
+      credentials: 'include',
       headers: {
-        'Accept': 'application/dicom'
+        'Accept': 'application/dicom',
+        'X-Client-Type': 'radiology-app',
       }
     })
     if (!response.ok) throw new Error(`Failed to retrieve DICOM instance: ${response.statusText}`)
@@ -106,23 +112,23 @@ class DicomService {
     dicomFiles.forEach((file, index) => {
       formData.append(`instance_${index}`, new Blob([file], { type: 'application/dicom' }))
     })
-    return api.upload<{ status: string; study_uid: string }>(`/radiology/studies/${studyUid}/instances`, formData)
+    return api.upload<{ status: string; study_uid: string }>(`/radiology/studies/${encodeURIComponent(studyUid)}/instances`, formData)
   }
 
   async deleteStudy(studyUid: string): Promise<void> {
-    return api.delete(`/radiology/studies/${studyUid}`)
+    return api.delete(`/radiology/studies/${encodeURIComponent(studyUid)}`)
   }
 
   async updateStudy(studyUid: string, data: Partial<DicomStudy>): Promise<DicomStudy> {
-    return api.patch<DicomStudy>(`/radiology/studies/${studyUid}`, data)
+    return api.patch<DicomStudy>(`/radiology/studies/${encodeURIComponent(studyUid)}`, data)
   }
 
   async getStudyMetadata(studyUid: string): Promise<Record<string, unknown>> {
-    return api.get<Record<string, unknown>>(`/radiology/studies/${studyUid}/metadata`)
+    return api.get<Record<string, unknown>>(`/radiology/studies/${encodeURIComponent(studyUid)}/metadata`)
   }
 
   async getSeriesMetadata(studyUid: string, seriesUid: string): Promise<Record<string, unknown>> {
-    return api.get<Record<string, unknown>>(`/radiology/studies/${studyUid}/series/${seriesUid}/metadata`)
+    return api.get<Record<string, unknown>>(`/radiology/studies/${encodeURIComponent(studyUid)}/series/${encodeURIComponent(seriesUid)}/metadata`)
   }
 }
 

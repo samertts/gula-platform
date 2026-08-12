@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Card, Button, Select, Table, LoadingSpinner } from '@gula/ui-platform';
 import { DataExport } from '../components/DataExport';
-import { reportsService } from '../services/reports';
 
 export function NationalReports() {
   const [loading, setLoading] = useState(true);

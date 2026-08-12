@@ -91,11 +91,12 @@ export function showLocalNotification(title: string, body: string, icon?: string
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
   navigator.serviceWorker.ready.then((registration) => {
-    registration.showNotification(title, {
+    const options: NotificationOptions & { vibrate?: number[] } = {
       body,
       icon: icon || '/icons/icon-192x192.png',
       badge: '/icons/icon-96x96.png',
       vibrate: [200, 100, 200],
-    });
+    };
+    registration.showNotification(title, options);
   });
 }

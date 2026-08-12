@@ -39,7 +39,7 @@ const wards = [
   { value: 'general', label: 'الداخلي العام' },
 ];
 
-export function Admissions() {
+function Admissions() {
   const { user } = useNurse();
   const [admissions, setAdmissions] = useState<Admission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -233,3 +233,5 @@ export function Admissions() {
     </div>
   );
 }
+
+export default Admissions;

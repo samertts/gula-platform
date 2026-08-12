@@ -1,16 +1,24 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@gula/ui-platform';
 import { resultsService } from '@/services/results';
-import type { AutoverificationRule } from '@/utils/types';
+import type { AutoverificationCondition, AutoverificationRule } from '@/utils/types';
+
+type AutoverificationForm = {
+  name: string;
+  testName: string;
+  conditions: AutoverificationCondition[];
+  action: AutoverificationRule['action'];
+  priority: number;
+};
 
 export function Autoverification() {
   const [rules, setRules] = useState<AutoverificationRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNew, setShowNew] = useState(false);
   const [editingRule, setEditingRule] = useState<AutoverificationRule | null>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<AutoverificationForm>({
     name: '', testName: '', conditions: [{ field: 'value' as const, operator: 'between' as const, value: '' }],
-    action: 'auto_verify' as const, priority: 1,
+    action: 'auto_verify', priority: 1,
   });
 
   useEffect(() => {

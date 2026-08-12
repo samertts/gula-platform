@@ -251,9 +251,32 @@ class TestClinicalSignoffAuthority:
         db.commit()
         res = client.post(
             f"/orders/{order.id}/validate",
-            headers=_hdr(admin.id, clinical_lab["lab"].id),
+            headers={**_hdr(admin.id, clinical_lab["lab"].id), "If-Match": "1"},
         )
         assert res.status_code == 200
+        db.refresh(order)
+        assert order.version == 2
+
+    def test_stale_if_match_rejects_validation_without_side_effect(self, client, db, clinical_lab):
+        from app.models.lab_result import LabResult
+        order = LabOrder(
+            lab_id=clinical_lab["lab"].id,
+            patient_id=clinical_lab["patient"].id,
+            status="completed",
+        )
+        db.add(order)
+        db.flush()
+        db.add(LabResult(order_id=order.id, test_name="Glucose", value=100.0, unit="mg/dL", flag="normal"))
+        db.commit()
+
+        res = client.post(
+            f"/orders/{order.id}/validate",
+            headers={**_hdr(clinical_lab["admin"].id, clinical_lab["lab"].id), "If-Match": "99"},
+        )
+        assert res.status_code == 409
+        db.refresh(order)
+        assert order.locked_at is None
+        assert order.version == 1
 
     def test_validated_order_is_immutable(self, client, db, clinical_lab):
         """Once validated, the order cannot be modified — patient safety."""

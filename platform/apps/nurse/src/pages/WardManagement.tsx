@@ -8,7 +8,7 @@ import { PatientAssignCard } from '@/components/PatientAssignCard';
 import type { Patient, BedAssignment } from '@/utils/types';
 import { ROUTES } from '@/utils/routes';
 
-export function WardManagement() {
+function WardManagement() {
   const navigate = useNavigate();
   const { user, selectedWard, setSelectedWard } = useNurse();
   const [beds, setBeds] = useState<BedAssignment[]>([]);
@@ -119,3 +119,5 @@ export function WardManagement() {
     </div>
   );
 }
+
+export default WardManagement;

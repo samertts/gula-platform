@@ -25,7 +25,7 @@ export function Telemedicine() {
   const [consultations] = useState(MOCK_CONSULTATIONS);
 
   const typeIcons: Record<string, string> = { video: '📹', audio: '🎧', chat: '💬' };
-  const statusColors: Record<string, 'success' | 'warning' | 'info' | 'danger'> = {
+  const statusColors: Record<string, 'success' | 'warning' | 'info' | 'danger' | 'default'> = {
     scheduled: 'info',
     in_progress: 'success',
     completed: 'default',

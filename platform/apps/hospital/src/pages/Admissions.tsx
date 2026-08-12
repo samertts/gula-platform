@@ -85,7 +85,7 @@ export function Admissions() {
                 />
                 <Select
                   value={statusFilter}
-                  onChange={v => setStatusFilter(v as string)}
+                  onChange={e => setStatusFilter(e.target.value)}
                   options={[
                     { value: 'all', label: isRtl ? 'الكل' : 'All' },
                     { value: 'pending', label: isRtl ? 'بانتظار السرير' : 'Pending' },

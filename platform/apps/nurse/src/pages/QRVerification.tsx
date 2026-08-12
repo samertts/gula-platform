@@ -3,7 +3,7 @@ import { cn } from '@gula/ui-platform';
 import { patientsService } from '@/services/patients';
 import type { Patient } from '@/utils/types';
 
-export function QRVerification() {
+function QRVerification() {
   const [scanning, setScanning] = useState(false);
   const [qrCode, setQrCode] = useState('');
   const [patient, setPatient] = useState<Patient | null>(null);
@@ -138,3 +138,5 @@ export function QRVerification() {
     </div>
   );
 }
+
+export default QRVerification;

@@ -17,9 +17,16 @@ import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .config import APP_NAME, APP_VERSION, IS_PRODUCTION, RUNTIME_MODE
+from .core.error_contract import (
+    build_error_payload,
+    public_http_detail,
+    validation_details,
+)
 from .domain.exceptions import DomainError
 
 logger = logging.getLogger("gula.factory")
@@ -405,7 +412,8 @@ def _build_middleware_stack(app: FastAPI) -> None:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID",
-                       "X-Device-ID", "X-App-Version", "Idempotency-Key"],
+                       "X-Device-ID", "X-App-Version", "Idempotency-Key",
+                       "X-GULA-Operation-ID", "X-GULA-Request-Fingerprint", "If-Match"],
         expose_headers=["X-Request-ID", "X-Response-Time", "X-API-Version"],
     )
 
@@ -754,17 +762,71 @@ def _build_lifespan():
     return _lifespan
 
 
+_ARABIC_HTTP_MESSAGES = {
+    400: "الطلب غير صالح.",
+    401: "يتطلب هذا الطلب تسجيل الدخول.",
+    403: "لا تملك صلاحية تنفيذ هذا الطلب.",
+    404: "المورد المطلوب غير موجود.",
+    409: "يوجد تعارض يمنع إكمال العملية.",
+    412: "لم يعد شرط الإصدار صالحاً.",
+    422: "بيانات الطلب غير صالحة.",
+    429: "تم تجاوز الحد المسموح للطلبات.",
+    503: "الخدمة غير متاحة مؤقتاً.",
+}
+
+
 def _domain_exception_handler(request: Request, exc: DomainError) -> JSONResponse:
-    """Translate domain errors to the appropriate HTTP response."""
+    """Translate domain errors to the canonical, client-safe response shape."""
     request_id = getattr(request.state, "request_id", "unknown")
+    status_code = getattr(exc, "status_code", 400)
+    message = str(getattr(exc, "message", exc))
+    return JSONResponse(
+        status_code=status_code,
+        content=build_error_payload(
+            status_code=status_code,
+            message=message,
+            detail_ar=_ARABIC_HTTP_MESSAGES.get(status_code, message),
+            details=getattr(exc, "details", None),
+            request_id=request_id,
+            explicit_code=getattr(exc, "code", None),
+        ),
+    )
+
+
+def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    """Normalize explicit HTTP errors without exposing arbitrary error structures."""
+    request_id = getattr(request.state, "request_id", "unknown")
+    message, details = public_http_detail(exc.detail, status_code=exc.status_code)
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.message, "detail_ar": exc.message, "request_id": request_id},
+        content=build_error_payload(
+            status_code=exc.status_code,
+            message=message,
+            detail_ar=_ARABIC_HTTP_MESSAGES.get(exc.status_code, message),
+            details=details,
+            request_id=request_id,
+        ),
+        headers=exc.headers,
+    )
+
+
+def _validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Return validation locations without echoing submitted values."""
+    request_id = getattr(request.state, "request_id", "unknown")
+    return JSONResponse(
+        status_code=422,
+        content=build_error_payload(
+            status_code=422,
+            message="Request validation failed.",
+            detail_ar=_ARABIC_HTTP_MESSAGES[422],
+            details=validation_details(exc.errors()),
+            request_id=request_id,
+        ),
     )
 
 
 def _exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Catch unhandled errors - return friendly JSON instead of 500 stack trace."""
+    """Catch unhandled errors and return a client-safe response without stack traces."""
     request_id = getattr(request.state, "request_id", "unknown")
     from .core.startup_guard import is_system_ready
 
@@ -780,33 +842,31 @@ def _exception_handler(request: Request, exc: Exception) -> JSONResponse:
         )
         return JSONResponse(
             status_code=503,
-            content={
-                "detail": f"Service Unavailable: System not ready. Reason: {reason}",
-                "detail_ar": f"الخدمة غير متاحة: النظام غير جاهز. السبب: {reason}",
-                "request_id": request_id,
-            },
+            content=build_error_payload(
+                status_code=503,
+                message="Service temporarily unavailable.",
+                detail_ar=_ARABIC_HTTP_MESSAGES[503],
+                details={"service_state": "not_ready"},
+                request_id=request_id,
+            ),
         )
+
     if IS_PRODUCTION:
         logger.error(
             "[%s] Unhandled exception: %s %s", request_id, request.method, request.url.path,
         )
-        return JSONResponse(
-            status_code=500,
-            content={
-                "detail": "An unexpected error occurred. Please try again later.",
-                "detail_ar": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
-                "request_id": request_id,
-            },
-        )
-    # Log full exception for debugging, but never expose internals to client
-    logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
+    else:
+        # Log full exception for debugging, but never expose internals to client.
+        logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
+
     return JSONResponse(
         status_code=500,
-        content={
-            "detail": "An unexpected error occurred. Please try again later.",
-            "detail_ar": "حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
-            "request_id": request_id,
-        },
+        content=build_error_payload(
+            status_code=500,
+            message="An unexpected error occurred. Please try again later.",
+            detail_ar="حدث خطأ غير متوقع. يرجى المحاولة لاحقاً.",
+            request_id=request_id,
+        ),
     )
 
 
@@ -861,6 +921,8 @@ def create_app(override_mode: str | None = None) -> FastAPI:
     )
 
     app.exception_handler(DomainError)(_domain_exception_handler)
+    app.exception_handler(StarletteHTTPException)(_http_exception_handler)
+    app.exception_handler(RequestValidationError)(_validation_exception_handler)
     app.exception_handler(Exception)(_exception_handler)
 
     _build_middleware_stack(app)

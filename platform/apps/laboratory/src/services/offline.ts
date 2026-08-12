@@ -18,14 +18,14 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
 function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
     dbPromise = openDB('gula-lab-offline-store', 3, {
-      upgrade(db, oldVersion, transaction) {
+      upgrade(db, oldVersion, _newVersion, transaction) {
         if (oldVersion < 1) {
           db.createObjectStore('pending', { keyPath: 'id', autoIncrement: true });
           db.createObjectStore('cache', { keyPath: 'key' });
           db.createObjectStore('drafts', { keyPath: 'id' });
           db.createObjectStore('sync_log', { keyPath: 'id', autoIncrement: true });
         }
-        if (oldVersion < 2 && db.objectStoreNames.contains('pending')) {
+        if (oldVersion < 2 && db.objectStoreNames.contains('pending') && transaction) {
           const pending = transaction.objectStore('pending');
           if (!pending.indexNames.contains('entity_type')) {
             pending.createIndex('entity_type', 'entityType');

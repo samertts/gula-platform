@@ -83,6 +83,10 @@ export type { ErrorBoundaryProps } from './components/ErrorBoundary';
 export { ProtectedRoute } from './components/ProtectedRoute';
 export type { ProtectedRouteProps, AuthState } from './components/ProtectedRoute';
 
+// Backend integration
+export { createApiClient, ApiClientError, DemoIsolationError } from './services/apiClient';
+export type { ApiClient, ApiClientOptions, ApiRequestOptions, ErrorContract, ApiQueryValue } from './services/apiClient';
+
 // Hooks
 export { useRTL, getDir, isArabicLang } from './hooks/useRTL';
 export type { RTLResult } from './hooks/useRTL';
@@ -97,6 +101,9 @@ export { useDebounce, useDebouncedCallback } from './hooks/useDebounce';
 
 export { useOffline } from './hooks/useOffline';
 export type { OfflineResult } from './hooks/useOffline';
+
+export { useBackendResource } from './hooks/useBackendResource';
+export type { BackendResourceState } from './hooks/useBackendResource';
 
 export { usePWA } from './hooks/usePWA';
 export type { PWAResult, BeforeInstallPromptEvent } from './hooks/usePWA';
@@ -117,6 +124,20 @@ export {
   purgeLegacyWorkboxQueue,
 } from './utils/offlineQueueSecurity';
 export type { SanitizedHeaders, QueueSecurityCheck } from './utils/offlineQueueSecurity';
+export {
+  createQueueEnvelope,
+  serializeQueueBody,
+  parseQueueBody,
+  buildQueueRequestInit,
+  classifyQueueResponse,
+  nextQueueEnvelopeState,
+} from './utils/offlineQueueContract';
+export type {
+  OfflineQueueEnvelope,
+  QueueEnvelopeInput,
+  QueueResponseDisposition,
+  QueueState,
+} from './utils/offlineQueueContract';
 
 export {
   formatDate, formatDateTime, formatRelativeTime,
@@ -156,4 +177,4 @@ export type { TranslationKey } from './i18n/useTranslation';
 export { setLocale, getCurrentLocale } from './i18n/i18n';
 
 // Icons
-export * from './icons/index.tsx';
+export * from './icons/index';

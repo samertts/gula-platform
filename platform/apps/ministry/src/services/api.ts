@@ -1,4 +1,8 @@
+import { createApiClient, DemoIsolationError } from '@gula/ui-platform';
+import type { ApiRequestOptions } from '@gula/ui-platform';
+
 export interface MinistryUser {
+
   id: string;
   name: string;
   email: string;
@@ -200,7 +204,12 @@ export interface NationalReport {
   url?: string;
 }
 
-const API_BASE = 'https://api.gula.health/api/v1';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.gula.health/api/v1';
+const backend = createApiClient({
+  baseUrl: API_BASE,
+  clientName: 'ministry-app',
+  refreshPath: '/auth/refresh',
+});
 
 function isIsolatedDemoMode(): boolean {
   return import.meta.env.VITE_DEMO_MODE === 'true'
@@ -208,21 +217,11 @@ function isIsolatedDemoMode(): boolean {
     && sessionStorage.getItem('gula_ministry_demo_mode') === 'enabled';
 }
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (isIsolatedDemoMode() && path.startsWith('/ministry/')) {
-    throw new Error('Demo mode blocks live Ministry API calls; synthetic fixtures are required.');
+    throw new DemoIsolationError('الوضع التجريبي لوزارة الصحة لا يسمح بالاتصال ببيانات حية.');
   }
-
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
-  });
-  if (!response.ok) throw new Error(`API error: ${response.status}`);
-  return response.json();
+  return backend.request<T>(path, options as ApiRequestOptions);
 }
 
 export const api = {

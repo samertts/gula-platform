@@ -21,38 +21,42 @@ export const ROUTES = {
 
 export const SIDEBAR_SECTIONS: SidebarSection[] = [
   {
+    id: 'main',
     title: 'القائمة الرئيسية',
     items: [
-      { label: 'لوحة المعلومات', href: ROUTES.DASHBOARD, icon: 'LayoutDashboard' },
-      { label: 'المهام التمريضية', href: ROUTES.TASKS, icon: 'ClipboardList' },
-      { label: 'الأدوية', href: ROUTES.MEDICATIONS, icon: 'Pill' },
-      { label: 'العلامات الحيوية', href: ROUTES.VITALS, icon: 'Heart' },
+      { id: 'dashboard', label: 'لوحة المعلومات', href: ROUTES.DASHBOARD, icon: 'LayoutDashboard' },
+      { id: 'tasks', label: 'المهام التمريضية', href: ROUTES.TASKS, icon: 'ClipboardList' },
+      { id: 'medications', label: 'الأدوية', href: ROUTES.MEDICATIONS, icon: 'Pill' },
+      { id: 'vitals', label: 'العلامات الحيوية', href: ROUTES.VITALS, icon: 'Heart' },
     ],
   },
   {
+    id: 'patients',
     title: 'إدارة المرضى',
     items: [
-      { label: 'الجناح', href: ROUTES.WARD, icon: 'Building' },
-      { label: 'قبول المرضى', href: ROUTES.ADMISSIONS, icon: 'UserPlus' },
-      { label: 'خروج المرضى', href: ROUTES.DISCHARGE, icon: 'UserMinus' },
-      { label: 'خطة الرعاية', href: ROUTES.CARE_PLAN, icon: 'FileText' },
+      { id: 'ward', label: 'الجناح', href: ROUTES.WARD, icon: 'Building' },
+      { id: 'admissions', label: 'قبول المرضى', href: ROUTES.ADMISSIONS, icon: 'UserPlus' },
+      { id: 'discharge', label: 'خروج المرضى', href: ROUTES.DISCHARGE, icon: 'UserMinus' },
+      { id: 'care-plan', label: 'خطة الرعاية', href: ROUTES.CARE_PLAN, icon: 'FileText' },
     ],
   },
   {
+    id: 'clinical-verification',
     title: 'التحقق السريري',
     items: [
-      { label: 'التحقق بجانب السرير', href: ROUTES.BEDSIDE, icon: 'Scan' },
-      { label: 'مسح الباركود', href: ROUTES.BARCODE, icon: 'Barcode' },
-      { label: 'التحقق بـ QR', href: ROUTES.QR_VERIFICATION, icon: 'QrCode' },
-      { label: 'جولة المرضى', href: ROUTES.PATIENT_ROUND, icon: 'Stethoscope' },
+      { id: 'bedside', label: 'التحقق بجانب السرير', href: ROUTES.BEDSIDE, icon: 'Scan' },
+      { id: 'barcode', label: 'مسح الباركود', href: ROUTES.BARCODE, icon: 'Barcode' },
+      { id: 'qr-verification', label: 'التحقق بـ QR', href: ROUTES.QR_VERIFICATION, icon: 'QrCode' },
+      { id: 'patient-round', label: 'جولة المرضى', href: ROUTES.PATIENT_ROUND, icon: 'Stethoscope' },
     ],
   },
   {
+    id: 'reports',
     title: 'التقارير',
     items: [
-      { label: 'تسليم الوردية', href: ROUTES.SHIFT_HANDOVER, icon: 'ArrowRightLeft' },
-      { label: 'وضع عدم الاتصال', href: ROUTES.OFFLINE, icon: 'WifiOff' },
-      { label: 'الإعدادات', href: ROUTES.SETTINGS, icon: 'Settings' },
+      { id: 'shift-handover', label: 'تسليم الوردية', href: ROUTES.SHIFT_HANDOVER, icon: 'ArrowRightLeft' },
+      { id: 'offline', label: 'وضع عدم الاتصال', href: ROUTES.OFFLINE, icon: 'WifiOff' },
+      { id: 'settings', label: 'الإعدادات', href: ROUTES.SETTINGS, icon: 'Settings' },
     ],
   },
 ];

@@ -1,4 +1,5 @@
 import { inspectQueuePayload } from '../../../ui/utils/offlineQueueSecurity'
+import { createQueueEnvelope } from '../../../ui/utils/offlineQueueContract'
 
 const DB_NAME = 'gula-pharmacy-offline'
 const DB_VERSION = 2
@@ -95,12 +96,21 @@ export async function savePendingDispense(data: Record<string, unknown>): Promis
     })
     throw new Error('تم رفض تخزين عملية صرف غير متصلة تحتوي بيانات اعتماد')
   }
+  const envelope = await createQueueEnvelope({
+    url: '/pharmacy/dispense',
+    method: 'POST',
+    entityType: 'dispense',
+    entityId: typeof data.prescription_id === 'string' ? data.prescription_id : undefined,
+    action: 'create',
+    body: data,
+  })
   const store = database.transaction('pending_dispenses', 'readwrite').objectStore('pending_dispenses')
   return new Promise((resolve, reject) => {
     const request = store.add({
       ...data,
+      ...envelope,
       status: 'pending',
-      created_at: new Date().toISOString(),
+      created_at: envelope.createdAt,
       synced_at: null,
     })
     request.onsuccess = () => resolve(request.result as number)
@@ -125,17 +135,22 @@ async function purgeLegacyPendingDispenses(database: IDBDatabase): Promise<void>
   })
 
   for (const entry of entries) {
+    const entryId = entry.id
+    if (typeof entryId !== 'string' && typeof entryId !== 'number') {
+      console.error('[PharmacyOfflineQueue] missing IndexedDB entry key')
+      continue
+    }
     const security = inspectQueuePayload(entry)
     if (!security.safe) {
       await addQueueRejection(database, {
         source: 'gula-pharmacy-offline.pending_dispenses',
-        requestId: entry.id,
+        requestId: entryId,
         reason: security.reason,
         rejectedAt: new Date().toISOString(),
       })
       await new Promise<void>((resolve, reject) => {
         const transaction = database.transaction('pending_dispenses', 'readwrite')
-        const request = transaction.objectStore('pending_dispenses').delete(entry.id)
+        const request = transaction.objectStore('pending_dispenses').delete(entryId)
         request.onsuccess = () => resolve()
         request.onerror = () => reject(request.error)
       })
@@ -160,6 +175,8 @@ export async function markDispenseSynced(id: number) {
       const data = getRequest.result
       if (data) {
         data.status = 'synced'
+        data.state = 'synced'
+        data.updatedAt = new Date().toISOString()
         data.synced_at = new Date().toISOString()
         const putRequest = store.put(data)
         putRequest.onsuccess = () => resolve(true)

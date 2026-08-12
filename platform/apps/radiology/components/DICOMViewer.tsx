@@ -1,8 +1,8 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 
-type Tool = 'pan' | 'zoom' | 'wwwc' | 'magnify' | 'measure' | 'angle' | 'length' | 'elliptical' | 'rectangle'
+export type Tool = 'pan' | 'zoom' | 'wwwc' | 'magnify' | 'measure' | 'angle' | 'length' | 'elliptical' | 'rectangle'
 
-type LayoutType = '1x1' | '1x2' | '2x1' | '2x2' | '3x3'
+export type LayoutType = '1x1' | '1x2' | '2x1' | '2x2' | '3x3'
 
 type ViewportState = {
   centerX: number

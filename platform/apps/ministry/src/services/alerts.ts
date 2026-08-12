@@ -1,4 +1,10 @@
+import { api } from './api';
 import type { Alert } from './api';
+
+export const alertsService = {
+  getAlerts: (): Promise<Alert[]> => api.getAlerts(),
+  acknowledge: (id: string): Promise<void> => api.acknowledgeAlert(id),
+};
 
 export interface AlertStats {
   total: number;

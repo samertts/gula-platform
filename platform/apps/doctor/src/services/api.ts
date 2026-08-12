@@ -1,12 +1,31 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import { inspectQueuePayload, sanitizeQueueHeaders } from '@gula/ui-platform';
+import {
+  ApiClientError,
+  buildQueueRequestInit,
+  createApiClient,
+  classifyQueueResponse,
+  createQueueEnvelope,
+  inspectQueuePayload,
+  nextQueueEnvelopeState,
+  sanitizeQueueHeaders,
+  type OfflineQueueEnvelope,
+} from '@gula/ui-platform';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.gula.health/api/v1';
+const backend = createApiClient({
+  baseUrl: API_BASE,
+  clientName: 'doctor-app',
+  refreshPath: '/auth/refresh',
+});
 
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
   offlinePriority?: 'high' | 'normal' | 'low';
   timeout?: number;
+  entityType?: string;
+  entityId?: string;
+  action?: string;
+  expectedVersion?: number;
 }
 
 // Authentication is carried only by server-issued HttpOnly cookies.
@@ -97,32 +116,26 @@ export async function apiRequest<T = unknown>(
   options: RequestOptions = {},
 ): Promise<T> {
   const {
-    skipAuth = false,
+    skipAuth: _skipAuth,
     offlinePriority = 'normal',
-    timeout = 30000,
+    timeout: _timeout,
+    entityType: _entityType,
+    entityId: _entityId,
+    action: _action,
+    expectedVersion,
     ...fetchOptions
   } = options;
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-Client-Type': 'doctor-app',
-    ...(fetchOptions.headers as Record<string, string>),
-  };
-
-  // Browser clients never construct Authorization headers; cookies are HttpOnly.
-  void skipAuth;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
+  void _timeout;
+  void _entityType;
+  void _entityId;
+  void _action;
+  const method = options.method || 'GET';
   const isOnline = navigator.onLine;
 
   if (!isOnline && offlinePriority !== 'high') {
-    const cache = await getFromCache<T>(endpoint, options.method || 'GET');
+    const cache = await getFromCache<T>(endpoint, method);
     if (cache !== null) return cache;
-
-    if (options.method && options.method !== 'GET') {
+    if (method !== 'GET') {
       await queueOfflineRequest(endpoint, options);
       throw new OfflineQueuedError('تمت إضافة الطلب إلى قائمة الانتظار غير المتصلة');
     }
@@ -130,60 +143,28 @@ export async function apiRequest<T = unknown>(
   }
 
   try {
-    let response = await fetch(`${API_BASE}${endpoint}`, {
+    const data = await backend.request<T>(endpoint, {
       ...fetchOptions,
-      credentials: 'include',
-      headers,
-      signal: controller.signal,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(fetchOptions.headers as Record<string, string>),
+      },
+      expectedVersion,
+      skipRefresh: Boolean(_skipAuth) || endpoint === '/auth/refresh',
     });
-
-    if (response.status === 401 && !skipAuth && endpoint !== '/auth/refresh') {
-      clearTimeout(timeoutId);
-      const refreshed = await tryRefreshToken();
-      if (refreshed) {
-        const retryController = new AbortController();
-        const retryTimeout = setTimeout(() => retryController.abort(), timeout);
-        response = await fetch(`${API_BASE}${endpoint}`, {
-          ...fetchOptions,
-          credentials: 'include',
-          headers,
-          signal: retryController.signal,
-        });
-        clearTimeout(retryTimeout);
-      }
-    }
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorData: Record<string, unknown> = {};
-      try {
-        errorData = JSON.parse(errorBody);
-      } catch {}
-      throw new ApiError(
-        response.status,
-        (errorData as any).message || (errorData as any).error || response.statusText,
-        errorData,
-      );
-    }
-
-    const data = await response.json();
-
-    if (options.method === 'GET' || !options.method) {
-      await cacheResponse(endpoint, data);
-    }
-
-    return data as T;
+    if (method === 'GET') await cacheResponse(endpoint, data);
+    return data;
   } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof ApiError || error instanceof OfflineQueuedError) {
-      throw error;
+    if (error instanceof ApiClientError) {
+      throw new ApiError(error.status, error.message, error.contract as Record<string, unknown> | undefined);
     }
+    if (error instanceof ApiError || error instanceof OfflineQueuedError) throw error;
     if (!navigator.onLine) {
-      const cache = await getFromCache<T>(endpoint, options.method || 'GET');
+      const cache = await getFromCache<T>(endpoint, method);
       if (cache !== null) return cache;
-      if (options.method && options.method !== 'GET') {
+      if (method !== 'GET') {
         await queueOfflineRequest(endpoint, options);
         throw new OfflineQueuedError('تمت إضافة الطلب إلى قائمة الانتظار غير المتصلة');
       }
@@ -195,20 +176,17 @@ export async function apiRequest<T = unknown>(
 
 async function queueOfflineRequest(endpoint: string, options: RequestOptions) {
   const db = await getOfflineDB();
-  const headerResult = sanitizeQueueHeaders(options.headers as Record<string, string>);
-  const payloadResult = inspectQueuePayload(options.body);
-  if (headerResult.hadSensitiveHeader || !payloadResult.safe) {
-    throw new OfflineError('تم رفض تخزين طلب غير متصل يحتوي بيانات اعتماد');
-  }
-  await db.add('requests', {
+  const envelope = await createQueueEnvelope({
     url: `${API_BASE}${endpoint}`,
-    method: options.method || 'GET',
-    headers: headerResult.headers,
+    method: options.method || 'POST',
+    headers: options.headers,
     body: options.body,
-    timestamp: Date.now(),
-    retryCount: 0,
-    maxRetries: 5,
+    entityType: options.entityType || endpoint.split('/').filter(Boolean)[0] || 'doctor',
+    entityId: options.entityId,
+    action: options.action || (options.method || 'POST').toLowerCase(),
+    expectedVersion: options.expectedVersion,
   });
+  await db.add('requests', envelope);
   if ('serviceWorker' in navigator && 'sync' in navigator.serviceWorker) {
     try {
       const registration = await navigator.serviceWorker.ready;
@@ -239,33 +217,65 @@ async function getFromCache<T>(key: string, method: string): Promise<T | null> {
 
 export async function processOfflineQueue() {
   const db = await getOfflineDB();
-  const requests = await db.getAll('requests');
+  const [requests, requestKeys] = await Promise.all([
+    db.getAll('requests'),
+    db.getAllKeys('requests'),
+  ]);
 
-  for (const req of requests) {
-    if (req.retryCount >= req.maxRetries) {
-      await db.delete('requests', req.id);
+  for (const [index, stored] of requests.entries()) {
+    const req = stored as OfflineQueueEnvelope & { id?: number; retryCount?: number; maxRetries?: number };
+    const requestKey = req.id ?? requestKeys[index];
+    if (requestKey === undefined) {
+      console.error('[DoctorOfflineQueue] missing IndexedDB request key', { index });
       continue;
     }
+    const envelope: OfflineQueueEnvelope = req.schemaVersion === 1
+      ? req
+      : await createQueueEnvelope({
+        url: req.url,
+        method: req.method,
+        headers: req.headers,
+        body: req.body,
+        entityType: req.entityType || 'legacy',
+        action: req.action || req.method.toLowerCase(),
+        operationId: req.operationId,
+        idempotencyKey: req.idempotencyKey,
+        expectedVersion: req.expectedVersion,
+      });
+
+    if (envelope.state === 'conflict' || envelope.state === 'rejected' || envelope.state === 'synced') continue;
+    if (envelope.attempt >= envelope.maxAttempts) {
+      await db.put('requests', { ...envelope, id: requestKey, state: 'failed' });
+      continue;
+    }
+
     try {
-      const headerResult = sanitizeQueueHeaders(req.headers);
-      const payloadResult = inspectQueuePayload(req.body);
+      const headerResult = sanitizeQueueHeaders(envelope.headers);
+      const payloadResult = inspectQueuePayload(envelope.body);
       if (headerResult.hadSensitiveHeader || !payloadResult.safe) {
-        await db.delete('requests', req.id);
+        await db.put('requests', { ...envelope, id: requestKey, state: 'rejected', lastError: headerResult.hadSensitiveHeader ? 'sensitive-header' : payloadResult.reason });
         continue;
       }
-      const response = await fetch(req.url, {
-        method: req.method,
-        credentials: 'include',
-        headers: { ...headerResult.headers, 'Content-Type': 'application/json' },
-        body: req.body,
-      });
-      if (response.ok) {
-        await db.delete('requests', req.id);
+      const response = await fetch(envelope.url, buildQueueRequestInit(envelope));
+      const disposition = classifyQueueResponse(response.status);
+      if (disposition === 'synced') {
+        await db.delete('requests', requestKey);
+      } else if (disposition === 'conflict') {
+        let serverBody: unknown;
+        try { serverBody = await response.json(); } catch { /* no JSON body */ }
+        await db.put('requests', {
+          ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`, {
+            status: response.status as 409 | 412,
+            serverBody,
+            detectedAt: new Date().toISOString(),
+          }),
+          id: requestKey,
+        });
       } else {
-        await db.put('requests', { ...req, retryCount: req.retryCount + 1 });
+        await db.put('requests', { ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`), id: requestKey });
       }
-    } catch {
-      await db.put('requests', { ...req, retryCount: req.retryCount + 1 });
+    } catch (error) {
+      await db.put('requests', { ...nextQueueEnvelopeState(envelope, 'retry', error instanceof Error ? error.message : 'network-error'), id: requestKey });
     }
   }
 }

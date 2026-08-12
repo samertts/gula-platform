@@ -492,8 +492,9 @@ def validate_order(
     user_role: str,
     user_id: int,
     ip_address: str | None = None,
+    expected_version: int | None = None,
 ) -> dict:
-    """Validate and lock an order."""
+    """Validate and lock an order with optional optimistic version checking."""
     from datetime import datetime
 
     if user_role not in {"admin", "master_admin", "doctor"}:
@@ -511,21 +512,27 @@ def validate_order(
     enforce_transition(order.status, "validated")
 
     now = datetime.now(UTC)
-    rows_updated = (
-        db.query(LabOrder)
-        .filter(LabOrder.id == order_id, LabOrder.locked_at.is_(None))
-        .update(
-            {
-                "status": "validated",
-                "validated_by": user_id,
-                "validated_at": now,
-                "locked_at": now,
-            },
-            synchronize_session="fetch",
-        )
+    update_query = db.query(LabOrder).filter(
+        LabOrder.id == order_id,
+        LabOrder.locked_at.is_(None),
+    )
+    if expected_version is not None:
+        if expected_version < 1:
+            return {"error": "If-Match version must be a positive integer", "status_code": 400}
+        update_query = update_query.filter(LabOrder.version == expected_version)
+
+    rows_updated = update_query.update(
+        {
+            "status": "validated",
+            "validated_by": user_id,
+            "validated_at": now,
+            "locked_at": now,
+            "version": LabOrder.version + 1,
+        },
+        synchronize_session="fetch",
     )
     if rows_updated == 0:
-        return {"error": "Order is already validated and locked", "status_code": 409}
+        return {"error": "Order version is stale or already validated and locked", "status_code": 409}
 
     log_action(
         db,

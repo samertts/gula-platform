@@ -23,6 +23,12 @@ export interface VerificationResult {
 
 type RightStatus = 'pending' | 'success' | 'fail'
 
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
+
+function normalizeScannedValue(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
 interface RightCheck {
   key: string
   label: string
@@ -43,12 +49,13 @@ export default function BarcodeVerification({
 }: BarcodeVerificationProps) {
   const [scanning, setScanning] = useState(true)
   const [scannedCode, setScannedCode] = useState('')
+  const [scannedData, setScannedData] = useState<Record<string, string>>({})
   const [rights, setRights] = useState<RightCheck[]>([
     { key: 'patient', label: 'المريض الصحيح', expected: expectedPatient || '', scanned: '', status: 'pending' },
     { key: 'drug', label: 'الدواء الصحيح', expected: expectedDrug || '', scanned: '', status: 'pending' },
     { key: 'dose', label: 'الجرعة الصحيحة', expected: expectedDose || '', scanned: '', status: 'pending' },
     { key: 'route', label: 'الطريق الصحيح', expected: expectedRoute || '', scanned: '', status: 'pending' },
-    { key: 'time', label: 'الوقت الصحيح', expected: new Date().toLocaleString('ar-IQ'), scanned: '', status: 'pending' },
+    { key: 'time', label: 'الوقت الصحيح', expected: new Date().toISOString(), scanned: '', status: 'pending' },
   ])
   const [manualMode, setManualMode] = useState(false)
   const manualInputRef = useRef<HTMLInputElement>(null)
@@ -59,14 +66,15 @@ export default function BarcodeVerification({
   }, [])
 
   function simulateScan() {
-    const mockBarcode = JSON.stringify({
-      patient: patientName || '12345',
-      drug: drugName || 'METFORMIN',
-      dose: expectedDose || '500mg',
-      route: expectedRoute || 'PO',
+    if (!DEMO_MODE) return
+    const demoBarcode = JSON.stringify({
+      patient: patientName || 'demo-patient',
+      drug: drugName || 'DEMO-MEDICATION',
+      dose: expectedDose || 'demo-dose',
+      route: expectedRoute || 'demo-route',
       timestamp: new Date().toISOString(),
     })
-    processScannedData(mockBarcode)
+    processScannedData(demoBarcode)
   }
 
   function processScannedData(raw: string) {
@@ -91,12 +99,12 @@ export default function BarcodeVerification({
     }
 
     const updatedRights: RightCheck[] = rights.map((right) => {
-      const scannedVal = (parsed[right.key] || '').toLowerCase()
-      const expectedVal = right.expected.toLowerCase()
-      const isMatch =
-        right.key === 'time'
-          ? true
-          : scannedVal.includes(expectedVal) || expectedVal.includes(scannedVal)
+      const scannedRaw = parsed[right.key] || ''
+      const scannedVal = normalizeScannedValue(scannedRaw)
+      const expectedVal = normalizeScannedValue(right.expected)
+      const isMatch = right.key === 'time'
+        ? Number.isFinite(Date.parse(scannedRaw)) && Math.abs(Date.now() - Date.parse(scannedRaw)) <= 5 * 60 * 1000
+        : Boolean(scannedVal && expectedVal && scannedVal === expectedVal)
       return {
         ...right,
         scanned: parsed[right.key] || '',
@@ -105,13 +113,14 @@ export default function BarcodeVerification({
     })
 
     setRights(updatedRights)
+    setScannedData(parsed)
 
     const result: VerificationResult = {
       patient_match: updatedRights[0].status === 'success',
       drug_match: updatedRights[1].status === 'success',
       dose_match: updatedRights[2].status === 'success',
       route_match: updatedRights[3].status === 'success',
-      time_match: true,
+      time_match: updatedRights[4].status === 'success',
       all_match: updatedRights.every((r) => r.status === 'success'),
       scanned_data: parsed,
     }
@@ -135,7 +144,6 @@ export default function BarcodeVerification({
   }
 
   const allMatch = rights.every((r) => r.status === 'success')
-  const anyFail = rights.some((r) => r.status === 'fail')
 
   return (
     <div className="modal-overlay">
@@ -153,9 +161,11 @@ export default function BarcodeVerification({
             <p className="scanner-text">قم بتوجيه الماسح الضوئي نحو الباركود</p>
 
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', justifyContent: 'center' }}>
-              <button className="btn btn-primary" onClick={simulateScan}>
-                📷 محاكاة المسح
-              </button>
+                      {DEMO_MODE && (
+                  <button className="btn btn-primary" onClick={simulateScan}>
+                    محاكاة المسح (Demo فقط)
+                  </button>
+                )}
               <button
                 className="btn btn-secondary"
                 onClick={() => setManualMode(true)}
@@ -293,23 +303,22 @@ export default function BarcodeVerification({
                 </button>
               </div>
               <button
-                className={`btn ${allMatch ? 'btn-success' : anyFail ? 'btn-danger' : 'btn-primary'}`}
-                onClick={() =>
+                className={`btn ${allMatch ? 'btn-success' : 'btn-secondary'}`}
+                onClick={() => {
+                  if (!allMatch) return
                   onVerified({
                     patient_match: rights[0].status === 'success',
                     drug_match: rights[1].status === 'success',
                     dose_match: rights[2].status === 'success',
                     route_match: rights[3].status === 'success',
-                    time_match: true,
-                    all_match: allMatch,
-                    scanned_data: {},
+                    time_match: rights[4].status === 'success',
+                    all_match: true,
+                    scanned_data: scannedData,
                   })
-                }
-                disabled={!allMatch && !anyFail}
+                }}
+                disabled={!allMatch}
               >
-                {allMatch
-                  ? '✓ تأكيد وصرف'
-                  : 'تأكيد مع تجاوز'}
+                {allMatch ? '✓ تأكيد وصرف' : 'أكمل التحقق قبل التأكيد'}
               </button>
             </div>
           </div>

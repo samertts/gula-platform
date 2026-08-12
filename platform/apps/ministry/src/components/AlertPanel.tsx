@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { cn } from '@gula/ui-platform';
-import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, AlertCircle, Info, AlertOctagon, X, CheckCircle2, Bell } from 'lucide-react';
 import type { Alert } from '../services/api';
 import { getAlertPriorityScore, getAlertsBySeverity } from '../services/alerts';
 
 interface AlertPanelProps {
-  alerts: Alert[];
+  alerts?: Alert[];
   onAcknowledge?: (id: string) => void;
   onViewAll?: () => void;
   maxDisplay?: number;
@@ -19,7 +18,7 @@ const severityConfig = {
   info: { icon: Info, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20', hoverBg: 'hover:bg-sky-500/20' },
 };
 
-export function AlertPanel({ alerts, onAcknowledge, onViewAll, maxDisplay = 5 }: AlertPanelProps) {
+export function AlertPanel({ alerts = [], onAcknowledge, onViewAll, maxDisplay = 5 }: AlertPanelProps) {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const sorted = [...alerts]
     .sort((a, b) => getAlertPriorityScore(b) - getAlertPriorityScore(a))
@@ -48,16 +47,12 @@ export function AlertPanel({ alerts, onAcknowledge, onViewAll, maxDisplay = 5 }:
       </div>
 
       <div className="space-y-2">
-        <AnimatePresence>
           {sorted.map(alert => {
             const config = severityConfig[alert.severity];
             const Icon = config.icon;
             return (
-              <motion.div
+              <div
                 key={alert.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
                 className={cn(
                   'p-4 rounded-xl border transition-all group',
                   config.bg, config.border, config.hoverBg,
@@ -91,10 +86,9 @@ export function AlertPanel({ alerts, onAcknowledge, onViewAll, maxDisplay = 5 }:
                     </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
-        </AnimatePresence>
       </div>
 
       {alerts.length > maxDisplay && onViewAll && (

@@ -71,14 +71,15 @@ export class VoiceDictationEngine {
     }
 
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    this.recognition = new SpeechRecognitionAPI();
+    const recognition = new SpeechRecognitionAPI();
+    this.recognition = recognition;
     this.callbacks = callbacks;
 
-    this.recognition.continuous = true;
-    this.recognition.interimResults = true;
-    this.recognition.lang = language;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = language;
 
-    this.recognition.onresult = (event: any) => {
+    recognition.onresult = (event: any) => {
       let interimTranscript = '';
       let finalTranscript = '';
       let lastConfidence = 0;
@@ -114,7 +115,7 @@ export class VoiceDictationEngine {
       }
     };
 
-    this.recognition.onerror = (event: any) => {
+    recognition.onerror = (event: any) => {
       const errorMessages: Record<string, string> = {
         'no-speech': 'لم يتم اكتشاف أي كلام',
         'aborted': 'تم إلغاء الإملاء',
@@ -128,19 +129,19 @@ export class VoiceDictationEngine {
       this.callbacks.onError?.(errorMessages[event.error] || event.error);
     };
 
-    this.recognition.onend = () => {
+    recognition.onend = () => {
       if (this.session) {
         this.session.isActive = false;
       }
       this.callbacks.onEnd?.();
     };
 
-    this.recognition.onstart = () => {
+    recognition.onstart = () => {
       this.callbacks.onStart?.();
     };
 
     try {
-      this.recognition.start();
+      recognition.start();
     } catch (error) {
       this.callbacks.onError?.(`Failed to start: ${error}`);
       return null;
@@ -181,19 +182,21 @@ export class VoiceDictationEngine {
     if (!this.isSupported || !this.session) return;
 
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-    this.recognition = new SpeechRecognitionAPI();
-    this.recognition.continuous = true;
-    this.recognition.interimResults = true;
-    this.recognition.lang = this.session.language;
+    const session = this.session;
+    const recognition = new SpeechRecognitionAPI();
+    this.recognition = recognition;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = session.language;
 
-    this.recognition.onresult = (event: any) => { /* same as start */ };
-    this.recognition.onerror = (event: any) => { /* same as start */ };
-    this.recognition.onend = () => { /* same as start */ };
-    this.recognition.onstart = () => { /* same as start */ };
+    recognition.onresult = (event: any) => { /* same as start */ };
+    recognition.onerror = (event: any) => { /* same as start */ };
+    recognition.onend = () => { /* same as start */ };
+    recognition.onstart = () => { /* same as start */ };
 
     try {
-      this.recognition.start();
-      this.session.isPaused = false;
+      recognition.start();
+      session.isPaused = false;
       this.callbacks.onResume?.();
     } catch (error) {
       this.callbacks.onError?.(`Failed to resume: ${error}`);

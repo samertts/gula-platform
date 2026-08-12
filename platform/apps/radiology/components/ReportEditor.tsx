@@ -65,8 +65,8 @@ export function ReportEditor({
   const addFinding = useCallback(() => {
     if (!newFinding.description) return
     const finding: ReportFinding = {
+      ...(newFinding as ReportFinding),
       id: `finding_${Date.now()}`,
-      ...newFinding as ReportFinding
     }
     const findings = [...(report.findings || []), finding]
     onChange('findings', findings)
@@ -423,12 +423,12 @@ export function ReportEditor({
                           padding: '6px 12px',
                           cursor: 'pointer',
                           fontSize: '0.8rem',
-                          backgroundColor: report.rads_score === score.value ? 'var(--accent-primary-light)' : undefined
+                          backgroundColor: report.rads_score === score.value ? 'var(--accent-primary-light)' : ''
                         }}
                         onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)' }}
                         onMouseLeave={e => {
                           e.currentTarget.style.backgroundColor =
-                            report.rads_score === score.value ? 'var(--accent-primary-light)' : undefined
+                            report.rads_score === score.value ? 'var(--accent-primary-light)' : ''
                         }}
                       >
                         {score.label}

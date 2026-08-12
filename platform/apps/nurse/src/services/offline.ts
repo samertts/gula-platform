@@ -1,6 +1,11 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import type { OfflineQueueItem } from '@/utils/types';
-import { inspectQueuePayload } from '../../../../ui/utils/offlineQueueSecurity';
+import {
+  createQueueEnvelope,
+  inspectQueuePayload,
+  nextQueueEnvelopeState,
+  type OfflineQueueEnvelope,
+} from '@gula/ui-platform';
 
 const DB_NAME = 'gula-nurse-offline';
 const DB_VERSION = 2;
@@ -55,11 +60,26 @@ export const offlineService = {
       });
       throw new Error('تم رفض تخزين عنصر غير متصل يحتوي بيانات اعتماد');
     }
+    const envelope = await createQueueEnvelope({
+      url: `/nurse/${item.type}`,
+      method: 'POST',
+      entityType: item.type,
+      action: item.action,
+      body: item.payload,
+    });
     const entry: OfflineQueueItem = {
       ...item,
       id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
+      createdAt: envelope.createdAt,
       synced: false,
+      schemaVersion: envelope.schemaVersion,
+      operationId: envelope.operationId,
+      idempotencyKey: envelope.idempotencyKey,
+      requestFingerprint: envelope.requestFingerprint,
+      state: envelope.state,
+      attempt: envelope.attempt,
+      maxAttempts: envelope.maxAttempts,
+      updatedAt: envelope.updatedAt,
     };
     await db.add('queue', entry);
     return entry;
@@ -82,6 +102,8 @@ export const offlineService = {
     const item = await tx.store.get(id);
     if (item) {
       item.synced = true;
+      item.state = 'synced';
+      item.updatedAt = new Date().toISOString();
       await tx.store.put(item);
     }
     await tx.done;
@@ -142,6 +164,33 @@ export const offlineService = {
         await syncFn(item);
         await offlineService.markSynced(item.id);
       } catch (error) {
+        const database = await getDb();
+        const current = await database.get('queue', item.id);
+        if (current) {
+          const next = nextQueueEnvelopeState(
+            {
+              schemaVersion: 1,
+              operationId: current.operationId || current.id,
+              idempotencyKey: current.idempotencyKey || current.operationId || current.id,
+              requestFingerprint: current.requestFingerprint || 'legacy',
+              entityType: current.type,
+              entityId: typeof current.payload?.id === 'string' ? current.payload.id : undefined,
+              action: current.action,
+              url: `/nurse/${current.type}`,
+              method: 'POST',
+              headers: {},
+              body: JSON.stringify(current.payload),
+              createdAt: current.createdAt,
+              updatedAt: current.updatedAt || current.createdAt,
+              attempt: current.attempt || 0,
+              maxAttempts: current.maxAttempts || 5,
+              state: current.state || 'pending',
+            } as OfflineQueueEnvelope,
+            'retry',
+            error instanceof Error ? error.message : 'sync-failed',
+          );
+          await database.put('queue', { ...current, ...next, id: current.id, payload: current.payload, synced: false });
+        }
         console.error('[Offline] Sync failed for item:', item.id, error);
       }
     }

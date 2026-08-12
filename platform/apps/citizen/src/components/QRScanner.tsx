@@ -85,7 +85,7 @@ export function QRScanner({ onScan, onError, continuous = false, className = '' 
   return (
     <div className={`relative ${className}`}>
       <div id="qr-reader" className="overflow-hidden rounded-2xl" />
-      {!isScanning && hasPermission !== false && (
+      {!isScanning && (
         <div className="absolute inset-0 flex items-center justify-center bg-neutral-900/30 backdrop-blur-sm rounded-2xl">
           <button
             onClick={startScanning}

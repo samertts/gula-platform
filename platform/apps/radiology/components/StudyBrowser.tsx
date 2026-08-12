@@ -92,7 +92,7 @@ export function StudyBrowser({
               onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)' }}
               onMouseLeave={e => {
                 e.currentTarget.style.backgroundColor =
-                  selectedStudyUid === study.study_uid ? 'var(--accent-primary-light)' : undefined
+                  selectedStudyUid === study.study_uid ? 'var(--accent-primary-light)' : ''
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
@@ -140,7 +140,7 @@ export function StudyBrowser({
                     onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)' }}
                     onMouseLeave={e => {
                       e.currentTarget.style.backgroundColor =
-                        selectedSeriesUid === series.series_uid ? 'var(--bg-active)' : undefined
+                        selectedSeriesUid === series.series_uid ? 'var(--bg-active)' : ''
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
