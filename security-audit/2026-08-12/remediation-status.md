@@ -28,6 +28,12 @@
 | Production configuration | فرض `BASE_URL` وHTTPS، أسرار قوية لا تقل عن 32 حرفاً، Redis مشترك، ومدة refresh بين 1 و30 يوماً | مكتمل في المصدر | اختبارات config production: 3 passed |
 | CORS/CSRF/Host | رفض wildcard مع credentials، حصر CORS الإنتاجي على HTTPS، إضافة TrustedHost، وتوحيد origins الرسمية في CSRF | مكتمل في المصدر | اختبار رفض wildcard وقبول الإعداد الآمن |
 | Backend CSP | إضافة النطاقين الرسميين وAPI وWebSocket إلى `connect-src` مع `upgrade-insecure-requests` | مكتمل في المصدر | تحقق syntax وdiff check؛ يحتاج تحقق headers بعد النشر |
+| Android transport | فصل إعداد release الصارم عن debug overlay، منع cleartext في release، إزالة pins الوهمية، وتوحيد `api.gula-platform.org` | مكتمل في المصدر | client transport guard و`compileall` نجحا؛ يحتاج Android release build |
+| iOS refresh transport | توحيد refresh مع URLSession المزوّدة بـCertificatePinner بدلاً من جلسة النظام، وتصحيح حساب SPKI من SubjectPublicKeyInfo عبر سلسلة الثقة | مكتمل في المصدر | client transport guard نجح؛ يحتاج Xcode release build واختبار شهادة |
+| Hospital desktop transport | فرض HTTPS والمضيفات المعتمدة، منع HTTP adapter وredirects، وحماية روابط التنزيل من تسريب bearer token | مكتمل في المصدر | اختبارات URL وcompileall وguard نجحت |
+| Flutter desktop transport | إضافة endpoint allowlist، منع redirects، وإعادة المحاولة عبر نفس Dio instance حتى لا تتجاوز الحماية | مكتمل في المصدر | client transport guard نجح؛ يحتاج `flutter analyze` و`flutter test` في CI |
+| Flutter secure key generation | استبدال توليد المفتاح المعتمد على الوقت بـ`Random.secure()` | مكتمل في المصدر | guard المصدر نجح؛ يحتاج اختبار Flutter على منصات الإصدار |
+| TLS pin evidence | حفظ بصمة SPKI العامة ونوع شهادة الإنتاج في `tls-pinning-evidence.md` دون أي بيانات اعتماد | مكتمل في المصدر | تحقق TLS خارجي موثق؛ يلزم pin احتياطي موثق قبل التجديد |
 
 ## التحقق الحالي
 

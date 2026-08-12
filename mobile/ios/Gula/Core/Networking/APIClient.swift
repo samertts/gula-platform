@@ -254,6 +254,11 @@ actor APIClient {
         KeychainManager.shared.delete(key: "refresh_token")
     }
 
+    /// Refresh through the same pinned URLSession used by every API request.
+    func refreshTokenForMiddleware(_ refreshToken: String) async throws -> String {
+        try await refreshAccessToken(refreshToken: refreshToken)
+    }
+
     func registerDeviceToken(token: String, platform: String) async throws {
         let _: EmptyResponse = try await performRequest(
             APIEndpoint.registerDevice(token: token, platform: platform),

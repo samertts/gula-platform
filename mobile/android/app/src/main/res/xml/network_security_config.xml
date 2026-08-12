@@ -1,29 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Release default: no plaintext traffic and system CA validation. -->
     <base-config cleartextTrafficPermitted="false">
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
     </base-config>
 
-    <!-- Development environment -->
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">10.0.2.2</domain>
-        <domain includeSubdomains="true">localhost</domain>
-        <domain includeSubdomains="true">192.168.0.0/16</domain>
-    </domain-config>
-
-    <!-- Production API -->
+    <!-- Production API: SPKI pin must be rotated with a verified backup pin. -->
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">api.gulaplatform.com</domain>
-        <domain includeSubdomains="true">staging.gulaplatform.com</domain>
-        <domain includeSubdomains="true">staging-api.gulaplatform.com</domain>
+        <domain includeSubdomains="true">api.gula-platform.org</domain>
         <trust-anchors>
             <certificates src="system" />
         </trust-anchors>
         <pin-set expiration="2026-12-31">
-            <pin digest="SHA-256">AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</pin>
-            <pin digest="SHA-256">BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=</pin>
+            <pin digest="SHA-256">g9F05XEMwoJmxPy/otHWQ4jyLsg5jcPWyh4PYBrOEM0=</pin>
         </pin-set>
     </domain-config>
 </network-security-config>

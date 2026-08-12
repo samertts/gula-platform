@@ -2,14 +2,39 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api_exceptions.dart';
+import '../security/api_url_validator.dart';
+
+class EndpointGuardInterceptor extends Interceptor {
+  final bool allowDebugEndpoints;
+
+  EndpointGuardInterceptor({this.allowDebugEndpoints = kDebugMode});
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    if (isApprovedApiRequest(options.uri, allowDebugEndpoints: allowDebugEndpoints)) {
+      handler.next(options);
+      return;
+    }
+
+    handler.reject(
+      DioException(
+        requestOptions: options,
+        error: const StateError('Request target is not an approved API endpoint.'),
+        type: DioExceptionType.unknown,
+      ),
+    );
+  }
+}
 
 class AuthInterceptor extends Interceptor {
+  final Dio dio;
   final String Function() getToken;
   final String Function()? getRefreshToken;
   final Future<bool> Function()? onRefreshToken;
   final void Function()? onAuthFailure;
 
   AuthInterceptor({
+    required this.dio,
     required this.getToken,
     this.getRefreshToken,
     this.onRefreshToken,
@@ -39,7 +64,7 @@ class AuthInterceptor extends Interceptor {
             final opts = err.requestOptions;
             opts.headers['Authorization'] = 'Bearer ${getToken()}';
             try {
-              final response = await Dio().fetch(opts);
+              final response = await dio.fetch(opts);
               handler.resolve(response);
               return;
             } catch (_) {}

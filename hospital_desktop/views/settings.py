@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from config import AppConfig, save_config
+from config import AppConfig, save_config, validate_api_base_url
 from l10n import TranslationManager
 from session import SessionManager
 from widgets.dialogs import AboutDialog, AlertDialog, ConfirmDialog
@@ -181,12 +181,24 @@ class SettingsView(QWidget):
         self.language_changed.emit(lang)
 
     def _on_save_server(self):
-        self._config.api_base_url = self._server_input.text().strip()
+        previous_url = self._config.api_base_url
+        try:
+            validated_url = validate_api_base_url(self._server_input.text())
+        except ValueError:
+            self._server_input.setText(previous_url)
+            AlertDialog(
+                "عنوان خادم غير مسموح",
+                "استخدم عنوان HTTPS الرسمي للمنصة. يُسمح بـHTTP للتطوير المحلي فقط.",
+                "error", parent=self,
+            ).exec()
+            return
+
+        self._config.api_base_url = validated_url
         save_config(self._config)
         from api_client import ApiClient
-        ApiClient().set_base_url(self._config.api_base_url)
+        ApiClient().set_base_url(validated_url)
         AlertDialog(
-            "\u062a\u0645 \u0627\u0644\u062d\u0641\u0638",
+            "\u062a\u0645 \u0627\u0644\u062d\0641\u0638",
             "\u062a\u0645 \u062a\u062d\u062f\u064a\u062b \u0639\u0646\u0648\u0627\u0646 \u0627\u0644\u062e\u0627\u062f\u0645",
             "success", parent=self,
         ).exec()

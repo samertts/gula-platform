@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureConfig {
@@ -92,7 +94,8 @@ class SecureConfig {
   }
 
   static String _generateKey() {
-    final bytes = List<int>.generate(32, (_) => DateTime.now().microsecondsSinceEpoch % 256);
+    final random = Random.secure();
+    final bytes = List<int>.generate(32, (_) => random.nextInt(256));
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
 }

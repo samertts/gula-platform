@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'api_interceptor.dart';
 import 'api_exceptions.dart';
+import '../security/api_url_validator.dart';
 import '../security/certificate_pinner.dart';
 
 class ApiClient {
@@ -19,7 +20,7 @@ class ApiClient {
   final Duration sendTimeout;
 
   ApiClient({
-    required this.baseUrl,
+    required String baseUrl,
     required this.getToken,
     required this.getRefreshToken,
     required this.onRefreshToken,
@@ -29,7 +30,7 @@ class ApiClient {
     this.connectTimeout = const Duration(seconds: 15),
     this.receiveTimeout = const Duration(seconds: 30),
     this.sendTimeout = const Duration(seconds: 15),
-  }) {
+  }) : baseUrl = validateApiBaseUrl(baseUrl) {
     _initialize();
   }
 
@@ -42,6 +43,8 @@ class ApiClient {
         connectTimeout: connectTimeout,
         receiveTimeout: receiveTimeout,
         sendTimeout: sendTimeout,
+        followRedirects: false,
+        maxRedirects: 0,
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
@@ -51,7 +54,9 @@ class ApiClient {
     );
 
     _dio.interceptors.addAll([
+      EndpointGuardInterceptor(),
       AuthInterceptor(
+        dio: _dio,
         getToken: getToken,
         getRefreshToken: getRefreshToken,
         onRefreshToken: onRefreshToken,
