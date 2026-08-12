@@ -11,8 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.14"
-  NODE_VERSION: "24"
+  # Keep CI aligned with the Python version used by the Railway backend.
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
   POSTGRES_VERSION: "17-alpine"
   REDIS_VERSION: "7-alpine"
   REGISTRY: ghcr.io
@@ -85,9 +86,13 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Run Data Preservation Quality Gate
         run: |
+          # Preserve the gate status explicitly: code 1 is a review warning,
+          # while code 2 is the only merge-blocking preservation failure.
+          set +e
           python scripts/data_preservation_gate.py --ci
-          # Exit code 2 = FAIL (merge blocked), 1 = WARNING, 0 = PASS
           status=$?
+          set -e
+          # Exit code 2 = FAIL (merge blocked), 1 = WARNING, 0 = PASS
           if [ $status -eq 2 ]; then
             echo "❌ DATA_PRESERVATION_GATE: FAILED — Merge blocked"
             echo "   One or more Data Preservation Constitution rules violated."
@@ -106,7 +111,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:17-alpine
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: gula_test
@@ -188,7 +193,7 @@ jobs:
     timeout-minutes: 30
     services:
       postgres:
-        image: postgres:${{ env.POSTGRES_VERSION }}
+        image: postgres:17-alpine
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: gula_test
@@ -200,7 +205,7 @@ jobs:
         ports:
           - 5432:5432
       redis:
-        image: redis:${{ env.REDIS_VERSION }}
+        image: redis:7-alpine
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -223,7 +228,8 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gula_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key-for-ci-12345678
-          ENCRYPTION_KEY: test-encryption-key-for-ci-1234567890123456
+          # Deterministic 32-byte test material encoded for Fernet; never used in production.
+          ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
           NID_HMAC_KEY: test-nid-hmac-key-for-ci-12345678
           REFRESH_TOKEN_SECRET: test-refresh-token-secret-for-ci
           DEVICE_HMAC_KEY: test-device-hmac-key-for-ci-1234

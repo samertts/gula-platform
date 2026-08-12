@@ -1,311 +1,61 @@
-name: Deploy GULA Platform
+name: Verify Railway Deployment
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
-      image_tag:
-        description: "Image tag to deploy (default: latest)"
+      health_url:
+        description: "Railway backend health endpoint to verify"
         required: false
-        default: "latest"
+        default: "https://gula-backend-production.up.railway.app/health"
+        type: string
 
 concurrency:
-  group: gula-production-deploy
-  cancel-in-progress: true
+  group: gula-production-verification
+  cancel-in-progress: false
 
 permissions:
   contents: read
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/gula-platform
-
 jobs:
-  deploy:
+  verify-railway:
+    name: Verify Railway backend health
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-
+    timeout-minutes: 12
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # Resolve the image tag to deploy
-      - name: Resolve image tag
-        id: tag
-        run: |
-          # manual trigger may override the tag
-          INPUT_TAG="${{ github.event.inputs.image_tag }}"
-          if [ -n "$INPUT_TAG" ] && [ "$INPUT_TAG" != "latest" ]; then
-            TAG="$INPUT_TAG"
-          else
-            # Use short SHA of the commit being deployed
-            TAG="${GITHUB_SHA::7}"
-          fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "Deploying image tag: $TAG"
-
-      - name: Setup SSH
+      - name: Wait for a healthy Railway deployment
         env:
-          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-          SERVER_USER: ${{ secrets.SERVER_USER }}
+          HEALTH_URL: ${{ inputs.health_url }}
         run: |
-          eval "$(ssh-agent -s)"
-          printf '%s\n' "$SSH_KEY" | ssh-add -
-          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
-          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
-          cat > ~/.ssh/config << SSHEOF
-          Host gula-server
-            HostName $SERVER_HOST
-            User $SERVER_USER
-            StrictHostKeyChecking accept-new
-          SSHEOF
-          chmod 600 ~/.ssh/config
-      - name: Verify container image signature
-        env:
-          COSIGN_PUBLIC_KEY: ${{ secrets.COSIGN_PUBLIC_KEY }}
-          IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
-          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
-        run: |
-          if [ -z "$COSIGN_PUBLIC_KEY" ]; then
-            echo "COSIGN_PUBLIC_KEY not set — skipping image signature verification"
-            exit 0
-          fi
-          which cosign >/dev/null 2>&1 || \
-            curl -sL https://github.com/sigstore/cosign/releases/latest/download/cosign-linux-amd64 \
-            -o /tmp/cosign && chmod +x /tmp/cosign && sudo mv /tmp/cosign /usr/local/bin/
-          echo "$COSIGN_PUBLIC_KEY" > /tmp/cosign.pub
-          images=("backend" "frontend" "gateway")
-          for img in "${images[@]}"; do
-            image_ref="$IMAGE_PREFIX/$img:$IMAGE_TAG"
-            if cosign verify --key /tmp/cosign.pub "$image_ref" >/dev/null 2>&1; then
-              echo "Signature verified for $image_ref"
-            else
-              echo "WARNING: No valid signature found for $image_ref"
-            fi
-          done
-          rm -f /tmp/cosign.pub
-      - name: Deploy to server
-        env:
-          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
-          IMAGE_PREFIX: ${{ env.IMAGE_PREFIX }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REGISTRY: ${{ env.REGISTRY }}
-          REPO_OWNER: ${{ github.repository_owner }}
-        run: |
-          ssh gula-server << DEPLOY_SCRIPT
-            set -euo pipefail
+          set -euo pipefail
+          echo "Railway deploys automatically from the main branch connection."
+          echo "Verifying: $HEALTH_URL"
 
-            REPO_DIR="/home/samertts/gula-platform"
-            IMAGE_TAG="${IMAGE_TAG}"
-            IMAGE_PREFIX="${IMAGE_PREFIX}"
-            REGISTRY="${REGISTRY}"
-            REGISTRY_TOKEN="${GH_TOKEN}"
-
-            cd "\$REPO_DIR"
-
-            log() { printf '[deploy] %s\n' "\$*"; }
-
-            # Detect docker compose
-            COMPOSE="docker compose"
-            if ! \$COMPOSE version >/dev/null 2>&1; then
-              COMPOSE="docker-compose"
-            fi
-
-            COMPOSE_FILE="docker-compose.yml"
-            log "Using compose file: \$COMPOSE_FILE | image tag: \$IMAGE_TAG"
-
-            # ── Log in to GHCR so we can pull private images ──
-            echo "\$REGISTRY_TOKEN" | docker login "\$REGISTRY" -u "${REPO_OWNER}" --password-stdin
-            log "Logged in to GHCR"
-
-            # Preserve .env before git reset
-            if [ -f .env ]; then
-              cp .env /tmp/.env.gula.backup
-              log "Backed up .env"
-            fi
-
-            PREVIOUS_COMMIT="\$(git rev-parse HEAD)"
-
-            # Verify we can fast-forward before destructive operations
-            git fetch origin main
-            BEHIND="\$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)"
-            if [ "\$BEHIND" -gt 10 ]; then
-              log "WARNING: Local branch is \$BEHIND commits behind. Manual intervention required."
-              log "Proceeding with merge instead of reset."
-              git merge --ff-only origin/main || {
-                log "Fast-forward failed. Rolling back."
-                exit 1
-              }
-            else
-              git reset --hard origin/main
-              git clean -fd -e .env
-            fi
-
-            # Restore .env
-            if [ -f /tmp/.env.gula.backup ]; then
-              cp /tmp/.env.gula.backup .env
-              rm -f /tmp/.env.gula.backup
-              log "Restored .env"
-            fi
-
-            [ -f .env ] || touch .env
-
-            # Auto-generate missing secrets
-            gen_secret()  { python3 -c 'import secrets; print(secrets.token_urlsafe(32))'; }
-            gen_fernet()  { python3 -c 'import base64,os; print(base64.urlsafe_b64encode(os.urandom(32)).decode())'; }
-
-            for var in POSTGRES_PASSWORD REDIS_PASSWORD SECRET_KEY NID_HMAC_KEY MINIO_SECRET_KEY; do
-              if ! grep -q "^\${var}=" .env || grep -q "^\${var}=CHANGE_ME" .env; then
-                sed -i "/^\${var}=CHANGE_ME/d" .env 2>/dev/null || true
-                echo "\${var}=\$(gen_secret)" >> .env
-                log "Generated missing \$var"
-              fi
-            done
-            if ! grep -q "^ENCRYPTION_KEY=" .env || grep -q "^ENCRYPTION_KEY=CHANGE_ME" .env; then
-              sed -i "/^ENCRYPTION_KEY=CHANGE_ME/d" .env 2>/dev/null || true
-              echo "ENCRYPTION_KEY=\$(gen_fernet)" >> .env
-              log "Generated valid Fernet ENCRYPTION_KEY"
-            fi
-
-            if ! grep -q "^MINIO_ACCESS_KEY=" .env; then
-              echo "MINIO_ACCESS_KEY=gula_minio" >> .env
-            fi
-
-            PG_PASS=\$(grep -oP '^POSTGRES_PASSWORD=\K.*' .env | head -1)
-            REDIS_PASS=\$(grep -oP '^REDIS_PASSWORD=\K.*' .env | head -1)
-
-            grep -q "^DATABASE_URL=" .env || echo "DATABASE_URL=postgresql://postgres:\${PG_PASS}@postgres:5432/labdb" >> .env
-            grep -q "^REDIS_URL=" .env   || echo "REDIS_URL=redis://:\${REDIS_PASS}@redis:6379" >> .env
-
-            if ! grep -q "^RABBITMQ_URL=" .env; then
-              RABBIT_PASS=\$(grep -oP 'RABBITMQ_PASS=\K.*' .env | head -1 || echo "changeme")
-              echo "RABBITMQ_URL=amqp://gula:\${RABBIT_PASS}@rabbitmq:5672/gula" >> .env
-            fi
-
-            # ── Inject pre-built image tag so compose uses GHCR images ──
-            sed -i '/^GULA_IMAGE_TAG=/d' .env
-            echo "GULA_IMAGE_TAG=\${IMAGE_TAG}" >> .env
-            sed -i '/^GULA_IMAGE_PREFIX=/d' .env
-            echo "GULA_IMAGE_PREFIX=\${IMAGE_PREFIX}" >> .env
-
-            log "Variables set: \$(grep -c '=' .env)"
-
-            # ── Configure system nginx ──
-            if command -v nginx >/dev/null 2>&1 && [ -d /etc/nginx/sites-available ]; then
-              log "Configuring system nginx reverse proxy"
-              if [ -f "\$REPO_DIR/config/nginx/system/gula-platform-http.conf" ]; then
-                sudo cp "\$REPO_DIR/config/nginx/system/gula-platform-http.conf" \
-                  /etc/nginx/sites-available/gula-platform
-                sudo ln -sf /etc/nginx/sites-available/gula-platform \
-                  /etc/nginx/sites-enabled/gula-platform
-                sudo rm -f /etc/nginx/sites-enabled/default
-                if sudo nginx -t 2>/dev/null; then
-                  sudo systemctl reload nginx
-                  log "System nginx configured and reloaded"
-                else
-                  log "WARNING: nginx config test failed, skipping reload"
-                fi
-              fi
-            fi
-
-            # ── Clean stale containers ──
-            \$COMPOSE -f "\$COMPOSE_FILE" down --remove-orphans 2>/dev/null || true
-            for stale in \$(docker ps -a --filter "network=gula-net" --format '{{.Names}}' 2>/dev/null || true); do
-              if ! grep -q "container_name: \$stale" "\$COMPOSE_FILE" 2>/dev/null; then
-                log "Removing stale container: \$stale"
-                docker rm -f "\$stale" 2>/dev/null || true
-              fi
-            done
-            docker network prune -f 2>/dev/null || true
-
-            # ── Pull pre-built images from GHCR, then start ──
-            \$COMPOSE -f "\$COMPOSE_FILE" config >/dev/null
-            \$COMPOSE -f "\$COMPOSE_FILE" pull --ignore-pull-failures
-            \$COMPOSE -f "\$COMPOSE_FILE" up -d --remove-orphans
-            docker image prune -f
-
-            log "Waiting for services to become healthy..."
-            sleep 15
-
-            \$COMPOSE ps
-
-            # Health check with retry (up to 3 minutes)
-            ok=0
-            for i in \$(seq 1 36); do
-              if curl -fsS --max-time 5 http://127.0.0.1:8080/health >/dev/null 2>&1; then
-                ok=1
-                log "Health check passed on attempt \$i"
-                break
-              fi
-              sleep 5
-            done
-
-            if [ "\$ok" -ne 1 ]; then
-              log "Health check failed after 3 minutes"
-              \$COMPOSE ps
-              log "Backend logs:"
-              \$COMPOSE logs --tail=20 gula-backend 2>/dev/null || true
-              log "API gateway logs:"
-              \$COMPOSE logs --tail=20 api-gateway 2>/dev/null || true
-
-              log "Rolling back to \$PREVIOUS_COMMIT"
-              git reset --hard "\$PREVIOUS_COMMIT"
-              \$COMPOSE up -d --remove-orphans
-              exit 1
-            fi
-
-            log "Deployment completed successfully (image tag: \$IMAGE_TAG)"
-          DEPLOY_SCRIPT
-
-      - name: Health Check
-        env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
-        run: |
-          echo "Waiting 30s for services to stabilize..."
-          sleep 30
-
-          for i in 1 2 3 4 5 6 7 8; do
-            if curl -sf --max-time 10 "http://$SERVER_HOST/health" > /dev/null 2>&1; then
-              echo "Health check passed!"
+          for attempt in $(seq 1 24); do
+            if body=$(curl --fail --silent --show-error --max-time 10 "$HEALTH_URL"); then
+              echo "Health endpoint responded successfully on attempt $attempt."
+              printf '%s\n' "$body"
+              printf '%s\n' "$body" | grep -q '"status"'
               exit 0
             fi
-            echo "Attempt $i/8 failed, retrying in 15s..."
+
+            echo "Attempt $attempt/24 was not healthy; retrying in 15 seconds."
             sleep 15
           done
-          echo "Health check failed after 8 attempts"
-          ssh gula-server 'cd /home/samertts/gula-platform && docker compose ps 2>/dev/null || docker-compose ps' || true
+
+          echo "Railway backend did not become healthy within six minutes."
           exit 1
 
-      - name: Verify API
+      - name: Write deployment summary
+        if: always()
         env:
-          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          HEALTH_URL: ${{ inputs.health_url }}
         run: |
-          response=$(curl -sfL --max-time 10 "http://$SERVER_HOST/health" 2>/dev/null || echo "FAILED")
-          echo "API Response: $response"
-          if echo "$response" | grep -q '"status"'; then
-            echo "API is healthy!"
-          else
-            echo "WARNING: Unexpected health response"
-          fi
-
-      - name: Deployment summary
-        if: always()
-        run: |
-          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "| Key | Value |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----|-------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Image tag | \`${{ steps.tag.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| Triggered by | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
-
-      - name: Cleanup SSH agent
-        if: always()
-        run: |
-          ssh-agent -k || true
+          {
+            echo "## Railway deployment verification"
+            echo
+            echo "| Item | Value |"
+            echo "| --- | --- |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Health endpoint | $HEALTH_URL |"
+            echo "| Deployment model | Railway automatic deployment from \`main\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
