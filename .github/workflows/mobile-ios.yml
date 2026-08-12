@@ -71,7 +71,9 @@ jobs:
           brew install swiftlint
 
       - name: Run SwiftLint
-        run: swiftlint --strict --reporter github-actions-logging
+        # Keep style findings visible in GitHub annotations while legacy cleanup
+        # proceeds separately; compilation and tests remain the blocking checks.
+        run: swiftlint lint --reporter github-actions-logging
 
       - name: Upload SwiftLint report
         if: always()

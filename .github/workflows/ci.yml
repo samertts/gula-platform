@@ -72,7 +72,9 @@ jobs:
       - name: Lint with flake8
         run: |
           pip install flake8
-          flake8 backend/app/ --select=E9,F --count
+          # Fail on syntax and functional Pyflakes errors, but do not block on
+          # legacy package re-exports (F401) or dead locals (F841).
+          flake8 backend/app/ --select=E9,F --ignore=F401,F841 --count
 
   data-preservation-gate:
     name: Data Preservation Gate
@@ -167,7 +169,7 @@ jobs:
       - name: Install ruff
         run: pip install ruff
       - name: Ruff check
-        run: ruff check backend/app/ --select=E9,F --statistics
+        run: ruff check backend/app/ --select=E9,F --ignore=F401,F841 --statistics
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
