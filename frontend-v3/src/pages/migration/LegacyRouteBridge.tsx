@@ -90,7 +90,11 @@ export function LegacyRouteBridge() {
 
   return (
     <section className="mx-auto flex min-h-[58vh] max-w-2xl items-center justify-center px-5" dir="rtl" aria-labelledby="legacy-route-title">
-      <div className="w-full rounded-3xl border border-slate-200 bg-white p-8 text-right shadow-sm">
+      <div
+        className="w-full rounded-3xl border border-slate-200 bg-white p-8 text-right shadow-sm"
+        data-contract-status="unbound"
+        data-unification-state="safe-bridge"
+      >
         <p className="text-sm font-bold text-emerald-700">مسار انتقالي موحّد</p>
         <h1 id="legacy-route-title" className="mt-2 text-2xl font-extrabold text-slate-900">
           {rule?.title ?? "هذا المسار قيد التوحيد داخل frontend-v3"}

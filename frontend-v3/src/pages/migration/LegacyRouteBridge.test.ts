@@ -9,7 +9,7 @@ describe("جسر المسارات الانتقالية", () => {
     expect(resolveLegacyRoute("/ministry")).toMatchObject({ target: "/national-data" });
   });
 
-  it("لا يوجّه تدفقًا سريريًا فرعيًا إلى مكافئ غير مثبت", () => {
+  it("يعرض تدفقًا سريريًا فرعيًا غير مثبت عبر جسر v3 آمن بلا وجهة تشغيلية", () => {
     const rule = resolveLegacyRoute("/radiology/worklist");
 
     expect(rule).toMatchObject({ title: "مساحة الأشعة" });
@@ -20,7 +20,7 @@ describe("جسر المسارات الانتقالية", () => {
     expect(resolveLegacyRoute("/lab/queue")).toMatchObject({ target: "/orders" });
   });
 
-  it("يسجل كل مصدر واجهة أمامية معروف وحالة انتقاله", () => {
+  it("يسجل كل مصدر واجهة أمامية معروف كمكافئ موحد أو جسر آمن", () => {
     expect(frontendSurfaceCatalog.map((surface) => surface.sourcePath)).toEqual([
       "frontend-v2",
       "apps/gula-web-suite",
@@ -33,6 +33,7 @@ describe("جسر المسارات الانتقالية", () => {
       "platform/apps/pharmacy",
       "platform/apps/radiology",
     ]);
-    expect(frontendSurfaceCatalog.find((surface) => surface.id === "doctor")).toMatchObject({ status: "pending_contract" });
+    expect(frontendSurfaceCatalog.every((surface) => surface.status === "unified" || surface.status === "bridge")).toBe(true);
+    expect(frontendSurfaceCatalog.find((surface) => surface.id === "doctor")).toMatchObject({ status: "bridge" });
   });
 });

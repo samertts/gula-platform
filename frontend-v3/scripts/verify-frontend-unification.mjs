@@ -26,8 +26,8 @@ const checks = [
   },
   {
     file: "src/pages/migration/frontendSurfaceCatalog.ts",
-    fragments: ["frontend-v2", "apps/gula-web-suite", "platform/apps/radiology", "pending_contract"],
-    reason: "سجل مصادر الواجهات الأمامية أو حالات انتقالها غير مكتمل.",
+    fragments: ["frontend-v2", "apps/gula-web-suite", "platform/apps/radiology", 'status: "bridge"'],
+    reason: "سجل مصادر الواجهات الأمامية أو جسورها الانتقالية الآمنة غير مكتمل.",
   },
   {
     file: "src/pages/migration/LegacyRouteBridge.tsx",
@@ -54,6 +54,11 @@ for (const check of checks) {
   if (missing.length) {
     failures.push(`${check.file}: مكونات مفقودة (${missing.join(", ")}). ${check.reason}`);
   }
+}
+
+const catalogPath = resolve(root, "src/pages/migration/frontendSurfaceCatalog.ts");
+if (existsSync(catalogPath) && readFileSync(catalogPath, "utf8").includes("pending_contract")) {
+  failures.push("سجل مصادر الواجهات يحتوي حالة معلقة خارج جسر frontend-v3 الآمن.");
 }
 
 if (failures.length) {

@@ -8,13 +8,13 @@ export type FrontendSurface = LegacyRouteRule & {
   id: string;
   sourcePath: string;
   entryPath: string;
-  status: "unified" | "bridge" | "pending_contract";
+  status: "unified" | "bridge";
 };
 
 /**
  * سجل المصادر الأمامية التي تدخل خطة التوحيد. لا يعني وجود تطبيق في السجل
- * أن تدفقه مفعل؛ فحالة pending_contract تبقيه في الجسر الانتقالي إلى أن
- * يثبت العقد والصلاحية والسياق المكافئ داخل frontend-v3.
+ * أن تدفقه مفعل؛ فحالة bridge تنقله إلى جسر انتقال آمن داخل frontend-v3
+ * إلى أن يثبت العقد والصلاحية والسياق المكافئ.
  */
 export const frontendSurfaceCatalog: readonly FrontendSurface[] = [
   {
@@ -29,9 +29,9 @@ export const frontendSurfaceCatalog: readonly FrontendSurface[] = [
     id: "gula-web-suite",
     sourcePath: "apps/gula-web-suite",
     entryPath: "/web-suite",
-    status: "pending_contract",
+    status: "bridge",
     title: "حزمة الويب العامة",
-    rationale: "تحتاج نقاط الدخول العامة إلى مكافئات عقود وتوجيه مثبتة قبل التحويل.",
+    rationale: "يظهر مكافئ انتقال آمن داخل frontend-v3 إلى أن تثبت عقود نقاط الدخول العامة وتوجيهاتها.",
   },
   {
     id: "citizen",
@@ -46,9 +46,9 @@ export const frontendSurfaceCatalog: readonly FrontendSurface[] = [
     id: "doctor",
     sourcePath: "platform/apps/doctor",
     entryPath: "/doctor",
-    status: "pending_contract",
+    status: "bridge",
     title: "مساحة الطبيب",
-    rationale: "تحتاج تدفقات الطبيب السريرية إلى مكافئات عقود وصلاحيات مثبتة قبل التحويل داخل frontend-v3.",
+    rationale: "تظهر مساحة انتقالية آمنة داخل frontend-v3؛ لا تُفعّل تدفقات الطبيب قبل إثبات العقود والصلاحيات المكافئة.",
   },
   {
     id: "hospital",
@@ -81,9 +81,9 @@ export const frontendSurfaceCatalog: readonly FrontendSurface[] = [
     id: "nurse",
     sourcePath: "platform/apps/nurse",
     entryPath: "/nurse",
-    status: "pending_contract",
+    status: "bridge",
     title: "مساحة التمريض",
-    rationale: "تحتاج تدفقات التمريض السريرية إلى مكافئات عقود وصلاحيات مثبتة قبل التحويل داخل frontend-v3.",
+    rationale: "تظهر مساحة انتقالية آمنة داخل frontend-v3؛ لا تُفعّل تدفقات التمريض قبل إثبات العقود والصلاحيات المكافئة.",
   },
   {
     id: "pharmacy",
@@ -98,9 +98,9 @@ export const frontendSurfaceCatalog: readonly FrontendSurface[] = [
     id: "radiology",
     sourcePath: "platform/apps/radiology",
     entryPath: "/radiology",
-    status: "pending_contract",
+    status: "bridge",
     title: "مساحة الأشعة",
-    rationale: "تحتاج تدفقات الأشعة إلى عقود DICOM وصلاحيات مثبتة قبل التحويل داخل frontend-v3.",
+    rationale: "تظهر مساحة انتقالية آمنة داخل frontend-v3؛ لا تُفعّل تدفقات الأشعة قبل إثبات عقود DICOM والصلاحيات المكافئة.",
   },
 ] as const;
 
