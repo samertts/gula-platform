@@ -135,3 +135,35 @@
 هذه الدفعة لا تعني أن كل صفحة في التطبيقات الثمانية أصبحت خالية من fixtures؛ ما زالت بعض شاشات Hospital وDoctor وNurse وRadiology تحتوي بيانات عرض تجريبية أو وظائف محلية، وسيتم تحويلها في موجات منفصلة بعد مطابقة كل شاشة مع endpoint فعلي وصلاحياته. كما أن Guide Assistant مرتبط بعقد AI Fabric الموجود، لكنه لا يقدّم تشخيصاً أو قراراً علاجياً ويظل خاضعاً للتنبيه التوعوي في الواجهة.
 
 لم تُعدّل lockfiles أو `.audit/ci-fix.patch` أو `.audit/ci-repair.patch`، ولم تُعالج تنبيهات Dependabot، ولم يُنفّذ merge أو release أو branch pruning. نجاح typecheck/build والاختبارات لا يثبت وحده جاهزية إنتاج وطنية؛ يلزم قبل الإنتاج اختبار عقد API في بيئة Demo معزولة، واختبار RBAC ومسارات 401/403/409/412، واختبارات تشغيل واستعادة وقياس أداء تحت الحمل.
+
+
+## Next Remediation Wave — 2026-08-12
+
+تم إجراء جرد إضافي للمخاطر المتبقية في طبقة التكامل والواجهات السريرية، مع إعطاء الأولوية لما قد يسبب كشف بيانات أو عرض قرار سريري غير حقيقي.
+
+| finding | risk | remediation | evidence |
+|---|---|---|---|
+| كانت استجابة `GET /dashboard` تعيد `LabResult.token`، وهو credential للوصول إلى النتيجة العامة | عالٍ: إمكانية إعادة استخدام credential إذا وصل إلى عميل أو سجل غير مقصود | إزالة الحقل من استجابة dashboard مع إبقاء بيانات النتيجة اللازمة للعرض | `backend/tests/test_dashboard_data_minimization.py`، ناجح |
+| كان AI Fabric router مكشوفاً دون dependency مصادقة، وكانت عمليات الفهرسة والحوكمة والأمن غير مقيدة بصلاحية إدارية | حرج: استهلاك خدمة AI أو كشف أدوات الحوكمة والفهرسة | فرض `get_current_user` على router وقصر العمليات الإدارية على `system:admin`؛ وقصر RAG/orchestrator السريريين على doctor/admin | `backend/tests/test_ai_fabric_access.py`، ناجح |
+| كانت Doctor DecisionSupport تعرض توصية تشخيصية/دوائية ثابتة من mock مع زر Apply بلا endpoint تنفيذي | حرج: خطر عرض معلومة سريرية مختلقة أو الإيحاء بتطبيق علاجي | إزالة mock، إلزام معرف مريض، استدعاء backend read-only، وإخفاء أزرار الإجراءات غير المدعومة | Doctor typecheck ناجح؛ endpoint مقيد ومختبر للمصادقة |
+| كان Pharmacy Login يستخدم fetch مباشراً ويقرأ token من response رغم اعتماد Wave 3 على HttpOnly cookie | عالٍ: عدم اتساق session و احتمال كسر أو تجاوز مسار الجلسة الموحد | استخدام `apiPost` المشترك دون تخزين token في الواجهة | Pharmacy typecheck ناجح |
+| كان WADO DICOM retrieval يستخدم fetch مباشراً بلا credentials وترميز UID غير موحد | عالٍ: طلب تصوير قد يفشل في الجلسة أو يقبل path غير آمن | إضافة `credentials: include`، client metadata، وترميز معرفات الدراسة/السلسلة/العينة | Radiology typecheck ناجح |
+
+الاختبارات المستهدفة الأخيرة: **4 ناجحة**. لم تُعالج تنبيهات Dependabot أو ملفات `.audit` أو production configuration في هذه الدفعة.
+
+
+## Security hardening and Radiology tenant isolation — 2026-08-12
+
+استُكملت دفعة أمنية إضافية على الفرع `feat/frontend-backend-ux-20260812` دون تغيير `main` أو deployment أو ملفات lockfile. شملت الدفعة عزل قوائم وعمليات Radiology الأساسية حسب مرضى المختبر المرتبط بالمستخدم الحالي عبر `Patient.lab_id`، مع دعم `Patient.id` و`health_id` في التحقق. أصبحت orders وappointments وexams وreports وworklists مقيدة بـ`tenant_patient_ids` عند القوائم، وتتحقق endpoints ذات المعرف الصريح من أن المريض داخل tenant قبل القراءة أو التعديل أو الإنشاء.
+
+خلال اختبار العزل كُشف خلل مستقل في `RadiologyService`: استخدام `~~Model.is_deleted` كان يطابق السجلات المحذوفة بدلاً من استبعادها، ما أدى إلى إخفاء السجلات الحية من الاستعلامات. صُحح ذلك في جميع مواضع RadiologyService ذات الصلة إلى `~Model.is_deleted`، وأضيف regression test يمنع عودة الخلل أو تسرب بيانات tenant آخر.
+
+| الفحص الفعلي | النتيجة | الملاحظة |
+|---|---:|---|
+| Radiology tenant isolation + AI Fabric access + dashboard minimization | **7 passed** | شملت عزل orders/reports، 401/403، وعدم تسريب public-result token |
+| TypeScript source-mode: UI + التطبيقات الثمانية | **9/9 passed** | صفر أخطاء TypeScript |
+| Backend suite الكاملة | **2316 passed، 1 failed** | الفشل الوحيد `tests/kernel/test_modules.py::TestModuleRegistry::test_register_and_unregister` بسبب `KeyError: Attempt to overwrite 'module' in LogRecord` في suite الكامل |
+| الاختبار flaky منفرداً | **1 passed** | يؤكد السلوك الموثق؛ لم يُعدّل الاختبار أو global logging دون تحليل مستقل |
+| `git diff --check` | **passed** | لا توجد whitespace errors |
+
+تبقى تغطية Critical Findings وdashboard analytics وPACS/device worklists الموسعة بحاجة إلى endpoint-by-endpoint review مستقل قبل إعلان عزل Radiology الكامل؛ لا يُفهم هذا القسم كإعلان production readiness وطنية. كما بقيت ملفات `.audit/ci-fix.patch` و`.audit/ci-repair.patch` غير متتبعة وخارج أي commit، ولم تُنفذ عمليات Wave 4 أو Dependabot أو merge/release.

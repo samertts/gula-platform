@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { setToken } from '../services/api'
+import { apiPost } from '../services/api'
 
 interface LoginProps {
   onLogin: () => void
@@ -23,19 +23,7 @@ export default function Login({ onLogin }: LoginProps) {
 
     setLoading(true)
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || '/api/v2'
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      })
-
-      if (!res.ok) {
-        throw new Error('اسم المستخدم أو كلمة المرور غير صحيحة')
-      }
-
-      const data = await res.json()
-      setToken(data.access_token || data.token)
+      await apiPost('/auth/login', { username, password })
       onLogin()
     } catch (err) {
       setError(
