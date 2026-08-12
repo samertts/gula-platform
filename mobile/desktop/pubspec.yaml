@@ -86,9 +86,6 @@ dependencies:
   json_annotation: ^4.9.0
   equatable: ^2.0.7
 
-  # Push Notifications
-  flutter_local_notifications: ^18.0.1
-
   # Crash Reporting
   sentry_flutter: ^8.13.0
 
