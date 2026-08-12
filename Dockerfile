@@ -36,6 +36,6 @@ USER appuser
 EXPOSE 10000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:10000/health', timeout=3)"
+    CMD-SHELL python3 -c "import os, urllib.request; urllib.request.urlopen('http://localhost:%s/health' % os.getenv('PORT', '10000'), timeout=3)"
 
 ENTRYPOINT ["/usr/local/bin/start_railway.sh"]
