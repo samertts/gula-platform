@@ -1,0 +1,73 @@
+name: Security Hardening
+
+on:
+  push:
+    branches: [main, 'release/*']
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: security-hardening-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Repository source guard
+        run: python3 scripts/security/check_public_secrets.py
+      - name: Gitleaks history scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  python-dependency-audit:
+    name: Python Dependency Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        manifest:
+          - backend/requirements-lock.txt
+          - edge_agent/requirements.txt
+          - nhop-platform/requirements.txt
+          - services/device_bridge/requirements.txt
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pip-audit
+        run: python -m pip install --disable-pip-version-check --no-cache-dir pip-audit
+      - name: Audit pinned manifest
+        run: |
+          if [ ! -f "${{ matrix.manifest }}" ]; then
+            echo "Missing manifest: ${{ matrix.manifest }}"
+            exit 1
+          fi
+          pip-audit -r "${{ matrix.manifest }}" --strict --progress-spinner off
+
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Review dependency changes
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          deny-licenses: GPL-3.0,AGPL-3.0
