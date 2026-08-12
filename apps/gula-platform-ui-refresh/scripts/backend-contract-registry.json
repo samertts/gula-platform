@@ -72,7 +72,7 @@
     {
       "id": "orders.read",
       "method": "GET",
-      "path": "/orders",
+      "path": "/lims/orders",
       "permission": "orders:read",
       "requiresWorkspaceContext": true,
       "aliases": ["ordersApi", "orderApi"],

@@ -25,4 +25,26 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * A server-only, audited binding between a Manus user and a verified GULA
+ * workspace identity. No row is seeded: operations requiring lab scope remain
+ * unavailable until an administrator records evidence from GULA authz/me and
+ * an active assignment.
+ */
+export const gulaWorkspaceBindings = mysqlTable("gula_workspace_bindings", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  gulaSubjectId: int("gulaSubjectId").notNull(),
+  labId: int("labId").notNull(),
+  organizationId: int("organizationId"),
+  facilityId: int("facilityId"),
+  assignmentRoleId: varchar("assignmentRoleId", { length: 128 }),
+  verifiedAt: timestamp("verifiedAt").notNull(),
+  verifiedByUserId: int("verifiedByUserId").notNull(),
+  status: mysqlEnum("status", ["active", "revoked"]).default("active").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type GulaWorkspaceBinding = typeof gulaWorkspaceBindings.$inferSelect;
+export type InsertGulaWorkspaceBinding = typeof gulaWorkspaceBindings.$inferInsert;
