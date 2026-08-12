@@ -65,3 +65,22 @@
 تم تنفيذ عقد queue مشترك في `platform/ui/utils/offlineQueueContract.ts` وربطه بمسارات Citizen وDoctor وLaboratory وNurse وPharmacy. يشمل العقد `operationId` و`idempotencyKey` و`requestFingerprint` و`expectedVersion` وحالات `pending/synced/conflict/rejected/failed`، ويمنع حذف أو replay تلقائي عند `409/412`. أضيف backend compare-and-set لـ`LabOrder.version` على validation عبر `If-Match`، مع اختبار يثبت أن الإصدار القديم يُرفض بـ409 دون تغيير أو قفل صامت.
 
 تم إصلاح أخطاء build المثبتة في Nurse وMinistry وRadiology: توحيد default exports في صفحات Nurse، إضافة facades typed لخدمات Ministry فوق API الحقيقي، إزالة imports غير المثبتة لـ`motion/react`، وتصحيح مسارات CSS في Radiology. الأدلة الحالية: **8/8 Vite builds ناجحة** للتطبيقات المتأثرة، **2306 اختبار Backend ناجح**، اختبارات contract/security ناجحة، و`git diff --check` ناجح. يظل دعم idempotency/version backend غير معمم على كل endpoint سريري، ولذلك لا تعلن R3 readiness إنتاجية وطنية ولا تشمل deployment أو Wave 4 أو Dependabot merge.
+
+
+## Directive execution — error contract hardening — 2026-08-12
+
+تم تحويل القسم 28 من directive إلى إصلاح محدود في طبقة FastAPI المركزية دون تغيير مسارات الأعمال أو المصادقة أو deployment. أضيف `backend/app/core/error_contract.py` لبناء الاستجابة القياسية `code/message/details/request_id/timestamp` مع إبقاء `detail/detail_ar` للتوافق الخلفي. سُجلت handlers لـ`DomainError` و`StarletteHTTPException` و`RequestValidationError` والاستثناءات غير المعالجة، بما في ذلك route-not-found وvalidation failures.
+
+يمنع العقد إعادة قيم Pydantic الحساسة مثل `input` و`ctx`، ويمنع إعادة سبب readiness الداخلي أو traceback أو تفاصيل بنية البيانات في استجابات العميل. كما ثُبت التفريق التشغيلي بين `401` للمصادقة المطلوبة و`403` لفشل التفويض، مع رموز مستقرة للتعارض و`If-Match` وفشل rate limit.
+
+| الفحص | النتيجة |
+|---|---|
+| Error contract unit tests | **4 passed** |
+| Resilience + Demo security + error contract | **29 passed** |
+| Backend full suite بعد آخر تعديل | **2310 passed، 251 warnings** خلال 249.89 ثانية |
+| Python compile check | **passed** |
+| `git diff --check` قبل التوثيق | **passed** |
+
+### حدود directive التي لم تُنفذ تلقائياً
+
+كشف تدقيق base URLs وجود اختلافات موثقة بين `api.gulaplatform.com` و`api.gula-platform.com` و`api.gula.iq`، إضافة إلى إعدادات staging مختلفة. لم تُعدّل هذه القيم لأن توحيدها يغير deployment/production behavior ويحتاج environment strategy وADR وChange Control واختبار mobile/edge فعلياً. كذلك لم تُنفذ إعادة بناء Workspaces أو محركات المواعيد والصفوف أو تكامل FHIR/HL7/DICOM أو تعميم If-Match/idempotency على كل endpoint، لأن ذلك يتطلب موجات مستقلة وتحليلاً endpoint-by-endpoint، ولم تُنفذ أي عملية Wave 4 أو Dependabot merge أو branch operation.

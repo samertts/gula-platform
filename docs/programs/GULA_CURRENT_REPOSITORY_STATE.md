@@ -50,3 +50,12 @@
 ## قرار Wave 0
 
 تمت استعادة الحالة وتحديد العمل المتزامن والحدود، وأُنشئت وثائق Wave 0 السبعة والتحقق منها. دُفعت الحزمة إلى فرع مستقل قابل للمراجعة، ثم توقفت الأعمال الواسعة وفق التوجيه. الدفع إلى فرع التقوية لا يساوي دمجاً في `main` ولا يساوي إصداراً إنتاجياً.
+
+
+## آخر تحقق — 12 أغسطس 2026
+
+أُعيد التحقق من الحالة على الفرع `wave3-identity-dependency-hardening-20260811`، والـHEAD المحلي والمدفوع هو `1a2fb4afd7a96bfb85048f392b70f2999213d938` (`feat: unify clinical offline queue contracts`) قبل تغييرات directive الحالية. بقيت `.audit/ci-fix.patch` و`.audit/ci-repair.patch` غير متتبعتين وخارج commits.
+
+خلال تنفيذ directive أضيف إصلاح محدود لعقد أخطاء FastAPI في `backend/app/core/error_contract.py` و`backend/app/factory.py`، مع اختبار `backend/tests/test_error_contract.py` ووثيقة `docs/api/GULA_ERROR_CONTRACT.md`. بعد آخر تعديل نجحت **2310 اختبارات Backend** مع **251 warning**. لم يُغيّر هذا الإصلاح deployment أو base URLs أو نماذج identity أو migration chain.
+
+أظهر تدقيق base URLs وجود قيم تاريخية/بيئية متعددة في أسطح Android وiOS وDesktop وWeb. لم تُعدّل القيم تلقائياً لأن توحيدها يحتاج استراتيجية Development/Staging/Production موثقة، ADR، اختباراً متعدد المنصات، ومراجعة deployment. تظل هذه الفجوة مؤجلة ولا يجوز إعلان canonical API URL موحد قبل إثباتها.
