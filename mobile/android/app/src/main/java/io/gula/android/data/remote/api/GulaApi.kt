@@ -1,5 +1,7 @@
 package io.gula.android.data.remote.api
 
+import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 import io.gula.android.data.remote.dto.*
 import retrofit2.Response
 import retrofit2.http.*
