@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة غولا الصحية الوطنية - GULA Health Platform</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; color: #1e293b; }
+        .hero-gradient { background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+    <div>
+        <header class="hero-gradient text-white shadow-lg">
+            <div class="max-w-7xl mx-auto px-6 py-12 text-center">
+                <h1 class="text-4xl md:text-5xl font-ext500 mb-4">منصة غولا الصحية الوطنية</h1>
+                <p class="text-xl text-sky-100 max-w-2xl mx-auto">النظام الصحي الوطني الموحد للعراق - مؤمن، فوري، ومتكامل لكافة القطاعات الطبية.</p>
+                <div class="mt-8 flex justify-center gap-4">
+                    <a href="https://www.gula-platform.org/" class="bg-white text-sky-700 font-bold px-6 py-3 rounded-lg shadow hover:bg-sky-50 transition">زيارة المنصة الرسمية</a>
+                    <a href="#apps" class="bg-sky-600 border border-sky-400 text-white font-bold px-6 py-3 rounded-lg shadow hover:bg-sky-500 transition">تطبيقات المنصة</a>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto px-6 py-12" id="apps">
+            <h2 class="text-2xl font-bold mb-6 text-center text-slate-800">بوابة التطبيقات المعتمدة (متعددة المنصات)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-100 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold text-sky-700 mb-2">تطبيق المواطن</h3>
+                    <p class="text-slate-600 text-sm mb-4">إدارة الملف الصحي الشخصي، المواعيد، ونتائج التحاليل الطبية.</p>
+                    <a href="./platform/apps/citizen/dist/index.html" class="inline-block bg-sky-600 text-white text-sm font-semibold px-4 py-2 rounded hover:bg-sky-700 transition">دخول المواطن</a>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-100 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold text-sky-700 mb-2">تطبيق الطبيب</h3>
+                    <p class="text-slate-600 text-sm mb-4">السجلات السريرية، التشخيص، الوصفات الطبية ودعم القرار الذكي.</p>
+                    <a href="./platform/apps/doctor/dist/index.html" class="inline-block bg-sky-600 text-white text-sm font-semibold px-4 py-2 rounded hover:bg-sky-700 transition">دخول الطبيب</a>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-100 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold text-sky-700 mb-2">إدارة المستشفى</h3>
+                    <p class="text-slate-600 text-sm mb-4">إشغال الأسرة، العمليات، الموارد البشرية، والمخازن الطبية.</p>
+                    <a href="./platform/apps/hospital/dist/index.html" class="inline-block bg-sky-600 text-white text-sm font-semibold px-4 py-2 rounded hover:bg-sky-700 transition">دخول المستشفى</a>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-100 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold text-sky-700 mb-2">المختبرات والتحاليل</h3>
+                    <p class="text-slate-600 text-sm mb-4">إدخال النتائج، الفحوصات المخبرية، والتنبيهات الحرجة.</p>
+                    <a href="./platform/apps/laboratory/dist/index.html" class="inline-block bg-sky-600 text-white text-sm font-semibold px-4 py-2 rounded hover:bg-sky-700 transition">دخول المختبر</a>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-100 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold text-sky-700 mb-2">التمريض والرعاية</h3>
+                    <p class="text-slate-600 text-sm mb-4">خطط الرعاية، الفحوصات السريرية، وتسليم المناوبات.</p>
+                    <a href="./platform/apps/nurse/dist/index.html" class="inline-block bg-sky-600 text-white text-sm font-semibold px-4 py-2 rounded hover:bg-sky-700 transition">دخول التمريض</a>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-100 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold text-sky-700 mb-2">الصيدلية الوطنية</h3>
+                    <p class="text-slate-600 text-sm mb-4">صرف الوصفات، التحقق بالباركود، وإدارة المخزون الدوائي.</p>
+                    <a href="./platform/apps/pharmacy/dist/index.html" class="inline-block bg-sky-600 text-white text-sm font-semibold px-4 py-2 rounded hover:bg-sky-700 transition">دخول الصيدلية</a>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-100 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold text-sky-700 mb-2">قسم الأشعة و PACS</h3>
+                    <p class="text-slate-600 text-sm mb-4">عرض صور DICOM، التقارير الإشعاعية، والتبليغات الحرجة.</p>
+                    <a href="./platform/apps/radiology/dist/index.html" class="inline-block bg-sky-600 text-white text-sm font-semibold px-4 py-2 rounded hover:bg-sky-700 transition">دخول الأشعة</a>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-100 hover:shadow-lg transition">
+                    <h3 class="text-xl font-bold text-sky-700 mb-2">وزارة الصحة</h3>
+                    <p class="text-slate-600 text-sm mb-4">الرقابة الوطنية، المؤشرات الوبائية، واتخاذ القرار الاستراتيجي.</p>
+                    <a href="./platform/apps/ministry/dist/index.html" class="inline-block bg-sky-600 text-white text-sm font-semibold px-4 py-2 rounded hover:bg-sky-700 transition">دخول الوزارة</a>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer class="bg-slate-900 text-slate-400 py-6 text-center text-sm">
+        <p>&copy; 2026 GULA Health National Platform. All rights reserved. | Secured & Verified.</p>
+    </footer>
+</body>
+</html>
