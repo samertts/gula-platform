@@ -83,6 +83,10 @@ export type { ErrorBoundaryProps } from './components/ErrorBoundary';
 export { ProtectedRoute } from './components/ProtectedRoute';
 export type { ProtectedRouteProps, AuthState } from './components/ProtectedRoute';
 
+// Backend integration
+export { createApiClient, ApiClientError, DemoIsolationError } from './services/apiClient';
+export type { ApiClient, ApiClientOptions, ApiRequestOptions, ErrorContract, ApiQueryValue } from './services/apiClient';
+
 // Hooks
 export { useRTL, getDir, isArabicLang } from './hooks/useRTL';
 export type { RTLResult } from './hooks/useRTL';
@@ -97,6 +101,9 @@ export { useDebounce, useDebouncedCallback } from './hooks/useDebounce';
 
 export { useOffline } from './hooks/useOffline';
 export type { OfflineResult } from './hooks/useOffline';
+
+export { useBackendResource } from './hooks/useBackendResource';
+export type { BackendResourceState } from './hooks/useBackendResource';
 
 export { usePWA } from './hooks/usePWA';
 export type { PWAResult, BeforeInstallPromptEvent } from './hooks/usePWA';

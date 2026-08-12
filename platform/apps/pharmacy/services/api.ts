@@ -1,4 +1,11 @@
+import { ApiClientError, createApiClient } from '../../../ui'
+
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v2'
+const backend = createApiClient({
+  baseUrl: API_BASE,
+  clientName: 'pharmacy-app',
+  refreshPath: '/auth/refresh',
+})
 
 interface ApiOptions {
   method?: string
@@ -21,36 +28,19 @@ export async function apiRequest<T = unknown>(
   options: ApiOptions = {},
 ): Promise<T> {
   const { method = 'GET', body, headers = {}, signal } = options
-
-  const h: Record<string, string> = {
-    Accept: 'application/json',
-    ...headers,
+  try {
+    return await backend.request<T>(path, {
+      method,
+      body,
+      headers,
+      signal,
+    })
+  } catch (error) {
+    if (error instanceof ApiClientError && error.status === 401) {
+      window.location.assign('/pharmacy/login?reason=session-expired')
+    }
+    throw error instanceof Error ? error : new Error('تعذر الاتصال بالخادم')
   }
-
-  if (body && !(body instanceof FormData)) {
-    h['Content-Type'] = 'application/json'
-  }
-
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    credentials: 'include',
-    headers: h,
-    body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
-    signal,
-  })
-
-  if (res.status === 401) {
-    // The server session is authoritative; redirect without client-side token handling.
-    window.location.assign('/pharmacy/login?reason=session-expired')
-    throw new Error('Unauthorized')
-  }
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }))
-    throw new Error(err.detail || `Request failed with ${res.status}`)
-  }
-
-  return res.json()
 }
 
 export function apiGet<T = unknown>(path: string, signal?: AbortSignal) {

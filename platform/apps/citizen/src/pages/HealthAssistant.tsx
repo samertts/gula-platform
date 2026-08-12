@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button, cn } from '@gula/ui-platform';
 import { useAuth } from '../contexts/AuthContext';
+import { askGuideAssistant } from '../services/guideAssistant';
 import type { ChatMessage } from '../types';
 
 const quickQuestions = [
@@ -26,6 +27,7 @@ export function HealthAssistant() {
   const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,35 +46,27 @@ export function HealthAssistant() {
     };
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
+    setError(null);
     setIsLoading(true);
 
-    setTimeout(() => {
-      const responses: Record<string, string> = {
-        'سكر': 'نتيجة تحليل السكر (الجلوكوز) الطبيعية تتراوح بين 70-100 ملغ/ديسيلتر في حالة الصيام. النتائج المرتفعة قد تشير إلى مقدمات السكري أو السكري. يرجى استشارة الطبيب لتقييم حالتك.',
-        'دواء': 'صرف الأدوية يتطلب وصفة طبية للأدوية المقيدة. يمكنك الحصول على الأدوية غير المقيدة من الصيدليات مباشرة. يرجى استشارة الطبيب للحصول على الوصفة المناسبة.',
-        'موعد': 'لحجز موعد استشارة عن بعد: اذهب إلى قسم المواعيد، اختر "استشارة عن بعد"، اختر الطبيب والوقت المناسب، ثم قم بتأكيد الحجز. ستتلقى رابط الجلسة قبل الموعد.',
-        'فيتامين': 'نقص فيتامين د قد يسبب: إرهاق، آلام العظام والعضلات، تقلب المزاج، ضعف المناعة. يوصى بفحص مستوى فيتامين د لدى الطبيب وتناول المكملات حسب الحاجة.',
-        'فحص': 'يعتمد موعد فحص السكر التالي على حالتك: إذا كنت مصاباً بالسكري، يوصى بفحص السكر التراكمي كل 3-6 أشهر. للفحص الدوري، مرة سنوية للأشخاص الأصحاء.',
-      };
-
-      let responseContent = 'شكراً لسؤالك. أنصحك باستشارة الطبيب المختص للحصول على تشخيص دقيق. يمكنني مساعدتك في فهم المصطلحات الطبية أو إرشادك للخدمات المناسبة.';
-      for (const [keyword, response] of Object.entries(responses)) {
-        if (content.includes(keyword)) {
-          responseContent = response;
-          break;
-        }
-      }
-
+    try {
+      const result = await askGuideAssistant(content);
       const assistantMessage: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: responseContent,
+        content: result.response,
         timestamp: new Date().toISOString(),
         type: 'text',
+        metadata: { model: result.model },
       };
       setMessages((prev) => [...prev, assistantMessage]);
+    } catch (cause) {
+      setMessages((prev) => prev.filter((message) => message.id !== userMessage.id));
+      setInput(content);
+      setError(cause instanceof Error ? cause.message : 'تعذر الوصول إلى المساعد حالياً.');
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   }
 
   return (
@@ -93,6 +87,19 @@ export function HealthAssistant() {
             </div>
           </div>
         ))}
+        {error && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-danger-200 bg-danger-50 p-3 text-xs text-danger-700 dark:border-danger-800 dark:bg-danger-900/20 dark:text-danger-300" role="alert">
+            <span>{error}</span>
+            <button
+              type="button"
+              onClick={() => { setError(null); void handleSend(input); }}
+              disabled={!input.trim() || isLoading}
+              className="shrink-0 rounded-xl bg-white px-3 py-2 font-bold shadow-sm transition hover:bg-danger-100 active:scale-95 disabled:opacity-50 dark:bg-neutral-800"
+            >
+              إعادة المحاولة
+            </button>
+          </div>
+        )}
         {isLoading && (
           <div className="flex justify-end">
             <div className="bg-white dark:bg-neutral-800 rounded-2xl p-4 border border-neutral-200 dark:border-neutral-700 shadow-sm">

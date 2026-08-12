@@ -1,6 +1,12 @@
 import { openDB, type IDBPDatabase } from 'idb';
+import { createApiClient } from '@gula/ui-platform';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.gula.health/api/v1';
+const backend = createApiClient({
+  baseUrl: API_BASE,
+  clientName: 'hospital-app',
+  refreshPath: '/auth/refresh',
+});
 
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
@@ -34,86 +40,19 @@ async function getOfflineDB(): Promise<IDBPDatabase> {
   return offlineDB;
 }
 
-async function tryRefreshToken(): Promise<boolean> {
-  try {
-    const response = await fetch(`${API_BASE}/auth/refresh`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-    });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
 export async function apiRequest<T = unknown>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const {
-    skipAuth = false,
-    timeout = 30000,
-    ...fetchOptions
-  } = options;
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-Client-Type': 'hospital-app',
-    ...(fetchOptions.headers as Record<string, string>),
-  };
-
-  // Do not construct Authorization headers in the browser; cookies are HttpOnly.
-  void skipAuth;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
+  const { skipAuth: _skipAuth, timeout: _timeout, offlinePriority: _offlinePriority, ...requestOptions } = options;
+  void _skipAuth;
+  void _timeout;
+  void _offlinePriority;
   try {
-    let response = await fetch(`${API_BASE}${endpoint}`, {
-      ...fetchOptions,
-      credentials: 'include',
-      headers,
-      signal: controller.signal,
-    });
-
-    if (response.status === 401 && !skipAuth && endpoint !== '/auth/refresh') {
-      clearTimeout(timeoutId);
-      const refreshed = await tryRefreshToken();
-      if (refreshed) {
-        const retryController = new AbortController();
-        const retryTimeout = setTimeout(() => retryController.abort(), timeout);
-        response = await fetch(`${API_BASE}${endpoint}`, {
-          ...fetchOptions,
-          credentials: 'include',
-          headers,
-          signal: retryController.signal,
-        });
-        clearTimeout(retryTimeout);
-      }
-    }
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorData: Record<string, unknown> = {};
-      try {
-        errorData = JSON.parse(errorBody);
-      } catch {}
-      throw new ApiError(
-        response.status,
-        (errorData as any).message || (errorData as any).error || response.statusText,
-        errorData,
-      );
-    }
-
-    const data = await response.json();
-    return data as T;
+    return await backend.request<T>(endpoint, requestOptions);
   } catch (error) {
-    clearTimeout(timeoutId);
     if (error instanceof ApiError) throw error;
+    if (error instanceof Error) throw new ApiError(0, error.message);
     throw new ApiError(0, 'فشل الاتصال بالخادم');
   }
 }

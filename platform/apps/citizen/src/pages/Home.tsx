@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, cn } from '@gula/ui-platform';
+import { cn } from '@gula/ui-platform';
 import { useAuth } from '../contexts/AuthContext';
 import { useOffline } from '../contexts/OfflineContext';
-import { useHealthScore } from '../hooks/useHealthData';
+import { useCitizenDashboard } from '../hooks/useHealthData';
 import { ROUTES } from '../utils/routes';
 
 const quickActions = [
@@ -27,7 +27,13 @@ const actionIcons: Record<string, React.ReactNode> = {
 export function Home() {
   const { user } = useAuth();
   const { isOffline } = useOffline();
-  const { data: healthScore, isLoading: scoreLoading } = useHealthScore();
+  const {
+    data: dashboard,
+    isLoading: dashboardLoading,
+    isRefreshing: dashboardRefreshing,
+    error: dashboardError,
+    refetch: refetchDashboard,
+  } = useCitizenDashboard();
   const [greeting, setGreeting] = useState('');
 
   useEffect(() => {
@@ -47,19 +53,18 @@ export function Home() {
             <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-0.5">{greeting}</p>
             <h2 className="text-xl font-black text-neutral-900 dark:text-neutral-50">{user.name}</h2>
           </div>
-          {!isOffline && healthScore && (
-            <div className="text-center">
-              <div className={cn(
-                'w-16 h-16 rounded-2xl flex items-center justify-center font-black text-lg',
-                healthScore.overall >= 80 ? 'bg-success-100 text-success-700 dark:bg-success-900/30 dark:text-success-400' :
-                healthScore.overall >= 60 ? 'bg-warning-100 text-warning-700 dark:bg-warning-900/30 dark:text-warning-400' :
-                'bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400',
-              )}>
-                {healthScore.overall}
-              </div>
-              <p className="text-[9px] font-bold text-neutral-400 mt-1">الدرجة الصحية</p>
-            </div>
-          )}
+          <div className="text-center" aria-live="polite">
+            {dashboardLoading && !dashboard ? (
+              <div className="w-16 h-16 rounded-2xl bg-neutral-200 dark:bg-neutral-700 animate-pulse" aria-label="جارٍ تحميل مؤشراتك" />
+            ) : dashboard ? (
+              <>
+                <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-black text-lg bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+                  {dashboard.appointments?.upcoming ?? 0}
+                </div>
+                <p className="text-[9px] font-bold text-neutral-400 mt-1">مواعيد قادمة</p>
+              </>
+            ) : null}
+          </div>
         </div>
 
         <Link
@@ -96,6 +101,24 @@ export function Home() {
             </Link>
           ))}
         </div>
+
+        {dashboardError && (
+          <div className="mt-3 rounded-2xl border border-danger-200 bg-danger-50 p-3 text-xs text-danger-700 dark:border-danger-800 dark:bg-danger-900/20 dark:text-danger-300" role="alert">
+            <div className="flex items-center justify-between gap-3">
+              <span>تعذر تحديث مؤشرات الحساب من الخادم. تبقى بياناتك الأساسية ظاهرة.</span>
+              <button
+                type="button"
+                onClick={() => void refetchDashboard()}
+                className="shrink-0 rounded-xl bg-white px-3 py-2 font-bold shadow-sm transition hover:bg-danger-100 active:scale-95 dark:bg-neutral-800 dark:hover:bg-danger-900/40"
+              >
+                إعادة المحاولة
+              </button>
+            </div>
+          </div>
+        )}
+        {dashboardRefreshing && !dashboardError && (
+          <p className="mt-2 text-center text-[10px] text-neutral-400" aria-live="polite">جارٍ تحديث المؤشرات…</p>
+        )}
       </div>
 
       <div className="px-4 mt-6">

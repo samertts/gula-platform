@@ -112,3 +112,26 @@
 ## Remaining safety boundary after TypeScript repair
 
 هذه الدفعة تثبت صحة typecheck ومسار bundling الحاليين، ولا تثبت وحدها جاهزية تشغيل وطنية أو سلامة تكاملات Web/Android/Windows أو Demo isolation في بيئة production. ما زالت اختبارات التشغيل الفعلي، مصفوفة endpoints الشاملة لـRBAC وIf-Match/idempotency، اختبار الاستعادة والنسخ الاحتياطي، وتوحيد بيئات base URL تحتاج موجات مستقلة واعتماداً صريحاً. لم تُستخدم إصلاحات TypeScript لتجاوز validation أو audit أو authorization، ولم تُضف صلاحيات wildcard أو تخزين رموز في browser storage.
+
+
+## Frontend–Backend Integration and UX Follow-up — 2026-08-12
+
+تم تنفيذ دفعة تكامل أمامية/خلفية على فرع `feat/frontend-backend-ux-20260812` دون تعديل `main` أو سلوك النشر. اعتمدت التطبيقات على عميل Backend مشترك في `platform/ui/services/apiClient.ts` يرسل جلسات HttpOnly، ويدعم عقد الأخطاء القياسي، وrequest metadata، و`If-Match` وidempotency metadata، وإعادة المحاولة الآمنة لطلبات القراءة فقط. كما تم تصحيح توجيه Demo بحيث تُرسل الطلبات إلى `VITE_DEMO_API_BASE_URL` المعزول فعلياً، مع رفض صريح عند غياب عنوان Demo أو محاولة الوصول إلى أصل الإنتاج.
+
+| المجال | ما نُفّذ | الدليل |
+|---|---|---|
+| UI platform | إضافة `createApiClient` و`useBackendResource` وتعريفات Vite وتصديرها من الحزمة المشتركة | `platform/ui/services/`, `platform/ui/hooks/`, `platform/ui/index.ts` |
+| Citizen | ربط Home بـ`/citizen-platform/me/dashboard` مع loading/stale/error/retry، وربط HealthAssistant بـ`POST /ai/fabric/chat` بدلاً من الردود المحلية الوهمية | `platform/apps/citizen/src/pages/Home.tsx`, `HealthAssistant.tsx`, `services/guideAssistant.ts` |
+| التطبيقات السريرية | توحيد العملاء في Doctor وHospital وLaboratory وMinistry وNurse وPharmacy وRadiology مع الحفاظ على عقود الواجهات وoffline queue حيث كانت موجودة | ملفات `services/api.ts` لكل تطبيق |
+| Nurse | استبدال fixtures في TaskList وShiftHandover بخدمات `/nursing/tasks` و`/nursing/handover` مع mappers typed وحالات empty/error/retry/create | `platform/apps/nurse/src/services/tasks.ts`, `handovers.ts`, `TaskList.tsx`, `ShiftHandover.tsx` |
+| تجربة المستخدم | skeleton/feedback/error retry، إبقاء البيانات السابقة أثناء refetch، ومنع تكرار رسالة المستخدم عند إعادة محاولة المساعد | `useBackendResource.ts`, `Home.tsx`, `HealthAssistant.tsx` |
+
+تم التحقق الفعلي من بوابات TypeScript: **9/9 مشاريع ناجحة بصفر أخطاء**. كما نجحت builds للتطبيقات الثمانية: Citizen وDoctor وHospital وLaboratory وMinistry وNurse وPharmacy وRadiology. ظهرت تحذيرات Vite الحالية المتعلقة باستخدام `__dirname` مع `configLoader: native` في بعض التطبيقات؛ لم تُعدّل لأنها خارج نطاق التكامل ولا تمنع البناء.
+
+أعيد تشغيل اختبارات Backend الكاملة بعد التغييرات: **2310 اختباراً ناجحاً و251 تحذيراً خلال 287.45 ثانية**. التحذيرات تشمل deprecation warnings معروفة وSecurityWarning في fixture اختبار توقيع، ولا تمثل فشلاً في هذه الدفعة.
+
+### حدود الدفعة
+
+هذه الدفعة لا تعني أن كل صفحة في التطبيقات الثمانية أصبحت خالية من fixtures؛ ما زالت بعض شاشات Hospital وDoctor وNurse وRadiology تحتوي بيانات عرض تجريبية أو وظائف محلية، وسيتم تحويلها في موجات منفصلة بعد مطابقة كل شاشة مع endpoint فعلي وصلاحياته. كما أن Guide Assistant مرتبط بعقد AI Fabric الموجود، لكنه لا يقدّم تشخيصاً أو قراراً علاجياً ويظل خاضعاً للتنبيه التوعوي في الواجهة.
+
+لم تُعدّل lockfiles أو `.audit/ci-fix.patch` أو `.audit/ci-repair.patch`، ولم تُعالج تنبيهات Dependabot، ولم يُنفّذ merge أو release أو branch pruning. نجاح typecheck/build والاختبارات لا يثبت وحده جاهزية إنتاج وطنية؛ يلزم قبل الإنتاج اختبار عقد API في بيئة Demo معزولة، واختبار RBAC ومسارات 401/403/409/412، واختبارات تشغيل واستعادة وقياس أداء تحت الحمل.

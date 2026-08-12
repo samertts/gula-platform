@@ -1,6 +1,8 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import {
+  ApiClientError,
   buildQueueRequestInit,
+  createApiClient,
   classifyQueueResponse,
   createQueueEnvelope,
   inspectQueuePayload,
@@ -10,6 +12,11 @@ import {
 } from '@gula/ui-platform';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.gula.health/api/v1';
+const backend = createApiClient({
+  baseUrl: API_BASE,
+  clientName: 'doctor-app',
+  refreshPath: '/auth/refresh',
+});
 
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
@@ -109,40 +116,26 @@ export async function apiRequest<T = unknown>(
   options: RequestOptions = {},
 ): Promise<T> {
   const {
-    skipAuth = false,
+    skipAuth: _skipAuth,
     offlinePriority = 'normal',
-    timeout = 30000,
+    timeout: _timeout,
     entityType: _entityType,
     entityId: _entityId,
     action: _action,
-    expectedVersion: _expectedVersion,
+    expectedVersion,
     ...fetchOptions
   } = options;
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-Client-Type': 'doctor-app',
-    ...(fetchOptions.headers as Record<string, string>),
-  };
-
-  // Browser clients never construct Authorization headers; cookies are HttpOnly.
-  void skipAuth;
+  void _timeout;
   void _entityType;
   void _entityId;
   void _action;
-  void _expectedVersion;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
+  const method = options.method || 'GET';
   const isOnline = navigator.onLine;
 
   if (!isOnline && offlinePriority !== 'high') {
-    const cache = await getFromCache<T>(endpoint, options.method || 'GET');
+    const cache = await getFromCache<T>(endpoint, method);
     if (cache !== null) return cache;
-
-    if (options.method && options.method !== 'GET') {
+    if (method !== 'GET') {
       await queueOfflineRequest(endpoint, options);
       throw new OfflineQueuedError('تمت إضافة الطلب إلى قائمة الانتظار غير المتصلة');
     }
@@ -150,60 +143,28 @@ export async function apiRequest<T = unknown>(
   }
 
   try {
-    let response = await fetch(`${API_BASE}${endpoint}`, {
+    const data = await backend.request<T>(endpoint, {
       ...fetchOptions,
-      credentials: 'include',
-      headers,
-      signal: controller.signal,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(fetchOptions.headers as Record<string, string>),
+      },
+      expectedVersion,
+      skipRefresh: Boolean(_skipAuth) || endpoint === '/auth/refresh',
     });
-
-    if (response.status === 401 && !skipAuth && endpoint !== '/auth/refresh') {
-      clearTimeout(timeoutId);
-      const refreshed = await tryRefreshToken();
-      if (refreshed) {
-        const retryController = new AbortController();
-        const retryTimeout = setTimeout(() => retryController.abort(), timeout);
-        response = await fetch(`${API_BASE}${endpoint}`, {
-          ...fetchOptions,
-          credentials: 'include',
-          headers,
-          signal: retryController.signal,
-        });
-        clearTimeout(retryTimeout);
-      }
-    }
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorData: Record<string, unknown> = {};
-      try {
-        errorData = JSON.parse(errorBody);
-      } catch {}
-      throw new ApiError(
-        response.status,
-        (errorData as any).message || (errorData as any).error || response.statusText,
-        errorData,
-      );
-    }
-
-    const data = await response.json();
-
-    if (options.method === 'GET' || !options.method) {
-      await cacheResponse(endpoint, data);
-    }
-
-    return data as T;
+    if (method === 'GET') await cacheResponse(endpoint, data);
+    return data;
   } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof ApiError || error instanceof OfflineQueuedError) {
-      throw error;
+    if (error instanceof ApiClientError) {
+      throw new ApiError(error.status, error.message, error.contract as Record<string, unknown> | undefined);
     }
+    if (error instanceof ApiError || error instanceof OfflineQueuedError) throw error;
     if (!navigator.onLine) {
-      const cache = await getFromCache<T>(endpoint, options.method || 'GET');
+      const cache = await getFromCache<T>(endpoint, method);
       if (cache !== null) return cache;
-      if (options.method && options.method !== 'GET') {
+      if (method !== 'GET') {
         await queueOfflineRequest(endpoint, options);
         throw new OfflineQueuedError('تمت إضافة الطلب إلى قائمة الانتظار غير المتصلة');
       }
