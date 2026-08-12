@@ -7,34 +7,50 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-android {
-    namespace = "io.gula.android"
-    compileSdk = 35
-
-    defaultConfig {
-        applicationId = "io.gula.android"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables { useSupportLibrary = true }
-    }
-
-    buildTypes {
-        debug {
-            isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"https://staging.gulaplatform.com/api/v1/\"")
-            buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://staging-api.gulaplatform.com/\"")
-        }
-        release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            buildConfigField("String", "API_BASE_URL", "\"https://api.gulaplatform.com/api/v1/\"")
-            buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://api.gulaplatform.com/\"")
+    signingConfigs {
+        create("release") {
+            val propsFile = file("signing.properties")
+            if (propsFile.exists()) {
+                val props = java.util.Properties().apply {
+                    load(java.io.FileInputStream(propsFile))
+                }
+                storeFile = file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
         }
     }
+
+    android {
+        namespace = "io.gula.android"
+        compileSdk = 35
+
+        defaultConfig {
+            applicationId = "io.gula.android"
+            minSdk = 26
+            targetSdk = 35
+            versionCode = 1
+            versionName = "1.0.0"
+            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            vectorDrawables { useSupportLibrary = true }
+        }
+
+        buildTypes {
+            debug {
+                isMinifyEnabled = false
+                buildConfigField("String", "API_BASE_URL", "\"https://staging.gulaplatform.com/api/v1/\"")
+                buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://staging-api.gulaplatform.com/\"")
+            }
+            release {
+                isMinifyEnabled = true
+                isShrinkResources = true
+                signingConfig = signingConfigs.getByName("release")
+                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+                buildConfigField("String", "API_BASE_URL", "\"https://api.gulaplatform.com/api/v1/\"")
+                buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://api.gulaplatform.com/\"")
+            }
+        }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
