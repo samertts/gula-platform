@@ -73,6 +73,7 @@ jobs:
       - name: Run SwiftLint
         # Keep style findings visible in GitHub annotations while legacy cleanup
         # proceeds separately; compilation and tests remain the blocking checks.
+        continue-on-error: true
         run: swiftlint lint --reporter github-actions-logging
 
       - name: Upload SwiftLint report
