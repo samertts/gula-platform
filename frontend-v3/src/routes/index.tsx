@@ -13,6 +13,7 @@ const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then(m => ({
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const PatientsPage = lazy(() => import("@/pages/patients/PatientsPage").then(m => ({ default: m.PatientsPage })));
 const OrdersPage = lazy(() => import("@/pages/orders/OrdersPage").then(m => ({ default: m.OrdersPage })));
+const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage").then(m => ({ default: m.ReportsPage })));
 const ResultsPage = lazy(() => import("@/pages/results/ResultsPage").then(m => ({ default: m.ResultsPage })));
 const SamplesPage = lazy(() => import("@/pages/samples/SamplesPage").then(m => ({ default: m.SamplesPage })));
 const LabsPage = lazy(() => import("@/pages/labs/LabsPage").then(m => ({ default: m.LabsPage })));
@@ -124,6 +125,7 @@ export const router = createBrowserRouter([
       { path: "dashboard", element: <LazyPage><DashboardPage /></LazyPage> },
       { path: "patients", element: <RoleGuard roles={staffRoles}><LazyPage><PatientsPage /></LazyPage></RoleGuard> },
       { path: "orders", element: <RoleGuard roles={staffRoles}><LazyPage><OrdersPage /></LazyPage></RoleGuard> },
+      { path: "reports", element: <RoleGuard roles={readonlyRoles}><LazyPage><ReportsPage /></LazyPage></RoleGuard> },
       { path: "results", element: <RoleGuard roles={staffRoles}><LazyPage><ResultsPage /></LazyPage></RoleGuard> },
       { path: "samples", element: <RoleGuard roles={labRoles}><LazyPage><SamplesPage /></LazyPage></RoleGuard> },
       { path: "labs", element: <RoleGuard roles={readonlyRoles}><LazyPage><LabsPage /></LazyPage></RoleGuard> },

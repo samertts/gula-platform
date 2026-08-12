@@ -8,6 +8,7 @@ const en = {
     citizenWorkspace: "My health workspace",
     patients: "Patients",
     orders: "Orders",
+    reports: "Reports",
     results: "Results",
     samples: "Samples",
     labs: "Laboratories",
