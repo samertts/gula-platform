@@ -1,3 +1,0 @@
-{{- if .Values.postgres.serviceMonitor.enabled }}
-{{ include "gula.serviceMonitor" (dict "enabled" true "name" (printf "%s-%s" .Values.postgres.name "sm") "component" "database" "port" "postgres" "interval" .Values.postgres.serviceMonitor.interval "scrapeTimeout" .Values.postgres.serviceMonitor.scrapeTimeout "path" "/metrics" "parameters" .Values.postgres.serviceMonitor.parameters "Values" $.Values) }}
-{{- end }}

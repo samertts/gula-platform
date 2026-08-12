@@ -1,8 +1,0 @@
-blank_issues_enabled: true
-contact_links:
-  - name: GULA Platform Discussions
-    url: https://github.com/samertts/gula-platform/discussions
-    about: Please ask and answer questions here.
-  - name: Security Policy
-    url: https://github.com/samertts/gula-platform/security/policy
-    about: Please report security vulnerabilities here.

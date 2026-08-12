@@ -1,0 +1,238 @@
+{
+  "version": 2,
+  "source": "repository_inventory.md",
+  "purpose": "سجل مرجعي محدود للعقود الخلفية المنفذة التي يجوز ربط أي سطح تشغيلي بها بعد التحقق اليدوي من المعالج والحالة والصلاحية.",
+  "contracts": [
+    {
+      "id": "session.read",
+      "method": "GET",
+      "path": "/session",
+      "permission": "جلسة مستخدم صالحة",
+      "requiresWorkspaceContext": false,
+      "aliases": ["sessionApi", "authApi"],
+      "operationKinds": ["read"],
+      "clientMethods": ["session", "me", "getCurrent"],
+      "source": "backend/app/routes/login.py"
+    },
+    {
+      "id": "authorization.context.read",
+      "method": "GET",
+      "path": "/authz/me",
+      "permission": "جلسة مستخدم صالحة",
+      "requiresWorkspaceContext": false,
+      "aliases": ["authorizationApi", "authzApi"],
+      "operationKinds": ["read"],
+      "clientMethods": ["context", "me"],
+      "source": "backend/app/routes/authorization.py"
+    },
+    {
+      "id": "authorization.permissions.read",
+      "method": "GET",
+      "path": "/authz/me/permissions",
+      "permission": "جلسة مستخدم صالحة",
+      "requiresWorkspaceContext": false,
+      "aliases": ["authorizationApi", "authzApi", "permissionsApi"],
+      "operationKinds": ["read"],
+      "clientMethods": ["permissions", "list"],
+      "source": "backend/app/routes/authorization.py"
+    },
+    {
+      "id": "authorization.menu.read",
+      "method": "GET",
+      "path": "/authz/me/menu",
+      "permission": "جلسة مستخدم صالحة",
+      "requiresWorkspaceContext": false,
+      "aliases": ["authorizationApi", "authzApi", "menuApi"],
+      "operationKinds": ["read"],
+      "clientMethods": ["menu", "list"],
+      "source": "backend/app/routes/authorization.py"
+    },
+    {
+      "id": "patients.read",
+      "method": "GET",
+      "path": "/patients",
+      "permission": "patients:read",
+      "requiresWorkspaceContext": true,
+      "aliases": ["patientsApi", "patientApi"],
+      "operationKinds": ["read"],
+      "clientMethods": ["list", "get", "search", "find", "detail"],
+      "source": "backend/app/routes/patients.py"
+    },
+    {
+      "id": "patients.write",
+      "method": "POST",
+      "path": "/patients",
+      "permission": "patients:write",
+      "requiresWorkspaceContext": true,
+      "aliases": ["patientsApi", "patientApi"],
+      "operationKinds": ["write"],
+      "clientMethods": ["create", "add", "save", "update", "delete", "remove"],
+      "source": "backend/app/routes/patients.py"
+    },
+    {
+      "id": "orders.read",
+      "method": "GET",
+      "path": "/lims/orders",
+      "permission": "orders:read",
+      "requiresWorkspaceContext": true,
+      "aliases": ["ordersApi", "orderApi"],
+      "operationKinds": ["read"],
+      "clientMethods": ["list", "get", "search", "find", "detail"],
+      "source": "backend/app/lims/routes.py"
+    },
+    {
+      "id": "orders.write",
+      "method": "POST",
+      "path": "/orders",
+      "permission": "orders:write",
+      "requiresWorkspaceContext": true,
+      "aliases": ["ordersApi", "orderApi"],
+      "operationKinds": ["write"],
+      "clientMethods": ["create", "add", "save", "update", "delete", "remove"],
+      "source": "backend/app/lims/routes.py"
+    },
+    {
+      "id": "test-results.read",
+      "method": "GET",
+      "path": "/test-results",
+      "permission": "test-results:read",
+      "requiresWorkspaceContext": true,
+      "aliases": ["testResultsApi", "resultsApi", "resultApi"],
+      "operationKinds": ["read"],
+      "clientMethods": ["list", "get", "search", "find", "detail"],
+      "source": "backend/app/lims/routes.py"
+    },
+    {
+      "id": "test-results.write",
+      "method": "POST",
+      "path": "/test-results",
+      "permission": "test-results:write",
+      "requiresWorkspaceContext": true,
+      "aliases": ["testResultsApi", "resultsApi", "resultApi"],
+      "operationKinds": ["write"],
+      "clientMethods": ["create", "add", "save", "update", "delete", "remove"],
+      "source": "backend/app/lims/routes.py"
+    },
+    {
+      "id": "identity.lookup",
+      "method": "GET",
+      "path": "/identity/lookup",
+      "permission": "patients:read",
+      "requiresWorkspaceContext": true,
+      "aliases": ["identityApi"],
+      "operationKinds": ["lookup"],
+      "clientMethods": ["lookup"],
+      "source": "backend/app/routes/identity.py"
+    },
+    {
+      "id": "consent.check",
+      "method": "POST",
+      "path": "/consent/check",
+      "permission": "صلاحية موافقة معتمدة",
+      "requiresWorkspaceContext": true,
+      "aliases": ["consentApi"],
+      "operationKinds": ["check"],
+      "clientMethods": ["check"],
+      "source": "backend/app/routes/consent.py"
+    },
+    {
+      "id": "ai-platform.semantic-search",
+      "method": "POST",
+      "path": "/api/ai/v2/search",
+      "permission": "جلسة مستخدم صالحة",
+      "requiresWorkspaceContext": true,
+      "aliases": ["aiPlatformApi"],
+      "operationKinds": ["search"],
+      "clientMethods": ["search"],
+      "source": "backend/app/routes/ai_platform.py"
+    },
+    {
+      "id": "ai-platform.rag-query",
+      "method": "POST",
+      "path": "/api/ai/v2/rag/query",
+      "permission": "دور طبي أو إداري معتمد",
+      "requiresWorkspaceContext": true,
+      "aliases": ["aiPlatformApi"],
+      "operationKinds": ["read"],
+      "clientMethods": ["ragQuery"],
+      "source": "backend/app/routes/ai_platform.py"
+    },
+    {
+      "id": "ai-platform.knowledge-graph-search",
+      "method": "POST",
+      "path": "/api/ai/v2/knowledge-graph/search",
+      "permission": "جلسة مستخدم صالحة",
+      "requiresWorkspaceContext": false,
+      "aliases": ["aiPlatformApi"],
+      "operationKinds": ["search"],
+      "clientMethods": ["knowledgeGraphSearch"],
+      "source": "backend/app/routes/ai_platform.py"
+    },
+    {
+      "id": "ai-platform.agent-execute",
+      "method": "POST",
+      "path": "/api/ai/v2/agents/execute",
+      "permission": "دور طبي أو إداري معتمد",
+      "requiresWorkspaceContext": true,
+      "aliases": ["aiPlatformApi"],
+      "operationKinds": ["execute"],
+      "clientMethods": ["agentExecute"],
+      "source": "backend/app/routes/ai_platform.py"
+    },
+    {
+      "id": "ai-platform.session-create",
+      "method": "POST",
+      "path": "/api/ai/v2/sessions",
+      "permission": "جلسة مستخدم صالحة",
+      "requiresWorkspaceContext": true,
+      "aliases": ["aiPlatformApi"],
+      "operationKinds": ["write"],
+      "clientMethods": ["createSession"],
+      "source": "backend/app/routes/ai_platform.py"
+    },
+    {
+      "id": "ai-platform.session-message",
+      "method": "POST",
+      "path": "/api/ai/v2/sessions/message",
+      "permission": "جلسة مستخدم صالحة",
+      "requiresWorkspaceContext": false,
+      "aliases": ["aiPlatformApi"],
+      "operationKinds": ["write"],
+      "clientMethods": ["sessionMessage"],
+      "source": "backend/app/routes/ai_platform.py"
+    },
+    {
+      "id": "registration.citizen.create",
+      "method": "POST",
+      "path": "/register/citizen",
+      "permission": "وصول عام مضبوط بالمعدل والتحقق من المدخلات",
+      "requiresWorkspaceContext": false,
+      "aliases": ["authApi"],
+      "operationKinds": ["write"],
+      "clientMethods": ["registerCitizen"],
+      "source": "backend/app/routes/register.py"
+    },
+    {
+      "id": "verification.request",
+      "method": "POST",
+      "path": "/auth/verification/request",
+      "permission": "وصول عام مضبوط بالمعدل",
+      "requiresWorkspaceContext": false,
+      "aliases": ["authApi"],
+      "operationKinds": ["check"],
+      "clientMethods": ["requestVerification"],
+      "source": "backend/app/routes/verification.py"
+    },
+    {
+      "id": "verification.confirm",
+      "method": "POST",
+      "path": "/auth/verification/confirm",
+      "permission": "وصول عام مضبوط بالمعدل",
+      "requiresWorkspaceContext": false,
+      "aliases": ["authApi"],
+      "operationKinds": ["check"],
+      "clientMethods": ["confirmVerification"],
+      "source": "backend/app/routes/verification.py"
+    }
+  ]
+}
