@@ -135,6 +135,15 @@ EXTENDED_ALL_PERMISSIONS: list[str] = [
     "platform:manage_users",
     "platform:view_stats",
     "system:admin",
+    "payments:read",
+    "payments:write",
+    "payments:cashier",
+    "payments:refund:request",
+    "payments:refund:approve",
+    "payments:refund:process",
+    "payments:reconcile",
+    "payments:fx:quote",
+    "payments:fx:manage",
 ]
 
 EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
@@ -143,6 +152,7 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "patients:read", "orders:read", "results:read", "lab:read",
         "dashboard:read", "audit:read",
         "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+        "payments:read",
     ],
     "province_admin": [
         "patients:read", "orders:read", "results:read", "lab:read",
@@ -156,6 +166,8 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "staff:manage", "lab:read", "lab:manage",
         "dashboard:read", "audit:read",
         "platform:manage_users",
+        "payments:read", "payments:write", "payments:cashier", "payments:refund:request",
+        "payments:refund:approve", "payments:refund:process", "payments:reconcile", "payments:fx:quote",
     ],
     "lab_admin": [
         "patients:read", "patients:write", "patients:delete",
@@ -164,6 +176,8 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "staff:manage", "lab:read", "lab:manage",
         "dashboard:read", "audit:read",
         "platform:manage_users",
+        "payments:read", "payments:write", "payments:cashier", "payments:refund:request",
+        "payments:refund:approve", "payments:refund:process", "payments:reconcile", "payments:fx:quote",
     ],
     "doctor": [
         "patients:read", "orders:read", "results:read", "dashboard:read",
@@ -173,12 +187,14 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "orders:read", "orders:write",
         "results:read", "results:write",
         "lab:read", "dashboard:read",
+        "payments:read", "payments:write", "payments:cashier", "payments:refund:request", "payments:fx:quote",
     ],
     "lab_staff": [
         "patients:read", "patients:write",
         "orders:read", "orders:write",
         "results:read", "results:write",
         "lab:read", "dashboard:read",
+        "payments:read", "payments:write", "payments:cashier", "payments:refund:request", "payments:fx:quote",
     ],
     "technician": [
         "orders:read", "orders:write",

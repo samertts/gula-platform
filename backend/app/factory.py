@@ -222,6 +222,7 @@ def import_all_models() -> None:
         EdgeTelemetry,
     )
     from .models.outbox import OutboxEvent  # noqa: F401
+    from .payments import models as payment_models  # noqa: F401
     from .models.subscription import (  # noqa: F401
         FeatureFlag,
         LabSubscription,
@@ -497,6 +498,11 @@ def _register_routes(app: FastAPI) -> None:
 
     from .financial import register_routes as register_financial_routes
     register_financial_routes(app)
+
+    from .payments.routes import router as payments_router
+    from .payments.fx_routes import router as payments_fx_router
+    app.include_router(payments_router)
+    app.include_router(payments_fx_router)
 
     app.include_router(citizen_portal_routes.router)
     app.include_router(citizen_relationship_admin_routes.router)
