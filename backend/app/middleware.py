@@ -15,7 +15,7 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .config import APP_VERSION, IS_PRODUCTION, MAX_REQUEST_BODY_MB
+from .config import APP_VERSION, DEMO_MODE, IS_PRODUCTION, MAX_REQUEST_BODY_MB
 from .core.logging_config import bind_log_context
 
 logger = logging.getLogger("gula")
@@ -94,6 +94,37 @@ class RequestTimingMiddleware(BaseHTTPMiddleware):
         response.headers["X-Response-Time"] = f"{elapsed_ms}ms"
         response.headers["X-API-Version"] = APP_VERSION
         return response
+
+
+class DemoReadOnlyMiddleware(BaseHTTPMiddleware):
+    """Keep the public synthetic demo read-only.
+
+    Demo data is disposable, but the public session must not be able to mutate
+    it, trigger integrations, or exercise administrative write paths. Session
+    lifecycle endpoints remain available so the normal cookie flow works.
+    """
+
+    _ALLOWED_MUTATIONS: frozenset[tuple[str, str]] = frozenset(
+        {
+            ("POST", "/demo/access"),
+            ("POST", "/auth/refresh"),
+            ("POST", "/auth/logout"),
+            ("POST", "/logout"),
+        },
+    )
+
+    async def dispatch(self, request: Request, call_next):
+        if DEMO_MODE and request.method not in {"GET", "HEAD", "OPTIONS"}:
+            if (request.method, request.url.path) not in self._ALLOWED_MUTATIONS:
+                return JSONResponse(
+                    status_code=405,
+                    content={
+                        "detail": "Write operations are disabled in the public demo.",
+                        "detail_ar": "عمليات الكتابة معطلة في العرض التجريبي العام.",
+                    },
+                    headers={"Allow": "GET, HEAD, OPTIONS"},
+                )
+        return await call_next(request)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

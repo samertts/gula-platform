@@ -21,7 +21,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .config import APP_NAME, APP_VERSION, IS_PRODUCTION, RUNTIME_MODE
+from .config import APP_NAME, APP_VERSION, DEMO_MODE, IS_PRODUCTION, RUNTIME_MODE
 from .core.error_contract import (
     build_error_payload,
     public_http_detail,
@@ -378,6 +378,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
 
     from app.middleware import (
         ConcurrencyLimitMiddleware,
+        DemoReadOnlyMiddleware,
         KernelMiddleware,
         MaxBodySizeMiddleware,
         ReadinessMiddleware,
@@ -444,6 +445,8 @@ def _build_middleware_stack(app: FastAPI) -> None:
     app.add_middleware(RequestTimingMiddleware)
     app.add_middleware(CSRFMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
+    if DEMO_MODE:
+        app.add_middleware(DemoReadOnlyMiddleware)
     app.add_middleware(GZipMiddleware, minimum_size=1000)
 
     from .core.self_healing import DegradedModeMiddleware

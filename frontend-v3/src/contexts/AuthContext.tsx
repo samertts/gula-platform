@@ -16,18 +16,6 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 const DEMO_SESSION_KEY = "gula_demo_active";
 
-function demoUser(): UserInfo {
-  return {
-    id: 0,
-    name: "د. سارة",
-    email: "demo@gula.local",
-    role: "lab_staff",
-    lab_id: null,
-    lab_name: "مختبر جولا التدريبي",
-    is_verified: true,
-  };
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -39,9 +27,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const hasDemoMarker = window.sessionStorage.getItem(DEMO_SESSION_KEY) === "true";
       try {
         if (hasDemoMarker) {
-          await authApi.demoDashboard();
+          const session = await authApi.session();
+          if (!session.demo_mode) {
+            throw new Error("Demo marker exists but the server session is not a demo session");
+          }
           if (mounted) {
-            setUser(demoUser());
+            setUser(session.user);
             setDemoMode(true);
           }
         } else {

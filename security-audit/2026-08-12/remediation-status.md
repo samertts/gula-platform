@@ -36,6 +36,9 @@
 | TLS pin evidence | حفظ بصمة SPKI العامة ونوع شهادة الإنتاج في `tls-pinning-evidence.md` دون أي بيانات اعتماد | مكتمل في المصدر | تحقق TLS خارجي موثق؛ يلزم pin احتياطي موثق قبل التجديد |
 | Vercel project-root headers | إضافة `frontend-v3/vercel.json` لأن إعداد root `vercel.json` لا يضمن تطبيق headers عندما يكون دليل المشروع `frontend-v3` | مكتمل في المصدر | يحتاج نشر Vercel ثم تحقق GET من CSP وsecurity headers؛ التحقق السابق أظهر غيابها في الموقع الحي |
 | Secret rotation runbook | إضافة `secret-rotation-runbook.md` بأسماء الأسرار وخطوات الإبطال والتدوير والتحقق دون قيم سرية | مكتمل في المصدر؛ التنفيذ التشغيلي متبقٍ | يجب تدوير كل الأسرار التاريخية في مزوديها، ثم توثيق رقم الإصدار ونتيجة staging/production |
+| Public demo isolation | إضافة Render Blueprint لخدمتي `gula-demo-backend` و`gula-demo-frontend` مع PostgreSQL وRedis منفصلين، `DEMO_MODE` وintegrations بنمط `stub` | مكتمل في المصدر؛ مزامنة Render متبقية | تحقق `/demo/access` و`/session`، راجع أن قاعدة demo ليست الإنتاج، ثم أضف DNS المخصص اختيارياً |
+| Demo least privilege | خفض حساب العرض إلى دور `doctor` للقراءة، وإضافة `DemoReadOnlyMiddleware` لمنع عمليات الكتابة مع إبقاء access/refresh/logout | مكتمل في المصدر | اختبارات regression: 3 passed؛ يجب اختبار العرض بعد النشر من متصفح عام |
+| Demo frontend identity | إزالة الهوية المحلية الوهمية من `AuthContext` واستعادة المستخدم الحقيقي من `/session` مع شارة البيانات الاصطناعية | مكتمل في المصدر | TypeScript وbuild بعد دفع التغيير |
 
 ## التحقق الحالي
 

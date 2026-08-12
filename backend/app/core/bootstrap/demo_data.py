@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import secrets
 import uuid
 from datetime import date, datetime, timedelta
 from uuid import UUID
@@ -111,7 +112,6 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
             db.flush()
             counts["patients"] += 1
 
-        demo_password = hash_password("Demo@123")
         for td in DEMO_TECHNICIANS:
             existing = db.query(LabUser).filter(LabUser.email == td["email"]).first()
             if not existing:
@@ -119,7 +119,7 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
                     lab_id=lab.id,
                     name=td["name"],
                     email=td["email"],
-                    password_hash=demo_password,
+                    password_hash=hash_password(secrets.token_urlsafe(32)),
                     role="technician",
                     is_active=True,
                 )
@@ -134,7 +134,7 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
                     lab_id=lab.id,
                     name=dd["name"],
                     email=dd["email"],
-                    password_hash=demo_password,
+                    password_hash=hash_password(secrets.token_urlsafe(32)),
                     role="doctor",
                     is_active=True,
                 )

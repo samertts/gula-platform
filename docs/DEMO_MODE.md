@@ -48,6 +48,8 @@ VITE_API_BASE_URL=https://demo-api.gula-platform.org npm run build
 
 إذا استُخدم `vercel.json`، يجب أن تشير إعادة الكتابة `/api/*` إلى خدمة العرض التجريبي، لا إلى `api.gula-platform.org` الإنتاجية. يُفضّل استخدام نطاقين واضحين مثل `demo.gula-platform.org` و`demo-api.gula-platform.org`، مع شهادة TLS وقائمة CORS تحتويهما صراحةً.
 
+يعرّف `render.yaml` خدمة `gula-demo-backend` وخدمة `gula-demo-frontend` وقاعدة PostgreSQL وRedis منفصلين. بعد مزامنة Blueprint على Render، يكون رابط العرض الافتراضي `https://gula-demo-frontend.onrender.com` ورابط API `https://gula-demo-backend.onrender.com`. يمكن إضافة النطاقين المخصصين `demo.gula-platform.org` و`demo-api.gula-platform.org` من إعدادات Render، ثم تحديث `VITE_API_BASE_URL` و`CORS_ORIGINS` وDNS وفقاً لذلك. لا يجوز إعادة استخدام موارد `gula-backend` أو `gula-db` أو `gula-redis` الإنتاجية.
+
 ## فحص قبل فتح الرابط للعامة
 
 يجب التحقق من أن `/demo/access` يعمل، وأن `/session` يعيد `demo_mode=true`، وأن أي طلب إلى قاعدة الإنتاج غير ممكن من شبكة العرض. كما يجب تجربة logout، refresh، فشل رمز التحقق، ومحاولة طلب كتابة بمصدر Origin غير مصرح، ثم التأكد من ظهور شارة **بيانات اصطناعية ومعزولة** داخل المساعد الإرشادي.
