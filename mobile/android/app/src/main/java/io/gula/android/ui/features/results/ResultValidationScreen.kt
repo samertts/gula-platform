@@ -85,11 +85,11 @@ fun ResultValidationScreen(
             )
 
             if (uiState.error != null) {
-                Text(uiState.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Text(uiState.error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
             if (uiState.validationMessage != null) {
-                Text(uiState.validationMessage, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
+                Text(uiState.validationMessage.orEmpty(), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
             }
 
             Spacer(Modifier.weight(1f))

@@ -10,10 +10,14 @@ import io.gula.android.domain.repository.AuthRepository
 import io.gula.android.BuildConfig
 import io.gula.android.security.EncryptedPrefs
 import io.gula.android.util.Resource
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,10 +36,11 @@ class AuthRepositoryImpl @Inject constructor(
 
     private val _authTokens = MutableStateFlow<AuthTokens?>(null)
     override val authTokens: Flow<AuthTokens?> = _authTokens.asStateFlow()
+    private val repositoryScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     init {
         if (encryptedPrefs.isLoggedIn) {
-            loadUserFromCache()
+            repositoryScope.launch { loadUserFromCache() }
         }
     }
 
@@ -266,7 +271,7 @@ class AuthRepositoryImpl @Inject constructor(
         _authTokens.value = tokens
     }
 
-    private fun saveUser(userDto: UserBriefDto) {
+    private suspend fun saveUser(userDto: UserBriefDto) {
         encryptedPrefs.userId = userDto.id
         encryptedPrefs.userEmail = userDto.email
         encryptedPrefs.userName = userDto.name
@@ -281,7 +286,7 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun loadUserFromCache() {
+    private suspend fun loadUserFromCache() {
         runCatching {
             val cached = userDao.getUserByIdOnce(encryptedPrefs.userId)
             if (cached != null) {

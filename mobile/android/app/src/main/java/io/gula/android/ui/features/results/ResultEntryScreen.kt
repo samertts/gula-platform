@@ -1,6 +1,7 @@
 package io.gula.android.ui.features.results
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
@@ -77,7 +78,7 @@ fun ResultEntryScreen(
             }
 
             if (uiState.error != null) {
-                item { Text(uiState.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
+                item { Text(uiState.error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
             }
 
             item {
@@ -147,7 +148,7 @@ private fun ResultEntryRow(
                     onValueChange = { onUpdate(item.copy(value = it.toDoubleOrNull())) },
                     label = { Text("Value") },
                     modifier = Modifier.weight(1f),
-                    keyboardType = KeyboardType.Decimal,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
                 OutlinedTextField(
