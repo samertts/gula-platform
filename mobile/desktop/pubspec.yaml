@@ -103,9 +103,6 @@ dependencies:
   # Localization
   flutter_oss_licenses: ^2.0.2
 
-  # P2P / Sync
-  p2plib: ^0.0.3
-
   # Context
   universal_platform: ^1.0.1
 
