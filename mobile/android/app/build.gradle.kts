@@ -139,10 +139,10 @@ dependencies {
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
     // Biometric
-    implementation("androidx.biometric:biometric:1.4.0")
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // Security (EncryptedSharedPreferences)
-    implementation("androidx.security:security-crypto:1.1.0-alpha08")
+    implementation("androidx.security:security-crypto:1.1.0")
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.7.0")

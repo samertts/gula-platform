@@ -4,14 +4,14 @@ import { mockLogin, setupAuthenticatedPage } from "./helpers";
 test.describe("Samples", () => {
   test.beforeEach(async ({ page }) => {
     await mockLogin(page);
-    await page.route("**/api/samples/**", async (route) => {
+    await page.route("**/api/samples**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
           items: [
-            { id: 301, barcode: "SMP-001", patient_name: "محمد أحمد", type: "blood", status: "collected" },
-            { id: 302, barcode: "SMP-002", patient_name: "سارة خالد", type: "urine", status: "pending" },
+            { id: 301, barcode: "SMP-001", patient_name: "محمد أحمد", sample_type: "blood", status: "collected" },
+            { id: 302, barcode: "SMP-002", patient_name: "سارة خالد", sample_type: "urine", status: "pending" },
           ],
           total: 2,
         }),

@@ -4,7 +4,7 @@ import { mockLogin, setupAuthenticatedPage } from "./helpers";
 test.describe("Results", () => {
   test.beforeEach(async ({ page }) => {
     await mockLogin(page);
-    await page.route("**/api/results/**", async (route) => {
+    await page.route("**/api/test-results**", async (route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",

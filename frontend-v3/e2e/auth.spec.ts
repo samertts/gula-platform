@@ -6,7 +6,7 @@ const TEST_CREDENTIALS = {
 };
 
 async function mockLogin(page: Page) {
-  await page.route("**/api/auth/login", async (route) => {
+  await page.route("**/api/login", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -60,7 +60,7 @@ async function mockAuthenticatedRoutes(page: Page) {
 test.describe("Authentication", () => {
   test("should display login page with correct Arabic text", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.locator("h2")).toContainText("تسجيل الدخول");
+    await expect(page.locator("h2")).toContainText("مرحباً بعودتك");
     await expect(page.locator('label[for="email"]')).toContainText("البريد الإلكتروني");
     await expect(page.locator('label[for="password"]')).toContainText("كلمة المرور");
     await expect(page.locator('button[type="submit"]')).toContainText("تسجيل الدخول");
@@ -74,7 +74,7 @@ test.describe("Authentication", () => {
   });
 
   test("should show error message on failed login", async ({ page }) => {
-    await page.route("**/api/auth/login", async (route) => {
+    await page.route("**/api/login", async (route) => {
       await route.fulfill({
         status: 401,
         contentType: "application/json",

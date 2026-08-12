@@ -347,7 +347,6 @@ def import_all_models() -> None:
         Warehouse,
         WasteRecord,
     )
-    from .payments import models as payment_models  # noqa: F401
     from .payments import subscription_models  # noqa: F401
     from .radiology.ai import AIAnalysisJob  # noqa: F401
     from .radiology.models import (  # noqa: F401

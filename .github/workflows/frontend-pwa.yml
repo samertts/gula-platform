@@ -95,7 +95,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pwa-build
-          path: frontend-v2/build/
+          path: frontend-v2/dist/
           if-no-files-found: error
           retention-days: 7
 
@@ -103,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pwa-source-maps
-          path: frontend-v2/build/static/js/*.map
+          path: frontend-v2/dist/assets/*.map
           if-no-files-found: warn
           retention-days: 3
 
@@ -129,12 +129,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pwa-build
-          path: build/
+          path: frontend-v2/dist/
 
       - name: Run Lighthouse CI
         uses: GoogleChrome/lighthouse-ci-action@v12
         with:
-          configPath: frontend-v2/lighthouse.config.json
+          configPath: frontend-v2/lighthouserc.json
           temporaryPublicStorage: true
           uploadArtifacts: true
           runs: 3
@@ -142,7 +142,7 @@ jobs:
   deploy-vercel-preview:
     name: Deploy Preview to Vercel
     needs: [build]
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'preview'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -161,7 +161,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pwa-build
-          path: frontend-v2/build/
+          path: frontend-v2/dist/
 
       - name: Deploy to Vercel (Preview)
         env:
@@ -171,21 +171,18 @@ jobs:
           vercel deploy --prebuilt --token=$VERCEL_TOKEN > vercel-url.txt
           echo "VERCEL_URL=$(cat vercel-url.txt)" >> $GITHUB_ENV
 
-      - name: Comment PR with preview URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## 🚀 Preview deployed\n\n**URL:** ${process.env.VERCEL_URL}\n\nLighthouse and build checks will be available shortly.`
-            })
+      - name: Write preview deployment summary
+        run: |
+          {
+            echo "## Preview deployment"
+            echo
+            echo "URL: ${VERCEL_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   deploy-vercel-production:
     name: Deploy Production to Vercel
     needs: [build]
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -204,7 +201,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pwa-build
-          path: frontend-v2/build/
+          path: frontend-v2/dist/
 
       - name: Deploy to Vercel (Production)
         env:
@@ -220,6 +217,6 @@ jobs:
           SENTRY_PROJECT: frontend-pwa
         run: |
           npx @sentry/cli releases new ${{ github.ref_name }}
-          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps build/static/js/
+          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps frontend-v2/dist/assets/
           npx @sentry/cli releases set-commits ${{ github.ref_name }} --auto
           npx @sentry/cli releases finalize ${{ github.ref_name }}
