@@ -50,7 +50,7 @@ dependencies:
   bluetooth_low_energy: ^5.0.0
 
   # PDF
-  pdf: ^3.11.2
+  pdf: ">=3.7.4 <3.8.0"
 
   # Barcode
   barcode: ^2.2.9
