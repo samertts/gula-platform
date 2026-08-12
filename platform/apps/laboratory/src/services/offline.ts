@@ -1,5 +1,6 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import { processOfflineQueue } from './api';
+import { inspectQueuePayload } from '@gula/ui-platform';
 
 interface SyncStatus {
   lastSync: Date | null;
@@ -16,18 +17,49 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
 
 function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
-    dbPromise = openDB('gula-lab-offline-store', 2, {
-      upgrade(db, oldVersion) {
+    dbPromise = openDB('gula-lab-offline-store', 3, {
+      upgrade(db, oldVersion, transaction) {
         if (oldVersion < 1) {
           db.createObjectStore('pending', { keyPath: 'id', autoIncrement: true });
           db.createObjectStore('cache', { keyPath: 'key' });
           db.createObjectStore('drafts', { keyPath: 'id' });
           db.createObjectStore('sync_log', { keyPath: 'id', autoIncrement: true });
         }
-        if (oldVersion < 2) {
-          db.createObjectStore('pending').createIndex('entity_type', 'entityType');
+        if (oldVersion < 2 && db.objectStoreNames.contains('pending')) {
+          const pending = transaction.objectStore('pending');
+          if (!pending.indexNames.contains('entity_type')) {
+            pending.createIndex('entity_type', 'entityType');
+          }
+        }
+        if (!db.objectStoreNames.contains('queue_rejections')) {
+          db.createObjectStore('queue_rejections', { keyPath: 'id', autoIncrement: true });
         }
       },
+    }).then(async (database) => {
+      const pending = await database.getAll('pending');
+      const tx = database.transaction(['pending', 'queue_rejections', 'sync_log'], 'readwrite');
+      for (const item of pending) {
+        const result = inspectQueuePayload(item);
+        if (!result.safe) {
+          await tx.objectStore('queue_rejections').add({
+            source: 'gula-lab-offline-store.pending',
+            requestId: item.id,
+            reason: result.reason,
+            rejectedAt: Date.now(),
+          });
+          await tx.objectStore('sync_log').add({
+            entityId: item.entityId,
+            entityType: item.entityType,
+            action: item.action,
+            status: 'rejected',
+            error: result.reason,
+            timestamp: new Date().toISOString(),
+          });
+          await tx.objectStore('pending').delete(item.id);
+        }
+      }
+      await tx.done;
+      return database;
     });
   }
   return dbPromise;
@@ -107,8 +139,29 @@ export const offlineService = {
 
     for (const item of pending) {
       try {
+        const result = inspectQueuePayload(item);
+        if (!result.safe) {
+          await db.delete('pending', item.id);
+          await db.add('queue_rejections', {
+            source: 'gula-lab-offline-store.pending',
+            requestId: item.id,
+            reason: result.reason,
+            rejectedAt: Date.now(),
+          });
+          await db.add('sync_log', {
+            entityId: item.entityId,
+            entityType: item.entityType,
+            action: item.action,
+            status: 'rejected',
+            error: result.reason,
+            timestamp: new Date().toISOString(),
+          });
+          failed++;
+          continue;
+        }
         const response = await fetch(item.url, {
           method: item.method || 'POST',
+          credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
           body: item.body ? JSON.stringify(item.body) : undefined,
         });
@@ -169,6 +222,17 @@ export const offlineService = {
     action: string;
   }): Promise<void> {
     const db = await getDb();
+    const result = inspectQueuePayload(data);
+    if (!result.safe) {
+      await db.add('queue_rejections', {
+        source: 'gula-lab-offline-store.pending',
+        entityType: data.entityType,
+        entityId: data.entityId,
+        reason: result.reason,
+        rejectedAt: Date.now(),
+      });
+      throw new Error('تم رفض تخزين عنصر غير متصل يحتوي بيانات اعتماد');
+    }
     await db.add('pending', {
       ...data,
       timestamp: new Date().toISOString(),

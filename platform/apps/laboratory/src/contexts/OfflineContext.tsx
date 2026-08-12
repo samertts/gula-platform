@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { openDB, type IDBPDatabase } from 'idb';
+import { inspectQueueRecord, inspectQueuePayload } from '@gula/ui-platform';
 
 interface OfflineQueueItem {
   id?: number;
@@ -33,7 +34,7 @@ let dbPromise: Promise<IDBPDatabase> | null = null;
 
 function getDb(): Promise<IDBPDatabase> {
   if (!dbPromise) {
-    dbPromise = openDB('gula-lab-offline', 1, {
+    dbPromise = openDB('gula-lab-offline', 2, {
       upgrade(db) {
         if (!db.objectStoreNames.contains('requests')) {
           db.createObjectStore('requests', { keyPath: 'id', autoIncrement: true });
@@ -41,7 +42,27 @@ function getDb(): Promise<IDBPDatabase> {
         if (!db.objectStoreNames.contains('cache')) {
           db.createObjectStore('cache', { keyPath: 'key' });
         }
+        if (!db.objectStoreNames.contains('queue_rejections')) {
+          db.createObjectStore('queue_rejections', { keyPath: 'id', autoIncrement: true });
+        }
       },
+    }).then(async (database) => {
+      const requests = await database.getAll('requests');
+      const tx = database.transaction(['requests', 'queue_rejections'], 'readwrite');
+      for (const request of requests) {
+        const result = inspectQueueRecord(request);
+        if (!result.safe) {
+          await tx.objectStore('queue_rejections').add({
+            source: 'gula-lab-offline.requests',
+            requestId: request.id,
+            reason: result.reason,
+            rejectedAt: Date.now(),
+          });
+          await tx.objectStore('requests').delete(request.id);
+        }
+      }
+      await tx.done;
+      return database;
     });
   }
   return dbPromise;
@@ -82,16 +103,31 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const queueRequest = useCallback(async (url: string, method: string, body?: unknown) => {
     try {
       const db = await getDb();
+      const payload = body ? JSON.stringify(body) : undefined;
+      const result = inspectQueuePayload(payload);
+      if (!result.safe) {
+        await db.add('queue_rejections', {
+          source: 'gula-lab-offline.requests',
+          url,
+          method,
+          reason: result.reason,
+          rejectedAt: Date.now(),
+        });
+        throw new Error('تم رفض تخزين طلب غير متصل يحتوي بيانات اعتماد');
+      }
       await db.add('requests', {
         url,
         method,
-        body: body ? JSON.stringify(body) : undefined,
+        body: payload,
         timestamp: Date.now(),
         retryCount: 0,
         maxRetries: 5,
       });
       await updatePendingCount();
-    } catch { /* ignore */ }
+    } catch (error) {
+      setState(s => ({ ...s, syncError: error instanceof Error ? error.message : 'تعذر تخزين الطلب' }));
+      throw error;
+    }
   }, [updatePendingCount]);
 
   const processQueue = useCallback(async () => {
@@ -107,8 +143,22 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         }
 
         try {
+          const result = inspectQueueRecord(req);
+          if (!result.safe) {
+            await db.add('queue_rejections', {
+              source: 'gula-lab-offline.requests',
+              requestId: req.id,
+              url: req.url,
+              method: req.method,
+              reason: result.reason,
+              rejectedAt: Date.now(),
+            });
+            await db.delete('requests', req.id);
+            continue;
+          }
           const response = await fetch(req.url, {
             method: req.method,
+            credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: req.body,
           });

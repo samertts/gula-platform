@@ -1,8 +1,9 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import type { OfflineQueueItem } from '@/utils/types';
+import { inspectQueuePayload } from '../../../../ui/utils/offlineQueueSecurity';
 
 const DB_NAME = 'gula-nurse-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 
@@ -18,7 +19,25 @@ function getDb(): Promise<IDBPDatabase> {
         if (!db.objectStoreNames.contains('cache')) {
           db.createObjectStore('cache', { keyPath: 'key' });
         }
+        if (!db.objectStoreNames.contains('queue_rejections')) {
+          db.createObjectStore('queue_rejections', { keyPath: 'id', autoIncrement: true });
+        }
       },
+    }).then(async (database) => {
+      const pending = await database.getAll('queue');
+      for (const item of pending) {
+        const result = inspectQueuePayload(item);
+        if (!result.safe) {
+          await database.add('queue_rejections', {
+            source: 'gula-nurse-offline.queue',
+            requestId: item.id,
+            reason: result.reason,
+            rejectedAt: Date.now(),
+          });
+          await database.delete('queue', item.id);
+        }
+      }
+      return database;
     });
   }
   return dbPromise;
@@ -27,6 +46,15 @@ function getDb(): Promise<IDBPDatabase> {
 export const offlineService = {
   enqueue: async (item: Omit<OfflineQueueItem, 'id' | 'createdAt' | 'synced'>) => {
     const db = await getDb();
+    const result = inspectQueuePayload(item);
+    if (!result.safe) {
+      await db.add('queue_rejections', {
+        source: 'gula-nurse-offline.queue',
+        reason: result.reason,
+        rejectedAt: Date.now(),
+      });
+      throw new Error('تم رفض تخزين عنصر غير متصل يحتوي بيانات اعتماد');
+    }
     const entry: OfflineQueueItem = {
       ...item,
       id: crypto.randomUUID(),
@@ -98,6 +126,18 @@ export const offlineService = {
   syncAll: async (syncFn: (item: OfflineQueueItem) => Promise<void>) => {
     const pending = await offlineService.getPending();
     for (const item of pending) {
+      const result = inspectQueuePayload(item);
+      if (!result.safe) {
+        const db = await getDb();
+        await db.add('queue_rejections', {
+          source: 'gula-nurse-offline.queue',
+          requestId: item.id,
+          reason: result.reason,
+          rejectedAt: Date.now(),
+        });
+        await db.delete('queue', item.id);
+        continue;
+      }
       try {
         await syncFn(item);
         await offlineService.markSynced(item.id);

@@ -50,3 +50,11 @@
 ### Build-tool compatibility note
 
 أمر `npm run build` الأصلي يستخدم TypeScript 7.0.2 في التطبيقات، بينما تحتوي project configs الحالية على خيارات legacy مثل `baseUrl` و`allowImportingTsExtensions` وعلى project reference غير composite لـ`platform/ui`. لذلك فشلت هذه الأوامر قبل الوصول إلى كود R1. تم فصل ذلك عن التحقق المباشر باستخدام TypeScript 5.9.3 وعن Vite bundling، ولم تُعدّل إعدادات TypeScript العامة ضمن R1 حتى لا تتسع الموجة دون اعتماد.
+
+## R2 status — 2026-08-12
+
+اكتملت دفعة R2 على مستوى المصدر: cleanup/migration للـIndexedDB request queues، queue rejection metadata، sanitizer مشترك، purge لقاعدة Workbox Background Sync، وإزالة worker mutation replay القديم. تم الحفاظ على drafts وcache وclinical stores؛ لا توجد عملية `deleteDatabase` عامة لتلك المخازن.
+
+الأدلة: اختبار sanitizer ناجح، helper TypeScript ناجح، Vite build ناجح في citizen/doctor/hospital/laboratory/pharmacy، وBackend suite بنتيجة **2305 passed**. Nurse وMinistry وRadiology لا يمرون build كاملاً بسبب blockers سابقة موثقة: صفحات Nurse بلا default exports، Ministry services بلا exports مطلوبة، وRadiology CSS imports غير موجودة. فشل TypeScript project checks سببه إعدادات TypeScript 7/legacy project references، ولم تُعدّل ضمن R2.
+
+تبقى `queue_rejections` محلية metadata فقط ولا تحفظ قيمة token. أي مستخدم لم يفتح نسخة التطبيق الجديدة قد يحتفظ ببيانات قديمة في متصفحه إلى حين startup/activation التالي؛ لا يمكن للمستودع تنظيف متصفح غير متصل أو غير محدث عن بُعد.

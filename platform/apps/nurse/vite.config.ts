@@ -56,7 +56,6 @@ export default defineConfig({
               cacheName: 'gula-nurse-api',
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 7 },
               networkTimeoutSeconds: 5,
-              backgroundSync: { name: 'gula-nurse-sync' },
             },
           },
           {

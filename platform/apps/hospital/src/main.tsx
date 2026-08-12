@@ -1,8 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { purgeLegacyWorkboxQueue } from '@gula/ui-platform';
 
 async function initializeApp() {
   try {
+    await purgeLegacyWorkboxQueue();
     if ('serviceWorker' in navigator) {
       const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
       if (registration.active) {

@@ -60,7 +60,6 @@ export default defineConfig({
               cacheName: 'gula-lab-api',
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 7 },
               networkTimeoutSeconds: 5,
-              backgroundSync: { name: 'gula-lab-sync' },
             },
           },
           {
@@ -85,7 +84,6 @@ export default defineConfig({
             options: {
               cacheName: 'gula-lab-transactional',
               expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 },
-              backgroundSync: { name: 'gula-lab-transaction-sync' },
             },
           },
         ],

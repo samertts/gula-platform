@@ -58,7 +58,6 @@ export default defineConfig({
               cacheName: 'gula-api-cache',
               expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
               networkTimeoutSeconds: 5,
-              backgroundSync: { name: 'gula-sync-queue' },
             },
           },
           {

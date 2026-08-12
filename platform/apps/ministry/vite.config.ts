@@ -56,7 +56,6 @@ export default defineConfig({
               cacheName: 'gula-ministry-api',
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 7 },
               networkTimeoutSeconds: 5,
-              backgroundSync: { name: 'gula-ministry-sync' },
             },
           },
           {
