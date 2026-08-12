@@ -55,6 +55,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  project-availability:
+    name: Detect iOS project
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      project_exists: ${{ steps.project.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: project
+        shell: bash
+        run: |
+          if find mobile/ios -type f -path '*.xcodeproj/project.pbxproj' -print -quit | grep -q .; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lint:
     name: SwiftLint
     runs-on: macos-14
@@ -87,7 +104,10 @@ jobs:
 
   test:
     name: Test (iOS ${{ matrix.platform }} ${{ matrix.device }})
-    needs: [lint]
+    # This repository currently contains iOS source modules but no Xcode project.
+    # Tests automatically activate once a project file is committed.
+    if: ${{ needs.project-availability.outputs.project_exists == 'true' }}
+    needs: [lint, project-availability]
     runs-on: macos-14
     timeout-minutes: 45
     strategy:
@@ -164,7 +184,8 @@ jobs:
 
   ui-test:
     name: UI Tests
-    needs: [lint]
+    if: ${{ needs.project-availability.outputs.project_exists == 'true' }}
+    needs: [lint, project-availability]
     runs-on: macos-14
     timeout-minutes: 45
     defaults:
@@ -199,7 +220,8 @@ jobs:
 
   build:
     name: Build (Release)
-    needs: [test, ui-test]
+    if: ${{ needs.project-availability.outputs.project_exists == 'true' }}
+    needs: [test, ui-test, project-availability]
     runs-on: macos-14
     timeout-minutes: 60
     defaults:
@@ -295,8 +317,8 @@ jobs:
 
   upload-to-testflight:
     name: Upload to TestFlight
-    needs: [build]
-    if: github.ref == 'refs/heads/main' && startsWith(github.ref, 'refs/tags/v')
+    needs: [build, project-availability]
+    if: startsWith(github.ref, 'refs/tags/v') && needs.project-availability.outputs.project_exists == 'true'
     runs-on: macos-14
     timeout-minutes: 30
     defaults:
