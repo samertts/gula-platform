@@ -17,8 +17,7 @@ export function KPICard({ metric, onClick }: KPICardProps) {
   const Icon = iconMap[metric.icon] || Activity;
 
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
+    <div
       onClick={onClick}
       className={cn(
         'relative overflow-hidden rounded-2xl border p-5 cursor-pointer transition-all',
@@ -53,6 +52,6 @@ export function KPICard({ metric, onClick }: KPICardProps) {
           <span className="text-xs text-slate-500 font-medium">{metric.unit}</span>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

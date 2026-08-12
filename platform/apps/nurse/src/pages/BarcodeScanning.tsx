@@ -6,7 +6,7 @@ import type { Medication, Patient } from '@/utils/types';
 
 type ScanType = 'medication' | 'patient';
 
-export function BarcodeScanning() {
+function BarcodeScanning() {
   const [scanType, setScanType] = useState<ScanType>('medication');
   const [code, setCode] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -161,3 +161,5 @@ export function BarcodeScanning() {
     </div>
   );
 }
+
+export default BarcodeScanning;

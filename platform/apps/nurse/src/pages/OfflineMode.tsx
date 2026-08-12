@@ -4,7 +4,7 @@ import { useOffline } from '@/contexts/OfflineContext';
 import { offlineService } from '@/services/offline';
 import type { OfflineQueueItem } from '@/utils/types';
 
-export function OfflineMode() {
+function OfflineMode() {
   const { isOnline, pendingCount, lastSync, syncAll } = useOffline();
   const [pendingItems, setPendingItems] = useState<OfflineQueueItem[]>([]);
   const [syncing, setSyncing] = useState(false);
@@ -170,3 +170,5 @@ export function OfflineMode() {
     </div>
   );
 }
+
+export default OfflineMode;

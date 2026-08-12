@@ -5,7 +5,7 @@ import { patientsService } from '@/services/patients';
 import { BedsideCheck } from '@/components/BedsideCheck';
 import type { Patient } from '@/utils/types';
 
-export function BedsideVerification() {
+function BedsideVerification() {
   const { user } = useNurse();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,3 +126,5 @@ export function BedsideVerification() {
     </div>
   );
 }
+
+export default BedsideVerification;

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
@@ -172,6 +172,7 @@ def get_order_route(
 def validate_order_route(
     order_id: int,
     request: Request,
+    if_match: str | None = Header(default=None, alias="If-Match"),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -183,6 +184,13 @@ def validate_order_route(
     """
     rate_limit_user(request, current_user.id, max_per_minute=20)
 
+    expected_version: int | None = None
+    if if_match is not None:
+        try:
+            expected_version = int(if_match.strip().strip('"'))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="If-Match must contain a numeric order version") from None
+
     result = _validate_order(
         db=db,
         order_id=order_id,
@@ -190,6 +198,7 @@ def validate_order_route(
         user_role=current_user.role,
         user_id=current_user.id,
         ip_address=get_client_ip(request),
+        expected_version=expected_version,
     )
 
     if "error" in result:

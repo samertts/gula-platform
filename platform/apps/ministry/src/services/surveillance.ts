@@ -1,3 +1,4 @@
+import { api } from './api';
 import type { DiseaseOutbreak } from './api';
 
 export interface SurveillanceSummary {
@@ -9,6 +10,10 @@ export interface SurveillanceSummary {
   criticalAlerts: number;
   trend: 'improving' | 'stable' | 'worsening';
 }
+
+export const surveillanceService = {
+  getDiseaseData: (): Promise<DiseaseOutbreak[]> => api.getDiseaseSurveillance(),
+};
 
 export function computeSurveillanceSummary(outbreaks: DiseaseOutbreak[]): SurveillanceSummary {
   const totalActiveOutbreaks = outbreaks.filter(o => o.trend !== 'falling').length;

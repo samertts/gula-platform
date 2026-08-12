@@ -1,3 +1,4 @@
+import { api } from './api';
 import type { KpiMetric, RegionData, HospitalStat, LabStat } from './api';
 
 export interface AggregateStatistics {
@@ -61,6 +62,18 @@ export function getRegionalRanking(regions: RegionData[], metric: keyof RegionDa
     return valB - valA;
   });
 }
+
+export const statisticsService = {
+  async getAggregated(): Promise<AggregateStatistics> {
+    const [regions, hospitals, labs, kpis] = await Promise.all([
+      api.getRegions(),
+      api.getHospitalStats(),
+      api.getLabStats(),
+      api.getKpis(),
+    ]);
+    return computeAggregateStats(regions, hospitals, labs, kpis);
+  },
+};
 
 export function getTimeSeriesTrend(data: number[]): { direction: 'up' | 'down' | 'stable'; percent: number } {
   if (data.length < 2) return { direction: 'stable', percent: 0 };

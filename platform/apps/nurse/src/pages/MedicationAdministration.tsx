@@ -5,7 +5,7 @@ import { medicationsService } from '@/services/medications';
 import { MedicationVerification } from '@/components/MedicationVerification';
 import type { Medication } from '@/utils/types';
 
-export function MedicationAdministration() {
+function MedicationAdministration() {
   const { user } = useNurse();
   const [medications, setMedications] = useState<Medication[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,3 +210,5 @@ export function MedicationAdministration() {
     </div>
   );
 }
+
+export default MedicationAdministration;

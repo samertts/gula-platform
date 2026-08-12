@@ -1,15 +1,22 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { openDB, type IDBPDatabase } from 'idb';
-import { inspectQueueRecord, inspectQueuePayload } from '@gula/ui-platform';
+import {
+  buildQueueRequestInit,
+  classifyQueueResponse,
+  createQueueEnvelope,
+  inspectQueueRecord,
+  nextQueueEnvelopeState,
+  type OfflineQueueEnvelope,
+} from '@gula/ui-platform';
 
-interface OfflineQueueItem {
+interface OfflineQueueItem extends Partial<OfflineQueueEnvelope> {
   id?: number;
   url: string;
   method: string;
   body?: string;
-  timestamp: number;
-  retryCount: number;
-  maxRetries: number;
+  timestamp?: number;
+  retryCount?: number;
+  maxRetries?: number;
   error?: string;
 }
 
@@ -103,26 +110,14 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
   const queueRequest = useCallback(async (url: string, method: string, body?: unknown) => {
     try {
       const db = await getDb();
-      const payload = body ? JSON.stringify(body) : undefined;
-      const result = inspectQueuePayload(payload);
-      if (!result.safe) {
-        await db.add('queue_rejections', {
-          source: 'gula-lab-offline.requests',
-          url,
-          method,
-          reason: result.reason,
-          rejectedAt: Date.now(),
-        });
-        throw new Error('تم رفض تخزين طلب غير متصل يحتوي بيانات اعتماد');
-      }
-      await db.add('requests', {
+      const envelope = await createQueueEnvelope({
         url,
         method,
-        body: payload,
-        timestamp: Date.now(),
-        retryCount: 0,
-        maxRetries: 5,
+        body,
+        entityType: url.split('/').filter(Boolean).slice(-1)[0] || 'laboratory',
+        action: method.toLowerCase(),
       });
+      await db.add('requests', { ...envelope, timestamp: Date.now(), retryCount: 0, maxRetries: envelope.maxAttempts });
       await updatePendingCount();
     } catch (error) {
       setState(s => ({ ...s, syncError: error instanceof Error ? error.message : 'تعذر تخزين الطلب' }));
@@ -156,20 +151,49 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
             await db.delete('requests', req.id);
             continue;
           }
-          const response = await fetch(req.url, {
-            method: req.method,
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: req.body,
-          });
+          const envelope = req.schemaVersion === 1
+            ? req as OfflineQueueEnvelope
+            : await createQueueEnvelope({
+              url: req.url,
+              method: req.method,
+              body: req.body,
+              entityType: 'laboratory',
+              action: req.method.toLowerCase(),
+            });
+          const response = await fetch(envelope.url, buildQueueRequestInit(envelope));
+          const disposition = classifyQueueResponse(response.status);
 
-          if (response.ok) {
+          if (disposition === 'synced') {
             await db.delete('requests', req.id);
+          } else if (disposition === 'conflict') {
+            let serverBody: unknown;
+            try { serverBody = await response.json(); } catch { /* no JSON body */ }
+            await db.put('requests', {
+              ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`, {
+                status: response.status as 409 | 412,
+                serverBody,
+                detectedAt: new Date().toISOString(),
+              }),
+              id: req.id,
+            });
           } else {
-            await db.put('requests', { ...req, retryCount: req.retryCount + 1, error: `${response.status}` });
+            await db.put('requests', {
+              ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`),
+              id: req.id,
+            });
           }
         } catch (e) {
-          await db.put('requests', { ...req, retryCount: req.retryCount + 1, error: (e as Error).message });
+          const envelope = req.schemaVersion === 1 ? req as OfflineQueueEnvelope : await createQueueEnvelope({
+            url: req.url,
+            method: req.method,
+            body: req.body,
+            entityType: 'laboratory',
+            action: req.method.toLowerCase(),
+          });
+          await db.put('requests', {
+            ...nextQueueEnvelopeState(envelope, 'retry', (e as Error).message),
+            id: req.id,
+          });
         }
       }
 

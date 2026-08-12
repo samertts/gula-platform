@@ -1,8 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import './src/styles/theme.css'
-import './src/styles/components.css'
+import './styles/theme.css'
+import './styles/components.css'
 
 // Load Cairo font for Arabic support
 const fontLink = document.createElement('link')

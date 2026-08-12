@@ -42,7 +42,7 @@ const consciousnessOptions = [
   { value: 'unresponsive', label: 'غير مستجيب' },
 ];
 
-export function VitalSigns() {
+function VitalSigns() {
   const { user } = useNurse();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [vitalHistory, setVitalHistory] = useState<VitalSigns[]>([]);
@@ -290,3 +290,5 @@ export function VitalSigns() {
     </div>
   );
 }
+
+export default VitalSigns;

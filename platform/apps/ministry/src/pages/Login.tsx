@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
 import { cn } from '@gula/ui-platform';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Eye, EyeOff, Loader2, Lock, User } from 'lucide-react';
@@ -63,11 +62,7 @@ export function Login() {
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-violet-500/10 rounded-full blur-[120px]" />
       </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative w-full max-w-md"
-      >
+      <div className="relative w-full max-w-md">
         <div className="text-center mb-10">
           <div className="w-20 h-20 bg-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl shadow-indigo-600/30">
             <Shield size={40} className="text-white" />
@@ -188,7 +183,7 @@ export function Login() {
             </form>
           )}
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

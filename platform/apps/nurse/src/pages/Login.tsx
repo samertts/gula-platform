@@ -4,7 +4,7 @@ import { cn } from '@gula/ui-platform';
 import { useNurse } from '@/contexts/NurseContext';
 import { ROUTES } from '@/utils/routes';
 
-export function Login() {
+function Login() {
   const navigate = useNavigate();
   const { login, isLoading } = useNurse();
   const [email, setEmail] = useState('');
@@ -129,3 +129,5 @@ export function Login() {
     </div>
   );
 }
+
+export default Login;

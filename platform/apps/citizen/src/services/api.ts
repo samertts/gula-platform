@@ -1,11 +1,23 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import { inspectQueuePayload, sanitizeQueueHeaders } from '@gula/ui-platform';
+import {
+  buildQueueRequestInit,
+  classifyQueueResponse,
+  createQueueEnvelope,
+  inspectQueuePayload,
+  nextQueueEnvelopeState,
+  sanitizeQueueHeaders,
+  type OfflineQueueEnvelope,
+} from '@gula/ui-platform';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.gula.health/api/v1';
 
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
   offlinePriority?: 'high' | 'normal' | 'low';
+  entityType?: string;
+  entityId?: string;
+  action?: string;
+  expectedVersion?: number;
 }
 
 // Browser authentication is carried only by the server-issued HttpOnly cookie.
@@ -68,7 +80,15 @@ export async function apiRequest<T = unknown>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { skipAuth = false, offlinePriority = 'normal', ...fetchOptions } = options;
+  const {
+    skipAuth = false,
+    offlinePriority = 'normal',
+    entityType: _entityType,
+    entityId: _entityId,
+    action: _action,
+    expectedVersion: _expectedVersion,
+    ...fetchOptions
+  } = options;
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -78,6 +98,10 @@ export async function apiRequest<T = unknown>(
 
   // Do not construct Authorization headers in the browser; authentication uses HttpOnly cookies.
   void skipAuth;
+  void _entityType;
+  void _entityId;
+  void _action;
+  void _expectedVersion;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -146,20 +170,17 @@ export async function apiRequest<T = unknown>(
 
 async function queueOfflineRequest(endpoint: string, options: RequestOptions) {
   const db = await getOfflineDB();
-  const headerResult = sanitizeQueueHeaders(options.headers as Record<string, string>);
-  const payloadResult = inspectQueuePayload(options.body);
-  if (headerResult.hadSensitiveHeader || !payloadResult.safe) {
-    throw new OfflineError('تم رفض تخزين طلب غير متصل يحتوي بيانات اعتماد');
-  }
-  await db.add('requests', {
+  const envelope = await createQueueEnvelope({
     url: `${API_BASE}${endpoint}`,
-    method: options.method || 'GET',
-    headers: headerResult.headers,
+    method: options.method || 'POST',
+    headers: options.headers,
     body: options.body,
-    timestamp: Date.now(),
-    retryCount: 0,
-    maxRetries: 5,
+    entityType: options.entityType || endpoint.split('/').filter(Boolean)[0] || 'unknown',
+    entityId: options.entityId,
+    action: options.action || (options.method || 'POST').toLowerCase(),
+    expectedVersion: options.expectedVersion,
   });
+  await db.add('requests', envelope);
   if ('serviceWorker' in navigator && 'sync' in navigator.serviceWorker) {
     try {
       const registration = await navigator.serviceWorker.ready;
@@ -192,32 +213,57 @@ export async function processOfflineQueue() {
   const db = await getOfflineDB();
   const requests = await db.getAll('requests');
 
-  for (const req of requests) {
-    if (req.retryCount >= req.maxRetries) {
-      await db.delete('requests', req.id);
+  for (const stored of requests) {
+    const req = stored as OfflineQueueEnvelope & { id?: number; retryCount?: number; maxRetries?: number };
+    const envelope: OfflineQueueEnvelope = req.schemaVersion === 1
+      ? req
+      : await createQueueEnvelope({
+        url: req.url,
+        method: req.method,
+        headers: req.headers,
+        body: req.body,
+        entityType: req.entityType || 'legacy',
+        action: req.action || req.method.toLowerCase(),
+        operationId: req.operationId,
+        idempotencyKey: req.idempotencyKey,
+        expectedVersion: req.expectedVersion,
+      });
+
+    if (envelope.state === 'conflict' || envelope.state === 'rejected' || envelope.state === 'synced') continue;
+    if (envelope.attempt >= envelope.maxAttempts) {
+      await db.put('requests', { ...envelope, id: req.id, state: 'failed' });
       continue;
     }
 
     try {
-      const headerResult = sanitizeQueueHeaders(req.headers);
-      const payloadResult = inspectQueuePayload(req.body);
-      if (headerResult.hadSensitiveHeader || !payloadResult.safe) {
-        await db.delete('requests', req.id);
+      const security = inspectQueuePayload(envelope.body);
+      const headerResult = sanitizeQueueHeaders(envelope.headers);
+      if (headerResult.hadSensitiveHeader || !security.safe) {
+        await db.put('requests', { ...envelope, id: req.id, state: 'rejected', lastError: headerResult.hadSensitiveHeader ? 'sensitive-header' : security.reason });
         continue;
       }
-      const response = await fetch(req.url, {
-        method: req.method,
-        credentials: 'include',
-        headers: headerResult.headers,
-        body: req.body,
-      });
-      if (response.ok) {
+      const response = await fetch(envelope.url, buildQueueRequestInit(envelope));
+      const disposition = classifyQueueResponse(response.status);
+      if (disposition === 'synced') {
         await db.delete('requests', req.id);
+      } else if (disposition === 'conflict') {
+        let serverBody: unknown;
+        try { serverBody = await response.json(); } catch { /* response may have no JSON body */ }
+        await db.put('requests', {
+          ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`, {
+            status: response.status as 409 | 412,
+            serverBody,
+            detectedAt: new Date().toISOString(),
+          }),
+          id: req.id,
+        });
+      } else if (disposition === 'rejected') {
+        await db.put('requests', { ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`), id: req.id });
       } else {
-        await db.put('requests', { ...req, retryCount: req.retryCount + 1 });
+        await db.put('requests', { ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`), id: req.id });
       }
-    } catch {
-      await db.put('requests', { ...req, retryCount: req.retryCount + 1 });
+    } catch (error) {
+      await db.put('requests', { ...nextQueueEnvelopeState(envelope, 'retry', error instanceof Error ? error.message : 'network-error'), id: req.id });
     }
   }
 }

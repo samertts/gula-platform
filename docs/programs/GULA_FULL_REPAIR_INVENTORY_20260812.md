@@ -58,3 +58,10 @@
 الأدلة: اختبار sanitizer ناجح، helper TypeScript ناجح، Vite build ناجح في citizen/doctor/hospital/laboratory/pharmacy، وBackend suite بنتيجة **2305 passed**. Nurse وMinistry وRadiology لا يمرون build كاملاً بسبب blockers سابقة موثقة: صفحات Nurse بلا default exports، Ministry services بلا exports مطلوبة، وRadiology CSS imports غير موجودة. فشل TypeScript project checks سببه إعدادات TypeScript 7/legacy project references، ولم تُعدّل ضمن R2.
 
 تبقى `queue_rejections` محلية metadata فقط ولا تحفظ قيمة token. أي مستخدم لم يفتح نسخة التطبيق الجديدة قد يحتفظ ببيانات قديمة في متصفحه إلى حين startup/activation التالي؛ لا يمكن للمستودع تنظيف متصفح غير متصل أو غير محدث عن بُعد.
+
+
+## R3 status — 2026-08-12
+
+تم تنفيذ عقد queue مشترك في `platform/ui/utils/offlineQueueContract.ts` وربطه بمسارات Citizen وDoctor وLaboratory وNurse وPharmacy. يشمل العقد `operationId` و`idempotencyKey` و`requestFingerprint` و`expectedVersion` وحالات `pending/synced/conflict/rejected/failed`، ويمنع حذف أو replay تلقائي عند `409/412`. أضيف backend compare-and-set لـ`LabOrder.version` على validation عبر `If-Match`، مع اختبار يثبت أن الإصدار القديم يُرفض بـ409 دون تغيير أو قفل صامت.
+
+تم إصلاح أخطاء build المثبتة في Nurse وMinistry وRadiology: توحيد default exports في صفحات Nurse، إضافة facades typed لخدمات Ministry فوق API الحقيقي، إزالة imports غير المثبتة لـ`motion/react`، وتصحيح مسارات CSS في Radiology. الأدلة الحالية: **8/8 Vite builds ناجحة** للتطبيقات المتأثرة، **2306 اختبار Backend ناجح**، اختبارات contract/security ناجحة، و`git diff --check` ناجح. يظل دعم idempotency/version backend غير معمم على كل endpoint سريري، ولذلك لا تعلن R3 readiness إنتاجية وطنية ولا تشمل deployment أو Wave 4 أو Dependabot merge.

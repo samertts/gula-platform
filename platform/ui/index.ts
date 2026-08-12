@@ -117,6 +117,20 @@ export {
   purgeLegacyWorkboxQueue,
 } from './utils/offlineQueueSecurity';
 export type { SanitizedHeaders, QueueSecurityCheck } from './utils/offlineQueueSecurity';
+export {
+  createQueueEnvelope,
+  serializeQueueBody,
+  parseQueueBody,
+  buildQueueRequestInit,
+  classifyQueueResponse,
+  nextQueueEnvelopeState,
+} from './utils/offlineQueueContract';
+export type {
+  OfflineQueueEnvelope,
+  QueueEnvelopeInput,
+  QueueResponseDisposition,
+  QueueState,
+} from './utils/offlineQueueContract';
 
 export {
   formatDate, formatDateTime, formatRelativeTime,

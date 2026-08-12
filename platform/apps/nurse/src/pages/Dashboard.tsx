@@ -16,7 +16,7 @@ interface DashboardCounts {
   overdue: number;
 }
 
-export function Dashboard() {
+function Dashboard() {
   const navigate = useNavigate();
   const { user } = useNurse();
   const { isOnline, pendingCount } = useOffline();
@@ -213,3 +213,5 @@ export function Dashboard() {
     </div>
   );
 }
+
+export default Dashboard;

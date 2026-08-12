@@ -56,7 +56,7 @@ function DischargeChecklist({ items, onToggle }: { items: ChecklistItem[]; onTog
   );
 }
 
-export function Discharge() {
+function Discharge() {
   const { user } = useNurse();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
@@ -218,3 +218,5 @@ export function Discharge() {
     </div>
   );
 }
+
+export default Discharge;
