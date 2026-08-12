@@ -21,12 +21,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=builder /install /usr/local
 
+COPY backend ./backend
 COPY backend/app ./app
 COPY shared ./shared
 COPY backend/migrations ./migrations
 COPY backend/alembic.ini .
+COPY backend/start_railway.sh /usr/local/bin/start_railway.sh
 
-RUN python -m compileall app/ shared/
+RUN chmod +x /usr/local/bin/start_railway.sh && python -m compileall app/ shared/ backend/
 
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
 USER appuser
@@ -36,9 +38,4 @@ EXPOSE 10000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
     CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:10000/health', timeout=3)"
 
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", \
-     "--workers", "1", \
-     "--timeout", "60", \
-     "--bind", "0.0.0.0:10000", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-"]
+ENTRYPOINT ["/usr/local/bin/start_railway.sh"]
