@@ -1,0 +1,1471 @@
+{
+  "dto_version": "1.0",
+  "generated_at": "2026-07-14T00:00:00Z",
+  "generator": "opencode-dto-catalog",
+  "description": "Comprehensive DTO Contract Catalog for the GULA Platform. Lists every Pydantic schema across all domains with field-level metadata, type classification, constraints, and route bindings.",
+  "domains": {
+    "auth": {
+      "description": "Authentication & registration schemas for all actor types (lab staff, citizens, doctors, mobile devices).",
+      "schemas": {
+        "LoginRequest": {
+          "type": "request",
+          "description": "Authentication payload — email + password login for staff and citizens.",
+          "fields": [
+            {"name": "email", "type": "string", "required": true, "description": "User email address", "constraints": {"max_length": 100}},
+            {"name": "password", "type": "string", "required": true, "description": "Account password"}
+          ],
+          "used_by": ["login"]
+        },
+        "RefreshRequest": {
+          "type": "request",
+          "description": "Refresh token exchange — used by mobile and web to obtain new access tokens without re-authentication.",
+          "fields": [
+            {"name": "refresh_token", "type": "string", "required": false, "description": "Refresh token from prior login session; may also be read from httpOnly cookie", "constraints": {}}
+          ],
+          "used_by": ["auth/refresh"]
+        },
+        "ChangePasswordRequest": {
+          "type": "request",
+          "description": "Authenticated password change — requires current password verification.",
+          "fields": [
+            {"name": "current_password", "type": "string", "required": true, "description": "Current active password for verification"},
+            {"name": "new_password", "type": "string", "required": true, "description": "Desired new password (minimum 8 characters)"}
+          ],
+          "used_by": ["auth/change-password"]
+        },
+        "LabRegisterRequest": {
+          "type": "request",
+          "description": "Lab registration — creates a new lab (inactive) with its admin account pending platform approval.",
+          "fields": [
+            {"name": "lab_name", "type": "string", "required": true, "description": "Laboratory name", "constraints": {"min_length": 2, "max_length": 200}},
+            {"name": "license_number", "type": "string", "required": false, "description": "Health license number (رقم الترخيص الصحي)"},
+            {"name": "lab_type", "type": "string", "required": false, "description": "Laboratory category", "constraints": {"pattern": "^(private|government|hospital|clinic)$"}},
+            {"name": "director_name", "type": "string", "required": false, "description": "Lab director / responsible person name", "constraints": {"min_length": 2, "max_length": 200}},
+            {"name": "city", "type": "string", "required": false, "description": "City location"},
+            {"name": "address", "type": "string", "required": false, "description": "Street address"},
+            {"name": "phone", "type": "string", "required": false, "description": "Contact phone number"},
+            {"name": "website", "type": "string", "required": false, "description": "Lab website URL"},
+            {"name": "admin_name", "type": "string", "required": true, "description": "Lab administrator full name", "constraints": {"min_length": 2, "max_length": 200}},
+            {"name": "email", "type": "string", "required": true, "description": "Admin email address (used as login)", "constraints": {"max_length": 100}},
+            {"name": "password", "type": "string", "required": true, "description": "Admin account password", "constraints": {"min_length": 8, "max_length": 128}}
+          ],
+          "used_by": ["register"]
+        },
+        "CitizenRegisterRequest": {
+          "type": "request",
+          "description": "Citizen self-registration — creates a citizen User + canonical MPI Citizen record.",
+          "fields": [
+            {"name": "full_name", "type": "string", "required": true, "description": "Citizen full name", "constraints": {"min_length": 2, "max_length": 200}},
+            {"name": "phone", "type": "string", "required": true, "description": "Phone number", "constraints": {"pattern": "^\\+?[0-9]{7,15}$"}},
+            {"name": "email", "type": "string", "required": false, "description": "Email address (optional)", "constraints": {"max_length": 100}},
+            {"name": "password", "type": "string", "required": true, "description": "Account password", "constraints": {"min_length": 8, "max_length": 128}},
+            {"name": "gender", "type": "string", "required": false, "description": "Gender"},
+            {"name": "birth_date", "type": "string", "required": false, "description": "Date of birth in ISO format (YYYY-MM-DD)"},
+            {"name": "national_id", "type": "string", "required": false, "description": "Raw national ID (hashed server-side)", "constraints": {"pattern": "^[0-9]{10,14}$"}}
+          ],
+          "used_by": ["register/citizen"]
+        },
+        "StaffRegisterRequest": {
+          "type": "request",
+          "description": "Lab staff registration — lab admin adds a technician, doctor, receptionist, or generic staff.",
+          "fields": [
+            {"name": "name", "type": "string", "required": true, "description": "Staff member full name", "constraints": {"min_length": 2, "max_length": 200}},
+            {"name": "email", "type": "string", "required": true, "description": "Staff email address", "constraints": {"max_length": 100}},
+            {"name": "password", "type": "string", "required": true, "description": "Account password", "constraints": {"min_length": 8, "max_length": 128}},
+            {"name": "role", "type": "string", "required": false, "description": "Lab role assignment", "constraints": {"pattern": "^(technician|doctor|receptionist|staff)$"}}
+          ],
+          "used_by": ["register/staff"]
+        },
+        "DoctorRegisterRequest": {
+          "type": "request",
+          "description": "Doctor self-registration — independent doctors register publicly; account is active but unverified until approved.",
+          "fields": [
+            {"name": "full_name", "type": "string", "required": true, "description": "Doctor full name", "constraints": {"min_length": 2, "max_length": 200}},
+            {"name": "email", "type": "string", "required": true, "description": "Email address"},
+            {"name": "phone", "type": "string", "required": true, "description": "Phone number", "constraints": {"pattern": "^\\+?[0-9]{7,15}$"}},
+            {"name": "password", "type": "string", "required": true, "description": "Account password", "constraints": {"min_length": 8, "max_length": 128}},
+            {"name": "license_number", "type": "string", "required": true, "description": "Medical license number (رقم الإجازة الطبية)", "constraints": {"min_length": 3, "max_length": 100}},
+            {"name": "specialty", "type": "string", "required": false, "description": "Medical specialty (التخصص)"},
+            {"name": "workplace", "type": "string", "required": false, "description": "Current workplace (hospital/clinic)"},
+            {"name": "national_id", "type": "string", "required": false, "description": "National ID (hashed server-side)", "constraints": {"pattern": "^[0-9]{10,14}$"}}
+          ],
+          "used_by": ["register/doctor"]
+        },
+        "DeviceTokenRequest": {
+          "type": "request",
+          "description": "Mobile device registration for push notifications (FCM/APNS).",
+          "fields": [
+            {"name": "device_token", "type": "string", "required": true, "description": "Push notification token from Firebase Cloud Messaging or Apple Push Notification service", "constraints": {"min_length": 10, "max_length": 512}},
+            {"name": "platform", "type": "string", "required": true, "description": "Mobile operating system", "constraints": {"pattern": "^(android|ios)$"}},
+            {"name": "app_version", "type": "string", "required": false, "description": "Version of the mobile application installed"}
+          ],
+          "used_by": ["mobile/register-device"]
+        },
+        "CitizenLoginRequest": {
+          "type": "request",
+          "description": "Citizen portal login — accepts email or phone as identifier.",
+          "fields": [
+            {"name": "identifier", "type": "string", "required": true, "description": "Email or phone used as login credential"},
+            {"name": "email", "type": "string", "required": false, "description": "Explicit email field (alternative identifier)"},
+            {"name": "password", "type": "string", "required": true, "description": "Account password"}
+          ],
+          "used_by": ["citizen/login"]
+        },
+        "NationalIdRequest": {
+          "type": "request",
+          "description": "National ID verification request — validates an Iraqi national ID against the national registry.",
+          "fields": [
+            {"name": "national_id", "type": "string", "required": true, "description": "Iraqi national ID number", "constraints": {"min_length": 5, "max_length": 20}}
+          ],
+          "used_by": ["national-id/verify"]
+        },
+        "CreateLabRequest": {
+          "type": "request",
+          "description": "Admin-only lab creation — creates a lab + admin user in a single operation.",
+          "fields": [
+            {"name": "name", "type": "string", "required": true, "description": "Lab name", "constraints": {"min_length": 2}},
+            {"name": "city", "type": "string", "required": false, "description": "City location"},
+            {"name": "phone", "type": "string", "required": false, "description": "Contact phone"},
+            {"name": "admin_email", "type": "string", "required": true, "description": "Lab admin email"},
+            {"name": "admin_password", "type": "string", "required": true, "description": "Lab admin password", "constraints": {"min_length": 8}},
+            {"name": "admin_name", "type": "string", "required": true, "description": "Lab admin full name"},
+            {"name": "province_id", "type": "integer", "required": false, "description": "Province governance node ID"}
+          ],
+          "used_by": ["admin/labs"]
+        },
+        "CreateUserRequest": {
+          "type": "request",
+          "description": "Admin-only user creation — creates a user with hierarchy-enforced role assignment.",
+          "fields": [
+            {"name": "name", "type": "string", "required": true, "description": "User full name", "constraints": {"min_length": 2}},
+            {"name": "email", "type": "string", "required": true, "description": "User email"},
+            {"name": "password", "type": "string", "required": true, "description": "Password", "constraints": {"min_length": 8}},
+            {"name": "role", "type": "string", "required": true, "description": "Role assignment"},
+            {"name": "lab_id", "type": "integer", "required": false, "description": "Target lab ID"},
+            {"name": "province_id", "type": "integer", "required": false, "description": "Province governance node ID"},
+            {"name": "national_id", "type": "string", "required": false, "description": "Raw national ID (hashed server-side)"}
+          ],
+          "used_by": ["admin/users"]
+        },
+        "ChangeRoleRequest": {
+          "type": "request",
+          "description": "Role change request — admin reassigns a user's role with hierarchy enforcement.",
+          "fields": [
+            {"name": "role", "type": "string", "required": true, "description": "New role to assign"},
+            {"name": "province_id", "type": "integer", "required": false, "description": "Optional province reassignment"}
+          ],
+          "used_by": ["admin/users/{id}/role"]
+        },
+        "_KillSwitchRequest": {
+          "type": "request",
+          "description": "Kill-switch activation/deactivation payload (internal usage, master_admin only).",
+          "fields": [
+            {"name": "reason", "type": "string", "required": false, "description": "Reason for kill-switch toggle", "constraints": {}}
+          ],
+          "used_by": ["admin/kill-switch"]
+        },
+        "LinkIdentityRequest": {
+          "type": "request",
+          "description": "Link a national ID to an existing patient record within a lab.",
+          "fields": [
+            {"name": "patient_id", "type": "integer", "required": true, "description": "Local patient ID"},
+            {"name": "national_id", "type": "string", "required": true, "description": "Raw Iraqi national ID"},
+            {"name": "confirm_name", "type": "string", "required": false, "description": "Name confirmation for identity verification"}
+          ],
+          "used_by": ["identity/link"]
+        }
+      }
+    },
+    "patients": {
+      "description": "Patient management schemas — CRUD operations for patient records within a lab.",
+      "schemas": {
+        "PatientCreate": {
+          "type": "request",
+          "description": "Create a new patient record — supports guardianship, family linkage, and optional duplicate bypass.",
+          "fields": [
+            {"name": "full_name", "type": "string", "required": true, "description": "Patient full name", "constraints": {"min_length": 2, "max_length": 200}},
+            {"name": "phone", "type": "string", "required": true, "description": "Iraqi phone number", "constraints": {"pattern": "^(07\\d{9}|9647\\d{9})$"}},
+            {"name": "birth_date", "type": "string", "required": false, "description": "Date of birth in YYYY-MM-DD format", "constraints": {"pattern": "^\\d{4}-\\d{2}-\\d{2}$"}},
+            {"name": "gender", "type": "string", "required": false, "description": "Patient gender", "constraints": {"pattern": "^(male|female|M|F)$"}},
+            {"name": "email", "type": "string", "required": false, "description": "Email address", "constraints": {"max_length": 100}},
+            {"name": "national_id", "type": "string", "required": false, "description": "Iraqi national ID (hashed before storage)", "constraints": {"pattern": "^\\d{12,13}$"}},
+            {"name": "family_id", "type": "string", "required": false, "description": "Civil registry family number (hashed before storage)", "constraints": {"pattern": "^\\d{1,15}$"}},
+            {"name": "force_create", "type": "boolean", "required": false, "description": "Skip duplicate checking (admin override)"},
+            {"name": "guardian_id", "type": "integer", "required": false, "description": "Parent/guardian patient ID for minors"}
+          ],
+          "used_by": ["patients"]
+        },
+        "PatientUpdate": {
+          "type": "request",
+          "description": "Partial patient record update — only provided fields are modified.",
+          "fields": [
+            {"name": "full_name", "type": "string", "required": false, "description": "Updated full name", "constraints": {"min_length": 2, "max_length": 200}},
+            {"name": "phone", "type": "string", "required": false, "description": "Updated phone number"},
+            {"name": "birth_date", "type": "string", "required": false, "description": "Updated birth date (YYYY-MM-DD)"},
+            {"name": "gender", "type": "string", "required": false, "description": "Updated gender"},
+            {"name": "email", "type": "string", "required": false, "description": "Updated email"},
+            {"name": "family_id", "type": "string", "required": false, "description": "Updated civil registry family number", "constraints": {"pattern": "^\\d{1,15}$"}}
+          ],
+          "used_by": ["patients/{id}"]
+        },
+        "ScanRequest": {
+          "type": "request",
+          "description": "Patient card QR scan token — resolves an HMAC-signed token to a patient record.",
+          "fields": [
+            {"name": "token", "type": "string", "required": true, "description": "HMAC-signed card token from QR code", "constraints": {"min_length": 10, "max_length": 200}}
+          ],
+          "used_by": ["patient-card/scan"]
+        }
+      }
+    },
+    "labs": {
+      "description": "Lab management schemas — lab profile updates and employee lifecycle management.",
+      "schemas": {
+        "LabUpdate": {
+          "type": "request",
+          "description": "Partial update of lab profile fields — only non-null fields are applied.",
+          "fields": [
+            {"name": "name", "type": "string", "required": false, "description": "Lab name"},
+            {"name": "city", "type": "string", "required": false, "description": "City"},
+            {"name": "address", "type": "string", "required": false, "description": "Street address"},
+            {"name": "phone", "type": "string", "required": false, "description": "Phone number"},
+            {"name": "license_number", "type": "string", "required": false, "description": "Health license number"},
+            {"name": "lab_type", "type": "string", "required": false, "description": "Lab category", "constraints": {"pattern": "^(private|government|hospital|clinic)$"}},
+            {"name": "director_name", "type": "string", "required": false, "description": "Director name"},
+            {"name": "website", "type": "string", "required": false, "description": "Website URL"}
+          ],
+          "used_by": ["labs/me"]
+        },
+        "CreateEmployeeRequest": {
+          "type": "request",
+          "description": "Add a new employee to the current lab — admin role required.",
+          "fields": [
+            {"name": "name", "type": "string", "required": true, "description": "Employee full name"},
+            {"name": "email", "type": "string", "required": true, "description": "Employee email"},
+            {"name": "password", "type": "string", "required": true, "description": "Account password", "constraints": {"min_length": 8}},
+            {"name": "role", "type": "string", "required": false, "description": "Lab role", "constraints": {"pattern": "^(admin|staff|technician)$"}}
+          ],
+          "used_by": ["labs/me/employees"]
+        },
+        "UpdateEmployeeRequest": {
+          "type": "request",
+          "description": "Partial employee update — toggle active status or change role.",
+          "fields": [
+            {"name": "is_active", "type": "boolean", "required": false, "description": "Activate or deactivate employee"},
+            {"name": "role", "type": "string", "required": false, "description": "New role assignment", "constraints": {"pattern": "^(admin|staff|technician)$"}}
+          ],
+          "used_by": ["labs/me/employees/{id}"]
+        }
+      }
+    },
+    "orders_results": {
+      "description": "Lab order and result management schemas — order creation, batch operations, device integration, and clinical interpretation.",
+      "schemas": {
+        "ResultItem": {
+          "type": "request",
+          "description": "Single test result entry within an order — supports numeric and textual values with reference ranges.",
+          "fields": [
+            {"name": "test_name", "type": "string", "required": true, "description": "Name of the laboratory test"},
+            {"name": "value", "type": "number", "required": false, "description": "Numeric result value"},
+            {"name": "value_text", "type": "string", "required": false, "description": "Textual result (positive/negative/reactive)"},
+            {"name": "unit", "type": "string", "required": false, "description": "Measurement unit"},
+            {"name": "normal_range_low", "type": "number", "required": false, "description": "Lower bound of reference range"},
+            {"name": "normal_range_high", "type": "number", "required": false, "description": "Upper bound of reference range"}
+          ],
+          "used_by": ["orders", "analyze"]
+        },
+        "CreateOrderRequest": {
+          "type": "request",
+          "description": "Create a new lab order with associated test results — links to patient and optional referring doctor.",
+          "fields": [
+            {"name": "patient_id", "type": "integer", "required": true, "description": "Patient record ID", "constraints": {"ge": 1}},
+            {"name": "doctor_name", "type": "string", "required": false, "description": "Referring doctor name", "constraints": {"max_length": 200}},
+            {"name": "doctor_user_id", "type": "integer", "required": false, "description": "Registered doctor user ID for data isolation"},
+            {"name": "results", "type": "array", "required": true, "description": "List of test results belonging to this order"}
+          ],
+          "used_by": ["orders"]
+        },
+        "AnalyzeRequest": {
+          "type": "request",
+          "description": "Clinical analysis request — runs interpretation and critical-value checks on a set of results without persisting.",
+          "fields": [
+            {"name": "results", "type": "array", "required": true, "description": "List of ResultItem entries to analyze"}
+          ],
+          "used_by": ["analyze"]
+        },
+        "BatchResultItem": {
+          "type": "request",
+          "description": "Single test result entry within a batch order — same structure as ResultItem.",
+          "fields": [
+            {"name": "test_name", "type": "string", "required": true, "description": "Test name"},
+            {"name": "value", "type": "number", "required": false, "description": "Numeric value"},
+            {"name": "value_text", "type": "string", "required": false, "description": "Textual value"},
+            {"name": "unit", "type": "string", "required": false, "description": "Unit"},
+            {"name": "normal_range_low", "type": "number", "required": false, "description": "Reference range lower bound"},
+            {"name": "normal_range_high", "type": "number", "required": false, "description": "Reference range upper bound"}
+          ],
+          "used_by": ["batch/orders"]
+        },
+        "BatchOrderItem": {
+          "type": "request",
+          "description": "Single order within a batch — pairs a patient with results.",
+          "fields": [
+            {"name": "patient_id", "type": "integer", "required": true, "description": "Patient ID"},
+            {"name": "doctor_name", "type": "string", "required": false, "description": "Referring doctor name"},
+            {"name": "results", "type": "array", "required": true, "description": "List of BatchResultItem entries"}
+          ],
+          "used_by": ["batch/orders"]
+        },
+        "BatchOrderRequest": {
+          "type": "request",
+          "description": "Batch order creation — creates up to 50 orders in a single transaction.",
+          "fields": [
+            {"name": "orders", "type": "array", "required": true, "description": "List of BatchOrderItem entries (max 50)"}
+          ],
+          "used_by": ["batch/orders"]
+        },
+        "TestResultCreate": {
+          "type": "request",
+          "description": "Citizen-centric single result creation — accepts health_id and attaches to an existing or new order.",
+          "fields": [
+            {"name": "health_id", "type": "string", "required": true, "description": "Citizen health_id", "constraints": {"min_length": 3, "max_length": 20}},
+            {"name": "test_name", "type": "string", "required": true, "description": "Test name", "constraints": {"min_length": 1, "max_length": 200}},
+            {"name": "test_code", "type": "string", "required": false, "description": "Canonical test code from reference catalog", "constraints": {"max_length": 50}},
+            {"name": "value", "type": "number", "required": false, "description": "Numeric result value"},
+            {"name": "value_text", "type": "string", "required": false, "description": "Textual result", "constraints": {"max_length": 200}},
+            {"name": "unit", "type": "string", "required": false, "description": "Measurement unit", "constraints": {"max_length": 20}},
+            {"name": "normal_range_low", "type": "number", "required": false, "description": "Reference range lower bound"},
+            {"name": "normal_range_high", "type": "number", "required": false, "description": "Reference range upper bound"},
+            {"name": "sample_type", "type": "string", "required": false, "description": "Type of specimen collected", "constraints": {"max_length": 50}},
+            {"name": "doctor_name", "type": "string", "required": false, "description": "Referring doctor name", "constraints": {"max_length": 200}},
+            {"name": "order_id", "type": "integer", "required": false, "description": "Attach to existing order; creates new one if omitted"}
+          ],
+          "used_by": ["test-results/"]
+        },
+        "TestResultRead": {
+          "type": "response",
+          "description": "Full server-side representation of a test result — used by staff and API consumers.",
+          "fields": [
+            {"name": "id", "type": "integer", "required": true, "description": "Result ID"},
+            {"name": "citizen_id", "type": "integer", "required": true, "description": "Canonical citizen ID"},
+            {"name": "lab_id", "type": "integer", "required": true, "description": "Issuing lab ID"},
+            {"name": "device_id", "type": "integer", "required": false, "description": "Instrument device ID"},
+            {"name": "test_code", "type": "string", "required": true, "description": "Test code"},
+            {"name": "test_name_en", "type": "string", "required": true, "description": "English test name"},
+            {"name": "test_name_ar", "type": "string", "required": true, "description": "Arabic test name"},
+            {"name": "category", "type": "string", "required": false, "description": "Test category (hematology, chemistry, etc.)"},
+            {"name": "result_value", "type": "number", "required": false, "description": "Numeric result"},
+            {"name": "result_text", "type": "string", "required": false, "description": "Text result"},
+            {"name": "unit", "type": "string", "required": false, "description": "Unit"},
+            {"name": "reference_min", "type": "number", "required": false, "description": "Reference range min"},
+            {"name": "reference_max", "type": "number", "required": false, "description": "Reference range max"},
+            {"name": "status", "type": "string", "required": true, "description": "Result status"},
+            {"name": "is_critical", "type": "boolean", "required": true, "description": "Critical flag"},
+            {"name": "is_abnormal", "type": "boolean", "required": true, "description": "Abnormal flag"},
+            {"name": "abnormality_direction", "type": "string", "required": false, "description": "Direction of abnormality"},
+            {"name": "sample_collected_at", "type": "string", "required": true, "description": "Collection timestamp"},
+            {"name": "result_completed_at", "type": "string", "required": false, "description": "Completion timestamp"},
+            {"name": "verified_at", "type": "string", "required": false, "description": "Verification timestamp"},
+            {"name": "verified_by", "type": "string", "required": false, "description": "Verifier identity"},
+            {"name": "sample_barcode", "type": "string", "required": true, "description": "Sample barcode"},
+            {"name": "ordering_physician", "type": "string", "required": false, "description": "Ordering physician"},
+            {"name": "clinical_notes", "type": "string", "required": false, "description": "Clinical notes"},
+            {"name": "created_at", "type": "string", "required": true, "description": "Creation timestamp"},
+            {"name": "updated_at", "type": "string", "required": true, "description": "Update timestamp"}
+          ],
+          "used_by": ["test-results/{id}"]
+        },
+        "TestResultBrief": {
+          "type": "response",
+          "description": "Compact result view for list endpoints and search results — strip administrative fields.",
+          "fields": [
+            {"name": "id", "type": "integer", "required": true, "description": "Result ID"},
+            {"name": "test_code", "type": "string", "required": true, "description": "Test code"},
+            {"name": "test_name_en", "type": "string", "required": true, "description": "English test name"},
+            {"name": "test_name_ar", "type": "string", "required": true, "description": "Arabic test name"},
+            {"name": "result_value", "type": "number", "required": false, "description": "Numeric result"},
+            {"name": "result_text", "type": "string", "required": false, "description": "Text result"},
+            {"name": "unit", "type": "string", "required": false, "description": "Unit"},
+            {"name": "status", "type": "string", "required": true, "description": "Status"},
+            {"name": "is_abnormal", "type": "boolean", "required": true, "description": "Abnormal flag"},
+            {"name": "is_critical", "type": "boolean", "required": true, "description": "Critical flag"},
+            {"name": "sample_collected_at", "type": "string", "required": true, "description": "Collection timestamp"}
+          ],
+          "used_by": ["test-results/citizen/{health_id}"]
+        },
+        "TestResultForCitizen": {
+          "type": "response",
+          "description": "Citizen-facing result view with Arabic serialization aliases — no technical/administrative fields.",
+          "fields": [
+            {"name": "المعرف (id)", "type": "integer", "required": true, "description": "Result ID"},
+            {"name": "اسم_التحليل (test_name_ar)", "type": "string", "required": true, "description": "Arabic test name"},
+            {"name": "القيمة (result_value)", "type": "number", "required": false, "description": "Numeric value"},
+            {"name": "النتيجة (result_text)", "type": "string", "required": false, "description": "Text result"},
+            {"name": "الوحدة (unit)", "type": "string", "required": false, "description": "Unit"},
+            {"name": "الحد_الأدنى (reference_min)", "type": "number", "required": false, "description": "Reference min"},
+            {"name": "الحد_الأعلى (reference_max)", "type": "number", "required": false, "description": "Reference max"},
+            {"name": "الحالة (status)", "type": "string", "required": true, "description": "Status"},
+            {"name": "غير_طبيعي (is_abnormal)", "type": "boolean", "required": true, "description": "Abnormal flag"},
+            {"name": "حرج (is_critical)", "type": "boolean", "required": true, "description": "Critical flag"},
+            {"name": "اتجاه_الانحراف (abnormality_direction)", "type": "string", "required": false, "description": "Abnormality direction"},
+            {"name": "تاريخ_العينة (sample_collected_at)", "type": "string", "required": true, "description": "Sample collection date"},
+            {"name": "تاريخ_النتيجة (result_completed_at)", "type": "string", "required": false, "description": "Result completion date"}
+          ],
+          "used_by": ["test-results/citizen/{health_id}"]
+        },
+        "TestResultValidateRequest": {
+          "type": "request",
+          "description": "Pre-save validation request for a single test result — returns warnings without persisting.",
+          "fields": [
+            {"name": "test_name", "type": "string", "required": true, "description": "Test name", "constraints": {"min_length": 1, "max_length": 200}},
+            {"name": "test_code", "type": "string", "required": false, "description": "Canonical test code", "constraints": {"max_length": 50}},
+            {"name": "value", "type": "number", "required": false, "description": "Numeric result value"},
+            {"name": "unit", "type": "string", "required": false, "description": "Unit", "constraints": {"max_length": 20}},
+            {"name": "normal_range_low", "type": "number", "required": false, "description": "Reference range lower bound"},
+            {"name": "normal_range_high", "type": "number", "required": false, "description": "Reference range upper bound"}
+          ],
+          "used_by": ["test-results/validate"]
+        },
+        "DeviceResult": {
+          "type": "request",
+          "description": "Single result received from a lab analyzer device — mirrors ResultItem structure.",
+          "fields": [
+            {"name": "test_name", "type": "string", "required": true, "description": "Test name"},
+            {"name": "value", "type": "number", "required": false, "description": "Numeric value"},
+            {"name": "value_text", "type": "string", "required": false, "description": "Text value"},
+            {"name": "unit", "type": "string", "required": false, "description": "Unit"},
+            {"name": "normal_range_low", "type": "number", "required": false, "description": "Reference range low"},
+            {"name": "normal_range_high", "type": "number", "required": false, "description": "Reference range high"}
+          ],
+          "used_by": ["device/results"]
+        },
+        "DeviceSubmission": {
+          "type": "request",
+          "description": "Device result submission — matches results to an order via sample barcode.",
+          "fields": [
+            {"name": "barcode", "type": "string", "required": true, "description": "Sample barcode for order matching"},
+            {"name": "device_id", "type": "string", "required": false, "description": "Device identifier"},
+            {"name": "results", "type": "array", "required": true, "description": "List of DeviceResult entries (max 100)"}
+          ],
+          "used_by": ["device/results"]
+        },
+        "SuggestRequest": {
+          "type": "request",
+          "description": "AI suggestion request — operations like interpretation suggestions for lab results.",
+          "fields": [
+            {"name": "operation", "type": "string", "required": true, "description": "Operation type (e.g. suggest_interpretation)"},
+            {"name": "payload", "type": "object", "required": false, "description": "Operation-specific payload data"},
+            {"name": "entity_type", "type": "string", "required": false, "description": "Entity type (e.g. lab_result)"},
+            {"name": "entity_id", "type": "integer", "required": false, "description": "Entity ID"},
+            {"name": "confidence", "type": "number", "required": false, "description": "AI confidence score", "constraints": {"ge": 0.0, "le": 1.0}},
+            {"name": "rationale", "type": "string", "required": false, "description": "Explanation for the suggestion"}
+          ],
+          "used_by": ["ai/suggest"]
+        },
+        "RejectRequest": {
+          "type": "request",
+          "description": "AI suggestion rejection — reason provided by the human reviewer.",
+          "fields": [
+            {"name": "reason", "type": "string", "required": false, "description": "Rejection reason"}
+          ],
+          "used_by": ["ai/suggest/{id}/reject"]
+        },
+        "ChatRequest": {
+          "type": "request",
+          "description": "GULA AI assistant chat message (powered by Gemini 2.0 Flash).",
+          "fields": [
+            {"name": "message", "type": "string", "required": true, "description": "User message to the AI assistant", "constraints": {"min_length": 1, "max_length": 2000}},
+            {"name": "context", "type": "string", "required": false, "description": "Optional page context for contextual responses", "constraints": {"max_length": 500}}
+          ],
+          "used_by": ["ai/chat"]
+        }
+      }
+    },
+    "samples": {
+      "description": "Sample collection and tracking schemas — specimen lifecycle from collection through analysis.",
+      "schemas": {
+        "SampleCreate": {
+          "type": "request",
+          "description": "Register a new specimen sample linked to an existing lab order.",
+          "fields": [
+            {"name": "order_id", "type": "integer", "required": true, "description": "Parent lab order ID"},
+            {"name": "sample_type", "type": "string", "required": true, "description": "Type of specimen (blood, urine, stool, swab, serum, plasma, etc.)"},
+            {"name": "collected_by", "type": "string", "required": false, "description": "Name or ID of collector (defaults to current user)"},
+            {"name": "notes", "type": "string", "required": false, "description": "Collection notes"},
+            {"name": "storage_location", "type": "string", "required": false, "description": "Physical storage location"}
+          ],
+          "used_by": ["samples"]
+        },
+        "SampleUpdate": {
+          "type": "request",
+          "description": "Update sample status and metadata — tracks workflow progression and rejection handling.",
+          "fields": [
+            {"name": "status", "type": "string", "required": false, "description": "Sample status (collected, received, processing, analyzed, rejected)"},
+            {"name": "rejection_reason", "type": "string", "required": false, "description": "Reason for rejection (required when status=rejected)"},
+            {"name": "notes", "type": "string", "required": false, "description": "Additional notes"},
+            {"name": "storage_location", "type": "string", "required": false, "description": "Updated storage location"}
+          ],
+          "used_by": ["samples/{barcode}"]
+        }
+      }
+    },
+    "consent": {
+      "description": "Healthcare consent management schemas — grant/revoke/check time-bounded data access authorization.",
+      "schemas": {
+        "GrantRequest": {
+          "type": "request",
+          "description": "Grant time-bounded consent — authorizes a grantee to access the subject's data for a specific scope.",
+          "fields": [
+            {"name": "gpid", "type": "string", "required": true, "description": "Subject citizen_ulid", "constraints": {"min_length": 26, "max_length": 26}},
+            {"name": "grantee_id", "type": "string", "required": true, "description": "Actor being authorized (e.g. 'user:42')", "constraints": {"min_length": 3, "max_length": 64}},
+            {"name": "scope", "type": "string", "required": true, "description": "Permission scope identifier", "constraints": {"min_length": 3, "max_length": 64}},
+            {"name": "expires_in_hours", "type": "integer", "required": true, "description": "Consent duration in hours", "constraints": {"ge": 1, "le": "MAX_CONSENT_HOURS"}}
+          ],
+          "used_by": ["consent/grant"]
+        },
+        "GrantResponse": {
+          "type": "response",
+          "description": "Confirmation of a granted consent with expiry information.",
+          "fields": [
+            {"name": "consent_id", "type": "string", "required": true, "description": "Unique consent identifier"},
+            {"name": "gpid", "type": "string", "required": true, "description": "Subject citizen_ulid"},
+            {"name": "grantee_id", "type": "string", "required": true, "description": "Authorized actor identifier"},
+            {"name": "scope", "type": "string", "required": true, "description": "Granted scope"},
+            {"name": "expires_at", "type": "string", "required": true, "description": "Expiration timestamp"}
+          ],
+          "used_by": ["consent/grant"]
+        },
+        "RevokeRequest": {
+          "type": "request",
+          "description": "Revoke an active consent — terminates authorization (subject or admin only).",
+          "fields": [
+            {"name": "gpid", "type": "string", "required": true, "description": "Subject citizen_ulid", "constraints": {"min_length": 26, "max_length": 26}},
+            {"name": "grantee_id", "type": "string", "required": true, "description": "Authorized actor to revoke", "constraints": {"min_length": 3, "max_length": 64}},
+            {"name": "scope", "type": "string", "required": true, "description": "Scope to revoke", "constraints": {"min_length": 3, "max_length": 64}}
+          ],
+          "used_by": ["consent/revoke"]
+        },
+        "RevokeResponse": {
+          "type": "response",
+          "description": "Confirmation that consent was successfully revoked.",
+          "fields": [
+            {"name": "revoked", "type": "boolean", "required": true, "description": "True if consent was successfully revoked"}
+          ],
+          "used_by": ["consent/revoke"]
+        },
+        "CheckResponse": {
+          "type": "response",
+          "description": "Consent check result — indicates whether the requesting actor holds active consent.",
+          "fields": [
+            {"name": "allowed", "type": "boolean", "required": true, "description": "Whether consent is active for this actor"},
+            {"name": "scope", "type": "string", "required": true, "description": "The scope that was checked"},
+            {"name": "expires_at", "type": "string", "required": false, "description": "Consent expiry if active"}
+          ],
+          "used_by": ["consent/check"]
+        }
+      }
+    },
+    "claims": {
+      "description": "Insurance claims management schemas — claim creation, validation, and submission lifecycle.",
+      "schemas": {
+        "ClaimItemCreate": {
+          "type": "request",
+          "description": "Individual line item within an insurance claim.",
+          "fields": [
+            {"name": "test_code", "type": "string", "required": true, "description": "Test/CPT code for billing"},
+            {"name": "description", "type": "string", "required": false, "description": "Item description"},
+            {"name": "quantity", "type": "integer", "required": false, "description": "Quantity (default 1)", "constraints": {"ge": 1}},
+            {"name": "unit_price", "type": "number", "required": true, "description": "Price per unit", "constraints": {"gt": 0}},
+            {"name": "amount", "type": "number", "required": true, "description": "Total amount", "constraints": {"gt": 0}}
+          ],
+          "used_by": ["claims"]
+        },
+        "ClaimCreate": {
+          "type": "request",
+          "description": "Create a new insurance claim in draft status.",
+          "fields": [
+            {"name": "patient_id", "type": "integer", "required": true, "description": "Patient record ID"},
+            {"name": "order_id", "type": "integer", "required": false, "description": "Associated lab order ID"},
+            {"name": "items", "type": "array", "required": true, "description": "Claim line items", "constraints": {"min_length": 1}},
+            {"name": "idempotency_key", "type": "string", "required": false, "description": "Idempotency key for duplicate prevention"}
+          ],
+          "used_by": ["claims"]
+        },
+        "ClaimItemResponse": {
+          "type": "response",
+          "description": "Line item representation returned in claim responses.",
+          "fields": [
+            {"name": "id", "type": "integer", "required": true, "description": "Item ID"},
+            {"name": "claim_id", "type": "integer", "required": true, "description": "Parent claim ID"},
+            {"name": "test_code", "type": "string", "required": true, "description": "Test code"},
+            {"name": "description", "type": "string", "required": false, "description": "Description"},
+            {"name": "quantity", "type": "integer", "required": true, "description": "Quantity"},
+            {"name": "unit_price", "type": "number", "required": true, "description": "Unit price"},
+            {"name": "amount", "type": "number", "required": true, "description": "Total amount"}
+          ],
+          "used_by": ["claims"]
+        },
+        "ClaimResponse": {
+          "type": "response",
+          "description": "Full claim representation including nested line items.",
+          "fields": [
+            {"name": "id", "type": "integer", "required": true, "description": "Claim ID"},
+            {"name": "lab_id", "type": "integer", "required": true, "description": "Issuing lab ID"},
+            {"name": "patient_id", "type": "integer", "required": true, "description": "Patient ID"},
+            {"name": "order_id", "type": "integer", "required": false, "description": "Associated order ID"},
+            {"name": "status", "type": "string", "required": true, "description": "Claim status (draft, validated, submitted, etc.)"},
+            {"name": "total_amount", "type": "number", "required": false, "description": "Total claim amount"},
+            {"name": "currency", "type": "string", "required": true, "description": "Currency code"},
+            {"name": "idempotency_key", "type": "string", "required": false, "description": "Idempotency key"},
+            {"name": "external_ref", "type": "string", "required": false, "description": "External reference from insurer"},
+            {"name": "submitted_at", "type": "string", "required": false, "description": "Submission timestamp"},
+            {"name": "created_at", "type": "string", "required": false, "description": "Creation timestamp"},
+            {"name": "updated_at", "type": "string", "required": false, "description": "Update timestamp"},
+            {"name": "items", "type": "array", "required": true, "description": "List of ClaimItemResponse entries"}
+          ],
+          "used_by": ["claims"]
+        }
+      }
+    },
+    "edge": {
+      "description": "Edge Computing Platform schemas — device registration, task scheduling, policy management, and agent communication for off-premise lab instruments.",
+      "schemas": {
+        "RegisterDeviceRequest": {
+          "type": "request",
+          "description": "Register a new edge device (personal/clinic/enterprise) with its public key and capabilities.",
+          "fields": [
+            {"name": "public_key_pem", "type": "string", "required": true, "description": "Device public key in PEM format", "constraints": {"min_length": 80, "max_length": 8000}},
+            {"name": "role_mode", "type": "string", "required": false, "description": "Device role classification", "constraints": {"pattern": "^(personal|clinic|enterprise)$"}},
+            {"name": "display_name", "type": "string", "required": false, "description": "Human-readable device name", "constraints": {"max_length": 200}},
+            {"name": "agent_version", "type": "string", "required": false, "description": "Edge agent software version", "constraints": {"max_length": 32}},
+            {"name": "os_platform", "type": "string", "required": false, "description": "Operating system platform", "constraints": {"max_length": 64}},
+            {"name": "capabilities", "type": "object", "required": false, "description": "Device capability map (CPU, RAM, GPU, etc.)"},
+            {"name": "attestation_blob", "type": "string", "required": false, "description": "Hardware attestation blob", "constraints": {"max_length": 8000}}
+          ],
+          "used_by": ["edge/devices/register"]
+        },
+        "RegisterDeviceResponse": {
+          "type": "response",
+          "description": "Device registration confirmation with agent token and trust score.",
+          "fields": [
+            {"name": "device_id", "type": "string", "required": true, "description": "Assigned device ID"},
+            {"name": "status", "type": "string", "required": true, "description": "Registration status"},
+            {"name": "role_mode", "type": "string", "required": true, "description": "Assigned role mode"},
+            {"name": "trust_score", "type": "number", "required": true, "description": "Initial device trust score"},
+            {"name": "cert_fingerprint", "type": "string", "required": true, "description": "Certificate fingerprint for verification"},
+            {"name": "agent_token", "type": "string", "required": true, "description": "Bearer token for agent API endpoints"},
+            {"name": "nonce", "type": "string", "required": true, "description": "Echo-and-sign nonce for first heartbeat"}
+          ],
+          "used_by": ["edge/devices/register"]
+        },
+        "DeviceSummary": {
+          "type": "response",
+          "description": "Compact device summary for fleet listings.",
+          "fields": [
+            {"name": "device_id", "type": "string", "required": true, "description": "Device ID"},
+            {"name": "display_name", "type": "string", "required": false, "description": "Display name"},
+            {"name": "role_mode", "type": "string", "required": true, "description": "Role mode"},
+            {"name": "status", "type": "string", "required": true, "description": "Device status"},
+            {"name": "trust_score", "type": "number", "required": true, "description": "Current trust score"},
+            {"name": "last_seen_at", "type": "string", "required": false, "description": "Last heartbeat timestamp"},
+            {"name": "agent_version", "type": "string", "required": false, "description": "Agent version"}
+          ],
+          "used_by": ["edge/devices"]
+        },
+        "DeviceDetail": {
+          "type": "response",
+          "description": "Full device detail including capabilities, telemetry, and operational state.",
+          "fields": [
+            {"name": "device_id", "type": "string", "required": true, "description": "Device ID"},
+            {"name": "display_name", "type": "string", "required": false, "description": "Display name"},
+            {"name": "role_mode", "type": "string", "required": true, "description": "Role mode"},
+            {"name": "status", "type": "string", "required": true, "description": "Device status"},
+            {"name": "trust_score", "type": "number", "required": true, "description": "Trust score"},
+            {"name": "last_seen_at", "type": "string", "required": false, "description": "Last heartbeat"},
+            {"name": "agent_version", "type": "string", "required": false, "description": "Agent version"},
+            {"name": "capabilities", "type": "object", "required": false, "description": "Device capabilities"},
+            {"name": "registered_at", "type": "string", "required": true, "description": "Registration timestamp"},
+            {"name": "revoked_at", "type": "string", "required": false, "description": "Revocation timestamp"},
+            {"name": "quarantined_at", "type": "string", "required": false, "description": "Quarantine timestamp"},
+            {"name": "kill_switched", "type": "boolean", "required": true, "description": "Kill switch state"},
+            {"name": "latest_telemetry", "type": "object", "required": false, "description": "Latest telemetry snapshot"}
+          ],
+          "used_by": ["edge/devices/{device_id}"]
+        },
+        "TaskSubmitRequest": {
+          "type": "request",
+          "description": "Submit a computational task for execution on edge devices.",
+          "fields": [
+            {"name": "kind", "type": "string", "required": true, "description": "Task kind/type identifier", "constraints": {"min_length": 3, "max_length": 64}},
+            {"name": "payload", "type": "object", "required": false, "description": "Task input payload"},
+            {"name": "priority", "type": "integer", "required": false, "description": "Task priority (1-10, higher=more urgent)", "constraints": {"ge": 1, "le": 10}},
+            {"name": "privacy_level", "type": "string", "required": false, "description": "Data privacy classification", "constraints": {"pattern": "^(standard|sensitive|phi)$"}},
+            {"name": "required_caps", "type": "array", "required": false, "description": "Required device capabilities"},
+            {"name": "min_trust", "type": "number", "required": false, "description": "Minimum device trust score", "constraints": {"ge": 0.0, "le": 100.0}},
+            {"name": "timeout_s", "type": "integer", "required": false, "description": "Task timeout in seconds", "constraints": {"ge": 5, "le": 600}},
+            {"name": "max_attempts", "type": "integer", "required": false, "description": "Maximum retry attempts", "constraints": {"ge": 1, "le": 10}},
+            {"name": "idempotency_key", "type": "string", "required": false, "description": "Idempotency key", "constraints": {"max_length": 80}},
+            {"name": "expires_in_s", "type": "integer", "required": false, "description": "Task expiry in seconds", "constraints": {"ge": 10, "le": 86400}}
+          ],
+          "used_by": ["edge/tasks"]
+        },
+        "TaskSummary": {
+          "type": "response",
+          "description": "Compact task summary for list views.",
+          "fields": [
+            {"name": "task_uid", "type": "string", "required": true, "description": "Unique task ID"},
+            {"name": "kind", "type": "string", "required": true, "description": "Task kind"},
+            {"name": "status", "type": "string", "required": true, "description": "Current status"},
+            {"name": "priority", "type": "integer", "required": true, "description": "Priority level"},
+            {"name": "privacy_level", "type": "string", "required": true, "description": "Privacy classification"},
+            {"name": "device_id", "type": "string", "required": false, "description": "Assigned device"},
+            {"name": "attempts", "type": "integer", "required": true, "description": "Attempt count"},
+            {"name": "created_at", "type": "string", "required": true, "description": "Creation timestamp"},
+            {"name": "completed_at", "type": "string", "required": false, "description": "Completion timestamp"}
+          ],
+          "used_by": ["edge/tasks"]
+        },
+        "TaskDetail": {
+          "type": "response",
+          "description": "Full task detail including payload, result, and error information.",
+          "fields": [
+            {"name": "task_uid", "type": "string", "required": true, "description": "Unique task ID"},
+            {"name": "kind", "type": "string", "required": true, "description": "Task kind"},
+            {"name": "status", "type": "string", "required": true, "description": "Status"},
+            {"name": "priority", "type": "integer", "required": true, "description": "Priority"},
+            {"name": "privacy_level", "type": "string", "required": true, "description": "Privacy level"},
+            {"name": "device_id", "type": "string", "required": false, "description": "Assigned device"},
+            {"name": "attempts", "type": "integer", "required": true, "description": "Attempts"},
+            {"name": "created_at", "type": "string", "required": true, "description": "Created at"},
+            {"name": "completed_at", "type": "string", "required": false, "description": "Completed at"},
+            {"name": "payload", "type": "object", "required": false, "description": "Task input payload"},
+            {"name": "result", "type": "object", "required": false, "description": "Task execution result"},
+            {"name": "error", "type": "string", "required": false, "description": "Error message on failure"},
+            {"name": "timeout_s", "type": "integer", "required": true, "description": "Timeout in seconds"},
+            {"name": "max_attempts", "type": "integer", "required": true, "description": "Max retry attempts"}
+          ],
+          "used_by": ["edge/tasks/{task_uid}"]
+        },
+        "PolicyView": {
+          "type": "response",
+          "description": "Effective edge policy for a lab — resource limits, trust thresholds, and allow/deny lists.",
+          "fields": [
+            {"name": "max_concurrent_per_device", "type": "integer", "required": true, "description": "Max concurrent tasks per device"},
+            {"name": "max_devices_per_lab", "type": "integer", "required": true, "description": "Max registered devices per lab"},
+            {"name": "idle_only", "type": "boolean", "required": true, "description": "Only schedule on idle devices"},
+            {"name": "battery_floor_pct", "type": "integer", "required": true, "description": "Minimum battery percentage"},
+            {"name": "cpu_cap_pct", "type": "integer", "required": true, "description": "CPU utilization cap"},
+            {"name": "ram_cap_mb", "type": "integer", "required": true, "description": "RAM usage cap in MB"},
+            {"name": "allow_kinds", "type": "array", "required": false, "description": "Allowed task kinds"},
+            {"name": "deny_kinds", "type": "array", "required": false, "description": "Denied task kinds"},
+            {"name": "min_trust_score", "type": "number", "required": true, "description": "Minimum trust score for scheduling"},
+            {"name": "offline_queue_max", "type": "integer", "required": true, "description": "Max queued tasks when offline"},
+            {"name": "kill_switch", "type": "boolean", "required": true, "description": "Global kill switch state"}
+          ],
+          "used_by": ["edge/policy"]
+        },
+        "PolicyUpdate": {
+          "type": "request",
+          "description": "Partial edge policy update — only provided fields are modified.",
+          "fields": [
+            {"name": "max_concurrent_per_device", "type": "integer", "required": false, "description": "Max concurrent tasks", "constraints": {"ge": 1, "le": 64}},
+            {"name": "max_devices_per_lab", "type": "integer", "required": false, "description": "Max devices", "constraints": {"ge": 1, "le": 10000}},
+            {"name": "idle_only", "type": "boolean", "required": false, "description": "Idle-only scheduling"},
+            {"name": "battery_floor_pct", "type": "integer", "required": false, "description": "Battery floor", "constraints": {"ge": 0, "le": 100}},
+            {"name": "cpu_cap_pct", "type": "integer", "required": false, "description": "CPU cap", "constraints": {"ge": 10, "le": 100}},
+            {"name": "ram_cap_mb", "type": "integer", "required": false, "description": "RAM cap", "constraints": {"ge": 128, "le": 131072}},
+            {"name": "allow_kinds", "type": "array", "required": false, "description": "Allowed kinds"},
+            {"name": "deny_kinds", "type": "array", "required": false, "description": "Denied kinds"},
+            {"name": "min_trust_score", "type": "number", "required": false, "description": "Minimum trust", "constraints": {"ge": 0.0, "le": 100.0}},
+            {"name": "offline_queue_max", "type": "integer", "required": false, "description": "Offline queue max", "constraints": {"ge": 10, "le": 100000}},
+            {"name": "kill_switch", "type": "boolean", "required": false, "description": "Kill switch override"}
+          ],
+          "used_by": ["edge/policy"]
+        },
+        "HeartbeatRequest": {
+          "type": "request",
+          "description": "Agent heartbeat — periodic device status report and task claim.",
+          "fields": [
+            {"name": "agent_version", "type": "string", "required": false, "description": "Current agent version", "constraints": {"max_length": 32}},
+            {"name": "capabilities", "type": "object", "required": false, "description": "Current device capabilities snapshot"},
+            {"name": "telemetry", "type": "object", "required": false, "description": "Device telemetry (CPU, RAM, battery, etc.)"},
+            {"name": "completed_task_uids", "type": "array", "required": false, "description": "List of recently completed task UIDs for ack/cleanup"}
+          ],
+          "used_by": ["edge/agent/heartbeat"]
+        },
+        "HeartbeatResponse": {
+          "type": "response",
+          "description": "Heartbeat acknowledgment with next task assignment and device state directives.",
+          "fields": [
+            {"name": "server_time", "type": "string", "required": true, "description": "Server timestamp for clock sync"},
+            {"name": "next_heartbeat_s", "type": "integer", "required": true, "description": "Seconds until next expected heartbeat"},
+            {"name": "task", "type": "object", "required": false, "description": "Assigned task payload for execution"},
+            {"name": "models", "type": "array", "required": false, "description": "Available models for download/update"},
+            {"name": "quarantined", "type": "boolean", "required": false, "description": "Device quarantine flag"},
+            {"name": "kill_switched", "type": "boolean", "required": false, "description": "Device kill switch flag"}
+          ],
+          "used_by": ["edge/agent/heartbeat"]
+        },
+        "TaskResultRequest": {
+          "type": "request",
+          "description": "Agent reports task execution result back to the control plane.",
+          "fields": [
+            {"name": "success", "type": "boolean", "required": true, "description": "Whether task completed successfully"},
+            {"name": "result", "type": "object", "required": false, "description": "Task output data"},
+            {"name": "error", "type": "string", "required": false, "description": "Error description on failure", "constraints": {"max_length": 2000}},
+            {"name": "duration_ms", "type": "integer", "required": false, "description": "Execution duration in milliseconds", "constraints": {"ge": 0, "le": 600000}}
+          ],
+          "used_by": ["edge/agent/tasks/{task_uid}/result"]
+        },
+        "ModelRegisterRequest": {
+          "type": "request",
+          "description": "Register a new AI/ML model for edge deployment.",
+          "fields": [
+            {"name": "name", "type": "string", "required": true, "description": "Model name", "constraints": {"max_length": 120}},
+            {"name": "version", "type": "string", "required": true, "description": "Model version string", "constraints": {"max_length": 40}},
+            {"name": "runtime", "type": "string", "required": false, "description": "Runtime environment", "constraints": {"pattern": "^(ollama|llamacpp|onnx|custom)$"}},
+            {"name": "format", "type": "string", "required": false, "description": "Model file format", "constraints": {"max_length": 32}},
+            {"name": "quantization", "type": "string", "required": false, "description": "Quantization type", "constraints": {"max_length": 32}},
+            {"name": "size_mb", "type": "number", "required": false, "description": "Model file size in MB", "constraints": {"ge": 0}},
+            {"name": "min_ram_mb", "type": "number", "required": false, "description": "Minimum RAM required", "constraints": {"ge": 0}},
+            {"name": "min_vram_mb", "type": "number", "required": false, "description": "Minimum VRAM required", "constraints": {"ge": 0}},
+            {"name": "sha256", "type": "string", "required": false, "description": "SHA-256 file hash", "constraints": {"max_length": 80}},
+            {"name": "source_url", "type": "string", "required": false, "description": "Model download URL", "constraints": {"max_length": 500}},
+            {"name": "metadata", "type": "object", "required": false, "description": "Arbitrary model metadata"}
+          ],
+          "used_by": ["edge/models"]
+        },
+        "ModelStatusUpdate": {
+          "type": "request",
+          "description": "Update model lifecycle status and rollout percentage.",
+          "fields": [
+            {"name": "status", "type": "string", "required": true, "description": "New model status", "constraints": {"pattern": "^(draft|canary|active|retired|blocked)$"}},
+            {"name": "rollout_pct", "type": "number", "required": false, "description": "Rollout percentage for canary releases", "constraints": {"ge": 0.0, "le": 100.0}}
+          ],
+          "used_by": ["edge/models/{uid}/status"]
+        },
+        "ModelAssignRequest": {
+          "type": "request",
+          "description": "Assign a model to a specific lab or device for deployment.",
+          "fields": [
+            {"name": "lab_id", "type": "integer", "required": false, "description": "Target lab ID"},
+            {"name": "device_id", "type": "string", "required": false, "description": "Target device ID", "constraints": {"max_length": 64}}
+          ],
+          "used_by": ["edge/models/{uid}/assign"]
+        }
+      }
+    },
+    "mpi": {
+      "description": "Master Patient Index (MPI) schemas — identity resolution, deduplication, merging, and pending review workflow.",
+      "schemas": {
+        "ResolveRequest": {
+          "type": "request",
+          "description": "Resolve a local lab patient identity to a canonical MPI citizen — supports NID exact match and probabilistic matching.",
+          "fields": [
+            {"name": "lab_id", "type": "integer", "required": true, "description": "Source lab ID", "constraints": {"ge": 1}},
+            {"name": "patient_id", "type": "integer", "required": true, "description": "Local LIMS patient ID", "constraints": {"ge": 1}},
+            {"name": "name", "type": "string", "required": true, "description": "Patient full name", "constraints": {"min_length": 2, "max_length": 200}},
+            {"name": "phone", "type": "string", "required": false, "description": "Phone number", "constraints": {"max_length": 30}},
+            {"name": "birth_date", "type": "string", "required": false, "description": "Date of birth"},
+            {"name": "gender", "type": "string", "required": false, "description": "Gender", "constraints": {"pattern": "^[MFmf]$"}},
+            {"name": "national_id", "type": "string", "required": false, "description": "Raw national ID (hashed server-side)", "constraints": {"max_length": 30}},
+            {"name": "family_id", "type": "string", "required": false, "description": "Civil registry family number", "constraints": {"max_length": 30}}
+          ],
+          "used_by": ["mpi/resolve"]
+        },
+        "ResolveResponse": {
+          "type": "response",
+          "description": "MPI resolution result — matched citizen ULID with match method and confidence score.",
+          "fields": [
+            {"name": "citizen_ulid", "type": "string", "required": true, "description": "Canonical MPI citizen ULID"},
+            {"name": "match_method", "type": "string", "required": true, "description": "How the match was determined (nid_exact|probabilistic|pending_review|new)"},
+            {"name": "match_score", "type": "number", "required": false, "description": "Probabilistic match score (0-1)"},
+            {"name": "created", "type": "boolean", "required": true, "description": "Whether a new citizen record was created"},
+            {"name": "features", "type": "object", "required": false, "description": "Match feature vector for debugging"}
+          ],
+          "used_by": ["mpi/resolve"]
+        },
+        "CitizenResponse": {
+          "type": "response",
+          "description": "Canonical citizen summary — deliberately excludes PII (name, phone, NID hash, family_id).",
+          "fields": [
+            {"name": "citizen_ulid", "type": "string", "required": true, "description": "Canonical ULID"},
+            {"name": "nid_verified", "type": "boolean", "required": true, "description": "Whether NID has been verified against national registry"},
+            {"name": "birth_year", "type": "integer", "required": false, "description": "Birth year"},
+            {"name": "gender", "type": "string", "required": false, "description": "Gender"},
+            {"name": "status", "type": "string", "required": true, "description": "Citizen record status"},
+            {"name": "merged_into_ulid", "type": "string", "required": false, "description": "If merged, the primary ULID"},
+            {"name": "created_at", "type": "string", "required": true, "description": "Creation timestamp"}
+          ],
+          "used_by": ["mpi/citizens/{ulid}"]
+        },
+        "MergeRequest": {
+          "type": "request",
+          "description": "Merge two citizen records — secondary into primary, with reason.",
+          "fields": [
+            {"name": "primary_ulid", "type": "string", "required": true, "description": "Primary (surviving) citizen ULID", "constraints": {"min_length": 26, "max_length": 26}},
+            {"name": "secondary_ulid", "type": "string", "required": true, "description": "Secondary (absorbed) citizen ULID", "constraints": {"min_length": 26, "max_length": 26}},
+            {"name": "reason", "type": "string", "required": true, "description": "Reason for the merge", "constraints": {"min_length": 10, "max_length": 500}}
+          ],
+          "used_by": ["mpi/merge"]
+        },
+        "MergeResponse": {
+          "type": "response",
+          "description": "Merge result with audit event chain information.",
+          "fields": [
+            {"name": "event_id", "type": "integer", "required": true, "description": "Audit event ID"},
+            {"name": "primary_ulid", "type": "string", "required": true, "description": "Primary surviving ULID"},
+            {"name": "secondary_ulid", "type": "string", "required": true, "description": "Secondary absorbed ULID"},
+            {"name": "occurred_at", "type": "string", "required": true, "description": "Merge timestamp"},
+            {"name": "entry_hash", "type": "string", "required": true, "description": "Audit chain hash entry"}
+          ],
+          "used_by": ["mpi/merge"]
+        },
+        "PendingReviewItem": {
+          "type": "response",
+          "description": "An ambiguous identity claim awaiting admin adjudication.",
+          "fields": [
+            {"name": "claim_id", "type": "integer", "required": true, "description": "Review claim ID"},
+            {"name": "citizen_ulid", "type": "string", "required": true, "description": "Candidate citizen ULID"},
+            {"name": "lab_id", "type": "integer", "required": true, "description": "Source lab ID"},
+            {"name": "local_patient_id", "type": "integer", "required": true, "description": "Local patient ID"},
+            {"name": "match_score", "type": "number", "required": false, "description": "Probabilistic match score"},
+            {"name": "match_features", "type": "object", "required": false, "description": "Match feature details"},
+            {"name": "created_at", "type": "string", "required": true, "description": "Claim creation timestamp"}
+          ],
+          "used_by": ["mpi/review"]
+        },
+        "PendingReviewPage": {
+          "type": "response",
+          "description": "Paginated list of pending MPI review items.",
+          "fields": [
+            {"name": "total", "type": "integer", "required": true, "description": "Total pending items"},
+            {"name": "items", "type": "array", "required": true, "description": "List of PendingReviewItem entries"}
+          ],
+          "used_by": ["mpi/review"]
+        },
+        "ResolveDecision": {
+          "type": "request",
+          "description": "Admin decision on an ambiguous identity claim — confirm match or reject and mint new citizen.",
+          "fields": [
+            {"name": "decision", "type": "string", "required": true, "description": "Administrative decision", "constraints": {"pattern": "^(confirm|reject)$"}},
+            {"name": "reason", "type": "string", "required": true, "description": "Justification for the decision", "constraints": {"min_length": 10, "max_length": 500}}
+          ],
+          "used_by": ["mpi/review/{claim_id}/decide"]
+        }
+      }
+    },
+    "ai_telemetry": {
+      "description": "AI interaction telemetry and feedback schemas — RAG audit trails, user feedback, and unresolved question tracking per Directive §8/§14.",
+      "schemas": {
+        "RetrievalRefIn": {
+          "type": "request",
+          "description": "A single retrieval reference for RAG audit trails — tracks which documents were used to generate a response.",
+          "fields": [
+            {"name": "source", "type": "string", "required": false, "description": "Source system identifier", "constraints": {"max_length": 64}},
+            {"name": "doc_id", "type": "string", "required": false, "description": "Document ID in the source system", "constraints": {"max_length": 128}},
+            {"name": "doc_title", "type": "string", "required": false, "description": "Document title", "constraints": {"max_length": 256}},
+            {"name": "chunk_text", "type": "string", "required": false, "description": "Retrieved text chunk", "constraints": {"max_length": 4000}},
+            {"name": "similarity", "type": "number", "required": false, "description": "Cosine similarity score", "constraints": {"ge": 0.0, "le": 1.0}},
+            {"name": "rank", "type": "integer", "required": false, "description": "Rank position in retrieval results", "constraints": {"ge": 0, "le": 10000}}
+          ],
+          "used_by": ["api/ai/interactions"]
+        },
+        "InteractionIn": {
+          "type": "request",
+          "description": "Log a single user-AI interaction with full safety, retrieval, and hallucination-control metadata.",
+          "fields": [
+            {"name": "anonymous_session_id", "type": "string", "required": true, "description": "Anonymised session identifier", "constraints": {"min_length": 1, "max_length": 128}},
+            {"name": "language", "type": "string", "required": false, "description": "Interaction language code", "constraints": {"max_length": 8}},
+            {"name": "region", "type": "string", "required": false, "description": "Geographic region", "constraints": {"max_length": 64}},
+            {"name": "intent", "type": "string", "required": false, "description": "Classified user intent", "constraints": {"max_length": 64}},
+            {"name": "prompt", "type": "string", "required": false, "description": "User prompt text", "constraints": {"max_length": 8000}},
+            {"name": "prompt_redacted", "type": "boolean", "required": false, "description": "Whether prompt was redacted for PII"},
+            {"name": "response", "type": "string", "required": false, "description": "AI response text", "constraints": {"max_length": 16000}},
+            {"name": "response_model", "type": "string", "required": false, "description": "Model identifier used for response", "constraints": {"max_length": 64}},
+            {"name": "retrieval_strategy", "type": "string", "required": false, "description": "RAG strategy employed", "constraints": {"max_length": 64}},
+            {"name": "retrieval_refs", "type": "array", "required": false, "description": "List of retrieval references (max 50)"},
+            {"name": "biomarkers", "type": "array", "required": false, "description": "Biomarker codes mentioned"},
+            {"name": "latency_ms", "type": "integer", "required": false, "description": "Response latency in ms", "constraints": {"ge": 0, "le": 600000}},
+            {"name": "status", "type": "string", "required": false, "description": "Interaction status", "constraints": {"max_length": 20}},
+            {"name": "error_code", "type": "string", "required": false, "description": "Error code on failure", "constraints": {"max_length": 64}},
+            {"name": "confidence_score", "type": "number", "required": false, "description": "AI confidence score", "constraints": {"ge": 0.0, "le": 1.0}},
+            {"name": "risk_level", "type": "string", "required": false, "description": "Directive §8 risk class", "constraints": {"max_length": 32}},
+            {"name": "escalation_recommended", "type": "boolean", "required": false, "description": "Whether escalation was recommended"},
+            {"name": "retrieval_used", "type": "boolean", "required": false, "description": "Whether RAG was used"},
+            {"name": "source_quality", "type": "number", "required": false, "description": "Retrieved source quality score", "constraints": {"ge": 0.0, "le": 1.0}},
+            {"name": "unsupported_claims", "type": "integer", "required": false, "description": "Count of unsupported claims", "constraints": {"ge": 0, "le": 1000}},
+            {"name": "fallback_generation", "type": "boolean", "required": false, "description": "Whether fallback generation was used"},
+            {"name": "safety_flags", "type": "array", "required": false, "description": "Safety flag violations"}
+          ],
+          "used_by": ["api/ai/interactions"]
+        },
+        "InteractionOut": {
+          "type": "response",
+          "description": "Acknowledgement of a logged AI interaction.",
+          "fields": [
+            {"name": "id", "type": "string", "required": true, "description": "Interaction UUID"},
+            {"name": "lab_id", "type": "integer", "required": true, "description": "Tenant lab ID"},
+            {"name": "created_at", "type": "string", "required": true, "description": "Creation timestamp"}
+          ],
+          "used_by": ["api/ai/interactions"]
+        },
+        "FeedbackIn": {
+          "type": "request",
+          "description": "Explicit user feedback on an AI interaction — signal + optional notes.",
+          "fields": [
+            {"name": "interaction_id", "type": "string", "required": true, "description": "Target interaction UUID"},
+            {"name": "anonymous_session_id", "type": "string", "required": true, "description": "Anonymised session ID", "constraints": {"min_length": 1, "max_length": 128}},
+            {"name": "signal", "type": "string", "required": true, "description": "Feedback signal (helpful, not_helpful, unclear, need_doctor, incorrect_interpretation)"},
+            {"name": "notes", "type": "string", "required": false, "description": "Free-text notes", "constraints": {"max_length": 2000}}
+          ],
+          "used_by": ["api/ai/feedback"]
+        },
+        "UnresolvedIn": {
+          "type": "request",
+          "description": "Flag a question the AI could not answer — captures gaps for dataset improvement.",
+          "fields": [
+            {"name": "interaction_id", "type": "string", "required": false, "description": "Optional link to parent interaction"},
+            {"name": "anonymous_session_id", "type": "string", "required": false, "description": "Anonymised session ID", "constraints": {"max_length": 128}},
+            {"name": "question", "type": "string", "required": true, "description": "The unanswered question", "constraints": {"min_length": 1, "max_length": 8000}},
+            {"name": "language", "type": "string", "required": false, "description": "Question language", "constraints": {"max_length": 8}},
+            {"name": "category", "type": "string", "required": false, "description": "Question category", "constraints": {"max_length": 64}}
+          ],
+          "used_by": ["api/ai/unresolved"]
+        }
+      }
+    },
+    "governance": {
+      "description": "National Health Governance schemas — hierarchy management, delegations, acting appointments, workforce registry, and lab governance.",
+      "schemas": {
+        "NodeCreate": {
+          "type": "request",
+          "description": "Create a governance hierarchy node (governorate, directorate, province, etc.).",
+          "fields": [
+            {"name": "node_type", "type": "string", "required": true, "description": "Governance node type enum value"},
+            {"name": "code", "type": "string", "required": true, "description": "Unique node code", "constraints": {"min_length": 1, "max_length": 100}},
+            {"name": "name_ar", "type": "string", "required": true, "description": "Arabic name", "constraints": {"min_length": 1, "max_length": 300}},
+            {"name": "name_en", "type": "string", "required": false, "description": "English name"},
+            {"name": "parent_id", "type": "integer", "required": false, "description": "Parent node ID for hierarchy"},
+            {"name": "governorate", "type": "string", "required": false, "description": "Governorate name"},
+            {"name": "district", "type": "string", "required": false, "description": "District name"},
+            {"name": "metadata_json", "type": "object", "required": false, "description": "Arbitrary metadata"}
+          ],
+          "used_by": ["governance/nodes"]
+        },
+        "DelegationCreate": {
+          "type": "request",
+          "description": "Delegate authority from one governance node to another with optional scope restrictions.",
+          "fields": [
+            {"name": "delegator_node_id", "type": "integer", "required": true, "description": "Source node delegating authority"},
+            {"name": "delegate_node_id", "type": "integer", "required": true, "description": "Target node receiving authority"},
+            {"name": "scope", "type": "object", "required": false, "description": "Scope restrictions for the delegation"},
+            {"name": "reason", "type": "string", "required": false, "description": "Delegation justification"}
+          ],
+          "used_by": ["governance/delegations"]
+        },
+        "ActingAppoint": {
+          "type": "request",
+          "description": "Appoint an acting authority node to temporarily exercise powers of another node.",
+          "fields": [
+            {"name": "node_id", "type": "integer", "required": true, "description": "Node to be represented"},
+            {"name": "acting_node_id", "type": "integer", "required": true, "description": "Node acting on behalf"},
+            {"name": "reason", "type": "string", "required": false, "description": "Appointment reason"}
+          ],
+          "used_by": ["governance/acting-appointments"]
+        },
+        "WorkerCreate": {
+          "type": "request",
+          "description": "Register a healthcare worker in the national workforce registry.",
+          "fields": [
+            {"name": "employee_code", "type": "string", "required": true, "description": "Unique employee identifier"},
+            {"name": "full_name_ar", "type": "string", "required": true, "description": "Arabic full name"},
+            {"name": "profession", "type": "string", "required": true, "description": "Professional classification"},
+            {"name": "full_name_en", "type": "string", "required": false, "description": "English full name"},
+            {"name": "national_id_hash", "type": "string", "required": false, "description": "Hashed national ID"},
+            {"name": "specialization", "type": "string", "required": false, "description": "Medical specialization"},
+            {"name": "organization_node_id", "type": "integer", "required": false, "description": "Affiliated organization node"},
+            {"name": "department", "type": "string", "required": false, "description": "Department assignment"},
+            {"name": "unit", "type": "string", "required": false, "description": "Unit assignment"},
+            {"name": "employment_date", "type": "string", "required": false, "description": "Date of employment"},
+            {"name": "contact_phone", "type": "string", "required": false, "description": "Contact phone number"},
+            {"name": "contact_email", "type": "string", "required": false, "description": "Contact email address"}
+          ],
+          "used_by": ["governance/workers"]
+        },
+        "LabRegister": {
+          "type": "request",
+          "description": "Register a laboratory in the national lab governance registry.",
+          "fields": [
+            {"name": "lab_code", "type": "string", "required": true, "description": "Unique lab identification code"},
+            {"name": "name_ar", "type": "string", "required": true, "description": "Arabic lab name"},
+            {"name": "lab_type", "type": "string", "required": true, "description": "Lab type enum (private, government, etc.)"},
+            {"name": "name_en", "type": "string", "required": false, "description": "English lab name"},
+            {"name": "organization_node_id", "type": "integer", "required": false, "description": "Governance organization node"},
+            {"name": "license_number", "type": "string", "required": false, "description": "Health license number"},
+            {"name": "governorate", "type": "string", "required": false, "description": "Governorate location"}
+          ],
+          "used_by": ["governance/laboratories"]
+        }
+      }
+    },
+    "lims": {
+      "description": "National LIMS (Laboratory Information Management System) schemas — specimen tracking, order management, QC, instruments, inventory, and reports.",
+      "schemas": {
+        "SpecimenRegisterRequest": {
+          "type": "request",
+          "description": "Register a new specimen with barcode and container metadata.",
+          "fields": [
+            {"name": "order_id", "type": "integer", "required": true, "description": "Parent lab order ID"},
+            {"name": "barcode", "type": "string", "required": true, "description": "Unique specimen barcode"},
+            {"name": "specimen_type", "type": "string", "required": true, "description": "Type of specimen"},
+            {"name": "container_type", "type": "string", "required": false, "description": "Collection container type"},
+            {"name": "volume_ml", "type": "number", "required": false, "description": "Specimen volume in mL"},
+            {"name": "clinical_info", "type": "string", "required": false, "description": "Clinical information"}
+          ],
+          "used_by": ["lims/specimens"]
+        },
+        "SpecimenTransitionRequest": {
+          "type": "request",
+          "description": "Transition a specimen to a new workflow status with optional rejection reason.",
+          "fields": [
+            {"name": "target_status", "type": "string", "required": true, "description": "Target workflow status"},
+            {"name": "notes", "type": "string", "required": false, "description": "Transition notes"},
+            {"name": "rejection_reason", "type": "string", "required": false, "description": "Reason if rejecting specimen"}
+          ],
+          "used_by": ["lims/specimens/{id}/transition"]
+        },
+        "OrderCreateRequest": {
+          "type": "request",
+          "description": "Create a LIMS order with accession number, priority, and clinical details.",
+          "fields": [
+            {"name": "order_id", "type": "integer", "required": true, "description": "Existing lab order ID to link"},
+            {"name": "accession_number", "type": "string", "required": true, "description": "Unique accession number"},
+            {"name": "priority", "type": "string", "required": false, "description": "Order priority (routine, urgent, stat)"},
+            {"name": "clinical_note", "type": "string", "required": false, "description": "Clinical note"},
+            {"name": "diagnosis_code", "type": "string", "required": false, "description": "ICD diagnosis code"}
+          ],
+          "used_by": ["lims/orders"]
+        },
+        "ResultCreateRequest": {
+          "type": "request",
+          "description": "Create a single test result within a LIMS order — links to specimen and instrument.",
+          "fields": [
+            {"name": "specimen_id", "type": "integer", "required": true, "description": "Specimen ID"},
+            {"name": "test_code", "type": "string", "required": true, "description": "Test code"},
+            {"name": "test_name", "type": "string", "required": true, "description": "Test name"},
+            {"name": "value_numeric", "type": "number", "required": false, "description": "Numeric result value"},
+            {"name": "value_text", "type": "string", "required": false, "description": "Textual result"},
+            {"name": "unit", "type": "string", "required": false, "description": "Measurement unit"},
+            {"name": "instrument_id", "type": "integer", "required": false, "description": "Instrument that produced the result"},
+            {"name": "loinc_code", "type": "string", "required": false, "description": "LOINC code for interoperability"}
+          ],
+          "used_by": ["lims/results"]
+        },
+        "ResultValidateRequest": {
+          "type": "request",
+          "description": "Validate, reject, or flag a result — supports digital signature hash for audit trail.",
+          "fields": [
+            {"name": "notes", "type": "string", "required": false, "description": "Validation notes"},
+            {"name": "signature_hash", "type": "string", "required": false, "description": "Digital signature hash"},
+            {"name": "action", "type": "string", "required": false, "description": "Action to perform (validate, reject, flag)"}
+          ],
+          "used_by": ["lims/results/{id}/validate"]
+        },
+        "IQCRunRequest": {
+          "type": "request",
+          "description": "Record an internal quality control run with measured vs expected values.",
+          "fields": [
+            {"name": "program_id", "type": "integer", "required": true, "description": "QC program ID"},
+            {"name": "test_code", "type": "string", "required": true, "description": "Test code being QC'd"},
+            {"name": "measured_value", "type": "number", "required": true, "description": "Measured control value"},
+            {"name": "expected_value", "type": "number", "required": true, "description": "Expected control value"},
+            {"name": "sd", "type": "number", "required": true, "description": "Standard deviation"},
+            {"name": "level", "type": "string", "required": false, "description": "Control level (low, normal, high)"},
+            {"name": "lot_number", "type": "string", "required": false, "description": "Control material lot number"},
+            {"name": "instrument_id", "type": "integer", "required": false, "description": "Instrument used"},
+            {"name": "notes", "type": "string", "required": false, "description": "QC run notes"}
+          ],
+          "used_by": ["lims/qc/runs"]
+        },
+        "InstrumentCreateRequest": {
+          "type": "request",
+          "description": "Register a lab instrument/analyzer in the LIMS.",
+          "fields": [
+            {"name": "model_id", "type": "integer", "required": true, "description": "Instrument model ID"},
+            {"name": "instrument_code", "type": "string", "required": true, "description": "Unique instrument code"},
+            {"name": "serial_number", "type": "string", "required": false, "description": "Manufacturer serial number"},
+            {"name": "workstation_id", "type": "integer", "required": false, "description": "Workstation assignment"},
+            {"name": "ip_address", "type": "string", "required": false, "description": "Network IP address"},
+            {"name": "port", "type": "integer", "required": false, "description": "Network port"}
+          ],
+          "used_by": ["lims/instruments"]
+        },
+        "MaintenanceRecordRequest": {
+          "type": "request",
+          "description": "Log a maintenance event for a lab instrument.",
+          "fields": [
+            {"name": "maintenance_type", "type": "string", "required": true, "description": "Type of maintenance (preventive, corrective, etc.)"},
+            {"name": "title", "type": "string", "required": true, "description": "Maintenance title"},
+            {"name": "description", "type": "string", "required": false, "description": "Detailed description"},
+            {"name": "performed_at", "type": "string", "required": false, "description": "When maintenance was performed"},
+            {"name": "cost", "type": "number", "required": false, "description": "Cost of maintenance"},
+            {"name": "notes", "type": "string", "required": false, "description": "Additional notes"}
+          ],
+          "used_by": ["lims/instruments/{id}/maintenance"]
+        },
+        "CalibrationRecordRequest": {
+          "type": "request",
+          "description": "Log a calibration event for a lab instrument.",
+          "fields": [
+            {"name": "calibration_type", "type": "string", "required": true, "description": "Type of calibration"},
+            {"name": "calibrator_lot", "type": "string", "required": false, "description": "Calibrator lot number"},
+            {"name": "passed", "type": "boolean", "required": false, "description": "Whether calibration passed"},
+            {"name": "notes", "type": "string", "required": false, "description": "Calibration notes"}
+          ],
+          "used_by": ["lims/instruments/{id}/calibrations"]
+        },
+        "InventoryRequest": {
+          "type": "request",
+          "description": "Register or update a consumable/reagent inventory item.",
+          "fields": [
+            {"name": "code", "type": "string", "required": true, "description": "Item code/SKU"},
+            {"name": "name", "type": "string", "required": true, "description": "Item name"},
+            {"name": "name_ar", "type": "string", "required": false, "description": "Arabic item name"},
+            {"name": "current_quantity", "type": "number", "required": true, "description": "Current stock quantity"},
+            {"name": "unit", "type": "string", "required": true, "description": "Measurement unit"},
+            {"name": "minimum_quantity", "type": "number", "required": false, "description": "Reorder threshold"},
+            {"name": "supplier_id", "type": "integer", "required": false, "description": "Supplier record ID"},
+            {"name": "storage_location", "type": "string", "required": false, "description": "Storage location"}
+          ],
+          "used_by": ["lims/inventory"]
+        },
+        "ReportGenerateRequest": {
+          "type": "request",
+          "description": "Generate a lab report for an order in the specified locale.",
+          "fields": [
+            {"name": "order_id", "type": "integer", "required": true, "description": "Lab order ID"},
+            {"name": "report_number", "type": "string", "required": true, "description": "Unique report number"},
+            {"name": "locale", "type": "string", "required": false, "description": "Report language (ar/en)"},
+            {"name": "title", "type": "string", "required": false, "description": "Report title in English"},
+            {"name": "title_ar", "type": "string", "required": false, "description": "Report title in Arabic"}
+          ],
+          "used_by": ["lims/reports"]
+        },
+        "DeviceMessageRequest": {
+          "type": "request",
+          "description": "Submit a raw device message (ASTM/HL7) for parsing and processing.",
+          "fields": [
+            {"name": "instrument_id", "type": "integer", "required": true, "description": "Source instrument ID"},
+            {"name": "raw_message", "type": "string", "required": true, "description": "Raw ASTM or HL7 message text"}
+          ],
+          "used_by": ["lims/devices/message"]
+        },
+        "ASTMResultResponse": {
+          "type": "response",
+          "description": "Parsed ASTM result entry — used in device message responses.",
+          "fields": [
+            {"name": "specimen_id", "type": "string", "required": true, "description": "Specimen identifier from message"},
+            {"name": "test_code", "type": "string", "required": true, "description": "Test code from instrument"},
+            {"name": "value", "type": "string", "required": true, "description": "Result value"},
+            {"name": "unit", "type": "string", "required": true, "description": "Measurement unit"},
+            {"name": "flag", "type": "string", "required": true, "description": "Abnormal flag (H/L/critical/etc.)"}
+          ],
+          "used_by": ["lims/devices/message"]
+        }
+      }
+    },
+    "subscription": {
+      "description": "Subscription tier management schemas — upgrade requests, demand signals, tier assignment, and feature flag overrides.",
+      "schemas": {
+        "UpgradeRequestBody": {
+          "type": "request",
+          "description": "Lab admin requests a subscription tier upgrade with optional deployment and security preferences.",
+          "fields": [
+            {"name": "target_tier", "type": "string", "required": true, "description": "Desired tier level (starter, growth, enterprise)"},
+            {"name": "target_deployment_mode", "type": "string", "required": false, "description": "Desired deployment mode"},
+            {"name": "target_security_level", "type": "string", "required": false, "description": "Desired security level"},
+            {"name": "reason", "type": "string", "required": false, "description": "Justification for upgrade"}
+          ],
+          "used_by": ["tiers/upgrade"]
+        },
+        "DemandSignalBody": {
+          "type": "request",
+          "description": "Citizen signals demand for a lab to upgrade its subscription tier.",
+          "fields": [
+            {"name": "lab_id", "type": "integer", "required": true, "description": "Target lab ID"},
+            {"name": "target_tier", "type": "string", "required": true, "description": "Desired tier for the lab"},
+            {"name": "reason", "type": "string", "required": false, "description": "Citizen's reason for requesting upgrade"}
+          ],
+          "used_by": ["tiers/upgrade-demand"]
+        },
+        "SetTierBody": {
+          "type": "request",
+          "description": "Platform admin manually sets a lab's subscription tier and configuration.",
+          "fields": [
+            {"name": "tier", "type": "string", "required": true, "description": "Tier to assign (starter, growth, enterprise)"},
+            {"name": "deployment_mode", "type": "string", "required": false, "description": "Deployment mode (single, multi, etc.)"},
+            {"name": "security_level", "type": "string", "required": false, "description": "Security level (standard, enhanced, etc.)"},
+            {"name": "billing_cycle", "type": "string", "required": false, "description": "Billing cycle (monthly, annual, etc.)"},
+            {"name": "notes", "type": "string", "required": false, "description": "Admin notes about the tier assignment"}
+          ],
+          "used_by": ["admin/tiers/{lab_id}"]
+        },
+        "FeatureFlagBody": {
+          "type": "request",
+          "description": "Platform admin sets or removes a per-lab feature flag override with optional expiry.",
+          "fields": [
+            {"name": "feature_key", "type": "string", "required": true, "description": "Feature flag key identifier"},
+            {"name": "is_enabled", "type": "boolean", "required": true, "description": "Enable or disable the feature"},
+            {"name": "reason", "type": "string", "required": false, "description": "Reason for the override"},
+            {"name": "expires_at", "type": "string", "required": false, "description": "ISO datetime for automatic flag expiry"}
+          ],
+          "used_by": ["admin/tiers/flags/{lab_id}"]
+        }
+      }
+    },
+    "tasks": {
+      "description": "Background task queue schemas — shared data contracts between producers and consumers for the event outbox / task worker system.",
+      "schemas": {
+        "TaskPayload": {
+          "type": "internal",
+          "description": "Internal task message payload with retry and timeout controls — used by the background worker queue.",
+          "fields": [
+            {"name": "task_id", "type": "string", "required": false, "description": "Unique task identifier (auto-generated UUID4)"},
+            {"name": "type", "type": "string", "required": true, "description": "Task type discriminator for worker routing"},
+            {"name": "payload", "type": "object", "required": false, "description": "Task-specific data"},
+            {"name": "retry_count", "type": "integer", "required": false, "description": "Current retry attempt number"},
+            {"name": "max_retries", "type": "integer", "required": false, "description": "Maximum retry attempts before dead-letter"},
+            {"name": "timeout_s", "type": "integer", "required": false, "description": "Execution timeout in seconds"},
+            {"name": "enqueued_at", "type": "string", "required": false, "description": "Enqueue timestamp"}
+          ],
+          "used_by": ["background:task_worker"]
+        },
+        "TaskResult": {
+          "type": "internal",
+          "description": "Result of a background task execution — status, output data, error info, and timing.",
+          "fields": [
+            {"name": "task_id", "type": "string", "required": true, "description": "Correlated task ID"},
+            {"name": "status", "type": "string", "required": true, "description": "Task completion status (pending, running, done, failed, dead)"},
+            {"name": "result", "type": "any", "required": false, "description": "Task output data"},
+            {"name": "error", "type": "string", "required": false, "description": "Error message on failure"},
+            {"name": "attempt", "type": "integer", "required": false, "description": "Which attempt this result corresponds to"},
+            {"name": "completed_at", "type": "string", "required": false, "description": "Completion timestamp"},
+            {"name": "duration_ms", "type": "number", "required": false, "description": "Execution duration in milliseconds"}
+          ],
+          "used_by": ["background:task_worker"]
+        },
+        "TaskStatus": {
+          "type": "internal",
+          "description": "Task status enum — used across the task queue system for state management.",
+          "fields": [
+            {"name": "value", "type": "string", "required": true, "description": "One of: pending, running, done, failed, dead"}
+          ],
+          "used_by": ["background:task_worker", "edge:scheduler"]
+        }
+      }
+    },
+    "notifications": {
+      "description": "Notification delivery schemas — WhatsApp and SMS result notification dispatch.",
+      "schemas": {
+        "NotifyRequest": {
+          "type": "request",
+          "description": "Send a result notification to a patient via the specified channel.",
+          "fields": [
+            {"name": "order_id", "type": "integer", "required": true, "description": "Lab order ID whose results to share"},
+            {"name": "channel", "type": "string", "required": false, "description": "Delivery channel", "constraints": {"pattern": "^(whatsapp|sms)$"}}
+          ],
+          "used_by": ["notify/send"]
+        }
+      }
+    },
+    "quality_control": {
+      "description": "Quality Control schemas — Westgard rule evaluation for lab instrument validation.",
+      "schemas": {
+        "QCSubmit": {
+          "type": "request",
+          "description": "Submit a single quality control measurement for Westgard rule evaluation.",
+          "fields": [
+            {"name": "test_code", "type": "string", "required": true, "description": "Test code being QC'd"},
+            {"name": "level", "type": "string", "required": true, "description": "Control level (low, normal, high)"},
+            {"name": "expected_value", "type": "number", "required": true, "description": "Expected/reference value"},
+            {"name": "measured_value", "type": "number", "required": true, "description": "Measured value from instrument"},
+            {"name": "sd", "type": "number", "required": false, "description": "Standard deviation for z-score calculation"},
+            {"name": "unit", "type": "string", "required": false, "description": "Measurement unit"},
+            {"name": "instrument_name", "type": "string", "required": false, "description": "Instrument name/identifier"},
+            {"name": "lot_number", "type": "string", "required": false, "description": "Control material lot number"},
+            {"name": "notes", "type": "string", "required": false, "description": "QC run notes"}
+          ],
+          "used_by": ["qc/submit"]
+        },
+        "QCBatchSubmit": {
+          "type": "request",
+          "description": "Submit multiple quality control measurements in a single request.",
+          "fields": [
+            {"name": "results", "type": "array", "required": true, "description": "List of QCSubmit entries"}
+          ],
+          "used_by": ["qc/batch-submit"]
+        }
+      }
+    },
+    "test_result_legacy": {
+      "description": "Legacy TestResult model schemas — used by the full TestResultCreate/Read/Brief/ForCitizen family backed by the test_results table.",
+      "schemas": {
+        "TestResultCreate": {
+          "type": "request",
+          "description": "Create a new TestResult record — citizen-centric, links to canonical citizen via MPI.",
+          "fields": [
+            {"name": "citizen_id", "type": "integer", "required": true, "description": "Canonical MPI citizen ID", "constraints": {"ge": 1}},
+            {"name": "lab_id", "type": "integer", "required": true, "description": "Issuing lab ID", "constraints": {"ge": 1}},
+            {"name": "device_id", "type": "integer", "required": false, "description": "Optional instrument device ID", "constraints": {"ge": 1}},
+            {"name": "test_code", "type": "string", "required": true, "description": "Canonical test code", "constraints": {"min_length": 1, "max_length": 30}},
+            {"name": "test_name_en", "type": "string", "required": true, "description": "English test name", "constraints": {"min_length": 1, "max_length": 200}},
+            {"name": "test_name_ar", "type": "string", "required": true, "description": "Arabic test name", "constraints": {"min_length": 1, "max_length": 200}},
+            {"name": "category", "type": "string", "required": false, "description": "Test category", "constraints": {"max_length": 50}},
+            {"name": "result_value", "type": "number", "required": false, "description": "Numeric result value"},
+            {"name": "result_text", "type": "string", "required": false, "description": "Text result", "constraints": {"max_length": 200}},
+            {"name": "unit", "type": "string", "required": false, "description": "Unit", "constraints": {"max_length": 20}},
+            {"name": "reference_min", "type": "number", "required": false, "description": "Reference range min"},
+            {"name": "reference_max", "type": "number", "required": false, "description": "Reference range max"},
+            {"name": "status", "type": "string", "required": false, "description": "Result status", "constraints": {"pattern": "^(pending|completed|verified|rejected)$"}},
+            {"name": "is_critical", "type": "boolean", "required": false, "description": "Critical flag"},
+            {"name": "is_abnormal", "type": "boolean", "required": false, "description": "Abnormal flag"},
+            {"name": "abnormality_direction", "type": "string", "required": false, "description": "Direction (high, low, normal)"},
+            {"name": "sample_collected_at", "type": "string", "required": true, "description": "Collection timestamp"},
+            {"name": "sample_barcode", "type": "string", "required": true, "description": "Sample barcode", "constraints": {"min_length": 1, "max_length": 64}},
+            {"name": "ordering_physician", "type": "string", "required": false, "description": "Ordering physician", "constraints": {"max_length": 200}},
+            {"name": "clinical_notes", "type": "string", "required": false, "description": "Clinical notes"}
+          ],
+          "used_by": ["test-results/ (legacy)"]
+        }
+      }
+    }
+  },
+  "summary": {
+    "total_schemas": 77,
+    "domains": {
+      "auth": 13,
+      "patients": 3,
+      "labs": 3,
+      "orders_results": 14,
+      "samples": 2,
+      "consent": 5,
+      "claims": 4,
+      "edge": 14,
+      "mpi": 8,
+      "ai_telemetry": 5,
+      "governance": 5,
+      "lims": 13,
+      "subscription": 4,
+      "tasks": 3,
+      "notifications": 1,
+      "quality_control": 2,
+      "test_result_legacy": 1
+    },
+    "type_breakdown": {
+      "request": 52,
+      "response": 22,
+      "internal": 3
+    }
+  }
+}

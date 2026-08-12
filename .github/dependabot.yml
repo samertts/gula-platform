@@ -1,0 +1,498 @@
+# =============================================================================
+# Dependabot Configuration — GULA Platform
+# =============================================================================
+# Path: .github/dependabot.yml
+# Managed by: Security Operations
+# Version: 2.0
+# =============================================================================
+#
+# Dependabot automatically creates pull requests to update dependencies.
+# Version updates are checked on the schedule defined below.
+#
+
+version: 2
+updates:
+  # ============================================================================
+  # Python (pip) — Backend
+  # ============================================================================
+  - package-ecosystem: "pip"
+    directory: "/backend/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    # Allow up to 10 open PRs at a time
+    open-pull-requests-limit: 10
+    # Labels for automated PRs
+    labels:
+      - "dependencies"
+      - "automated"
+      - "python"
+    # Reviewers to assign
+    reviewers:
+      - "samertts"
+    # Assignees
+    assignees:
+      - "samertts"
+    # Group minor/patch updates together
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    # Ignore major version bumps that need manual verification
+    ignore:
+      - dependency-name: "fastapi"
+        update-types: ["version-update:semver-major"]
+    # Allow auto-merge for patch updates
+    allow:
+      - dependency-type: "production"
+        update-types: ["version-update:semver-patch"]
+    # Vendor directory (if using pip --no-index)
+    vendor: false
+
+  # ============================================================================
+  # npm — Frontend (React + Firebase)
+  # ============================================================================
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+      - "javascript"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "firebase"
+        update-types: ["version-update:semver-major"]
+    allow:
+      - dependency-type: "production"
+        update-types: ["version-update:semver-patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/frontend-v2/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+      - "javascript"
+      - "frontend-v2"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+    allow:
+      - dependency-type: "production"
+        update-types: ["version-update:semver-patch"]
+
+  # ============================================================================
+  # Docker — Backend image
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/backend/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major"]
+
+  # ============================================================================
+  # Docker — Services (device_bridge, etc.)
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/services/device_bridge/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "device-bridge"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Gradle — Android
+  # ============================================================================
+  - package-ecosystem: "gradle"
+    directory: "/mobile/android/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+      - "gradle"
+      - "android"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Gradle — Kotlin SDK
+  # ============================================================================
+  - package-ecosystem: "gradle"
+    directory: "/contracts/sdk/kotlin/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+      - "gradle"
+      - "kotlin-sdk"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Pub/Dart — Flutter Desktop
+  # ============================================================================
+  - package-ecosystem: "pub"
+    directory: "/mobile/desktop/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+      - "dart"
+      - "flutter"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Pub/Dart — Dart SDK
+  # ============================================================================
+  - package-ecosystem: "pub"
+    directory: "/contracts/sdk/dart/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+      - "dart"
+      - "dart-sdk"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Docker — Root application
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Docker — NHOP Platform
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/nhop-platform/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "nhop"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Docker — Platform
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/platform/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "platform"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # Docker — Microservices (lab, order, patient, result, sample, notification, ai, autonomous_manager)
+  # ============================================================================
+  - package-ecosystem: "docker"
+    directory: "/services/lab/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/order/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/patient/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/result/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/sample/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/notification/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/ai/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  - package-ecosystem: "docker"
+    directory: "/services/autonomous_manager/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+      - "automated"
+      - "docker"
+      - "microservices"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+
+  # ============================================================================
+  # GitHub Actions — CI/CD workflows
+  # ============================================================================
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+      - "github-actions"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+    groups:
+      actions-dependencies:
+        patterns:
+          - "*"

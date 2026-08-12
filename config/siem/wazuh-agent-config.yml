@@ -1,0 +1,552 @@
+# =============================================================================
+# Wazuh Agent Configuration — GULA Platform SIEM Integration
+# =============================================================================
+# Managed by: Security Operations
+# Last updated: 2026-07-15
+# Applied to: All gula-backend, gula-worker, and api-gateway containers
+# =============================================================================
+
+<client>
+  server:
+    address: 10.0.0.10
+    port: 1514
+    protocol: tcp
+  server:
+    address: wazuh-master.gula.internal
+    port: 1514
+    protocol: tcp
+  config_profile: gula-platform
+  notify_time: 10
+  time-reconnect: 60
+  auto_negotiate: yes
+  registration:
+    enabled: yes
+    server: 10.0.0.10
+    port: 1515
+    password_file: /var/ossec/etc/authd.pass
+    ssl:
+      cipher: HIGH
+      cert: /var/ossec/etc/ssl/agent.cert
+      key: /var/ossec/etc/ssl/agent.key
+      verify_host: no
+    wait_for_complete: yes
+    manager_agent_name: auto
+  crypto_method: aes
+  server_queue_size: 131072
+</client>
+
+<agent>
+  agent_type: endpoint
+  labels:
+    - platform: gula
+    - environment: production
+    - region: iq-baghdad
+    - data_classification: phi
+    - compliance: hipaa
+    - compliance: iraq-nhdss
+    - criticality: high
+</agent>
+
+<ossec_config>
+  <global>
+    <jsonout_output>yes</jsonout_output>
+    <alerts_log>yes</alerts_log>
+    <logall>no</logall>
+    <logall_json>yes</logall_json>
+    <email_notification>no</email_notification>
+    <smtp_server>localhost</smtp_server>
+    <email_from>wazuh@gula.health</email_from>
+    <email_to>security@gula.health</email_to>
+    <email_maxperhour>12</email_maxperhour>
+    <memory_limit>4096</memory_limit>
+    <agent_buffer>
+      <disabled>no</disabled>
+      <queue_size>5000</queue_size>
+      <events_per_second>1000</events_per_second>
+    </agent_buffer>
+    <alerts_per_second>500</alerts_per_second>
+  </global>
+
+  <!-- ================================================================== -->
+  <!-- FILE INTEGRITY MONITORING                                            -->
+  <!-- ================================================================== -->
+  <syscheck>
+    <disabled>no</disabled>
+    <frequency>3600</frequency>
+    <scan_on_start>yes</scan_on_start>
+    <auto_ignore>
+      <frequency>10</frequency>
+      <timeframe>3600</timeframe>
+    </auto_ignore>
+    <alert_new_files>yes</alert_new_files>
+    <scan_day>sunday</scan_day>
+    <scan_time>0300</scan_time>
+    <directories check_all="yes" realtime="yes" report_changes="yes" restrict_type="files">
+      /app
+    </directories>
+    <directories check_all="yes" realtime="yes" report_changes="yes">
+      /etc
+    </directories>
+    <directories check_all="yes" realtime="yes" report_changes="yes">
+      /var/log
+    </directories>
+    <directories check_all="yes" realtime="yes" report_changes="yes" restrict_type="files">
+      /app/data
+    </directories>
+    <nodiff>/etc/ssl/private/*</nodiff>
+    <nodiff>/var/ossec/etc/sslmanager.key</nodiff>
+    <ignore>/etc/mtab</ignore>
+    <ignore>/etc/hostname</ignore>
+    <ignore>/etc/hosts</ignore>
+    <ignore>/etc/resolv.conf</ignore>
+    <ignore type="sregex">\.log$</ignore>
+    <ignore type="sregex">\.swp$</ignore>
+    <ignore>/proc/</ignore>
+    <ignore>/sys/</ignore>
+    <registry_ignore>/proc/</registry_ignore>
+    <skip_nfs>yes</skip_nfs>
+    <skip_dev>yes</skip_dev>
+    <skip_proc>yes</skip_proc>
+    <skip_sys>yes</skip_sys>
+    <windows_audit_interval>300</windows_audit_interval>
+    <prefilter_cmd>diff</prefilter_cmd>
+    <max_eps>100</max_eps>
+    <process_priority>10</process_priority>
+    <synchronization>
+      <enabled>yes</enabled>
+      <interval>1h</interval>
+      <max_interval>24h</max_interval>
+      <response_timeout>120</response_timeout>
+      <queue_size>16384</queue_size>
+    </synchronization>
+  </syscheck>
+
+  <!-- ================================================================== -->
+  <!-- LOG COLLECTION                                                       -->
+  <!-- ================================================================== -->
+  <localfile>
+    <location>/app/data/audit.log</location>
+    <log_format>json</log_format>
+    <frequency>1</frequency>
+    <label>gula-audit</label>
+    <out_format>$(timestamp) $(hostname) $(log)</out_format>
+  </localfile>
+
+  <localfile>
+    <location>/app/data/access.log</location>
+    <log_format>json</log_format>
+    <frequency>1</frequency>
+    <label>gula-access</label>
+  </localfile>
+
+  <localfile>
+    <location>/app/data/error.log</location>
+    <log_format>json</log_format>
+    <frequency>1</frequency>
+    <label>gula-error</label>
+  </localfile>
+
+  <localfile>
+    <location>/var/log/auth.log</location>
+    <log_format>syslog</log_format>
+    <frequency>1</frequency>
+  </localfile>
+
+  <localfile>
+    <location>/var/log/syslog</location>
+    <log_format>syslog</log_format>
+    <frequency>1</frequency>
+  </localfile>
+
+  <localfile>
+    <location>/var/log/fail2ban.log</location>
+    <log_format>syslog</log_format>
+    <frequency>1</frequency>
+  </localfile>
+
+  <!-- Journald integration -->
+  <localfile>
+    <location>journald</location>
+    <log_format>journald</log_format>
+    <label>gula-system</label>
+    <query>_SYSTEMD_UNIT=docker.service</query>
+  </localfile>
+
+  <localfile>
+    <location>journald</location>
+    <log_format>journald</log_format>
+    <label>gula-backend</label>
+    <query>CONTAINER_NAME=gula-backend</query>
+  </localfile>
+
+  <localfile>
+    <location>journald</location>
+    <log_format>journald</log_format>
+    <label>gula-nginx</label>
+    <query>CONTAINER_NAME=api-gateway</query>
+  </localfile>
+
+  <!-- ================================================================== -->
+  <!-- COMMAND MONITORING                                                   -->
+  <!-- ================================================================== -->
+  <wodle name="command">
+    <disabled>no</disabled>
+    <interval>1m</interval>
+    <run_on_start>yes</run_on_start>
+    <timeout>30</timeout>
+    <command>
+      <name>listening_ports</name>
+      <executable>ss</executable>
+      <arguments>-tlnp</arguments>
+      <frequency>300</frequency>
+    </command>
+    <command>
+      <name>process_list</name>
+      <executable>ps</executable>
+      <arguments>aux --sort=-%mem</arguments>
+      <frequency>300</frequency>
+    </command>
+    <command>
+      <name>docker_ps</name>
+      <executable>docker</executable>
+      <arguments>ps --no-trunc</arguments>
+      <frequency>120</frequency>
+    </command>
+    <command>
+      <name>failed_logins</name>
+      <executable>lastb</executable>
+      <arguments>-n 50</arguments>
+      <frequency>600</frequency>
+    </command>
+    <command>
+      <name>disk_usage</name>
+      <executable>df</executable>
+      <arguments>-h</arguments>
+      <frequency>600</frequency>
+    </command>
+    <command>
+      <name>network_connections</name>
+      <executable>ss</executable>
+      <arguments>-tanp state established</arguments>
+      <frequency>300</frequency>
+    </command>
+    <command>
+      <name>container_inspect</name>
+      <executable>docker</executable>
+      <arguments>inspect gula-backend</arguments>
+      <frequency>600</frequency>
+    </command>
+    <command>
+      <name>audit_log_tail</name>
+      <executable>tail</executable>
+      <arguments>-n 100 /app/data/audit.log</arguments>
+      <frequency>60</frequency>
+    </command>
+  </wodle>
+
+  <!-- ================================================================== -->
+  <!-- ACTIVE RESPONSE                                                      -->
+  <!-- ================================================================== -->
+  <command>
+    <name>firewall-drop</name>
+    <executable>firewall-drop</executable>
+    <timeout_allowed>yes</timeout_allowed>
+    <timeout_executable>firewall-drop</timeout_executable>
+    <extra_args>-f</extra_args>
+  </command>
+
+  <command>
+    <name>host-deny</name>
+    <executable>host-deny</executable>
+    <timeout_allowed>yes</timeout_allowed>
+  </command>
+
+  <command>
+    <name>docker-containerd-stop</name>
+    <executable>docker-containerd-stop</executable>
+    <timeout_allowed>no</timeout_allowed>
+  </command>
+
+  <active-response>
+    <disabled>no</disabled>
+    <command>firewall-drop</command>
+    <location>local</location>
+    <level>10</level>
+    <timeout>1800</timeout>
+    <rules_group>ids_alert,ids_alert_high</rules_group>
+  </active-response>
+
+  <active-response>
+    <disabled>no</disabled>
+    <command>firewall-drop</command>
+    <location>local</location>
+    <level>12</level>
+    <timeout>3600</timeout>
+    <rules_group>authentication_failure,authentication_failures</rules_group>
+  </active-response>
+
+  <active-response>
+    <disabled>no</disabled>
+    <command>firewall-drop</command>
+    <location>local</location>
+    <level>7</level>
+    <timeout>600</timeout>
+    <rules_group>sql_injection_attack</rules_group>
+  </active-response>
+
+  <active-response>
+    <disabled>no</disabled>
+    <command>firewall-drop</command>
+    <location>local</location>
+    <level>8</level>
+    <timeout>900</timeout>
+    <rules_group>xss_attack</rules_group>
+  </active-response>
+
+  <!-- ================================================================== -->
+  <!-- VULNERABILITY DETECTOR                                               -->
+  <!-- ================================================================== -->
+  <wodle name="vulnerability-detector">
+    <disabled>no</disabled>
+    <interval>1h</interval>
+    <run_on_start>yes</run_on_start>
+    <feed>
+      <name>ubuntu</name>
+      <url>https://security-metadata.canonical.com/oval/com.ubuntu.$(release).cve.oval.xml.bz2</url>
+      <update_interval>1h</update_interval>
+    </feed>
+    <feed>
+      <name>debian</name>
+      <url>https://www.debian.org/security/oval/oval-definitions-$(release).xml</url>
+      <update_interval>1h</update_interval>
+    </feed>
+    <feed>
+      <name>nvd</name>
+      <url>https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-$(YEAR).json.gz</url>
+      <update_interval>4h</update_interval>
+      <ssl>yes</ssl>
+    </feed>
+    <feed>
+      <name>redhat</name>
+      <url>https://www.redhat.com/security/data/oval/v2/RHEL$(release).oval.xml.bz2</url>
+      <update_interval>1h</update_interval>
+    </feed>
+    <timeout>300</timeout>
+  </wodle>
+
+  <!-- ================================================================== -->
+  <!-- MITRE ATT&CK MAPPING                                                -->
+  <!-- ================================================================== -->
+  <!-- Healthcare-specific MITRE ATT&CK mappings for GULA platform -->
+  <!-- Mapped tactics cover the healthcare attack lifecycle -->
+
+  <rule id="100001" level="0">
+    <if_sid>5710</if_sid>
+    <description>MITRE ATT&CK: T1078 - Valid Accounts (Initial Access)</description>
+    <mitre>
+      <id>T1078</id>
+      <tactic>Initial Access</tactic>
+      <technique>Valid Accounts</technique>
+    </mitre>
+  </rule>
+
+  <rule id="100002" level="0">
+    <if_sid>5500</if_sid>
+    <description>MITRE ATT&CK: T1098 - Account Manipulation (Persistence)</description>
+    <mitre>
+      <id>T1098</id>
+      <tactic>Persistence</tactic>
+      <technique>Account Manipulation</technique>
+    </mitre>
+  </rule>
+
+  <rule id="100003" level="0">
+    <if_sid>5900</if_sid>
+    <description>MITRE ATT&CK: T1068 - Exploitation for Privilege Escalation</description>
+    <mitre>
+      <id>T1068</id>
+      <tactic>Privilege Escalation</tactic>
+      <technique>Exploitation for Privilege Escalation</technique>
+    </mitre>
+  </rule>
+
+  <rule id="100004" level="0">
+    <if_sid>597</if_sid>
+    <description>MITRE ATT&CK: T1562 - Impair Defenses (Defense Evasion)</description>
+    <mitre>
+      <id>T1562</id>
+      <tactic>Defense Evasion</tactic>
+      <technique>Impair Defenses</technique>
+    </mitre>
+  </rule>
+
+  <rule id="100005" level="0">
+    <if_sid>5750</if_sid>
+    <description>MITRE ATT&CK: T1555 - Credentials from Password Stores (Credential Access)</description>
+    <mitre>
+      <id>T1555</id>
+      <tactic>Credential Access</tactic>
+      <technique>Credentials from Password Stores</technique>
+    </mitre>
+  </rule>
+
+  <rule id="100006" level="0">
+    <if_sid>5310</if_sid>
+    <description>MITRE ATT&CK: T1082 - System Information Discovery (Discovery)</description>
+    <mitre>
+      <id>T1082</id>
+      <tactic>Discovery</tactic>
+      <technique>System Information Discovery</technique>
+    </mitre>
+  </rule>
+
+  <rule id="100007" level="0">
+    <if_sid>5450</if_sid>
+    <description>MITRE ATT&CK: T1570 - Lateral Tool Transfer (Lateral Movement)</description>
+    <mitre>
+      <id>T1570</id>
+      <tactic>Lateral Movement</tactic>
+      <technique>Lateral Tool Transfer</technique>
+    </mitre>
+  </rule>
+
+  <rule id="100008" level="0">
+    <if_sid>5715</if_sid>
+    <description>MITRE ATT&CK: T1114 - Email Collection (Collection)</description>
+    <mitre>
+      <id>T1114</id>
+      <tactic>Collection</tactic>
+      <technique>Email Collection</technique>
+    </mitre>
+  </rule>
+
+  <rule id="100009" level="0">
+    <if_sid>5800</if_sid>
+    <description>MITRE ATT&CK: T1048 - Exfiltration Over Alternative Protocol (Exfiltration)</description>
+    <mitre>
+      <id>T1048</id>
+      <tactic>Exfiltration</tactic>
+      <technique>Exfiltration Over Alternative Protocol</technique>
+    </mitre>
+  </rule>
+
+  <rule id="100010" level="0">
+    <if_sid>5850</if_sid>
+    <description>MITRE ATT&CK: T1485 - Data Destruction (Impact)</description>
+    <mitre>
+      <id>T1485</id>
+      <tactic>Impact</tactic>
+      <technique>Data Destruction</technique>
+    </mitre>
+  </rule>
+
+  <!-- Healthcare-specific rules -->
+  <rule id="100100" level="12">
+    <decoded_as>json</decoded_as>
+    <field name="audit_type">^unauthorized_patient_access$</field>
+    <description>MITRE ATT&CK: T1530 - Data from Information Repositories (Collection) - Unauthorized PHI Access</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1530</id>
+      <tactic>Collection</tactic>
+      <technique>Data from Information Repositories</technique>
+    </mitre>
+    <group>phi_access,healthcare,collection,</group>
+  </rule>
+
+  <rule id="100101" level="15">
+    <decoded_as>json</decoded_as>
+    <field name="audit_type">^bulk_patient_export$</field>
+    <description>MITRE ATT&CK: T1567 - Exfiltration Over Web Service (Exfiltration) - Bulk PHI Export</description>
+    <options>no_full_log</options>
+    <mitre>
+      <id>T1567</id>
+      <tactic>Exfiltration</tactic>
+      <technique>Exfiltration Over Web Service</technique>
+    </mitre>
+    <group>phi_exfiltration,healthcare,exfiltration,</group>
+  </rule>
+
+  <!-- ================================================================== -->
+  <!-- ROOTCHECK                                                            -->
+  <!-- ================================================================== -->
+  <rootcheck>
+    <disabled>no</disabled>
+    <check_files>yes</check_files>
+    <check_trojans>yes</check_trojans>
+    <check_dev>yes</check_dev>
+    <check_sys>yes</check_sys>
+    <check_pids>yes</check_pids>
+    <check_ports>yes</check_ports>
+    <check_if>yes</check_if>
+    <frequency>3600</frequency>
+    <rootkit_files>/var/ossec/etc/shared/rootkit_files.txt</rootkit_files>
+    <rootkit_trojans>/var/ossec/etc/shared/rootkit_trojans.txt</rootkit_trojans>
+    <skip_nfs>yes</skip_nfs>
+  </rootcheck>
+
+  <!-- ================================================================== -->
+  <!-- SCAP                                                                 -->
+  <!-- ================================================================== -->
+  <wodle name="scap">
+    <disabled>no</disabled>
+    <timeout>1800</timeout>
+    <interval>1d</interval>
+    <scan_on_start>yes</scan_on_start>
+    <content path="ssg-ubuntu-20.04-ds.xml" type="xccdf">
+      <profile>xccdf_org.ssgproject.content_profile_cis_level1_server</profile>
+    </content>
+  </wodle>
+
+  <!-- ================================================================== -->
+  <!-- CIS CATEGORIES                                                       -->
+  <!-- ================================================================== -->
+  <cis_cat>
+    <disabled>no</disabled>
+    <cis_benchmark>
+      <benchmark>cis_ubuntu_linux_20.04</benchmark>
+    </cis_benchmark>
+  </cis_cat>
+
+  <!-- ================================================================== -->
+  <!-- INTERNAL OPTIONS                                                     -->
+  <!-- ================================================================== -->
+  <internal_options>
+    <debug_level>0</debug_level>
+    <analysisd>
+      <alert_format>json</alert_format>
+    </analysisd>
+    <monitord>
+      <rotate_log>yes</rotate_log>
+      <compress_log>yes</compress_log>
+      <keep_log_days>90</keep_log_days>
+      <daily_rotations>10</daily_rotations>
+      <size_rotate>50M</size_rotate>
+    </monitord>
+  </internal_options>
+
+  <!-- ================================================================== -->
+  <!-- LOGGING & ALERTS                                                     -->
+  <!-- ================================================================== -->
+  <syslog_output>
+    <level>3</level>
+    <server>10.0.0.20</server>
+    <port>514</port>
+    <format>json</format>
+  </syslog_output>
+
+  <integration>
+    <name>slack</name>
+    <hook_url>https://hooks.slack.com/services/T00/B00/XXXXX</hook_url>
+    <level>10</level>
+    <rule_id>100101</rule_id>
+    <alert_format>json</alert_format>
+  </integration>
+
+  <integration>
+    <name>pagerduty</name>
+    <api_key>PD_API_KEY</api_key>
+    <level>12</level>
+    <alert_format>json</alert_format>
+  </integration>
+</ossec_config>

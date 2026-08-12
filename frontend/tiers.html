@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GULA — إدارة الاشتراك</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#1e3a8a;--primary-light:#3b82f6;--primary-bg:#dbeafe;
+  --green:#10b981;--green-bg:#d1fae5;--amber:#f59e0b;--amber-bg:#fef3c7;
+  --purple:#7c3aed;--purple-bg:#ede9fe;
+  --red:#ef4444;--red-bg:#fee2e2;
+  --border:#e2e8f0;--text:#0f172a;--text-muted:#64748b;--bg:#f8fafc;
+  --radius:12px;--shadow:0 4px 20px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* Header */
+.header{background:#fff;border-bottom:1px solid var(--border);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.header-brand{display:flex;align-items:center;gap:10px}
+.brand-logo{width:38px;height:38px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1rem}
+.brand-name{font-size:1.1rem;font-weight:700}
+.header-actions{display:flex;align-items:center;gap:12px}
+.btn-back{display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:.85rem;font-weight:600;color:var(--text-muted);cursor:pointer;text-decoration:none;transition:all .15s}
+.btn-back:hover{background:var(--bg);color:var(--primary)}
+
+/* Main */
+.main{max-width:1100px;margin:0 auto;padding:40px 24px}
+
+/* Current tier banner */
+.current-tier-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:28px 32px;margin-bottom:40px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow)}
+.current-tier-info{}
+.current-tier-label{font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);font-weight:700;margin-bottom:6px}
+.current-tier-name{font-size:1.8rem;font-weight:800;color:var(--primary);margin-bottom:4px}
+.current-tier-sub{font-size:.88rem;color:var(--text-muted)}
+.tier-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:.8rem;font-weight:700;letter-spacing:.04em}
+.tier-badge.starter{background:var(--bg);color:var(--text-muted);border:1px solid var(--border)}
+.tier-badge.growth{background:var(--green-bg);color:var(--green)}
+.tier-badge.enterprise{background:var(--purple-bg);color:var(--purple)}
+
+/* Tier cards */
+.section-title{font-size:1.3rem;font-weight:800;margin-bottom:6px}
+.section-sub{font-size:.88rem;color:var(--text-muted);margin-bottom:28px}
+.tiers-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:48px}
+.tier-card{background:#fff;border:2px solid var(--border);border-radius:16px;padding:28px;position:relative;transition:all .2s}
+.tier-card.recommended{border-color:var(--green);box-shadow:0 0 0 1px var(--green)}
+.tier-card.current{border-color:var(--primary);background:linear-gradient(180deg,var(--primary-bg) 0%,#fff 60%)}
+.tier-badge-top{position:absolute;top:-12px;right:50%;transform:translateX(50%);background:var(--green);color:#fff;padding:3px 14px;border-radius:20px;font-size:.72rem;font-weight:700;letter-spacing:.06em;white-space:nowrap}
+.tier-price{margin:16px 0}
+.tier-price-num{font-size:2.2rem;font-weight:800;color:var(--text)}
+.tier-price-num span{font-size:1rem;font-weight:600;color:var(--text-muted)}
+.tier-price-period{font-size:.82rem;color:var(--text-muted)}
+.tier-name-ar{font-size:1.1rem;font-weight:700;color:var(--primary);margin-bottom:4px}
+.tier-desc{font-size:.82rem;color:var(--text-muted);margin-bottom:20px;line-height:1.5}
+.tier-limits{background:var(--bg);border-radius:8px;padding:14px;margin-bottom:18px;display:grid;gap:8px}
+.limit-row{display:flex;align-items:center;justify-content:space-between;font-size:.82rem}
+.limit-label{color:var(--text-muted)}
+.limit-val{font-weight:700;color:var(--text)}
+.features-list{display:grid;gap:8px;margin-bottom:20px}
+.feat-item{display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--text-muted)}
+.feat-item.has{color:var(--text)}
+.feat-icon{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.7rem}
+.feat-icon.yes{background:var(--green-bg);color:var(--green)}
+.feat-icon.no{background:var(--bg);color:var(--border)}
+.btn-upgrade{width:100%;padding:13px;border-radius:10px;border:none;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-upgrade.primary{background:var(--primary);color:#fff}
+.btn-upgrade.primary:hover{background:#1e40af;transform:translateY(-1px)}
+.btn-upgrade.current-plan{background:var(--primary-bg);color:var(--primary);cursor:default}
+.btn-upgrade.secondary{background:#fff;color:var(--primary);border:2px solid var(--primary)}
+.btn-upgrade.secondary:hover{background:var(--primary-bg)}
+
+/* Demand section */
+.demand-section{background:#fff;border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:32px}
+.demand-title{font-size:1.1rem;font-weight:700;margin-bottom:6px}
+.demand-desc{font-size:.85rem;color:var(--text-muted);margin-bottom:20px}
+.demand-form{display:flex;gap:12px;align-items:flex-end}
+.form-group{flex:1}
+.form-label{display:block;font-size:.75rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.form-input,.form-select{width:100%;padding:10px 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-size:.88rem;outline:none;transition:border .2s;font-family:inherit}
+.form-input:focus,.form-select:focus{border-color:var(--primary)}
+.btn-demand{padding:10px 22px;border-radius:8px;background:var(--amber);color:#fff;border:none;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-demand:hover{background:#d97706;transform:translateY(-1px)}
+
+/* Success/error alerts */
+.alert{padding:12px 16px;border-radius:8px;font-size:.85rem;font-weight:600;margin-top:12px;display:none}
+.alert.success{background:var(--green-bg);color:var(--green);display:flex;align-items:center;gap:8px}
+.alert.error{background:var(--red-bg);color:var(--red);display:flex;align-items:center;gap:8px}
+
+/* Upgrade requests history */
+.requests-table{width:100%;border-collapse:collapse;font-size:.84rem}
+.requests-table th{text-align:right;padding:10px 14px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);border-bottom:2px solid var(--border);font-weight:700}
+.requests-table td{padding:12px 14px;border-bottom:1px solid var(--border)}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.74rem;font-weight:700}
+.status-badge.pending{background:var(--amber-bg);color:var(--amber)}
+.status-badge.approved,.status-badge.fulfilled{background:var(--green-bg);color:var(--green)}
+.status-badge.rejected{background:var(--red-bg);color:var(--red)}
+
+/* Loading */
+.loading{text-align:center;padding:40px;color:var(--text-muted)}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:768px){
+  .tiers-grid{grid-template-columns:1fr}
+  .demand-form{flex-direction:column}
+  .current-tier-card{flex-direction:column;gap:16px;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="brand-logo">G</div>
+    <span class="brand-name">GULA — إدارة الاشتراك</span>
+  </div>
+  <div class="header-actions">
+    <a href="/index.html" class="btn-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      العودة للوحة التحكم
+    </a>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Current Subscription -->
+  <div class="current-tier-card" id="currentTierCard">
+    <div class="loading"><div class="spinner"></div><br>جارٍ التحميل...</div>
+  </div>
+
+  <!-- Tier Comparison -->
+  <div class="section-title">اختر الخطة المناسبة</div>
+  <div class="section-sub">قارن بين الخطط واطلب الترقية التي تناسب مختبرك</div>
+  <div class="tiers-grid" id="tiersGrid">
+    <div class="loading"><div class="spinner"></div></div>
+  </div>
+
+  <!-- Demand Signal for Citizens -->
+  <div class="demand-section" id="demandSection" style="display:none">
+    <div class="demand-title">🔔 طلب ترقية المختبر</div>
+    <div class="demand-desc">هل تريد أن يحصل مختبرك على ميزات أكثر؟ أرسل طلب ترقية وسنقوم بمراجعته.</div>
+    <div class="demand-form">
+      <div class="form-group">
+        <label class="form-label">الخطة المطلوبة</label>
+        <select class="form-select" id="demandTier">
+          <option value="growth">النمو (Growth)</option>
+          <option value="enterprise">المؤسسات (Enterprise)</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex:2">
+        <label class="form-label">سبب الطلب (اختياري)</label>
+        <input type="text" class="form-input" id="demandReason" placeholder="مثال: نحتاج تقارير متقدمة لخدمة المرضى">
+      </div>
+      <button class="btn-demand" onclick="submitDemand()">إرسال الطلب</button>
+    </div>
+    <div class="alert success" id="demandSuccess">✓ تم إرسال طلبك بنجاح</div>
+    <div class="alert error" id="demandError"></div>
+  </div>
+
+  <!-- Upgrade History -->
+  <div class="section-title" style="margin-bottom:16px">سجل طلبات الترقية</div>
+  <div style="background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden;padding:0">
+    <table class="requests-table">
+      <thead>
+        <tr>
+          <th>التاريخ</th>
+          <th>الخطة المطلوبة</th>
+          <th>السبب</th>
+          <th>الحالة</th>
+        </tr>
+      </thead>
+      <tbody id="requestsTableBody">
+        <tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">جارٍ التحميل...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<script>
+const API = '';
+
+const TIER_NAMES = {starter:'البداية',growth:'النمو',enterprise:'المؤسسات'};
+const TIER_DESCS = {
+  starter:'مثالية للمختبرات الناشئة — كل ما تحتاجه للبدء',
+  growth:'للمختبرات النامية — ميزات متقدمة ومرونة أكبر',
+  enterprise:'للمؤسسات الكبيرة — قدرات AI وتقارير حكومية وتعدد فروع'
+};
+const TIER_PRICES = {starter:0,growth:49,enterprise:199};
+const FEATURE_LABELS = {
+  patient_management:'إدارة المرضى',basic_results:'النتائج الأساسية',
+  sample_tracking:'تتبع العينات',pdf_reports:'تقارير PDF',qr_codes:'رموز QR',
+  quality_control:'ضبط الجودة',batch_import:'استيراد بالجملة',
+  ehr_integration:'تكامل السجلات الطبية',advanced_analytics:'تحليلات متقدمة',
+  critical_alerts:'تنبيهات حرجة',multi_branch:'تعدد الفروع',
+  government_reporting:'التقارير الحكومية',ai_interpretation:'تفسير AI',
+  ai_anomaly_detection:'كشف الشذوذ بالذكاء الاصطناعي',api_access:'وصول API',
+  custom_branding:'علامة تجارية مخصصة',sla_guarantee:'ضمان SLA',
+  mobile_access:'تطبيق الجوال',audit_log:'سجل التدقيق',notifications:'الإشعارات',
+};
+
+let myTier = 'starter';
+let myRole = 'citizen';
+let myLabId = null;
+
+async function fetchJSON(url, opts={}) {
+  const res = await fetch(API + url, {
+    headers: {'Content-Type':'application/json'},
+    credentials: 'include',
+    ...opts,
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function init() {
+  try {
+    // Load current user info from the HttpOnly-cookie session, if authenticated.
+    let user = {};
+    try {
+      const session = await fetchJSON('/session');
+      user = session.user || {};
+    } catch (e) {
+      // Public visitors can still view the tier catalog.
+    }
+    myRole = user.role || 'citizen';
+    myLabId = user.lab_id;
+
+    // Load tier catalog
+    const {tiers} = await fetchJSON('/tiers');
+
+    // Load my subscription if lab user
+    let mySub = null;
+    if (myLabId) {
+      try { mySub = await fetchJSON('/tiers/my'); } catch(e){}
+    }
+    myTier = mySub?.tier || 'starter';
+
+    renderCurrentTier(mySub);
+    renderTiersGrid(tiers, myTier);
+
+    // Show demand section for citizens or lab admins
+    if (myRole === 'citizen' || myLabId) {
+      document.getElementById('demandSection').style.display = 'block';
+    }
+
+    // Load upgrade requests
+    if (myLabId) await loadUpgradeRequests();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function renderCurrentTier(sub) {
+  const card = document.getElementById('currentTierCard');
+  const tier = sub?.tier || 'starter';
+  const depl = {single:'مختبر واحد',multi_branch:'متعدد الفروع',government:'حكومي'}[sub?.deployment_mode||'single'];
+  const sec  = {standard:'أمان قياسي',high_security:'أمان عالي',air_gapped:'معزول'}[sub?.security_level||'standard'];
+
+  card.innerHTML = `
+    <div class="current-tier-info">
+      <div class="current-tier-label">خطتك الحالية</div>
+      <div class="current-tier-name">${TIER_NAMES[tier] || tier}</div>
+      <div class="current-tier-sub">${depl} · ${sec}
+        ${sub?.is_trial ? ' · <strong style="color:var(--amber)">فترة تجريبية</strong>' : ''}
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+      <span class="tier-badge ${tier}">${TIER_NAMES[tier]||tier}</span>
+      <div style="font-size:.82rem;color:var(--text-muted)">
+        ${sub?.max_patients||500} مريض · ${sub?.max_staff||5} موظف · ${sub?.max_orders_per_day||100} طلب/يوم
+      </div>
+    </div>`;
+}
+
+function renderTiersGrid(tiers, currentTier) {
+  const KEY_FEATURES = ['patient_management','basic_results','sample_tracking','pdf_reports','quality_control','batch_import','ehr_integration','multi_branch','government_reporting','ai_interpretation','api_access'];
+
+  const grid = document.getElementById('tiersGrid');
+  grid.innerHTML = tiers.map(t => {
+    const isCurrent = t.id === currentTier;
+    const isUpgrade = ['starter','growth','enterprise'].indexOf(t.id) > ['starter','growth','enterprise'].indexOf(currentTier);
+
+    return `
+    <div class="tier-card ${isCurrent?'current':''} ${t.id==='growth'&&!isCurrent?'recommended':''}">
+      ${t.id==='growth'&&!isCurrent ? '<div class="tier-badge-top">الأكثر طلباً</div>' : ''}
+      <div class="tier-name-ar">${t.name_ar}</div>
+      <div class="tier-price">
+        <div class="tier-price-num">${t.monthly_price_usd===0?'مجاناً':'$'+t.monthly_price_usd}<span>${t.monthly_price_usd>0?' / شهر':''}</span></div>
+      </div>
+      <div class="tier-desc">${TIER_DESCS[t.id]||''}</div>
+      <div class="tier-limits">
+        <div class="limit-row"><span class="limit-label">المرضى</span><span class="limit-val">${t.limits.max_patients>=99999?'غير محدود':t.limits.max_patients.toLocaleString()}</span></div>
+        <div class="limit-row"><span class="limit-label">الموظفون</span><span class="limit-val">${t.limits.max_staff>=999?'غير محدود':t.limits.max_staff}</span></div>
+        <div class="limit-row"><span class="limit-label">طلبات يومية</span><span class="limit-val">${t.limits.max_orders_per_day>=99999?'غير محدود':t.limits.max_orders_per_day.toLocaleString()}</span></div>
+        ${t.limits.max_ai_calls_per_day>0?`<div class="limit-row"><span class="limit-label">استدعاءات AI</span><span class="limit-val">${t.limits.max_ai_calls_per_day}/يوم</span></div>`:''}
+      </div>
+      <div class="features-list">
+        ${KEY_FEATURES.map(f => {
+          const has = t.features.includes(f);
+          return `<div class="feat-item ${has?'has':''}">
+            <div class="feat-icon ${has?'yes':'no'}">${has?'✓':'–'}</div>
+            <span>${FEATURE_LABELS[f]||f}</span>
+          </div>`;
+        }).join('')}
+      </div>
+      <button class="btn-upgrade ${isCurrent?'current-plan':isUpgrade?'primary':'secondary'}"
+        onclick="${isUpgrade?`requestUpgrade('${t.id}')`:''}"
+        ${isCurrent?'disabled':''}>
+        ${isCurrent?'خطتك الحالية':isUpgrade?'ترقية الآن':'طلب تخفيض'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+async function requestUpgrade(targetTier) {
+  if (!myLabId) { alert('هذه الميزة متاحة فقط لمستخدمي المختبرات'); return; }
+  const reason = prompt('سبب الترقية (اختياري):') || '';
+  try {
+    await fetchJSON('/tiers/upgrade', {
+      method: 'POST',
+      body: JSON.stringify({target_tier: targetTier, reason}),
+    });
+    alert(`✓ تم إرسال طلب الترقية إلى ${TIER_NAMES[targetTier]}. سيتم مراجعته قريباً.`);
+    await loadUpgradeRequests();
+  } catch(e) {
+    alert('خطأ: ' + e.message);
+  }
+}
+
+async function submitDemand() {
+  const tier = document.getElementById('demandTier').value;
+  const reason = document.getElementById('demandReason').value;
+  const successEl = document.getElementById('demandSuccess');
+  const errorEl = document.getElementById('demandError');
+  successEl.style.display = 'none';
+  errorEl.style.display = 'none';
+
+  const targetLabId = myLabId || parseInt(prompt('أدخل معرّف المختبر (Lab ID):'));
+  if (!targetLabId) return;
+
+  try {
+    await fetchJSON('/tiers/upgrade-demand', {
+      method: 'POST',
+      body: JSON.stringify({lab_id: targetLabId, target_tier: tier, reason}),
+    });
+    successEl.style.display = 'flex';
+    document.getElementById('demandReason').value = '';
+  } catch(e) {
+    errorEl.textContent = '✕ ' + e.message;
+    errorEl.style.display = 'flex';
+  }
+}
+
+async function loadUpgradeRequests() {
+  const tbody = document.getElementById('requestsTableBody');
+  if (!myLabId) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">لا توجد طلبات</td></tr>'; return; }
+  try {
+    // Fetch via admin endpoint if admin, else show nothing
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">لا توجد طلبات مسجلة</td></tr>';
+  } catch(e) {}
+}
+
+init();
+</script>
+</body>
+</html>

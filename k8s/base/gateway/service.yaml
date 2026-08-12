@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: gula-api-gateway
+  namespace: gula
+  labels:
+    app: gula-api-gateway
+    component: gateway
+spec:
+  type: LoadBalancer
+  selector:
+    app: gula-api-gateway
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+    - port: 443
+      targetPort: 443
+      name: https

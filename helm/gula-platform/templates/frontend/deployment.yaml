@@ -1,0 +1,56 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.frontend.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "gula.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gula.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  strategy:
+    type: {{ .Values.frontend.strategy.type }}
+    rollingUpdate:
+      maxSurge: {{ .Values.frontend.strategy.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.frontend.strategy.rollingUpdate.maxUnavailable }}
+  template:
+    metadata:
+      labels:
+        {{- include "gula.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+      annotations:
+        {{- if .Values.serviceMesh.linkerd.enabled }}
+        linkerd.io/inject: {{ .Values.serviceMesh.linkerd.autoInject | default "enabled" }}
+        {{- end }}
+    spec:
+      {{- include "gula.podSecurityContext" . | nindent 6 }}
+      {{- include "gula.imagePullSecrets" .Values.frontend | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+      initContainers:
+        {{- toYaml .Values.frontend.initContainers | nindent 8 }}
+      containers:
+        - name: nginx
+          {{- include "gula.image" (dict "repository" .Values.frontend.image.repository "tag" (default .Values.global.imageTag .Values.frontend.image.tag) "pullPolicy" (default .Values.global.imagePullPolicy .Values.frontend.image.pullPolicy)) | nindent 10 }}
+          ports:
+            - containerPort: {{ .Values.frontend.service.targetPort }}
+              name: {{ .Values.frontend.service.name }}
+              protocol: TCP
+          {{- include "gula.resources" .Values.frontend | nindent 10 }}
+          livenessProbe:
+            {{- include "gula.probe" (dict "probe" .Values.frontend.probes.liveness "path" .Values.frontend.probes.liveness.path "port" .Values.frontend.probes.liveness.port) | nindent 12 }}
+          readinessProbe:
+            {{- include "gula.probe" (dict "probe" .Values.frontend.probes.readiness "path" .Values.frontend.probes.readiness.path "port" .Values.frontend.probes.readiness.port) | nindent 12 }}
+          env:
+            {{- toYaml .Values.frontend.env | nindent 12 }}
+          volumeMounts:
+            {{- toYaml .Values.frontend.volumeMounts | nindent 12 }}
+      volumes:
+        {{- toYaml .Values.frontend.volumes | nindent 8 }}
+{{- end }}

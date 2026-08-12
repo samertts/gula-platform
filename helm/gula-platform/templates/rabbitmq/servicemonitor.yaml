@@ -1,0 +1,3 @@
+{{- if .Values.rabbitmq.serviceMonitor.enabled }}
+{{ include "gula.serviceMonitor" (dict "enabled" true "name" (printf "%s-%s" .Values.rabbitmq.name "sm") "component" "messaging" "port" "management" "interval" .Values.rabbitmq.serviceMonitor.interval "scrapeTimeout" .Values.rabbitmq.serviceMonitor.scrapeTimeout "path" "/api/health/checks/alarms" "Values" $.Values) }}
+{{- end }}

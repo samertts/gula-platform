@@ -1,0 +1,423 @@
+{
+  "id": null,
+  "uid": "gula-capacity",
+  "title": "GULA Platform — Capacity Planning",
+  "description": "System and infrastructure capacity dashboard",
+  "tags": ["gula", "capacity"],
+  "timezone": "Asia/Baghdad",
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "version": 1,
+  "time": { "from": "now-24h", "to": "now" },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Compute Resources",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "CPU Utilization by Service",
+      "gridPos": { "x": 0, "y": 1, "w": 12, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_cpu_utilization_percent{service=\"backend\"}", "legendFormat": "Backend" },
+        { "expr": "gula_cpu_utilization_percent{service=\"worker\"}", "legendFormat": "Worker" },
+        { "expr": "gula_cpu_utilization_percent{service=\"api-gateway\"}", "legendFormat": "API Gateway" },
+        { "expr": "gula_cpu_utilization_percent{service=\"device-bridge\"}", "legendFormat": "Device Bridge" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Memory Utilization by Service",
+      "gridPos": { "x": 12, "y": 1, "w": 12, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_memory_usage_bytes{service=\"backend\"}", "legendFormat": "Backend" },
+        { "expr": "gula_memory_usage_bytes{service=\"worker\"}", "legendFormat": "Worker" },
+        { "expr": "gula_memory_usage_bytes{service=\"api-gateway\"}", "legendFormat": "API Gateway" },
+        { "expr": "gula_memory_usage_bytes{service=\"device-bridge\"}", "legendFormat": "Device Bridge" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "row",
+      "title": "Storage & Database",
+      "gridPos": { "x": 0, "y": 9, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Disk Usage Trend",
+      "gridPos": { "x": 0, "y": 10, "w": 8, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "orange", "value": 85 },
+              { "color": "red", "value": 95 }
+            ]
+          },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_disk_usage_percent{mount=\"/data\"}", "legendFormat": "/data" },
+        { "expr": "gula_disk_usage_percent{mount=\"/backups\"}", "legendFormat": "/backups" },
+        { "expr": "gula_disk_usage_percent{mount=\"/logs\"}", "legendFormat": "/logs" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "gauge",
+      "title": "Database Connection Pool",
+      "gridPos": { "x": 8, "y": 10, "w": 4, "h": 8 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "orange", "value": 80 },
+              { "color": "red", "value": 95 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_db_connection_pool_usage_percent", "legendFormat": "Pool Usage" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "gauge",
+      "title": "Redis Memory Usage",
+      "gridPos": { "x": 12, "y": 10, "w": 4, "h": 8 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "orange", "value": 80 },
+              { "color": "red", "value": 95 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_redis_memory_usage_percent", "legendFormat": "Redis Memory" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Storage Growth Forecast",
+      "gridPos": { "x": 16, "y": 10, "w": 8, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 850000000000 },
+              { "color": "orange", "value": 950000000000 },
+              { "color": "red", "value": 1000000000000 }
+            ]
+          },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_storage_used_bytes", "legendFormat": "Used" },
+        { "expr": "predict_linear(gula_storage_used_bytes[30d], 86400 * 30)", "legendFormat": "Forecast (30d)" },
+        { "expr": "gula_storage_capacity_bytes", "legendFormat": "Capacity" }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "row",
+      "title": "API & Network",
+      "gridPos": { "x": 0, "y": 18, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "API Request Rate per Endpoint",
+      "gridPos": { "x": 0, "y": 19, "w": 12, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "rate(gula_requests_total{endpoint=\"/orders\"}[5m])", "legendFormat": "/orders" },
+        { "expr": "rate(gula_requests_total{endpoint=\"/results\"}[5m])", "legendFormat": "/results" },
+        { "expr": "rate(gula_requests_total{endpoint=\"/patients\"}[5m])", "legendFormat": "/patients" },
+        { "expr": "rate(gula_requests_total{endpoint=\"/auth\"}[5m])", "legendFormat": "/auth" },
+        { "expr": "rate(gula_requests_total{endpoint=\"/samples\"}[5m])", "legendFormat": "/samples" }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Concurrent Connections",
+      "gridPos": { "x": 12, "y": 19, "w": 12, "h": 8 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "orange", "value": 150 },
+              { "color": "red", "value": 190 }
+            ]
+          },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_concurrent_connections", "legendFormat": "Concurrent" },
+        { "expr": "gula_max_concurrent_connections", "legendFormat": "Max Capacity" }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Network Bandwidth Utilization",
+      "gridPos": { "x": 0, "y": 27, "w": 8, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bps",
+          "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "rate(gula_network_bytes_received_total[5m])", "legendFormat": "Inbound" },
+        { "expr": "rate(gula_network_bytes_sent_total[5m])", "legendFormat": "Outbound" }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Peak CPU (Last 24h)",
+      "gridPos": { "x": 8, "y": 27, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["max"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "orange", "value": 85 },
+              { "color": "red", "value": 95 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "max(gula_cpu_utilization_percent{service=\"backend\"})", "legendFormat": "Peak CPU" }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Peak Memory (Last 24h)",
+      "gridPos": { "x": 12, "y": 27, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["max"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 400000000 },
+              { "color": "orange", "value": 600000000 },
+              { "color": "red", "value": 800000000 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "max(gula_memory_usage_bytes{service=\"backend\"})", "legendFormat": "Peak Memory" }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Avg Response Time",
+      "gridPos": { "x": 16, "y": 27, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["mean"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 200 },
+              { "color": "orange", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "avg(gula_request_duration_ms)", "legendFormat": "Avg" }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "Error Rate (Last 1h)",
+      "gridPos": { "x": 20, "y": 27, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["mean"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "sum(rate(gula_request_errors_total[1h])) / sum(rate(gula_requests_total[1h])) * 100", "legendFormat": "Error %" }
+      ]
+    }
+  ],
+  "templating": { "list": [] },
+  "links": [],
+  "timepicker": {}
+}

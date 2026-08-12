@@ -1,0 +1,309 @@
+name: Blue-Green Deploy (Kubernetes)
+
+# Triggered after CI build-and-push succeeds on main
+on:
+  workflow_run:
+    workflows: ["CI - Build, Test & Security Scan"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (default: short SHA)"
+        required: false
+        default: ""
+      force_slot:
+        description: "Force deployment to a specific slot (blue|green|auto)"
+        required: false
+        default: "auto"
+
+concurrency:
+  group: gula-blue-green-deploy
+  cancel-in-progress: false    # never cancel an in-progress blue-green switch
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/gula-platform
+  NAMESPACE: gula
+  HEALTH_TIMEOUT: 180          # seconds to wait for green slot to be healthy
+
+jobs:
+  # ── Only run if the triggering CI workflow succeeded ──────────────────────
+  check-ci:
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Check CI result
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+            echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "CI workflow did not succeed — skipping deploy"
+          fi
+
+  blue-green-deploy:
+    runs-on: ubuntu-latest
+    outputs:
+      active: ${{ steps.slots.outputs.active }}
+    needs: check-ci
+    if: needs.check-ci.outputs.should_deploy == 'true'
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Resolve image tag ─────────────────────────────────────────────────
+      - name: Resolve image tag
+        id: tag
+        run: |
+          INPUT="${{ github.event.inputs.image_tag }}"
+          if [ -n "$INPUT" ]; then
+            TAG="$INPUT"
+          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+            # Use the SHA from the triggering workflow run
+            TAG="${{ github.event.workflow_run.head_sha }}"
+            TAG="${TAG::7}"
+          else
+            TAG="${GITHUB_SHA::7}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Deploying image tag: $TAG"
+
+      # ── Setup kubectl ─────────────────────────────────────────────────────
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.28.0"
+
+      - name: Configure kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+          kubectl cluster-info
+
+      # ── Determine active slot (blue/green) ───────────────────────────────
+      - name: Determine active & target slots
+        id: slots
+        run: |
+          # Read current active slot from service annotation
+          ACTIVE=$(kubectl get svc gula-backend-active \
+            -n ${{ env.NAMESPACE }} \
+            -o jsonpath='{.metadata.annotations.blue-green/active-slot}' \
+            2>/dev/null || echo "blue")
+
+          FORCE="${{ github.event.inputs.force_slot }}"
+          if [ "$FORCE" = "blue" ] || [ "$FORCE" = "green" ]; then
+            TARGET="$FORCE"
+          elif [ "$ACTIVE" = "blue" ]; then
+            TARGET="green"
+          else
+            TARGET="blue"
+          fi
+
+          echo "active=$ACTIVE" >> "$GITHUB_OUTPUT"
+          echo "target=$TARGET" >> "$GITHUB_OUTPUT"
+          echo "Active slot: $ACTIVE → Deploying to: $TARGET"
+
+      # ── Log in to GHCR ───────────────────────────────────────────────────
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── Create/update the target slot Deployment ─────────────────────────
+      - name: Deploy to target slot (${{ steps.slots.outputs.target }})
+        env:
+          TARGET_SLOT: ${{ steps.slots.outputs.target }}
+          IMAGE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          TARGET_SLOT="$TARGET_SLOT"
+          IMAGE="${{ env.IMAGE_PREFIX }}/backend:${IMAGE_TAG}"
+
+          echo "Deploying image $IMAGE to slot $TARGET_SLOT"
+
+          # Patch (or create) the target-slot deployment
+          # Strategy: patch the base deployment's image + slot labels
+          kubectl set image deployment/gula-backend \
+            gula-backend="$IMAGE" \
+            -n ${{ env.NAMESPACE }} \
+            --record=false 2>/dev/null || true
+
+          # Ensure the slot label matches the target
+          kubectl patch deployment gula-backend \
+            -n ${{ env.NAMESPACE }} \
+            --type=strategic \
+            -p "{\"spec\":{\"template\":{\"metadata\":{\"labels\":{\"slot\":\"${TARGET_SLOT}\"}}}}}"
+
+          # Update the deployment name to match slot convention
+          # (We use a single deployment and patch labels to match the slot service selector)
+          kubectl rollout status deployment/gula-backend \
+            -n ${{ env.NAMESPACE }} \
+            --timeout=${{ env.HEALTH_TIMEOUT }}s
+
+      # ── Smoke test the new (green) slot before switching traffic ─────────
+      - name: Smoke test target slot
+        env:
+          TARGET_SLOT: ${{ steps.slots.outputs.target }}
+        run: |
+          echo "Running smoke tests against slot: $TARGET_SLOT"
+
+          # Port-forward to target slot service for smoke testing
+          kubectl port-forward \
+            svc/gula-backend-${{ steps.slots.outputs.target }} \
+            18000:8000 \
+            -n ${{ env.NAMESPACE }} &
+          PF_PID=$!
+          sleep 5
+
+          PASS=0
+          for i in $(seq 1 12); do
+            STATUS=$(curl -sf --max-time 5 http://localhost:18000/health \
+              -o /tmp/health.json -w "%{http_code}" 2>/dev/null || echo "000")
+            if [ "$STATUS" = "200" ]; then
+              echo "Smoke test passed (attempt $i)"
+              cat /tmp/health.json
+              PASS=1
+              break
+            fi
+            echo "Attempt $i: HTTP $STATUS — retrying in 5s..."
+            sleep 5
+          done
+
+          kill $PF_PID 2>/dev/null || true
+
+          if [ "$PASS" -ne 1 ]; then
+            echo "Smoke test FAILED — aborting traffic switch"
+            exit 1
+          fi
+
+      # ── Switch traffic to target slot ────────────────────────────────────
+      - name: Switch traffic to ${{ steps.slots.outputs.target }}
+        env:
+          TARGET_SLOT: ${{ steps.slots.outputs.target }}
+        run: |
+          echo "Switching active traffic to slot: $TARGET_SLOT"
+
+          # Patch the gula-backend-active service selector
+          kubectl patch svc gula-backend-active \
+            -n ${{ env.NAMESPACE }} \
+            --type=json \
+            -p "[
+              {\"op\":\"replace\",\"path\":\"/spec/selector/slot\",\"value\":\"${TARGET_SLOT}\"},
+              {\"op\":\"replace\",\"path\":\"/metadata/annotations/blue-green~1active-slot\",\"value\":\"${TARGET_SLOT}\"}
+            ]"
+
+          # Update Linkerd TrafficSplit weights if SMI is installed
+          if kubectl api-resources | grep -q TrafficSplit; then
+            if [ "$TARGET_SLOT" = "green" ]; then
+              BLUE_WEIGHT=0; GREEN_WEIGHT=100
+            else
+              BLUE_WEIGHT=100; GREEN_WEIGHT=0
+            fi
+            kubectl patch trafficsplit gula-backend-split \
+              -n ${{ env.NAMESPACE }} \
+              --type=json \
+              -p "[
+                {\"op\":\"replace\",\"path\":\"/spec/backends/0/weight\",\"value\":${BLUE_WEIGHT}},
+                {\"op\":\"replace\",\"path\":\"/spec/backends/1/weight\",\"value\":${GREEN_WEIGHT}}
+              ]" 2>/dev/null || echo "TrafficSplit patch skipped (Linkerd SMI not installed)"
+          fi
+
+          echo "Traffic now served by slot: $TARGET_SLOT"
+
+      # ── Post-switch health verification ──────────────────────────────────
+      - name: Verify active slot health
+        run: |
+          kubectl port-forward svc/gula-backend-active 18001:8000 \
+            -n ${{ env.NAMESPACE }} &
+          PF_PID=$!
+          sleep 5
+
+          STATUS=$(curl -sf --max-time 10 http://localhost:18001/health \
+            -o /tmp/active-health.json -w "%{http_code}" 2>/dev/null || echo "000")
+
+          kill $PF_PID 2>/dev/null || true
+
+          if [ "$STATUS" = "200" ]; then
+            echo "Active slot is healthy!"
+            cat /tmp/active-health.json
+          else
+            echo "WARNING: Active slot health check returned HTTP $STATUS"
+          fi
+
+      # ── Deployment summary ────────────────────────────────────────────────
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "## Blue-Green Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Key | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image tag | \`${{ steps.tag.outputs.tag }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Previous slot | \`${{ steps.slots.outputs.active }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Active slot | \`${{ steps.slots.outputs.target }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| Triggered by | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To roll back: re-run this workflow with \`force_slot=${{ steps.slots.outputs.active }}\`" >> $GITHUB_STEP_SUMMARY
+
+  # ── Rollback job (manual trigger only) ────────────────────────────────────
+  rollback:
+    runs-on: ubuntu-latest
+    if: failure() && needs.blue-green-deploy.result == 'failure'
+    needs: blue-green-deploy
+    steps:
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: "v1.28.0"
+
+      - name: Configure kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Determine previous active slot from cluster state
+        id: prev_slot
+        run: |
+          PREV=$(kubectl get svc gula-backend-active \
+            -n ${{ env.NAMESPACE }} \
+            -o jsonpath='{.metadata.annotations.blue-green/active-slot}' \
+            2>/dev/null || echo "blue")
+          echo "previous=$PREV" >> "$GITHUB_OUTPUT"
+          echo "Previous active slot: $PREV"
+
+      - name: Rollback — restore previous slot
+        run: |
+          PREV="${{ steps.prev_slot.outputs.previous }}"
+          echo "Rolling back to slot: $PREV"
+
+          kubectl patch svc gula-backend-active \
+            -n ${{ env.NAMESPACE }} \
+            --type=json \
+            -p "[
+              {\"op\":\"replace\",\"path\":\"/spec/selector/slot\",\"value\":\"${PREV}\"},
+              {\"op\":\"replace\",\"path\":\"/metadata/annotations/blue-green~1active-slot\",\"value\":\"${PREV}\"}
+            ]" || echo "Rollback patch failed — manual intervention required"
+
+          echo "Rollback complete. Active slot: $PREV"

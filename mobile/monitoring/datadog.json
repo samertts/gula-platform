@@ -1,0 +1,107 @@
+{
+  "clientToken": "pubXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "env": "${ENVIRONMENT}",
+  "service": "gula-platform",
+  "version": "${VERSION}",
+  "site": "datadoghq.com",
+  "trackingConsent": "granted",
+  "sessionReplaySampleRate": 10,
+  "sessionSamplingRate": 80,
+  "telemetrySampleRate": 20,
+  "traceSampleRate": 20,
+  "nativeCrashReportEnabled": true,
+  "logs": {
+    "enabled": true,
+    "forwardToApp": false,
+    "sendNetworkInfo": true
+  },
+  "rum": {
+    "enabled": true,
+    "applicationId": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "trackCrossPlatformLongTasks": true,
+    "trackFrustrations": true,
+    "interactableTargetsThreshold": 10,
+    "trackBackgroundEvents": true
+  },
+  "traces": {
+    "enabled": true,
+    "enableFirstPartyHosts": [
+      "api.gulaplatform.com",
+      "staging-api.gulaplatform.com",
+      "*.gulaplatform.com"
+    ]
+  },
+  "crashReporting": {
+    "enabled": true
+  },
+  "network": {
+    "enabled": true,
+    "trackFirstPartyDomains": [
+      "api.gulaplatform.com",
+      "staging-api.gulaplatform.com",
+      "*.gulaplatform.com"
+    ]
+  },
+  "resourceTracking": {
+    "enabled": true
+  },
+  "actionTracking": {
+    "enabled": true
+  },
+  "viewTracking": {
+    "enabled": true,
+    "trackNavigation": true
+  },
+  "userInteractionTracking": {
+    "enabled": true
+  },
+  "longTaskTracking": {
+    "enabled": true,
+    "thresholdMs": 100
+  },
+  "vitalsUpdateFrequency": "frequent",
+  "configuration": {
+    "android": {
+      "minSdkVersion": 26,
+      "reportProcess": true,
+      "batchSize": "medium",
+      "uploadFrequency": "average"
+    },
+    "ios": {
+      "minIOSVersion": "16.0",
+      "batchSize": "medium",
+      "uploadFrequency": "average"
+    },
+    "flutter": {
+      "platformTracking": "all"
+    }
+  },
+  "monitors": {
+    "mobile": {
+      "crashFreeSessionRate": {
+        "threshold": 99.5,
+        "timeframe": "7d"
+      },
+      "apdexScore": {
+        "threshold": 0.9,
+        "timeframe": "7d"
+      },
+      "slowRenderRate": {
+        "threshold": 5.0,
+        "units": "percent",
+        "timeframe": "7d"
+      },
+      "networkErrorRate": {
+        "threshold": 2.0,
+        "units": "percent",
+        "timeframe": "7d"
+      }
+    }
+  },
+  "dashboards": {
+    "mobileOverview": {
+      "title": "GULA Platform - Mobile Overview",
+      "description": "Cross-platform mobile app performance and crash overview"
+    }
+  }
+}

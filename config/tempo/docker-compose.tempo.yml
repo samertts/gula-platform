@@ -1,0 +1,73 @@
+# =============================================================================
+# GULA PLATFORM - Grafana Tempo Stack
+# Part of the Observability infrastructure (Phase 4)
+# =============================================================================
+# Usage: docker compose -f docker-compose.yml -f config/tempo/docker-compose.tempo.yml up -d
+
+services:
+  minio:
+    image: quay.io/minio/minio:latest
+    container_name: tempo-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    volumes:
+      - tempo-minio-data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - gula-net
+
+  minio-init:
+    image: quay.io/minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      sleep 5;
+      /usr/bin/mc alias set tempo http://minio:9000 minioadmin minioadmin;
+      /usr/bin/mc mb tempo/tempo-traces;
+      /usr/bin/mc policy set public tempo/tempo-traces;
+      exit 0;
+      "
+    networks:
+      - gula-net
+
+  tempo:
+    image: grafana/tempo:2.7.1
+    container_name: tempo
+    command: [ "-config.file=/etc/tempo.yml" ]
+    volumes:
+      - ./config/tempo/tempo-config.yml:/etc/tempo.yml:ro
+      - tempo-data:/tmp/tempo
+    ports:
+      - "3200:3200"   # HTTP
+      - "9095:9095"   # gRPC
+      - "14250:14250" # Jaeger gRPC
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    networks:
+      - gula-net
+
+  tempo-query-frontend:
+    image: grafana/tempo:2.7.1
+    container_name: tempo-query-frontend
+    command: [ "-config.file=/etc/tempo.yml", "-query-frontend.enabled=true", "-querier.enabled=false", "-ingester.enabled=false", "-distributor.enabled=false" ]
+    volumes:
+      - ./config/tempo/tempo-config.yml:/etc/tempo.yml:ro
+    ports:
+      - "3201:3200"
+    depends_on:
+      - tempo
+    networks:
+      - gula-net
+
+volumes:
+  tempo-minio-data:
+  tempo-data:

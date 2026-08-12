@@ -1,0 +1,40 @@
+# GULA Platform — Dependency Check Configuration
+
+dependency-check:
+  scan_paths:
+    - backend/requirements.txt
+    - backend/requirements-lock.txt
+    - frontend-v2/package.json
+    - frontend-v2/package-lock.json
+    - client/package.json
+
+  python:
+    tool: safety
+    args:
+      - --full-report
+      - --disable-optional-telemetry
+    fail_on:
+      - critical
+      - high
+
+  node:
+    tool: npm audit
+    args:
+      - --audit-level=high
+
+  database:
+    nvd_api_key: ${NVD_API_KEY}
+    oss_index: true
+    github_advisories: true
+
+  suppression:
+    - cve: CVE-2023-1234
+      reason: "False positive — not exploitable in this context"
+    - package: example-package
+      reason: "Pinned version required for compatibility"
+
+  notifications:
+    slack_webhook: ${ALERT_WEBHOOK_URL}
+    on:
+      - critical
+      - high

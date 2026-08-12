@@ -1,0 +1,80 @@
+# Architecture Graph — GULA Platform
+
+graph TB
+    subgraph Infrastructure[Infrastructure Layer]
+        NGINX[nginx / TLS]
+        GW[api-gateway]
+        PG[(PostgreSQL 16)]
+        RD[(Redis 7)]
+    end
+
+    subgraph Backend[Backend Layer]
+        FA[FastAPI / uvicorn]
+        MU[Middleware Stack]
+        RT[36 Route Modules]
+        MD[17 ORM Models]
+        SV[14 Service Modules]
+        EN[Engineering Factory]
+    end
+
+    subgraph Kernel[Kernel Subsystems]
+        RTK[Runtime / DI]
+        EB[Event Bus + Outbox]
+        PL[Plugin System]
+        MDK[Module System]
+        BG[Background Tasks]
+        FT[Feature Flags]
+        CF[Config Engine]
+        TN[Tenant Isolation]
+        GWY[Internal Gateway]
+        VL[Validation Engine]
+    end
+
+    subgraph AI[AI Layer]
+        AI_CL[Clinical AI]
+        AI_PO[Population AI]
+        AI_LB[Lab Business AI]
+        AI_PR[Preventive AI]
+        AI_OUT[Outbreak Detection]
+    end
+
+    subgraph Frontend[Frontends]
+        FEV2[React + Firebase]
+        FE[Static PWA]
+        CL[tRPC Client]
+    end
+
+    subgraph Security[Security Layer]
+        JWT[JWT Auth]
+        RBAC[RBAC / Permissions]
+        ENC[Encryption]
+        MID[Intrusion Detection]
+        RATE[Rate Limiting]
+    end
+
+    subgraph Services[Microservices (Future)]
+        DB[Device Bridge]
+        AI_SVC[AI Service]
+        NHOP[NHOP Platform]
+    end
+
+    NGINX -->|TLS| GW
+    GW --> FA
+    FA --> MU
+    MU --> RT
+    RT --> MD
+    RT --> SV
+    FA --> RTK
+    RTK --> EB
+    RTK --> PL
+    RTK --> MDK
+    EB --> PG
+    BG --> RD
+    FA --> AI_CL
+    FA --> EN
+    FEV2 -->|API| FA
+    FE -->|API| FA
+    CL -->|tRPC| FA
+    DB -->|ASTM/HL7| FA
+    AI_SVC --> FA
+    NHOP --> PG

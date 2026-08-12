@@ -1,0 +1,58 @@
+{
+  "report_metadata": {
+    "generated_at": "2026-07-14T17:29:44.438203",
+    "platform_version": "2.1.0",
+    "runner_version": "1.0.0",
+    "duration_seconds": 5.07
+  },
+  "results": [
+    {
+      "suite": "contract",
+      "test": "platform_version_match",
+      "status": "PASS",
+      "detail": "backend=2.1.0, catalog=2.1.0"
+    },
+    {
+      "suite": "dto",
+      "test": "dto_catalog_structure",
+      "status": "PASS",
+      "detail": "version=1.0, schemas=105"
+    },
+    {
+      "suite": "api",
+      "test": "api_catalog_structure",
+      "status": "PASS",
+      "detail": "version=v1, endpoints=313"
+    },
+    {
+      "suite": "events",
+      "test": "events_catalog_structure",
+      "status": "PASS",
+      "detail": "version=1.0.0, events=94"
+    },
+    {
+      "suite": "fhir",
+      "test": "fhir_profiles_structure",
+      "status": "PASS",
+      "detail": "profiles=11: GULAPatientProfile, GULAPractitionerProfile, GULAOrganizationProfile, GULAEncounterProfile, GULALaboratoryObservationProfile, GULAComplianceObservationProfile, GULADiagnosticReportProfile, GULASpecimenProfile, GULAServiceRequestProfile, GULADeviceProfile, GULABundleProfile"
+    },
+    {
+      "suite": "fhir",
+      "test": "fhir_required_fields",
+      "status": "PASS",
+      "detail": "All profiles have valid required fields"
+    },
+    {
+      "suite": "dto",
+      "test": "dto_backend_models_exist",
+      "status": "PASS",
+      "detail": "All key DTO models importable"
+    }
+  ],
+  "summary": {
+    "total": 7,
+    "passed": 7,
+    "failed": 0,
+    "passed_pct": 100.0
+  }
+}

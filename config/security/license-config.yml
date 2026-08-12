@@ -1,0 +1,194 @@
+# =============================================================================
+# License Configuration — GULA Platform Dependency License Validation
+# =============================================================================
+# Path: config/security/license-config.yml
+# Managed by: Security Operations
+# Version: 1.0.0
+# Last updated: 2026-07-15
+# =============================================================================
+#
+# This configuration defines the license compliance policy for all
+# dependencies used in the GULA platform. It is enforced during CI/CD
+# by the validate-sbom.sh script and can be integrated with
+# pip-licenses and scancode-toolkit for automated scanning.
+#
+
+# =============================================================================
+# LICENSE CATEGORIES
+# =============================================================================
+licenses:
+  # ============================================================================
+  # ALLOWED — These licenses are fully compatible with GULA platform licensing
+  # ============================================================================
+  allowed:
+    - "MIT"
+    - "Apache-2.0"
+    - "BSD-2-Clause"
+    - "BSD-3-Clause"
+    - "ISC"
+    - "Python-2.0"
+    - "MPL-2.0"
+    - "LGPL-2.1-only"
+    - "LGPL-2.1+"
+    - "LGPL-3.0-only"
+    - "LGPL-3.0+"
+    - "Unlicense"
+    - "CC0-1.0"
+    - "Zlib"
+    - "PSF"
+    - "Curl"
+    - "MIT-0"
+    - "BSD-4-Clause"
+    - "BSL-1.0"
+    - "0BSD"
+    - "PostgreSQL"
+    - "ICU"
+    - "Unicode-DFS-2016"
+    - "W3C"
+    - "OpenSSL"
+    - "JSON"
+    - "CNRI-Python"
+    - "libtiff"
+    - "IJG"
+    - "NGPL"
+    - "NCSA"
+    - "AFL-3.0"
+
+  # ============================================================================
+  # CONDITIONAL — Allowed with conditions that must be verified
+  # ============================================================================
+  conditional:
+    - license: "LGPL-2.1"
+      condition: "Dynamic linking only. Static linking requires source disclosure."
+      action: "warn"
+      verification: "Verify LGPL library is dynamically linked"
+    - license: "LGPL-2.1-only"
+      condition: "Dynamic linking only. Static linking requires source disclosure."
+      action: "warn"
+      verification: "Verify LGPL library is dynamically linked"
+    - license: "LGPL-2.1+"
+      condition: "Dynamic linking only. Static linking requires source disclosure."
+      action: "warn"
+      verification: "Verify LGPL library is dynamically linked"
+    - license: "CC-BY-4.0"
+      condition: "Attribution required. Must include license notice in distribution."
+      action: "warn"
+      verification: "Verify attribution notice is included"
+    - license: "CC-BY-3.0"
+      condition: "Attribution required. Must include license notice in distribution."
+      action: "warn"
+      verification: "Verify attribution notice is included"
+    - license: "CC-BY-2.0"
+      condition: "Attribution required. Must include license notice in distribution."
+      action: "warn"
+      verification: "Verify attribution notice is included"
+    - license: "CC-BY-2.5"
+      condition: "Attribution required. Must include license notice in distribution."
+      action: "warn"
+      verification: "Verify attribution notice is included"
+
+  # ============================================================================
+  # BLOCKED — These licenses are NOT compatible and will block the PR
+  # ============================================================================
+  blocked:
+    - "GPL-2.0-only"
+    - "GPL-2.0+"
+    - "GPL-2.0-or-later"
+    - "GPL-3.0-only"
+    - "GPL-3.0+"
+    - "GPL-3.0-or-later"
+    - "AGPL-3.0-only"
+    - "AGPL-3.0+"
+    - "AGPL-3.0-or-later"
+    - "BUSL-1.1"
+    - "SSPL-1.0"
+    - "AGPL-1.0"
+    - "AGPL-2.0"
+
+# =============================================================================
+# PACKAGE EXCEPTIONS
+# =============================================================================
+exceptions:
+  # Packages allowed despite their license (documented exceptions)
+  - package: "psutil"
+    license: "BSD-3-Clause"
+    reason: "BSD-3-Clause is in the allowed list"
+  - package: "cryptography"
+    license: "Apache-2.0 + PSF"
+    reason: "Dual-licensed, both are allowed"
+
+# =============================================================================
+# NOTICE REQUIREMENTS
+# =============================================================================
+notices:
+  # Licenses that require notice/attribution in distribution
+  require_notice:
+    - "BSD-2-Clause"
+    - "BSD-3-Clause"
+    - "MIT"
+    - "Apache-2.0"
+    - "CC-BY-*"
+    - "MPL-2.0"
+
+  notice_template: |
+    This product includes software developed by:
+    {package_name} ({package_version}) — {package_license}
+    {package_url}
+    Licensed under: {package_license}
+    {license_text}
+
+# =============================================================================
+# SCAN TOOLS
+# =============================================================================
+scan_tools:
+  # pip-licenses for Python packages
+  pip_licenses:
+    enabled: true
+    command: "python3 -m pip_licenses"
+    args:
+      - "--format=json"
+      - "--with-authors"
+      - "--with-urls"
+      - "--with-description"
+      - "--with-system"
+
+  # scancode-toolkit for deep license scanning
+  scancode:
+    enabled: false  # Enable for full deep scan (resource intensive)
+    command: "scancode"
+    args:
+      - "--license"
+      - "--copyright"
+      - "--json"
+      - "--only-findings"
+
+# =============================================================================
+# CI INTEGRATION
+# =============================================================================
+ci:
+  # Action to take for each license category
+  actions:
+    allowed: "pass"       # Allow PR to proceed
+    conditional: "warn"   # Warn but allow PR
+    blocked: "block"      # Block PR — must be resolved
+    unknown: "warn"       # Warn on unknown licenses
+
+  # PR comment on violation
+  comment_on_pr: true
+
+  # Fail pipeline if blocked packages found
+  fail_on_blocked: true
+
+# =============================================================================
+# REPORTING
+# =============================================================================
+reporting:
+  output_dir: "reports/license-validation/"
+  formats:
+    - "text"
+    - "json"
+    - "markdown"
+
+  # Generate third-party notice file for distribution
+  generate_notices: true
+  notice_output: "THIRD-PARTY-NOTICES.md"

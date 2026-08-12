@@ -1,0 +1,348 @@
+{
+  "id": null,
+  "uid": "gula-laboratory",
+  "title": "GULA Platform — Laboratory Operations",
+  "description": "Laboratory operational intelligence dashboard",
+  "tags": ["gula", "laboratory"],
+  "timezone": "Asia/Baghdad",
+  "refresh": "15s",
+  "schemaVersion": 38,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Laboratory Performance",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Test Volume per Hour",
+      "gridPos": { "x": 0, "y": 1, "w": 12, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 15 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "increase(gula_test_volume_total[1h])", "legendFormat": "Tests/hour" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Critical Results (Last 24h)",
+      "gridPos": { "x": 12, "y": 1, "w": 3, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "orange", "value": 25 },
+              { "color": "red", "value": 50 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "increase(gula_critical_results_total[24h])", "legendFormat": "Critical" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "gauge",
+      "title": "Instrument Utilization",
+      "gridPos": { "x": 15, "y": 1, "w": 4, "h": 7 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "orange", "value": 80 },
+              { "color": "red", "value": 95 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_instrument_utilization_percent", "legendFormat": "Utilization" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Turnaround Time Percentiles",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "minutes",
+          "min": 0,
+          "custom": { "lineWidth": 2 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_turnaround_time_p50", "legendFormat": "p50" },
+        { "expr": "gula_turnaround_time_p95", "legendFormat": "p95" },
+        { "expr": "gula_turnaround_time_p99", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "QC Failure Rate",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2 },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "custom": { "lineWidth": 2 },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_qc_failure_rate_percent", "legendFormat": "QC Failure %" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "piechart",
+      "title": "Samples by Status",
+      "gridPos": { "x": 0, "y": 15, "w": 8, "h": 8 },
+      "options": {
+        "pieType": "pie",
+        "displayLabels": ["name", "percent", "value"],
+        "legend": { "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_samples_by_status", "legendFormat": "{{ status }}" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "barchart",
+      "title": "Tests by Category",
+      "gridPos": { "x": 8, "y": 15, "w": 8, "h": 8 },
+      "options": {
+        "orientation": "horizontal",
+        "groupWidth": 0.7,
+        "barWidth": 0.8,
+        "showValue": "auto",
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "increase(gula_tests_by_category_total[24h])", "legendFormat": "{{ category }}" }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "table",
+      "title": "Reagent Stock Levels",
+      "gridPos": { "x": 16, "y": 15, "w": 8, "h": 8 },
+      "options": {
+        "sortBy": [
+          { "displayName": "Stock Level", "desc": false }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "orange", "value": 2 },
+              { "color": "yellow", "value": 5 },
+              { "color": "green", "value": 10 }
+            ]
+          },
+          "unit": "short",
+          "min": 0
+        }
+      },
+      "targets": [
+        {
+          "expr": "gula_reagent_stock_level",
+          "format": "table",
+          "legendFormat": "{{ reagent }}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "renameByName": {
+              "reagent": "Reagent",
+              "Value": "Stock Level",
+              "threshold": "Minimum Threshold"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Sample Collection vs. Processing Rate",
+      "gridPos": { "x": 0, "y": 23, "w": 12, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "increase(gula_samples_collected_total[1h])", "legendFormat": "Collected" },
+        { "expr": "increase(gula_samples_processed_total[1h])", "legendFormat": "Processed" }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "stat",
+      "title": "Pending Samples",
+      "gridPos": { "x": 12, "y": 23, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "orange", "value": 100 },
+              { "color": "red", "value": 200 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_samples_pending", "legendFormat": "Pending" }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Samples Collected Today",
+      "gridPos": { "x": 16, "y": 23, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "targets": [
+        { "expr": "increase(gula_samples_collected_total[24h])", "legendFormat": "Collected" }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Tests Completed Today",
+      "gridPos": { "x": 20, "y": 23, "w": 4, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      },
+      "targets": [
+        { "expr": "increase(gula_test_volume_total[24h])", "legendFormat": "Tests" }
+      ]
+    }
+  ],
+  "templating": { "list": [] },
+  "links": [],
+  "timepicker": {}
+}

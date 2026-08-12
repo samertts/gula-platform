@@ -1,0 +1,102 @@
+{
+  "name": "@gula/uap",
+  "version": "1.0.0",
+  "description": "GULA Unified Application Platform — single application runtime for all GULA apps",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./tokens": {
+      "types": "./dist/tokens/index.d.ts",
+      "import": "./dist/tokens/index.mjs"
+    },
+    "./components": {
+      "types": "./dist/components/index.d.ts",
+      "import": "./dist/components/index.mjs"
+    },
+    "./runtime": {
+      "types": "./dist/runtime/index.d.ts",
+      "import": "./dist/runtime/index.mjs"
+    },
+    "./offline": {
+      "types": "./dist/offline/index.d.ts",
+      "import": "./dist/offline/index.mjs"
+    },
+    "./device": {
+      "types": "./dist/device/index.d.ts",
+      "import": "./dist/device/index.mjs"
+    },
+    "./update": {
+      "types": "./dist/update/index.d.ts",
+      "import": "./dist/update/index.mjs"
+    },
+    "./marketplace": {
+      "types": "./dist/marketplace/index.d.ts",
+      "import": "./dist/marketplace/index.mjs"
+    },
+    "./notifications": {
+      "types": "./dist/notifications/index.d.ts",
+      "import": "./dist/notifications/index.mjs"
+    },
+    "./printing": {
+      "types": "./dist/printing/index.d.ts",
+      "import": "./dist/printing/index.mjs"
+    },
+    "./telemetry": {
+      "types": "./dist/telemetry/index.d.ts",
+      "import": "./dist/telemetry/index.mjs"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "import": "./dist/sdk/index.mjs"
+    },
+    "./quality": {
+      "types": "./dist/quality/index.d.ts",
+      "import": "./dist/quality/index.mjs"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc && vite build",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts,.tsx"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.0.0",
+    "idb": "^8.0.0",
+    "zod": "^4.4.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.1",
+    "lucide-react": "^1.25.0",
+    "zustand": "^5.0.0",
+    "date-fns": "^4.4.0",
+    "zustand-persist": "^0.4.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0",
+    "react-router-dom": "^6.0.0 || ^7.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
+    "vitest": "^4.1.10",
+    "@vitejs/plugin-react": "^6.0.3"
+  }
+}

@@ -1,0 +1,189 @@
+[
+  {
+    "timestamp": "2026-07-18T10:14:37.339419+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 100,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T10:18:34.909234+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 100,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T10:28:05.794406+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 100,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T10:40:08.643802+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 100,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T10:41:40.744652+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 100,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T10:44:05.591147+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T10:45:30.555562+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T10:47:01.573312+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T10:48:19.460265+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T11:28:06.482131+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T11:48:11.956745+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T11:50:58.879101+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T11:54:13.261004+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T11:58:20.880921+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T12:01:13.295558+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T12:07:52.105492+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  },
+  {
+    "timestamp": "2026-07-18T12:13:08.443684+00:00",
+    "quality_index": 673,
+    "quality_grade": "D",
+    "debt_items": 647,
+    "debt_hours": 1644.0,
+    "test_coverage": 55,
+    "arch_score": 7.1,
+    "auth_coverage": 98,
+    "open_cves": 0
+  }
+]

@@ -1,0 +1,37 @@
+# Slot-specific services used by Linkerd TrafficSplit for Blue-Green switching
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gula-backend-blue
+  namespace: gula
+  labels:
+    app: gula-backend
+    slot: blue
+spec:
+  type: ClusterIP
+  selector:
+    app: gula-backend
+    slot: blue
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gula-backend-green
+  namespace: gula
+  labels:
+    app: gula-backend
+    slot: green
+spec:
+  type: ClusterIP
+  selector:
+    app: gula-backend
+    slot: green
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: http

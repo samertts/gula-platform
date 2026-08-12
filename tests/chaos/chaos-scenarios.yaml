@@ -1,0 +1,108 @@
+# GULA Platform — Chaos Engineering Scenarios
+
+scenarios:
+  - name: pod-kill-backend
+    description: Random termination of backend pod
+    type: PodChaos
+    action: delete
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: gula-backend
+    mode: one
+    duration: 30s
+    scheduler:
+      cron: "0 */6 * * *"  # Every 6 hours
+
+  - name: network-delay-database
+    description: Add 100ms latency to PostgreSQL connections
+    type: NetworkChaos
+    action: delay
+    delay: 100ms
+    jitter: 20ms
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: gula-backend
+    target:
+      namespaces: [gula]
+      labelSelectors:
+        app: postgres-primary
+    duration: 60s
+    scheduler:
+      cron: "0 */12 * * *"  # Every 12 hours
+
+  - name: memory-pressure-backend
+    description: 90% memory pressure on backend
+    type: StressChaos
+    stressors:
+      memory:
+        workers: 4
+        size: 512MB
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: gula-backend
+    mode: one
+    duration: 120s
+
+  - name: cpu-stress-backend
+    description: 80% CPU stress on backend
+    type: StressChaos
+    stressors:
+      cpu:
+        workers: 2
+        load: 80
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: gula-backend
+    mode: one
+    duration: 60s
+
+  - name: dns-error-all
+    description: DNS resolution failure for all services
+    type: DNSChaos
+    action: error
+    patterns:
+      - "*"
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: gula-backend
+    duration: 30s
+
+  - name: http-fault-injection
+    description: Inject HTTP 500 errors on /api/results
+    type: HTTPChaos
+    mode: all
+    target: gula-backend
+    port: 8000
+    abort:
+      percentage: 10
+      statusCode: 500
+    duration: 60s
+
+  - name: pod-kill-postgres
+    description: Kill PostgreSQL pod to test failover
+    type: PodChaos
+    action: delete
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: postgres-primary
+    mode: one
+    duration: 30s
+    scheduler:
+      cron: "0 4 * * 0"  # Every Sunday at 4am
+
+  - name: pod-kill-redis
+    description: Kill Redis to test Sentinel failover
+    type: PodChaos
+    action: delete
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: redis-primary
+    mode: one
+    duration: 20s

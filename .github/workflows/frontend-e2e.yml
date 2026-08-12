@@ -1,0 +1,52 @@
+name: Frontend E2E Tests
+
+on:
+  push:
+    branches: [main, release, develop]
+    paths:
+      - "frontend-v3/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "frontend-v3/**"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-v3
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: frontend-v3/package-lock.json
+
+      - run: npm ci
+
+      - run: npx playwright install chromium --with-deps
+
+      - run: npm run build
+
+      - run: npx playwright test
+        env:
+          CI: "true"
+          PLAYWRIGHT_BASE_URL: "http://localhost:4173"
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: frontend-v3/playwright-report/
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-screenshots
+          path: frontend-v3/test-results/
+          retention-days: 14

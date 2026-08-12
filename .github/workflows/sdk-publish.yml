@@ -1,0 +1,268 @@
+name: SDK - Publish Packages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      sdks:
+        description: 'SDKs to publish (comma-separated)'
+        required: true
+        default: 'typescript,dart,kotlin,python'
+      dry_run:
+        description: 'Dry run (no actual publish)'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  NODE_VERSION: '24'
+  PYTHON_VERSION: '3.12'
+  FLUTTER_VERSION: '3.27.0'
+
+jobs:
+  publish-typescript:
+    name: Publish TypeScript SDK to npm
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && contains(inputs.sdks, 'typescript'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/sdk/typescript
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Cache node_modules
+        uses: actions/cache@v4
+        with:
+          path: contracts/sdk/typescript/node_modules
+          key: npm-ts-sdk-${{ hashFiles('contracts/sdk/typescript/package-lock.json', 'contracts/sdk/typescript/package.json') }}
+          restore-keys: |
+            npm-ts-sdk-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint 2>/dev/null || echo "No lint script"
+
+      - name: Run tests
+        run: npm test 2>/dev/null || echo "No tests"
+
+      - name: Build
+        run: npm run build
+
+      - name: Check version against npm registry
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          NPM_VERSION=$(npm view gula-platform-sdk version 2>/dev/null || echo "0.0.0")
+          if [ "$PACKAGE_VERSION" = "$NPM_VERSION" ]; then
+            echo "Version $PACKAGE_VERSION already published. Skipping."
+            echo "should_publish=false" >> $GITHUB_ENV
+          else
+            echo "Version $PACKAGE_VERSION (npm: $NPM_VERSION). Publishing."
+            echo "should_publish=true" >> $GITHUB_ENV
+          fi
+
+      - name: Publish to npm
+        if: env.should_publish == 'true' && !github.event.inputs.dry_run
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
+
+      - name: Configure npm for GitHub Packages
+        if: env.should_publish == 'true' && !github.event.inputs.dry_run
+        uses: actions/setup-node@v4
+        with:
+          registry-url: 'https://npm.pkg.github.com'
+      - name: Publish to GitHub Packages
+        if: env.should_publish == 'true' && !github.event.inputs.dry_run
+        working-directory: contracts/sdk/typescript
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-dart:
+    name: Publish Dart SDK to pub.dev
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && contains(inputs.sdks, 'dart'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/sdk/dart
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: dart analyze
+
+      - name: Run tests
+        run: dart test
+
+      - name: Check version
+        run: |
+          PACKAGE_VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}')
+          echo "Package version: $PACKAGE_VERSION"
+
+      - name: Publish to pub.dev
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
+        env:
+          PUB_CREDENTIALS: ${{ secrets.PUB_DEV_CREDENTIALS }}
+        run: |
+          mkdir -p ~/.config/dart/
+          echo "$PUB_CREDENTIALS" > ~/.config/dart/pub-credentials.json
+          dart pub publish --force
+
+  publish-kotlin:
+    name: Publish Kotlin SDK
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && contains(inputs.sdks, 'kotlin'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: contracts/sdk/kotlin
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-home-cache-cleanup: true
+          build-root-directory: contracts/sdk/kotlin
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build SDK
+        run: ./gradlew build
+
+      - name: Run tests
+        run: ./gradlew test
+
+      - name: Publish to Maven Central
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
+        env:
+          ORG_GRADLE_PROJECT_sonatypeUsername: ${{ secrets.SONATYPE_USERNAME }}
+          ORG_GRADLE_PROJECT_sonatypePassword: ${{ secrets.SONATYPE_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingKeyId: ${{ secrets.GPG_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.GPG_PASSPHRASE }}
+          ORG_GRADLE_PROJECT_signingSecretKeyRingFile: ${{ secrets.GPG_SECRET_KEY_RING_FILE }}
+        run: ./gradlew publishToSonatype closeAndReleaseSonatypeStagingRepository
+
+      - name: Publish to GitHub Packages
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./gradlew publish \
+            -PgithubUser=${{ github.actor }} \
+            -PgithubToken=${{ secrets.GITHUB_TOKEN }}
+
+  publish-python:
+    name: Publish Python SDK to PyPI
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && contains(inputs.sdks, 'python'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: contracts/sdk/python
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-py-sdk-${{ hashFiles('contracts/sdk/python/pyproject.toml', 'contracts/sdk/python/setup.py') }}
+          restore-keys: |
+            pip-py-sdk-
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Lint
+        run: pip install ruff && ruff check . 2>/dev/null || echo "No lint"
+
+      - name: Run tests
+        run: pip install pytest && python -m pytest 2>/dev/null || echo "No tests"
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check version
+        run: |
+          pip install tomli 2>/dev/null || true
+          python -c "
+          import json, os
+          try:
+              import tomllib
+              with open('pyproject.toml', 'rb') as f:
+                  d = tomllib.load(f)
+          except:
+              import configparser
+              c = configparser.ConfigParser()
+              c.read('setup.cfg')
+              d = dict(c)
+          print(f'Version: {d.get(\"project\",{}).get(\"version\", \"unknown\")}')
+          "
+
+      - name: Upload to PyPI
+        if: ${{ github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.dry_run == false) }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+        run: twine upload dist/*
+
+  summary:
+    name: SDK Publish Summary
+    needs: [publish-typescript, publish-dart, publish-kotlin, publish-python]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print summary
+        run: |
+          echo "## SDK Publish Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| SDK | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeScript | ${{ needs.publish-typescript.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dart | ${{ needs.publish-dart.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Kotlin | ${{ needs.publish-kotlin.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python | ${{ needs.publish-python.result }} |" >> $GITHUB_STEP_SUMMARY

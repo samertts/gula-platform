@@ -1,0 +1,60 @@
+# GULA Platform — Cross-Region Replication Configuration
+
+replication:
+  primary:
+    region: me-central1
+    location: Baghdad, Iraq
+    cloud: digitalocean-fra1
+    priority: 100
+    active: true
+    
+  dr:
+    region: eu-west1
+    location: Frankfurt, Germany
+    cloud: digitalocean-fra1-alt
+    priority: 50
+    active: false
+
+postgresql:
+  mode: streaming
+  sync_type: synchronous
+  replication_slots: 5
+  wal_keep_size: 1024  # MB
+  max_wal_senders: 10
+  standby_timeout: 30s
+  dr_promotion: auto
+
+redis:
+  mode: sentinel
+  cross_region: false
+  note: "Redis is ephemeral — no cross-region sync"
+
+rabbitmq:
+  mode: shovel
+  shovel_type: dynamic
+  ack_mode: on-confirm
+  reconnect_delay: 5
+  queue_pattern: "*.events"
+  ha_mode: all
+
+minio:
+  mode: bucket_replication
+  rules:
+    - source: gula-reports
+      target: gula-reports-dr
+      sync: async
+      priority: 10
+      delete_marker: true
+  versioning: enabled
+
+dns:
+  provider: cloudflare
+  failover_ttl: 60
+  health_checks:
+    path: /health
+    interval: 30s
+    timeout: 5s
+    unhealthy_threshold: 3
+
+rpo: "5s"
+rto: "5m"

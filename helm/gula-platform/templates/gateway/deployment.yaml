@@ -1,0 +1,66 @@
+{{- if .Values.gateway.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.gateway.name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    {{- include "gula.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: {{ .Values.gateway.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "gula.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: gateway
+  strategy:
+    type: {{ .Values.gateway.strategy.type }}
+    rollingUpdate:
+      maxSurge: {{ .Values.gateway.strategy.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.gateway.strategy.rollingUpdate.maxUnavailable }}
+  template:
+    metadata:
+      labels:
+        {{- include "gula.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: gateway
+      annotations:
+        {{- if .Values.serviceMesh.linkerd.enabled }}
+        linkerd.io/inject: {{ .Values.serviceMesh.linkerd.autoInject | default "enabled" }}
+        {{- end }}
+    spec:
+      {{- include "gula.imagePullSecrets" .Values.gateway | nindent 6 }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+      containers:
+        - name: nginx
+          image: "{{ .Values.gateway.image.repository }}:{{ .Values.gateway.image.tag }}"
+          imagePullPolicy: {{ .Values.gateway.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.gateway.service.targetPort }}
+              name: {{ .Values.gateway.service.name }}
+              protocol: TCP
+            - containerPort: {{ .Values.gateway.service.targetPortHTTPS }}
+              name: {{ .Values.gateway.service.nameHTTPS }}
+              protocol: TCP
+          {{- include "gula.resources" .Values.gateway | nindent 10 }}
+          livenessProbe:
+            {{- include "gula.probe" (dict "probe" .Values.gateway.probes.liveness "path" .Values.gateway.probes.liveness.path "port" .Values.gateway.probes.liveness.port) | nindent 12 }}
+          readinessProbe:
+            {{- include "gula.probe" (dict "probe" .Values.gateway.probes.readiness "path" .Values.gateway.probes.readiness.path "port" .Values.gateway.probes.readiness.port) | nindent 12 }}
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: {{ (index .Values.gateway.configMaps.nginxConf).mountPath }}
+              subPath: {{ (index .Values.gateway.configMaps.nginxConf).subPath }}
+              readOnly: true
+            - name: nginx-conf-d
+              mountPath: {{ (index .Values.gateway.configMaps.nginxConfD).mountPath }}
+              readOnly: true
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: {{ (index .Values.gateway.configMaps.nginxConf).name }}
+        - name: nginx-conf-d
+          configMap:
+            name: {{ (index .Values.gateway.configMaps.nginxConfD).name }}
+{{- end }}

@@ -1,0 +1,89 @@
+{{- $global := .Values.global -}}
+{{- $namespace := $global.namespace -}}
+{{- $secrets := .Values.secrets.name -}}
+{{- $registry := $global.imageRegistry -}}
+{{- $tag := $global.imageTag -}}
+{{- $pullPolicy := $global.imagePullPolicy -}}
+{{- $meshEnabled := .Values.serviceMesh.linkerd.enabled -}}
+{{- $meshInject := .Values.serviceMesh.linkerd.autoInject -}}
+{{- range $svc, $config := .Values.microservices }}
+{{- if $config.enabled }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $config.name }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "gula.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: microservice
+    gula-service: {{ $svc }}
+spec:
+  replicas: {{ $config.replicaCount }}
+  selector:
+    matchLabels:
+      gula-service: {{ $svc }}
+      app.kubernetes.io/component: microservice
+  template:
+    metadata:
+      labels:
+        gula-service: {{ $svc }}
+        app.kubernetes.io/component: microservice
+      annotations:
+        {{- if $meshEnabled }}
+        linkerd.io/inject: {{ $meshInject | default "enabled" }}
+        {{- end }}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      initContainers:
+        {{- range $config.initContainers }}
+        - name: {{ .name }}
+          image: {{ .image }}
+          command: {{ toJson .command }}
+        {{- end }}
+      containers:
+        - name: {{ $config.name }}
+          image: "{{ $registry }}/{{ $config.image.repository }}:{{ $config.image.tag | default $tag }}"
+          imagePullPolicy: {{ $config.image.pullPolicy | default $pullPolicy }}
+          env:
+            {{- range $config.env }}
+            - name: {{ .name }}
+              {{- if .value }}
+              value: {{ .value }}
+              {{- else if .valueFrom }}
+              {{- toYaml (pick . "valueFrom") | nindent 14 }}
+              {{- end }}
+            {{- end }}
+          ports:
+            - containerPort: {{ $config.port }}
+              name: http
+              protocol: TCP
+          resources:
+            requests:
+              memory: {{ $config.resources.requests.memory }}
+              cpu: {{ $config.resources.requests.cpu }}
+            limits:
+              memory: {{ $config.resources.limits.memory }}
+              cpu: {{ $config.resources.limits.cpu }}
+          livenessProbe:
+            httpGet:
+              path: {{ $config.probes.liveness.path }}
+              port: {{ $config.probes.liveness.port }}
+            initialDelaySeconds: {{ $config.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ $config.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ $config.probes.liveness.timeoutSeconds | default 5 }}
+            failureThreshold: {{ $config.probes.liveness.failureThreshold | default 5 }}
+          readinessProbe:
+            httpGet:
+              path: {{ $config.probes.readiness.path }}
+              port: {{ $config.probes.readiness.port }}
+            initialDelaySeconds: {{ $config.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ $config.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ $config.probes.readiness.timeoutSeconds | default 5 }}
+            failureThreshold: {{ $config.probes.readiness.failureThreshold | default 3 }}
+      imagePullSecrets:
+        - name: ghcr-credentials
+{{- end }}
+{{- end }}

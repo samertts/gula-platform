@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: GULA Platform
+    orgId: 1
+    folder: GULA
+    folderUid: gula
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/dashboards

@@ -1,0 +1,119 @@
+# =============================================================================
+# ClusterIssuer — Let's Encrypt Production
+# =============================================================================
+# Path: config/cert-manager/cluster-issuer.yaml
+# Managed by: Security Operations
+# Applied via: kubectl apply -f cluster-issuer.yaml
+# =============================================================================
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+  namespace: cert-manager
+  annotations:
+    cert-manager.io/issue-temporary-certificate: "true"
+  labels:
+    app.kubernetes.io/name: gula-platform
+    app.kubernetes.io/component: cert-manager
+    app.kubernetes.io/managed-by: kubectl
+    cert-manager.io/issuer-kind: ClusterIssuer
+spec:
+  acme:
+    # Production Let's Encrypt ACME server
+    server: https://acme-v02.api.letsencrypt.org/directory
+
+    # Staging server (use for testing to avoid rate limits):
+    # server: https://acme-staging-v02.api.letsencrypt.org/directory
+
+    # Email for certificate expiry notifications and account recovery
+    email: security@gula.health
+
+    # Name of a secret used to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+
+    # Enable the HTTP-01 challenge provider
+    solvers:
+      - selector:
+          # Match only specific ingress classes
+          matchLabels:
+            "kubernetes.io/ingress.class": nginx
+        http01:
+          ingress:
+            class: nginx
+            # Service type for the HTTP01 solver
+            serviceType: ClusterIP
+            # Pod template for the HTTP01 solver
+            podTemplate:
+              spec:
+                readinessGate:
+                  - condition-type: "cert-manager.io/has-signed"
+                nodeSelector:
+                  kubernetes.io/os: linux
+                tolerations:
+                  - key: "CriticalAddonsOnly"
+                    operator: "Exists"
+
+      - selector:
+          dnsZones:
+            - "gula.health"
+        dns01:
+          cloudflare:
+            email: security@gula.health
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+
+      - selector: {}
+        http01:
+          ingress:
+            class: nginx
+---
+# =============================================================================
+# Staging ClusterIssuer (for testing)
+# =============================================================================
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: gula-platform
+    app.kubernetes.io/component: cert-manager
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: security@gula.health
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+---
+# =============================================================================
+# Supporting Secret — Cloudflare API Token for DNS01 solver
+# =============================================================================
+# This secret must be created separately with the actual token:
+#   kubectl create secret generic cloudflare-api-token \
+#     --namespace cert-manager \
+#     --from-literal=api-token='YOUR_CLOUDFLARE_API_TOKEN'
+#
+# The token requires these permissions:
+#   Zone:Zone:Read
+#   Zone:DNS:Edit
+#   for zone: gula.health
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: cloudflare-api-token
+  namespace: cert-manager
+  labels:
+    app.kubernetes.io/name: gula-platform
+    app.kubernetes.io/component: cert-manager
+type: Opaque
+stringData:
+  api-token: "REPLACE_WITH_CLOUDFLARE_API_TOKEN"

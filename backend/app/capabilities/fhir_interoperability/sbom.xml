@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.5" version="1">
+    <metadata>
+        <component type="library">
+            <name>fhir_interoperability</name>
+            <version>1.0.0</version>
+            <description>FHIR/HL7 interoperability: FHIR R4 resources, HL7 v2 messages, LOINC coding, SNOMED CT, ICD-10, ICD-11 ready, UCUM units, IHE profiles, terminology services</description>
+        </component>
+    </metadata>
+    <components>
+        <component type="library">
+            <name>capability-framework</name>
+            <version>1.0.0</version>
+        </component>
+    </components>
+</bom>

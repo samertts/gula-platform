@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# =============================================================================
+# GULA Pre-Commit Hook
+# =============================================================================
+# Runs before each commit:
+#   1. Python syntax check on staged .py files
+#   2. Quality gate in --stage mode
+# Blocks commit on FAIL (exit 2).
+# =============================================================================
+
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$REPO_ROOT" ]; then
+    echo "pre-commit: not a git repository, skipping"
+    exit 0
+fi
+
+cd "$REPO_ROOT"
+
+# ── Step 1: Python syntax check on staged .py files ──────────────────────────
+STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
+if [ -n "$STAGED_PY" ]; then
+    echo "=== pre-commit: checking Python syntax ==="
+    syntax_errors=0
+    for f in $STAGED_PY; do
+        if [ -f "$f" ]; then
+            if ! python3 -m py_compile "$f" 2>/dev/null; then
+                echo "  ✖ $f — syntax error"
+                syntax_errors=$((syntax_errors + 1))
+            else
+                echo "  ✓ $f"
+            fi
+        fi
+    done
+    if [ "$syntax_errors" -gt 0 ]; then
+        echo "pre-commit: $syntax_errors file(s) with syntax errors — aborting commit"
+        exit 1
+    fi
+    echo "  ✓ syntax OK for all staged Python files"
+    echo ""
+fi
+
+# ── Step 2: Quality gate in --stage mode ─────────────────────────────────────
+QUALITY_GATE="$REPO_ROOT/scripts/quality_gate.py"
+if [ -f "$QUALITY_GATE" ]; then
+    echo "=== pre-commit: running quality gate (--stage) ==="
+    python3 "$QUALITY_GATE" --stage --ci
+    GATE_EXIT=$?
+    if [ "$GATE_EXIT" -eq 2 ]; then
+        echo "pre-commit: quality gate FAILED — aborting commit"
+        echo "pre-commit: run 'python3 scripts/quality_gate.py --stage' for details"
+        exit 1
+    fi
+    if [ "$GATE_EXIT" -eq 1 ]; then
+        echo "pre-commit: quality gate returned WARNING — review recommended"
+        echo "pre-commit: run 'python3 scripts/quality_gate.py --stage' for details"
+    fi
+    echo ""
+fi
+
+echo "pre-commit: all checks passed"
+exit 0

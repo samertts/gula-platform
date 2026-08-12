@@ -1,0 +1,571 @@
+# GULA Microservices — Deployments
+# All services use port 8000 internally (except AI: 9000)
+# External ports per ARCHITECTURE.md:
+#   lab:8001  patient:8002  order:8003  result:8004  sample:8005  notification:8006  ai:9000
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Shared env vars template (used by all data-plane microservices)
+# ─────────────────────────────────────────────────────────────────────────────
+
+---
+# Lab Service (:8001)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-lab
+  namespace: gula
+  labels:
+    app: svc-lab
+    component: microservice
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: svc-lab
+  template:
+    metadata:
+      labels:
+        app: svc-lab
+        component: microservice
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z postgres-primary 5432; do sleep 2; done"]
+        - name: wait-for-rabbitmq
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
+      containers:
+        - name: svc-lab
+          image: ghcr.io/samertts/gula-platform/svc-lab:latest
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
+            - name: RABBITMQ_URL
+              value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASS)@rabbitmq:5672/gula
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: POSTGRES_PASSWORD
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_PASS
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      imagePullSecrets:
+        - name: ghcr-credentials
+
+---
+# Patient Service (:8002)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-patient
+  namespace: gula
+  labels:
+    app: svc-patient
+    component: microservice
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: svc-patient
+  template:
+    metadata:
+      labels:
+        app: svc-patient
+        component: microservice
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z postgres-primary 5432; do sleep 2; done"]
+        - name: wait-for-rabbitmq
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
+      containers:
+        - name: svc-patient
+          image: ghcr.io/samertts/gula-platform/svc-patient:latest
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
+            - name: RABBITMQ_URL
+              value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASS)@rabbitmq:5672/gula
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: POSTGRES_PASSWORD
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_PASS
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      imagePullSecrets:
+        - name: ghcr-credentials
+
+---
+# Order Service (:8003)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-order
+  namespace: gula
+  labels:
+    app: svc-order
+    component: microservice
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: svc-order
+  template:
+    metadata:
+      labels:
+        app: svc-order
+        component: microservice
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z postgres-primary 5432; do sleep 2; done"]
+        - name: wait-for-rabbitmq
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
+      containers:
+        - name: svc-order
+          image: ghcr.io/samertts/gula-platform/svc-order:latest
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
+            - name: RABBITMQ_URL
+              value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASS)@rabbitmq:5672/gula
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: POSTGRES_PASSWORD
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_PASS
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      imagePullSecrets:
+        - name: ghcr-credentials
+
+---
+# Result Service (:8004)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-result
+  namespace: gula
+  labels:
+    app: svc-result
+    component: microservice
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: svc-result
+  template:
+    metadata:
+      labels:
+        app: svc-result
+        component: microservice
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z postgres-primary 5432; do sleep 2; done"]
+        - name: wait-for-rabbitmq
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
+      containers:
+        - name: svc-result
+          image: ghcr.io/samertts/gula-platform/svc-result:latest
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
+            - name: RABBITMQ_URL
+              value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASS)@rabbitmq:5672/gula
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: POSTGRES_PASSWORD
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_PASS
+            - name: MINIO_ENDPOINT
+              value: "minio:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: MINIO_ACCESS_KEY
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: MINIO_SECRET_KEY
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      imagePullSecrets:
+        - name: ghcr-credentials
+
+---
+# Sample Service (:8005)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-sample
+  namespace: gula
+  labels:
+    app: svc-sample
+    component: microservice
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: svc-sample
+  template:
+    metadata:
+      labels:
+        app: svc-sample
+        component: microservice
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z postgres-primary 5432; do sleep 2; done"]
+        - name: wait-for-rabbitmq
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
+      containers:
+        - name: svc-sample
+          image: ghcr.io/samertts/gula-platform/svc-sample:latest
+          imagePullPolicy: Always
+          env:
+            - name: DATABASE_URL
+              value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
+            - name: RABBITMQ_URL
+              value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASS)@rabbitmq:5672/gula
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: POSTGRES_PASSWORD
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_PASS
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      imagePullSecrets:
+        - name: ghcr-credentials
+
+---
+# Notification Service (:8006)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-notification
+  namespace: gula
+  labels:
+    app: svc-notification
+    component: microservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: svc-notification
+  template:
+    metadata:
+      labels:
+        app: svc-notification
+        component: microservice
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      initContainers:
+        - name: wait-for-rabbitmq
+          image: busybox:1.37
+          command: ["sh", "-c", "until nc -z rabbitmq 5672; do sleep 2; done"]
+      containers:
+        - name: svc-notification
+          image: ghcr.io/samertts/gula-platform/svc-notification:latest
+          imagePullPolicy: Always
+          env:
+            - name: RABBITMQ_URL
+              value: amqp://$(RABBITMQ_USER):$(RABBITMQ_PASS)@rabbitmq:5672/gula
+            - name: RABBITMQ_USER
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_USER
+            - name: RABBITMQ_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: RABBITMQ_PASS
+            - name: FCM_SERVER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: FCM_SERVER_KEY
+                  optional: true
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      imagePullSecrets:
+        - name: ghcr-credentials
+
+---
+# AI Service (:9000) — wraps local Ollama
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: svc-ai
+  namespace: gula
+  labels:
+    app: svc-ai
+    component: microservice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: svc-ai
+  template:
+    metadata:
+      labels:
+        app: svc-ai
+        component: microservice
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: svc-ai
+          image: ghcr.io/samertts/gula-platform/svc-ai:latest
+          imagePullPolicy: Always
+          env:
+            - name: AI_PROVIDER
+              value: ollama
+            - name: AI_FALLBACK
+              value: "false"
+            - name: OLLAMA_BASE_URL
+              value: http://ollama:11434
+          ports:
+            - containerPort: 9000
+              name: http
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9000
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
+      imagePullSecrets:
+        - name: ghcr-credentials

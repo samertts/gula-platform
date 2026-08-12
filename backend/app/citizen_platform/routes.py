@@ -1,0 +1,434 @@
+from __future__ import annotations
+
+import logging
+from datetime import datetime
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import or_
+from sqlalchemy.orm import Session
+
+from app._compat import UTC
+from app.database import get_db
+from app.identity.models.citizen_relationship import CitizenRelationship
+from app.models.lab_user import LabUser
+from app.models.user import User
+from app.security.dependencies import get_current_user
+from app.services.audit_service import log_action
+
+logger = logging.getLogger("gula.citizen.routes")
+
+
+def _relationship_resource(request: Request) -> str:
+    path_parts = [part for part in request.url.path.split("/") if part]
+    try:
+        index = path_parts.index("citizen-platform") + 1
+        resource = path_parts[index] if index < len(path_parts) else "unknown"
+        if resource == "me":
+            resource = path_parts[index + 1] if index + 1 < len(path_parts) else "unknown"
+        return resource
+    except ValueError:
+        return "unknown"
+
+
+def _source_filter(current_user: User | LabUser):
+    if isinstance(current_user, User):
+        return CitizenRelationship.legacy_user_id == current_user.id
+    if isinstance(current_user, LabUser):
+        return CitizenRelationship.legacy_lab_user_id == current_user.id
+    return None
+
+
+def _record_access_decision(
+    db: Session,
+    request: Request,
+    current_user: User | LabUser,
+    outcome: str,
+    reason: str,
+) -> None:
+    log_action(
+        db,
+        action="citizen_platform_access",
+        resource_type="citizen_platform",
+        user_id=current_user.id,
+        user_role=current_user.role,
+        details=f"resource={_relationship_resource(request)};method={request.method};outcome={outcome};reason={reason}",
+        ip_address=request.client.host if request.client else "unknown",
+    )
+    db.commit()
+
+
+def require_citizen_relationship(
+    request: Request,
+    citizen_id: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User | LabUser = Depends(get_current_user),
+) -> CitizenRelationship:
+    """Authorize path-ID or own-context citizen access through an active link.
+
+    The dependency deliberately does not fall back to phone, national-ID hash,
+    role-only checks, or a caller-selected profile. When no path ID is supplied,
+    only one active self relationship may establish the `/me/*` context.
+    """
+    source_filter = _source_filter(current_user)
+    resource = _relationship_resource(request)
+    write = request.method not in {"GET", "HEAD", "OPTIONS"}
+    if source_filter is None or (citizen_id is not None and (not citizen_id or len(citizen_id) > 26)):
+        _record_access_decision(db, request, current_user, "denied", "invalid_context")
+        raise HTTPException(status_code=403, detail="Citizen relationship is not authorized")
+
+    now = datetime.now(UTC)
+    query = db.query(CitizenRelationship).filter(
+        source_filter,
+        CitizenRelationship.status == "active",
+        CitizenRelationship.valid_from <= now,
+        or_(CitizenRelationship.expires_at.is_(None), CitizenRelationship.expires_at > now),
+        CitizenRelationship.revoked_at.is_(None),
+    )
+    if citizen_id is not None:
+        query = query.filter(CitizenRelationship.citizen_id == citizen_id)
+    else:
+        query = query.filter(CitizenRelationship.relationship_type == "self")
+
+    candidates = query.order_by(CitizenRelationship.created_at.desc()).all()
+    if citizen_id is None and len({item.citizen_id for item in candidates}) != 1:
+        _record_access_decision(db, request, current_user, "denied", "ambiguous_self_context")
+        raise HTTPException(status_code=403, detail="Citizen relationship is not authorized")
+
+    relationship = next((item for item in candidates if item.allows(resource, write=write)), None)
+    if relationship is None:
+        _record_access_decision(db, request, current_user, "denied", "relationship_or_scope_denied")
+        raise HTTPException(status_code=403, detail="Citizen relationship is not authorized")
+
+    _record_access_decision(db, request, current_user, "allowed", "relationship_scope_granted")
+    request.state.citizen_relationship = relationship
+    return relationship
+
+
+def get_authorized_citizen_relationship(request: Request) -> CitizenRelationship:
+    relationship = getattr(request.state, "citizen_relationship", None)
+    if not isinstance(relationship, CitizenRelationship):
+        raise HTTPException(status_code=403, detail="Citizen relationship is not authorized")
+    return relationship
+
+
+def _get_sdk(request: Any) -> Any:
+    from app.citizen_platform.integration import get_sdk
+    return get_sdk()
+
+
+router = APIRouter(
+    prefix="/citizen-platform",
+    tags=["citizen-platform"],
+    dependencies=[Depends(require_citizen_relationship)],
+)
+
+
+@router.get("/me/dashboard")
+async def get_own_dashboard(
+    relationship: CitizenRelationship = Depends(get_authorized_citizen_relationship),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        return await sdk.get_citizen_overview(relationship.citizen_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/me/profile")
+async def get_own_profile(
+    relationship: CitizenRelationship = Depends(get_authorized_citizen_relationship),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        return await sdk.get_profile(relationship.citizen_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/me/health-summary")
+async def get_own_health_summary(
+    relationship: CitizenRelationship = Depends(get_authorized_citizen_relationship),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        return await sdk.get_health_summary(relationship.citizen_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/me/appointments")
+async def get_own_appointments(
+    status: str | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    relationship: CitizenRelationship = Depends(get_authorized_citizen_relationship),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        appointments = await sdk.appointments.list_appointments(
+            relationship.citizen_id, status=status, date_from=date_from, date_to=date_to, skip=skip, limit=limit,
+        )
+        return {"appointments": [a.__dict__ for a in appointments], "total": len(appointments)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/me/medications")
+def get_own_medications(
+    relationship: CitizenRelationship = Depends(get_authorized_citizen_relationship),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        medications = sdk.medications.get_active_medications(relationship.citizen_id)
+        return {"medications": [m.__dict__ for m in medications]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/me/lab-results")
+def get_own_lab_results(
+    lab_id: str | None = Query(None),
+    status: str | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    relationship: CitizenRelationship = Depends(get_authorized_citizen_relationship),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        results = sdk.laboratory.get_results(
+            relationship.citizen_id, lab_id=lab_id, status=status, skip=skip, limit=limit,
+        )
+        return {"results": [r.__dict__ for r in results], "total": len(results)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/dashboard/{citizen_id}")
+async def get_dashboard(
+    citizen_id: str,
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        return await sdk.get_citizen_overview(citizen_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/profile/{citizen_id}")
+async def get_profile(
+    citizen_id: str,
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        return await sdk.get_profile(citizen_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/health-summary/{citizen_id}")
+async def get_health_summary(
+    citizen_id: str,
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        return await sdk.get_health_summary(citizen_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/appointments/{citizen_id}")
+async def list_appointments(
+    citizen_id: str,
+    status: str | None = Query(None),
+    date_from: str | None = Query(None),
+    date_to: str | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        appointments = await sdk.appointments.list_appointments(
+            citizen_id, status=status, date_from=date_from, date_to=date_to, skip=skip, limit=limit,
+        )
+        return {"appointments": [a.__dict__ for a in appointments], "total": len(appointments)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.post("/appointments/{citizen_id}")
+async def book_appointment(
+    citizen_id: str,
+    body: dict[str, Any],
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        appointment = await sdk.appointments.book_appointment(
+            citizen_id=citizen_id,
+            practitioner_id=body.get("practitioner_id", ""),
+            facility_id=body.get("facility_id", ""),
+            start_at=body.get("start_at"),
+            end_at=body.get("end_at"),
+            appointment_type=body.get("appointment_type", ""),
+            notes=body.get("notes", ""),
+        )
+        return appointment.__dict__
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/medications/{citizen_id}")
+async def list_medications(citizen_id: str, sdk: Any = Depends(_get_sdk)):
+    try:
+        medications = sdk.medications.get_active_medications(citizen_id)
+        return {"medications": [m.__dict__ for m in medications]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/lab-results/{citizen_id}")
+async def list_lab_results(
+    citizen_id: str,
+    lab_id: str | None = Query(None),
+    status: str | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        results = sdk.laboratory.get_results(
+            citizen_id, lab_id=lab_id, status=status, skip=skip, limit=limit,
+        )
+        return {"results": [r.__dict__ for r in results], "total": len(results)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/radiology/{citizen_id}")
+async def list_radiology_studies(
+    citizen_id: str,
+    status: str | None = Query(None),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        studies = sdk.radiology.get_studies(citizen_id, status=status, skip=skip, limit=limit)
+        return {"studies": [s.__dict__ for s in studies], "total": len(studies)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/family/{citizen_id}")
+async def get_family(citizen_id: str, sdk: Any = Depends(_get_sdk)):
+    try:
+        members = sdk.family.get_family_members(citizen_id)
+        return {"members": [m.__dict__ for m in members]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/vaccinations/{citizen_id}")
+async def get_vaccinations(citizen_id: str, sdk: Any = Depends(_get_sdk)):
+    try:
+        records = sdk.preventive.get_vaccination_history(citizen_id)
+        return {"vaccinations": [r.__dict__ for r in records]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/notifications/{citizen_id}")
+async def get_notifications(
+    citizen_id: str,
+    unread_only: bool = Query(False),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        notifications = sdk.notifications.get_notifications(
+            citizen_id, unread_only=unread_only, skip=skip, limit=limit,
+        )
+        return {
+            "notifications": [
+                {
+                    "id": n.id,
+                    "title": n.title,
+                    "title_ar": n.title_ar,
+                    "message": n.message,
+                    "message_ar": n.message_ar,
+                    "type": n.alert_type,
+                    "is_read": n.is_read,
+                    "created_at": n.created_at,
+                }
+                for n in notifications
+            ],
+            "total": len(notifications),
+            "unread_count": sdk.notifications.get_unread_count(citizen_id),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/certificates/{citizen_id}")
+async def get_certificates(
+    citizen_id: str,
+    certificate_type: str | None = Query(None),
+    status: str | None = Query(None),
+    sdk: Any = Depends(_get_sdk),
+):
+    try:
+        from app.citizen_platform.enums import CertificateType
+        ct = CertificateType(certificate_type) if certificate_type else None
+        certs = sdk.certificates.get_certificates(citizen_id, certificate_type=ct, status=status)
+        return {"certificates": [c.__dict__ for c in certs]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/emergency-contacts/{citizen_id}")
+async def get_emergency_contacts(citizen_id: str, sdk: Any = Depends(_get_sdk)):
+    try:
+        contacts = sdk.emergency.get_contacts(citizen_id)
+        return {"contacts": [c.__dict__ for c in contacts]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/screening/{citizen_id}")
+async def get_screening_status(citizen_id: str, sdk: Any = Depends(_get_sdk)):
+    try:
+        summary = sdk.preventive.get_screening_summary(citizen_id)
+        due = [s.__dict__ for s in sdk.preventive.get_due_screenings(citizen_id)]
+        overdue = [s.__dict__ for s in sdk.preventive.get_overdue_screenings(citizen_id)]
+        return {**summary, "due": due, "overdue": overdue}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/consents/{citizen_id}")
+async def get_consents(citizen_id: str, sdk: Any = Depends(_get_sdk)):
+    try:
+        consents = sdk.privacy.get_active_consents(citizen_id)
+        return {"consents": [c.__dict__ for c in consents]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/mobile-config/{citizen_id}")
+async def get_mobile_config(citizen_id: str, sdk: Any = Depends(_get_sdk)):
+    try:
+        return sdk.get_app_config(citizen_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/adherence/{citizen_id}")
+async def get_adherence(citizen_id: str, sdk: Any = Depends(_get_sdk)):
+    try:
+        return sdk.medications.get_adherence_summary(citizen_id)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc

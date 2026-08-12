@@ -1,0 +1,154 @@
+name: 'Build Flutter App'
+description: 'Composite action to build Flutter desktop app'
+
+inputs:
+  target-os:
+    description: 'Target OS (windows/linux/macos)'
+    required: true
+  build-type:
+    description: 'Build type (debug/release/profile)'
+    required: true
+    default: 'release'
+  flutter-version:
+    description: 'Flutter SDK version'
+    required: false
+    default: '3.27.0'
+  project-path:
+    description: 'Path to Flutter project'
+    required: true
+    default: 'mobile/desktop'
+  signing-identity:
+    description: 'Code signing identity (macOS)'
+    required: false
+    default: ''
+  certificate-base64:
+    description: 'Base64-encoded certificate (macOS)'
+    required: false
+    default: ''
+  certificate-password:
+    description: 'Certificate password (macOS)'
+    required: false
+    default: ''
+
+outputs:
+  artifact-path:
+    description: 'Path to built artifact'
+    value: ${{ steps.set-paths.outputs.artifact-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v3
+      with:
+        channel: stable
+        flutter-version: ${{ inputs.flutter-version }}
+        cache: true
+
+    - name: Cache pub
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ github.workspace }}/${{ inputs.project-path }}/.dart_tool/
+          ~/.pub-cache
+        key: pub-${{ inputs.target-os }}-${{ hashFiles(format('{0}/pubspec.yaml', inputs.project-path)) }}
+        restore-keys: |
+          pub-${{ inputs.target-os }}-
+
+    - name: Install dependencies
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.project-path }}
+      run: flutter pub get
+
+    - name: Analyze
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.project-path }}
+      run: flutter analyze
+
+    - name: Test
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.project-path }}
+      run: flutter test
+
+    - name: Setup macOS signing
+      if: inputs.target-os == 'macos' && inputs.signing-identity != ''
+      shell: bash
+      run: |
+        echo "${{ inputs.certificate-base64 }}" | base64 -d > certificate.p12
+        security create-keychain -p temp build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p temp build.keychain
+        security import certificate.p12 -k build.keychain -P "${{ inputs.certificate-password }}" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple: -s -k temp build.keychain
+
+    - name: Build Flutter app
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.project-path }}
+      run: |
+        flutter build ${{ inputs.target-os }} --${{ inputs.build-type }}
+
+    - name: Sign macOS app
+      if: inputs.target-os == 'macos' && inputs.signing-identity != ''
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.project-path }}
+      run: |
+        /usr/bin/codesign --force --sign "${{ inputs.signing-identity }}" \
+          --options runtime \
+          build/macos/Build/Products/${{ inputs.build-type == 'release' && 'Release' || inputs.build-type == 'debug' && 'Debug' || 'Profile' }}/gula_platform.app
+
+    - name: Create Windows MSIX
+      if: inputs.target-os == 'windows'
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.project-path }}
+      run: |
+        dart run msix:create
+
+    - name: Create Linux packages
+      if: inputs.target-os == 'linux'
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.project-path }}
+      run: |
+        mkdir -p packaging/deb/usr/bin
+        cp -r build/linux/x64/release/bundle/* packaging/deb/usr/bin/
+        dpkg-deb --build packaging/deb gula-platform_${{ github.ref_name }}_amd64.deb
+
+    - name: Create macOS DMG
+      if: inputs.target-os == 'macos'
+      shell: bash
+      working-directory: ${{ github.workspace }}/${{ inputs.project-path }}
+      run: |
+        brew install create-dmg 2>/dev/null || true
+        create-dmg \
+          --volname "GULA Platform" \
+          --window-pos 200 120 \
+          --window-size 600 400 \
+          --icon-size 100 \
+          --app-drop-link 450 200 \
+          "GULA_Platform.dmg" \
+          "build/macos/Build/Products/Release/"
+
+    - name: Set output paths
+      id: set-paths
+      shell: bash
+      run: |
+        case "${{ inputs.target-os }}" in
+          windows)
+            echo "artifact-path=${{ github.workspace }}/${{ inputs.project-path }}/build/windows/msix/" >> $GITHUB_OUTPUT
+            ;;
+          linux)
+            echo "artifact-path=${{ github.workspace }}/${{ inputs.project-path }}/*.deb" >> $GITHUB_OUTPUT
+            ;;
+          macos)
+            echo "artifact-path=${{ github.workspace }}/${{ inputs.project-path }}/GULA_Platform.dmg" >> $GITHUB_OUTPUT
+            ;;
+        esac
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: flutter-build-${{ inputs.target-os }}-${{ inputs.build-type }}
+        path: ${{ github.workspace }}/${{ inputs.project-path }}/build/
+        if-no-files-found: warn
+        retention-days: 7

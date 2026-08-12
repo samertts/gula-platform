@@ -1,0 +1,372 @@
+name: Mobile - iOS CI/CD
+
+on:
+  workflow_call:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: false
+        default: 'debug'
+        type: string
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: boolean
+  push:
+    branches: [main, develop]
+    paths:
+      - 'mobile/ios/**'
+      - 'contracts/sdk/**'
+      - '.github/workflows/mobile-ios.yml'
+      - '.github/actions/build-ios/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'mobile/ios/**'
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  DEVELOPER_DIR: /Applications/Xcode_16.1.app/Contents/Developer
+  DERIVED_DATA_PATH: /tmp/GulaDerivedData
+  XCODE_WORKSPACE: Gula.xcworkspace
+  XCODE_SCHEME: Gula
+  IOS_VERSION: '18.1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  project-availability:
+    name: Detect iOS project
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      project_exists: ${{ steps.project.outputs.exists }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: project
+        shell: bash
+        run: |
+          if find mobile/ios -type f -path '*.xcodeproj/project.pbxproj' -print -quit | grep -q .; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  lint:
+    name: SwiftLint
+    runs-on: macos-14
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mobile/ios
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: |
+          brew install swiftlint
+
+      - name: Run SwiftLint
+        # Keep style findings visible in GitHub annotations while legacy cleanup
+        # proceeds separately; compilation and tests remain the blocking checks.
+        continue-on-error: true
+        run: swiftlint lint --reporter github-actions-logging
+
+      - name: Upload SwiftLint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: swiftlint-report
+          path: mobile/ios/swiftlint-report.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  test:
+    name: Test (iOS ${{ matrix.platform }} ${{ matrix.device }})
+    # This repository currently contains iOS source modules but no Xcode project.
+    # Tests automatically activate once a project file is committed.
+    if: ${{ needs.project-availability.outputs.project_exists == 'true' }}
+    needs: [lint, project-availability]
+    runs-on: macos-14
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: iOS
+            device: iPhone 16 Pro
+            os: 18.1
+          - platform: iOS
+            device: iPad Pro 13-inch (M4)
+            os: 18.1
+          - platform: tvOS
+            device: Apple TV 4K (3rd generation)
+            os: 18.1
+    defaults:
+      run:
+        working-directory: mobile/ios
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+
+      - name: List available simulators
+        run: xcrun simctl list devices --json
+
+      - name: Resolve SPM packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -workspace "$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -derivedDataPath "$DERIVED_DATA_PATH"
+
+      - name: Cache derived data
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DERIVED_DATA_PATH }}
+          key: derived-data-${{ github.sha }}
+          restore-keys: |
+            derived-data-
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -workspace "$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -destination "platform=${{ matrix.platform }},name=${{ matrix.device }},OS=${{ matrix.os }}" \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -resultBundlePath "TestResults-${{ matrix.platform }}.xcresult" \
+            -enableCodeCoverage YES \
+            -parallel-testing-enabled YES \
+            | xcpretty --report json-compilation-database
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results-${{ matrix.platform }}-${{ matrix.device }}
+          path: mobile/ios/TestResults-*.xcresult
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload code coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-code-coverage-${{ matrix.platform }}
+          path: mobile/ios/build/reports/coverage/
+          if-no-files-found: warn
+          retention-days: 14
+
+  ui-test:
+    name: UI Tests
+    if: ${{ needs.project-availability.outputs.project_exists == 'true' }}
+    needs: [lint, project-availability]
+    runs-on: macos-14
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: mobile/ios
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+
+      - name: Run UI tests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -workspace "$XCODE_WORKSPACE" \
+            -scheme "${XCODE_SCHEME}UITests" \
+            -destination "platform=iOS Simulator,name=iPhone 16 Pro,OS=$IOS_VERSION" \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -resultBundlePath "UITestResults.xcresult" \
+            | xcpretty
+
+      - name: Upload UI test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ui-test-results
+          path: mobile/ios/UITestResults.xcresult
+          if-no-files-found: warn
+          retention-days: 14
+
+  build:
+    name: Build (Release)
+    if: ${{ needs.project-availability.outputs.project_exists == 'true' }}
+    needs: [test, ui-test, project-availability]
+    runs-on: macos-14
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile/ios
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+
+      - name: Install provisioning profiles
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          # Create keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import certificate
+          echo "$BUILD_CERTIFICATE_BASE64" | base64 -d > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 \
+            -k "$KEYCHAIN_PATH" \
+            -P "$P12_PASSWORD" \
+            -T /usr/bin/codesign
+
+          # Import provisioning profile
+          echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 -d > $RUNNER_TEMP/profile.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $RUNNER_TEMP/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+
+          # Add keychain to search list
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+
+      - name: Resolve SPM packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -workspace "$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -derivedDataPath "$DERIVED_DATA_PATH"
+
+      - name: Cache derived data
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DERIVED_DATA_PATH }}
+          key: derived-data-build-${{ github.sha }}
+          restore-keys: |
+            derived-data-build-
+
+      - name: Archive for release
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -workspace "$XCODE_WORKSPACE" \
+            -scheme "$XCODE_SCHEME" \
+            -configuration Release \
+            -derivedDataPath "$DERIVED_DATA_PATH" \
+            -archivePath "$RUNNER_TEMP/Gula.xcarchive" \
+            -allowProvisioningUpdates \
+            | xcpretty
+
+      - name: Export IPA
+        run: |
+          set -o pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/Gula.xcarchive" \
+            -exportPath "$RUNNER_TEMP/Gula.ipa" \
+            -exportOptionsPlist mobile/ios/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            | xcpretty
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: gula-ios-release
+          path: ${{ runner.temp }}/Gula.ipa/*
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload dSYMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: gula-ios-dsyms
+          path: ${{ runner.temp }}/Gula.xcarchive/dSYMs/
+          if-no-files-found: warn
+          retention-days: 30
+
+  upload-to-testflight:
+    name: Upload to TestFlight
+    needs: [build, project-availability]
+    if: startsWith(github.ref, 'refs/tags/v') && needs.project-availability.outputs.project_exists == 'true'
+    runs-on: macos-14
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile/ios
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.1.app/Contents/Developer
+
+      - name: Install provisioning profiles
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          echo "$BUILD_CERTIFICATE_BASE64" | base64 -d > $RUNNER_TEMP/certificate.p12
+          security import $RUNNER_TEMP/certificate.p12 -k "$KEYCHAIN_PATH" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          echo "$BUILD_PROVISION_PROFILE_BASE64" | base64 -d > $RUNNER_TEMP/profile.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp $RUNNER_TEMP/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
+
+      - name: Download IPA artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gula-ios-release
+          path: ${{ runner.temp }}/Gula.ipa
+
+      - name: Upload to App Store Connect via altool
+        env:
+          APP_STORE_CONNECT_USERNAME: ${{ secrets.APP_STORE_CONNECT_USERNAME }}
+          APP_STORE_CONNECT_PASSWORD: ${{ secrets.APP_STORE_CONNECT_PASSWORD }}
+          APP_STORE_CONNECT_TEAM_ID: ${{ secrets.APP_STORE_CONNECT_TEAM_ID }}
+        run: |
+          xcrun altool --upload-app \
+            --file "$RUNNER_TEMP/Gula.ipa/Gula.ipa" \
+            --type ios \
+            --username "$APP_STORE_CONNECT_USERNAME" \
+            --password "@keychain:AC_PASSWORD" \
+            --asc-provider "$APP_STORE_CONNECT_TEAM_ID"
+
+  # Note: SPM dependency graph submission is not available as a standard GitHub Action.
+  # iOS dependency tracking is handled externally.

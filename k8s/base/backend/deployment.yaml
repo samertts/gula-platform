@@ -1,0 +1,122 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gula-backend
+  namespace: gula
+  labels:
+    app: gula-backend
+    component: api
+    # Blue-Green: slot label is patched by the deploy pipeline
+    slot: blue
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gula-backend
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: gula-backend
+        component: api
+        slot: blue
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      # Wait for postgres and redis to be ready
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z postgres-primary 5432; do
+                echo "Waiting for postgres..."; sleep 2
+              done
+        - name: wait-for-redis
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z redis 6379; do
+                echo "Waiting for redis..."; sleep 2
+              done
+      containers:
+        - name: gula-backend
+          image: ghcr.io/samertts/gula-platform/backend:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: gula-config
+          env:
+            - name: DATABASE_URL
+              value: postgresql://postgres:$(POSTGRES_PASSWORD)@postgres-primary:5432/labdb
+            - name: REDIS_URL
+              value: redis://:$(REDIS_PASSWORD)@redis:6379
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: POSTGRES_PASSWORD
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: REDIS_PASSWORD
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: SECRET_KEY
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: ENCRYPTION_KEY
+            - name: NID_HMAC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gula-secrets
+                  key: NID_HMAC_KEY
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              memory: "192Mi"
+              cpu: "200m"
+            limits:
+              memory: "384Mi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+          volumeMounts:
+            - name: audit-anchors
+              mountPath: /app/data
+      volumes:
+        - name: audit-anchors
+          persistentVolumeClaim:
+            claimName: audit-anchors-pvc
+      imagePullSecrets:
+        - name: ghcr-credentials

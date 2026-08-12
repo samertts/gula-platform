@@ -1,0 +1,758 @@
+BASE_FHIR_URL = "https://fhir.gula-platform.org"
+
+FHIR_PROFILES = {
+    "Patient": {
+        "resourceType": "StructureDefinition",
+        "id": "gula-patient",
+        "url": f"{BASE_FHIR_URL}/StructureDefinition/gula-patient",
+        "version": "1.0.0",
+        "name": "GULAPatient",
+        "status": "draft",
+        "description": "GULA Patient profile — Iraqi laboratory patient with national ID support",
+        "fhirVersion": "4.0.1",
+        "kind": "resource",
+        "abstract": False,
+        "type": "Patient",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Patient",
+        "derivation": "constraint",
+        "differential": {
+            "element": [
+                {
+                    "id": "Patient.identifier",
+                    "path": "Patient.identifier",
+                    "slicing": {
+                        "discriminator": [{"type": "value", "path": "system"}],
+                        "ordered": False,
+                        "rules": "open",
+                    },
+                },
+                {
+                    "id": "Patient.identifier:healthId",
+                    "path": "Patient.identifier",
+                    "sliceName": "healthId",
+                    "min": 0,
+                    "max": "1",
+                    "type": [{"code": "Identifier"}],
+                    "definition": "GULA platform-wide health ID",
+                },
+                {
+                    "id": "Patient.identifier:nationalId",
+                    "path": "Patient.identifier",
+                    "sliceName": "nationalId",
+                    "min": 0,
+                    "max": "1",
+                    "type": [{"code": "Identifier"}],
+                    "definition": "Iraqi national ID (HMAC-hashed at rest)",
+                },
+                {
+                    "id": "Patient.identifier:familyId",
+                    "path": "Patient.identifier",
+                    "sliceName": "familyId",
+                    "min": 0,
+                    "max": "1",
+                    "type": [{"code": "Identifier"}],
+                    "definition": "Civil registry family number (HMAC-hashed)",
+                },
+                {
+                    "id": "Patient.name",
+                    "path": "Patient.name",
+                    "min": 1,
+                    "definition": "Patient full name (Arabic or Latin script)",
+                },
+                {
+                    "id": "Patient.telecom",
+                    "path": "Patient.telecom",
+                    "min": 1,
+                    "definition": "Primary phone is required for all patients",
+                },
+                {
+                    "id": "Patient.birthDate",
+                    "path": "Patient.birthDate",
+                    "definition": "Date of birth (may be approximate in some regions)",
+                },
+                {
+                    "id": "Patient.gender",
+                    "path": "Patient.gender",
+                    "definition": "male | female",
+                },
+                {
+                    "id": "Patient.generalPractitioner",
+                    "path": "Patient.generalPractitioner",
+                    "definition": "Reference to the ordering physician or lab",
+                },
+                {
+                    "id": "Patient.extension",
+                    "path": "Patient.extension",
+                    "slicing": {
+                        "discriminator": [{"type": "value", "path": "url"}],
+                        "ordered": False,
+                        "rules": "open",
+                    },
+                },
+                {
+                    "id": "Patient.extension:guardian",
+                    "path": "Patient.extension",
+                    "sliceName": "guardian",
+                    "min": 0,
+                    "max": "1",
+                    "type": [{"code": "Extension", "profile": ["http://hl7.org/fhir/StructureDefinition/patient-guardian"]}],
+                    "definition": "Guardian reference for minor patients",
+                },
+                {
+                    "id": "Patient.extension:labId",
+                    "path": "Patient.extension",
+                    "sliceName": "labId",
+                    "min": 1,
+                    "max": "1",
+                    "type": [{"code": "Extension"}],
+                    "definition": "Tenant lab ID for multi-tenant isolation",
+                },
+            ],
+        },
+    },
+    "Observation": {
+        "resourceType": "StructureDefinition",
+        "id": "gula-observation",
+        "url": f"{BASE_FHIR_URL}/StructureDefinition/gula-observation",
+        "version": "1.0.0",
+        "name": "GULALabObservation",
+        "status": "draft",
+        "description": "GULA Lab Observation profile — laboratory test results with flags",
+        "fhirVersion": "4.0.1",
+        "kind": "resource",
+        "abstract": False,
+        "type": "Observation",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Observation",
+        "derivation": "constraint",
+        "differential": {
+            "element": [
+                {
+                    "id": "Observation.status",
+                    "path": "Observation.status",
+                    "min": 1,
+                    "definition": "registered | preliminary | final | amended | cancelled",
+                },
+                {
+                    "id": "Observation.code",
+                    "path": "Observation.code",
+                    "min": 1,
+                    "definition": "LOINC or local test code identifying the analyte",
+                },
+                {
+                    "id": "Observation.subject",
+                    "path": "Observation.subject",
+                    "min": 1,
+                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"]}],
+                },
+                {
+                    "id": "Observation.effectiveDateTime",
+                    "path": "Observation.effectiveDateTime",
+                    "definition": "Time of specimen collection or result entry",
+                },
+                {
+                    "id": "Observation.valueQuantity",
+                    "path": "Observation.valueQuantity",
+                    "definition": "Numeric result value with unit",
+                    "condition": ["val-1"],
+                },
+                {
+                    "id": "Observation.valueString",
+                    "path": "Observation.valueString",
+                    "definition": "Text result value for non-numeric results",
+                },
+                {
+                    "id": "Observation.referenceRange",
+                    "path": "Observation.referenceRange",
+                    "min": 0,
+                    "max": "*",
+                    "definition": "Normal reference range for this analyte",
+                },
+                {
+                    "id": "Observation.interpretation",
+                    "path": "Observation.interpretation",
+                    "definition": "Abnormal flag: H, L, normal, critical, HI, LO, IND",
+                },
+                {
+                    "id": "Observation.note",
+                    "path": "Observation.note",
+                    "definition": "Technician or reviewer comments",
+                },
+                {
+                    "id": "Observation.extension",
+                    "path": "Observation.extension",
+                    "slicing": {
+                        "discriminator": [{"type": "value", "path": "url"}],
+                        "ordered": False,
+                        "rules": "open",
+                    },
+                },
+                {
+                    "id": "Observation.extension:labId",
+                    "path": "Observation.extension",
+                    "sliceName": "labId",
+                    "min": 1,
+                    "max": "1",
+                    "type": [{"code": "Extension"}],
+                    "definition": "Tenant lab ID",
+                },
+                {
+                    "id": "Observation.extension:orderId",
+                    "path": "Observation.extension",
+                    "sliceName": "orderId",
+                    "min": 1,
+                    "max": "1",
+                    "type": [{"code": "Extension"}],
+                    "definition": "Parent lab order ID",
+                },
+                {
+                    "id": "Observation.extension:clinicalEngineVersion",
+                    "path": "Observation.extension",
+                    "sliceName": "clinicalEngineVersion",
+                    "min": 0,
+                    "max": "1",
+                    "type": [{"code": "Extension"}],
+                    "definition": "Version of clinical engine that evaluated this result",
+                },
+            ],
+        },
+    },
+    "DiagnosticReport": {
+        "resourceType": "StructureDefinition",
+        "id": "gula-diagnostic-report",
+        "url": f"{BASE_FHIR_URL}/StructureDefinition/gula-diagnostic-report",
+        "version": "1.0.0",
+        "name": "GULADiagnosticReport",
+        "status": "draft",
+        "description": "GULA DiagnosticReport profile — lab order result set",
+        "fhirVersion": "4.0.1",
+        "kind": "resource",
+        "abstract": False,
+        "type": "DiagnosticReport",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+        "derivation": "constraint",
+        "differential": {
+            "element": [
+                {
+                    "id": "DiagnosticReport.status",
+                    "path": "DiagnosticReport.status",
+                    "min": 1,
+                    "definition": "registered | partial | final | amended | cancelled",
+                },
+                {
+                    "id": "DiagnosticReport.subject",
+                    "path": "DiagnosticReport.subject",
+                    "min": 1,
+                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"]}],
+                },
+                {
+                    "id": "DiagnosticReport.result",
+                    "path": "DiagnosticReport.result",
+                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-observation"]}],
+                    "definition": "References to individual lab observations",
+                },
+                {
+                    "id": "DiagnosticReport.issued",
+                    "path": "DiagnosticReport.issued",
+                    "definition": "DateTime this report was created",
+                },
+                {
+                    "id": "DiagnosticReport.performer",
+                    "path": "DiagnosticReport.performer",
+                    "definition": "Laboratory that performed the tests",
+                },
+                {
+                    "id": "DiagnosticReport.extension:labOrderId",
+                    "path": "DiagnosticReport.extension",
+                    "sliceName": "labOrderId",
+                    "min": 1,
+                    "max": "1",
+                    "type": [{"code": "Extension"}],
+                    "definition": "Internal lab order ID",
+                },
+            ],
+        },
+    },
+    "ServiceRequest": {
+        "resourceType": "StructureDefinition",
+        "id": "gula-service-request",
+        "url": f"{BASE_FHIR_URL}/StructureDefinition/gula-service-request",
+        "version": "1.0.0",
+        "name": "GULAServiceRequest",
+        "status": "draft",
+        "description": "GULA ServiceRequest profile — lab test ordering",
+        "fhirVersion": "4.0.1",
+        "kind": "resource",
+        "abstract": False,
+        "type": "ServiceRequest",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/ServiceRequest",
+        "derivation": "constraint",
+        "differential": {
+            "element": [
+                {
+                    "id": "ServiceRequest.status",
+                    "path": "ServiceRequest.status",
+                    "min": 1,
+                    "definition": "draft | active | completed | cancelled",
+                },
+                {
+                    "id": "ServiceRequest.intent",
+                    "path": "ServiceRequest.intent",
+                    "fixedCode": "order",
+                    "definition": "Always 'order' for lab requests",
+                },
+                {
+                    "id": "ServiceRequest.subject",
+                    "path": "ServiceRequest.subject",
+                    "min": 1,
+                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"]}],
+                },
+                {
+                    "id": "ServiceRequest.requester",
+                    "path": "ServiceRequest.requester",
+                    "definition": "Ordering physician or practitioner",
+                },
+                {
+                    "id": "ServiceRequest.code",
+                    "path": "ServiceRequest.code",
+                    "min": 1,
+                    "definition": "Requested test or panel code",
+                },
+                {
+                    "id": "ServiceRequest.quantityQuantity",
+                    "path": "ServiceRequest.quantityQuantity",
+                    "definition": "Number of samples or tests requested",
+                },
+            ],
+        },
+    },
+    "Organization": {
+        "resourceType": "StructureDefinition",
+        "id": "gula-organization",
+        "url": f"{BASE_FHIR_URL}/StructureDefinition/gula-organization",
+        "version": "1.0.0",
+        "name": "GULAOrganization",
+        "status": "draft",
+        "description": "GULA Organization profile — laboratory facility",
+        "fhirVersion": "4.0.1",
+        "kind": "resource",
+        "abstract": False,
+        "type": "Organization",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Organization",
+        "derivation": "constraint",
+        "differential": {
+            "element": [
+                {
+                    "id": "Organization.identifier",
+                    "path": "Organization.identifier",
+                    "min": 1,
+                    "definition": "Lab ID is required for tenant isolation",
+                },
+                {
+                    "id": "Organization.name",
+                    "path": "Organization.name",
+                    "min": 1,
+                    "definition": "Laboratory full name (Arabic and/or English)",
+                },
+                {
+                    "id": "Organization.telecom",
+                    "path": "Organization.telecom",
+                    "definition": "Lab contact phone and email",
+                },
+                {
+                    "id": "Organization.address",
+                    "path": "Organization.address",
+                    "definition": "Physical address of the laboratory",
+                },
+                {
+                    "id": "Organization.type",
+                    "path": "Organization.type",
+                    "definition": "prov | dept | govt | insurance | edu | other",
+                },
+            ],
+        },
+    },
+    "Location": {
+        "resourceType": "StructureDefinition",
+        "id": "gula-location",
+        "url": f"{BASE_FHIR_URL}/StructureDefinition/gula-location",
+        "version": "1.0.0",
+        "name": "GULALocation",
+        "status": "draft",
+        "description": "GULA Location profile — lab section or collection site",
+        "fhirVersion": "4.0.1",
+        "kind": "resource",
+        "abstract": False,
+        "type": "Location",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Location",
+        "derivation": "constraint",
+        "differential": {
+            "element": [
+                {
+                    "id": "Location.name",
+                    "path": "Location.name",
+                    "min": 1,
+                    "definition": "Location name (e.g., 'Hematology Section', 'Collection Room A')",
+                },
+                {
+                    "id": "Location.managingOrganization",
+                    "path": "Location.managingOrganization",
+                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-organization"]}],
+                    "definition": "Parent laboratory organization",
+                },
+                {
+                    "id": "Location.physicalType",
+                    "path": "Location.physicalType",
+                    "definition": "si | bu | wi | ro | area | bd | ve | ho | ca | rd",
+                },
+            ],
+        },
+    },
+    "Practitioner": {
+        "resourceType": "StructureDefinition",
+        "id": "gula-practitioner",
+        "url": f"{BASE_FHIR_URL}/StructureDefinition/gula-practitioner",
+        "version": "1.0.0",
+        "name": "GULAPractitioner",
+        "status": "draft",
+        "description": "GULA Practitioner profile — doctor, technician, or lab staff",
+        "fhirVersion": "4.0.1",
+        "kind": "resource",
+        "abstract": False,
+        "type": "Practitioner",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Practitioner",
+        "derivation": "constraint",
+        "differential": {
+            "element": [
+                {
+                    "id": "Practitioner.identifier",
+                    "path": "Practitioner.identifier",
+                    "min": 1,
+                    "definition": "Practitioner ID within the lab",
+                },
+                {
+                    "id": "Practitioner.name",
+                    "path": "Practitioner.name",
+                    "min": 1,
+                    "definition": "Practitioner full name",
+                },
+                {
+                    "id": "Practitioner.telecom",
+                    "path": "Practitioner.telecom",
+                    "definition": "Contact details",
+                },
+                {
+                    "id": "Practitioner.qualification",
+                    "path": "Practitioner.qualification",
+                    "definition": "Medical credentials and specializations",
+                },
+                {
+                    "id": "Practitioner.extension:role",
+                    "path": "Practitioner.extension",
+                    "sliceName": "role",
+                    "min": 1,
+                    "max": "1",
+                    "type": [{"code": "Extension"}],
+                    "definition": "GULA role: admin | doctor | tech | receptionist | viewer",
+                },
+                {
+                    "id": "Practitioner.extension:labId",
+                    "path": "Practitioner.extension",
+                    "sliceName": "labId",
+                    "min": 1,
+                    "max": "1",
+                    "type": [{"code": "Extension"}],
+                    "definition": "Tenant lab ID",
+                },
+            ],
+        },
+    },
+    "Encounter": {
+        "resourceType": "StructureDefinition",
+        "id": "gula-encounter",
+        "url": f"{BASE_FHIR_URL}/StructureDefinition/gula-encounter",
+        "version": "1.0.0",
+        "name": "GULAEncounter",
+        "status": "draft",
+        "description": "GULA Encounter profile — patient visit for lab services",
+        "fhirVersion": "4.0.1",
+        "kind": "resource",
+        "abstract": False,
+        "type": "Encounter",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Encounter",
+        "derivation": "constraint",
+        "differential": {
+            "element": [
+                {
+                    "id": "Encounter.status",
+                    "path": "Encounter.status",
+                    "min": 1,
+                    "definition": "planned | in-progress | onleave | finished | cancelled",
+                },
+                {
+                    "id": "Encounter.subject",
+                    "path": "Encounter.subject",
+                    "min": 1,
+                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"]}],
+                },
+                {
+                    "id": "Encounter.participant",
+                    "path": "Encounter.participant",
+                    "definition": "Practitioners involved in this encounter",
+                },
+                {
+                    "id": "Encounter.period",
+                    "path": "Encounter.period",
+                    "definition": "Start and end time of the lab visit",
+                },
+                {
+                    "id": "Encounter.serviceProvider",
+                    "path": "Encounter.serviceProvider",
+                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-organization"]}],
+                    "definition": "Laboratory that provided the service",
+                },
+                {
+                    "id": "Encounter.reasonCode",
+                    "path": "Encounter.reasonCode",
+                    "definition": "Reason for the lab visit",
+                },
+                {
+                    "id": "Encounter.diagnosis",
+                    "path": "Encounter.diagnosis",
+                    "definition": "Clinical diagnoses associated with this encounter",
+                },
+            ],
+        },
+    },
+    "Specimen": {
+        "resourceType": "StructureDefinition",
+        "id": "gula-specimen",
+        "url": f"{BASE_FHIR_URL}/StructureDefinition/gula-specimen",
+        "version": "1.0.0",
+        "name": "GULASpecimen",
+        "status": "draft",
+        "description": "GULA Specimen profile — biological sample collected for testing",
+        "fhirVersion": "4.0.1",
+        "kind": "resource",
+        "abstract": False,
+        "type": "Specimen",
+        "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Specimen",
+        "derivation": "constraint",
+        "differential": {
+            "element": [
+                {
+                    "id": "Specimen.identifier",
+                    "path": "Specimen.identifier",
+                    "min": 1,
+                    "definition": "Barcode identifier for the sample",
+                },
+                {
+                    "id": "Specimen.type",
+                    "path": "Specimen.type",
+                    "min": 1,
+                    "definition": "blood | urine | stool | swab | serum | plasma | csf | tissue | other",
+                },
+                {
+                    "id": "Specimen.subject",
+                    "path": "Specimen.subject",
+                    "min": 1,
+                    "type": [{"code": "Reference", "targetProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"]}],
+                },
+                {
+                    "id": "Specimen.collection",
+                    "path": "Specimen.collection",
+                    "definition": "Collection method, time, and collector",
+                },
+                {
+                    "id": "Specimen.status",
+                    "path": "Specimen.status",
+                    "definition": "available | unavailable | unsatisfactory | entered-in-error",
+                },
+                {
+                    "id": "Specimen.condition",
+                    "path": "Specimen.condition",
+                    "definition": "Quality flags: hemolyzed | icteric | lipemic | clotted | insufficient",
+                },
+                {
+                    "id": "Specimen.note",
+                    "path": "Specimen.note",
+                    "definition": "Rejection reason or processing notes",
+                },
+            ],
+        },
+    },
+}
+
+
+def get_fhir_profiles() -> list[dict]:
+    return list(FHIR_PROFILES.values())
+
+
+def get_structure_definitions() -> list[dict]:
+    return [
+        {
+            "id": profile["id"],
+            "url": profile["url"],
+            "name": profile["name"],
+            "type": profile["type"],
+            "status": profile["status"],
+            "description": profile["description"],
+            "elements": [
+                {
+                    "path": elem["path"],
+                    "min": elem.get("min", 0),
+                    "max": elem.get("max", "*"),
+                    "definition": elem.get("definition", ""),
+                }
+                for elem in profile.get("differential", {}).get("element", [])
+            ],
+        }
+        for profile in FHIR_PROFILES.values()
+    ]
+
+
+def get_capability_statement() -> dict:
+    return {
+        "resourceType": "CapabilityStatement",
+        "id": "gula-fhir-capability",
+        "version": "1.0.0",
+        "name": "GULA_FHIR_Capability",
+        "status": "draft",
+        "date": "2026-07-15",
+        "publisher": "GULA Platform",
+        "description": "Capability statement for the GULA FHIR R4 interface",
+        "kind": "instance",
+        "fhirVersion": "4.0.1",
+        "format": ["json", "xml"],
+        "rest": [
+            {
+                "mode": "server",
+                "documentation": "GULA FHIR R4 API — Laboratory Information System",
+                "security": {
+                    "description": "Bearer token (JWT) authentication required",
+                    "service": [
+                        {
+                            "coding": [
+                                {
+                                    "system": "http://terminology.hl7.org/CodeSystem/restful-security-service",
+                                    "code": "Bearer",
+                                },
+                            ],
+                        },
+                    ],
+                },
+                "resource": [
+                    {
+                        "type": "Patient",
+                        "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-patient",
+                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-patient"],
+                        "interaction": [
+                            {"code": "read"},
+                            {"code": "search-type"},
+                            {"code": "create"},
+                            {"code": "update"},
+                        ],
+                        "searchParam": [
+                            {"name": "identifier", "type": "token", "documentation": "Health ID or national ID"},
+                            {"name": "family", "type": "string"},
+                            {"name": "given", "type": "string"},
+                            {"name": "phone", "type": "token"},
+                            {"name": "birthdate", "type": "date"},
+                        ],
+                    },
+                    {
+                        "type": "Observation",
+                        "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-observation",
+                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-observation"],
+                        "interaction": [
+                            {"code": "read"},
+                            {"code": "search-type"},
+                            {"code": "create"},
+                        ],
+                        "searchParam": [
+                            {"name": "patient", "type": "reference"},
+                            {"name": "code", "type": "token"},
+                            {"name": "date", "type": "date"},
+                            {"name": "status", "type": "token"},
+                        ],
+                    },
+                    {
+                        "type": "DiagnosticReport",
+                        "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-diagnostic-report",
+                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-diagnostic-report"],
+                        "interaction": [
+                            {"code": "read"},
+                            {"code": "search-type"},
+                        ],
+                        "searchParam": [
+                            {"name": "patient", "type": "reference"},
+                            {"name": "result", "type": "reference"},
+                            {"name": "date", "type": "date"},
+                            {"name": "status", "type": "token"},
+                        ],
+                    },
+                    {
+                        "type": "ServiceRequest",
+                        "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-service-request",
+                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-service-request"],
+                        "interaction": [
+                            {"code": "read"},
+                            {"code": "search-type"},
+                            {"code": "create"},
+                        ],
+                        "searchParam": [
+                            {"name": "patient", "type": "reference"},
+                            {"name": "code", "type": "token"},
+                            {"name": "status", "type": "token"},
+                            {"name": "requester", "type": "reference"},
+                        ],
+                    },
+                    {
+                        "type": "Organization",
+                        "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-organization",
+                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-organization"],
+                        "interaction": [
+                            {"code": "read"},
+                            {"code": "search-type"},
+                        ],
+                    },
+                    {
+                        "type": "Location",
+                        "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-location",
+                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-location"],
+                        "interaction": [
+                            {"code": "read"},
+                            {"code": "search-type"},
+                        ],
+                    },
+                    {
+                        "type": "Practitioner",
+                        "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-practitioner",
+                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-practitioner"],
+                        "interaction": [
+                            {"code": "read"},
+                            {"code": "search-type"},
+                        ],
+                    },
+                    {
+                        "type": "Encounter",
+                        "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-encounter",
+                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-encounter"],
+                        "interaction": [
+                            {"code": "read"},
+                            {"code": "search-type"},
+                        ],
+                    },
+                    {
+                        "type": "Specimen",
+                        "profile": f"{BASE_FHIR_URL}/StructureDefinition/gula-specimen",
+                        "supportedProfile": [f"{BASE_FHIR_URL}/StructureDefinition/gula-specimen"],
+                        "interaction": [
+                            {"code": "read"},
+                            {"code": "search-type"},
+                            {"code": "create"},
+                        ],
+                    },
+                ],
+            },
+        ],
+    }

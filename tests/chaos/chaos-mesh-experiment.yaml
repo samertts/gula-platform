@@ -1,0 +1,87 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Schedule
+metadata:
+  name: gula-chaos-pod-kill
+  namespace: gula
+spec:
+  schedule: "0 */6 * * *"
+  type: PodChaos
+  historyLimit: 5
+  concurrencyPolicy: Allow
+  experiment:
+    action: delete
+    mode: one
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: gula-backend
+    duration: 30s
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Schedule
+metadata:
+  name: gula-chaos-network-delay
+  namespace: gula
+spec:
+  schedule: "0 */12 * * *"
+  type: NetworkChaos
+  historyLimit: 5
+  experiment:
+    action: delay
+    mode: all
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: gula-backend
+    delay:
+      latency: 100ms
+      jitter: 20ms
+      correlation: 50
+    target:
+      selector:
+        namespaces: [gula]
+        labelSelectors:
+          app: postgres-primary
+    duration: 60s
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Schedule
+metadata:
+  name: gula-chaos-dns-error
+  namespace: gula
+spec:
+  schedule: "0 3 * * 0"
+  type: DNSChaos
+  historyLimit: 3
+  experiment:
+    action: error
+    mode: all
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: gula-backend
+    patterns:
+      - "*"
+    duration: 30s
+---
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Schedule
+metadata:
+  name: gula-chaos-http-fault
+  namespace: gula
+spec:
+  schedule: "0 */8 * * *"
+  type: HTTPChaos
+  historyLimit: 3
+  experiment:
+    mode: all
+    selector:
+      namespaces: [gula]
+      labelSelectors:
+        app: gula-worker
+    target: "gula-backend"
+    port: 8000
+    abort:
+      percentage: 10
+      statusCode: 500
+    duration: 30s

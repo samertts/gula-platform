@@ -1,0 +1,76 @@
+name: Quality Gate
+
+on:
+  push:
+    branches: [main, 'release/*']
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - name: Install tools
+        run: pip install pyyaml
+      - name: Validate YAML
+        run: |
+          python -c "
+          import yaml, pathlib
+          errors = []
+          for pattern in ['*.yml', '*.yaml']:
+              for f in pathlib.Path('.github/workflows').rglob(pattern):
+                  try:
+                      yaml.safe_load(f.read_text())
+                      print(f'workflow/{f.name}: valid')
+                  except Exception as e:
+                      errors.append(f'workflow/{f.name}: {e}')
+          for pattern in ['docker-compose*.yml', 'docker-compose*.yaml']:
+              for f in pathlib.Path('.').glob(pattern):
+                  try:
+                      yaml.safe_load(f.read_text())
+                      print(f'{f.name}: valid')
+                  except Exception as e:
+                      errors.append(f'{f.name}: {e}')
+              for f in pathlib.Path('config').rglob(pattern):
+                  try:
+                      yaml.safe_load(f.read_text())
+                      print(f'{f.name}: valid')
+                  except Exception as e:
+                      errors.append(f'{f.name}: {e}')
+          if errors:
+              for e in errors: print(f'ERROR: {e}')
+              exit(1)
+          else:
+              print('All YAML files valid')
+          "
+      - name: Check Dockerfiles
+        run: |
+          errors=0
+          while IFS=: read -r file line; do
+            img=$(echo "$line" | sed 's/^FROM //' | awk '{print $1}')
+            case "$img" in
+              *:latest|python|node|ubuntu|alpine|debian)
+                echo "ERROR: $file uses unpinned image '$img'"
+                errors=$((errors+1))
+                ;;
+              *@sha256:*)
+                echo "OK (digest): $file -> $img"
+                ;;
+              *:*)
+                echo "OK (tagged): $file -> $img"
+                ;;
+              *)
+                echo "WARNING: $file uses untagged image '$img'"
+                ;;
+            esac
+          done < <(grep -r "^FROM " --include="Dockerfile" . 2>/dev/null || true)
+          if [ "$errors" -gt 0 ]; then
+            echo "❌ $errors Dockerfiles use unpinned base images"
+            exit 1
+          fi
+          echo "✅ All Dockerfiles use pinned base images"

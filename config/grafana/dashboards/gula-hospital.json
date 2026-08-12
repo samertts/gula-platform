@@ -1,0 +1,318 @@
+{
+  "id": null,
+  "uid": "gula-hospital",
+  "title": "GULA Platform — Hospital Operations",
+  "description": "Hospital operational intelligence dashboard",
+  "tags": ["gula", "hospital"],
+  "timezone": "Asia/Baghdad",
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "version": 1,
+  "time": { "from": "now-6h", "to": "now" },
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Hospital Overview",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 },
+      "collapsed": false
+    },
+    {
+      "id": 2,
+      "type": "gauge",
+      "title": "Bed Occupancy Rate",
+      "gridPos": { "x": 0, "y": 1, "w": 6, "h": 6 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "orange", "value": 85 },
+              { "color": "red", "value": 95 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_hospital_bed_occupancy_percent", "legendFormat": "Occupancy" }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Average Length of Stay",
+      "gridPos": { "x": 6, "y": 1, "w": 3, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "days",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_hospital_avg_length_of_stay_days", "legendFormat": "Avg Stay" }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Readmission Rate (30d)",
+      "gridPos": { "x": 9, "y": 1, "w": 3, "h": 3 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 15 },
+              { "color": "red", "value": 25 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_readmission_rate_percent", "legendFormat": "Readmission" }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Patient Admission / Discharge Rate",
+      "gridPos": { "x": 12, "y": 1, "w": 12, "h": 6 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "increase(gula_patient_admissions_total[1h])", "legendFormat": "Admissions" },
+        { "expr": "increase(gula_patient_discharges_total[1h])", "legendFormat": "Discharges" }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Emergency Department Wait Times",
+      "gridPos": { "x": 0, "y": 7, "w": 8, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "minutes",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 30 },
+              { "color": "orange", "value": 60 },
+              { "color": "red", "value": 120 }
+            ]
+          },
+          "custom": { "lineWidth": 2 },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_ed_wait_time_avg_minutes", "legendFormat": "Avg Wait" },
+        { "expr": "gula_ed_wait_time_p95_minutes", "legendFormat": "p95 Wait" }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "gauge",
+      "title": "Surgery Room Utilization",
+      "gridPos": { "x": 8, "y": 7, "w": 4, "h": 7 },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 60 },
+              { "color": "orange", "value": 80 },
+              { "color": "red", "value": 95 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_surgery_room_utilization_percent", "legendFormat": "Utilization" }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "table",
+      "title": "Hospital Capacity by Department",
+      "gridPos": { "x": 12, "y": 7, "w": 12, "h": 7 },
+      "options": {
+        "sortBy": [
+          { "displayName": "Occupancy", "desc": true }
+        ]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "orange", "value": 85 },
+              { "color": "red", "value": 95 }
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100
+        }
+      },
+      "targets": [
+        {
+          "expr": "gula_department_capacity_percent",
+          "format": "table",
+          "legendFormat": "{{ department }}"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "renameByName": {
+              "department": "Department",
+              "Value": "Occupancy (%)",
+              "beds_total": "Total Beds",
+              "beds_occupied": "Occupied"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "barchart",
+      "title": "Resource Utilization by Type",
+      "gridPos": { "x": 0, "y": 14, "w": 12, "h": 7 },
+      "options": {
+        "orientation": "horizontal",
+        "groupWidth": 0.7,
+        "barWidth": 0.8,
+        "showValue": "auto",
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 70 },
+              { "color": "red", "value": 90 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_resource_utilization_percent", "legendFormat": "{{ resource_type }}" }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Patient Census by Unit",
+      "gridPos": { "x": 12, "y": 14, "w": 12, "h": 7 },
+      "options": {
+        "tooltip": { "mode": "multi" },
+        "legend": { "calcs": ["mean", "max", "last"], "displayMode": "table", "placement": "right" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "custom": { "lineWidth": 2, "fillOpacity": 10 },
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "targets": [
+        { "expr": "gula_patient_census{unit=\"icu\"}", "legendFormat": "ICU" },
+        { "expr": "gula_patient_census{unit=\"er\"}", "legendFormat": "ER" },
+        { "expr": "gula_patient_census{unit=\"general\"}", "legendFormat": "General Ward" },
+        { "expr": "gula_patient_census{unit=\"pediatrics\"}", "legendFormat": "Pediatrics" },
+        { "expr": "gula_patient_census{unit=\"maternity\"}", "legendFormat": "Maternity" }
+      ]
+    }
+  ],
+  "templating": { "list": [] },
+  "links": [],
+  "timepicker": {}
+}

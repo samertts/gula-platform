@@ -1,0 +1,85 @@
+# =============================================================================
+# GULA Platform — Horizontal Scaling Override
+# =============================================================================
+# Extends docker-compose.yml for multi-instance deployment.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.scale.yml up -d
+#
+# This file:
+#   - Scales the backend to N instances (default 3)
+#   - Adds HAProxy for load balancing across instances
+#   - Removes static container_name from backend (required for scaling)
+#   - All instances share the same PostgreSQL + Redis
+#
+# Environment variables:
+#   BACKEND_REPLICAS=3      — number of backend instances (default: 3)
+#   HAPROXY_STATS_PASS      — HAProxy stats password (default: gulaadmin)
+#
+# Scale at runtime (no restart needed):
+#   docker compose -f docker-compose.yml -f docker-compose.scale.yml up -d --scale gula-backend=5
+#
+# Monitor load balancing:
+#   http://localhost:8404/stats  (HAProxy admin)
+# =============================================================================
+
+services:
+
+  # Override backend to enable multi-instance scaling
+  gula-backend:
+    container_name: ""  # remove static name so docker can create backend_1, backend_2...
+    # In scaled mode the api-gateway is HAProxy, not nginx
+    # HAProxy upstream uses service discovery via Docker DNS
+    deploy:
+      replicas: ${BACKEND_REPLICAS:-3}
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 5
+      resources:
+        limits:
+          cpus: "${BACKEND_CPUS:-1.5}"
+          memory: "${BACKEND_MEM_LIMIT:-1200m}"
+        reservations:
+          cpus: "0.5"
+          memory: "256m"
+      update_config:
+        # Rolling update: bring up new instance before killing old one
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+
+  # ─── HAProxy Load Balancer ──────────────────────────────────────────────────
+  haproxy:
+    image: haproxy:3.1-alpine
+    container_name: gula-haproxy
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ./config/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    ports:
+      - "${LB_PORT:-8080}:80"       # main traffic
+      - "8404:8404"                  # HAProxy stats (internal only in production)
+    networks:
+      - gula-net
+    depends_on:
+      - gula-backend
+    healthcheck:
+      test: ["CMD-SHELL", "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg && echo OK"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ─── Redis Sentinel (HA Redis) ──────────────────────────────────────────────
+  # Uncomment when deploying across multiple nodes for Redis failover.
+  # redis-sentinel:
+  #   image: redis:7-alpine
+  #   command: redis-sentinel /etc/redis/sentinel.conf
+  #   volumes:
+  #     - ./config/redis/sentinel.conf:/etc/redis/sentinel.conf:ro
+  #   networks:
+  #     - gula-net
+  #   deploy:
+  #     replicas: 3

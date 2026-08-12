@@ -1,0 +1,132 @@
+# =============================================================================
+# GULA Platform - Linkerd Service Mesh
+# Executive improvement: mTLS, automatic retries, latency monitoring
+#
+# Install Linkerd:
+#   curl -sL run.linkerd.io/install | sh
+#   linkerd install --crds | kubectl apply -f -
+#   linkerd install | kubectl apply -f -
+#   linkerd check
+# =============================================================================
+
+---
+# Inject Linkerd proxy into gula-platform namespace
+# Annotation: linkerd.io/inject: enabled
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gula-platform
+  annotations:
+    linkerd.io/inject: enabled
+  labels:
+    linkerd.io/extension: viz
+
+---
+# ServiceProfile for patient-service — defines retry policy and SLOs
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: patient-service.gula-platform.svc.cluster.local
+  namespace: gula-platform
+spec:
+  routes:
+    - name: POST /patients
+      condition:
+        method: POST
+        pathRegex: /patients
+      responseClasses:
+        - condition:
+            status:
+              min: 500
+              max: 599
+          isFailure: true
+      retryBudget:
+        retryRatio: 0.2
+        minRetriesPerSecond: 10
+        ttl: 10s
+      timeout: 5000ms
+
+    - name: GET /patients
+      condition:
+        method: GET
+        pathRegex: /patients.*
+      isRetryable: true
+      timeout: 2000ms
+
+---
+# ServiceProfile for result-service — tighter timeouts (medical data)
+apiVersion: linkerd.io/v1alpha2
+kind: ServiceProfile
+metadata:
+  name: result-service.gula-platform.svc.cluster.local
+  namespace: gula-platform
+spec:
+  routes:
+    - name: POST /results
+      condition:
+        method: POST
+        pathRegex: /results
+      responseClasses:
+        - condition:
+            status:
+              min: 500
+              max: 599
+          isFailure: true
+      retryBudget:
+        retryRatio: 0.1
+        minRetriesPerSecond: 5
+        ttl: 10s
+      timeout: 3000ms
+
+    - name: PUT /results/{id}/validate
+      condition:
+        method: PUT
+        pathRegex: /results/[0-9]+/validate
+      # No retries for validation (idempotency not guaranteed)
+      isRetryable: false
+      timeout: 2000ms
+
+---
+# TrafficSplit for Blue-Green deployment (Executive Order 22)
+# Adjust weights when deploying new version:
+#   blue (current): 100% → 90% → 50% → 0%
+#   green (new):      0% → 10% → 50% → 100%
+apiVersion: split.smi-spec.io/v1alpha1
+kind: TrafficSplit
+metadata:
+  name: result-service-split
+  namespace: gula-platform
+spec:
+  service: result-service
+  backends:
+    - service: result-service-blue
+      weight: 100
+    - service: result-service-green
+      weight: 0
+
+---
+# Authorization policy: only allow gula-platform services to talk to each other
+apiVersion: policy.linkerd.io/v1beta1
+kind: MeshTLSAuthentication
+metadata:
+  name: gula-services-mtls
+  namespace: gula-platform
+spec:
+  identities:
+    - "*.gula-platform.serviceaccount.identity.linkerd.cluster.local"
+
+---
+apiVersion: policy.linkerd.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: gula-internal-only
+  namespace: gula-platform
+spec:
+  targetRef:
+    group: core
+    kind: Namespace
+    name: gula-platform
+  requiredAuthenticationRefs:
+    - name: gula-services-mtls
+      kind: MeshTLSAuthentication
+      group: policy.linkerd.io

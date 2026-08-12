@@ -1,0 +1,61 @@
+name: Verify Railway Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      health_url:
+        description: "Railway backend health endpoint to verify"
+        required: false
+        default: "https://gula-backend-production.up.railway.app/health"
+        type: string
+
+concurrency:
+  group: gula-production-verification
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify-railway:
+    name: Verify Railway backend health
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Wait for a healthy Railway deployment
+        env:
+          HEALTH_URL: ${{ inputs.health_url }}
+        run: |
+          set -euo pipefail
+          echo "Railway deploys automatically from the main branch connection."
+          echo "Verifying: $HEALTH_URL"
+
+          for attempt in $(seq 1 24); do
+            if body=$(curl --fail --silent --show-error --max-time 10 "$HEALTH_URL"); then
+              echo "Health endpoint responded successfully on attempt $attempt."
+              printf '%s\n' "$body"
+              printf '%s\n' "$body" | grep -q '"status"'
+              exit 0
+            fi
+
+            echo "Attempt $attempt/24 was not healthy; retrying in 15 seconds."
+            sleep 15
+          done
+
+          echo "Railway backend did not become healthy within six minutes."
+          exit 1
+
+      - name: Write deployment summary
+        if: always()
+        env:
+          HEALTH_URL: ${{ inputs.health_url }}
+        run: |
+          {
+            echo "## Railway deployment verification"
+            echo
+            echo "| Item | Value |"
+            echo "| --- | --- |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Health endpoint | $HEALTH_URL |"
+            echo "| Deployment model | Railway automatic deployment from \`main\` |"
+          } >> "$GITHUB_STEP_SUMMARY"

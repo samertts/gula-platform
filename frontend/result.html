@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a0e1a">
+<title>GULA - نتيجة التحليل</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0a0e1a;color:#e2e8f0;min-height:100vh;padding:20px}
+.container{max-width:700px;margin:0 auto}
+.logo{text-align:center;margin-bottom:24px}
+.logo h1{font-size:1.8rem;font-weight:800;background:linear-gradient(135deg,#22d3ee,#818cf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo p{color:#64748b;font-size:.8rem;margin-top:4px}
+.card{background:#111827;border:1px solid #1e293b;border-radius:12px;padding:24px;margin-bottom:16px}
+.card-title{font-size:.85rem;color:#64748b;margin-bottom:12px;font-weight:600}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+.info-item label{font-size:.75rem;color:#64748b;display:block}
+.info-item span{font-size:.95rem;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{text-align:right;padding:10px;color:#64748b;font-size:.8rem;border-bottom:1px solid #1e293b}
+td{padding:10px;border-bottom:1px solid #1e293b40}
+.normal{color:#34d399}
+.high{color:#f87171;font-weight:700}
+.low{color:#fbbf24}
+.range{color:#64748b;font-size:.8rem}
+.actions{display:flex;gap:10px;justify-content:center;margin-top:20px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 20px;border-radius:8px;border:none;font-size:.88rem;font-weight:600;cursor:pointer;text-decoration:none;font-family:inherit}
+.btn-wa{background:#25d366;color:#fff}
+.btn-pdf{background:#818cf8;color:#fff}
+.btn-copy{background:transparent;border:1px solid #1e293b;color:#94a3b8}
+.btn-ai{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff}
+.btn-ai:disabled{opacity:.6;cursor:not-allowed}
+.disclaimer{text-align:center;font-size:.72rem;color:#475569;margin-top:24px;line-height:1.6}
+.qr{text-align:center;margin:16px 0}
+.qr img{width:120px;height:120px;border-radius:8px;background:#fff;padding:4px}
+.spinner{width:32px;height:32px;border:3px solid #1e293b;border-top-color:#818cf8;border-radius:50%;animation:spin .7s linear infinite;margin:60px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-msg{text-align:center;padding:60px 20px;color:#f87171}
+.expired{text-align:center;padding:60px 20px}
+.expired h2{color:#fbbf24;margin-bottom:8px}
+.expired p{color:#64748b}
+.lab-brand{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #1e293b}
+.lab-brand .lab-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#818cf8,#22d3ee);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff}
+.lab-brand .lab-name{font-size:1.1rem;font-weight:700}
+.lab-brand .lab-city{font-size:.8rem;color:#64748b}
+@media print{body{background:#fff;color:#000}
+.card{border:1px solid #ddd;box-shadow:none}
+.actions,.disclaimer{display:none}
+th,td{border-bottom:1px solid #ddd}
+.normal{color:#059669}.high{color:#dc2626}.low{color:#d97706}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo"><h1>GULA</h1><p>نتيجة تحليل مختبري</p></div>
+  <div id="content"><div class="spinner"></div></div>
+</div>
+<script>
+const token = window.location.pathname.split('/r/')[1]?.split('/')[0] || window.location.pathname.split('/').pop();
+
+// XSS protection: escape all user-provided strings before rendering
+function esc(str) {
+  if (str == null) return '';
+  const div = document.createElement('div');
+  div.textContent = String(str);
+  return div.innerHTML;
+}
+
+function showExpired() {
+  const el = document.getElementById('content');
+  el.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'expired';
+  const h2 = document.createElement('h2');
+  h2.textContent = 'انتهت صلاحية الرابط';
+  const p = document.createElement('p');
+  p.textContent = 'يرجى مراجعة المختبر للحصول على رابط جديد';
+  div.appendChild(h2);
+  div.appendChild(p);
+  el.appendChild(div);
+}
+
+function isSafeUrl(url) {
+  try { const u = new URL(url, location.origin); return ['http:', 'https:', 'whatsapp:', 'tel:'].includes(u.protocol); }
+  catch { return false; }
+}
+
+async function loadResult() {
+  if (!token || !/^[A-Za-z0-9_-]+$/.test(token)) { showError('رابط غير صالح'); return; }
+  try {
+    const res = await fetch('/api/r/' + encodeURIComponent(token));
+    if (res.status === 410) { showExpired(); return; }
+    if (!res.ok) throw new Error('خطأ في الخادم');
+    const data = await res.json();
+    renderResult(data);
+  } catch (e) { showError(e.message); }
+}
+
+function showError(msg) {
+  const el = document.getElementById('content');
+  el.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'error-msg';
+  const p = document.createElement('p');
+  p.textContent = msg;
+  div.appendChild(p);
+  el.appendChild(div);
+}
+
+function flag(val, low, high) {
+  const v = parseFloat(val);
+  if (isNaN(v) || !low || !high) return '';
+  if (v < parseFloat(low)) return '<span class="low">&#x25BC; منخفض</span>';
+  if (v > parseFloat(high)) return '<span class="high">&#x25B2; مرتفع</span>';
+  return '<span class="normal">&#10003; طبيعي</span>';
+}
+
+function renderResult(d) {
+  const date = new Date(d.order_date).toLocaleDateString('ar-IQ', {year:'numeric',month:'long',day:'numeric'});
+  const safeToken = encodeURIComponent(token);
+  document.getElementById('content').innerHTML = `
+    <div class="card">
+      <div class="lab-brand">
+        <div class="lab-avatar">${esc((d.lab?.name || 'م')[0])}</div>
+        <div><div class="lab-name">${esc(d.lab?.name || 'المختبر')}</div><div class="lab-city">${esc(d.lab?.city || '')}</div></div>
+      </div>
+      <div class="info-grid">
+        <div class="info-item"><label>المريض</label><span>${esc(d.patient?.name || '-')}</span></div>
+        <div class="info-item"><label>التاريخ</label><span>${esc(date)}</span></div>
+        <div class="info-item"><label>الطبيب</label><span>${esc(d.doctor_name || '-')}</span></div>
+        <div class="info-item"><label>المعرف الصحي</label><span style="color:#22d3ee">${esc(d.patient?.health_id || '-')}</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">نتائج التحاليل</div>
+      <table>
+        <thead><tr><th>التحليل</th><th>النتيجة</th><th>الوحدة</th><th>المدى الطبيعي</th><th>التقييم</th></tr></thead>
+        <tbody>${(d.results || []).map(r => `<tr>
+          <td>${esc(r.test_name)}</td>
+          <td><strong>${esc(r.value != null ? r.value : (r.value_text || '-'))}</strong></td>
+          <td>${esc(r.unit || '')}</td>
+          <td class="range">${esc(r.normal_range_low != null ? r.normal_range_low : '?')} - ${esc(r.normal_range_high != null ? r.normal_range_high : '?')}</td>
+          <td>${flag(r.value, r.normal_range_low, r.normal_range_high)}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="qr"><img src="/api/qr/${safeToken}" alt="QR" onerror="this.style.display='none'"></div>
+    <div class="actions">
+      ${d.whatsapp_link && isSafeUrl(d.whatsapp_link) ? `<a href="${esc(d.whatsapp_link)}" target="_blank" rel="noopener" class="btn btn-wa">مشاركة واتساب</a>` : ''}
+      <a href="/api/r/${safeToken}/pdf" target="_blank" rel="noopener" class="btn btn-pdf">تحميل PDF</a>
+      <button class="btn btn-copy" onclick="navigator.clipboard.writeText(window.location.href);this.textContent='تم النسخ!'">نسخ الرابط</button>
+      <button class="btn btn-copy" onclick="window.print()">طباعة</button>
+      <button class="btn btn-ai" id="aiBtn" onclick="loadAI('${safeToken}')">🤖 تفسير ذكي</button>
+    </div>
+    <div id="aiSection" style="display:none;margin-top:16px;padding:16px;background:#1a2744;border-radius:10px;border:1px solid #3b82f640">
+      <div style="font-size:.78rem;color:#60a5fa;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px">
+        🤖 تفسير بالذكاء الاصطناعي
+        <span style="font-size:.68rem;color:#475569;margin-right:auto">للتوعية فقط — ليس تشخيصاً طبياً</span>
+      </div>
+      <div id="aiCritical" style="display:none;margin-bottom:10px;padding:10px 14px;background:#450a0a;border:1px solid #dc2626;border-radius:8px;color:#fca5a5;font-size:.85rem;font-weight:700"></div>
+      <div id="aiConflicts" style="display:none;margin-bottom:10px;padding:10px 14px;background:#1c1a07;border:1px solid #ca8a04;border-radius:8px;color:#fde047;font-size:.82rem"></div>
+      <div id="aiSeverityBar" style="display:none;margin-bottom:10px;flex-wrap:wrap;gap:6px"></div>
+      <div id="aiAction" style="display:none;margin-bottom:10px;padding:10px 14px;border-radius:8px;font-size:.84rem;font-weight:700"></div>
+      <div id="aiText" style="font-size:.88rem;line-height:1.9;color:#e2e8f0;white-space:pre-wrap"></div>
+      <div id="aiConfidence" style="display:none;margin-top:10px;font-size:.72rem;color:#475569;text-align:left"></div>
+    </div>
+    <div class="disclaimer">${esc(d.disclaimer || 'هذه النتائج للاطلاع فقط ولا تغني عن استشارة الطبيب')}</div>
+  `;
+}
+
+const _SEV_STYLE = {
+  'طبيعي': 'background:#052e16;color:#4ade80;border:1px solid #166534',
+  'تنبيه': 'background:#422006;color:#fbbf24;border:1px solid #92400e',
+  'حرج':   'background:#450a0a;color:#fca5a5;border:1px solid #dc2626',
+};
+
+async function loadAI(tok) {
+  const btn       = document.getElementById('aiBtn');
+  const sec       = document.getElementById('aiSection');
+  const txt       = document.getElementById('aiText');
+  const crit      = document.getElementById('aiCritical');
+  const conflicts = document.getElementById('aiConflicts');
+  const bar       = document.getElementById('aiSeverityBar');
+  const action    = document.getElementById('aiAction');
+  const conf      = document.getElementById('aiConfidence');
+  if (!btn || !sec || !txt) return;
+
+  btn.disabled = true;
+  btn.textContent = '⏳ جاري التفسير...';
+  sec.style.display = 'block';
+  txt.textContent = '';
+  [crit, conflicts, bar, action, conf].forEach(el => { if (el) { el.style.display = 'none'; el.innerHTML = ''; } });
+
+  try {
+    const res  = await fetch('/api/ai/interpret/' + encodeURIComponent(tok));
+    const data = await res.json();
+    if (!res.ok) {
+      txt.textContent = data.detail || 'تعذر الحصول على التفسير حالياً.';
+      btn.textContent = '🤖 تفسير ذكي';
+      btn.disabled = false;
+      return;
+    }
+
+    // ── Critical flags banner ─────────────────────────────────────────────
+    if (crit && data.critical_flags && data.critical_flags.length > 0) {
+      crit.textContent = '⚠️ نتائج تستوجب مراجعة طبية فورية: ' + data.critical_flags.map(f => esc(f)).join('، ');
+      crit.style.display = 'block';
+    }
+
+    // ── Conflict signals banner ───────────────────────────────────────────
+    if (conflicts && data.conflicts && data.conflicts.length > 0) {
+      conflicts.innerHTML = '🔗 إشارات متقاطعة: ' + data.conflicts.map(c => `<span>${esc(c)}</span>`).join(' &nbsp;·&nbsp; ');
+      conflicts.style.display = 'block';
+    }
+
+    // ── Per-test severity chips ───────────────────────────────────────────
+    if (bar && data.results_severity && data.results_severity.length > 0) {
+      bar.style.display = 'flex';
+      bar.innerHTML = data.results_severity.map(r => {
+        const st = _SEV_STYLE[r.severity] || _SEV_STYLE['تنبيه'];
+        return `<span style="${st};padding:3px 8px;border-radius:6px;font-size:.72rem;font-weight:700">${esc(r.test)} — ${esc(r.severity)}</span>`;
+      }).join('');
+    }
+
+    // ── Action guidance box ───────────────────────────────────────────────
+    if (action && data.action_guidance) {
+      const ag = data.action_guidance;
+      const agBg = ag.urgency === 'immediate' ? 'background:#450a0a;color:#fca5a5;border:1px solid #dc2626'
+                 : ag.urgency === 'soon'       ? 'background:#422006;color:#fcd34d;border:1px solid #92400e'
+                                               : 'background:#052e16;color:#4ade80;border:1px solid #166534';
+      action.style.cssText = `display:block;margin-bottom:10px;padding:10px 14px;border-radius:8px;font-size:.84rem;font-weight:700;${agBg}`;
+      action.textContent = ag.ar || '';
+    }
+
+    txt.textContent = data.interpretation || '';
+
+    // ── Confidence footer ─────────────────────────────────────────────────
+    if (conf && data.confidence) {
+      const cl = data.confidence.level;
+      const clLabel = cl === 'high' ? '🟢 ثقة عالية' : cl === 'medium' ? '🟡 ثقة متوسطة' : '🔴 ثقة منخفضة';
+      conf.textContent = `${clLabel} (${Math.round(data.confidence.score * 100)}%) — ${esc(data.provider)}`;
+      conf.style.display = 'block';
+    }
+
+    const sevLabel = data.severity === 'حرج' ? '⚠️ حرج' : data.severity === 'تنبيه' ? '🔔 تنبيه' : '✓ طبيعي';
+    btn.textContent = sevLabel + ' — تم التفسير';
+  } catch {
+    txt.textContent = 'تعذر الاتصال. تحقق من الشبكة وحاول مجدداً.';
+    btn.textContent = '🤖 تفسير ذكي';
+    btn.disabled = false;
+  }
+}
+
+loadResult();
+</script>
+</body>
+</html>

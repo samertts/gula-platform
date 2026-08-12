@@ -1,0 +1,75 @@
+# GULA Platform — Elastic Security SIEM Configuration
+
+output.elasticsearch:
+  hosts: ["${ELASTICSEARCH_HOST}:9200"]
+  username: "${ELASTICSEARCH_USER}"
+  password: "${ELASTICSEARCH_PASS}"
+  ssl.verification_mode: certificate
+
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /app/data/audit.log
+    fields:
+      log_type: audit
+      service: gula-backend
+    multiline:
+      pattern: '^\d{4}-\d{2}-\d{2}'
+      negate: true
+      match: after
+
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/gula/*.log
+    fields:
+      log_type: application
+      service: gula-backend
+
+  - type: container
+    enabled: true
+    paths:
+      - /var/lib/docker/containers/*/*.log
+    fields:
+      log_type: container
+
+processors:
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+  - add_host_metadata: ~
+  - add_cloud_metadata: ~
+  - timestamp:
+      field: "@timestamp"
+      layouts:
+        - "2006-01-02T15:04:05Z0700"
+        - "2006-01-02 15:04:05.999999"
+
+setup.kibana:
+  host: "${KIBANA_HOST}:5601"
+  username: "${KIBANA_USER}"
+  password: "${KIBANA_PASS}"
+
+setup.ilm:
+  enabled: true
+  policy_name: "gula-security-policy"
+  policy:
+    phases:
+      hot:
+        actions:
+          rollover:
+            max_size: 50GB
+            max_age: 30d
+      warm:
+        actions:
+          readonly: {}
+      delete:
+        min_age: 90d
+        actions:
+          delete: {}
+
+setup.dashboards:
+  enabled: true
+  index: "gula-audit-*"
+
+xpack.security.enabled: true
