@@ -128,6 +128,9 @@ dependencies {
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
+    // Runtime permissions for Compose
+    implementation("com.google.accompanist:accompanist-permissions:0.37.3")
+
     // CameraX
     val cameraxVersion = "1.5.0"
     implementation("androidx.camera:camera-core:$cameraxVersion")

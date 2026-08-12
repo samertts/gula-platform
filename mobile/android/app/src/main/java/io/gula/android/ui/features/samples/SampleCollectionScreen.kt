@@ -24,7 +24,7 @@ import io.gula.android.ui.components.core.GulaButton
 import io.gula.android.ui.components.core.GulaTextField
 import java.util.concurrent.Executors
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun SampleCollectionScreen(
     onBack: () -> Unit,
@@ -143,7 +143,7 @@ fun SampleCollectionScreen(
                     onValueChange = { manualBarcode = it; viewModel.setBarcode(it) },
                     label = "Barcode",
                     placeholder = "Scan or enter barcode",
-                    leadingIcon = Icons.Default.Barcode,
+                    leadingIcon = Icons.Default.QrCodeScanner,
                 )
             }
 
@@ -165,7 +165,7 @@ fun SampleCollectionScreen(
             )
 
             if (uiState.error != null) {
-                Text(uiState.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                Text(uiState.error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
 
             Spacer(Modifier.weight(1f))
