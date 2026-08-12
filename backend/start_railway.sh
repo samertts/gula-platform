@@ -9,7 +9,7 @@ exec gunicorn \
   app.main:app \
   --workers 1 \
   --preload \
-  --log-level debug \
+  --log-level info \
   --capture-output \
   --timeout 60 \
   --bind "0.0.0.0:${PORT_VALUE}" \
