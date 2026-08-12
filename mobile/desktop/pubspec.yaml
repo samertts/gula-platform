@@ -41,7 +41,6 @@ dependencies:
   system_tray: ^2.0.3
   local_notifier: ^0.1.6
   auto_updater: ^0.1.0
-  launch_at_startup: ^0.2.2
   tray_manager: ^0.2.1
 
   # Printing
@@ -97,9 +96,6 @@ dependencies:
 
   # Localization
   flutter_oss_licenses: ^2.0.2
-
-  # Device Info
-  device_info_plus: ^11.3.3
 
   # QR
   qr: ^3.0.1
