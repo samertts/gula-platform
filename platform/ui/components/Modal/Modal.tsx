@@ -4,7 +4,8 @@ import { cn } from '../../utils/cn';
 export type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
 export interface ModalProps {
-  open: boolean;
+  open?: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   title?: string;
   subtitle?: string;
@@ -27,6 +28,7 @@ const sizeStyles: Record<ModalSize, string> = {
 
 export function Modal({
   open,
+  isOpen,
   onClose,
   title,
   subtitle,
@@ -38,6 +40,7 @@ export function Modal({
   showCloseButton = true,
   className,
 }: ModalProps) {
+  const visible = open ?? isOpen ?? false;
   const overlayRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<Element | null>(null);
@@ -65,7 +68,7 @@ export function Modal({
   );
 
   useEffect(() => {
-    if (open) {
+    if (visible) {
       previousActiveElement.current = document.activeElement;
       document.body.style.overflow = 'hidden';
       document.addEventListener('keydown', handleKeyDown);
@@ -81,13 +84,13 @@ export function Modal({
       document.body.style.overflow = '';
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [open, handleKeyDown]);
+  }, [visible, handleKeyDown]);
 
   const handleOverlayClick = (e: MouseEvent) => {
     if (closeOnOverlay && e.target === overlayRef.current) onClose();
   };
 
-  if (!open) return null;
+  if (!visible) return null;
 
   return (
     <div

@@ -1,26 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Card, Button, Select, LoadingSpinner, EmptyState, Badge } from '@gula/ui-platform';
-import { useNurse } from '../contexts/NurseContext';
+import { useEffect, useState } from 'react';
+import { Select, LoadingSpinner, EmptyState } from '@gula/ui-platform';
 import { TaskItem } from '../components/TaskItem';
-import { getPriorityArabic, getStatusArabic } from '../utils/routes';
-
-interface Task {
-  id: string;
-  title: string;
-  patientName: string;
-  patientId: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent' | 'stat';
-  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
-  dueTime: string;
-  assignedTo: string;
-  category: string;
-}
+import type { NursingTask as Task } from '@/utils/types';
 
 const MOCK_TASKS: Task[] = [
-  { id: '1', title: 'إعطاء دواء', patientName: 'أحمد علي', patientId: 'P-001', priority: 'urgent', status: 'pending', dueTime: '10:00', assignedTo: 'نور', category: 'أدوية' },
-  { id: '2', title: 'قياس العلامات الحيوية', patientName: 'مريم خالد', patientId: 'P-002', priority: 'high', status: 'in-progress', dueTime: '09:30', assignedTo: 'نور', category: 'علامات حيوية' },
-  { id: '3', title: 'تغيير الضماد', patientName: 'حسن كريم', patientId: 'P-003', priority: 'medium', status: 'pending', dueTime: '11:00', assignedTo: 'نور', category: 'عناية بالجروح' },
-  { id: '4', title: 'تحضير المريض للجراحة', patientName: 'لمى سامر', patientId: 'P-004', priority: 'high', status: 'completed', dueTime: '08:00', assignedTo: 'نور', category: 'تحضير' },
+  { id: '1', patientName: 'أحمد علي', patientId: 'P-001', bed: 'ICU-01', type: 'medication', description: 'إعطاء دواء', priority: 'urgent', status: 'pending', due: '2026-08-12T10:00:00', assignedTo: 'نور', createdAt: '2026-08-12T08:00:00' },
+  { id: '2', patientName: 'مريم خالد', patientId: 'P-002', bed: 'Ward-12', type: 'vitals', description: 'قياس العلامات الحيوية', priority: 'high', status: 'in-progress', due: '2026-08-12T09:30:00', assignedTo: 'نور', createdAt: '2026-08-12T08:00:00' },
+  { id: '3', patientName: 'حسن كريم', patientId: 'P-003', bed: 'Ward-08', type: 'dressing', description: 'تغيير الضماد', priority: 'medium', status: 'pending', due: '2026-08-12T11:00:00', assignedTo: 'نور', createdAt: '2026-08-12T08:00:00' },
+  { id: '4', patientName: 'لمى سامر', patientId: 'P-004', bed: 'Ward-04', type: 'assessment', description: 'تحضير المريض للجراحة', priority: 'high', status: 'completed', due: '2026-08-12T08:00:00', assignedTo: 'نور', createdAt: '2026-08-12T07:00:00' },
 ];
 
 export default function TaskList() {

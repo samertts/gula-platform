@@ -108,7 +108,7 @@ export function Inventory() {
                 />
                 <Select
                   value={catFilter}
-                  onChange={v => setCatFilter(v as string)}
+                  onChange={e => setCatFilter(e.target.value)}
                   options={CATEGORIES.map(c => ({ value: c, label: c }))}
                   className="w-36"
                 />

@@ -174,7 +174,7 @@ export function ScheduleCalendar({
                 borderInlineEnd: '1px solid var(--border-primary)',
                 alignSelf: 'start',
                 position: 'sticky',
-                start: 0
+                insetInlineStart: 0
               }}>
                 {hour.toString().padStart(2, '0')}:00
               </div>

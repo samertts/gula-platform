@@ -6,7 +6,7 @@ export function usePatientSearch() {
   const { search, searchResults, isSearching } = usePatientContext();
   const [mpiResults, setMpiResults] = useState<MpiMatchResult[]>([]);
   const [searchError, setSearchError] = useState<string | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const performSearch = useCallback(async (params: PatientSearchParams): Promise<PatientSearchResult | null> => {
     setSearchError(null);

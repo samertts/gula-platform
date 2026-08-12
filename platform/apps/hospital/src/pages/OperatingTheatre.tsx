@@ -23,14 +23,14 @@ interface SurgerySchedule {
 }
 
 const MOCK_SURGERIES: SurgerySchedule[] = [
-  { id: '1', patientName: 'Ali Hassan', patientNameAr: 'علي حسن', procedure: 'Laparoscopic Cholecystectomy', procedureAr: 'استئصال المرارة بالمنظار', surgeonAr: 'د. خالد العاني', anaesthetistAr: 'د. محمد سامي', theatre: 'OT-1', date: '2026-07-16', startTime: '08:00', estimatedDuration: 120, status: 'scheduled', priority: 'elective', notes: '' },
-  { id: '2', patientName: 'Zainab Noor', patientNameAr: 'زينب نور', procedure: 'C-Section', procedureAr: 'ولادة قيصرية', surgeonAr: 'د. ليلى رشيد', anaesthetistAr: 'د. أحمد جاسم', theatre: 'OT-2', date: '2026-07-16', startTime: '09:00', estimatedDuration: 90, status: 'scheduled', priority: 'urgent', notes: '' },
-  { id: '3', patientName: 'Mohammed Ali', patientNameAr: 'محمد علي', procedure: 'Open Appendectomy', procedureAr: 'استئصال الزائدة الدودية', surgeonAr: 'د. خالد العاني', anaesthetistAr: 'د. محمد سامي', theatre: 'OT-1', date: '2026-07-16', startTime: '10:30', estimatedDuration: 75, status: 'scheduled', priority: 'emergency', notes: '' },
-  { id: '4', patientName: 'Huda Karim', patientNameAr: 'هدى كريم', procedure: 'Hysteroscopy', procedureAr: 'تنظير الرحم', surgeonAr: 'د. ليلى رشيد', anaesthetistAr: 'د. سارة نور', theatre: 'OT-3', date: '2026-07-16', startTime: '11:00', estimatedDuration: 60, status: 'in_progress', priority: 'elective', notes: '' },
-  { id: '5', patientName: 'Qasim Yousif', patientNameAr: 'قاسم يوسف', procedure: 'Hernia Repair', procedureAr: 'إصلاح فتق', surgeonAr: 'د. سامر جبوري', anaesthetistAr: 'د. محمد سامي', theatre: 'OT-2', date: '2026-07-16', startTime: '13:00', estimatedDuration: 90, status: 'scheduled', priority: 'elective', notes: '' },
-  { id: '6', patientName: 'Layla Abbas', patientNameAr: 'ليلى عباس', procedure: 'Knee Replacement', procedureAr: 'استبدال الركبة', surgeonAr: 'د. قاسم العبيدي', anaesthetistAr: 'د. أحمد جاسم', theatre: 'OT-1', date: '2026-07-16', startTime: '14:00', estimatedDuration: 150, status: 'scheduled', priority: 'elective', notes: '' },
-  { id: '7', patientName: 'Rami Jassim', patientNameAr: 'رامي جاسم', procedure: 'Emergency Laparotomy', procedureAr: 'فتح البطن الاستعجالي', surgeonAr: 'د. خالد العاني', anaesthetistAr: 'د. محمد سامي', theatre: 'OT-3', date: '2026-07-16', startTime: '15:30', estimatedDuration: 120, status: 'scheduled', priority: 'emergency', notes: '' },
-  { id: '8', patientName: 'Sara Mohammed', patientNameAr: 'سارة محمد', procedure: 'Tonsillectomy', procedureAr: 'استئصال اللوزتين', surgeonAr: 'د. مريم الكاظمي', anaesthetistAr: 'د. سارة نور', theatre: 'OT-2', date: '2026-07-16', startTime: '08:30', estimatedDuration: 60, status: 'completed', priority: 'elective', notes: '' },
+  { id: '1', patientName: 'Ali Hassan', patientNameAr: 'علي حسن', procedure: 'Laparoscopic Cholecystectomy', procedureAr: 'استئصال المرارة بالمنظار', surgeon: 'Dr. Khalid Al-Ani', surgeonAr: 'د. خالد العاني', anaesthetist: 'Dr. Mohammed Sami', anaesthetistAr: 'د. محمد سامي', theatre: 'OT-1', date: '2026-07-16', startTime: '08:00', estimatedDuration: 120, status: 'scheduled', priority: 'elective', notes: '' },
+  { id: '2', patientName: 'Zainab Noor', patientNameAr: 'زينب نور', procedure: 'C-Section', procedureAr: 'ولادة قيصرية', surgeon: 'Dr. Layla Rashid', surgeonAr: 'د. ليلى رشيد', anaesthetist: 'Dr. Ahmed Jassim', anaesthetistAr: 'د. أحمد جاسم', theatre: 'OT-2', date: '2026-07-16', startTime: '09:00', estimatedDuration: 90, status: 'scheduled', priority: 'urgent', notes: '' },
+  { id: '3', patientName: 'Mohammed Ali', patientNameAr: 'محمد علي', procedure: 'Open Appendectomy', procedureAr: 'استئصال الزائدة الدودية', surgeon: 'Dr. Khalid Al-Ani', surgeonAr: 'د. خالد العاني', anaesthetist: 'Dr. Mohammed Sami', anaesthetistAr: 'د. محمد سامي', theatre: 'OT-1', date: '2026-07-16', startTime: '10:30', estimatedDuration: 75, status: 'scheduled', priority: 'emergency', notes: '' },
+  { id: '4', patientName: 'Huda Karim', patientNameAr: 'هدى كريم', procedure: 'Hysteroscopy', procedureAr: 'تنظير الرحم', surgeon: 'Dr. Layla Rashid', surgeonAr: 'د. ليلى رشيد', anaesthetist: 'Dr. Sara Noor', anaesthetistAr: 'د. سارة نور', theatre: 'OT-3', date: '2026-07-16', startTime: '11:00', estimatedDuration: 60, status: 'in_progress', priority: 'elective', notes: '' },
+  { id: '5', patientName: 'Qasim Yousif', patientNameAr: 'قاسم يوسف', procedure: 'Hernia Repair', procedureAr: 'إصلاح فتق', surgeon: 'Dr. Samer Jabouri', surgeonAr: 'د. سامر جبوري', anaesthetist: 'Dr. Mohammed Sami', anaesthetistAr: 'د. محمد سامي', theatre: 'OT-2', date: '2026-07-16', startTime: '13:00', estimatedDuration: 90, status: 'scheduled', priority: 'elective', notes: '' },
+  { id: '6', patientName: 'Layla Abbas', patientNameAr: 'ليلى عباس', procedure: 'Knee Replacement', procedureAr: 'استبدال الركبة', surgeon: 'Dr. Qasim Al-Obaidi', surgeonAr: 'د. قاسم العبيدي', anaesthetist: 'Dr. Ahmed Jassim', anaesthetistAr: 'د. أحمد جاسم', theatre: 'OT-1', date: '2026-07-16', startTime: '14:00', estimatedDuration: 150, status: 'scheduled', priority: 'elective', notes: '' },
+  { id: '7', patientName: 'Rami Jassim', patientNameAr: 'رامي جاسم', procedure: 'Emergency Laparotomy', procedureAr: 'فتح البطن الاستعجالي', surgeon: 'Dr. Khalid Al-Ani', surgeonAr: 'د. خالد العاني', anaesthetist: 'Dr. Mohammed Sami', anaesthetistAr: 'د. محمد سامي', theatre: 'OT-3', date: '2026-07-16', startTime: '15:30', estimatedDuration: 120, status: 'scheduled', priority: 'emergency', notes: '' },
+  { id: '8', patientName: 'Sara Mohammed', patientNameAr: 'سارة محمد', procedure: 'Tonsillectomy', procedureAr: 'استئصال اللوزتين', surgeon: 'Dr. Maryam Al-Kadhimi', surgeonAr: 'د. مريم الكاظمي', anaesthetist: 'Dr. Sara Noor', anaesthetistAr: 'د. سارة نور', theatre: 'OT-2', date: '2026-07-16', startTime: '08:30', estimatedDuration: 60, status: 'completed', priority: 'elective', notes: '' },
 ];
 
 export function OperatingTheatre() {
@@ -96,7 +96,7 @@ export function OperatingTheatre() {
             action={
               <Select
                 value={filterStatus}
-                onChange={v => setFilterStatus(v as string)}
+                onChange={e => setFilterStatus(e.target.value)}
                 options={[
                   { value: 'all', label: isRtl ? 'الكل' : 'All' },
                   { value: 'scheduled', label: isRtl ? 'مجدول' : 'Scheduled' },

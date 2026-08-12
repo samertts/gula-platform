@@ -25,14 +25,14 @@ export const vitalsService = {
   calculateEWS: (vitals: Partial<VitalSigns>): number => {
     let score = 0;
 
-    if (vitals.temperature !== null) {
+    if (vitals.temperature != null) {
       if (vitals.temperature <= 35) score += 3;
       else if (vitals.temperature < 36) score += 1;
       else if (vitals.temperature > 39) score += 2;
       else if (vitals.temperature >= 38.1) score += 1;
     }
 
-    if (vitals.heartRate !== null) {
+    if (vitals.heartRate != null) {
       if (vitals.heartRate <= 40) score += 3;
       else if (vitals.heartRate < 50) score += 1;
       else if (vitals.heartRate > 130) score += 3;
@@ -40,7 +40,7 @@ export const vitalsService = {
       else if (vitals.heartRate > 90) score += 1;
     }
 
-    if (vitals.respiratoryRate !== null) {
+    if (vitals.respiratoryRate != null) {
       if (vitals.respiratoryRate <= 8) score += 3;
       else if (vitals.respiratoryRate < 11) score += 1;
       else if (vitals.respiratoryRate > 30) score += 3;
@@ -48,14 +48,14 @@ export const vitalsService = {
       else if (vitals.respiratoryRate > 20) score += 1;
     }
 
-    if (vitals.bloodPressureSystolic !== null) {
+    if (vitals.bloodPressureSystolic != null) {
       if (vitals.bloodPressureSystolic <= 90) score += 3;
       else if (vitals.bloodPressureSystolic < 100) score += 2;
       else if (vitals.bloodPressureSystolic > 220) score += 3;
       else if (vitals.bloodPressureSystolic > 199) score += 2;
     }
 
-    if (vitals.oxygenSaturation !== null) {
+    if (vitals.oxygenSaturation != null) {
       if (vitals.oxygenSaturation <= 85) score += 3;
       else if (vitals.oxygenSaturation < 90) score += 2;
       else if (vitals.oxygenSaturation <= 93) score += 1;

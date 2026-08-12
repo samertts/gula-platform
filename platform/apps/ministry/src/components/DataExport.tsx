@@ -3,14 +3,14 @@ import { cn } from '@gula/ui-platform';
 import { Download, FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
 
 interface DataExportProps {
-  data: Record<string, any>[];
-  filename: string;
+  data?: Record<string, any>[];
+  filename?: string;
   label?: string;
   className?: string;
   columns?: { key: string; header: string }[];
 }
 
-export function DataExport({ data, filename, label, className, columns }: DataExportProps) {
+export function DataExport({ data = [], filename = 'gula-export', label, className, columns }: DataExportProps) {
   const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null);
 
   const exportCSV = async () => {

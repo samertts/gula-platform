@@ -32,13 +32,13 @@ const governorates = [
 ];
 
 interface MapViewProps {
-  regions: RegionData[];
+  regions?: RegionData[];
   selectedRegion?: string | null;
   onRegionSelect?: (region: RegionData) => void;
   className?: string;
 }
 
-export function MapView({ regions, selectedRegion, onRegionSelect, className }: MapViewProps) {
+export function MapView({ regions = [], selectedRegion, onRegionSelect, className }: MapViewProps) {
   const [hoveredRegion, setHoveredRegion] = useState<string | null>(null);
   const regionMap = new Map(regions.map(r => [r.governorate.toLowerCase(), r]));
 

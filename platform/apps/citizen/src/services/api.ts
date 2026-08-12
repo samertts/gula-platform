@@ -211,10 +211,20 @@ async function getFromCache<T>(key: string, method: string): Promise<T | null> {
 
 export async function processOfflineQueue() {
   const db = await getOfflineDB();
-  const requests = await db.getAll('requests');
+  const [requests, requestKeys] = await Promise.all([
+    db.getAll('requests'),
+    db.getAllKeys('requests'),
+  ]);
 
-  for (const stored of requests) {
+  for (const [index, stored] of requests.entries()) {
     const req = stored as OfflineQueueEnvelope & { id?: number; retryCount?: number; maxRetries?: number };
+    const requestKey = req.id ?? requestKeys[index];
+    if (requestKey === undefined) {
+      // A queue record without an IndexedDB key cannot be reconciled safely.
+      // Leave it untouched for explicit recovery rather than deleting or replaying it.
+      console.error('[CitizenOfflineQueue] missing IndexedDB request key', { index });
+      continue;
+    }
     const envelope: OfflineQueueEnvelope = req.schemaVersion === 1
       ? req
       : await createQueueEnvelope({
@@ -231,7 +241,7 @@ export async function processOfflineQueue() {
 
     if (envelope.state === 'conflict' || envelope.state === 'rejected' || envelope.state === 'synced') continue;
     if (envelope.attempt >= envelope.maxAttempts) {
-      await db.put('requests', { ...envelope, id: req.id, state: 'failed' });
+      await db.put('requests', { ...envelope, id: requestKey, state: 'failed' });
       continue;
     }
 
@@ -239,13 +249,13 @@ export async function processOfflineQueue() {
       const security = inspectQueuePayload(envelope.body);
       const headerResult = sanitizeQueueHeaders(envelope.headers);
       if (headerResult.hadSensitiveHeader || !security.safe) {
-        await db.put('requests', { ...envelope, id: req.id, state: 'rejected', lastError: headerResult.hadSensitiveHeader ? 'sensitive-header' : security.reason });
+        await db.put('requests', { ...envelope, id: requestKey, state: 'rejected', lastError: headerResult.hadSensitiveHeader ? 'sensitive-header' : security.reason });
         continue;
       }
       const response = await fetch(envelope.url, buildQueueRequestInit(envelope));
       const disposition = classifyQueueResponse(response.status);
       if (disposition === 'synced') {
-        await db.delete('requests', req.id);
+        await db.delete('requests', requestKey);
       } else if (disposition === 'conflict') {
         let serverBody: unknown;
         try { serverBody = await response.json(); } catch { /* response may have no JSON body */ }
@@ -255,15 +265,15 @@ export async function processOfflineQueue() {
             serverBody,
             detectedAt: new Date().toISOString(),
           }),
-          id: req.id,
+          id: requestKey,
         });
       } else if (disposition === 'rejected') {
-        await db.put('requests', { ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`), id: req.id });
+        await db.put('requests', { ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`), id: requestKey });
       } else {
-        await db.put('requests', { ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`), id: req.id });
+        await db.put('requests', { ...nextQueueEnvelopeState(envelope, disposition, `HTTP ${response.status}`), id: requestKey });
       }
     } catch (error) {
-      await db.put('requests', { ...nextQueueEnvelopeState(envelope, 'retry', error instanceof Error ? error.message : 'network-error'), id: req.id });
+      await db.put('requests', { ...nextQueueEnvelopeState(envelope, 'retry', error instanceof Error ? error.message : 'network-error'), id: requestKey });
     }
   }
 }

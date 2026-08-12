@@ -51,7 +51,7 @@ export function Finance() {
           </div>
           <Select
             value={period}
-            onChange={v => setPeriod(v as string)}
+            onChange={e => setPeriod(e.target.value)}
             options={[
               { value: 'daily', label: isRtl ? 'يومي' : 'Daily' },
               { value: 'weekly', label: isRtl ? 'أسبوعي' : 'Weekly' },

@@ -16,7 +16,10 @@ export const ThemeContext = createContext<ThemeContextValue | null>(null);
 export interface ThemeProviderProps {
   children: ReactNode;
   defaultMode?: ThemeMode;
+  defaultTheme?: ThemeMode;
   defaultRtl?: boolean;
+  defaultDirection?: 'rtl' | 'ltr';
+  defaultLocale?: string;
   /** CSS variable injection strategy */
   strategy?: 'css-vars' | 'class' | 'both';
 }
@@ -24,24 +27,29 @@ export interface ThemeProviderProps {
 export function ThemeProvider({
   children,
   defaultMode = 'light',
+  defaultTheme,
   defaultRtl = false,
+  defaultDirection,
+  defaultLocale,
   strategy = 'css-vars',
 }: ThemeProviderProps) {
+  const initialMode = defaultTheme ?? defaultMode;
   const [mode, setModeState] = useState<ThemeMode>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gula-theme-mode') as ThemeMode | null;
       if (saved === 'light' || saved === 'dark') return saved;
       if (window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark';
     }
-    return defaultMode;
+    return initialMode;
   });
 
+  const initialRtl = defaultDirection ? defaultDirection === 'rtl' : defaultRtl;
   const [isRtl, setRtlState] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('gula-direction') as 'rtl' | 'ltr' | null;
       if (saved) return saved === 'rtl';
     }
-    return defaultRtl;
+    return initialRtl;
   });
 
   const [theme, setTheme] = useState(() => createTheme(mode, isRtl));
@@ -53,6 +61,7 @@ export function ThemeProvider({
     localStorage.setItem('gula-direction', isRtl ? 'rtl' : 'ltr');
 
     applyThemeToDocument(mode, isRtl);
+    if (defaultLocale) document.documentElement.lang = defaultLocale;
 
     if (strategy === 'class' || strategy === 'both') {
       const root = document.documentElement;
@@ -61,7 +70,7 @@ export function ThemeProvider({
       root.classList.toggle('rtl', isRtl);
       root.classList.toggle('ltr', !isRtl);
     }
-  }, [mode, isRtl, strategy]);
+  }, [mode, isRtl, strategy, defaultLocale]);
 
   const toggleMode = useCallback(() => {
     setModeState((prev: ThemeMode) => prev === 'light' ? 'dark' : 'light');

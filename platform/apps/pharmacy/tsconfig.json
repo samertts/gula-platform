@@ -6,7 +6,6 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
@@ -17,12 +16,10 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "types": [],
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
     }
   },
   "include": ["App.tsx", "main.tsx", "vite-env.d.ts", "pages/**/*.tsx", "components/**/*.tsx", "services/**/*.ts"],
-  "exclude": ["node_modules", "vite.config.ts"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "exclude": ["node_modules", "vite.config.ts"]
 }

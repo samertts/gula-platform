@@ -3,7 +3,7 @@ import { ThemeProvider } from '@gula/ui-platform';
 import { NurseProvider, useNurse } from './contexts/NurseContext';
 import { OfflineProvider } from './contexts/OfflineContext';
 import { ROUTES } from './utils/routes';
-import { Layout, ProtectedRoute } from '@gula/ui-platform';
+import { Layout, ProtectedRoute, Sidebar } from '@gula/ui-platform';
 import { SIDEBAR_SECTIONS } from './utils/routes';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
@@ -25,7 +25,7 @@ import Settings from './pages/Settings';
 function AppLayout() {
   const { user } = useNurse();
   return (
-    <Layout sidebarSections={SIDEBAR_SECTIONS} user={user}>
+    <Layout sidebar={<Sidebar sections={SIDEBAR_SECTIONS} />}>
       <Routes>
         <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
         <Route path={ROUTES.MEDICATIONS} element={<MedicationAdministration />} />
@@ -61,14 +61,14 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path={ROUTES.LOGIN} element={<Login />} />
-      <Route path="/*" element={<ProtectedRoute><AppLayout /></ProtectedRoute>} />
+      <Route path="/*" element={<ProtectedRoute isAuthenticated={isAuthenticated}><AppLayout /></ProtectedRoute>} />
     </Routes>
   );
 }
 
 export default function App() {
   return (
-    <ThemeProvider defaultDirection="rtl" defaultLocale="ar">
+    <ThemeProvider defaultMode="light" defaultRtl>
       <BrowserRouter>
         <NurseProvider>
           <OfflineProvider>

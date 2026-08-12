@@ -3,7 +3,9 @@ import { cn } from '../../utils/cn';
 
 export interface Column<T> {
   key: string;
-  header: string;
+  header?: string;
+  label?: string;
+  labelAr?: string;
   sortable?: boolean;
   render?: (row: T) => ReactNode;
   align?: 'left' | 'center' | 'right';
@@ -15,7 +17,7 @@ export interface Column<T> {
 export interface TableProps<T> extends HTMLAttributes<HTMLDivElement> {
   columns: Column<T>[];
   data: T[];
-  getRowKey: (row: T) => string | number;
+  getRowKey?: (row: T) => string | number;
   sortable?: boolean;
   onSort?: (key: string, direction: 'asc' | 'desc') => void;
   emptyMessage?: string;
@@ -81,7 +83,7 @@ export function Table<T>({
                 aria-sort={sortKey === col.key ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
               >
                 <div className="flex items-center gap-1.5">
-                  <span>{col.header}</span>
+                  <span>{col.header ?? col.labelAr ?? col.label ?? col.key}</span>
                   {col.sortable && sortable && sortKey === col.key && (
                     <span className="text-primary-500">
                       {sortDir === 'asc' ? '\u25B2' : '\u25BC'}
@@ -113,9 +115,9 @@ export function Table<T>({
               </td>
             </tr>
           ) : (
-            data.map(row => (
+            data.map((row, index) => (
               <tr
-                key={getRowKey(row)}
+                key={getRowKey?.(row) ?? (row as { id?: string | number }).id ?? index}
                 onClick={() => onRowClick?.(row)}
                 className={cn(
                   'border-b border-neutral-100 dark:border-neutral-800 transition-colors',

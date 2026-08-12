@@ -98,7 +98,7 @@ export function HR() {
                     />
                     <Select
                       value={deptFilter}
-                      onChange={v => setDeptFilter(v as string)}
+                      onChange={e => setDeptFilter(e.target.value)}
                       options={DEPARTMENTS.map(d => ({ value: d, label: d }))}
                       className="w-36"
                     />

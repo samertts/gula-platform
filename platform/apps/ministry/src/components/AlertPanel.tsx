@@ -5,7 +5,7 @@ import type { Alert } from '../services/api';
 import { getAlertPriorityScore, getAlertsBySeverity } from '../services/alerts';
 
 interface AlertPanelProps {
-  alerts: Alert[];
+  alerts?: Alert[];
   onAcknowledge?: (id: string) => void;
   onViewAll?: () => void;
   maxDisplay?: number;
@@ -18,7 +18,7 @@ const severityConfig = {
   info: { icon: Info, color: 'text-sky-400', bg: 'bg-sky-500/10', border: 'border-sky-500/20', hoverBg: 'hover:bg-sky-500/20' },
 };
 
-export function AlertPanel({ alerts, onAcknowledge, onViewAll, maxDisplay = 5 }: AlertPanelProps) {
+export function AlertPanel({ alerts = [], onAcknowledge, onViewAll, maxDisplay = 5 }: AlertPanelProps) {
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const sorted = [...alerts]
     .sort((a, b) => getAlertPriorityScore(b) - getAlertPriorityScore(a))

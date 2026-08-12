@@ -59,7 +59,7 @@ export function Assets() {
                 />
                 <Select
                   value={deptFilter}
-                  onChange={v => setDeptFilter(v as string)}
+                  onChange={e => setDeptFilter(e.target.value)}
                   options={[
                     { value: 'all', label: isRtl ? 'جميع الأقسام' : 'All Depts' },
                     { value: 'الأشعة', label: isRtl ? 'الأشعة' : 'Radiology' },
@@ -71,7 +71,7 @@ export function Assets() {
                 />
                 <Select
                   value={statusFilter}
-                  onChange={v => setStatusFilter(v as string)}
+                  onChange={e => setStatusFilter(e.target.value)}
                   options={[
                     { value: 'all', label: isRtl ? 'جميع الحالات' : 'All Status' },
                     { value: 'operational', label: isRtl ? 'قيد التشغيل' : 'Operational' },

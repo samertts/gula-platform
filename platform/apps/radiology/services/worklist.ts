@@ -36,6 +36,8 @@ export type WorklistItem = {
 }
 
 export type WorklistFilter = {
+  page?: number
+  limit?: number
   date_from?: string
   date_to?: string
   modality?: Modality

@@ -170,4 +170,4 @@ export type { TranslationKey } from './i18n/useTranslation';
 export { setLocale, getCurrentLocale } from './i18n/i18n';
 
 // Icons
-export * from './icons/index.tsx';
+export * from './icons/index';

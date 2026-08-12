@@ -15,7 +15,7 @@ export function PatientCard({ patient, onClick, compact = false, showMpi = false
   const age = new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear();
   const genderLabel = patient.gender === 'male' ? (isRtl ? 'ذكر' : 'Male') : (isRtl ? 'أنثى' : 'Female');
 
-  const criticalAllergies = patient.allergies?.filter(a => a.severity === 'severe') || [];
+  const allergies = patient.allergies ?? [];
 
   return (
     <Card
@@ -63,9 +63,9 @@ export function PatientCard({ patient, onClick, compact = false, showMpi = false
 
         {!compact && (
           <div className="mt-3 flex flex-wrap gap-2">
-            {criticalAllergies.length > 0 && (
+            {allergies.length > 0 && (
               <Badge variant="danger" size="sm">
-                {isRtl ? 'حساسية شديدة' : 'Severe Allergy'} {criticalAllergies.length > 1 ? `(${criticalAllergies.length})` : ''}
+                {isRtl ? 'حساسية' : 'Allergy'} {allergies.length > 1 ? `(${allergies.length})` : ''}
               </Badge>
             )}
             {patient.chronicConditions?.slice(0, 2).map(cond => (
@@ -74,7 +74,7 @@ export function PatientCard({ patient, onClick, compact = false, showMpi = false
           </div>
         )}
 
-        {compact && criticalAllergies.length > 0 && (
+        {compact && allergies.length > 0 && (
           <div className="mt-2">
             <Badge variant="danger" size="xs">
               {isRtl ? 'حساسية' : 'Allergy'}!

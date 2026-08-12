@@ -65,13 +65,13 @@ export function OrderPanel({ category: initialCategory, onSubmit, onCancel }: Or
             <Select
               label={isRtl ? 'الفئة' : 'Category'}
               value={form.category}
-              onChange={(v) => setForm(f => ({ ...f, category: v as OrderCategory }))}
+              onChange={(e) => setForm(f => ({ ...f, category: e.target.value as OrderCategory }))}
               options={categories.map(c => ({ value: c.value, label: isRtl ? c.labelAr : c.label }))}
             />
             <Select
               label={isRtl ? 'الأولوية' : 'Priority'}
               value={form.priority}
-              onChange={(v) => setForm(f => ({ ...f, priority: v as OrderPriority }))}
+              onChange={(e) => setForm(f => ({ ...f, priority: e.target.value as OrderPriority }))}
               options={priorities.map(p => ({ value: p.value, label: isRtl ? p.labelAr : p.label }))}
             />
           </div>

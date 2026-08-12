@@ -23,14 +23,14 @@ interface MaintenanceRecord {
 }
 
 const MOCK_MAINTENANCE: MaintenanceRecord[] = [
-  { id: '1', assetName: 'CT Scanner', assetNameAr: 'الماسح المقطعي', type: 'preventive', typeAr: 'صيانة دورية', description: '6-month preventive maintenance and calibration', descriptionAr: 'صيانة دورية نصف سنوية ومعايرة', departmentAr: 'الأشعة', assignedToAr: 'فريق صيانة سيمنز', scheduledDate: '2026-07-20', completionDate: null, cost: 3500, status: 'scheduled', priority: 'high' },
-  { id: '2', assetName: 'X-Ray Machine', assetNameAr: 'جهاز أشعة سينية', type: 'corrective', typeAr: 'صيانة تصحيحية', description: 'Image distortion issue - tube replacement', descriptionAr: 'مشكلة تشويه الصورة - استبدال الأنبوب', departmentAr: 'الطوارئ', assignedToAr: 'مهندس الصيانة الداخلي', scheduledDate: '2026-07-16', completionDate: null, cost: 2500, status: 'in_progress', priority: 'critical' },
-  { id: '3', assetName: 'Ventilator Set', assetNameAr: 'أجهزة التنفس', type: 'preventive', typeAr: 'صيانة دورية', description: 'Monthly ventilator check and sensor calibration', descriptionAr: 'فحص شهري لأجهزة التنفس ومعايرة الحساسات', departmentAr: 'العناية المركزة', assignedToAr: 'فريق الصيانة الطبية', scheduledDate: '2026-07-18', completionDate: null, cost: 800, status: 'scheduled', priority: 'medium' },
-  { id: '4', assetName: 'MRI Machine', assetNameAr: 'جهاز الرنين المغناطيسي', type: 'inspection', typeAr: 'تفتيش', description: 'Quarterly safety inspection and coolant check', descriptionAr: 'تفتيش سلامة ربع سنوي وفحص المبرد', departmentAr: 'الأشعة', assignedToAr: 'فريق صيانة فيليبس', scheduledDate: '2026-07-25', completionDate: null, cost: 1500, status: 'scheduled', priority: 'medium' },
-  { id: '5', assetName: 'Dialysis Machine', assetNameAr: 'جهاز غسيل الكلى', type: 'emergency', typeAr: 'صيانة طارئة', description: 'Flow rate alarm - pump failure', descriptionAr: 'إنذار معدل التدفق - عطل في المضخة', departmentAr: 'الكلى', assignedToAr: 'مهندس الصيانة الداخلي', scheduledDate: '2026-07-15', completionDate: '2026-07-15', cost: 1200, status: 'completed', priority: 'critical' },
-  { id: '6', assetName: 'Anesthesia Machine', assetNameAr: 'جهاز التخدير', type: 'preventive', typeAr: 'صيانة دورية', description: 'Annual preventive maintenance and safety check', descriptionAr: 'صيانة دورية سنوية وفحص سلامة', departmentAr: 'الجراحة', assignedToAr: 'فريق صيانة GE', scheduledDate: '2026-08-01', completionDate: null, cost: 2000, status: 'scheduled', priority: 'high' },
-  { id: '7', assetName: 'Defibrillator', assetNameAr: 'مزيل الرجفان', type: 'inspection', typeAr: 'تفتيش', description: 'Battery test and charge verification', descriptionAr: 'اختبار البطارية والتحقق من الشحن', departmentAr: 'الطوارئ', assignedToAr: 'فريق الصيانة الطبية', scheduledDate: '2026-07-19', completionDate: null, cost: 300, status: 'scheduled', priority: 'medium' },
-  { id: '8', assetName: 'Ultrasound', assetNameAr: 'جهاز الموجات فوق الصوتية', type: 'corrective', typeAr: 'صيانة تصحيحية', description: 'Probe cable replacement', descriptionAr: 'استبدال كابل المسبار', departmentAr: 'النسائية', assignedToAr: 'فريق صيانة سامسونج', scheduledDate: '2026-07-17', completionDate: '2026-07-17', cost: 1800, status: 'completed', priority: 'high' },
+  { id: '1', assetName: 'CT Scanner', assetNameAr: 'الماسح المقطعي', type: 'preventive', typeAr: 'صيانة دورية', description: '6-month preventive maintenance and calibration', descriptionAr: 'صيانة دورية نصف سنوية ومعايرة', department: 'Radiology', departmentAr: 'الأشعة', assignedTo: 'Siemens maintenance team', assignedToAr: 'فريق صيانة سيمنز', scheduledDate: '2026-07-20', completionDate: null, cost: 3500, status: 'scheduled', priority: 'high' },
+  { id: '2', assetName: 'X-Ray Machine', assetNameAr: 'جهاز أشعة سينية', type: 'corrective', typeAr: 'صيانة تصحيحية', description: 'Image distortion issue - tube replacement', descriptionAr: 'مشكلة تشويه الصورة - استبدال الأنبوب', department: 'Emergency', departmentAr: 'الطوارئ', assignedTo: 'Internal maintenance engineer', assignedToAr: 'مهندس الصيانة الداخلي', scheduledDate: '2026-07-16', completionDate: null, cost: 2500, status: 'in_progress', priority: 'critical' },
+  { id: '3', assetName: 'Ventilator Set', assetNameAr: 'أجهزة التنفس', type: 'preventive', typeAr: 'صيانة دورية', description: 'Monthly ventilator check and sensor calibration', descriptionAr: 'فحص شهري لأجهزة التنفس ومعايرة الحساسات', department: 'ICU', departmentAr: 'العناية المركزة', assignedTo: 'Medical maintenance team', assignedToAr: 'فريق الصيانة الطبية', scheduledDate: '2026-07-18', completionDate: null, cost: 800, status: 'scheduled', priority: 'medium' },
+  { id: '4', assetName: 'MRI Machine', assetNameAr: 'جهاز الرنين المغناطيسي', type: 'inspection', typeAr: 'تفتيش', description: 'Quarterly safety inspection and coolant check', descriptionAr: 'تفتيش سلامة ربع سنوي وفحص المبرد', department: 'Radiology', departmentAr: 'الأشعة', assignedTo: 'Philips maintenance team', assignedToAr: 'فريق صيانة فيليبس', scheduledDate: '2026-07-25', completionDate: null, cost: 1500, status: 'scheduled', priority: 'medium' },
+  { id: '5', assetName: 'Dialysis Machine', assetNameAr: 'جهاز غسيل الكلى', type: 'emergency', typeAr: 'صيانة طارئة', description: 'Flow rate alarm - pump failure', descriptionAr: 'إنذار معدل التدفق - عطل في المضخة', department: 'Nephrology', departmentAr: 'الكلى', assignedTo: 'Internal maintenance engineer', assignedToAr: 'مهندس الصيانة الداخلي', scheduledDate: '2026-07-15', completionDate: '2026-07-15', cost: 1200, status: 'completed', priority: 'critical' },
+  { id: '6', assetName: 'Anesthesia Machine', assetNameAr: 'جهاز التخدير', type: 'preventive', typeAr: 'صيانة دورية', description: 'Annual preventive maintenance and safety check', descriptionAr: 'صيانة دورية سنوية وفحص سلامة', department: 'Surgery', departmentAr: 'الجراحة', assignedTo: 'GE maintenance team', assignedToAr: 'فريق صيانة GE', scheduledDate: '2026-08-01', completionDate: null, cost: 2000, status: 'scheduled', priority: 'high' },
+  { id: '7', assetName: 'Defibrillator', assetNameAr: 'مزيل الرجفان', type: 'inspection', typeAr: 'تفتيش', description: 'Battery test and charge verification', descriptionAr: 'اختبار البطارية والتحقق من الشحن', department: 'Emergency', departmentAr: 'الطوارئ', assignedTo: 'Medical maintenance team', assignedToAr: 'فريق الصيانة الطبية', scheduledDate: '2026-07-19', completionDate: null, cost: 300, status: 'scheduled', priority: 'medium' },
+  { id: '8', assetName: 'Ultrasound', assetNameAr: 'جهاز الموجات فوق الصوتية', type: 'corrective', typeAr: 'صيانة تصحيحية', description: 'Probe cable replacement', descriptionAr: 'استبدال كابل المسبار', department: 'Gynecology', departmentAr: 'النسائية', assignedTo: 'Samsung maintenance team', assignedToAr: 'فريق صيانة سامسونج', scheduledDate: '2026-07-17', completionDate: '2026-07-17', cost: 1800, status: 'completed', priority: 'high' },
 ];
 
 export function Maintenance() {
@@ -99,7 +99,7 @@ export function Maintenance() {
               <div className="flex items-center gap-3">
                 <Select
                   value={filterStatus}
-                  onChange={v => setFilterStatus(v as string)}
+                  onChange={e => setFilterStatus(e.target.value)}
                   options={[
                     { value: 'all', label: isRtl ? 'جميع الحالات' : 'All' },
                     { value: 'scheduled', label: isRtl ? 'مجدول' : 'Scheduled' },
@@ -111,7 +111,7 @@ export function Maintenance() {
                 />
                 <Select
                   value={filterPriority}
-                  onChange={v => setFilterPriority(v as string)}
+                  onChange={e => setFilterPriority(e.target.value)}
                   options={[
                     { value: 'all', label: isRtl ? 'جميع الأولويات' : 'All Priority' },
                     { value: 'critical', label: isRtl ? 'حرج' : 'Critical' },

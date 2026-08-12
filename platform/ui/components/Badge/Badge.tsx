@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 import { cn } from '../../utils/cn';
 
-export type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'primary' | 'lab' | 'emergency';
+export type BadgeVariant = 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'default' | 'primary' | 'lab' | 'emergency';
 export type BadgeSize = 'xs' | 'sm' | 'md' | 'lg';
 
 export interface BadgeProps {
@@ -20,6 +20,7 @@ const variantStyles: Record<BadgeVariant, string> = {
   danger: 'bg-danger-100 text-danger-700 dark:bg-danger-900/30 dark:text-danger-400',
   info: 'bg-info-100 text-info-700 dark:bg-info-900/30 dark:text-info-400',
   neutral: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300',
+  default: 'bg-neutral-100 text-neutral-700 dark:bg-neutral-700 dark:text-neutral-300',
   primary: 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400',
   lab: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
   emergency: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
@@ -31,6 +32,7 @@ const dotStyles: Record<BadgeVariant, string> = {
   danger: 'bg-danger-500',
   info: 'bg-info-500',
   neutral: 'bg-neutral-500',
+  default: 'bg-neutral-500',
   primary: 'bg-primary-500',
   lab: 'bg-purple-500',
   emergency: 'bg-orange-500',

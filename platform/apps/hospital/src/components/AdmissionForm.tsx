@@ -57,7 +57,7 @@ export function AdmissionForm({ onClose }: AdmissionFormProps) {
           <Select
             label={isRtl ? 'الجنس' : 'Gender'}
             value={formData.gender}
-            onChange={v => updateField('gender', v as string)}
+            onChange={e => updateField('gender', e.target.value)}
             options={[
               { value: '', label: isRtl ? 'اختر...' : 'Select...' },
               { value: 'male', label: isRtl ? 'ذكر' : 'Male' },
@@ -95,7 +95,7 @@ export function AdmissionForm({ onClose }: AdmissionFormProps) {
           <Select
             label={isRtl ? 'القسم' : 'Department'}
             value={formData.department}
-            onChange={v => updateField('department', v as string)}
+            onChange={e => updateField('department', e.target.value)}
             options={[
               { value: '', label: isRtl ? 'اختر...' : 'Select...' },
               { value: 'ER', label: isRtl ? 'الطوارئ' : 'Emergency' },

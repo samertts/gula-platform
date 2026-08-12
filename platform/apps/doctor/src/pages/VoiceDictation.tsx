@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardHeader, CardBody, Tabs, LayoutContent } from '@gula/ui-platform';
+import { Card, CardHeader, CardBody, Tabs, LayoutContent, Badge } from '@gula/ui-platform';
 import { useRTL } from '@gula/ui-platform';
 import { VoiceInput } from '../components/VoiceInput';
 

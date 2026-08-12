@@ -6,7 +6,6 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "moduleDetection": "force",
     "noEmit": true,
@@ -24,6 +23,5 @@
       "@services/*": ["./services/*"]
     }
   },
-  "include": ["src", "pages", "components", "services"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "pages", "components", "services"]
 }

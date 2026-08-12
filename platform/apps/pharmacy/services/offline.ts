@@ -135,17 +135,22 @@ async function purgeLegacyPendingDispenses(database: IDBDatabase): Promise<void>
   })
 
   for (const entry of entries) {
+    const entryId = entry.id
+    if (typeof entryId !== 'string' && typeof entryId !== 'number') {
+      console.error('[PharmacyOfflineQueue] missing IndexedDB entry key')
+      continue
+    }
     const security = inspectQueuePayload(entry)
     if (!security.safe) {
       await addQueueRejection(database, {
         source: 'gula-pharmacy-offline.pending_dispenses',
-        requestId: entry.id,
+        requestId: entryId,
         reason: security.reason,
         rejectedAt: new Date().toISOString(),
       })
       await new Promise<void>((resolve, reject) => {
         const transaction = database.transaction('pending_dispenses', 'readwrite')
-        const request = transaction.objectStore('pending_dispenses').delete(entry.id)
+        const request = transaction.objectStore('pending_dispenses').delete(entryId)
         request.onsuccess = () => resolve()
         request.onerror = () => reject(request.error)
       })

@@ -66,9 +66,10 @@ export function Settings() {
                 </div>
                 <Select
                   value={language}
-                  onChange={(v) => {
-                    setLanguage(v as 'ar' | 'en');
-                    if ((v === 'ar') !== isRtl) toggleDirection();
+                  onChange={(e) => {
+                    const nextLanguage = e.target.value as 'ar' | 'en';
+                    setLanguage(nextLanguage);
+                    if ((nextLanguage === 'ar') !== isRtl) toggleDirection();
                   }}
                   options={[
                     { value: 'ar', label: 'العربية' },

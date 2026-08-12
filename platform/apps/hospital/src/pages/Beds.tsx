@@ -60,7 +60,7 @@ export function Beds() {
             action={
               <Select
                 value={selectedDept}
-                onChange={v => setSelectedDept(v as string)}
+                onChange={e => setSelectedDept(e.target.value)}
                 options={DEPARTMENTS.map(d => ({
                   value: d.value,
                   label: isRtl ? d.label.ar : d.label.en,

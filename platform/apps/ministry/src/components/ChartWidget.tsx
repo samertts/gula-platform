@@ -5,14 +5,15 @@ import { Maximize2, Minimize2, Download } from 'lucide-react';
 interface ChartWidgetProps {
   title: string;
   subtitle?: string;
-  children: ReactNode;
+  type?: string;
+  children?: ReactNode;
   className?: string;
   action?: ReactNode;
   onExport?: () => void;
   fullscreen?: boolean;
 }
 
-export function ChartWidget({ title, subtitle, children, className, action, onExport, fullscreen: controlledFullscreen }: ChartWidgetProps) {
+export function ChartWidget({ title, subtitle, type, children, className, action, onExport, fullscreen: controlledFullscreen }: ChartWidgetProps) {
   const [internalFullscreen, setInternalFullscreen] = useState(false);
   const isFullscreen = controlledFullscreen !== undefined ? controlledFullscreen : internalFullscreen;
   const toggleFullscreen = () => setInternalFullscreen(f => !f);
@@ -47,8 +48,11 @@ export function ChartWidget({ title, subtitle, children, className, action, onEx
           </button>
         </div>
       </div>
-      <div className={cn('p-5', isFullscreen && 'min-h-[calc(100vh-8rem)]')}>
-        {children}
+      <div
+        className={cn('p-5', isFullscreen && 'min-h-[calc(100vh-8rem)]')}
+        data-chart-type={type}
+      >
+        {children ?? <p className="text-sm text-slate-500">لا توجد بيانات متاحة حالياً</p>}
       </div>
     </div>
   );

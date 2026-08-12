@@ -13,13 +13,13 @@ interface Column<T> {
 }
 
 interface RegionalTableProps<T> {
-  data: T[];
-  columns: Column<T>[];
+  data?: T[];
+  columns?: Column<T>[];
   onRowClick?: (item: T) => void;
   className?: string;
 }
 
-export function RegionalTable<T extends Record<string, any>>({ data, columns, onRowClick, className }: RegionalTableProps<T>) {
+export function RegionalTable<T extends Record<string, any>>({ data = [], columns = [], onRowClick, className }: RegionalTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 

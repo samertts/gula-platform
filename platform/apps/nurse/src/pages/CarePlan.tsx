@@ -1,25 +1,48 @@
-import { useState, useEffect } from 'react';
-import { Card, Button, Modal, Input, Select, LoadingSpinner, EmptyState, Badge } from '@gula/ui-platform';
+import { useEffect, useState } from 'react';
+import { Card, Button, Modal, Input, Select, LoadingSpinner, EmptyState } from '@gula/ui-platform';
 import { useNurse } from '../contexts/NurseContext';
 import { CarePlanCard } from '../components/CarePlanCard';
-
-interface Plan {
-  id: string;
-  patientName: string;
-  patientId: string;
-  ward: string;
-  diagnosis: string;
-  goals: string[];
-  interventions: string[];
-  startDate: string;
-  endDate: string;
-  status: 'active' | 'completed' | 'review' | 'cancelled';
-  priority: 'low' | 'medium' | 'high';
-}
+import type { CarePlan as Plan } from '@/utils/types';
 
 const MOCK_PLANS: Plan[] = [
-  { id: '1', patientName: 'أحمد علي', patientId: 'P-001', ward: 'icu', diagnosis: 'قصور قلب', goals: ['تحسين النتاج القلبي', 'تقليل الوذمة'], interventions: ['مراقبة العلامات الحيوية كل ساعة', 'إعطاء مدرات البول'], startDate: '2026-07-10', endDate: '2026-07-20', status: 'active', priority: 'high' },
-  { id: '2', patientName: 'مريم خالد', patientId: 'P-002', ward: 'general', diagnosis: 'التهاب رئوي', goals: ['تحسين التنفس', 'خفض الحرارة'], interventions: ['علاج تنفسي', 'مراقبة تشبع الأكسجين'], startDate: '2026-07-12', endDate: '2026-07-18', status: 'active', priority: 'medium' },
+  {
+    id: '1',
+    patientName: 'أحمد علي',
+    patientId: 'P-001',
+    bed: 'ICU-01',
+    diagnosis: 'قصور قلب',
+    goals: [
+      { id: 'g1', description: 'تحسين النتاج القلبي', targetDate: '2026-07-20', status: 'pending' },
+      { id: 'g2', description: 'تقليل الوذمة', targetDate: '2026-07-20', status: 'pending' },
+    ],
+    interventions: [
+      { id: 'i1', description: 'مراقبة العلامات الحيوية كل ساعة', frequency: 'كل ساعة', status: 'active' },
+      { id: 'i2', description: 'إعطاء مدرات البول', frequency: 'حسب الوصفة', status: 'active' },
+    ],
+    startDate: '2026-07-10',
+    reviewDate: '2026-07-20',
+    status: 'active',
+    createdBy: 'nurse-demo',
+  },
+  {
+    id: '2',
+    patientName: 'مريم خالد',
+    patientId: 'P-002',
+    bed: 'Ward-12',
+    diagnosis: 'التهاب رئوي',
+    goals: [
+      { id: 'g3', description: 'تحسين التنفس', targetDate: '2026-07-18', status: 'pending' },
+      { id: 'g4', description: 'خفض الحرارة', targetDate: '2026-07-18', status: 'pending' },
+    ],
+    interventions: [
+      { id: 'i3', description: 'علاج تنفسي', frequency: 'مرتان يومياً', status: 'active' },
+      { id: 'i4', description: 'مراقبة تشبع الأكسجين', frequency: 'كل 4 ساعات', status: 'active' },
+    ],
+    startDate: '2026-07-12',
+    reviewDate: '2026-07-18',
+    status: 'active',
+    createdBy: 'nurse-demo',
+  },
 ];
 
 export default function CarePlan() {

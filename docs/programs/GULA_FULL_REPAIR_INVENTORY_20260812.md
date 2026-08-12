@@ -91,3 +91,24 @@
 أُجريت محاولة build فعلية للتطبيقات الثمانية. أمر `pnpm run build` لم يصل إلى TypeScript أو Vite لأن workspace tooling أوقف `pnpm install` تلقائياً عند `ERR_PNPM_IGNORED_BUILDS` لـ`esbuild@0.28.2`. لم تتم الموافقة على build scripts ولم يُعدّل lockfile أو إعدادات supply-chain؛ أزيلت artifacts الآلية بعد التحقق من أنها غير متتبعة.
 
 للفصل بين مشكلة tooling ومشكلة bundling، شُغّل Vite المحلي مباشرة دون تشغيل install أو تعديل configuration، وكانت النتيجة **8/8 Vite bundling ناجحة**: citizen، doctor، hospital، laboratory، ministry، nurse، pharmacy، radiology. أما direct `tsc -b` فبقي محجوباً بإعدادات TypeScript 7/legacy الحالية (`allowImportingTsExtensions`، `baseUrl`، ومرجع `platform/ui` غير composite)، وهي حدود موثقة من R3 ولم تُعدّل ضمن هذه الموجة.
+
+
+## Source-mode and script-chain verification — 2026-08-12
+
+اكتملت دفعة إصلاح Source-mode على الفرع `fix/typescript-source-mode-20260812` دون تغيير Wave 3 أو سلوك deployment. أضيف `typecheck: tsc --noEmit` إلى `platform/ui` وإلى التطبيقات الثمانية، ووُحّد أمر build في كل تطبيق إلى `npm run typecheck && vite build`. لم يُعدّل `pnpm-workspace.yaml` أو أي lockfile التزاماً بحدود هذه الدفعة؛ لذلك لا يُدّعى أن workspace package discovery قد أُعيد تصميمه.
+
+| الفحص الفعلي | النتيجة | الحدود والدليل |
+|---|---:|---|
+| `npm run typecheck` عبر UI + التطبيقات الثمانية | **9/9 ناجح، 0 أخطاء TypeScript** | شُغّل لكل manifest مستقل باستخدام local TypeScript 7.0.2 |
+| فحص `tsconfig.node.json` في Pharmacy وRadiology | **2/2 ناجح** | فحص إضافي مستقل لـVite config types |
+| `npm run build` للتطبيقات الثمانية | **8/8 ناجح** | شمل typecheck الموحد ثم Vite bundling؛ لا deployment أو release |
+| Backend `pytest -q --tb=short` | **2310 passed، 251 warnings** | 252.12 ثانية؛ التحذيرات Deprecation/SQLAlchemy موثقة ولم تُخفَ |
+| `git diff --check` | **ناجح** | لا whitespace errors |
+| diff secret-pattern scan | **لا نتائج** | الفحص اقتصر على التغييرات غير المستثناة ولم يقرأ أو يطبع أسراراً |
+| `npm audit --json` على root lockfile | **0 advisories في هذه البيئة** | قراءة فقط؛ لم يُنفذ `npm audit fix` ولم يُعدّل lockfile |
+
+لا تزال ملاحظات GitHub Dependabot البالغ عددها 133 على الفرع الافتراضي خارج هذه الدفعة، ولا يجوز اعتبار نتيجة audit المحلية قراراً بدمجها أو إغلاقها. كما بقي الملفان `.audit/ci-fix.patch` و`.audit/ci-repair.patch` خارج أي commit، ولم تُنفذ branch pruning أو rename أو release أو merge إلى `main`.
+
+## Remaining safety boundary after TypeScript repair
+
+هذه الدفعة تثبت صحة typecheck ومسار bundling الحاليين، ولا تثبت وحدها جاهزية تشغيل وطنية أو سلامة تكاملات Web/Android/Windows أو Demo isolation في بيئة production. ما زالت اختبارات التشغيل الفعلي، مصفوفة endpoints الشاملة لـRBAC وIf-Match/idempotency، اختبار الاستعادة والنسخ الاحتياطي، وتوحيد بيئات base URL تحتاج موجات مستقلة واعتماداً صريحاً. لم تُستخدم إصلاحات TypeScript لتجاوز validation أو audit أو authorization، ولم تُضف صلاحيات wildcard أو تخزين رموز في browser storage.

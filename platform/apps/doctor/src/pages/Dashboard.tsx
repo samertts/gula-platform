@@ -6,11 +6,11 @@ import { PatientCard } from '../components/PatientCard';
 import { useOfflineContext } from '../contexts/OfflineContext';
 
 const MOCK_PATIENTS = [
-  { id: '1', nationalId: '12345678901234', name: 'Ahmed Ali', nameAr: 'أحمد علي', dateOfBirth: '1985-03-15', gender: 'male' as const, bloodType: 'A+', allergies: ['Penicillin'], chronicConditions: ['Hypertension'], phone: '07701234567', labId: 'lab1', createdAt: '', updatedAt: '' },
-  { id: '2', name: 'Sara Mohammed', nameAr: 'سارة محمد', dateOfBirth: '1992-07-22', gender: 'female' as const, bloodType: 'O-', allergies: [], chronicConditions: ['Asthma'], phone: '07707654321', labId: 'lab1', createdAt: '', updatedAt: '' },
-  { id: '3', name: 'Hassan Ibrahim', nameAr: 'حسن إبراهيم', dateOfBirth: '1978-11-02', gender: 'male' as const, allergies: ['Sulfa'], chronicConditions: ['Diabetes Type 2', 'Hyperlipidemia'], phone: '07701112233', labId: 'lab1', createdAt: '', updatedAt: '' },
-  { id: '4', name: 'Noor Khalid', nameAr: 'نور خالد', dateOfBirth: '2000-05-10', gender: 'female' as const, bloodType: 'AB+', allergies: [], chronicConditions: [], phone: '07704445566', labId: 'lab1', createdAt: '', updatedAt: '' },
-  { id: '5', name: 'Omar Hassan', nameAr: 'عمر حسن', dateOfBirth: '1965-09-30', gender: 'male' as const, bloodType: 'B-', allergies: ['Aspirin', 'Ibuprofen'], chronicConditions: ['Hypertension', 'Diabetes Type 2', 'CKD'], phone: '07707778899', labId: 'lab1', createdAt: '', updatedAt: '' },
+  { id: '1', nationalId: '12345678901234', name: 'Ahmed Ali', nameAr: 'أحمد علي', dateOfBirth: '1985-03-15', gender: 'male' as const, bloodType: 'A+', allergies: ['Penicillin'], chronicConditions: ['Hypertension'], medications: [], phone: '07701234567', labId: 'lab1', createdAt: '', updatedAt: '' },
+  { id: '2', name: 'Sara Mohammed', nameAr: 'سارة محمد', dateOfBirth: '1992-07-22', gender: 'female' as const, bloodType: 'O-', allergies: [], chronicConditions: ['Asthma'], medications: [], phone: '07707654321', labId: 'lab1', createdAt: '', updatedAt: '' },
+  { id: '3', name: 'Hassan Ibrahim', nameAr: 'حسن إبراهيم', dateOfBirth: '1978-11-02', gender: 'male' as const, allergies: ['Sulfa'], chronicConditions: ['Diabetes Type 2', 'Hyperlipidemia'], medications: [], phone: '07701112233', labId: 'lab1', createdAt: '', updatedAt: '' },
+  { id: '4', name: 'Noor Khalid', nameAr: 'نور خالد', dateOfBirth: '2000-05-10', gender: 'female' as const, bloodType: 'AB+', allergies: [], chronicConditions: [], medications: [], phone: '07704445566', labId: 'lab1', createdAt: '', updatedAt: '' },
+  { id: '5', name: 'Omar Hassan', nameAr: 'عمر حسن', dateOfBirth: '1965-09-30', gender: 'male' as const, bloodType: 'B-', allergies: ['Aspirin', 'Ibuprofen'], chronicConditions: ['Hypertension', 'Diabetes Type 2', 'CKD'], medications: [], phone: '07707778899', labId: 'lab1', createdAt: '', updatedAt: '' },
 ];
 
 const MOCK_ALERTS = [

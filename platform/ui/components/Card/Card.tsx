@@ -46,18 +46,20 @@ export function Card({
 }
 
 export interface CardHeaderProps {
-  title: string;
-  subtitle?: string;
+  title?: ReactNode;
+  subtitle?: ReactNode;
+  children?: ReactNode;
   action?: ReactNode;
   className?: string;
 }
 
-export function CardHeader({ title, subtitle, action, className }: CardHeaderProps) {
+export function CardHeader({ title, subtitle, children, action, className }: CardHeaderProps) {
   return (
     <div className={cn('flex items-center justify-between mb-4', className)}>
       <div className="min-w-0 flex-1">
         <h3 className="text-lg font-bold text-neutral-900 dark:text-neutral-50 truncate">
-          {title}
+                        {children ?? title}
+
         </h3>
         {subtitle && (
           <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-0.5 truncate">

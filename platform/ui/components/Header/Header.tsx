@@ -11,6 +11,7 @@ export interface HeaderProps {
   breadcrumbs?: HeaderBreadcrumb[];
   leftContent?: ReactNode;
   rightContent?: ReactNode;
+  onMenuClick?: () => void;
   variant?: 'default' | 'compact' | 'transparent';
   className?: string;
 }
@@ -26,6 +27,7 @@ export function Header({
   breadcrumbs,
   leftContent,
   rightContent,
+  onMenuClick,
   variant = 'default',
   className,
 }: HeaderProps) {
@@ -42,6 +44,18 @@ export function Header({
     >
       <div className="flex items-center justify-between h-full px-4 md:px-6 gap-4">
         <div className="flex items-center gap-3 min-w-0 flex-1">
+          {onMenuClick && (
+            <button
+              type="button"
+              onClick={onMenuClick}
+              className="p-2 rounded-xl text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              aria-label="Open navigation menu"
+            >
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
           {leftContent}
 
           {breadcrumbs && breadcrumbs.length > 0 && (

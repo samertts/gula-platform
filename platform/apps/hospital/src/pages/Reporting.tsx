@@ -4,7 +4,7 @@ import {
 } from '@gula/ui-platform';
 
 interface ReportMetric {
-  label: string;
+  label?: string;
   labelAr: string;
   value: string | number;
   change: number;
@@ -76,7 +76,7 @@ export function Reporting() {
           <div className="flex items-center gap-3">
             <Select
               value={selectedReport}
-              onChange={v => setSelectedReport(v as string)}
+              onChange={e => setSelectedReport(e.target.value)}
               options={[
                 { value: 'clinical', label: isRtl ? 'سريري' : 'Clinical' },
                 { value: 'operational', label: isRtl ? 'تشغيلي' : 'Operational' },
@@ -87,7 +87,7 @@ export function Reporting() {
             />
             <Select
               value={period}
-              onChange={v => setPeriod(v as string)}
+              onChange={e => setPeriod(e.target.value)}
               options={[
                 { value: 'daily', label: isRtl ? 'يومي' : 'Daily' },
                 { value: 'weekly', label: isRtl ? 'أسبوعي' : 'Weekly' },
@@ -128,7 +128,7 @@ export function Reporting() {
                 {section.metrics.map(m => (
                   <div key={m.labelAr} className="bg-neutral-50 dark:bg-neutral-800/50 rounded-lg p-4">
                     <p className="text-xs text-neutral-500 dark:text-neutral-400 mb-1">
-                      {isRtl ? m.labelAr : m.labelAr}
+                      {isRtl ? m.labelAr : (m.label ?? m.labelAr)}
                     </p>
                     <p className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{m.value}</p>
                     <div className="flex items-center gap-1 mt-1">

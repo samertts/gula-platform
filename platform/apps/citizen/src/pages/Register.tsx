@@ -51,7 +51,7 @@ export function Register() {
     setError('');
     setIsLoading(true);
     try {
-      const authResponse = await verifyOTP(verificationId, otp);
+      await verifyOTP(verificationId, otp);
       const user = await registerCitizen({
         nationalId,
         name,
@@ -60,7 +60,7 @@ export function Register() {
         dateOfBirth,
         gender: gender as 'male' | 'female',
       });
-      login(user);
+      login(user.user);
       navigate(ROUTES.HOME, { replace: true });
     } catch (err) {
       setError((err as Error).message || 'فشل التسجيل');
