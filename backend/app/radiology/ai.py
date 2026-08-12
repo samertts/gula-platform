@@ -215,7 +215,7 @@ class TriageService:
 
     def get_critical_exams(self, date_from: datetime | None = None, date_to: datetime | None = None) -> list[RadiologyExam]:
         q = self.db.query(RadiologyExam).filter(
-            ~~RadiologyExam.is_deleted,
+            ~RadiologyExam.is_deleted,
             RadiologyExam.extra_metadata["has_ai_critical_finding"].astext == "true",
         )
         if date_from:
@@ -405,7 +405,7 @@ class HumanApprovalService:
         skip: int = 0,
         limit: int = 50,
     ) -> list[AIAnalysisJob]:
-        q = self.db.query(AIAnalysisJob).filter(~~AIAnalysisJob.is_deleted)
+        q = self.db.query(AIAnalysisJob).filter(~AIAnalysisJob.is_deleted)
         if exam_id:
             q = q.filter(AIAnalysisJob.exam_id == exam_id)
         if model_id:

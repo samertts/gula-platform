@@ -110,12 +110,19 @@ class ModalityWorklistService:
             self.db.add(entry)
         self.db.commit()
 
-    def get_worklist_for_device(self, device_id: str) -> list[WorklistEntry]:
-        return self.db.query(WorklistEntry).filter(
+    def get_worklist_for_device(
+        self,
+        device_id: str,
+        patient_ids: set[str] | None = None,
+    ) -> list[WorklistEntry]:
+        query = self.db.query(WorklistEntry).filter(
             WorklistEntry.modality_device_id == device_id,
             WorklistEntry.status == "scheduled",
             ~WorklistEntry.is_deleted,
-        ).order_by(WorklistEntry.scheduled_datetime.asc()).all()
+        )
+        if patient_ids is not None:
+            query = query.filter(WorklistEntry.patient_id.in_(patient_ids))
+        return query.order_by(WorklistEntry.scheduled_datetime.asc()).all()
 
     def process_siu_message(self, hl7_siu: dict[str, Any]) -> bool:
         accession = hl7_siu.get("accession_number", "")
@@ -312,7 +319,7 @@ class DeviceMonitoringService:
         ).first()
 
     def list_devices(self, modality_type: str | None = None, status: str | None = None) -> list[ModalityDevice]:
-        q = self.db.query(ModalityDevice).filter(~~ModalityDevice.is_deleted)
+        q = self.db.query(ModalityDevice).filter(~ModalityDevice.is_deleted)
         if modality_type:
             q = q.filter(ModalityDevice.modality_type == modality_type.upper())
         if status:
@@ -320,7 +327,7 @@ class DeviceMonitoringService:
         return q.all()
 
     def get_device_health(self) -> dict[str, Any]:
-        total = self.db.query(ModalityDevice).filter(~~ModalityDevice.is_deleted).count()
+        total = self.db.query(ModalityDevice).filter(~ModalityDevice.is_deleted).count()
         online = self.db.query(ModalityDevice).filter(
             ModalityDevice.status == DeviceStatus.ONLINE,
             ~ModalityDevice.is_deleted,
@@ -362,7 +369,7 @@ class DeviceMonitoringService:
 
     def check_storage_capacity(self, device_id: str, threshold_bytes: int = 1073741824) -> dict[str, Any]:
         total_stored = self.db.query(DICOMStorage).filter(
-            ~~DICOMStorage.is_deleted,
+            ~DICOMStorage.is_deleted,
         ).with_entities(DICOMStorage.file_size).all()
         used = sum(r[0] or 0 for r in total_stored)
         return {

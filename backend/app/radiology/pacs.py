@@ -103,7 +103,7 @@ class DICOMStorageService:
         skip: int = 0,
         limit: int = 100,
     ) -> list[DICOMStorage]:
-        q = self.db.query(DICOMStorage).filter(~~DICOMStorage.is_deleted)
+        q = self.db.query(DICOMStorage).filter(~DICOMStorage.is_deleted)
         if study_instance_uid:
             q = q.filter(DICOMStorage.study_instance_uid == study_instance_uid)
         if series_instance_uid:
@@ -121,8 +121,15 @@ class DICOMStorageService:
     def get_study_instances(self, study_instance_uid: str) -> list[DICOMStorage]:
         return self.query(study_instance_uid=study_instance_uid)
 
-    def get_series_instances(self, series_instance_uid: str) -> list[DICOMStorage]:
-        return self.query(series_instance_uid=series_instance_uid)
+    def get_series_instances(
+        self,
+        series_instance_uid: str,
+        study_instance_uid: str | None = None,
+    ) -> list[DICOMStorage]:
+        return self.query(
+            series_instance_uid=series_instance_uid,
+            study_instance_uid=study_instance_uid,
+        )
 
     def count_by_tier(self) -> dict[str, int]:
         counts: dict[str, int] = {}
@@ -136,7 +143,7 @@ class DICOMStorageService:
 
     def total_storage_size(self) -> int:
         result = self.db.query(DICOMStorage).filter(
-            ~~DICOMStorage.is_deleted,
+            ~DICOMStorage.is_deleted,
         ).with_entities(DICOMStorage.file_size).all()
         return sum(r[0] or 0 for r in result)
 
@@ -198,10 +205,13 @@ class DICOMStudyService:
         study_description: str | None = None,
         skip: int = 0,
         limit: int = 50,
+        patient_ids: set[str] | None = None,
     ) -> list[DICOMStudy]:
-        q = self.db.query(DICOMStudy).filter(~~DICOMStudy.is_deleted)
+        q = self.db.query(DICOMStudy).filter(~DICOMStudy.is_deleted)
         if patient_id:
             q = q.filter(DICOMStudy.patient_id == patient_id)
+        elif patient_ids is not None:
+            q = q.filter(DICOMStudy.patient_id.in_(patient_ids))
         if modality:
             q = q.filter(DICOMStudy.modality == modality.upper())
         if date_from:

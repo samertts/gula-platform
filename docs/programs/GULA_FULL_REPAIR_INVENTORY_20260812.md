@@ -167,3 +167,20 @@
 | `git diff --check` | **passed** | لا توجد whitespace errors |
 
 تبقى تغطية Critical Findings وdashboard analytics وPACS/device worklists الموسعة بحاجة إلى endpoint-by-endpoint review مستقل قبل إعلان عزل Radiology الكامل؛ لا يُفهم هذا القسم كإعلان production readiness وطنية. كما بقيت ملفات `.audit/ci-fix.patch` و`.audit/ci-repair.patch` غير متتبعة وخارج أي commit، ولم تُنفذ عمليات Wave 4 أو Dependabot أو merge/release.
+
+
+## Radiology/PACS follow-up hardening — 2026-08-12
+
+استُكملت دفعة متابعة مركزة على Radiology دون تغيير فروع Wave 3 أو إعدادات الإنتاج. أزيلت annotations الوهمية من `platform/apps/radiology/pages/DICOMViewer.tsx`، وأصبحت الواجهة تعرض حالة صريحة بأن التحليل الآلي غير متاح بدلاً من عرض عقد أو تكلسات أو درجات ثقة غير صادرة عن backend معتمد.
+
+في backend تم توسيع عزل tenant ليشمل Critical Findings وdashboard analytics وPACS studies/series/images وcitizen images وimage sharing وdevice worklists. يعتمد التحقق على ربط study/exam/image بالمريض ثم `Patient.lab_id`، وتمنع المسارات ذات المعرفات الصريحة القراءة أو التعديل أو إنشاء مشاركة لبيانات tenant آخر. كما صُحح ترتيب static routes مثل `/orders/search` و`/reports/search` و`/studies/search` قبل dynamic `/{id}` routes، وصُححت double-negation إضافية في `pacs.py` و`device.py`.
+
+| الفحص الفعلي | النتيجة |
+|---|---:|
+| Radiology/PACS/security regression suite | **10 passed** |
+| TypeScript source-mode: UI + التطبيقات الثمانية | **9/9 passed** |
+| Backend suite الكاملة بعد دفعة المتابعة | **2319 passed، 1 failed** خلال 289.08 ثانية |
+| الفشل المتبقي | `tests/kernel/test_modules.py::TestModuleRegistry::test_register_and_unregister` بسبب `KeyError: Attempt to overwrite 'module' in LogRecord`؛ وهو الاختبار flaky الموثق، ولم يُعدّل |
+| `git diff --check` وPython compile | **passed** |
+
+تظل بعض شاشات Hospital/Doctor/Nurse التي تحتوي fixtures بحاجة إلى endpoint contract review مستقل قبل تحويلها، كما لم تُنفذ معالجة Dependabot أو Wave 4 أو deployment/release. نجاح هذه الدفعة لا يساوي إعلان جاهزية إنتاجية وطنية أو اعتماد AI تشخيصي.
