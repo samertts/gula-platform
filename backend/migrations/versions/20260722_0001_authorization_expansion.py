@@ -91,6 +91,39 @@ def upgrade() -> None:
             pass
         # op.create_index("ix_tenants_parent", "tenants", ["parent_tenant_id"])
 
+    # ── 1b. governance reference tables ─────────────────────────────────────
+    # These scope tables are referenced by role assignments and user context.
+    # Earlier migrations did not create them on a fresh database, so create the
+    # canonical minimal records before any foreign key points to them.
+    if not _has_table("organizations"):
+        op.create_table(
+            "organizations",
+            sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+            sa.Column("organization_id", sa.String(length=100), nullable=False),
+            sa.Column("name_en", sa.String(length=200), nullable=False),
+            sa.Column("name_ar", sa.String(length=200), nullable=True),
+            sa.Column("organization_type", sa.String(length=50), nullable=True),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("organization_id"),
+        )
+
+    if not _has_table("facilities"):
+        op.create_table(
+            "facilities",
+            sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+            sa.Column("facility_id", sa.String(length=100), nullable=False),
+            sa.Column("organization_id", sa.Integer(), sa.ForeignKey("organizations.id", ondelete="SET NULL"), nullable=True),
+            sa.Column("name_en", sa.String(length=200), nullable=False),
+            sa.Column("name_ar", sa.String(length=200), nullable=True),
+            sa.Column("facility_type", sa.String(length=50), nullable=True),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=True),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("facility_id"),
+        )
+
     # ── 2. permissions ────────────────────────────────────────────────────────
     if not _has_table("permissions"):
         op.create_table(

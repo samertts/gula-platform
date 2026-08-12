@@ -70,7 +70,8 @@ class AsyncMemoizer:
             key_parts = [func.__name__]
             key_parts.extend(str(a) for a in args)
             key_parts.extend(f"{k}={v}" for k, v in sorted(kwargs.items()))
-            key = hashlib.md5("".join(key_parts).encode()).hexdigest()
+            # Cache key only; it is not a security or integrity primitive.
+            key = hashlib.md5("".join(key_parts).encode(), usedforsecurity=False).hexdigest()
             cached = self._cache.get(key)
             if cached is not None:
                 return cached
@@ -83,7 +84,7 @@ class AsyncMemoizer:
         if func:
             prefix = func.__name__
             for key in self._cache:
-                if key.startswith(hashlib.md5(prefix.encode()).hexdigest()):
+                if key.startswith(hashlib.md5(prefix.encode(), usedforsecurity=False).hexdigest()):
                     self._cache.delete(key)
         else:
             self._cache.clear()

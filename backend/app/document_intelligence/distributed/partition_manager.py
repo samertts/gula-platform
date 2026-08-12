@@ -13,7 +13,8 @@ class PartitionManager:
         self._partition_assignments: dict[int, str] = {}
 
     def get_partition(self, document_id: str) -> int:
-        hash_val = int(hashlib.md5(str(document_id).encode()).hexdigest(), 16)
+        # Stable partitioning only; this digest is never used for security.
+        hash_val = int(hashlib.md5(str(document_id).encode(), usedforsecurity=False).hexdigest(), 16)
         return hash_val % self._num_partitions
 
     def assign_worker(self, partition: int, worker_id: str):

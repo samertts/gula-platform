@@ -15,7 +15,7 @@ class ModuleRegistry:
         self._modules[descriptor.name] = descriptor
         logger.info(
             "Module registered",
-            extra={"module": descriptor.name, "version": descriptor.version},
+            extra={"module_name": descriptor.name, "module_version": descriptor.version},
         )
 
     def unregister(self, name: str) -> None:

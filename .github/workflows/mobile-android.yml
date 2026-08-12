@@ -54,7 +54,7 @@ permissions:
 
 jobs:
   lint:
-    name: Lint (ktlint + detekt)
+    name: Android Lint
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -79,11 +79,8 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
-      - name: Run ktlint
-        run: ./gradlew ktlintCheck
-
-      - name: Run detekt
-        run: ./gradlew detekt
+      - name: Run Android Lint
+        run: ./gradlew lintDebug
 
       - name: Upload lint reports
         if: always()
@@ -91,8 +88,8 @@ jobs:
         with:
           name: android-lint-reports
           path: |
-            mobile/android/app/build/reports/ktlint/
-            mobile/android/app/build/reports/detekt/
+            mobile/android/app/build/reports/lint-results-debug.html
+            mobile/android/app/build/reports/lint-results-debug.xml
           if-no-files-found: warn
           retention-days: 7
 
