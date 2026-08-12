@@ -84,3 +84,10 @@
 ### حدود directive التي لم تُنفذ تلقائياً
 
 كشف تدقيق base URLs وجود اختلافات موثقة بين `api.gulaplatform.com` و`api.gula-platform.com` و`api.gula.iq`، إضافة إلى إعدادات staging مختلفة. لم تُعدّل هذه القيم لأن توحيدها يغير deployment/production behavior ويحتاج environment strategy وADR وChange Control واختبار mobile/edge فعلياً. كذلك لم تُنفذ إعادة بناء Workspaces أو محركات المواعيد والصفوف أو تكامل FHIR/HL7/DICOM أو تعميم If-Match/idempotency على كل endpoint، لأن ذلك يتطلب موجات مستقلة وتحليلاً endpoint-by-endpoint، ولم تُنفذ أي عملية Wave 4 أو Dependabot merge أو branch operation.
+
+
+## Directive verification — frontend build boundary — 2026-08-12
+
+أُجريت محاولة build فعلية للتطبيقات الثمانية. أمر `pnpm run build` لم يصل إلى TypeScript أو Vite لأن workspace tooling أوقف `pnpm install` تلقائياً عند `ERR_PNPM_IGNORED_BUILDS` لـ`esbuild@0.28.2`. لم تتم الموافقة على build scripts ولم يُعدّل lockfile أو إعدادات supply-chain؛ أزيلت artifacts الآلية بعد التحقق من أنها غير متتبعة.
+
+للفصل بين مشكلة tooling ومشكلة bundling، شُغّل Vite المحلي مباشرة دون تشغيل install أو تعديل configuration، وكانت النتيجة **8/8 Vite bundling ناجحة**: citizen، doctor، hospital، laboratory، ministry، nurse، pharmacy، radiology. أما direct `tsc -b` فبقي محجوباً بإعدادات TypeScript 7/legacy الحالية (`allowImportingTsExtensions`، `baseUrl`، ومرجع `platform/ui` غير composite)، وهي حدود موثقة من R3 ولم تُعدّل ضمن هذه الموجة.
