@@ -66,7 +66,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "results:read", "results:write",
     "lab:read", "dashboard:read",
   ],
-  citizen: [],
+  citizen: ["citizen:workspace"],
 };
 
 export function hasPermission(role: string, permission: string): boolean {
@@ -95,6 +95,7 @@ export function isPlatformRole(role: string): boolean {
 export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[] }[]> = {
   main: [
     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    { label: "nav.citizenWorkspace", path: "/citizen", icon: "UserCircle", permissions: ["citizen:workspace"] },
     { label: "nav.patients", path: "/patients", icon: "Users", permissions: ["patients:read"] },
     { label: "nav.orders", path: "/orders", icon: "ClipboardList", permissions: ["orders:read"] },
     { label: "nav.results", path: "/results", icon: "FlaskConical", permissions: ["results:read"] },

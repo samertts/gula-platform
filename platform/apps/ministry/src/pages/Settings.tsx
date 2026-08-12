@@ -29,7 +29,13 @@ export function Settings() {
         <p className="text-sm text-slate-400">Ministry Dashboard v2.1.0</p>
       </Card>
 
-      <Button variant="danger" onClick={() => { localStorage.removeItem('gula_ministry_token'); window.location.href = '/login'; }}>
+      <Button variant="danger" onClick={() => {
+        sessionStorage.removeItem('gula_ministry_demo_mode');
+        void fetch('https://api.gula.health/api/v1/auth/logout', {
+          method: 'POST',
+          credentials: 'include',
+        }).finally(() => window.location.assign('/login'));
+      }}>
         تسجيل الخروج
       </Button>
     </div>

@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, I18nProvider, ErrorBoundary, Layout, Sidebar, Header, cn, StatusIndicator, useRTL } from '@gula/ui-platform';
 import { MinistryProvider } from './contexts/MinistryContext';
+import { api } from './services/api';
 
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -84,13 +86,39 @@ const SIDEBAR_SECTIONS = [
 ];
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const token = localStorage.getItem('gula_ministry_token');
   const { isRtl } = useRTL(true);
+  const [authState, setAuthState] = useState<'checking' | 'authenticated' | 'demo' | 'unauthenticated'>('checking');
 
-  if (!token) return <Navigate to={ROUTES.LOGIN} replace />;
+  useEffect(() => {
+    let active = true;
+    const demoEnabled = import.meta.env.VITE_DEMO_MODE === 'true';
+    const demoRequested = sessionStorage.getItem('gula_ministry_demo_mode') === 'enabled';
+
+    if (demoEnabled && demoRequested) {
+      setAuthState('demo');
+      return () => { active = false; };
+    }
+
+    api.getSession()
+      .then(() => { if (active) setAuthState('authenticated'); })
+      .catch(() => { if (active) setAuthState('unauthenticated'); });
+
+    return () => { active = false; };
+  }, []);
+
+  if (authState === 'checking') {
+    return <div className="min-h-screen bg-slate-950 text-slate-300 flex items-center justify-center" dir="rtl">جارٍ التحقق من جلسة الوزارة…</div>;
+  }
+
+  if (authState === 'unauthenticated') return <Navigate to={ROUTES.LOGIN} replace />;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100" dir={isRtl ? 'rtl' : 'ltr'}>
+      {authState === 'demo' && (
+        <div className="border-b border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-center text-xs text-emerald-200">
+          وضع Demo معزول — البيانات اصطناعية، ولا توجد جلسة أو اتصالات إنتاجية.
+        </div>
+      )}
       <Layout
         sidebar={
           <Sidebar

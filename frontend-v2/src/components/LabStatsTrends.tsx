@@ -18,7 +18,6 @@ import {
 import {motion} from 'motion/react';
 import { cn, formatNumber, formatTime } from '../lib/utils';
 import { useLanguage } from '../contexts/LanguageContext';
-import { getAccessToken } from '../api/client';
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DailySeries {
   date: string;
@@ -51,19 +50,11 @@ interface StatsSummary {
   this_month: { orders: number };
 }
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-function useApiToken(): string | null {
-  const [token, setToken] = useState<string | null>(null);
-  useEffect(() => {
-    setToken(getAccessToken());
-  }, []);
-  return token;
-}
-async function fetchStats<T>(endpoint: string, token: string | null): Promise<T | null> {
-  if (!token) return null;
+async function fetchStats<T>(endpoint: string): Promise<T | null> {
   try {
     const base = import.meta.env.VITE_API_URL || '';
     const resp = await fetch(`${base}${endpoint}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: 'include',
     });
     if (!resp.ok) return null;
     return resp.json();
@@ -140,7 +131,6 @@ interface LabStatsTrendsProps {
 }
 const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
   const { language } = useLanguage();
-  const token = useApiToken();
   const [days, setDays] = useState(14);
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -149,14 +139,13 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
   const [topTests, setTopTests] = useState<TestFreqItem[]>([]);
   const [flags, setFlags] = useState<FlagDistribution>({});
   const load = useCallback(async () => {
-    if (!token) return;
     setLoading(true);
     try {
       const [sumData, dailyData, testData, flagData] = await Promise.all([
-        fetchStats<StatsSummary>('/stats/summary', token),
-        fetchStats<{ series: DailySeries[] }>(`/stats/trends/daily?days=${days}`, token),
-        fetchStats<{ top_tests: TestFreqItem[] }>(`/stats/trends/tests?days=${days}&limit=8`, token),
-        fetchStats<{ distribution: FlagDistribution }>(`/stats/trends/flags?days=${days}`, token),
+        fetchStats<StatsSummary>('/stats/summary'),
+        fetchStats<{ series: DailySeries[] }>(`/stats/trends/daily?days=${days}`),
+        fetchStats<{ top_tests: TestFreqItem[] }>(`/stats/trends/tests?days=${days}&limit=8`),
+        fetchStats<{ distribution: FlagDistribution }>(`/stats/trends/flags?days=${days}`),
       ]);
       if (sumData) setSummary(sumData);
       if (dailyData) setDaily(dailyData.series);
@@ -166,7 +155,7 @@ const LabStatsTrends: React.FC<LabStatsTrendsProps> = ({ className }) => {
     } finally {
       setLoading(false);
     }
-  }, [token, days]);
+  }, [days]);
   useEffect(() => { load(); }, [load]);
   const isAr = language === 'AR';
   // ── Summary counters ───────────────────────────────────────────────────────

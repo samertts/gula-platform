@@ -1,4 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb';
+import { inspectQueuePayload, sanitizeQueueHeaders } from '@gula/ui-platform';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.gula.health/api/v1';
 
@@ -7,26 +8,22 @@ interface RequestOptions extends RequestInit {
   offlinePriority?: 'high' | 'normal' | 'low';
 }
 
-let authToken: string | null = localStorage.getItem('gula_citizen_token');
-
-export function setAuthToken(token: string | null) {
-  authToken = token;
-  if (token) {
-    localStorage.setItem('gula_citizen_token', token);
-  } else {
-    localStorage.removeItem('gula_citizen_token');
-  }
+// Browser authentication is carried only by the server-issued HttpOnly cookie.
+// These compatibility functions deliberately do not retain or return credentials.
+export function setAuthToken(_token: string | null) {
+  return undefined;
 }
 
 export function getAuthToken(): string | null {
-  return authToken;
+  return null;
 }
 
 let offlineDB: IDBPDatabase | null = null;
+let queueCleanup: Promise<void> | null = null;
 
 async function getOfflineDB(): Promise<IDBPDatabase> {
   if (offlineDB) return offlineDB;
-  offlineDB = await openDB('gula-citizen-offline', 1, {
+  offlineDB = await openDB('gula-citizen-offline', 2, {
     upgrade(db) {
       if (!db.objectStoreNames.contains('requests')) {
         db.createObjectStore('requests', { keyPath: 'id', autoIncrement: true });
@@ -34,9 +31,37 @@ async function getOfflineDB(): Promise<IDBPDatabase> {
       if (!db.objectStoreNames.contains('cache')) {
         db.createObjectStore('cache', { keyPath: 'key' });
       }
+      if (!db.objectStoreNames.contains('queue_rejections')) {
+        db.createObjectStore('queue_rejections', { keyPath: 'id', autoIncrement: true });
+      }
     },
   });
+  queueCleanup = queueCleanup ?? cleanLegacyQueue(offlineDB);
+  await queueCleanup;
   return offlineDB;
+}
+
+async function cleanLegacyQueue(db: IDBPDatabase): Promise<void> {
+  const requests = await db.getAll('requests');
+  const tx = db.transaction(['requests', 'queue_rejections'], 'readwrite');
+  for (const request of requests) {
+    const headerResult = sanitizeQueueHeaders(request.headers);
+    const payloadResult = inspectQueuePayload(request.body);
+    if (headerResult.hadSensitiveHeader || !payloadResult.safe) {
+      await tx.objectStore('queue_rejections').add({
+        source: 'gula-citizen-offline.requests',
+        requestId: request.id,
+        url: request.url,
+        method: request.method,
+        reason: headerResult.hadSensitiveHeader ? 'sensitive-header' : payloadResult.reason,
+        rejectedAt: Date.now(),
+      });
+      await tx.objectStore('requests').delete(request.id);
+      continue;
+    }
+    await tx.objectStore('requests').put({ ...request, headers: headerResult.headers });
+  }
+  await tx.done;
 }
 
 export async function apiRequest<T = unknown>(
@@ -51,9 +76,8 @@ export async function apiRequest<T = unknown>(
     ...(fetchOptions.headers as Record<string, string>),
   };
 
-  if (!skipAuth && authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
+  // Do not construct Authorization headers in the browser; authentication uses HttpOnly cookies.
+  void skipAuth;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000);
@@ -75,6 +99,7 @@ export async function apiRequest<T = unknown>(
   try {
     const response = await fetch(`${API_BASE}${endpoint}`, {
       ...fetchOptions,
+      credentials: 'include',
       headers,
       signal: controller.signal,
     });
@@ -121,10 +146,15 @@ export async function apiRequest<T = unknown>(
 
 async function queueOfflineRequest(endpoint: string, options: RequestOptions) {
   const db = await getOfflineDB();
+  const headerResult = sanitizeQueueHeaders(options.headers as Record<string, string>);
+  const payloadResult = inspectQueuePayload(options.body);
+  if (headerResult.hadSensitiveHeader || !payloadResult.safe) {
+    throw new OfflineError('تم رفض تخزين طلب غير متصل يحتوي بيانات اعتماد');
+  }
   await db.add('requests', {
     url: `${API_BASE}${endpoint}`,
     method: options.method || 'GET',
-    headers: options.headers as Record<string, string>,
+    headers: headerResult.headers,
     body: options.body,
     timestamp: Date.now(),
     retryCount: 0,
@@ -169,9 +199,16 @@ export async function processOfflineQueue() {
     }
 
     try {
+      const headerResult = sanitizeQueueHeaders(req.headers);
+      const payloadResult = inspectQueuePayload(req.body);
+      if (headerResult.hadSensitiveHeader || !payloadResult.safe) {
+        await db.delete('requests', req.id);
+        continue;
+      }
       const response = await fetch(req.url, {
         method: req.method,
-        headers: req.headers,
+        credentials: 'include',
+        headers: headerResult.headers,
         body: req.body,
       });
       if (response.ok) {
@@ -221,9 +258,7 @@ export async function uploadFile(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${API_BASE}${endpoint}`);
-    if (authToken) {
-      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
-    }
+    xhr.withCredentials = true;
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) {
         onProgress(Math.round((e.loaded / e.total) * 100));

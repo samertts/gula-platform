@@ -8,28 +8,13 @@ interface RequestOptions extends RequestInit {
   timeout?: number;
 }
 
-let authToken: string | null = localStorage.getItem('gula_hospital_token');
-let refreshTokenValue: string | null = localStorage.getItem('gula_hospital_refresh');
-
-export function setAuthToken(token: string | null, refresh?: string | null) {
-  authToken = token;
-  if (token) {
-    localStorage.setItem('gula_hospital_token', token);
-  } else {
-    localStorage.removeItem('gula_hospital_token');
-  }
-  if (refresh !== undefined) {
-    refreshTokenValue = refresh;
-    if (refresh) {
-      localStorage.setItem('gula_hospital_refresh', refresh);
-    } else {
-      localStorage.removeItem('gula_hospital_refresh');
-    }
-  }
+// Authentication is carried only by server-issued HttpOnly cookies.
+export function setAuthToken(_token: string | null, _refresh?: string | null) {
+  return undefined;
 }
 
 export function getAuthToken(): string | null {
-  return authToken;
+  return null;
 }
 
 let offlineDB: IDBPDatabase | null = null;
@@ -50,19 +35,13 @@ async function getOfflineDB(): Promise<IDBPDatabase> {
 }
 
 async function tryRefreshToken(): Promise<boolean> {
-  if (!refreshTokenValue) return false;
   try {
     const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: refreshTokenValue }),
     });
-    if (response.ok) {
-      const data = await response.json();
-      setAuthToken(data.accessToken, data.refreshToken);
-      return true;
-    }
-    return false;
+    return response.ok;
   } catch {
     return false;
   }
@@ -85,9 +64,8 @@ export async function apiRequest<T = unknown>(
     ...(fetchOptions.headers as Record<string, string>),
   };
 
-  if (!skipAuth && authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
+  // Do not construct Authorization headers in the browser; cookies are HttpOnly.
+  void skipAuth;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -95,19 +73,20 @@ export async function apiRequest<T = unknown>(
   try {
     let response = await fetch(`${API_BASE}${endpoint}`, {
       ...fetchOptions,
+      credentials: 'include',
       headers,
       signal: controller.signal,
     });
 
-    if (response.status === 401 && !skipAuth && authToken) {
+    if (response.status === 401 && !skipAuth && endpoint !== '/auth/refresh') {
       clearTimeout(timeoutId);
       const refreshed = await tryRefreshToken();
       if (refreshed) {
-        headers['Authorization'] = `Bearer ${authToken}`;
         const retryController = new AbortController();
         const retryTimeout = setTimeout(() => retryController.abort(), timeout);
         response = await fetch(`${API_BASE}${endpoint}`, {
           ...fetchOptions,
+          credentials: 'include',
           headers,
           signal: retryController.signal,
         });

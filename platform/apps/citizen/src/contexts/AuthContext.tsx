@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { getCurrentUser, logout as authLogout, refreshToken } from '../services/auth';
+import { getCurrentUser, logout as authLogout } from '../services/auth';
 import type { CitizenUser } from '../types';
 
 interface AuthContextValue {
@@ -24,17 +24,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function initAuth() {
     try {
-      const stored = localStorage.getItem('gula_citizen_user');
-      if (stored) {
-        setUser(JSON.parse(stored));
-      }
-
-      if (localStorage.getItem('gula_citizen_token')) {
-        await refreshToken();
-        const currentUser = await getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-        }
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
       }
     } catch {
       setUser(null);
@@ -45,7 +37,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback((userData: CitizenUser) => {
     setUser(userData);
-    localStorage.setItem('gula_citizen_user', JSON.stringify(userData));
   }, []);
 
   const logout = useCallback(() => {
@@ -56,16 +47,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUser = useCallback((updates: Partial<CitizenUser>) => {
     setUser((prev) => {
       if (!prev) return prev;
-      const updated = { ...prev, ...updates };
-      localStorage.setItem('gula_citizen_user', JSON.stringify(updated));
-      return updated;
+      return { ...prev, ...updates };
     });
   }, []);
 
   const refreshAuth = useCallback(async () => {
-    await refreshToken();
     const currentUser = await getCurrentUser();
-    if (currentUser) setUser(currentUser);
+    setUser(currentUser);
   }, []);
 
   return (

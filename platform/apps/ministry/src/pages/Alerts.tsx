@@ -18,9 +18,9 @@ export function Alerts() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card><div className="text-center"><div className="text-3xl font-bold text-red-400">٣</div><div className="text-sm text-slate-400">حرجة</div></Card>
-        <Card><div className="text-center"><div className="text-3xl font-bold text-yellow-400">٧</div><div className="text-sm text-slate-400">تحذيرية</div></Card>
-        <Card><div className="text-center"><div className="text-3xl font-bold text-blue-400">١٢</div><div className="text-sm text-slate-400">معلوماتية</div></Card>
+        <Card><div className="text-center"><div className="text-3xl font-bold text-red-400">٣</div><div className="text-sm text-slate-400">حرجة</div></div></Card>
+        <Card><div className="text-center"><div className="text-3xl font-bold text-yellow-400">٧</div><div className="text-sm text-slate-400">تحذيرية</div></div></Card>
+        <Card><div className="text-center"><div className="text-3xl font-bold text-blue-400">١٢</div><div className="text-sm text-slate-400">معلوماتية</div></div></Card>
       </div>
 
       <AlertPanel />

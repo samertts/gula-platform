@@ -465,6 +465,7 @@ def _register_routes(app: FastAPI) -> None:
     )
     from .routes import ai as ai_routes
     from .routes import citizen_portal as citizen_portal_routes
+    from .routes import citizen_relationship_admin as citizen_relationship_admin_routes
     from .routes import optimizer as optimizer_routes
     from .routes import tiers as tiers_routes
 
@@ -490,6 +491,7 @@ def _register_routes(app: FastAPI) -> None:
     register_financial_routes(app)
 
     app.include_router(citizen_portal_routes.router)
+    app.include_router(citizen_relationship_admin_routes.router)
 
     from .routes import claims as claims_routes
     app.include_router(claims_routes.router)

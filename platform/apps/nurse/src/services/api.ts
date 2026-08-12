@@ -1,18 +1,12 @@
 const API_BASE = '/api/v1';
 
-let authToken: string | null = localStorage.getItem('gula-nurse-token');
-
-export function setToken(token: string | null) {
-  authToken = token;
-  if (token) {
-    localStorage.setItem('gula-nurse-token', token);
-  } else {
-    localStorage.removeItem('gula-nurse-token');
-  }
+// Authentication is carried only by server-issued HttpOnly cookies.
+export function setToken(_token: string | null) {
+  return undefined;
 }
 
 export function getToken(): string | null {
-  return authToken;
+  return null;
 }
 
 async function request<T>(
@@ -25,12 +19,9 @@ async function request<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
-
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
+    credentials: 'include',
     headers,
   });
 

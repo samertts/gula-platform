@@ -1,46 +1,37 @@
 const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
-let accessToken: string | null = localStorage.getItem('gula_access_token');
-let refreshToken: string | null = localStorage.getItem('gula_refresh_token');
+// Web sessions are cookie-only. Tokens must never be persisted in browser storage
+// or attached as bearer headers by this legacy client.
 let refreshPromise: Promise<boolean> | null = null;
 
-export function setTokens(access: string, refresh: string) {
-  accessToken = access;
-  refreshToken = refresh;
-  localStorage.setItem('gula_access_token', access);
-  localStorage.setItem('gula_refresh_token', refresh);
+/** @deprecated Web clients receive HttpOnly cookies from the backend. */
+export function setTokens(_access?: string, _refresh?: string) {
+  // Kept as a no-op for legacy callers while the backend owns session cookies.
 }
 
+/** Clear the server-side cookie session through the normal logout endpoint. */
 export function clearTokens() {
-  accessToken = null;
-  refreshToken = null;
-  localStorage.removeItem('gula_access_token');
-  localStorage.removeItem('gula_refresh_token');
+  // Intentionally no localStorage/sessionStorage access. Callers should invoke
+  // the logout API when they need to invalidate the server-side session.
 }
 
+/** @deprecated Access tokens are HttpOnly and are not readable by JavaScript. */
 export function getAccessToken(): string | null {
-  return accessToken;
+  return null;
 }
 
 async function attemptRefresh(): Promise<boolean> {
-  if (!refreshToken) return false;
   if (refreshPromise) return refreshPromise;
   refreshPromise = (async () => {
     try {
-        const res = await fetch(`${API_BASE}/auth/refresh`, {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
+        credentials: 'include',
+        body: JSON.stringify({}),
       });
-      if (!res.ok) {
-        clearTokens();
-        return false;
-      }
-      const data = await res.json();
-      setTokens(data.token, data.refresh_token);
-      return true;
+      return res.ok;
     } catch {
-      clearTokens();
       return false;
     } finally {
       refreshPromise = null;
@@ -153,28 +144,20 @@ export async function apiRequest<T = any>(path: string, options: RequestOptions 
     'Content-Type': 'application/json',
     ...extraHeaders,
   };
-
-  if (!skipAuth && accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
-  }
-
-  let res = await fetch(buildUrl(path, params), {
+  const requestInit: RequestInit = {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
     signal,
-  });
+    credentials: 'include',
+  };
 
-  if (res.status === 401 && !skipAuth && refreshToken) {
+  let res = await fetch(buildUrl(path, params), requestInit);
+
+  if (res.status === 401 && !skipAuth) {
     const refreshed = await attemptRefresh();
     if (refreshed) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
-      res = await fetch(buildUrl(path, params), {
-        method,
-        headers,
-        body: body ? JSON.stringify(body) : undefined,
-        signal,
-      });
+      res = await fetch(buildUrl(path, params), requestInit);
     }
   }
 

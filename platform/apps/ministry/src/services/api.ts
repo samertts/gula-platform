@@ -202,13 +202,22 @@ export interface NationalReport {
 
 const API_BASE = 'https://api.gula.health/api/v1';
 
+function isIsolatedDemoMode(): boolean {
+  return import.meta.env.VITE_DEMO_MODE === 'true'
+    && typeof window !== 'undefined'
+    && sessionStorage.getItem('gula_ministry_demo_mode') === 'enabled';
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('gula_ministry_token');
+  if (isIsolatedDemoMode() && path.startsWith('/ministry/')) {
+    throw new Error('Demo mode blocks live Ministry API calls; synthetic fixtures are required.');
+  }
+
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });
@@ -217,6 +226,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  getSession: () => request<{ user: MinistryUser; demo_mode?: boolean }>('/auth/session'),
   getKpis: (region?: string) => request<KpiMetric[]>(`/ministry/kpis${region ? `?region=${region}` : ''}`),
   getRegions: () => request<RegionData[]>('/ministry/regions'),
   getDiseaseSurveillance: () => request<DiseaseOutbreak[]>('/ministry/surveillance'),

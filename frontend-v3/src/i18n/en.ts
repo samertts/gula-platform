@@ -5,6 +5,7 @@ const en = {
   },
   nav: {
     dashboard: "Dashboard",
+    citizenWorkspace: "My health workspace",
     patients: "Patients",
     orders: "Orders",
     results: "Results",

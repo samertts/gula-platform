@@ -53,10 +53,11 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
-        manualChunks: {
-          cornerstone: ['@cornerstonejs/core', '@cornerstonejs/tools'],
-          dicom: ['dicom-parser', 'dicomweb-client'],
-          vendor: ['react', 'react-dom', 'react-router-dom']
+        manualChunks(id) {
+          if (id.includes('@cornerstonejs/')) return 'cornerstone';
+          if (id.includes('dicom-parser') || id.includes('dicomweb-client')) return 'dicom';
+          if (id.includes('node_modules')) return 'vendor';
+          return undefined;
         }
       }
     }

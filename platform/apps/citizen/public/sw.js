@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gula-citizen-v1';
+const CACHE_NAME = 'gula-citizen-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -17,9 +17,12 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    Promise.all([
+      caches.keys().then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      ),
+      purgeLegacyOfflineQueue(),
+    ])
   );
   self.clients.claim();
 });
@@ -28,19 +31,9 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  if (request.method !== 'GET') {
-    if (!navigator.onLine) {
-      return event.respondWith(
-        saveToOfflineQueue(request).then(() => 
-          new Response(JSON.stringify({ queued: true }), {
-            status: 202,
-            headers: { 'Content-Type': 'application/json' },
-          })
-        )
-      );
-    }
-    return;
-  }
+  // Mutation queues are owned by the authenticated application client. The
+  // legacy worker must never persist or replay authenticated mutations.
+  if (request.method !== 'GET') return;
 
   if (url.origin === self.location.origin && request.destination === 'document') {
     event.respondWith(networkFirstWithFallback(request, '/index.html'));
@@ -140,68 +133,24 @@ async function networkFirst(request) {
   }
 }
 
-async function saveToOfflineQueue(request) {
-  const db = await openOfflineDB();
-  const tx = db.transaction(OFFLINE_QUEUE, 'readwrite');
-  const store = tx.objectStore(OFFLINE_QUEUE);
-  const body = await request.clone().text();
-  store.add({
-    url: request.url,
-    method: request.method,
-    headers: Object.fromEntries(request.headers.entries()),
-    body,
-    timestamp: Date.now(),
-  });
-  await tx.done;
-}
-
-function openOfflineDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('gula-offline', 1);
-    req.onupgradeneeded = () => {
-      req.result.createObjectStore(OFFLINE_QUEUE, { keyPath: 'id', autoIncrement: true });
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-offline-queue') {
-    event.waitUntil(processOfflineQueue());
+async function purgeLegacyOfflineQueue() {
+  try {
+    const db = await new Promise((resolve, reject) => {
+      const request = indexedDB.open('gula-offline', 2);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains(OFFLINE_QUEUE)) {
+          request.result.createObjectStore(OFFLINE_QUEUE, { keyPath: 'id', autoIncrement: true });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    if (!db.objectStoreNames.contains(OFFLINE_QUEUE)) return;
+    const tx = db.transaction(OFFLINE_QUEUE, 'readwrite');
+    tx.objectStore(OFFLINE_QUEUE).clear();
+    await tx.done;
+    db.close();
+  } catch (error) {
+    console.error('Failed to purge legacy offline queue:', error);
   }
-  if (event.tag === 'sync-health-data') {
-    event.waitUntil(syncHealthData());
-  }
-});
-
-async function processOfflineQueue() {
-  const db = await openOfflineDB();
-  const tx = db.transaction(OFFLINE_QUEUE, 'readonly');
-  const store = tx.objectStore(OFFLINE_QUEUE);
-  const requests = await store.getAll();
-
-  for (const req of requests) {
-    try {
-      await fetch(req.url, {
-        method: req.method,
-        headers: req.headers,
-        body: req.body,
-      });
-      const deleteTx = db.transaction(OFFLINE_QUEUE, 'readwrite');
-      deleteTx.objectStore(OFFLINE_QUEUE).delete(req.id);
-      await deleteTx.done;
-    } catch (e) {
-      console.error('Failed to sync request:', req.url, e);
-    }
-  }
-}
-
-async function syncHealthData() {
-  const cache = await caches.open(API_CACHE);
-  const keys = await cache.keys();
-  const clients = await self.clients.matchAll();
-  clients.forEach((client) => {
-    client.postMessage({ type: 'SYNC_COMPLETE', timestamp: Date.now() });
-  });
 }

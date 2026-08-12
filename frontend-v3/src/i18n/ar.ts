@@ -5,6 +5,7 @@ const ar = {
   },
   nav: {
     dashboard: "لوحة التحكم",
+    citizenWorkspace: "مساحتي الصحية",
     patients: "المرضى",
     orders: "الطلبات",
     results: "النتائج",

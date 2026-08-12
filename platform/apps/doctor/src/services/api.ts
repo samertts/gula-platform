@@ -1,4 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb';
+import { inspectQueuePayload, sanitizeQueueHeaders } from '@gula/ui-platform';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.gula.health/api/v1';
 
@@ -8,35 +9,22 @@ interface RequestOptions extends RequestInit {
   timeout?: number;
 }
 
-let authToken: string | null = localStorage.getItem('gula_doctor_token');
-let refreshTokenValue: string | null = localStorage.getItem('gula_doctor_refresh');
-
-export function setAuthToken(token: string | null, refresh?: string | null) {
-  authToken = token;
-  if (token) {
-    localStorage.setItem('gula_doctor_token', token);
-  } else {
-    localStorage.removeItem('gula_doctor_token');
-  }
-  if (refresh !== undefined) {
-    refreshTokenValue = refresh;
-    if (refresh) {
-      localStorage.setItem('gula_doctor_refresh', refresh);
-    } else {
-      localStorage.removeItem('gula_doctor_refresh');
-    }
-  }
+// Authentication is carried only by server-issued HttpOnly cookies.
+// Keep the compatibility export without retaining any token in browser storage.
+export function setAuthToken(_token: string | null, _refresh?: string | null) {
+  return undefined;
 }
 
 export function getAuthToken(): string | null {
-  return authToken;
+  return null;
 }
 
 let offlineDB: IDBPDatabase | null = null;
+let queueCleanup: Promise<void> | null = null;
 
 async function getOfflineDB(): Promise<IDBPDatabase> {
   if (offlineDB) return offlineDB;
-  offlineDB = await openDB('gula-doctor-offline', 2, {
+  offlineDB = await openDB('gula-doctor-offline', 3, {
     upgrade(db, oldVersion) {
       if (!db.objectStoreNames.contains('requests')) {
         db.createObjectStore('requests', { keyPath: 'id', autoIncrement: true });
@@ -58,25 +46,47 @@ async function getOfflineDB(): Promise<IDBPDatabase> {
           db.createObjectStore('voiceNotes', { keyPath: 'id', autoIncrement: true });
         }
       }
+      if (!db.objectStoreNames.contains('queue_rejections')) {
+        db.createObjectStore('queue_rejections', { keyPath: 'id', autoIncrement: true });
+      }
     },
   });
+  queueCleanup = queueCleanup ?? cleanLegacyQueue(offlineDB);
+  await queueCleanup;
   return offlineDB;
 }
 
+async function cleanLegacyQueue(db: IDBPDatabase): Promise<void> {
+  const requests = await db.getAll('requests');
+  const tx = db.transaction(['requests', 'queue_rejections'], 'readwrite');
+  for (const request of requests) {
+    const headerResult = sanitizeQueueHeaders(request.headers);
+    const payloadResult = inspectQueuePayload(request.body);
+    if (headerResult.hadSensitiveHeader || !payloadResult.safe) {
+      await tx.objectStore('queue_rejections').add({
+        source: 'gula-doctor-offline.requests',
+        requestId: request.id,
+        url: request.url,
+        method: request.method,
+        reason: headerResult.hadSensitiveHeader ? 'sensitive-header' : payloadResult.reason,
+        rejectedAt: Date.now(),
+      });
+      await tx.objectStore('requests').delete(request.id);
+      continue;
+    }
+    await tx.objectStore('requests').put({ ...request, headers: headerResult.headers });
+  }
+  await tx.done;
+}
+
 async function tryRefreshToken(): Promise<boolean> {
-  if (!refreshTokenValue) return false;
   try {
     const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken: refreshTokenValue }),
     });
-    if (response.ok) {
-      const data = await response.json();
-      setAuthToken(data.accessToken, data.refreshToken);
-      return true;
-    }
-    return false;
+    return response.ok;
   } catch {
     return false;
   }
@@ -100,9 +110,8 @@ export async function apiRequest<T = unknown>(
     ...(fetchOptions.headers as Record<string, string>),
   };
 
-  if (!skipAuth && authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
+  // Browser clients never construct Authorization headers; cookies are HttpOnly.
+  void skipAuth;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -123,19 +132,20 @@ export async function apiRequest<T = unknown>(
   try {
     let response = await fetch(`${API_BASE}${endpoint}`, {
       ...fetchOptions,
+      credentials: 'include',
       headers,
       signal: controller.signal,
     });
 
-    if (response.status === 401 && !skipAuth && authToken) {
+    if (response.status === 401 && !skipAuth && endpoint !== '/auth/refresh') {
       clearTimeout(timeoutId);
       const refreshed = await tryRefreshToken();
       if (refreshed) {
-        headers['Authorization'] = `Bearer ${authToken}`;
         const retryController = new AbortController();
         const retryTimeout = setTimeout(() => retryController.abort(), timeout);
         response = await fetch(`${API_BASE}${endpoint}`, {
           ...fetchOptions,
+          credentials: 'include',
           headers,
           signal: retryController.signal,
         });
@@ -185,10 +195,15 @@ export async function apiRequest<T = unknown>(
 
 async function queueOfflineRequest(endpoint: string, options: RequestOptions) {
   const db = await getOfflineDB();
+  const headerResult = sanitizeQueueHeaders(options.headers as Record<string, string>);
+  const payloadResult = inspectQueuePayload(options.body);
+  if (headerResult.hadSensitiveHeader || !payloadResult.safe) {
+    throw new OfflineError('تم رفض تخزين طلب غير متصل يحتوي بيانات اعتماد');
+  }
   await db.add('requests', {
     url: `${API_BASE}${endpoint}`,
     method: options.method || 'GET',
-    headers: options.headers as Record<string, string>,
+    headers: headerResult.headers,
     body: options.body,
     timestamp: Date.now(),
     retryCount: 0,
@@ -232,9 +247,16 @@ export async function processOfflineQueue() {
       continue;
     }
     try {
+      const headerResult = sanitizeQueueHeaders(req.headers);
+      const payloadResult = inspectQueuePayload(req.body);
+      if (headerResult.hadSensitiveHeader || !payloadResult.safe) {
+        await db.delete('requests', req.id);
+        continue;
+      }
       const response = await fetch(req.url, {
         method: req.method,
-        headers: req.headers,
+        credentials: 'include',
+        headers: { ...headerResult.headers, 'Content-Type': 'application/json' },
         body: req.body,
       });
       if (response.ok) {
@@ -320,9 +342,7 @@ export async function uploadFile(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${API_BASE}${endpoint}`);
-    if (authToken) {
-      xhr.setRequestHeader('Authorization', `Bearer ${authToken}`);
-    }
+    xhr.withCredentials = true;
     xhr.setRequestHeader('X-Client-Type', 'doctor-app');
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) {

@@ -1,5 +1,6 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import { processOfflineQueue } from './api';
+import { inspectQueuePayload } from '@gula/ui-platform';
 
 interface SyncStatus {
   lastSync: string | null;
@@ -18,6 +19,7 @@ interface OfflineCacheEntry {
 }
 
 let db: IDBPDatabase | null = null;
+let queueCleanup: Promise<void> | null = null;
 let syncInProgress = false;
 let statusListeners: Array<(status: SyncStatus) => void> = [];
 let onlineListeners: Array<() => void> = [];
@@ -30,7 +32,7 @@ let currentStatus: SyncStatus = {
 
 async function getDB(): Promise<IDBPDatabase> {
   if (db) return db;
-  db = await openDB('gula-doctor-offline-sync', 1, {
+  db = await openDB('gula-doctor-offline-sync', 2, {
     upgrade(database) {
       if (!database.objectStoreNames.contains('cache')) {
         database.createObjectStore('cache', { keyPath: 'key' });
@@ -38,9 +40,32 @@ async function getDB(): Promise<IDBPDatabase> {
       if (!database.objectStoreNames.contains('pending')) {
         database.createObjectStore('pending', { keyPath: 'id', autoIncrement: true });
       }
+      if (!database.objectStoreNames.contains('queue_rejections')) {
+        database.createObjectStore('queue_rejections', { keyPath: 'id', autoIncrement: true });
+      }
     },
   });
+  queueCleanup = queueCleanup ?? cleanLegacyPending(db);
+  await queueCleanup;
   return db;
+}
+
+async function cleanLegacyPending(database: IDBPDatabase): Promise<void> {
+  const pending = await database.getAll('pending');
+  const tx = database.transaction(['pending', 'queue_rejections'], 'readwrite');
+  for (const item of pending) {
+    const result = inspectQueuePayload(item);
+    if (!result.safe) {
+      await tx.objectStore('queue_rejections').add({
+        source: 'gula-doctor-offline-sync.pending',
+        requestId: item.id,
+        reason: result.reason,
+        rejectedAt: Date.now(),
+      });
+      await tx.objectStore('pending').delete(item.id);
+    }
+  }
+  await tx.done;
 }
 
 function notifyStatus() {
@@ -99,7 +124,7 @@ export async function syncNow(): Promise<SyncStatus> {
     await processOfflineQueue();
     currentStatus.lastSync = new Date().toISOString();
     localStorage.setItem('gula_doctor_last_sync', currentStatus.lastSync);
-    currentStatus.pendingItems = 0;
+    currentStatus.pendingItems = await getQueueLength();
     currentStatus.lastSyncResult = 'success';
     currentStatus.errors = [];
   } catch (error) {
@@ -175,6 +200,15 @@ export async function clearAllCache() {
 
 export async function queueForSync(data: Record<string, unknown>) {
   const database = await getDB();
+  const result = inspectQueuePayload(data);
+  if (!result.safe) {
+    await database.add('queue_rejections', {
+      source: 'gula-doctor-offline-sync.pending',
+      reason: result.reason,
+      rejectedAt: Date.now(),
+    });
+    throw new Error('تم رفض تخزين عنصر غير متصل يحتوي بيانات اعتماد');
+  }
   await database.add('pending', {
     ...data,
     timestamp: Date.now(),

@@ -22,7 +22,7 @@ export default function DrugSearch({
   const [selected, setSelected] = useState(-1)
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>()
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   const search = useCallback(async (q: string) => {
     if (q.length < 2) {

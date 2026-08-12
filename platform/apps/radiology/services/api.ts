@@ -20,25 +20,15 @@ class ApiError extends Error {
 }
 
 class ApiClient {
-  private token: string | null = null
+  constructor(private baseUrl: string) {}
 
-  constructor(private baseUrl: string) {
-    this.token = typeof window !== 'undefined'
-      ? localStorage.getItem('gula_radiology_token')
-      : null
-  }
-
-  setToken(token: string | null) {
-    this.token = token
-    if (token) {
-      localStorage.setItem('gula_radiology_token', token)
-    } else {
-      localStorage.removeItem('gula_radiology_token')
-    }
+  // Compatibility methods intentionally do not retain browser credentials.
+  setToken(_token: string | null) {
+    return undefined
   }
 
   getToken(): string | null {
-    return this.token
+    return null
   }
 
   private buildUrl(path: string, params?: Record<string, string | number | boolean | undefined>): string {
@@ -61,16 +51,13 @@ class ApiClient {
       ...headers
     }
 
-    if (this.token) {
-      requestHeaders['Authorization'] = `Bearer ${this.token}`
-    }
-
     if (body && !(body instanceof FormData)) {
       requestHeaders['Content-Type'] = 'application/json'
     }
 
     const response = await fetch(this.buildUrl(path, params), {
       method,
+      credentials: 'include',
       headers: requestHeaders,
       body: body instanceof FormData ? body as FormData : body ? JSON.stringify(body) : undefined,
       signal

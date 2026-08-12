@@ -26,7 +26,7 @@ export function LabStatistics() {
         <Table
           columns={[{ key: 'region', label: 'المحافظة' }, { key: 'gov', label: 'حكومي' }, { key: 'private', label: 'خاص' }, { key: 'total', label: 'المجموع' }]}
           data={[
-            { region: 'بغداد', gov: 1,240, private: 890, total: 2,130 },
+            { region: 'بغداد', gov: 1240, private: 890, total: 2130 },
             { region: 'البصرة', gov: 420, private: 310, total: 730 },
             { region: 'نينوى', gov: 380, private: 210, total: 590 },
           ]}

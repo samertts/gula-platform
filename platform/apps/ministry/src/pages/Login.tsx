@@ -13,6 +13,7 @@ export function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const demoModeEnabled = import.meta.env.VITE_DEMO_MODE === 'true';
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,11 +26,15 @@ export function Login() {
 
   const handleMfaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1200));
-    localStorage.setItem('gula_ministry_token', 'mock-jwt-token');
-    setLoading(false);
+    setError('هذا المسار لا ينشئ جلسة إنتاجية. استخدم بوابة Demo المعزولة أو اربط تسجيل الدخول الخلفي بعد اعتماد مستقل.');
+  };
+
+  const handleDemoAccess = () => {
+    if (!demoModeEnabled) {
+      setError('وضع Demo غير مفعّل في هذه البيئة. لم يتم منح وصول إنتاجي تلقائي.');
+      return;
+    }
+    sessionStorage.setItem('gula_ministry_demo_mode', 'enabled');
     navigate('/dashboard');
   };
 
@@ -72,6 +77,16 @@ export function Login() {
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
+          <div className="mb-6 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-xs leading-6 text-amber-200">
+            هذه واجهة وزارة مخصصة للعرض. لا تُنشئ بيانات اعتماد حقيقية ولا تصل إلى بيانات صحية حقيقية.
+          </div>
+          <button
+            type="button"
+            onClick={handleDemoAccess}
+            className="mb-6 w-full rounded-2xl border border-emerald-400/40 bg-emerald-400/10 py-3.5 text-sm font-bold text-emerald-200 transition-all hover:bg-emerald-400/20"
+          >
+            دخول Demo معزول — بيانات اصطناعية فقط
+          </button>
           {step === 'credentials' ? (
             <form onSubmit={handleCredentialsSubmit} className="space-y-6">
               <div>

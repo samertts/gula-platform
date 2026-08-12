@@ -56,7 +56,6 @@ export default defineConfig({
               cacheName: 'gula-nurse-api',
               expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 7 },
               networkTimeoutSeconds: 5,
-              backgroundSync: { name: 'gula-nurse-sync' },
             },
           },
           {
@@ -95,10 +94,11 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          charts: ['recharts'],
-          pwa: ['workbox-precaching', 'workbox-routing', 'workbox-strategies', 'workbox-background-sync'],
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom')) return 'vendor';
+          if (id.includes('node_modules/recharts')) return 'charts';
+          if (id.includes('node_modules/workbox-')) return 'pwa';
+          return undefined;
         },
       },
     },

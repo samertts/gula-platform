@@ -42,25 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function initAuth() {
     try {
-      const token = localStorage.getItem('gula_doctor_token');
-      const stored = localStorage.getItem('gula_doctor_user');
-
-      if (stored) {
-        setUser(JSON.parse(stored));
-      }
-
-      if (token) {
-        try {
-          const currentUser = await apiRequest<DoctorUser>('/auth/me');
-          setUser(currentUser);
-          localStorage.setItem('gula_doctor_user', JSON.stringify(currentUser));
-        } catch {
-          localStorage.removeItem('gula_doctor_token');
-          localStorage.removeItem('gula_doctor_refresh');
-          localStorage.removeItem('gula_doctor_user');
-          setUser(null);
-        }
-      }
+      const response = await apiRequest<{ user: DoctorUser }>('/auth/session');
+      setUser(response.user);
     } catch {
       setUser(null);
     } finally {
@@ -68,34 +51,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const login = useCallback((token: string, refresh: string, userData: DoctorUser) => {
-    setAuthToken(token, refresh);
+  const login = useCallback((_token: string, _refresh: string, userData: DoctorUser) => {
+    // Backend login establishes the HttpOnly cookies; retain only display state.
+    setAuthToken(null, null);
     setUser(userData);
-    localStorage.setItem('gula_doctor_user', JSON.stringify(userData));
   }, []);
 
   const logout = useCallback(() => {
+    void apiRequest('/auth/logout', { method: 'POST', skipAuth: true }).catch(() => undefined);
     setAuthToken(null, null);
     setUser(null);
-    localStorage.removeItem('gula_doctor_user');
   }, []);
 
   const updateUser = useCallback((updates: Partial<DoctorUser>) => {
     setUser((prev) => {
       if (!prev) return prev;
-      const updated = { ...prev, ...updates };
-      localStorage.setItem('gula_doctor_user', JSON.stringify(updated));
-      return updated;
+      return { ...prev, ...updates };
     });
   }, []);
 
   const refreshAuth = useCallback(async () => {
-    const token = localStorage.getItem('gula_doctor_token');
-    if (!token) return;
     try {
-      const currentUser = await apiRequest<DoctorUser>('/auth/me');
-      setUser(currentUser);
-      localStorage.setItem('gula_doctor_user', JSON.stringify(currentUser));
+      const response = await apiRequest<{ user: DoctorUser }>('/auth/session');
+      setUser(response.user);
     } catch {
       logout();
     }

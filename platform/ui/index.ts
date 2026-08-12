@@ -109,6 +109,14 @@ export type { PaginationResult, PaginationState } from './hooks/usePagination';
 
 // Utils
 export { cn } from './utils/cn';
+export {
+  isSensitiveQueueKey,
+  sanitizeQueueHeaders,
+  inspectQueuePayload,
+  inspectQueueRecord,
+  purgeLegacyWorkboxQueue,
+} from './utils/offlineQueueSecurity';
+export type { SanitizedHeaders, QueueSecurityCheck } from './utils/offlineQueueSecurity';
 
 export {
   formatDate, formatDateTime, formatRelativeTime,

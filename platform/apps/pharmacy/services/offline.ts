@@ -1,5 +1,7 @@
+import { inspectQueuePayload } from '../../../ui/utils/offlineQueueSecurity'
+
 const DB_NAME = 'gula-pharmacy-offline'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 let db: IDBDatabase | null = null
 
@@ -50,11 +52,23 @@ function openDB(): Promise<IDBDatabase> {
         })
         sync.createIndex('status', 'status', { unique: false })
       }
+
+      if (!database.objectStoreNames.contains('queue_rejections')) {
+        database.createObjectStore('queue_rejections', {
+          keyPath: 'id',
+          autoIncrement: true,
+        })
+      }
     }
 
-    request.onsuccess = (event) => {
+    request.onsuccess = async (event) => {
       db = (event.target as IDBOpenDBRequest).result
-      resolve(db!)
+      try {
+        await purgeLegacyPendingDispenses(db!)
+        resolve(db!)
+      } catch (error) {
+        reject(error)
+      }
     }
 
     request.onerror = (event) => {
@@ -71,7 +85,17 @@ function getStore(storeName: string, mode: IDBTransactionMode = 'readonly'): Pro
 }
 
 export async function savePendingDispense(data: Record<string, unknown>): Promise<number> {
-  const store = await getStore('pending_dispenses', 'readwrite')
+  const database = await openDB()
+  const security = inspectQueuePayload(data)
+  if (!security.safe) {
+    await addQueueRejection(database, {
+      source: 'gula-pharmacy-offline.pending_dispenses',
+      reason: security.reason,
+      rejectedAt: new Date().toISOString(),
+    })
+    throw new Error('تم رفض تخزين عملية صرف غير متصلة تحتوي بيانات اعتماد')
+  }
+  const store = database.transaction('pending_dispenses', 'readwrite').objectStore('pending_dispenses')
   return new Promise((resolve, reject) => {
     const request = store.add({
       ...data,
@@ -82,6 +106,41 @@ export async function savePendingDispense(data: Record<string, unknown>): Promis
     request.onsuccess = () => resolve(request.result as number)
     request.onerror = () => reject(request.error)
   })
+}
+
+async function addQueueRejection(database: IDBDatabase, entry: Record<string, unknown>): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const transaction = database.transaction('queue_rejections', 'readwrite')
+    const request = transaction.objectStore('queue_rejections').add(entry)
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
+
+async function purgeLegacyPendingDispenses(database: IDBDatabase): Promise<void> {
+  const entries = await new Promise<Record<string, unknown>[]>((resolve, reject) => {
+    const request = database.transaction('pending_dispenses').objectStore('pending_dispenses').getAll()
+    request.onsuccess = () => resolve(request.result as Record<string, unknown>[])
+    request.onerror = () => reject(request.error)
+  })
+
+  for (const entry of entries) {
+    const security = inspectQueuePayload(entry)
+    if (!security.safe) {
+      await addQueueRejection(database, {
+        source: 'gula-pharmacy-offline.pending_dispenses',
+        requestId: entry.id,
+        reason: security.reason,
+        rejectedAt: new Date().toISOString(),
+      })
+      await new Promise<void>((resolve, reject) => {
+        const transaction = database.transaction('pending_dispenses', 'readwrite')
+        const request = transaction.objectStore('pending_dispenses').delete(entry.id)
+        request.onsuccess = () => resolve()
+        request.onerror = () => reject(request.error)
+      })
+    }
+  }
 }
 
 export async function getPendingDispenses(): Promise<Record<string, unknown>[]> {

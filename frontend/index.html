@@ -208,11 +208,10 @@ if (!navigator.onLine) document.getElementById('offlineBanner').classList.add('s
 
   function addMsg(t,c){var d=document.createElement('div');d.className='ai-m '+c;d.textContent=t;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;}
   function addTyping(){var d=document.createElement('div');d.className='ai-m bot ai-typing';d.innerHTML='<span></span><span></span><span></span>';msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;}
-  function tok(){try{return JSON.parse(localStorage.getItem('gula_auth')||'{}').token||'';}catch{return '';}}
   function ctx(){return (location.hash||'').replace('#','').trim()||document.title;}
 
   async function callApi(msg){
-    var r=await fetch('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tok()},body:JSON.stringify({message:msg,context:ctx()})});
+    var r=await fetch('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},credentials: 'include',body:JSON.stringify({message:msg,context:ctx()})});
     if(!r.ok){var e=await r.json().catch(function(){return {};});throw new Error(e.detail||'HTTP '+r.status);}
     return r.json();
   }

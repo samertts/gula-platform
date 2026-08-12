@@ -15,7 +15,7 @@ import Reports from './pages/Reports'
 import PharmaceuticalCare from './pages/PharmaceuticalCare'
 import OfflineMode from './pages/OfflineMode'
 import Settings from './pages/Settings'
-import { getToken } from './services/api'
+import { apiRequest } from './services/api'
 
 type Page =
   | 'dashboard'
@@ -94,7 +94,8 @@ const pageLabels: Record<Page, string> = {
 }
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(!!getToken())
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authLoading, setAuthLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [globalSearch, setGlobalSearch] = useState('')
@@ -105,7 +106,7 @@ export default function App() {
   }
 
   function handleLogout() {
-    localStorage.removeItem('pharmacy_token')
+    void apiRequest('/auth/logout', { method: 'POST' }).catch(() => undefined)
     setIsAuthenticated(false)
   }
 
@@ -115,12 +116,25 @@ export default function App() {
   }
 
   useEffect(() => {
+    let active = true
+    apiRequest('/auth/session')
+      .then(() => { if (active) setIsAuthenticated(true) })
+      .catch(() => { if (active) setIsAuthenticated(false) })
+      .finally(() => { if (active) setAuthLoading(false) })
+    return () => { active = false }
+  }, [])
+
+  useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') setSidebarOpen(false)
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  if (authLoading) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>جارٍ التحقق من الجلسة…</div>
+  }
 
   if (!isAuthenticated) {
     return <Login onLogin={handleLogin} />

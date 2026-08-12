@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { purgeLegacyWorkboxQueue } from '@gula/ui-platform';
 
 async function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
@@ -16,7 +17,10 @@ async function registerServiceWorker() {
 }
 
 async function initializeApp() {
-  try { await registerServiceWorker(); } catch { /* ignore */ }
+  try {
+    await purgeLegacyWorkboxQueue();
+    await registerServiceWorker();
+  } catch { /* ignore */ }
 
   const rootElement = document.getElementById('root');
   if (!rootElement) throw new Error('Root element not found');
