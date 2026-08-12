@@ -1,54 +1,63 @@
-# Build stage
-FROM node:24-alpine AS builder
+# =============================================================================
+# GULA Platform — Backend (multi-stage)
+# Repository-root build context: this file lives in backend/Dockerfile.
+# =============================================================================
+
+# ── Stage 1: dependency builder ───────────────────────────────────────────────
+FROM python:3.12-slim AS builder
+
+WORKDIR /deps
+
+COPY backend/requirements.txt ./requirements.txt
+
+# Install into an isolated prefix so the runtime image contains only packages.
+RUN pip install --no-cache-dir --compile --prefix=/install -r requirements.txt
+
+
+# ── Stage 2: runtime image ────────────────────────────────────────────────────
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json* ./
+# System dependencies for bilingual Arabic/English PDF reports.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-dejavu-core \
+    fonts-noto-core \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN npm ci
+# Copy installed packages from builder.
+COPY --from=builder /install /usr/local
 
-# Copy source code
-COPY . .
+# The application source is under backend/ while shared/ is a first-class
+# runtime package used by logging, auth, and other backend modules.
+COPY backend/app ./app
+COPY backend/migrations ./migrations
+COPY backend/alembic.ini .
+COPY shared ./shared
 
-# Build application
-RUN npm run build
+# Shared modules refer to backend.app._compat for the UTC compatibility shim.
+# Copy only that small compatibility module under the namespace expected by
+# shared/; the running application itself continues to import app.*.
+RUN mkdir -p /app/backend/app
+COPY backend/app/_compat.py ./backend/app/_compat.py
 
-# Runtime stage
-FROM node:24-alpine
+# Fail the image build on syntax errors in application or shared code.
+RUN python -m compileall app/ shared/ backend/app/_compat.py
 
-WORKDIR /app
+# SECURITY: Drop root — run as unprivileged user.
+RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
+USER appuser
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init curl
+EXPOSE 10000
 
-# Copy package files
-COPY package.json package-lock.json* ./
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
+    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:10000/health', timeout=3)"
 
-# Install production dependencies only
-RUN npm ci --omit=dev
-
-# Copy built application from builder
-COPY --from=builder /app/dist ./dist
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
-
-# Change ownership
-RUN chown -R nodejs:nodejs /app
-
-USER nodejs
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
-
-# Expose port
-EXPOSE 3000
-
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["dumb-init", "--"]
-
-# Start application
-CMD ["node", "dist/index.js"]
+# Railway will use its saved custom command when present. This fallback is also
+# production-safe when the custom command is cleared: one worker, port 10000.
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", \
+     "--workers", "1", \
+     "--timeout", "30", \
+     "--bind", "0.0.0.0:10000", \
+     "--access-logfile", "-", \
+     "--error-logfile", "-"]
