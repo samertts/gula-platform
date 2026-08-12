@@ -347,6 +347,8 @@ def import_all_models() -> None:
         Warehouse,
         WasteRecord,
     )
+    from .payments import models as payment_models  # noqa: F401
+    from .payments import subscription_models  # noqa: F401
     from .radiology.ai import AIAnalysisJob  # noqa: F401
     from .radiology.models import (  # noqa: F401
         MPPS,
@@ -502,9 +504,11 @@ def _register_routes(app: FastAPI) -> None:
     from .payments.routes import router as payments_router
     from .payments.fx_routes import router as payments_fx_router
     from .payments.orchestration_routes import router as payments_orchestration_router
+    from .payments.subscription_routes import router as payments_subscription_router
     app.include_router(payments_router)
     app.include_router(payments_fx_router)
     app.include_router(payments_orchestration_router)
+    app.include_router(payments_subscription_router)
 
     app.include_router(citizen_portal_routes.router)
     app.include_router(citizen_relationship_admin_routes.router)
