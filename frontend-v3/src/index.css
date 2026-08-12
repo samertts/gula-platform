@@ -1,38 +1,38 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", "Noto Naskh Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Tajawal", "Noto Naskh Arabic", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-primary: #4f46e5;
-  --color-primary-container: #6366f1;
+  --color-primary: #0b3658;
+  --color-primary-container: #124c74;
   --color-on-primary: #ffffff;
-  --color-primary-light: #eef2ff;
+  --color-primary-light: #eaf4fb;
 
-  --color-secondary: #64748b;
+  --color-secondary: #6e8090;
   --color-on-secondary: #ffffff;
 
-  --color-background: #f8fafc;
+  --color-background: #f5f8fa;
   --color-surface: #ffffff;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f8fafc;
-  --color-surface-container: #f1f5f9;
-  --color-surface-container-high: #e2e8f0;
-  --color-surface-container-highest: #cbd5e1;
+  --color-surface-container-low: #f5f8fa;
+  --color-surface-container: #edf4f7;
+  --color-surface-container-high: #e4edf2;
+  --color-surface-container-highest: #d8e4e9;
 
-  --color-on-surface: #1e293b;
-  --color-on-surface-variant: #64748b;
+  --color-on-surface: #17324a;
+  --color-on-surface-variant: #6e8090;
 
-  --color-outline: #cbd5e1;
-  --color-outline-variant: #e2e8f0;
+  --color-outline: #d8e4e9;
+  --color-outline-variant: #e4edf2;
 
   --color-error: #ef4444;
   --color-error-container: #fef2f2;
   --color-on-error-container: #991b1b;
 
-  --color-success: #10b981;
-  --color-success-container: #ecfdf5;
-  --color-on-success-container: #065f46;
+  --color-success: #258b76;
+  --color-success-container: #eaf7f2;
+  --color-on-success-container: #176d5c;
 
   --color-warning: #f59e0b;
   --color-warning-container: #fffbeb;
@@ -54,6 +54,7 @@
 @layer base {
   body {
     @apply bg-background text-on-surface font-sans antialiased;
+    direction: rtl;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -62,8 +63,13 @@
     @apply border-outline;
   }
 
+  :focus-visible {
+    outline: 3px solid rgba(37, 139, 118, 0.28);
+    outline-offset: 2px;
+  }
+
   ::selection {
-    @apply bg-indigo-100/70;
+    @apply bg-emerald-100/70;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
@@ -91,6 +97,10 @@
 
   .card-sleek:hover {
     @apply shadow-md;
+  }
+
+  .gula-status-surface {
+    @apply rounded-2xl border border-outline bg-surface p-5 shadow-sm;
   }
 }
 
