@@ -44,7 +44,7 @@ dependencies:
   tray_manager: ^0.2.1
 
   # Printing
-  printing: ^5.14.2
+  printing: ">=5.9.3 <5.10.0"
   esc_pos_bluetooth: ^0.4.1
   esc_pos_utils: ^1.1.0
   flutter_blue_plus: ^1.35.4
