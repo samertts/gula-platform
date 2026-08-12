@@ -720,25 +720,60 @@ def _build_lifespan():
 
     @asynccontextmanager
     async def _lifespan(_app: FastAPI):
-        if not _should_init_background_tasks():
-            logger.info("Runtime mode '%s' — skipping background task init", RUNTIME_MODE)
-        else:
-            from .core.startup import start_background_workers, warmup
-            await start_background_workers()
-            await warmup()
+        """Start liveness immediately; complete dependency readiness in the background.
 
-        if _should_init_db():
-            from .core.startup_guard import run_startup_guard
-            await run_startup_guard()
+        Railway needs the HTTP listener before a slow database connection has
+        completed its retry budget.  Non-health requests remain protected by
+        ``ReadinessMiddleware`` until ``run_startup_guard`` marks the system
+        ready, while `/health` continues to be a true liveness probe.
+        """
+        import asyncio
 
-        if not _is_openapi_mode():
+        async def _initialize_runtime() -> None:
             try:
-                from .kernel.integration import warmup_kernel
-                await warmup_kernel()
-            except Exception as exc:
-                logger.warning("Kernel warmup skipped: %s", exc)
+                if _should_init_db():
+                    from .core.startup_guard import run_startup_guard
+                    await run_startup_guard()
+
+                if not _should_init_background_tasks():
+                    logger.info("Runtime mode '%s' — skipping background task init", RUNTIME_MODE)
+                else:
+                    from .core.startup import start_background_workers, warmup
+                    await start_background_workers()
+                    await warmup()
+
+                if not _is_openapi_mode():
+                    try:
+                        from .kernel.integration import warmup_kernel
+                        await warmup_kernel()
+                    except Exception as exc:
+                        logger.warning("Kernel warmup skipped: %s", exc)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                # Keep the process alive for liveness and diagnostics. The
+                # readiness guard remains false, so clinical/API traffic is
+                # still rejected safely until an operator fixes the dependency.
+                logger.exception("Startup initialization did not complete; service remains unready")
+
+        non_blocking_production_startup = (
+            IS_PRODUCTION
+            and os.getenv("NON_BLOCKING_STARTUP", "true").strip().lower() not in {"0", "false", "no"}
+        )
+        startup_task: asyncio.Task[None] | None = None
+        if non_blocking_production_startup:
+            startup_task = asyncio.create_task(
+                _initialize_runtime(), name="gula-startup-initialization"
+            )
+            logger.info("Startup initialization running in background; liveness is available")
+        else:
+            await _initialize_runtime()
 
         yield
+
+        if startup_task and not startup_task.done():
+            startup_task.cancel()
+            await asyncio.gather(startup_task, return_exceptions=True)
 
         if _should_init_background_tasks():
             from .core.startup import _bg_tasks
@@ -751,7 +786,6 @@ def _build_lifespan():
             for task in list(_bg_tasks):
                 task.cancel()
             if _bg_tasks:
-                import asyncio
                 await asyncio.gather(*list(_bg_tasks), return_exceptions=True)
 
         if _should_init_db():
