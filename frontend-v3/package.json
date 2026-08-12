@@ -10,6 +10,9 @@
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests --exclude 'e2e/**'",
+    "verify:unification": "node scripts/verify-frontend-unification.mjs",
+    "verify:contracts": "node scripts/verify-contract-governance.mjs",
+    "check": "pnpm typecheck && pnpm test && pnpm verify:unification && pnpm verify:contracts && pnpm build",
     "test:watch": "vitest --passWithNoTests --exclude 'e2e/**'",
     "test:e2e": "playwright test"
   },

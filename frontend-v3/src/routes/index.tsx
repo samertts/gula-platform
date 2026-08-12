@@ -6,6 +6,7 @@ import { LoadingSpinner } from "@/components/shared/PageComponents";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserRole } from "@/types";
+import { LegacyRouteBridge } from "@/pages/migration/LegacyRouteBridge";
 
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then(m => ({ default: m.RegisterPage })));
@@ -196,6 +197,7 @@ export const router = createBrowserRouter([
       { path: "platform", element: <RoleGuard roles={adminRoles}><LazyPage><PlatformPageLazy /></LazyPage></RoleGuard> },
       { path: "public-health", element: <RoleGuard roles={adminRoles}><LazyPage><PublicHealthApiPageLazy /></LazyPage></RoleGuard> },
       { path: "admin", element: <Navigate to="/admin/labs" replace /> },
+      { path: "*", element: <LegacyRouteBridge /> },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },
