@@ -94,6 +94,7 @@ class PaymentIntent(FinBase):
     id = Column(String(36), primary_key=True, default=_uuid)
     institution_id = Column(Integer, nullable=False, index=True)
     invoice_id = Column(String(36), ForeignKey("pay_invoices.id"), nullable=False, index=True)
+    payment_entity_id = Column(String(36), ForeignKey("pay_payment_entities.id"), nullable=True, index=True)
     idempotency_key = Column(String(128), nullable=False)
     amount = Column(MONEY, nullable=False)
     currency = Column(String(3), nullable=False, default="IQD")
@@ -137,6 +138,11 @@ class PaymentProvider(FinBase):
     display_name = Column(String(128), nullable=False)
     provider_type = Column(String(32), nullable=False)  # bank, psp, wallet, qr, cash
     environment = Column(String(16), nullable=False, default="sandbox")
+    created_by = Column(Integer, nullable=True)
+    payment_entity_id = Column(String(36), ForeignKey("pay_payment_entities.id"), nullable=True, index=True)
+    rail_code = Column(String(64), ForeignKey("pay_payment_rails.code"), nullable=True, index=True)
+    jurisdiction_code = Column(String(16), nullable=True)
+    live_approved = Column(Boolean, nullable=False, default=False)
     status = Column(String(32), nullable=False, default="PENDING_REVIEW")
     supports_refund = Column(Boolean, nullable=False, default=False)
     supports_reconciliation = Column(Boolean, nullable=False, default=False)
@@ -409,3 +415,110 @@ class PaymentRiskAssessment(FinBase):
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     review_outcome = Column(String(32), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+
+
+class PaymentEntity(FinBase):
+    """A legal and accounting boundary; never a shared wallet or balance."""
+
+    __tablename__ = "pay_payment_entities"
+
+    id = Column(String(36), primary_key=True, default=_uuid)
+    code = Column(String(64), nullable=False, unique=True)
+    legal_name = Column(String(256), nullable=False)
+    jurisdiction_code = Column(String(16), nullable=False)
+    entity_type = Column(String(32), nullable=False)  # DOMESTIC, INTERNATIONAL, SANDBOX
+    ledger_namespace = Column(String(96), nullable=False, unique=True)
+    status = Column(String(32), nullable=False, default="PENDING_REVIEW")
+    created_by = Column(Integer, nullable=True)
+    live_operations_approved = Column(Boolean, nullable=False, default=False)
+    approved_by = Column(Integer, nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class PaymentRail(FinBase):
+    """A payment route owned by exactly one legal entity."""
+
+    __tablename__ = "pay_payment_rails"
+    __table_args__ = (
+        UniqueConstraint("payment_entity_id", "code", name="uq_pay_rail_entity_code"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_uuid)
+    payment_entity_id = Column(String(36), ForeignKey("pay_payment_entities.id"), nullable=False, index=True)
+    code = Column(String(64), nullable=False, unique=True)
+    rail_type = Column(String(32), nullable=False)  # IRAQ_DOMESTIC, INTERNATIONAL, CASH, SANDBOX
+    jurisdiction_code = Column(String(16), nullable=False)
+    supported_currencies = Column(JSON, nullable=False, default=list)
+    status = Column(String(32), nullable=False, default="DISABLED")
+    created_by = Column(Integer, nullable=True)
+    kill_switch_enabled = Column(Boolean, nullable=False, default=False)
+    live_operations_approved = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class PaymentRoutingRule(FinBase):
+    """Versioned routing policy. Rules are advisory until a live adapter is approved."""
+
+    __tablename__ = "pay_payment_routing_rules"
+    __table_args__ = (
+        UniqueConstraint("rule_version", name="uq_pay_routing_rule_version"),
+        CheckConstraint("priority >= 0", name="ck_pay_routing_priority_non_negative"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_uuid)
+    payment_entity_id = Column(String(36), ForeignKey("pay_payment_entities.id"), nullable=False, index=True)
+    rail_code = Column(String(64), ForeignKey("pay_payment_rails.code"), nullable=False, index=True)
+    provider_code = Column(String(64), ForeignKey("pay_providers.code"), nullable=False, index=True)
+    rule_version = Column(String(96), nullable=False)
+    priority = Column(Integer, nullable=False, default=100)
+    minimum_amount = Column(FX_AMOUNT, nullable=True)
+    maximum_amount = Column(FX_AMOUNT, nullable=True)
+    currency_code = Column(String(3), nullable=True)
+    required_risk_level = Column(String(16), nullable=True)
+    service_reference = Column(String(128), nullable=True)
+    estimated_fee_bps = Column(Integer, nullable=False, default=0)
+    success_rate_bps = Column(Integer, nullable=False, default=0)
+    latency_ms = Column(Integer, nullable=True)
+    active = Column(Boolean, nullable=False, default=False)
+    created_by = Column(Integer, nullable=True)
+    approved_by = Column(Integer, nullable=True)
+    effective_from = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    effective_until = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+
+
+class PaymentRoutingDecision(FinBase):
+    """Append-only explanation of a routing recommendation; it does not initiate payment."""
+
+    __tablename__ = "pay_payment_routing_decisions"
+
+    id = Column(String(36), primary_key=True, default=_uuid)
+    payment_intent_id = Column(String(36), ForeignKey("pay_payment_intents.id"), nullable=False, index=True)
+    payment_entity_id = Column(String(36), ForeignKey("pay_payment_entities.id"), nullable=False, index=True)
+    rail_code = Column(String(64), nullable=True)
+    provider_code = Column(String(64), nullable=True)
+    correlation_id = Column(String(128), nullable=False, index=True)
+    decision = Column(String(32), nullable=False)  # ADVISORY_SELECT, MANUAL_REVIEW, NO_ELIGIBLE_ROUTE
+    score = Column(Numeric(10, 4), nullable=True)
+    reason_codes = Column(JSON, nullable=False, default=list)
+    evaluated_candidates = Column(JSON, nullable=False, default=list)
+    rule_version = Column(String(96), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+
+
+for _immutable_model in (PaymentRoutingDecision,):
+    event.listen(_immutable_model, "before_update", _reject_financial_history_mutation)
+    event.listen(_immutable_model, "before_delete", _reject_financial_history_mutation)

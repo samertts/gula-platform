@@ -144,6 +144,8 @@ EXTENDED_ALL_PERMISSIONS: list[str] = [
     "payments:reconcile",
     "payments:fx:quote",
     "payments:fx:manage",
+    "payments:orchestration:manage",
+    "payments:orchestration:route",
 ]
 
 EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
@@ -168,6 +170,7 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "platform:manage_users",
         "payments:read", "payments:write", "payments:cashier", "payments:refund:request",
         "payments:refund:approve", "payments:refund:process", "payments:reconcile", "payments:fx:quote",
+        "payments:orchestration:route",
     ],
     "lab_admin": [
         "patients:read", "patients:write", "patients:delete",
@@ -178,6 +181,7 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "platform:manage_users",
         "payments:read", "payments:write", "payments:cashier", "payments:refund:request",
         "payments:refund:approve", "payments:refund:process", "payments:reconcile", "payments:fx:quote",
+        "payments:orchestration:route",
     ],
     "doctor": [
         "patients:read", "orders:read", "results:read", "dashboard:read",
@@ -188,6 +192,7 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "results:read", "results:write",
         "lab:read", "dashboard:read",
         "payments:read", "payments:write", "payments:cashier", "payments:refund:request", "payments:fx:quote",
+        "payments:orchestration:route",
     ],
     "lab_staff": [
         "patients:read", "patients:write",
@@ -195,6 +200,7 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "results:read", "results:write",
         "lab:read", "dashboard:read",
         "payments:read", "payments:write", "payments:cashier", "payments:refund:request", "payments:fx:quote",
+        "payments:orchestration:route",
     ],
     "technician": [
         "orders:read", "orders:write",

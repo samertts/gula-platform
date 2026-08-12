@@ -501,8 +501,10 @@ def _register_routes(app: FastAPI) -> None:
 
     from .payments.routes import router as payments_router
     from .payments.fx_routes import router as payments_fx_router
+    from .payments.orchestration_routes import router as payments_orchestration_router
     app.include_router(payments_router)
     app.include_router(payments_fx_router)
+    app.include_router(payments_orchestration_router)
 
     app.include_router(citizen_portal_routes.router)
     app.include_router(citizen_relationship_admin_routes.router)
