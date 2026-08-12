@@ -54,6 +54,8 @@ jobs:
         run: |
           eval "$(ssh-agent -s)"
           printf '%s\n' "$SSH_KEY" | ssh-add -
+          echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
           ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
