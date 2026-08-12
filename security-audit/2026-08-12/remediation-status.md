@@ -35,6 +35,7 @@
 | Flutter secure key generation | استبدال توليد المفتاح المعتمد على الوقت بـ`Random.secure()` | مكتمل في المصدر | guard المصدر نجح؛ يحتاج اختبار Flutter على منصات الإصدار |
 | TLS pin evidence | حفظ بصمة SPKI العامة ونوع شهادة الإنتاج في `tls-pinning-evidence.md` دون أي بيانات اعتماد | مكتمل في المصدر | تحقق TLS خارجي موثق؛ يلزم pin احتياطي موثق قبل التجديد |
 | Vercel project-root headers | إضافة `frontend-v3/vercel.json` لأن إعداد root `vercel.json` لا يضمن تطبيق headers عندما يكون دليل المشروع `frontend-v3` | مكتمل في المصدر | يحتاج نشر Vercel ثم تحقق GET من CSP وsecurity headers؛ التحقق السابق أظهر غيابها في الموقع الحي |
+| Secret rotation runbook | إضافة `secret-rotation-runbook.md` بأسماء الأسرار وخطوات الإبطال والتدوير والتحقق دون قيم سرية | مكتمل في المصدر؛ التنفيذ التشغيلي متبقٍ | يجب تدوير كل الأسرار التاريخية في مزوديها، ثم توثيق رقم الإصدار ونتيجة staging/production |
 
 ## التحقق الحالي
 
