@@ -4,25 +4,9 @@ import { dicomService, type DicomStudy, type StudySeries } from '@services/dicom
 import { DICOMViewer as DicomViewerComponent } from '@components/DICOMViewer'
 import { ImageToolbar } from '@components/ImageToolbar'
 import { StudyBrowser } from '@components/StudyBrowser'
-import { AIAnnotation } from '@components/AIAnnotation'
 import type { Tool } from '@components/DICOMViewer'
 
 type LayoutType = '1x1' | '1x2' | '2x1' | '2x2' | '3x3'
-
-type Annotation = {
-  id: string
-  type: 'nodule' | 'mass' | 'calcification' | 'fracture' | 'hemorrhage' | 'tumor' | 'other'
-  label: string
-  confidence: number
-  x: number
-  y: number
-  width: number
-  height: number
-  probability: number
-  finding: string
-  rads_relevant: boolean
-  suggested_rads?: string
-}
 
 export function DICOMViewerPage() {
   const [searchParams] = useSearchParams()
@@ -38,9 +22,6 @@ export function DICOMViewerPage() {
 
   const [activeTool, setActiveTool] = useState<Tool>('wwwc')
   const [layout, setLayout] = useState<LayoutType>('1x1')
-  const [showAI, setShowAI] = useState(false)
-  const [aiLoading, setAiLoading] = useState(false)
-  const [aiAnnotations, setAiAnnotations] = useState<Annotation[]>([])
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [currentSeriesIndex, setCurrentSeriesIndex] = useState(0)
   const [showSeriesList, setShowSeriesList] = useState(true)
@@ -162,42 +143,6 @@ export function DICOMViewerPage() {
     }
   }, [])
 
-  const handleRunAI = useCallback(async () => {
-    if (!selectedStudy) return
-    setAiLoading(true)
-    try {
-      // Simulate AI detection
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      const mockAnnotations: Annotation[] = [
-        {
-          id: 'ai_001', type: 'nodule', label: 'عقدة رئوية', confidence: 0.92,
-          x: 0.3, y: 0.4, width: 0.05, height: 0.05, probability: 0.88,
-          finding: 'عقدة صلبة في الفص العلوي الأيمن بقياس 8 مم', rads_relevant: true,
-          suggested_rads: 'RADS-3'
-        },
-        {
-          id: 'ai_002', type: 'calcification', label: 'تكلس', confidence: 0.78,
-          x: 0.6, y: 0.3, width: 0.03, height: 0.03, probability: 0.72,
-          finding: 'تكلسات وعائية في المنصف', rads_relevant: false
-        }
-      ]
-      setAiAnnotations(mockAnnotations)
-      setShowAI(true)
-    } catch {
-      console.error('AI analysis failed')
-    } finally {
-      setAiLoading(false)
-    }
-  }, [selectedStudy])
-
-  const handleAcceptAnnotation = useCallback((id: string) => {
-    setAiAnnotations(prev => prev.filter(a => a.id !== id))
-  }, [])
-
-  const handleRejectAnnotation = useCallback((id: string) => {
-    setAiAnnotations(prev => prev.filter(a => a.id !== id))
-  }, [])
-
   if (loading) {
     return (
       <div style={{ display: 'flex', gap: 16, height: '100%' }}>
@@ -284,49 +229,25 @@ export function DICOMViewerPage() {
             className="flex-1"
           />
 
-          {/* Only show AI if we have a study */}
           {selectedStudy && (
-            <div style={{
-              position: 'absolute',
-              top: 8,
-              insetInlineEnd: 8,
-              zIndex: 10
-            }}>
-              <button
-                className="btn btn-sm"
-                style={{
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  color: 'white',
-                  border: '1px solid rgba(255,255,255,0.2)'
-                }}
-                onClick={handleRunAI}
-                disabled={aiLoading}
-              >
-                {aiLoading ? '🤖 جاري التحليل...' : '🤖 تحليل بالذكاء الاصطناعي'}
-              </button>
-            </div>
-          )}
-
-          {/* AI annotations panel */}
-          {showAI && (
-            <div style={{
-              position: 'absolute',
-              top: 48,
-              insetInlineEnd: 8,
-              width: 300,
-              maxHeight: 'calc(100% - 60px)',
-              overflowY: 'auto',
-              zIndex: 10
-            }}>
-              <AIAnnotation
-                annotations={aiAnnotations}
-                visible={showAI}
-                onToggleVisibility={() => setShowAI(!showAI)}
-                onAnnotationClick={(ann) => console.log('Annotation clicked:', ann)}
-                onAcceptAnnotation={handleAcceptAnnotation}
-                onRejectAnnotation={handleRejectAnnotation}
-                loading={aiLoading}
-              />
+            <div
+              role="status"
+              style={{
+                position: 'absolute',
+                top: 8,
+                insetInlineEnd: 8,
+                zIndex: 10,
+                maxWidth: 360,
+                padding: '8px 12px',
+                borderRadius: 4,
+                backgroundColor: 'rgba(0,0,0,0.78)',
+                color: 'rgba(255,255,255,0.9)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              التحليل الآلي غير متاح لهذه الدراسة حالياً. لن تُعرض استنتاجات سريرية اصطناعية؛ استخدم التقرير المعتمد من الخلفية.
             </div>
           )}
         </div>
