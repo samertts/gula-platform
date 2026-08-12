@@ -6,7 +6,7 @@
   "assessment_snapshot": "2026-08-12T21:00:00Z",
   "authorization": "Owner authorization confirmed in conversation",
   "method": "Safe read-only external review plus local source/configuration review; no credential submission, destructive action, data extraction, exploit execution, or privilege escalation",
-  "decision": "NO-GO until F-01, F-02, F-03, F-05 and F-07 are remediated and staging smoke tests pass",
+  "decision": "NO-GO until F-01 is rotated and verified, F-02/F-03/F-05/F-07 pass post-deploy validation, and staging authentication smoke tests pass",
   "findings": [
     {
       "id": "F-01",
@@ -22,8 +22,8 @@
       "title": "SPA deep-link routing returns 404",
       "severity": "Medium",
       "confidence": "High",
-      "status": "Open",
-      "evidence": "Live /login returned Vercel 404 while React route table defines /login and /register client routes",
+      "status": "Remediated in source; post-deploy verification pending",
+      "evidence": "Live /login returned Vercel 404 while React route table defines /login and /register client routes; Vercel rewrite was added in source",
       "remediation": "Add production SPA rewrites and CI smoke tests for direct deep links"
     },
     {
@@ -31,8 +31,8 @@
       "title": "Security headers inconsistent on live HTML 200 response",
       "severity": "Medium",
       "confidence": "High",
-      "status": "Open",
-      "evidence": "Homepage 200 lacked CSP and several hardening headers while captured 404 included them",
+      "status": "Remediated in source; post-deploy verification pending",
+      "evidence": "Homepage 200 lacked CSP and several hardening headers while captured 404 included them; Vercel security headers were updated in source",
       "remediation": "Apply headers uniformly at CDN/Vercel and verify API CORS separately"
     },
     {
@@ -49,8 +49,8 @@
       "title": "Mobile certificate pinning uses placeholder pins and inconsistent domains",
       "severity": "High release blocker",
       "confidence": "High for Android source defect; runtime impact not executed",
-      "status": "Open",
-      "evidence": "Android Network Security Config and OkHttp pinner contain repeated A/B placeholder SHA-256 pins; Android/iOS/web use different API domain families",
+      "status": "Remediated in source; signed build verification pending",
+      "evidence": "Android Network Security Config and OkHttp pinner contained repeated A/B placeholder SHA-256 pins; Android/iOS/desktop API domains and pins were updated in source",
       "remediation": "Use one canonical API domain, real SPKI pins, backup pin, expiry/rotation plan, and signed release smoke tests"
     },
     {
@@ -67,8 +67,8 @@
       "title": "Production workflow injects wrong Vite API variable and expects mismatched artifact path",
       "severity": "High deployment/configuration risk",
       "confidence": "High",
-      "status": "Open",
-      "evidence": "Workflow builds frontend-v2, injects REACT_APP_API_BASE_URL, client reads VITE_API_BASE, and artifact path is build/ while Vite defaults to dist/; general CI validates frontend-v3",
+      "status": "Remediated in source; deployment verification pending",
+      "evidence": "Workflow previously built frontend-v2, injected REACT_APP_API_BASE_URL, and expected a mismatched artifact; it now targets frontend-v3 and Vite variables/output",
       "remediation": "Unify frontend version, Vite variable, output path, commit/artifact provenance, and post-build API-origin assertions"
     }
   ],

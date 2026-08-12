@@ -1,99 +1,61 @@
-type AiClient = import("@google/genai").GoogleGenAI;
+import { apiPost } from "../api/client";
 
-let aiPromise: Promise<AiClient | null> | null = null;
+type AiGatewayResponse = {
+  response?: unknown;
+  rag_response?: unknown;
+  answer?: unknown;
+  output?: unknown;
+  text?: unknown;
+};
 
-async function getAi(): Promise<AiClient | null> {
-  if (aiPromise !== null) return aiPromise;
-
-  aiPromise = (async () => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) {
-      console.warn("VITE_GEMINI_API_KEY is not set — Gemini AI features are disabled.");
-      return null;
-    }
-    try {
-      const { GoogleGenAI } = await import("@google/genai");
-      return new GoogleGenAI({ apiKey });
-    } catch (error) {
-      console.error("Failed to initialize GoogleGenAI:", error);
-      return null;
-    }
-  })();
-
-  return aiPromise;
+async function queryAiGateway(prompt: string, fallback: string): Promise<string> {
+  try {
+    const data = await apiPost<AiGatewayResponse>("/ai/v2/orchestrate", {
+      query: prompt,
+    });
+    const candidate = data?.response ?? data?.rag_response ?? data?.answer ?? data?.output ?? data?.text;
+    return typeof candidate === "string" && candidate.trim() ? candidate : fallback;
+  } catch (error) {
+    console.error("AI gateway request failed:", error);
+    return fallback;
+  }
 }
 
-export const generateSmartDiagnosis = async (patientData: string, symptoms: string) => {
-  const ai = await getAi();
-  if (!ai) return "AI features are disabled — no API key configured.";
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `You are a specialized medical intelligence assistant. Analyze the following patient data and reported symptoms to provide clinical insights, possible differential diagnoses, and recommended next steps for the physician. 
-      
-      Patient Data: ${patientData}
-      Symptoms: ${symptoms}
-      
-      Output should be professional, structured, and prioritize urgent findings. Always include a disclaimer that this is a decision support tool and not a final diagnosis.`,
-    });
-    
-    return response.text;
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    return "Error generating AI insight. Please try again later.";
-  }
-};
+export const generateSmartDiagnosis = async (patientData: string, symptoms: string) =>
+  queryAiGateway(
+    [
+      "You are a specialized medical intelligence assistant.",
+      "Analyze the following patient data and reported symptoms to provide clinical insights, possible differential diagnoses, and recommended next steps for the physician.",
+      "Patient Data:",
+      patientData,
+      "Symptoms:",
+      symptoms,
+      "Output should be professional, structured, prioritize urgent findings, and include a disclaimer that this is decision support rather than a final diagnosis.",
+    ].join("\n\n"),
+    "AI insight is currently unavailable. Please try again later.",
+  );
 
-export const analyzeLabTrends = async (labResults: any[]) => {
-  const ai = await getAi();
-  if (!ai) return "Trend analysis unavailable — AI features are disabled.";
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Analyze these laboratory results for potential clinical trends or anomalies. Provide a summary of significant changes over time.
-      
-      Results: ${JSON.stringify(labResults)}
-      
-      At the end of your response, provide 3 suggested follow-up questions that a physician might want to ask. Format them exactly like this:
-      ---
-      SUGGESTED_QUESTIONS:
-      - [Question 1]
-      - [Question 2]
-      - [Question 3]`,
-    });
-    
-    return response.text;
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    return "Trend analysis unavailable.";
-  }
-};
+export const analyzeLabTrends = async (labResults: unknown[]) =>
+  queryAiGateway(
+    [
+      "Analyze these laboratory results for potential clinical trends or anomalies.",
+      "Provide a summary of significant changes over time.",
+      `Results: ${JSON.stringify(labResults)}`,
+      "At the end, provide 3 suggested follow-up questions using the SUGGESTED_QUESTIONS format.",
+    ].join("\n\n"),
+    "Trend analysis is currently unavailable. Please try again later.",
+  );
 
-export const askFollowUp = async (context: string, question: string) => {
-  const ai = await getAi();
-  if (!ai) return "Follow-up questions unavailable — AI features are disabled.";
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `You are a clinical intelligence assistant. You previously provided an analysis:
-      "${context}"
-      
-      The user (a medical professional) has a follow-up question:
-      "${question}"
-      
-      Provide a concise, professional answer based on clinical evidence and the current context.
-      
-      At the end of your response, provide 2 or 3 NEW suggested follow-up questions. Format them exactly like this:
-      ---
-      SUGGESTED_QUESTIONS:
-      - [Question 1]
-      - [Question 2]
-      - [Question 3]`,
-    });
-    
-    return response.text;
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    return "Error generating response to follow-up question.";
-  }
-};
+export const askFollowUp = async (context: string, question: string) =>
+  queryAiGateway(
+    [
+      "You are a clinical intelligence assistant.",
+      "Previous analysis:",
+      context,
+      "Follow-up question:",
+      question,
+      "Provide a concise, professional answer based on clinical evidence and the current context.",
+      "At the end, provide 2 or 3 new suggested follow-up questions using the SUGGESTED_QUESTIONS format.",
+    ].join("\n\n"),
+    "The follow-up response is currently unavailable. Please try again later.",
+  );

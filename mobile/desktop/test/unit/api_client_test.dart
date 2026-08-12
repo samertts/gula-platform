@@ -16,7 +16,7 @@ void main() {
   setUp(() {
     mockDio = MockDio();
     apiClient = ApiClient(
-      baseUrl: 'https://api.gula.iq',
+      baseUrl: 'https://api.gula-platform.org/api/v1',
       dio: mockDio,
     );
   });

@@ -1,74 +1,37 @@
-type AiClient = import("@google/genai").GoogleGenAI;
-type GenerateContentResponse = import("@google/genai").GenerateContentResponse;
+import { apiPost } from "../api/client";
 
-let aiPromise: Promise<AiClient | null> | null = null;
-
-async function getAi(): Promise<AiClient | null> {
-  if (aiPromise !== null) return aiPromise;
-
-  aiPromise = (async () => {
-    const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!apiKey) {
-      console.warn("VITE_GEMINI_API_KEY is not set — Gemini AI features are disabled.");
-      return null;
-    }
-    try {
-      const { GoogleGenAI } = await import("@google/genai");
-      return new GoogleGenAI({ apiKey });
-    } catch (error) {
-      console.error("Failed to initialize GoogleGenAI:", error);
-      return null;
-    }
-  })();
-
-  return aiPromise;
-}
+type AiGatewayResponse = {
+  response?: unknown;
+  rag_response?: unknown;
+  answer?: unknown;
+  output?: unknown;
+  text?: unknown;
+};
 
 export async function getClinicalInsight(prompt: string, context: string, imageData?: string) {
-  const ai = await getAi();
-  if (!ai) return "AI features are disabled — no API key configured.";
+  if (imageData) {
+    return "Image-based clinical insight is temporarily unavailable while the secure upload gateway is being configured.";
+  }
+
   try {
-    const contents: any[] = [];
-    
-    if (imageData) {
-      const base64Data = imageData.split(',')[1] || imageData;
-      contents.push({
-        parts: [
-          {
-            inlineData: {
-              mimeType: "image/jpeg",
-              data: base64Data
-            }
-          },
-          { text: `Context: ${context}\n\nQuestion: ${prompt}` }
-        ]
-      });
-    } else {
-      contents.push({
-        parts: [{ text: `Context: ${context}\n\nQuestion: ${prompt}` }]
-      });
-    }
-
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: contents[0].parts ? contents[0] : contents,
-      config: {
-        systemInstruction: `You are GULA AI, a highly advanced clinical decision support system. 
-        Your goal is to provide evidence-based, precise, and professional insights to physicians and lab technicians.
-        
-        GULA Vision Capability:
-        When an image (like a lab report or medical document) is provided, your first priority is to extract key clinical data (values, units, ranges, flags) and then provide analysis.
-        
-        Always maintain clinical rigor. Use provided context (patient data, lab values) to ground your answers.
-        If a user asks for personal health advice in the Citizen Wing, provide empathetic but cautious guidance, always recommending professional consultation.
-        Supported languages: Arabic, English, Kurdish, Turkmen, Syriac. Reply in the language of the prompt.`,
-        temperature: 0.1,
-      },
+    const data = await apiPost<AiGatewayResponse>("/ai/v2/orchestrate", {
+      query: [
+        "You are GULA AI, a clinical decision support assistant.",
+        "Provide evidence-based, precise, and professional insights for physicians and lab technicians.",
+        "Use the supplied context, maintain clinical rigor, and include a cautious disclaimer.",
+        "Supported languages: Arabic, English, Kurdish, Turkmen, Syriac.",
+        "Context:",
+        context,
+        "Question:",
+        prompt,
+      ].join("\n\n"),
     });
-
-    return response.text;
+    const candidate = data?.response ?? data?.rag_response ?? data?.answer ?? data?.output ?? data?.text;
+    return typeof candidate === "string" && candidate.trim()
+      ? candidate
+      : "Clinical insight is currently unavailable. Please try again later.";
   } catch (error) {
-    console.error("Clinical Insight Error:", error);
-    return "I'm sorry, I'm experiencing a technical issue analyzing this clinical data.";
+    console.error("Clinical insight gateway request failed:", error);
+    return "I'm sorry, the clinical insight service is currently unavailable.";
   }
 }

@@ -88,7 +88,7 @@ class _AppEntryState extends ConsumerState<_AppEntry> {
   }
 
   Future<void> _initApp() async {
-    const apiUrl = 'https://api.gula-platform.com/api/v1';
+    const apiUrl = 'https://api.gula-platform.org/api/v1';
 
     final authProvider = ref.read(authProviderProvider);
     await authProvider.initialize(apiUrl: apiUrl);

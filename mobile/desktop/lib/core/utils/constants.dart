@@ -8,7 +8,7 @@ class AppConstants {
   static const String companyName = 'GULA Platform';
   static const String copyright = 'Copyright © 2025 GULA Platform. All rights reserved.';
 
-  static const String defaultApiUrl = 'https://api.gula-platform.com/api/v1';
+  static const String defaultApiUrl = 'https://api.gula-platform.org/api/v1';
   static const String sentryDsn = '';
   static const String syncChannelName = 'gula_sync';
 

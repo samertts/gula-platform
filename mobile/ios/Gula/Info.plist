@@ -96,7 +96,7 @@
         <false/>
         <key>NSExceptionDomains</key>
         <dict>
-            <key>api.gula.iq</key>
+            <key>api.gula-platform.org</key>
             <dict>
                 <key>NSExceptionAllowsInsecureHTTPLoads</key>
                 <false/>
@@ -105,7 +105,7 @@
                 <key>NSTemporaryExceptionMinimumTLSVersion</key>
                 <string>TLSv1.2</string>
             </dict>
-            <key>gula.iq</key>
+            <key>gula-platform.org</key>
             <dict>
                 <key>NSExceptionAllowsInsecureHTTPLoads</key>
                 <false/>

@@ -11,7 +11,7 @@ actor APIClient {
     private let monitor = NWPathMonitor()
 
     private var baseURL: String {
-        UserDefaults.standard.string(forKey: "api_base_url") ?? "https://api.gula.iq"
+        UserDefaults.standard.string(forKey: "api_base_url") ?? "https://api.gula-platform.org/api/v1"
     }
 
     private var accessToken: String? {

@@ -50,8 +50,8 @@ android {
                 isShrinkResources = true
                 signingConfig = signingConfigs.getByName("release")
                 proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-                buildConfigField("String", "API_BASE_URL", "\"https://api.gulaplatform.com/api/v1/\"")
-                buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://api.gulaplatform.com/\"")
+                buildConfigField("String", "API_BASE_URL", "\"https://api.gula-platform.org/api/v1/\"")
+                buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://api.gula-platform.org/\"")
             }
         }
 

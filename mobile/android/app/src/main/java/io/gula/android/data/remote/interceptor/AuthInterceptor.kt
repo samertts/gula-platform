@@ -1,5 +1,6 @@
 package io.gula.android.data.remote.interceptor
 
+import io.gula.android.BuildConfig
 import io.gula.android.security.EncryptedPrefs
 import kotlinx.coroutines.runBlocking
 import okhttp3.Authenticator
@@ -59,7 +60,7 @@ class AuthInterceptor @Inject constructor(
                     json.toString()
                 )
                 val request = Request.Builder()
-                    .url("${BASE_URL}auth/refresh")
+                    .url("${BuildConfig.API_BASE_URL}auth/refresh")
                     .post(body)
                     .build()
                 val response = client.newCall(request).execute()
@@ -83,9 +84,6 @@ class AuthInterceptor @Inject constructor(
         }
     }
 
-    companion object {
-        private const val BASE_URL = "https://api.gulaplatform.com/api/v1/"
-    }
 }
 
 @Singleton
@@ -107,7 +105,7 @@ class TokenAuthenticator @Inject constructor(
                             json.toString()
                         )
                         val refreshRequest = Request.Builder()
-                            .url("${response.request.url.scheme()}://${response.request.url.host()}/auth/refresh")
+                            .url("${BuildConfig.API_BASE_URL}auth/refresh")
                             .post(body)
                             .build()
                         val refreshResponse = client.newCall(refreshRequest).execute()

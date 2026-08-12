@@ -136,3 +136,14 @@
 [7]: https://github.com/samertts/gula-platform/blob/f1a3cc3a23594983857722b13b757a852fa60c8a/mobile/android/app/src/main/res/xml/network_security_config.xml "GULA Android network security configuration"
 [8]: https://github.com/samertts/gula-platform/blob/f1a3cc3a23594983857722b13b757a852fa60c8a/backend/app/middleware.py "GULA backend security headers middleware"
 [9]: https://www.gula-platform.org/ "GULA public website assessed endpoint"
+
+
+## ملحق المعالجة — 2026-08-13
+
+بعد التقرير الأولي، نُفذت إصلاحات دفاعية في مسار النشر والواجهات وتطبيقات الهاتف وdesktop. تم توحيد Workflow النشر مع `frontend-v3`، وإضافة فحوصات lint وtypecheck وunit tests وbuild، وإصلاح مسار source maps، وإضافة فحص يمنع مراجع أسرار الخادم داخل حزمة المتصفح. كما أزيلت استدعاءات Gemini المباشرة وتبعيات Google AI من `frontend-v2`، وأصبح الذكاء الاصطناعي يمر عبر بوابة الخلفية بدلاً من كشف مفتاح مزود في المتصفح.
+
+تم توحيد عناوين API في Android وiOS وdesktop مع `api.gula-platform.org`، واستبدال certificate pins الوهمية في Android وiOS ببصمة عامة متحققة للنطاق الرسمي. كما تم تحديث Universal Links وATS في iOS، وتوحيد عنوان API في desktop، وإزالة interceptor desktop الذي كان يضع علامة تحقق دون فحص الشهادة؛ أصبح هذا المسار fail-closed إذا فُعّل قبل توفير native transport adapter حقيقي، ولذلك لا ينبغي تمكينه في إصدار desktop قبل استكمال ذلك المحول.
+
+نجحت فحوصات `frontend-v2` و`frontend-v3` المحلية: lint وTypeScript وunit tests وbuild، كما نجح فحص `git diff --check` ولم تظهر مراجع أسرار Gemini في مصدر الواجهة أو pins وهمية أو نطاقات API قديمة في الملفات المتأثرة. تعذر تشغيل Flutter وGradle في بيئة التنفيذ، لذلك يجب إكمال بناء واختبار Android وiOS وdesktop في CI أو بيئة تطوير مناسبة قبل اعتماد الإصدار.
+
+تبقى إجراءات لا يمكن تنفيذها من الشيفرة وحدها: إبطال وتدوير جميع الأسرار التي ظهرت تاريخياً في Git، تحديث التبعيات المتأثرة بتنبيهات GitHub، والتحقق بعد النشر من fallback لمسارات SPA وWebSocket. كما يجب تنفيذ اختبار authenticated في Staging لمجالات RBAC وIDOR وMFA ورفع الملفات وتجديد الجلسات باستخدام حسابات اختبار فقط.

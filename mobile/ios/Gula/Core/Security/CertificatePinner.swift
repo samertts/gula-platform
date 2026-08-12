@@ -1,16 +1,15 @@
 import Foundation
 import CommonCrypto
 
-class CertificatePinner: NSObject, URLSessionDelegate {
+final class CertificatePinner: NSObject, URLSessionDelegate {
+    // SPKI pin observed for api.gula-platform.org on 2026-08-12.
+    // Add a verified backup pin before rotating the production certificate.
     private let pinnedKeys: Set<String> = [
-        "sha256/9n0v4qTpT9G6r7cC8dE3fHgIjKlMnO2pQrStUvWxYzA=",
-        "sha256/0pQrStUvWxYzA1bCdEfGhIjKlMnO2pQrStUvWxYzA1bC=",
-        "sha256/D3fHgIjKlMnO2pQrStUvWxYzA1bCdEfGhIjKlMnO2pQrS="
+        "sha256/g9F05XEMwoJmxPy/otHWQ4jyLsg5jcPWyh4PYBrOEM0="
     ]
 
     private let pinnedDomains: Set<String> = [
-        "api.gula.iq",
-        "analytics.gula.iq"
+        "api.gula-platform.org"
     ]
 
     func urlSession(
@@ -20,8 +19,8 @@ class CertificatePinner: NSObject, URLSessionDelegate {
     ) {
         guard challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
               let serverTrust = challenge.protectionSpace.serverTrust,
-              let host = challenge.protectionSpace.host.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
-              pinnedDomains.contains(where: { host.contains($0) || $0.contains(host) }) else {
+              let host = challenge.protectionSpace.host.lowercased().addingPercentEncoding(withAllowedCharacters: .urlHostAllowed),
+              pinnedDomains.contains(host) else {
             completionHandler(.performDefaultHandling, nil)
             return
         }
@@ -37,25 +36,15 @@ class CertificatePinner: NSObject, URLSessionDelegate {
             return
         }
 
-        guard let serverCertificate = SecTrustGetCertificateAtIndex(serverTrust, 0) else {
-            completionHandler(.cancelAuthenticationChallenge, nil)
-            return
-        }
-
-        let serverPublicKey = SecCertificateCopyKey(serverCertificate)
-        guard let publicKey = serverPublicKey else {
-            completionHandler(.cancelAuthenticationChallenge, nil)
-            return
-        }
-
-        guard let publicKeyData = SecKeyCopyExternalRepresentation(publicKey, nil) as Data? else {
+        guard let serverCertificate = SecTrustGetCertificateAtIndex(serverTrust, 0),
+              let publicKey = SecCertificateCopyKey(serverCertificate),
+              let publicKeyData = SecKeyCopyExternalRepresentation(publicKey, nil) as Data? else {
             completionHandler(.cancelAuthenticationChallenge, nil)
             return
         }
 
         let keyHash = sha256(data: publicKeyData)
-        let base64Hash = keyHash.base64EncodedString()
-        let pin = "sha256/\(base64Hash)"
+        let pin = "sha256/\(keyHash.base64EncodedString())"
 
         if pinnedKeys.contains(pin) {
             completionHandler(.useCredential, URLCredential(trust: serverTrust))
