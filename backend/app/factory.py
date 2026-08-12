@@ -374,6 +374,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
     """Register all middleware in the correct order."""
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.middleware.gzip import GZipMiddleware
+    from starlette.middleware.trustedhost import TrustedHostMiddleware
 
     from app.middleware import (
         ConcurrencyLimitMiddleware,
@@ -396,17 +397,38 @@ def _build_middleware_stack(app: FastAPI) -> None:
 
         app.add_middleware(DocsAuthMiddleware)
 
-    _allowed_origins = os.getenv("CORS_ORIGINS", "").split(",")
-    _allowed_origins = [o.strip() for o in _allowed_origins if o.strip()]
-    if not _allowed_origins:
-        _allowed_origins = ["https://gula-platform.org"]
-        if os.getenv("ENV", "production") in ("development", "test"):
-            _allowed_origins += [
-                "http://localhost:8080", "http://localhost:80",
-                "http://localhost:3000", "http://localhost:5173",
-                "http://localhost:4173", "http://localhost:8000",
-                "https://aistudio.google.com", "https://claude.ai",
-            ]
+    _configured_origins = [
+        origin.strip().rstrip("/")
+        for origin in os.getenv("CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    ]
+    _allowed_origins = _configured_origins or [
+        "https://gula-platform.org",
+        "https://www.gula-platform.org",
+    ]
+    if not _configured_origins and os.getenv("ENV", "production") in ("development", "test"):
+        _allowed_origins += [
+            "http://localhost:3000",
+            "http://localhost:4173",
+            "http://localhost:5173",
+            "http://localhost:8000",
+        ]
+    if "*" in _allowed_origins:
+        raise RuntimeError("CORS_ORIGINS cannot contain '*' when credentials are enabled")
+    if IS_PRODUCTION and any(not origin.startswith("https://") for origin in _allowed_origins):
+        raise RuntimeError("Production CORS_ORIGINS must contain HTTPS origins only")
+
+    _trusted_hosts = [
+        host.strip()
+        for host in os.getenv("TRUSTED_HOSTS", "").split(",")
+        if host.strip()
+    ] or [
+        "api.gula-platform.org",
+        "gula-platform.org",
+        "www.gula-platform.org",
+    ]
+    if IS_PRODUCTION:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=_trusted_hosts)
 
     app.add_middleware(
         CORSMiddleware,

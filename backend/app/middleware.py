@@ -113,8 +113,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Cross-Origin-Resource-Policy"] = "same-site"
         response.headers["Content-Security-Policy"] = (
             "default-src 'self'; script-src 'self'; style-src 'self'; "
-            "img-src 'self' data: blob:; connect-src 'self' https://gula-platform.org; "
-            "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+            "img-src 'self' data: blob:; "
+            "connect-src 'self' https://gula-platform.org https://www.gula-platform.org "
+            "https://api.gula-platform.org wss://api.gula-platform.org; "
+            "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; "
+            "frame-ancestors 'none'; upgrade-insecure-requests"
         )
         if request.method == "GET" and request.url.path in _ALWAYS_ALLOWED_PATHS:
             response.headers["Cache-Control"] = "public, max-age=10, stale-while-revalidate=5"

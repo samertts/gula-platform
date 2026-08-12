@@ -21,7 +21,19 @@ def _allowed_origins() -> set[str]:
         for origin in os.getenv("CORS_ORIGINS", "").split(",")
         if origin.strip()
     }
-    configured.update({"http://localhost:5173", "http://localhost:4173", "http://localhost:3000"})
+    if not configured:
+        configured.update({
+            "https://gula-platform.org",
+            "https://www.gula-platform.org",
+        })
+        if os.getenv("ENV", "production").lower() in {"development", "test"}:
+            configured.update({
+                "http://localhost:5173",
+                "http://localhost:4173",
+                "http://localhost:3000",
+                "http://localhost:8000",
+            })
+    configured.discard("*")
     return configured
 
 
