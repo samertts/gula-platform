@@ -88,11 +88,6 @@ jobs:
             fi
           done
           rm -f /tmp/cosign.pub
-      - name: Cleanup SSH agent
-        if: always()
-        run: |
-          ssh-agent -k || true
-
       - name: Deploy to server
         env:
           IMAGE_TAG: ${{ steps.tag.outputs.tag }}
@@ -307,3 +302,8 @@ jobs:
           echo "| Commit | \`${{ github.sha }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Branch | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
           echo "| Triggered by | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Cleanup SSH agent
+        if: always()
+        run: |
+          ssh-agent -k || true
