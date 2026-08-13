@@ -79,7 +79,7 @@ dependencies:
   equatable: ^2.0.7
 
   # Crash Reporting
-  sentry_flutter: ^8.13.0
+  sentry_flutter: ^9.26.0
 
   # Localization
   flutter_oss_licenses: ^2.0.2

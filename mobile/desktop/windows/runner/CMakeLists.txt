@@ -1,58 +1,40 @@
 cmake_minimum_required(VERSION 3.14)
-project(gula_desktop LANGUAGES CXX)
+project(runner LANGUAGES CXX)
 
-set(BINARY_NAME "gula_desktop")
-set(FLUTTER_MANAGED_DIR "../flutter")
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-add_definitions(-DUNICODE -D_UNICODE)
-
-set(RUNNER_SOURCES
-  main.cpp
-  runner_utils.h
-  runner_utils.cpp
-  flutter_window.cpp
-  flutter_window.h
+# Define the application target. To change its name, change BINARY_NAME in the
+# top-level CMakeLists.txt, not the value here, or `flutter run` will no longer
+# work.
+#
+# Any new source files that you add to the application should be added here.
+add_executable(${BINARY_NAME} WIN32
+  "flutter_window.cpp"
+  "main.cpp"
+  "utils.cpp"
+  "win32_window.cpp"
+  "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
+  "Runner.rc"
+  "runner.exe.manifest"
 )
 
-add_executable(${BINARY_NAME} WIN32 ${RUNNER_SOURCES})
+# Apply the standard set of build settings. This can be removed for applications
+# that need different build settings.
+apply_standard_settings(${BINARY_NAME})
 
-target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+# Add preprocessor definitions for the build version.
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION=\"${FLUTTER_VERSION}\"")
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MAJOR=${FLUTTER_VERSION_MAJOR}")
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_MINOR=${FLUTTER_VERSION_MINOR}")
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_PATCH=${FLUTTER_VERSION_PATCH}")
+target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_BUILD=${FLUTTER_VERSION_BUILD}")
 
-target_link_libraries(${BINARY_NAME} PRIVATE
-  flutter_wrapper_app
-  comctl32.lib
-  comdlg32.lib
-  gdi32.lib
-  kernel32.lib
-  ole32.lib
-  shell32.lib
-  shlwapi.lib
-  user32.lib
-  uuid.lib
-  version.lib
-  winmm.lib
-  ws2_32.lib
-)
+# Disable Windows macros that collide with C++ standard library functions.
+target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 
-target_compile_definitions(${BINARY_NAME} PRIVATE
-  NDEBUG
-  FLUTTER_PLATFORM_WINDOWS
-  UNICODE
-  _UNICODE
-)
+# Add dependency libraries and include directories. Add any application-specific
+# dependencies here.
+target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
+target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib")
+target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
-add_custom_command(
-  TARGET ${BINARY_NAME}
-  POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${FLUTTER_MANAGED_DIR}/app_icon.ico"
-    "$<TARGET_FILE_DIR:${BINARY_NAME}>/app_icon.ico"
-  COMMENT "Copying app icon"
-)
-
-set(INSTALL_BUNDLE_DIR "$<TARGET_FILE_DIR:${BINARY_NAME}>")
-install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${INSTALL_BUNDLE_DIR}")
+# Run the Flutter tool portions of the build. This must not be removed.
+add_dependencies(${BINARY_NAME} flutter_assemble)
