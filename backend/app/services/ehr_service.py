@@ -98,6 +98,24 @@ def get_clinical_note(db: Session, note_id: str) -> ClinicalNote | None:
     )
 
 
+def get_clinical_note_for_verified_facility(
+    db: Session,
+    note_id: str,
+    national_facility_id: str,
+) -> ClinicalNote | None:
+    """Read one note only when its national EHR facility is already proven by a gate."""
+
+    return (
+        db.query(ClinicalNote)
+        .filter(
+            ClinicalNote.id == note_id,
+            ClinicalNote.facility_id == national_facility_id,
+            ClinicalNote.is_deleted.is_(False),
+        )
+        .first()
+    )
+
+
 def update_clinical_note(
     db: Session, note_id: str, data: dict[str, Any],
 ) -> ClinicalNote | None:

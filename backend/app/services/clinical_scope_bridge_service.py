@@ -4,7 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.identity.services.audit_service import AuditService
-from app.models.clinical_scope import ClinicalLabFacilityBinding, ClinicalLabFacilityBindingStatus
+from app.models.clinical_scope import (
+    ClinicalEhrFacilityBinding,
+    ClinicalEhrFacilityBindingStatus,
+    ClinicalLabFacilityBinding,
+    ClinicalLabFacilityBindingStatus,
+)
 from app.models.organization import Facility, Organization
 
 
@@ -106,3 +111,87 @@ class ClinicalScopeBridgeService:
             raise ClinicalFacilityScopeAmbiguous("More than one active facility scope exists for this lab")
         return bindings[0]
 
+
+class ClinicalEhrFacilityScopeBridgeService:
+    """Resolve a reviewed national-EHR-facility to NIAM-facility bridge."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+        self.audit = AuditService(session)
+
+    async def create_pending_binding(
+        self,
+        *,
+        national_facility_id: str,
+        facility_resource_id: int,
+        actor_id: str | None,
+    ) -> ClinicalEhrFacilityBinding:
+        if not national_facility_id.strip() or len(national_facility_id) > 26:
+            raise ValueError("National EHR facility identifier must be a non-empty 26-character identifier")
+        if facility_resource_id <= 0:
+            raise ValueError("Facility resource identifier must be positive")
+        binding = ClinicalEhrFacilityBinding(
+            national_facility_id=national_facility_id,
+            facility_resource_id=facility_resource_id,
+            status=ClinicalEhrFacilityBindingStatus.pending.value,
+            mapping_version=1,
+        )
+        self.session.add(binding)
+        await self.session.flush()
+        await self.audit.record_event(
+            action="clinical_ehr_facility_binding_created",
+            actor_id=actor_id,
+            target_type="clinical_ehr_facility_binding",
+            target_id=binding.id,
+            metadata={"mapping_version": binding.mapping_version},
+        )
+        return binding
+
+    async def transition(
+        self,
+        binding: ClinicalEhrFacilityBinding,
+        target: ClinicalEhrFacilityBindingStatus | str,
+        *,
+        actor_id: str | None,
+        reason: str | None = None,
+    ) -> ClinicalEhrFacilityBinding:
+        previous_status = binding.status
+        binding.transition(target, reason=reason)
+        await self.session.flush()
+        await self.audit.record_event(
+            action="clinical_ehr_facility_binding_transition",
+            actor_id=actor_id,
+            target_type="clinical_ehr_facility_binding",
+            target_id=binding.id,
+            metadata={
+                "from_status": previous_status,
+                "to_status": binding.status,
+                "mapping_version": binding.mapping_version,
+                "reason_present": bool((reason or "").strip()),
+            },
+        )
+        return binding
+
+    async def resolve_active_binding(self, national_facility_id: str) -> ClinicalEhrFacilityBinding:
+        """Return exactly one active bridge with an active NIAM facility and organization."""
+
+        if not national_facility_id.strip():
+            raise ClinicalFacilityScopeUnavailable("National EHR facility identifier is required")
+        stmt = (
+            select(ClinicalEhrFacilityBinding)
+            .join(Facility, Facility.id == ClinicalEhrFacilityBinding.facility_resource_id)
+            .join(Organization, Organization.id == Facility.organization_id)
+            .where(
+                ClinicalEhrFacilityBinding.national_facility_id == national_facility_id,
+                ClinicalEhrFacilityBinding.status == ClinicalEhrFacilityBindingStatus.active.value,
+                Facility.is_active.is_(True),
+                Organization.is_active.is_(True),
+            )
+        )
+        result = await self.session.execute(stmt)
+        bindings = list(result.scalars().all())
+        if not bindings:
+            raise ClinicalFacilityScopeUnavailable("No active reviewed NIAM scope exists for this EHR facility")
+        if len(bindings) != 1:
+            raise ClinicalFacilityScopeAmbiguous("More than one active NIAM scope exists for this EHR facility")
+        return bindings[0]

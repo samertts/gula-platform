@@ -117,3 +117,78 @@ class ClinicalLabFacilityBinding(Base):
         elif target_status == ClinicalLabFacilityBindingStatus.revoked:
             self.revoked_at = now
 
+
+# منشأة EHR الوطنية مورد منفصل عن مورد المنشأة التشغيلي في NIAM؛ يُعاد استخدام
+# حالات المراجعة نفسها، لكن لا يُسمح باستنتاج أي علاقة من تشابه المعرّفات.
+ClinicalEhrFacilityBindingStatus = ClinicalLabFacilityBindingStatus
+
+
+class ClinicalEhrFacilityBinding(Base):
+    """Reviewed bridge from ``national_facilities.id`` to NIAM's facility resource."""
+
+    __tablename__ = "clinical_ehr_facility_bindings"
+    __table_args__ = (
+        UniqueConstraint("national_facility_id", "facility_resource_id", name="uq_clinical_ehr_facility_binding"),
+    )
+
+    id = Column(String(26), primary_key=True, default=_binding_id)
+    national_facility_id = Column(
+        String(26),
+        ForeignKey("national_facilities.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    facility_resource_id = Column(
+        Integer,
+        ForeignKey("facilities.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    status = Column(
+        String(20),
+        nullable=False,
+        default=ClinicalEhrFacilityBindingStatus.pending.value,
+        index=True,
+    )
+    mapping_version = Column(Integer, nullable=False, default=1)
+    decision_reason = Column(Text, nullable=True)
+    validated_at = Column(DateTime(timezone=True), nullable=True)
+    activated_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+    def transition(
+        self,
+        target: ClinicalEhrFacilityBindingStatus | str,
+        *,
+        reason: str | None = None,
+    ) -> None:
+        """Advance the reviewed binding lifecycle without mutating either scope ID."""
+
+        current = ClinicalEhrFacilityBindingStatus(self.status)
+        target_status = ClinicalEhrFacilityBindingStatus(target)
+        if target_status == current:
+            return
+        if target_status not in _ALLOWED_TRANSITIONS[current]:
+            raise ValueError(
+                f"Invalid clinical EHR-facility binding transition: {current.value} -> {target_status.value}"
+            )
+        if target_status in _REASON_REQUIRED and not (reason or "").strip():
+            raise ValueError(f"A reason is required when a binding becomes {target_status.value}")
+
+        now = datetime.now(UTC)
+        self.status = target_status.value
+        self.mapping_version = (self.mapping_version or 1) + 1
+        self.decision_reason = reason.strip() if reason and reason.strip() else None
+        if target_status == ClinicalEhrFacilityBindingStatus.validated:
+            self.validated_at = now
+        elif target_status == ClinicalEhrFacilityBindingStatus.active:
+            self.activated_at = now
+        elif target_status == ClinicalEhrFacilityBindingStatus.revoked:
+            self.revoked_at = now

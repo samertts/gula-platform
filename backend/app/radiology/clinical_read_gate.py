@@ -49,6 +49,7 @@ class ClinicalRadiologyReadGate:
     """Resolve a proven clinical scope before allowing a radiology read."""
 
     permission = "clinical.radiology.order.read"
+    resource_type = "clinical_radiology_read"
 
     def authorize(self, *, db: Session, lab_user) -> ClinicalRadiologyReadContext:
         try:
@@ -172,10 +173,9 @@ class ClinicalRadiologyReadGate:
         log_action(
             db,
             action=f"{self.permission}.{decision}",
-            resource_type="clinical_radiology_read",
+            resource_type=self.resource_type,
             resource_id=None,
             user_id=getattr(lab_user, "id", None),
             user_role=getattr(lab_user, "role", None),
             details=json.dumps(details, sort_keys=True),
         )
-

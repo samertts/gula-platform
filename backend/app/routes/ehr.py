@@ -21,6 +21,7 @@ from app.ehr.enums import (
     RiskLevel,
     SmokingStatus,
 )
+from app.ehr.clinical_read_gate import ClinicalEhrReadDenied, ClinicalEhrReadGate
 
 from ..database import get_db
 from ..models.lab_user import LabUser
@@ -34,6 +35,22 @@ router = APIRouter(prefix="/ehr", tags=["ehr"])
 
 def _get_patient(db: Session, patient_id: str, lab_id: int):
     return ehr_service.get_national_patient_or_404(db, patient_id, lab_id)
+
+
+def _clinical_note_read_response(record):
+    payload = record.to_dict()
+    allowed_fields = (
+        "id",
+        "note_type",
+        "title",
+        "title_ar",
+        "content",
+        "content_format",
+        "facility_id",
+        "created_at",
+        "updated_at",
+    )
+    return {field: payload[field] for field in allowed_fields if field in payload}
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -94,6 +111,30 @@ def get_clinical_note(
         raise HTTPException(status_code=404, detail="Clinical note not found")
     _get_patient(db, record.patient_id, current_user.lab_id)
     return record.to_dict()
+
+
+@router.get(
+    "/clinical/facilities/{national_facility_id}/notes/{note_id}",
+    summary="Get one clinical note through a verified clinical facility scope",
+)
+def get_clinical_note_for_verified_facility(
+    national_facility_id: str,
+    note_id: str,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        ClinicalEhrReadGate().authorize(
+            db=db,
+            lab_user=current_user,
+            national_facility_id=national_facility_id,
+        )
+    except ClinicalEhrReadDenied:
+        raise HTTPException(status_code=403, detail="Clinical EHR access is not permitted") from None
+    record = ehr_service.get_clinical_note_for_verified_facility(db, note_id, national_facility_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Clinical note not found")
+    return _clinical_note_read_response(record)
 
 
 @router.put("/clinical-notes/{note_id}", summary="Update a clinical note")
