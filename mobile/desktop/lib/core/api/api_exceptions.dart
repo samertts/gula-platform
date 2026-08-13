@@ -58,9 +58,10 @@ class NetworkException extends ApiException {
 class RateLimitException extends ApiException {
   final int? retryAfterSeconds;
 
-  const RateLimitException([
-    String message = 'Rate limit exceeded',
-  ], {this.retryAfterSeconds}) : super(message, statusCode: 429);
+  const RateLimitException(
+    [String message = 'Rate limit exceeded'], {
+    this.retryAfterSeconds,
+  }) : super(message, statusCode: 429);
 }
 
 class ServerException extends ApiException {
