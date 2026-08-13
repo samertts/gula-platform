@@ -1,4 +1,4 @@
-import { api, apiClient } from "./client";
+import { api, apiClient, type DemoPersonaId } from "@/api/client";
 import type {
   LoginRequest,
   LoginResponse,
@@ -44,14 +44,16 @@ export const authApi = {
     api.post<LoginResponse>("/login", data).then((r) => r.data),
   logout: () => api.post<Record<string, unknown>>("/logout").then((r) => r.data),
   session: () => api.get<{ user: UserInfo; demo_mode: boolean }>("/session").then((r) => r.data),
-  demoAccess: async () => {
+  demoAccess: async (persona: DemoPersonaId = "doctor") => {
     const response = await apiClient.startDemoSession<{
       demo_mode: true;
+      demo_persona: DemoPersonaId;
       user: UserInfo;
-    }>();
+    }>(persona);
     return {
       user: response.user,
       demo_mode: true,
+      demo_persona: response.demo_persona,
     };
   },
   demoDashboard: () => apiClient.demoDashboard<Record<string, unknown>>(),

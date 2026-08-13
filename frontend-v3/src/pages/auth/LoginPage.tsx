@@ -19,6 +19,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { DEMO_PERSONAS, type DemoPersonaId } from "@/api/client";
 import { useLocale } from "@/contexts/LocaleContext";
 import { localeOptions, type Locale } from "@/i18n/locales";
 import { Button, Input } from "@/components/ui";
@@ -44,6 +45,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [demoPersona, setDemoPersona] = useState<DemoPersonaId>("doctor");
   const [error, setError] = useState("");
 
   const copy = {
@@ -83,7 +85,7 @@ export function LoginPage() {
     setError("");
     setDemoLoading(true);
     try {
-      await startDemo();
+      await startDemo(demoPersona);
       navigate("/dashboard");
     } catch (err: unknown) {
       setError(errorMessage(err, t("common.error")));
@@ -230,6 +232,10 @@ export function LoginPage() {
                   <p className="mt-1 text-xs leading-5 text-amber-900/75 dark:text-amber-100/70">{t("loginPage.demoDescription")}</p>
                 </div>
               </div>
+              <label className="mt-4 block text-xs font-semibold text-amber-950 dark:text-amber-100" htmlFor="demo-persona">اختر دور العرض التجريبي</label>
+              <select id="demo-persona" value={demoPersona} onChange={(event) => setDemoPersona(event.target.value as DemoPersonaId)} className="mt-2 h-11 w-full rounded-xl border border-amber-500/25 bg-white px-3 text-sm text-amber-950 outline-none transition focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 dark:bg-slate-950/40 dark:text-amber-100" disabled={demoLoading || loading}>
+                {DEMO_PERSONAS.map((persona) => <option key={persona.id} value={persona.id}>{persona.nameAr} — {persona.descriptionAr}</option>)}
+              </select>
               <button type="button" className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/25 bg-white px-4 py-2.5 text-sm font-bold text-amber-900 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-500/45 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-950/40 dark:text-amber-100" onClick={handleDemo} disabled={demoLoading || loading}>
                 <ShieldCheck className="h-4 w-4" /> {demoLoading ? t("loginPage.demoLoading") : t("loginPage.startDemo")}
               </button>

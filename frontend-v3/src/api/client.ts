@@ -10,15 +10,63 @@ const LIVE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const DEMO_API_BASE_URL = "/demo-api";
 const API_MODE_STORAGE_KEY = "gula.api-mode";
 
-const SYNTHETIC_DEMO_USER = {
-  id: "demo-viewer",
-  name: "زائر العرض التجريبي",
-  email: "demo.viewer@gula-demo.invalid",
-  role: "demo_viewer",
-  lab_id: "demo-tenant",
-  lab_name: "GULA Synthetic Demo",
-  is_verified: true,
-};
+export type DemoPersonaId = "doctor" | "technician" | "lab_admin" | "citizen";
+
+export interface DemoPersona {
+  id: DemoPersonaId;
+  role: string;
+  name: string;
+  nameAr: string;
+  descriptionAr: string;
+  email: string;
+}
+
+export const DEMO_PERSONAS: DemoPersona[] = [
+  {
+    id: "doctor",
+    role: "doctor",
+    name: "Demo Doctor",
+    nameAr: "طبيب تجريبي",
+    descriptionAr: "استعراض المرضى والطلبات والنتائج الاصطناعية للقراءة.",
+    email: "demo.doctor@gula-demo.invalid",
+  },
+  {
+    id: "technician",
+    role: "technician",
+    name: "Demo Lab Technician",
+    nameAr: "فني مختبر تجريبي",
+    descriptionAr: "استعراض سير العمل المختبري والعينات والنتائج الاصطناعية.",
+    email: "demo.technician@gula-demo.invalid",
+  },
+  {
+    id: "lab_admin",
+    role: "lab_admin",
+    name: "Demo Lab Administrator",
+    nameAr: "مدير مختبر تجريبي",
+    descriptionAr: "استعراض لوحة المختبر والموظفين والتقارير دون عمليات كتابة.",
+    email: "demo.lab-admin@gula-demo.invalid",
+  },
+  {
+    id: "citizen",
+    role: "citizen",
+    name: "Demo Citizen",
+    nameAr: "مواطن تجريبي",
+    descriptionAr: "استعراض مساحة المواطن ببيانات اصطناعية معزولة.",
+    email: "demo.citizen@gula-demo.invalid",
+  },
+];
+
+function syntheticDemoUser(persona: DemoPersona) {
+  return {
+    id: `demo-${persona.id}`,
+    name: persona.nameAr,
+    email: persona.email,
+    role: persona.role,
+    lab_id: "demo-tenant",
+    lab_name: "GULA Synthetic Demo",
+    is_verified: true,
+  };
+}
 
 const SYNTHETIC_DEMO_DASHBOARD = {
   demo_mode: true,
@@ -158,14 +206,16 @@ class ApiClient {
     }
   }
 
-  async startDemoSession<T>() {
+  async startDemoSession<T>(personaId: DemoPersonaId = "doctor") {
     // Public Demo is intentionally frontend-local: it cannot reach the live API,
     // and all values are synthetic constants. The optional Vercel function remains
     // available for deployments that need a server-side HttpOnly demo session.
     this.setMode("demo");
+    const persona = DEMO_PERSONAS.find((candidate) => candidate.id === personaId) ?? DEMO_PERSONAS[0]!;
     return {
       demo_mode: true,
-      user: SYNTHETIC_DEMO_USER,
+      demo_persona: persona.id,
+      user: syntheticDemoUser(persona),
     } as T;
   }
 

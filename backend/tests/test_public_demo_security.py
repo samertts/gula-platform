@@ -32,9 +32,15 @@ async def _ok_next(_request: Request):
     return PlainTextResponse("ok")
 
 
-def test_public_demo_uses_read_only_doctor_role():
-    assert demo_module.__dict__["_DEMO_EMAIL"] == "demo.viewer@gula-demo.iq"
-    assert 'role="doctor"' in inspect.getsource(demo_module.start_demo_session)
+def test_public_demo_exposes_safe_personas():
+    personas = demo_module.__dict__["_DEMO_PERSONAS"]
+    assert set(personas) == {"doctor", "technician", "lab_admin", "citizen"}
+    assert personas["doctor"]["role"] == "doctor"
+    assert personas["technician"]["role"] == "technician"
+    assert personas["lab_admin"]["role"] == "lab_admin"
+    assert personas["citizen"]["role"] == "citizen"
+    assert demo_module.__dict__["_DEFAULT_DEMO_PERSONA"] == "doctor"
+    assert "DEMO_MODE" in inspect.getsource(demo_module._demo_unavailable)
 
 
 def test_demo_read_only_blocks_mutations(monkeypatch):

@@ -1,22 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
-import { apiClient } from "./client";
+import { apiClient, DEMO_PERSONAS } from "./client";
 import { authApi, dashboardApi } from "./endpoints";
 
 describe("العرض التجريبي المعزول", () => {
-  it("ينشئ جلسة زائر اصطناعية دون إرسال طلب تسجيل دخول", async () => {
+  it("ينشئ جلسات للشخصيات التجريبية دون إرسال طلب تسجيل دخول", async () => {
     const postSpy = vi.spyOn(apiClient.api, "post");
 
     try {
-      const session = await authApi.demoAccess();
-
-      expect(session).toMatchObject({
-        demo_mode: true,
-        user: {
-          id: "demo-viewer",
-          role: "demo_viewer",
-          lab_id: "demo-tenant",
-        },
-      });
+      for (const persona of DEMO_PERSONAS) {
+        const session = await authApi.demoAccess(persona.id);
+        expect(session).toMatchObject({
+          demo_mode: true,
+          demo_persona: persona.id,
+          user: {
+            id: `demo-${persona.id}`,
+            role: persona.role,
+            lab_id: "demo-tenant",
+          },
+        });
+      }
       expect(postSpy).not.toHaveBeenCalled();
     } finally {
       postSpy.mockRestore();

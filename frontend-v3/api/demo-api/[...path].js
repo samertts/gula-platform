@@ -1,14 +1,24 @@
 const DEMO_COOKIE = "gula_demo_session";
 const SESSION_MAX_AGE = 15 * 60;
-const SYNTHETIC_USER = {
-  id: "demo-viewer",
-  name: "زائر العرض التجريبي",
-  email: "demo.viewer@gula-demo.invalid",
-  role: "demo_viewer",
-  lab_id: "demo-tenant",
-  lab_name: "GULA Synthetic Demo",
-  is_verified: true,
+const DEMO_PERSONAS = {
+  doctor: { role: "doctor", name: "طبيب تجريبي", email: "demo.doctor@gula-demo.invalid", description: "استعراض المرضى والطلبات والنتائج الاصطناعية للقراءة." },
+  technician: { role: "technician", name: "فني مختبر تجريبي", email: "demo.technician@gula-demo.invalid", description: "استعراض سير العمل المختبري والعينات والنتائج الاصطناعية." },
+  lab_admin: { role: "lab_admin", name: "مدير مختبر تجريبي", email: "demo.lab-admin@gula-demo.invalid", description: "استعراض لوحة المختبر والموظفين والتقارير دون عمليات كتابة." },
+  citizen: { role: "citizen", name: "مواطن تجريبي", email: "demo.citizen@gula-demo.invalid", description: "استعراض مساحة المواطن ببيانات اصطناعية معزولة." },
 };
+
+function syntheticUser(personaId) {
+  const persona = DEMO_PERSONAS[personaId] || DEMO_PERSONAS.doctor;
+  return {
+    id: `demo-${personaId in DEMO_PERSONAS ? personaId : "doctor"}`,
+    name: persona.name,
+    email: persona.email,
+    role: persona.role,
+    lab_id: "demo-tenant",
+    lab_name: "GULA Synthetic Demo",
+    is_verified: true,
+  };
+}
 
 function cookiesFrom(request) {
   return Object.fromEntries(
@@ -60,12 +70,15 @@ export default function handler(request, response) {
   }
 
   if (request.method === "POST" && path === "demo/access") {
-    const cookie = `demo-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+    const requestedPersona = new URL(request.url || "/", "http://vercel.local").searchParams.get("persona") || "doctor";
+    const personaId = Object.prototype.hasOwnProperty.call(DEMO_PERSONAS, requestedPersona) ? requestedPersona : "doctor";
+    const cookie = `demo-${personaId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
     return send(response, 200, {
       demo_mode: true,
+      demo_persona: personaId,
       message: "Synthetic demo session started",
       message_ar: "تم بدء جلسة العرض التجريبي بالبيانات الاصطناعية",
-      user: SYNTHETIC_USER,
+      user: syntheticUser(personaId),
     }, {
       "Set-Cookie": `${DEMO_COOKIE}=${encodeURIComponent(cookie)}; Max-Age=${SESSION_MAX_AGE}; Path=/; HttpOnly; Secure; SameSite=Strict`,
     });
@@ -73,7 +86,8 @@ export default function handler(request, response) {
 
   if (request.method === "GET" && path === "session") {
     if (!requireDemoSession(request, response)) return;
-    return send(response, 200, { demo_mode: true, user: SYNTHETIC_USER });
+    const cookiePersona = Object.keys(DEMO_PERSONAS).find((personaId) => cookiesFrom(request)[DEMO_COOKIE]?.startsWith(`demo-${personaId}-`)) || "doctor";
+    return send(response, 200, { demo_mode: true, demo_persona: cookiePersona, user: syntheticUser(cookiePersona) });
   }
 
   if (request.method === "POST" && path === "logout") {
