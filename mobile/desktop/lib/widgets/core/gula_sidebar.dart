@@ -11,7 +11,7 @@ class SidebarItem {
   final List<String>? roles;
   final List<SidebarItem>? children;
 
-  SidebarItem({
+  const SidebarItem({
     required this.label,
     required this.route,
     required this.icon,
@@ -47,7 +47,7 @@ class GulaSidebar extends StatelessWidget {
     SidebarItem(label: 'Inventory', route: '/inventory', icon: Icons.inventory_2_outlined),
     SidebarItem(label: 'Billing', route: '/billing', icon: Icons.payments_outlined),
     SidebarItem(label: 'Pharmacy', route: '/pharmacy', icon: Icons.medical_services_outlined),
-    SidebarItem(label: 'Radiology', route: '/radiology', icon: Icons.radiology_outlined),
+    SidebarItem(label: 'Radiology', route: '/radiology', icon: Icons.science_outlined),
     SidebarItem(label: 'Blood Bank', route: '/bloodbank', icon: Icons.bloodtype_outlined),
     SidebarItem(label: 'Emergency', route: '/emergency', icon: Icons.local_hospital_outlined),
     SidebarItem(label: 'Settings', route: '/settings', icon: Icons.settings_outlined),
