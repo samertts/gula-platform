@@ -16,11 +16,29 @@ branch_labels = None
 depends_on = None
 
 _TABLE = "clinical_ehr_facility_bindings"
+_NATIONAL_FACILITIES = "national_facilities"
 
 
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+
+    # The binding is a clinical authorization boundary and therefore retains a
+    # real foreign key to a canonical national-facility record. This reference
+    # table was absent from the historic migration chain on a fresh database.
+    if _NATIONAL_FACILITIES not in inspector.get_table_names():
+        op.create_table(
+            _NATIONAL_FACILITIES,
+            sa.Column("id", sa.String(length=26), nullable=False),
+            sa.Column("facility_code", sa.String(length=100), nullable=True),
+            sa.Column("name", sa.String(length=255), nullable=False),
+            sa.Column("status", sa.String(length=20), nullable=False, server_default="active"),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("facility_code", name="uq_national_facilities_facility_code"),
+        )
+
     if _TABLE in inspector.get_table_names():
         return
     op.create_table(
