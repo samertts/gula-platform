@@ -1237,7 +1237,7 @@ def upgrade() -> None:
             sa.Column("uuid", sa.String(length=36), nullable=False, index=True),
             sa.Column("mfa_id", sa.String(length=100), nullable=False, index=True),
             sa.Column("account_id", sa.String(length=100), sa.ForeignKey("niam_accounts.id", ondelete="CASCADE"), nullable=False, index=True),
-            sa.Column("session_id", sa.String(length=100), sa.ForeignKey("niam_user_sessions.id", ondelete="SET NULL"), nullable=True, index=True),
+            sa.Column("session_id", sa.String(length=100), sa.ForeignKey("niam_sessions.id", ondelete="SET NULL"), nullable=True, index=True),
             sa.Column("mfa_type", sa.String(length=30), nullable=False),
             sa.Column("challenge", sa.String(length=500), nullable=False),
             sa.Column("challenge_expires_at", sa.DateTime(timezone=True), nullable=False),
