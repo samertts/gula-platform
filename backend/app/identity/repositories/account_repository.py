@@ -1,5 +1,5 @@
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.identity.models.account import Account
 from app.identity.repositories.base import IdentityRepositoryBase
@@ -8,6 +8,17 @@ from app.identity.repositories.base import IdentityRepositoryBase
 class AccountRepository(IdentityRepositoryBase[Account]):
 
     model_class = Account
+
+    async def find_by_login(self, login: str) -> Account | None:
+        stmt = select(self.model_class).where(
+            or_(
+                self.model_class.email == login,
+                self.model_class.username == login,
+            ),
+            self.model_class.is_active.is_(True),
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
     async def find_by_email(self, email: str) -> Account | None:
         stmt = select(self.model_class).where(

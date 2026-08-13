@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus, AccountType
 from app.identity.repositories.account_repository import AccountRepository
-from app.security.auth import hash_password, verify_password
+from app.security.auth import _DUMMY_HASH, hash_password, verify_password
 
 PASSWORD_MIN_LENGTH = 12
 ACCOUNT_LOCKOUT_THRESHOLD = 5
@@ -58,11 +58,12 @@ class AccountService:
         return await self.repo.create(account)
 
     async def authenticate(self, login: str, password: str) -> Account | None:
-        account = await self.repo.find_by_email(login)
+        account = await self.repo.find_by_login(login)
         if not account:
-            account = await self.repo.find_by_username(login)
-        if not account:
+            verify_password(password, _DUMMY_HASH)
             return None
+
+        password_is_valid = verify_password(password, account.password_hash or _DUMMY_HASH)
 
         if account.is_locked:
             if account.locked_until and account.locked_until > datetime.now(UTC):
@@ -71,10 +72,7 @@ class AccountService:
             account.failed_login_attempts = 0
             await self.repo.session.flush()
 
-        if not account.password_hash:
-            return None
-
-        if not verify_password(password, account.password_hash):
+        if not account.password_hash or not password_is_valid:
             account.failed_login_attempts += 1
             account.last_failed_login = datetime.now(UTC)
             if account.failed_login_attempts >= ACCOUNT_LOCKOUT_THRESHOLD:
