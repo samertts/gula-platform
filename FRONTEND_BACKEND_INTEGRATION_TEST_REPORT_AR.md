@@ -74,3 +74,7 @@
 ظهر فشل جديد على commit `eb285f31` في Python Dependency Audit لأن `backend/requirements-lock.txt` كان يثبت `cryptography==43.0.0` بينما `pyOpenSSL==26.4.0` يتطلب إصدارًا أحدث، ففشل resolver قبل بدء audit. تم تحديث pin إلى `cryptography==50.0.0`، وهو الإصدار المتوافق الموجود في `backend/uv.lock`، دون خفض أي إصدار أمني.
 
 التحقق المحلي بعد الإصلاح نجح: `uv pip install --system --dry-run -r backend/requirements-lock.txt` حلّ 72 حزمة دون تعارض، و`uvx --from pip-audit pip-audit -r backend/requirements-lock.txt --strict --progress-spinner off` أعاد `No known vulnerabilities found`. يحتاج هذا الإصلاح إلى commit وCI جديد قبل اعتباره مغلقًا نهائيًا.
+
+## إغلاق إصلاح security
+
+بعد رفع `cryptography==50.0.0` في commit `6405bbb0`، نجح Security Hardening بالكامل، بما في ذلك Python Dependency Audit، ولم تعد مشكلة resolver موجودة. كما نجحت Quality Gate وFoundation Gate وFormatting Check وOpenSSF Scorecard وConstitution Compliance وCodeQL Analysis وCodeQL Advanced وCI Pipeline. اكتملت Backend Tests وMigration Check وSecurity Scan وData Preservation Gate وLint داخل CI بنجاح.
