@@ -94,10 +94,9 @@ class _AuditLogPageState extends ConsumerState<AuditLogPage> {
           label: 'Timestamp',
           flex: 1,
           cellBuilder: (v, row) => Text(
-            DateTime.tryParse(v.toString())
-                    ?.toLocal()
-                    .toString()
-                    .substring(0, 19) ??
+            DateTime.tryParse(
+                  v.toString(),
+                )?.toLocal().toString().substring(0, 19) ??
                 '',
           ),
         ),

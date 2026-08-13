@@ -77,10 +77,9 @@ class _BillingPageState extends ConsumerState<BillingPage> {
           label: 'Date',
           flex: 1,
           cellBuilder: (v, row) => Text(
-            DateTime.tryParse(v.toString())
-                    ?.toLocal()
-                    .toString()
-                    .substring(0, 10) ??
+            DateTime.tryParse(
+                  v.toString(),
+                )?.toLocal().toString().substring(0, 10) ??
                 '',
           ),
         ),

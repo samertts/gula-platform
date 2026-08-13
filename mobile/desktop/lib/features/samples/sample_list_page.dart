@@ -95,10 +95,9 @@ class _SampleListPageState extends ConsumerState<SampleListPage> {
           label: 'Collected',
           flex: 1,
           cellBuilder: (v, row) => Text(
-            DateTime.tryParse(v.toString())
-                    ?.toLocal()
-                    .toString()
-                    .substring(0, 16) ??
+            DateTime.tryParse(
+                  v.toString(),
+                )?.toLocal().toString().substring(0, 16) ??
                 '',
           ),
         ),
