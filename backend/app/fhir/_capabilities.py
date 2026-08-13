@@ -173,6 +173,20 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
                     "profile": "https://gula.health/fhir/StructureDefinition/GULAPractitionerProfile",
                     "interaction": [{"code": "read"}, {"code": "search-type"}],
                 },
+                {
+                    "type": "Provenance",
+                    "interaction": [{"code": "search-type"}],
+                    "searchParam": [
+                        {"name": "target", "type": "reference", "documentation": "Target FHIR resource"},
+                    ],
+                },
+            ],
+            "operation": [
+                {
+                    "name": "everything",
+                    "definition": "http://hl7.org/fhir/OperationDefinition/Patient-everything",
+                    "documentation": "Tenant-scoped patient record collection at Patient/{id}/$everything",
+                },
             ],
         },
     ],
@@ -196,20 +210,16 @@ IMPLEMENTED_RESOURCES = [
     "Procedure",
     "Organization",
     "Practitioner",
-]
-
-PLANNED_RESOURCES = [
-    "Procedure",
-    "Bundle",
-    "Goal",
-    "Device",
-    "Location",
     "Provenance",
 ]
 
-STUBBED_RESOURCES = {
-    "Bundle": "routes/ehr_fhir.py:997 — returns 501",
-}
+PLANNED_RESOURCES = [
+    "Goal",
+    "Device",
+    "Location",
+]
+
+STUBBED_RESOURCES: dict[str, str] = {}
 
 
 def get_capability_statement() -> dict[str, Any]:
@@ -234,5 +244,6 @@ def get_resource_endpoints_summary() -> dict[str, str]:
         "DocumentReference": "GET /fhir/DocumentReference/{id}, GET /fhir/DocumentReference (search)",
         "Composition": "GET /fhir/Composition/{id}, GET /fhir/Composition (search)",
         "Procedure": "GET /fhir/Procedure/{id}, GET /fhir/Procedure (search)",
-        "Bundle": "GET /fhir/Bundle/{id} (stub — 501)",
+        "Bundle": "GET /fhir/Bundle/{id}, GET /fhir/Patient/{id}/$everything",
+        "Provenance": "GET /fhir/Provenance?target={ResourceType}/{id}",
     }

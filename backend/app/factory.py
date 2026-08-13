@@ -473,6 +473,7 @@ def _register_routes(app: FastAPI) -> None:
         batch,
         compliance,
         critical_alerts,
+        cds_hooks,
         dashboard,
         device_results,
         demo,
@@ -509,7 +510,7 @@ def _register_routes(app: FastAPI) -> None:
         test_results, dashboard, labs, samples,
     ]
     feature_routes = [
-        qr, id_scan, identity, notifications, ehr, ehr_fhir,
+        qr, id_scan, identity, notifications, ehr, ehr_fhir, cds_hooks,
         security, device_results,
     ]
     advanced_routes = [quality_control, critical_alerts, batch]
@@ -834,6 +835,43 @@ def _build_lifespan():
     return _lifespan
 
 
+_FHIR_ISSUE_CODES = {
+    400: "invalid",
+    401: "login",
+    403: "forbidden",
+    404: "not-found",
+    409: "conflict",
+    410: "deleted",
+    412: "conflict",
+    422: "invalid",
+    429: "throttled",
+    500: "exception",
+    503: "transient",
+}
+
+
+def _is_fhir_request(request: Request) -> bool:
+    """Return whether the request targets the external FHIR R4 gateway."""
+    return request.url.path == "/fhir" or request.url.path.startswith("/fhir/")
+
+
+def _fhir_operation_outcome(
+    status_code: int,
+    diagnostics: str,
+    *,
+    details: object | None = None,
+) -> dict:
+    """Build a safe FHIR R4 OperationOutcome for an unsuccessful request."""
+    issue: dict[str, object] = {
+        "severity": "fatal" if status_code >= 500 else "error",
+        "code": _FHIR_ISSUE_CODES.get(status_code, "processing"),
+        "diagnostics": diagnostics,
+    }
+    if details:
+        issue["details"] = {"text": "See request diagnostics."}
+    return {"resourceType": "OperationOutcome", "issue": [issue]}
+
+
 _ARABIC_HTTP_MESSAGES = {
     400: "الطلب غير صالح.",
     401: "يتطلب هذا الطلب تسجيل الدخول.",
@@ -852,6 +890,12 @@ def _domain_exception_handler(request: Request, exc: DomainError) -> JSONRespons
     request_id = getattr(request.state, "request_id", "unknown")
     status_code = getattr(exc, "status_code", 400)
     message = str(getattr(exc, "message", exc))
+    if _is_fhir_request(request):
+        return JSONResponse(
+            status_code=status_code,
+            content=_fhir_operation_outcome(status_code, message, details=getattr(exc, "details", None)),
+            media_type="application/fhir+json",
+        )
     return JSONResponse(
         status_code=status_code,
         content=build_error_payload(
@@ -869,6 +913,13 @@ def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JS
     """Normalize explicit HTTP errors without exposing arbitrary error structures."""
     request_id = getattr(request.state, "request_id", "unknown")
     message, details = public_http_detail(exc.detail, status_code=exc.status_code)
+    if _is_fhir_request(request):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=_fhir_operation_outcome(exc.status_code, message, details=details),
+            headers=exc.headers,
+            media_type="application/fhir+json",
+        )
     return JSONResponse(
         status_code=exc.status_code,
         content=build_error_payload(
@@ -885,13 +936,20 @@ def _http_exception_handler(request: Request, exc: StarletteHTTPException) -> JS
 def _validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """Return validation locations without echoing submitted values."""
     request_id = getattr(request.state, "request_id", "unknown")
+    details = validation_details(exc.errors())
+    if _is_fhir_request(request):
+        return JSONResponse(
+            status_code=422,
+            content=_fhir_operation_outcome(422, "Request validation failed.", details=details),
+            media_type="application/fhir+json",
+        )
     return JSONResponse(
         status_code=422,
         content=build_error_payload(
             status_code=422,
             message="Request validation failed.",
             detail_ar=_ARABIC_HTTP_MESSAGES[422],
-            details=validation_details(exc.errors()),
+            details=details,
             request_id=request_id,
         ),
     )
@@ -912,6 +970,12 @@ def _exception_handler(request: Request, exc: Exception) -> JSONResponse:
             request.url.path,
             reason,
         )
+        if _is_fhir_request(request):
+            return JSONResponse(
+                status_code=503,
+                content=_fhir_operation_outcome(503, "Service temporarily unavailable."),
+                media_type="application/fhir+json",
+            )
         return JSONResponse(
             status_code=503,
             content=build_error_payload(
@@ -931,6 +995,12 @@ def _exception_handler(request: Request, exc: Exception) -> JSONResponse:
         # Log full exception for debugging, but never expose internals to client.
         logger.exception("[%s] %s %s: %s", request_id, request.method, request.url.path, exc)
 
+    if _is_fhir_request(request):
+        return JSONResponse(
+            status_code=500,
+            content=_fhir_operation_outcome(500, "An unexpected error occurred. Please try again later."),
+            media_type="application/fhir+json",
+        )
     return JSONResponse(
         status_code=500,
         content=build_error_payload(
