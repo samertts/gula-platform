@@ -24,7 +24,9 @@ def verify(
     if len(data.national_id) > 20:
         raise HTTPException(status_code=400, detail="National ID too long")
     gateway = get_national_identity_gateway()
-    if IS_PRODUCTION and not DEMO_MODE and gateway.current_mode() is AdapterMode.STUB:
+    gateway_mode = gateway.current_mode()
+    gateway_mode_value = getattr(gateway_mode, "value", str(gateway_mode)).lower()
+    if IS_PRODUCTION and not DEMO_MODE and gateway_mode_value == AdapterMode.STUB.value:
         raise HTTPException(
             status_code=503,
             detail="National identity verification is not configured for production",
