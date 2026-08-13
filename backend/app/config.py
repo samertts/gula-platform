@@ -268,6 +268,14 @@ APNS_KEY = os.getenv("APNS_KEY", "")  # Apple Push Notifications
 # Enable API docs in production for government testers (controlled by env var)
 ENABLE_API_DOCS = os.getenv("ENABLE_API_DOCS", "false").lower() == "true"
 
+# ─── Account onboarding boundary ─────────────────────────────────────────────
+# Public account creation is disabled by default. Production accounts must be
+# created through approved citizen verification or institutional onboarding
+# workflows; staff accounts remain an authenticated administrator action.
+PUBLIC_SELF_REGISTRATION_ENABLED = os.getenv(
+    "PUBLIC_SELF_REGISTRATION_ENABLED", "false",
+).lower() == "true"
+
 
 # ─── SNDHS-lite Phase 1 deployment-wide flags ────────────────────────────────
 # These gate the rollout of new visit-centric and national-ID surfaces.

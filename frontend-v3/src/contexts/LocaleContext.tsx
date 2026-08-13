@@ -1,7 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-
-type Locale = "ar" | "en";
+import {
+  defaultLocale,
+  getLocaleDirection,
+  getStoredLocale,
+  type Locale,
+} from "@/i18n/locales";
 
 interface LocaleContextType {
   locale: Locale;
@@ -13,23 +17,23 @@ const LocaleContext = createContext<LocaleContextType | null>(null);
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation();
-  const [locale, setLocaleState] = useState<Locale>(() => {
-    const stored = localStorage.getItem("locale");
-    return (stored as Locale) || "ar";
-  });
+  const [locale, setLocaleState] = useState<Locale>(getStoredLocale);
+  const isRTL = getLocaleDirection(locale) === "rtl";
 
-  const isRTL = locale === "ar";
+  const setLocale = (nextLocale: Locale) => {
+    window.localStorage.setItem("gula.locale", nextLocale);
+    setLocaleState(nextLocale);
+    void i18n.changeLanguage(nextLocale);
 
-  const setLocale = (l: Locale) => {
-    localStorage.setItem("locale", l);
-    setLocaleState(l);
-    i18n.changeLanguage(l);
-    document.documentElement.lang = l;
-    document.documentElement.dir = l === "ar" ? "rtl" : "ltr";
+    const direction = getLocaleDirection(nextLocale);
+    document.documentElement.lang = nextLocale;
+    document.documentElement.dir = direction;
+    document.documentElement.style.setProperty("--gula-reading-direction", direction);
   };
 
   useEffect(() => {
-    setLocale(locale);
+    setLocale(locale || defaultLocale);
+    // Synchronize the stored preference on initial mount.
   }, []);
 
   return (

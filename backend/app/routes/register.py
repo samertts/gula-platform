@@ -5,7 +5,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..config import NID_HMAC_KEY
+from ..config import NID_HMAC_KEY, PUBLIC_SELF_REGISTRATION_ENABLED
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
@@ -110,6 +110,25 @@ def _mint_citizen_from_self_registration(
 
 router = APIRouter(tags=["auth"])
 
+
+def _require_approved_onboarding() -> None:
+    """Block unauthenticated account creation unless operations explicitly enables it.
+
+    Public registration is intentionally fail-closed. Citizen and institutional
+    applications are handled by approved onboarding workflows; authenticated
+    facility administrators can still create their own staff accounts.
+    """
+    if not PUBLIC_SELF_REGISTRATION_ENABLED:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "APPROVED_ONBOARDING_REQUIRED",
+                "message": "Public account creation is handled through approved onboarding procedures.",
+                "message_ar": "إنشاء الحسابات العامة يخضع لإجراءات اعتماد وتحقق رسمية.",
+            },
+        )
+
+
 # Roles that a lab admin is permitted to create for their own lab.
 _ALLOWED_STAFF_ROLES = frozenset(
     {
@@ -177,6 +196,7 @@ def register_lab(
     data: LabRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db),
 ):
     rate_limit_auth(request)
+    _require_approved_onboarding()
 
     _validate_password(data.password)
 
@@ -293,6 +313,7 @@ def register_citizen(
     db: Session = Depends(get_db),
 ):
     rate_limit_auth(request)
+    _require_approved_onboarding()
 
     _validate_password(data.password)
 
@@ -554,6 +575,7 @@ def register_doctor(
     stored in plain text (public document) while the national ID is hashed.
     """
     rate_limit_auth(request)
+    _require_approved_onboarding()
 
     _validate_password(data.password)
 

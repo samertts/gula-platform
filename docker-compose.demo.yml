@@ -1,0 +1,112 @@
+# GULA isolated public demonstration environment.
+# Run only with a dedicated .env.demo file containing demo-only secrets.
+# It must never share Postgres, Redis, signing keys, or volumes with production.
+services:
+  gula-demo-postgres:
+    image: postgres:17-alpine
+    container_name: gula-demo-postgres
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_USER: gula_demo
+      POSTGRES_PASSWORD: ${GULA_DEMO_POSTGRES_PASSWORD:?GULA_DEMO_POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: gula_demo
+    volumes:
+      - gula-demo-pgdata:/var/lib/postgresql/data
+    networks:
+      - gula-demo-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gula_demo -d gula_demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  gula-demo-redis:
+    image: redis:7-alpine
+    container_name: gula-demo-redis
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    command: >
+      redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy volatile-lru
+      --requirepass ${GULA_DEMO_REDIS_PASSWORD:?GULA_DEMO_REDIS_PASSWORD must be set}
+    volumes:
+      - gula-demo-redis-data:/data
+    networks:
+      - gula-demo-net
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${GULA_DEMO_REDIS_PASSWORD} ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  gula-demo-api:
+    image: "${GULA_IMAGE_PREFIX:-local}/backend:${GULA_IMAGE_TAG:-local}"
+    build:
+      context: ./backend
+    container_name: gula-demo-api
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      ENV: demo
+      RUNTIME_MODE: api
+      FEATURE_BACKGROUND_TASKS: "false"
+      DEMO_MODE: "true"
+      DEMO_DATA_ISOLATION_ACK: "true"
+      ENABLE_DEMO_DATA: "true"
+      ENABLE_BOOTSTRAP: "true"
+      DATABASE_URL: postgresql://gula_demo:${GULA_DEMO_POSTGRES_PASSWORD}@gula-demo-postgres:5432/gula_demo
+      REDIS_URL: redis://:${GULA_DEMO_REDIS_PASSWORD}@gula-demo-redis:6379/0
+      SECRET_KEY: ${GULA_DEMO_SECRET_KEY:?GULA_DEMO_SECRET_KEY must be set}
+      REFRESH_TOKEN_SECRET: ${GULA_DEMO_REFRESH_TOKEN_SECRET:?GULA_DEMO_REFRESH_TOKEN_SECRET must be set}
+      ENCRYPTION_KEY: ${GULA_DEMO_ENCRYPTION_KEY:?GULA_DEMO_ENCRYPTION_KEY must be set}
+      NID_HMAC_KEY: ${GULA_DEMO_NID_HMAC_KEY:?GULA_DEMO_NID_HMAC_KEY must be set}
+      AUDIT_ANCHOR_KEY: ${GULA_DEMO_AUDIT_ANCHOR_KEY:?GULA_DEMO_AUDIT_ANCHOR_KEY must be set}
+      CORS_ORIGINS: https://www.gula-platform.org,https://gula-platform.org
+      BASE_URL: https://demo-api.gula-platform.org
+      PUBLIC_SELF_REGISTRATION_ENABLED: "false"
+      ENABLE_API_DOCS: "false"
+      JWT_EXPIRE_MINUTES: "15"
+      REFRESH_TOKEN_EXPIRE_DAYS: "1"
+      WEB_CONCURRENCY: "2"
+      DB_POOL_SIZE: "4"
+      DB_MAX_OVERFLOW: "4"
+      MAX_CONCURRENT_REQUESTS: "25"
+      PYTHONPATH: /app
+    volumes:
+      - ./shared:/app/shared:ro
+      - gula-demo-audit-anchors:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8090:8000"
+    depends_on:
+      gula-demo-postgres:
+        condition: service_healthy
+      gula-demo-redis:
+        condition: service_healthy
+    networks:
+      - gula-demo-net
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+
+networks:
+  gula-demo-net:
+    name: gula-demo-net
+    driver: bridge
+
+volumes:
+  gula-demo-pgdata:
+    name: gula-demo-pgdata
+  gula-demo-redis-data:
+    name: gula-demo-redis-data
+  gula-demo-audit-anchors:
+    name: gula-demo-audit-anchors

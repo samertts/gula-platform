@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, apiClient } from "./client";
 import type {
   LoginRequest,
   LoginResponse,
@@ -45,12 +45,12 @@ export const authApi = {
   logout: () => api.post<Record<string, unknown>>("/logout").then((r) => r.data),
   session: () => api.get<{ user: UserInfo; demo_mode: boolean }>("/session").then((r) => r.data),
   demoAccess: async () => {
-    const response = await api.post<{
+    const response = await apiClient.startDemoSession<{
       demo_mode: true;
       user: UserInfo;
-    }>("/demo/access");
+    }>();
     return {
-      user: response.data.user,
+      user: response.user,
       demo_mode: true,
     };
   },
