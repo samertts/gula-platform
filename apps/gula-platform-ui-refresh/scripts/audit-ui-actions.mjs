@@ -1,11 +1,14 @@
 import { readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const repoRoot = "/home/ubuntu/gula-platform";
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const appRoot = resolve(scriptDir, "..");
+const repoRoot = resolve(appRoot, "../..");
 const sourceRoot = join(repoRoot, "frontend-v3/src");
 const routesPath = join(sourceRoot, "routes/index.tsx");
-const registryPath = "/home/ubuntu/gula-platform-ui-refresh/scripts/backend-contract-registry.json";
-const outputPath = "/home/ubuntu/gula-platform-ui-refresh/ui_action_contract_matrix.md";
+const registryPath = join(appRoot, "scripts/backend-contract-registry.json");
+const outputPath = join(appRoot, "ui_action_contract_matrix.md");
 
 function clean(value) {
   return value.replace(/<[^>]+>/g, " ").replace(/\{[^}]+\}/g, " ").replace(/\s+/g, " ").trim().slice(0, 90) || "عنصر دون نص ثابت";
