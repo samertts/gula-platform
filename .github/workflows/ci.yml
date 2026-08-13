@@ -232,7 +232,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "secret_key=$(openssl rand -hex 32)" >> "$GITHUB_OUTPUT"
-          echo "encryption_key=$(openssl rand -base64 32 | tr -d '\\n')" >> "$GITHUB_OUTPUT"
+          echo "encryption_key=$(python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())')" >> "$GITHUB_OUTPUT"
           echo "nid_hmac_key=$(openssl rand -hex 32)" >> "$GITHUB_OUTPUT"
           echo "refresh_token_secret=$(openssl rand -hex 32)" >> "$GITHUB_OUTPUT"
           echo "device_hmac_key=$(openssl rand -hex 32)" >> "$GITHUB_OUTPUT"

@@ -45,7 +45,6 @@ jobs:
           - backend/requirements-lock.txt
           - edge_agent/requirements.txt
           - nhop-platform/requirements.txt
-          - services/device_bridge/requirements.txt
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
