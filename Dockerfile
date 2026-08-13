@@ -1,54 +1,41 @@
-# Build stage
-FROM node:24-alpine AS builder
+# =============================================================================
+# GULA Platform — Backend Production Dockerfile (Root Context)
+# =============================================================================
+
+FROM python:3.12-slim AS builder
+
+WORKDIR /deps
+
+COPY backend/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir --compile --prefix=/install -r requirements.txt
+
+
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json package-lock.json* ./
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    fonts-dejavu-core \
+    fonts-noto-core \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN npm ci
+COPY --from=builder /install /usr/local
 
-# Copy source code
-COPY . .
+COPY backend ./backend
+COPY backend/app ./app
+COPY shared ./shared
+COPY backend/migrations ./migrations
+COPY backend/alembic.ini .
+COPY backend/start_railway.sh /usr/local/bin/start_railway.sh
 
-# Build application
-RUN npm run build
+RUN chmod +x /usr/local/bin/start_railway.sh && python -m compileall app/ shared/ backend/
 
-# Runtime stage
-FROM node:24-alpine
+RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
+USER appuser
 
-WORKDIR /app
+EXPOSE 10000
 
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init curl
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
+    CMD python3 -c "import os, urllib.request; urllib.request.urlopen('http://localhost:%s/health' % os.getenv('PORT', '10000'), timeout=3)"
 
-# Copy package files
-COPY package.json package-lock.json* ./
-
-# Install production dependencies only
-RUN npm ci --omit=dev
-
-# Copy built application from builder
-COPY --from=builder /app/dist ./dist
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
-
-# Change ownership
-RUN chown -R nodejs:nodejs /app
-
-USER nodejs
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD curl -f http://localhost:3000/health || exit 1
-
-# Expose port
-EXPOSE 3000
-
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["dumb-init", "--"]
-
-# Start application
-CMD ["node", "dist/index.js"]
+ENTRYPOINT ["/usr/local/bin/start_railway.sh"]

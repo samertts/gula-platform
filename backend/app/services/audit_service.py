@@ -188,19 +188,26 @@ def log_action(
     resource_id: int | None = None,
     user_id: int | None = None,
     user_role: str | None = None,
-    details: str | None = None,
+    lab_id: int | None = None,
+    details: str | dict[str, object] | None = None,
     ip_address: str | None = None,
 ):
     """Log an action to the tamper-evident audit trail. Delegates chain hash
     computation to shared.audit while maintaining backend anchor files.
     """
+    serialized_details = (
+        json.dumps(details, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        if isinstance(details, dict)
+        else details
+    )
     entry = AuditLog(
         user_id=user_id,
         user_role=user_role,
+        lab_id=lab_id,
         action=action,
         resource_type=resource_type,
         resource_id=resource_id,
-        details=details,
+        details=serialized_details,
         ip_address=ip_address,
         created_at=datetime.now(UTC),
     )

@@ -45,7 +45,10 @@ class NotificationTile extends StatelessWidget {
           const SizedBox(height: 2),
           Text(
             body,
-            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+            ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -56,7 +59,10 @@ class NotificationTile extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 _formatTime(createdAt),
-                style: const TextStyle(fontSize: 11, color: AppColors.neutral400),
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppColors.neutral400,
+                ),
               ),
             ],
           ),

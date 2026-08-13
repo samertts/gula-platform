@@ -82,14 +82,19 @@ class ResultCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: _isCritical ? AppColors.error500 : AppColors.textPrimary,
+                        color: _isCritical
+                            ? AppColors.error500
+                            : AppColors.textPrimary,
                       ),
                     ),
                     if (unit != null) ...[
                       const SizedBox(width: 4),
                       Text(
                         unit!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ],
@@ -97,7 +102,10 @@ class ResultCard extends StatelessWidget {
                 if (referenceRange != null)
                   Text(
                     'Ref: $referenceRange',
-                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 if (patientName != null || createdAt != null) ...[
                   const SizedBox(height: 4),
@@ -106,13 +114,19 @@ class ResultCard extends StatelessWidget {
                       if (patientName != null)
                         Text(
                           patientName!,
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       if (createdAt != null) ...[
                         const SizedBox(width: 12),
                         Text(
                           createdAt!.toLocal().toString().substring(0, 10),
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ],
@@ -126,7 +140,9 @@ class ResultCard extends StatelessWidget {
               padding: const EdgeInsets.only(left: 8),
               child: GulaBadge(
                 label: status!,
-                status: status == 'verified' ? GulaBadgeStatus.success : GulaBadgeStatus.pending,
+                status: status == 'verified'
+                    ? GulaBadgeStatus.success
+                    : GulaBadgeStatus.pending,
               ),
             ),
         ],

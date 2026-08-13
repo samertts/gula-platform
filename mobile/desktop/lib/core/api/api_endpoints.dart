@@ -26,16 +26,20 @@ class ApiEndpoints {
   static const String patients = '/patients';
   static String patient(int patientId) => '/patients/$patientId';
   static String patientCard(int patientId) => '/patient-card/$patientId';
-  static String patientCardQr(int patientId) => '/patient-card/$patientId/qr.png';
+  static String patientCardQr(int patientId) =>
+      '/patient-card/$patientId/qr.png';
   static const String scanPatientCard = '/patient-card/scan';
-  static String patientHistory(int patientId) => '/patient-card/$patientId/history';
+  static String patientHistory(int patientId) =>
+      '/patient-card/$patientId/history';
   static String family(String familyId) => '/patients/family/$familyId';
-  static String patientChildren(int patientId) => '/patients/$patientId/children';
+  static String patientChildren(int patientId) =>
+      '/patients/$patientId/children';
 
   // Orders
   static const String orders = '/results/orders';
   static String order(int orderId) => '/results/orders/$orderId';
-  static String validateOrder(int orderId) => '/results/orders/$orderId/validate';
+  static String validateOrder(int orderId) =>
+      '/results/orders/$orderId/validate';
   static String cancelOrder(int orderId) => '/results/orders/$orderId/cancel';
   static const String batchOrders = '/batch/orders';
 
@@ -48,7 +52,8 @@ class ApiEndpoints {
 
   // Analytics
   static const String analyze = '/results/analyze';
-  static String orderIntelligence(int orderId) => '/results/orders/$orderId/intelligence';
+  static String orderIntelligence(int orderId) =>
+      '/results/orders/$orderId/intelligence';
 
   // AI
   static const String aiSuggest = '/ai/suggest';
@@ -63,24 +68,31 @@ class ApiEndpoints {
 
   // Notifications
   static const String sendNotification = '/notifications/send';
-  static String notificationHistory(int orderId) => '/notifications/history/$orderId';
+  static String notificationHistory(int orderId) =>
+      '/notifications/history/$orderId';
 
   // Edge
   static const String edgeDevices = '/edge/devices';
   static String edgeDevice(String deviceId) => '/edge/devices/$deviceId';
-  static String quarantineDevice(String deviceId) => '/edge/devices/$deviceId/quarantine';
-  static String revokeDevice(String deviceId) => '/edge/devices/$deviceId/revoke';
-  static String reinstateDevice(String deviceId) => '/edge/devices/$deviceId/reinstate';
+  static String quarantineDevice(String deviceId) =>
+      '/edge/devices/$deviceId/quarantine';
+  static String revokeDevice(String deviceId) =>
+      '/edge/devices/$deviceId/revoke';
+  static String reinstateDevice(String deviceId) =>
+      '/edge/devices/$deviceId/reinstate';
   static const String edgeTasks = '/edge/tasks';
   static String edgeTask(String taskUid) => '/edge/tasks/$taskUid';
   static String cancelEdgeTask(String taskUid) => '/edge/tasks/$taskUid/cancel';
   static const String edgePolicy = '/edge/policy';
   static const String edgeFleetSummary = '/edge/fleet/summary';
   static const String edgeModels = '/edge/models';
-  static String edgeModelStatus(String modelUid) => '/edge/models/$modelUid/status';
-  static String assignEdgeModel(String modelUid) => '/edge/models/$modelUid/assign';
+  static String edgeModelStatus(String modelUid) =>
+      '/edge/models/$modelUid/status';
+  static String assignEdgeModel(String modelUid) =>
+      '/edge/models/$modelUid/assign';
   static const String agentHeartbeat = '/edge/agent/heartbeat';
-  static String agentTaskResult(String taskUid) => '/edge/agent/tasks/$taskUid/result';
+  static String agentTaskResult(String taskUid) =>
+      '/edge/agent/tasks/$taskUid/result';
   static const String agentTelemetry = '/edge/agent/telemetry';
 
   // MPI
@@ -99,8 +111,10 @@ class ApiEndpoints {
   static const String complianceInfo = '/compliance/info';
   static const String securityReport = '/compliance/security-report';
   static const String auditSummary = '/compliance/audit-summary';
-  static String fhirPatient(int patientId) => '/compliance/fhir/patient/$patientId';
-  static String fhirReport(int orderId) => '/compliance/fhir/diagnostic-report/$orderId';
+  static String fhirPatient(int patientId) =>
+      '/compliance/fhir/patient/$patientId';
+  static String fhirReport(int orderId) =>
+      '/compliance/fhir/diagnostic-report/$orderId';
 
   // National ID
   static const String verifyNationalId = '/national-id/verify';

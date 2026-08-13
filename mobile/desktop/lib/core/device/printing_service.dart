@@ -1,19 +1,15 @@
-import 'dart:io';
-
 import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
-import '../utils/constants.dart';
-
 class PrintingService {
-  Future<void> printPdf(Uint8List pdfData, {String jobName = 'GULA Report'}) async {
+  Future<void> printPdf(
+    Uint8List pdfData, {
+    String jobName = 'GULA Report',
+  }) async {
     try {
-      await Printing.layoutPdf(
-        onLayout: (_) => pdfData,
-        name: jobName,
-      );
+      await Printing.layoutPdf(onLayout: (_) => pdfData, name: jobName);
     } catch (e) {
       debugPrint('Print error: $e');
       rethrow;
@@ -42,11 +38,9 @@ class PrintingService {
             style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
           ),
         ),
-        footer: (context) => pw.Footer(
-          child: pw.Text(
-            'Page ${context.pageNumber} of ${context.pagesCount}',
-            style: const pw.TextStyle(fontSize: 10),
-          ),
+        footer: (context) => pw.Text(
+          'Page ${context.pageNumber} of ${context.pagesCount}',
+          style: const pw.TextStyle(fontSize: 10),
         ),
         build: (context) => [
           pw.Header(level: 1, text: title),
@@ -63,22 +57,24 @@ class PrintingService {
               ),
               pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.end,
-                children: [
-                  pw.Text('Date: $date'),
-                ],
+                children: [pw.Text('Date: $date')],
               ),
             ],
           ),
           pw.SizedBox(height: 24),
           pw.TableHelper.fromTextArray(
             headers: ['Test', 'Result', 'Unit', 'Reference Range', 'Flag'],
-            data: results.map((r) => [
-              r['test'] ?? '',
-              r['result'] ?? '',
-              r['unit'] ?? '',
-              r['reference'] ?? '',
-              r['flag'] ?? '',
-            ]).toList(),
+            data: results
+                .map(
+                  (r) => [
+                    r['test'] ?? '',
+                    r['result'] ?? '',
+                    r['unit'] ?? '',
+                    r['reference'] ?? '',
+                    r['flag'] ?? '',
+                  ],
+                )
+                .toList(),
             headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
             border: pw.TableBorder.all(),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
@@ -125,7 +121,10 @@ class PrintingService {
 
     pdf.addPage(
       pw.Page(
-        pageFormat: PdfPageFormat(100 * PdfPageFormat.mm, 50 * PdfPageFormat.mm),
+        pageFormat: PdfPageFormat(
+          100 * PdfPageFormat.mm,
+          50 * PdfPageFormat.mm,
+        ),
         margin: const pw.EdgeInsets.all(4),
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
@@ -141,7 +140,10 @@ class PrintingService {
             pw.Text(barcode, style: const pw.TextStyle(fontSize: 10)),
             pw.SizedBox(height: 2),
             pw.Text(patientName, style: const pw.TextStyle(fontSize: 8)),
-            pw.Text('$sampleType | $date', style: const pw.TextStyle(fontSize: 7)),
+            pw.Text(
+              '$sampleType | $date',
+              style: const pw.TextStyle(fontSize: 7),
+            ),
           ],
         ),
       ),
@@ -175,27 +177,38 @@ class PrintingService {
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
-            pw.Text('GULA Platform',
-                style: const pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+            pw.Text(
+              'GULA Platform',
+              style: const pw.TextStyle(
+                fontSize: 16,
+                fontWeight: pw.FontWeight.bold,
+              ),
+            ),
             pw.Divider(),
             pw.Text('Receipt #${receiptData['receipt_number'] ?? ''}'),
             pw.Text('Date: ${receiptData['date'] ?? ''}'),
             pw.Divider(),
-            ...((receiptData['items'] as List?) ?? []).map((item) => pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(item['name'] ?? ''),
-                pw.Text('${item['quantity'] ?? ''} x ${item['price'] ?? ''}'),
-              ],
-            )),
+            ...((receiptData['items'] as List?) ?? []).map(
+              (item) => pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(item['name']?.toString() ?? ''),
+                  pw.Text('${item['quantity'] ?? ''} x ${item['price'] ?? ''}'),
+                ],
+              ),
+            ),
             pw.Divider(),
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('Total:',
-                    style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                pw.Text('${receiptData['total'] ?? ''} IQD',
-                    style: const pw.TextStyle(fontWeight: pw.FontWeight.bold)),
+                pw.Text(
+                  'Total:',
+                  style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                ),
+                pw.Text(
+                  '${receiptData['total'] ?? ''} IQD',
+                  style: const pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                ),
               ],
             ),
             pw.SizedBox(height: 16),

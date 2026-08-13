@@ -1,6 +1,9 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import {
+  ApiClientError,
+  DemoIsolationError,
   buildQueueRequestInit,
+  createApiClient,
   classifyQueueResponse,
   createQueueEnvelope,
   inspectQueuePayload,
@@ -10,6 +13,30 @@ import {
 } from '@gula/ui-platform';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://api.gula.health/api/v1';
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
+const DEMO_API_BASE_URL = import.meta.env.VITE_DEMO_API_BASE_URL;
+const backend = createApiClient({
+  baseUrl: API_BASE,
+  clientName: 'citizen-app',
+  refreshPath: '/auth/refresh',
+  demoMode: DEMO_MODE,
+  demoBaseUrl: DEMO_API_BASE_URL,
+});
+
+function requestBaseUrl(): string {
+  if (DEMO_MODE) {
+    if (!DEMO_API_BASE_URL) throw new DemoIsolationError('الوضع التجريبي غير مهيأ بعنوان Backend معزول.');
+    return DEMO_API_BASE_URL;
+  }
+  return API_BASE;
+}
+
+function assertQueuedUrlAllowed(url: string): void {
+  if (!DEMO_MODE) return;
+  const queuedOrigin = new URL(url, window.location.origin).origin;
+  const demoOrigin = new URL(requestBaseUrl(), window.location.origin).origin;
+  if (queuedOrigin !== demoOrigin) throw new DemoIsolationError('تم رفض طلب Demo قديم يشير إلى أصل غير معزول.');
+}
 
 interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
@@ -18,6 +45,7 @@ interface RequestOptions extends RequestInit {
   entityId?: string;
   action?: string;
   expectedVersion?: number;
+  timeout?: number;
 }
 
 // Browser authentication is carried only by the server-issued HttpOnly cookie.
@@ -81,39 +109,26 @@ export async function apiRequest<T = unknown>(
   options: RequestOptions = {},
 ): Promise<T> {
   const {
-    skipAuth = false,
+    skipAuth: _skipAuth,
     offlinePriority = 'normal',
+    timeout: _timeout,
     entityType: _entityType,
     entityId: _entityId,
     action: _action,
-    expectedVersion: _expectedVersion,
+    expectedVersion,
     ...fetchOptions
   } = options;
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    ...(fetchOptions.headers as Record<string, string>),
-  };
-
-  // Do not construct Authorization headers in the browser; authentication uses HttpOnly cookies.
-  void skipAuth;
+  void _timeout;
   void _entityType;
   void _entityId;
   void _action;
-  void _expectedVersion;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
-
+  const method = options.method || 'GET';
   const isOnline = navigator.onLine;
 
   if (!isOnline && offlinePriority !== 'high') {
-    const cache = await getFromCache<T>(endpoint, options.method || 'GET');
-    if (cache !== null) {
-      return cache;
-    }
-    if (options.method && options.method !== 'GET') {
+    const cache = await getFromCache<T>(endpoint, method);
+    if (cache !== null) return cache;
+    if (method !== 'GET') {
       await queueOfflineRequest(endpoint, options);
       throw new OfflineQueuedError('تمت إضافة الطلب إلى قائمة الانتظار غير المتصلة');
     }
@@ -121,44 +136,28 @@ export async function apiRequest<T = unknown>(
   }
 
   try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const data = await backend.request<T>(endpoint, {
       ...fetchOptions,
-      credentials: 'include',
-      headers,
-      signal: controller.signal,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(fetchOptions.headers as Record<string, string>),
+      },
+      expectedVersion,
+      skipRefresh: Boolean(_skipAuth) || endpoint === '/auth/refresh',
     });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      let errorData: Record<string, unknown> = {};
-      try {
-        errorData = JSON.parse(errorBody);
-      } catch {}
-      throw new ApiError(
-        response.status,
-        (errorData as any).message || (errorData as any).error || response.statusText,
-        errorData,
-      );
-    }
-
-    const data = await response.json();
-
-    if (options.method === 'GET' || !options.method) {
-      await cacheResponse(endpoint, data);
-    }
-
-    return data as T;
+    if (method === 'GET') await cacheResponse(endpoint, data);
+    return data;
   } catch (error) {
-    clearTimeout(timeoutId);
-    if (error instanceof ApiError || error instanceof OfflineQueuedError) {
-      throw error;
+    if (error instanceof ApiClientError) {
+      throw new ApiError(error.status, error.message, error.contract as Record<string, unknown> | undefined);
     }
+    if (error instanceof ApiError || error instanceof OfflineQueuedError) throw error;
     if (!navigator.onLine) {
-      const cache = await getFromCache<T>(endpoint, options.method || 'GET');
+      const cache = await getFromCache<T>(endpoint, method);
       if (cache !== null) return cache;
-      if (options.method && options.method !== 'GET') {
+      if (method !== 'GET') {
         await queueOfflineRequest(endpoint, options);
         throw new OfflineQueuedError('تمت إضافة الطلب إلى قائمة الانتظار غير المتصلة');
       }
@@ -171,7 +170,7 @@ export async function apiRequest<T = unknown>(
 async function queueOfflineRequest(endpoint: string, options: RequestOptions) {
   const db = await getOfflineDB();
   const envelope = await createQueueEnvelope({
-    url: `${API_BASE}${endpoint}`,
+    url: `${requestBaseUrl()}${endpoint}`,
     method: options.method || 'POST',
     headers: options.headers,
     body: options.body,
@@ -252,6 +251,7 @@ export async function processOfflineQueue() {
         await db.put('requests', { ...envelope, id: requestKey, state: 'rejected', lastError: headerResult.hadSensitiveHeader ? 'sensitive-header' : security.reason });
         continue;
       }
+      assertQueuedUrlAllowed(envelope.url);
       const response = await fetch(envelope.url, buildQueueRequestInit(envelope));
       const disposition = classifyQueueResponse(response.status);
       if (disposition === 'synced') {
@@ -313,7 +313,8 @@ export async function uploadFile(
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open('POST', `${API_BASE}${endpoint}`);
+    const uploadBaseUrl = requestBaseUrl();
+    xhr.open('POST', `${uploadBaseUrl}${endpoint}`);
     xhr.withCredentials = true;
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) {

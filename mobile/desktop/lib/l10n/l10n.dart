@@ -27,7 +27,9 @@ class AppLocalization {
   }
 
   String translate(String key) {
-    final translations = locale.languageCode == 'ar' ? arTranslations : enTranslations;
+    final translations = locale.languageCode == 'ar'
+        ? arTranslations
+        : enTranslations;
     return _getValue(key, translations) ?? key;
   }
 

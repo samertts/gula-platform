@@ -44,7 +44,18 @@ export const authApi = {
     api.post<LoginResponse>("/login", data).then((r) => r.data),
   logout: () => api.post<Record<string, unknown>>("/logout").then((r) => r.data),
   session: () => api.get<{ user: UserInfo; demo_mode: boolean }>("/session").then((r) => r.data),
-  demoAccess: () => api.post<{ user: UserInfo; demo_mode: boolean }>("/demo/access").then((r) => r.data),
+  demoAccess: async () => {
+    const response = await api.post<{
+      demo_mode: true;
+      user: UserInfo;
+    }>("/demo/access");
+    return {
+      user: response.data.user,
+      demo_mode: true,
+    };
+  },
+  demoDashboard: () => api.get<Record<string, unknown>>("/dashboard").then((r) => r.data),
+  endDemo: () => api.post<Record<string, unknown>>("/logout").then((r) => r.data),
   requestVerification: (identifier: string) => api.post<Record<string, unknown>>("/auth/verification/request", { identifier }).then((r) => r.data),
   confirmVerification: (identifier: string, code: string) => api.post<Record<string, unknown>>("/auth/verification/confirm", { identifier, code }).then((r) => r.data),
   register: (data: Record<string, unknown>) =>
@@ -72,6 +83,7 @@ export const setupApi = {
 export const dashboardApi = {
   greeting: () => api.get<{ greeting: string; message: string; user_name: string }>("/greeting").then((r) => r.data),
   dashboard: () => api.get<DashboardData>("/dashboard").then((r) => r.data),
+  demo: () => api.get<Record<string, unknown>>("/dashboard").then((r) => r.data),
 };
 
 // ── Patients ──

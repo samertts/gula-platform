@@ -136,6 +136,46 @@ updates:
         update-types: ["version-update:semver-patch"]
 
   # ============================================================================
+  # npm — Frontend v3 (active Vercel deployment)
+  # ============================================================================
+  - package-ecosystem: "npm"
+    directory: "/frontend-v3/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Baghdad"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "automated"
+      - "javascript"
+      - "frontend-v3"
+    reviewers:
+      - "samertts"
+    assignees:
+      - "samertts"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+    allow:
+      - dependency-type: "production"
+        update-types: ["version-update:semver-patch"]
+
+  # ============================================================================
   # Docker — Backend image
   # ============================================================================
   - package-ecosystem: "docker"

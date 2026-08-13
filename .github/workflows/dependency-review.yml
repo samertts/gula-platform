@@ -22,7 +22,8 @@ jobs:
         with:
           fail-on-severity: high
           deny-licenses: >
-            AGPL-1.0, AGPL-3.0, GPL-1.0, GPL-2.0, GPL-3.0,
-            LGPL-1.0, LGPL-2.0, LGPL-2.1, LGPL-3.0,
-            BUSL-1.0, BSL-1.0, SSPL-1.0, RPL-1.5, RPL-2.0
+            AGPL-1.0-only, AGPL-3.0-only,
+            GPL-1.0-only, GPL-2.0-only, GPL-3.0-only,
+            LGPL-2.0-only, LGPL-2.1-only, LGPL-3.0-only,
+            BUSL-1.1, BSL-1.0, SSPL-1.0, RPL-1.1, RPL-1.5
           comment-summary-in-pr: on-failure

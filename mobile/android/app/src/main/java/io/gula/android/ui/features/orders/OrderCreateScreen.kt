@@ -1,6 +1,7 @@
 package io.gula.android.ui.features.orders
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
@@ -15,7 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.gula.android.domain.model.ResultItemInput
 import io.gula.android.ui.components.core.GulaButton
+import io.gula.android.ui.components.core.GulaCard
 import io.gula.android.ui.components.core.GulaTextField
+import io.gula.android.ui.components.core.GulaTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -132,7 +135,7 @@ fun OrderCreateScreen(
 
             if (uiState.error != null) {
                 item {
-                    Text(uiState.error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(uiState.error.orEmpty(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                 }
             }
 
@@ -190,7 +193,7 @@ private fun TestItemRow(
                     onValueChange = { onUpdate(item.copy(value = it.toDoubleOrNull())) },
                     label = { Text("Value") },
                     modifier = Modifier.weight(1f),
-                    keyboardType = KeyboardType.Decimal,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                 )
                 OutlinedTextField(

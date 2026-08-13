@@ -6,9 +6,10 @@ class AppConstants {
   static const String appBuildNumber = '1';
   static const String packageName = 'com.gula.platform.desktop';
   static const String companyName = 'GULA Platform';
-  static const String copyright = 'Copyright © 2025 GULA Platform. All rights reserved.';
+  static const String copyright =
+      'Copyright © 2025 GULA Platform. All rights reserved.';
 
-  static const String defaultApiUrl = 'https://api.gula-platform.com/api/v1';
+  static const String defaultApiUrl = 'https://api.gula-platform.org/api/v1';
   static const String sentryDsn = '';
   static const String syncChannelName = 'gula_sync';
 
@@ -37,9 +38,12 @@ class AppConstants {
   static const int notificationPollSeconds = 30;
   static const int healthCheckSeconds = 60;
 
-  static const String appStoreUrl = 'https://apps.apple.com/app/gula-platform/id0000000000';
-  static const String playStoreUrl = 'https://play.google.com/store/apps/details?id=com.gula.platform.desktop';
-  static const String githubReleaseUrl = 'https://github.com/samertts/gula-platform/releases';
+  static const String appStoreUrl =
+      'https://apps.apple.com/app/gula-platform/id0000000000';
+  static const String playStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.gula.platform.desktop';
+  static const String githubReleaseUrl =
+      'https://github.com/samertts/gula-platform/releases';
   static const String supportEmail = 'support@gula-platform.com';
   static const String privacyPolicyUrl = 'https://gula-platform.com/privacy';
   static const String termsOfServiceUrl = 'https://gula-platform.com/terms';
@@ -58,10 +62,10 @@ class AppConstants {
   static const double defaultDesktopWidth = 1280;
   static const double defaultDesktopHeight = 800;
 
-  static const RegExp nationalIdRegex = RegExp(r'^\d{14}$');
-  static const RegExp phoneRegex = RegExp(r'^\+?964\d{10}$');
-  static const RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-  static const RegExp iqNationalIdRegex = RegExp(r'^\d{14}$');
-  static const RegExp sampleBarcodeRegex = RegExp(r'^[A-Z0-9]{6,20}$');
-  static const RegExp hcvCodeRegex = RegExp(r'^[A-Z]{2}\d{8}$');
+  static final RegExp nationalIdRegex = RegExp(r'^\d{14}$');
+  static final RegExp phoneRegex = RegExp(r'^\+?964\d{10}$');
+  static final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+  static final RegExp iqNationalIdRegex = RegExp(r'^\d{14}$');
+  static final RegExp sampleBarcodeRegex = RegExp(r'^[A-Z0-9]{6,20}$');
+  static final RegExp hcvCodeRegex = RegExp(r'^[A-Z]{2}\d{8}$');
 }

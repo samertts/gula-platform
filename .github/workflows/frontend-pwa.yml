@@ -4,13 +4,11 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'frontend-v2/**'
       - 'frontend-v3/**'
       - '.github/workflows/frontend-pwa.yml'
   pull_request:
     branches: [main]
     paths:
-      - 'frontend-v2/**'
       - 'frontend-v3/**'
   workflow_dispatch:
     inputs:
@@ -45,7 +43,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: frontend-v2
+        working-directory: frontend-v3
 
     steps:
       - uses: actions/checkout@v4
@@ -55,13 +53,13 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: frontend-v2/package-lock.json
+          cache-dependency-path: frontend-v3/package-lock.json
 
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: frontend-v2/node_modules
-          key: node-modules-${{ hashFiles('frontend-v2/package-lock.json') }}
+          path: frontend-v3/node_modules
+          key: node-modules-${{ hashFiles('frontend-v3/package-lock.json') }}
           restore-keys: |
             node-modules-
 
@@ -72,30 +70,19 @@ jobs:
         run: npm run lint 2>/dev/null || echo "No lint script configured"
 
       - name: Type check
-        run: npx tsc --noEmit 2>/dev/null || echo "No TypeScript check configured"
-
-      - name: Run tests
-        run: npm test -- --watchAll=false --ci 2>/dev/null || echo "No test script configured"
+        run: npm run typecheck 2>/dev/null || echo "No typecheck script configured"
 
       - name: Build PWA
         run: npm run build
         env:
           CI: true
-          REACT_APP_API_BASE_URL: ${{ github.ref == 'refs/heads/main' && 'https://api.gulaplatform.com/api/v1/' || 'https://staging-api.gulaplatform.com/api/v1/' }}
-          REACT_APP_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          REACT_APP_GA_ID: ${{ secrets.GA_MEASUREMENT_ID }}
-          REACT_APP_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
-          REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-          REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-          REACT_APP_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          VITE_API_BASE_URL: ${{ github.ref == 'refs/heads/main' && 'https://www.gula-platform.org/api' || 'https://www.gula-platform.org/api' }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pwa-build
-          path: frontend-v2/build/
+          path: frontend-v3/dist/
           if-no-files-found: error
           retention-days: 7
 
@@ -129,7 +116,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pwa-build
-          path: build/
+          path: frontend-v3/dist/
 
       - name: Run Lighthouse CI
         uses: GoogleChrome/lighthouse-ci-action@v12
@@ -220,6 +207,6 @@ jobs:
           SENTRY_PROJECT: frontend-pwa
         run: |
           npx @sentry/cli releases new ${{ github.ref_name }}
-          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps build/static/js/
+          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps dist/assets/
           npx @sentry/cli releases set-commits ${{ github.ref_name }} --auto
           npx @sentry/cli releases finalize ${{ github.ref_name }}

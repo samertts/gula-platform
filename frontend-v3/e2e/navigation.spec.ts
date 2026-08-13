@@ -5,6 +5,11 @@ test.describe("Navigation & Routing", () => {
   test.beforeEach(async ({ page }) => {
     await mockLogin(page);
     await page.route("**/api/**", async (route) => {
+      const pathname = new URL(route.request().url()).pathname;
+      if (pathname === "/api/session" || pathname === "/api/login" || pathname === "/api/auth/refresh") {
+        await route.fallback();
+        return;
+      }
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
     });
     await setupAuthenticatedPage(page);

@@ -109,7 +109,10 @@ class GulaButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(radius),
           ),
           elevation: 1,
-          textStyle: TextStyle(fontSize: fontSize ?? 14, fontWeight: fontWeight ?? FontWeight.w500),
+          textStyle: TextStyle(
+            fontSize: fontSize ?? 14,
+            fontWeight: fontWeight ?? FontWeight.w500,
+          ),
         ),
         child: _buildContent(isRtl),
       ),
@@ -125,12 +128,19 @@ class GulaButton extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           foregroundColor: textColor ?? (color ?? AppColors.primary600),
           disabledForegroundColor: AppColors.neutral500,
-          side: BorderSide(color: _disabled ? AppColors.neutral300 : color ?? AppColors.primary500),
+          side: BorderSide(
+            color: _disabled
+                ? AppColors.neutral300
+                : color ?? AppColors.primary500,
+          ),
           padding: padding ?? const EdgeInsets.symmetric(horizontal: 20),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius),
           ),
-          textStyle: TextStyle(fontSize: fontSize ?? 14, fontWeight: fontWeight ?? FontWeight.w500),
+          textStyle: TextStyle(
+            fontSize: fontSize ?? 14,
+            fontWeight: fontWeight ?? FontWeight.w500,
+          ),
         ),
         child: _buildContent(isRtl),
       ),
@@ -150,7 +160,10 @@ class GulaButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius),
           ),
-          textStyle: TextStyle(fontSize: fontSize ?? 14, fontWeight: fontWeight ?? FontWeight.w500),
+          textStyle: TextStyle(
+            fontSize: fontSize ?? 14,
+            fontWeight: fontWeight ?? FontWeight.w500,
+          ),
         ),
         child: _buildContent(isRtl),
       ),
@@ -173,7 +186,10 @@ class GulaButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(radius),
           ),
           elevation: 1,
-          textStyle: TextStyle(fontSize: fontSize ?? 14, fontWeight: fontWeight ?? FontWeight.w500),
+          textStyle: TextStyle(
+            fontSize: fontSize ?? 14,
+            fontWeight: fontWeight ?? FontWeight.w500,
+          ),
         ),
         child: _buildContent(isRtl),
       ),
@@ -193,7 +209,10 @@ class GulaButton extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius),
           ),
-          textStyle: TextStyle(fontSize: fontSize ?? 14, fontWeight: fontWeight ?? FontWeight.w400),
+          textStyle: TextStyle(
+            fontSize: fontSize ?? 14,
+            fontWeight: fontWeight ?? FontWeight.w400,
+          ),
         ),
         child: _buildContent(isRtl),
       ),

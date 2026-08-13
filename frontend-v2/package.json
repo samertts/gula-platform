@@ -12,8 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@google/genai": "^2.13.0",
-    "@google/generative-ai": "^0.24.1",
     "@sentry/react": "^8.55.2",
     "@tailwindcss/vite": "^4.3.3",
     "clsx": "^2.1.1",

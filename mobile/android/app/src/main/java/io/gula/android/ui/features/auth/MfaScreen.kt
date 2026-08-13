@@ -69,7 +69,7 @@ fun MfaScreen(
         if (uiState.error != null) {
             Spacer(Modifier.height(8.dp))
             Text(
-                text = uiState.error,
+                text = uiState.error.orEmpty(),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
             )

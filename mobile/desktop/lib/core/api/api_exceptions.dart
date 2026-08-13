@@ -10,29 +10,33 @@ class ApiException implements Exception {
 }
 
 class AuthException extends ApiException {
-  const AuthException([super.message = 'Authentication required', super.statusCode = 401]);
+  const AuthException([String message = 'Authentication required'])
+    : super(message, statusCode: 401);
 }
 
 class UnauthorizedException extends ApiException {
-  const UnauthorizedException([super.message = 'Forbidden', super.statusCode = 403]);
+  const UnauthorizedException([String message = 'Forbidden'])
+    : super(message, statusCode: 403);
 }
 
 class NotFoundException extends ApiException {
-  const NotFoundException([super.message = 'Resource not found', super.statusCode = 404]);
+  const NotFoundException([String message = 'Resource not found'])
+    : super(message, statusCode: 404);
 }
 
 class ConflictException extends ApiException {
-  const ConflictException([super.message = 'Resource conflict', super.statusCode = 409]);
+  const ConflictException([String message = 'Resource conflict'])
+    : super(message, statusCode: 409);
 }
 
 class ValidationException extends ApiException {
   final List<ValidationError> errors;
 
   const ValidationException(
-    super.message, {
+    String message, {
     this.errors = const [],
-    super.statusCode = 422,
-  });
+    int? statusCode = 422,
+  }) : super(message, statusCode: statusCode);
 }
 
 class ValidationError {
@@ -40,37 +44,35 @@ class ValidationError {
   final String msg;
   final String type;
 
-  const ValidationError({
-    this.loc = const [],
-    this.msg = '',
-    this.type = '',
-  });
+  const ValidationError({this.loc = const [], this.msg = '', this.type = ''});
 }
 
 class NetworkException extends ApiException {
-  const NetworkException([super.message = 'Network error']);
+  const NetworkException([String message = 'Network error']) : super(message);
 }
 
 class RateLimitException extends ApiException {
   final int? retryAfterSeconds;
 
-  const RateLimitException([
-    super.message = 'Rate limit exceeded',
+  const RateLimitException({
+    String message = 'Rate limit exceeded',
     this.retryAfterSeconds,
-    super.statusCode = 429,
-  ]);
+  }) : super(message, statusCode: 429);
 }
 
 class ServerException extends ApiException {
-  const ServerException([super.message = 'Internal server error', super.statusCode = 500]);
+  const ServerException([String message = 'Internal server error'])
+    : super(message, statusCode: 500);
 }
 
 class OfflineException extends ApiException {
-  const OfflineException([super.message = 'Device is offline', super.statusCode = -1]);
+  const OfflineException([String message = 'Device is offline'])
+    : super(message, statusCode: -1);
 }
 
 ApiException parseApiError(Map<String, dynamic>? data, int? statusCode) {
-  final message = data?['detail'] as String? ??
+  final message =
+      data?['detail'] as String? ??
       data?['message'] as String? ??
       'Unknown error';
 
@@ -84,11 +86,12 @@ ApiException parseApiError(Map<String, dynamic>? data, int? statusCode) {
     case 409:
       return ConflictException(message);
     case 422:
-      return ValidationException(message,
-          errors: _parseValidationErrors(data));
+      return ValidationException(message, errors: _parseValidationErrors(data));
     case 429:
-      return RateLimitException(message,
-          retryAfterSeconds: data?['retry_after_seconds'] as int?);
+      return RateLimitException(
+        message: message,
+        retryAfterSeconds: data?['retry_after_seconds'] as int?,
+      );
     case 500:
     case 502:
     case 503:
@@ -104,11 +107,16 @@ List<ValidationError> _parseValidationErrors(Map<String, dynamic>? data) {
   if (data['detail'] is List) {
     for (final e in data['detail'] as List) {
       if (e is Map<String, dynamic>) {
-        errors.add(ValidationError(
-          loc: List<String>.from(e['loc'] ?? []),
-          msg: e['msg'] as String? ?? '',
-          type: e['type'] as String? ?? '',
-        ));
+        final location = e['loc'];
+        errors.add(
+          ValidationError(
+            loc: location is Iterable
+                ? location.map((value) => value.toString()).toList()
+                : const [],
+            msg: e['msg'] as String? ?? '',
+            type: e['type'] as String? ?? '',
+          ),
+        );
       }
     }
   }

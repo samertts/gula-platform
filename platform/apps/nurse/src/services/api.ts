@@ -1,4 +1,11 @@
-const API_BASE = '/api/v1';
+import { createApiClient } from '@gula/ui-platform';
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const backend = createApiClient({
+  baseUrl: API_BASE,
+  clientName: 'nurse-app',
+  refreshPath: '/auth/refresh',
+});
 
 // Authentication is carried only by server-issued HttpOnly cookies.
 export function setToken(_token: string | null) {
@@ -13,24 +20,7 @@ async function request<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    ...(options.headers as Record<string, string>),
-  };
-
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    credentials: 'include',
-    headers,
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
-    throw new Error(error.message || `HTTP ${response.status}`);
-  }
-
-  return response.json();
+  return backend.request<T>(endpoint, options);
 }
 
 export const api = {

@@ -33,7 +33,8 @@ class AppTheme {
       tabBarStyle: FlexTabBarStyle.forBackground,
       tooltipsMatchBackground: true,
       bottomAppBarElevation: 2,
-      lightColors: const ColorScheme(
+    ).copyWith(
+      colorScheme: const ColorScheme(
         brightness: Brightness.light,
         primary: AppColors.primary600,
         onPrimary: AppColors.textOnPrimary,
@@ -112,7 +113,8 @@ class AppTheme {
       appBarStyle: FlexAppBarStyle.primary,
       appBarOpacity: 1.0,
       tooltipsMatchBackground: true,
-      lightColors: const ColorScheme(
+    ).copyWith(
+      colorScheme: const ColorScheme(
         brightness: Brightness.dark,
         primary: AppColors.primary400,
         onPrimary: Color(0xFF003300),
@@ -260,14 +262,8 @@ class AppTheme {
         fontSize: 14,
         fontWeight: FontWeight.w400,
       ),
-      hintStyle: const TextStyle(
-        color: AppColors.neutral400,
-        fontSize: 14,
-      ),
-      errorStyle: const TextStyle(
-        color: AppColors.error500,
-        fontSize: 12,
-      ),
+      hintStyle: const TextStyle(color: AppColors.neutral400, fontSize: 14),
+      errorStyle: const TextStyle(color: AppColors.error500, fontSize: 12),
       helperStyle: const TextStyle(
         color: AppColors.textSecondary,
         fontSize: 12,
@@ -288,10 +284,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
         ),
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -308,10 +301,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
         ),
         side: const BorderSide(color: AppColors.primary500),
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -327,16 +317,13 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
         ),
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }
 
-  static CardTheme _cardTheme() {
-    return CardTheme(
+  static CardThemeData _cardTheme() {
+    return CardThemeData(
       elevation: 1,
       margin: const EdgeInsets.all(AppDimensions.space2),
       shape: RoundedRectangleBorder(
@@ -349,7 +336,6 @@ class AppTheme {
 
   static ChipThemeData _chipTheme() {
     return ChipThemeData(
-      height: AppDimensions.chipHeight,
       padding: const EdgeInsets.symmetric(horizontal: AppDimensions.space2),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
@@ -370,8 +356,8 @@ class AppTheme {
     );
   }
 
-  static DialogTheme _dialogTheme() {
-    return DialogTheme(
+  static DialogThemeData _dialogTheme() {
+    return DialogThemeData(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
       ),
@@ -590,8 +576,8 @@ class AppTheme {
     );
   }
 
-  static CardTheme _cardThemeDark() {
-    return CardTheme(
+  static CardThemeData _cardThemeDark() {
+    return CardThemeData(
       elevation: 2,
       margin: const EdgeInsets.all(AppDimensions.space2),
       shape: RoundedRectangleBorder(
@@ -619,8 +605,8 @@ class AppTheme {
     );
   }
 
-  static DialogTheme _dialogThemeDark() {
-    return DialogTheme(
+  static DialogThemeData _dialogThemeDark() {
+    return DialogThemeData(
       backgroundColor: const Color(0xFF2C2C2C),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusXl),

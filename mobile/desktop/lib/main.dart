@@ -2,16 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:system_tray/system_tray.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 
 import 'app.dart';
 import 'app_router.dart';
-import 'core/auth/auth_provider.dart';
 import 'core/observability/crash_reporter.dart';
-import 'core/offline/connectivity_service.dart';
-import 'core/offline/database.dart';
-import 'core/offline/sync_engine.dart';
 import 'core/providers/app_providers.dart';
 import 'core/security/tamper_detection.dart';
 import 'core/update/auto_updater.dart';
@@ -22,11 +16,7 @@ void main() async {
 
   await _initializeApp();
 
-  runApp(
-    ProviderScope(
-      child: _AppEntry(),
-    ),
-  );
+  runApp(ProviderScope(child: _AppEntry()));
 }
 
 Future<void> _initializeApp() async {
@@ -34,8 +24,14 @@ Future<void> _initializeApp() async {
     await windowManager.ensureInitialized();
 
     const windowOptions = WindowOptions(
-      size: Size(AppConstants.defaultDesktopWidth, AppConstants.defaultDesktopHeight),
-      minimumSize: Size(AppConstants.minDesktopWidth, AppConstants.minDesktopHeight),
+      size: Size(
+        AppConstants.defaultDesktopWidth,
+        AppConstants.defaultDesktopHeight,
+      ),
+      minimumSize: Size(
+        AppConstants.minDesktopWidth,
+        AppConstants.minDesktopHeight,
+      ),
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
@@ -77,7 +73,6 @@ class _AppEntry extends ConsumerStatefulWidget {
 }
 
 class _AppEntryState extends ConsumerState<_AppEntry> {
-  final SystemTray _systemTray = SystemTray();
   final AutoUpdater _autoUpdater = AutoUpdater();
   bool _initialized = false;
 
@@ -88,7 +83,7 @@ class _AppEntryState extends ConsumerState<_AppEntry> {
   }
 
   Future<void> _initApp() async {
-    const apiUrl = 'https://api.gula-platform.com/api/v1';
+    const apiUrl = 'https://api.gula-platform.org/api/v1';
 
     final authProvider = ref.read(authProviderProvider);
     await authProvider.initialize(apiUrl: apiUrl);
@@ -119,34 +114,7 @@ class _AppEntryState extends ConsumerState<_AppEntry> {
       await _autoUpdater.initialize();
     } catch (_) {}
 
-    try {
-      _initSystemTray();
-    } catch (_) {}
-
     setState(() => _initialized = true);
-  }
-
-  Future<void> _initSystemTray() async {
-    await _systemTray.initSystemTray(
-      iconPath: 'assets/icons/app_icon.png',
-      toolTip: AppConstants.appName,
-    );
-
-    await _systemTray.setContextMenu(
-      Menu(
-        items: [
-          MenuItem(label: 'Show', onClicked: (_) => windowManager.show()),
-          MenuItem(label: 'Hide', onClicked: (_) => windowManager.hide()),
-          Menu.separator(),
-          MenuItem(label: 'Quit', onClicked: (_) => _quitApp()),
-        ],
-      ),
-    );
-
-    _systemTray.onSystemTrayClicked = (_) {
-      windowManager.show();
-      windowManager.focus();
-    };
   }
 
   Future<void> _quitApp() async {

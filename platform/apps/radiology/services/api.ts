@@ -1,4 +1,11 @@
+import { ApiClientError as SharedApiClientError, createApiClient } from '@gula/ui-platform'
+
 const API_BASE = import.meta.env.VITE_API_URL || '/api'
+const backend = createApiClient({
+  baseUrl: API_BASE,
+  clientName: 'radiology-app',
+  refreshPath: '/auth/refresh',
+})
 
 interface RequestConfig {
   method?: string
@@ -45,43 +52,21 @@ class ApiClient {
 
   async request<T>(path: string, config: RequestConfig = {}): Promise<T> {
     const { method = 'GET', headers = {}, body, params, signal } = config
-
-    const requestHeaders: Record<string, string> = {
-      'Accept': 'application/json',
-      ...headers
-    }
-
-    if (body && !(body instanceof FormData)) {
-      requestHeaders['Content-Type'] = 'application/json'
-    }
-
-    const response = await fetch(this.buildUrl(path, params), {
-      method,
-      credentials: 'include',
-      headers: requestHeaders,
-      body: body instanceof FormData ? body as FormData : body ? JSON.stringify(body) : undefined,
-      signal
-    })
-
-    if (!response.ok) {
-      let errorDetails: unknown
-      try {
-        errorDetails = await response.json()
-      } catch {
-        errorDetails = await response.text()
+    try {
+      return await backend.request<T>(path, {
+        method,
+        headers,
+        body,
+        query: params,
+        signal,
+      })
+    } catch (error) {
+      if (error instanceof SharedApiClientError) {
+        throw new ApiError(error.status, error.message, error.contract)
       }
-      throw new ApiError(
-        response.status,
-        (errorDetails as Record<string, unknown>)?.message as string || response.statusText,
-        errorDetails
-      )
+      if (error instanceof ApiError) throw error
+      throw new ApiError(0, error instanceof Error ? error.message : 'تعذر الاتصال بالخادم')
     }
-
-    if (response.status === 204) {
-      return undefined as T
-    }
-
-    return response.json()
   }
 
   get<T>(path: string, params?: Record<string, string | number | boolean | undefined>, signal?: AbortSignal): Promise<T> {

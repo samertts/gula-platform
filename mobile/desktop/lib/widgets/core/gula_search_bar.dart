@@ -76,10 +76,18 @@ class _GulaSearchBarState extends State<GulaSearchBar> {
         textInputAction: TextInputAction.search,
         decoration: InputDecoration(
           hintText: widget.hint,
-          prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textSecondary),
+          prefixIcon: const Icon(
+            Icons.search,
+            size: 20,
+            color: AppColors.textSecondary,
+          ),
           suffixIcon: _controller.text.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear, size: 18, color: AppColors.textSecondary),
+                  icon: const Icon(
+                    Icons.clear,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
                   onPressed: () {
                     _controller.clear();
                     widget.onClear?.call();

@@ -79,7 +79,10 @@ class OrderCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     testTypes!,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -91,13 +94,19 @@ class OrderCard extends StatelessWidget {
                       if (createdAt != null)
                         Text(
                           createdAt!.toLocal().toString().substring(0, 10),
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       if (doctorName != null) ...[
                         const SizedBox(width: 12),
                         Text(
                           doctorName!,
-                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ],
@@ -115,13 +124,25 @@ class OrderCard extends StatelessWidget {
   Widget _buildStatusBadge(String status) {
     switch (status) {
       case 'pending':
-        return const GulaBadge(label: 'Pending', status: GulaBadgeStatus.pending);
+        return const GulaBadge(
+          label: 'Pending',
+          status: GulaBadgeStatus.pending,
+        );
       case 'completed':
-        return const GulaBadge(label: 'Completed', status: GulaBadgeStatus.success);
+        return const GulaBadge(
+          label: 'Completed',
+          status: GulaBadgeStatus.success,
+        );
       case 'validated':
-        return const GulaBadge(label: 'Validated', status: GulaBadgeStatus.success);
+        return const GulaBadge(
+          label: 'Validated',
+          status: GulaBadgeStatus.success,
+        );
       case 'cancelled':
-        return const GulaBadge(label: 'Cancelled', status: GulaBadgeStatus.cancelled);
+        return const GulaBadge(
+          label: 'Cancelled',
+          status: GulaBadgeStatus.cancelled,
+        );
       default:
         return GulaBadge(label: status, status: GulaBadgeStatus.neutral);
     }

@@ -65,16 +65,19 @@ class GulaLoading extends StatelessWidget {
       baseColor: AppColors.neutral200,
       highlightColor: AppColors.neutral100,
       child: Column(
-        children: List.generate(6, (index) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-          child: Container(
-            height: 16,
-            decoration: BoxDecoration(
-              color: AppColors.neutral200,
-              borderRadius: BorderRadius.circular(4),
+        children: List.generate(
+          6,
+          (index) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            child: Container(
+              height: 16,
+              decoration: BoxDecoration(
+                color: AppColors.neutral200,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
           ),
-        )),
+        ),
       ),
     );
   }
@@ -121,9 +124,7 @@ class GulaLoading extends StatelessWidget {
   Widget _buildLinear(BuildContext context) {
     return LinearProgressIndicator(
       backgroundColor: AppColors.primary100,
-      valueColor: AlwaysStoppedAnimation<Color>(
-        color ?? AppColors.primary500,
-      ),
+      valueColor: AlwaysStoppedAnimation<Color>(color ?? AppColors.primary500),
     );
   }
 }

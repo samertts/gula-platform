@@ -112,3 +112,75 @@
 ## Remaining safety boundary after TypeScript repair
 
 هذه الدفعة تثبت صحة typecheck ومسار bundling الحاليين، ولا تثبت وحدها جاهزية تشغيل وطنية أو سلامة تكاملات Web/Android/Windows أو Demo isolation في بيئة production. ما زالت اختبارات التشغيل الفعلي، مصفوفة endpoints الشاملة لـRBAC وIf-Match/idempotency، اختبار الاستعادة والنسخ الاحتياطي، وتوحيد بيئات base URL تحتاج موجات مستقلة واعتماداً صريحاً. لم تُستخدم إصلاحات TypeScript لتجاوز validation أو audit أو authorization، ولم تُضف صلاحيات wildcard أو تخزين رموز في browser storage.
+
+
+## Frontend–Backend Integration and UX Follow-up — 2026-08-12
+
+تم تنفيذ دفعة تكامل أمامية/خلفية على فرع `feat/frontend-backend-ux-20260812` دون تعديل `main` أو سلوك النشر. اعتمدت التطبيقات على عميل Backend مشترك في `platform/ui/services/apiClient.ts` يرسل جلسات HttpOnly، ويدعم عقد الأخطاء القياسي، وrequest metadata، و`If-Match` وidempotency metadata، وإعادة المحاولة الآمنة لطلبات القراءة فقط. كما تم تصحيح توجيه Demo بحيث تُرسل الطلبات إلى `VITE_DEMO_API_BASE_URL` المعزول فعلياً، مع رفض صريح عند غياب عنوان Demo أو محاولة الوصول إلى أصل الإنتاج.
+
+| المجال | ما نُفّذ | الدليل |
+|---|---|---|
+| UI platform | إضافة `createApiClient` و`useBackendResource` وتعريفات Vite وتصديرها من الحزمة المشتركة | `platform/ui/services/`, `platform/ui/hooks/`, `platform/ui/index.ts` |
+| Citizen | ربط Home بـ`/citizen-platform/me/dashboard` مع loading/stale/error/retry، وربط HealthAssistant بـ`POST /ai/fabric/chat` بدلاً من الردود المحلية الوهمية | `platform/apps/citizen/src/pages/Home.tsx`, `HealthAssistant.tsx`, `services/guideAssistant.ts` |
+| التطبيقات السريرية | توحيد العملاء في Doctor وHospital وLaboratory وMinistry وNurse وPharmacy وRadiology مع الحفاظ على عقود الواجهات وoffline queue حيث كانت موجودة | ملفات `services/api.ts` لكل تطبيق |
+| Nurse | استبدال fixtures في TaskList وShiftHandover بخدمات `/nursing/tasks` و`/nursing/handover` مع mappers typed وحالات empty/error/retry/create | `platform/apps/nurse/src/services/tasks.ts`, `handovers.ts`, `TaskList.tsx`, `ShiftHandover.tsx` |
+| تجربة المستخدم | skeleton/feedback/error retry، إبقاء البيانات السابقة أثناء refetch، ومنع تكرار رسالة المستخدم عند إعادة محاولة المساعد | `useBackendResource.ts`, `Home.tsx`, `HealthAssistant.tsx` |
+
+تم التحقق الفعلي من بوابات TypeScript: **9/9 مشاريع ناجحة بصفر أخطاء**. كما نجحت builds للتطبيقات الثمانية: Citizen وDoctor وHospital وLaboratory وMinistry وNurse وPharmacy وRadiology. ظهرت تحذيرات Vite الحالية المتعلقة باستخدام `__dirname` مع `configLoader: native` في بعض التطبيقات؛ لم تُعدّل لأنها خارج نطاق التكامل ولا تمنع البناء.
+
+أعيد تشغيل اختبارات Backend الكاملة بعد التغييرات: **2310 اختباراً ناجحاً و251 تحذيراً خلال 287.45 ثانية**. التحذيرات تشمل deprecation warnings معروفة وSecurityWarning في fixture اختبار توقيع، ولا تمثل فشلاً في هذه الدفعة.
+
+### حدود الدفعة
+
+هذه الدفعة لا تعني أن كل صفحة في التطبيقات الثمانية أصبحت خالية من fixtures؛ ما زالت بعض شاشات Hospital وDoctor وNurse وRadiology تحتوي بيانات عرض تجريبية أو وظائف محلية، وسيتم تحويلها في موجات منفصلة بعد مطابقة كل شاشة مع endpoint فعلي وصلاحياته. كما أن Guide Assistant مرتبط بعقد AI Fabric الموجود، لكنه لا يقدّم تشخيصاً أو قراراً علاجياً ويظل خاضعاً للتنبيه التوعوي في الواجهة.
+
+لم تُعدّل lockfiles أو `.audit/ci-fix.patch` أو `.audit/ci-repair.patch`، ولم تُعالج تنبيهات Dependabot، ولم يُنفّذ merge أو release أو branch pruning. نجاح typecheck/build والاختبارات لا يثبت وحده جاهزية إنتاج وطنية؛ يلزم قبل الإنتاج اختبار عقد API في بيئة Demo معزولة، واختبار RBAC ومسارات 401/403/409/412، واختبارات تشغيل واستعادة وقياس أداء تحت الحمل.
+
+
+## Next Remediation Wave — 2026-08-12
+
+تم إجراء جرد إضافي للمخاطر المتبقية في طبقة التكامل والواجهات السريرية، مع إعطاء الأولوية لما قد يسبب كشف بيانات أو عرض قرار سريري غير حقيقي.
+
+| finding | risk | remediation | evidence |
+|---|---|---|---|
+| كانت استجابة `GET /dashboard` تعيد `LabResult.token`، وهو credential للوصول إلى النتيجة العامة | عالٍ: إمكانية إعادة استخدام credential إذا وصل إلى عميل أو سجل غير مقصود | إزالة الحقل من استجابة dashboard مع إبقاء بيانات النتيجة اللازمة للعرض | `backend/tests/test_dashboard_data_minimization.py`، ناجح |
+| كان AI Fabric router مكشوفاً دون dependency مصادقة، وكانت عمليات الفهرسة والحوكمة والأمن غير مقيدة بصلاحية إدارية | حرج: استهلاك خدمة AI أو كشف أدوات الحوكمة والفهرسة | فرض `get_current_user` على router وقصر العمليات الإدارية على `system:admin`؛ وقصر RAG/orchestrator السريريين على doctor/admin | `backend/tests/test_ai_fabric_access.py`، ناجح |
+| كانت Doctor DecisionSupport تعرض توصية تشخيصية/دوائية ثابتة من mock مع زر Apply بلا endpoint تنفيذي | حرج: خطر عرض معلومة سريرية مختلقة أو الإيحاء بتطبيق علاجي | إزالة mock، إلزام معرف مريض، استدعاء backend read-only، وإخفاء أزرار الإجراءات غير المدعومة | Doctor typecheck ناجح؛ endpoint مقيد ومختبر للمصادقة |
+| كان Pharmacy Login يستخدم fetch مباشراً ويقرأ token من response رغم اعتماد Wave 3 على HttpOnly cookie | عالٍ: عدم اتساق session و احتمال كسر أو تجاوز مسار الجلسة الموحد | استخدام `apiPost` المشترك دون تخزين token في الواجهة | Pharmacy typecheck ناجح |
+| كان WADO DICOM retrieval يستخدم fetch مباشراً بلا credentials وترميز UID غير موحد | عالٍ: طلب تصوير قد يفشل في الجلسة أو يقبل path غير آمن | إضافة `credentials: include`، client metadata، وترميز معرفات الدراسة/السلسلة/العينة | Radiology typecheck ناجح |
+
+الاختبارات المستهدفة الأخيرة: **4 ناجحة**. لم تُعالج تنبيهات Dependabot أو ملفات `.audit` أو production configuration في هذه الدفعة.
+
+
+## Security hardening and Radiology tenant isolation — 2026-08-12
+
+استُكملت دفعة أمنية إضافية على الفرع `feat/frontend-backend-ux-20260812` دون تغيير `main` أو deployment أو ملفات lockfile. شملت الدفعة عزل قوائم وعمليات Radiology الأساسية حسب مرضى المختبر المرتبط بالمستخدم الحالي عبر `Patient.lab_id`، مع دعم `Patient.id` و`health_id` في التحقق. أصبحت orders وappointments وexams وreports وworklists مقيدة بـ`tenant_patient_ids` عند القوائم، وتتحقق endpoints ذات المعرف الصريح من أن المريض داخل tenant قبل القراءة أو التعديل أو الإنشاء.
+
+خلال اختبار العزل كُشف خلل مستقل في `RadiologyService`: استخدام `~~Model.is_deleted` كان يطابق السجلات المحذوفة بدلاً من استبعادها، ما أدى إلى إخفاء السجلات الحية من الاستعلامات. صُحح ذلك في جميع مواضع RadiologyService ذات الصلة إلى `~Model.is_deleted`، وأضيف regression test يمنع عودة الخلل أو تسرب بيانات tenant آخر.
+
+| الفحص الفعلي | النتيجة | الملاحظة |
+|---|---:|---|
+| Radiology tenant isolation + AI Fabric access + dashboard minimization | **7 passed** | شملت عزل orders/reports، 401/403، وعدم تسريب public-result token |
+| TypeScript source-mode: UI + التطبيقات الثمانية | **9/9 passed** | صفر أخطاء TypeScript |
+| Backend suite الكاملة | **2316 passed، 1 failed** | الفشل الوحيد `tests/kernel/test_modules.py::TestModuleRegistry::test_register_and_unregister` بسبب `KeyError: Attempt to overwrite 'module' in LogRecord` في suite الكامل |
+| الاختبار flaky منفرداً | **1 passed** | يؤكد السلوك الموثق؛ لم يُعدّل الاختبار أو global logging دون تحليل مستقل |
+| `git diff --check` | **passed** | لا توجد whitespace errors |
+
+تبقى تغطية Critical Findings وdashboard analytics وPACS/device worklists الموسعة بحاجة إلى endpoint-by-endpoint review مستقل قبل إعلان عزل Radiology الكامل؛ لا يُفهم هذا القسم كإعلان production readiness وطنية. كما بقيت ملفات `.audit/ci-fix.patch` و`.audit/ci-repair.patch` غير متتبعة وخارج أي commit، ولم تُنفذ عمليات Wave 4 أو Dependabot أو merge/release.
+
+
+## Radiology/PACS follow-up hardening — 2026-08-12
+
+استُكملت دفعة متابعة مركزة على Radiology دون تغيير فروع Wave 3 أو إعدادات الإنتاج. أزيلت annotations الوهمية من `platform/apps/radiology/pages/DICOMViewer.tsx`، وأصبحت الواجهة تعرض حالة صريحة بأن التحليل الآلي غير متاح بدلاً من عرض عقد أو تكلسات أو درجات ثقة غير صادرة عن backend معتمد.
+
+في backend تم توسيع عزل tenant ليشمل Critical Findings وdashboard analytics وPACS studies/series/images وcitizen images وimage sharing وdevice worklists. يعتمد التحقق على ربط study/exam/image بالمريض ثم `Patient.lab_id`، وتمنع المسارات ذات المعرفات الصريحة القراءة أو التعديل أو إنشاء مشاركة لبيانات tenant آخر. كما صُحح ترتيب static routes مثل `/orders/search` و`/reports/search` و`/studies/search` قبل dynamic `/{id}` routes، وصُححت double-negation إضافية في `pacs.py` و`device.py`.
+
+| الفحص الفعلي | النتيجة |
+|---|---:|
+| Radiology/PACS/security regression suite | **10 passed** |
+| TypeScript source-mode: UI + التطبيقات الثمانية | **9/9 passed** |
+| Backend suite الكاملة بعد دفعة المتابعة | **2319 passed، 1 failed** خلال 289.08 ثانية |
+| الفشل المتبقي | `tests/kernel/test_modules.py::TestModuleRegistry::test_register_and_unregister` بسبب `KeyError: Attempt to overwrite 'module' in LogRecord`؛ وهو الاختبار flaky الموثق، ولم يُعدّل |
+| `git diff --check` وPython compile | **passed** |
+
+تظل بعض شاشات Hospital/Doctor/Nurse التي تحتوي fixtures بحاجة إلى endpoint contract review مستقل قبل تحويلها، كما لم تُنفذ معالجة Dependabot أو Wave 4 أو deployment/release. نجاح هذه الدفعة لا يساوي إعلان جاهزية إنتاجية وطنية أو اعتماد AI تشخيصي.

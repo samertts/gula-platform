@@ -24,6 +24,8 @@ export default defineConfig({
     sourcemap: true,
   },
   server: {
+    // Allows the temporary development preview hostname; it does not affect the production build.
+    allowedHosts: true,
     port: 5173,
     proxy: {
       "/api": {

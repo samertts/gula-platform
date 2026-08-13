@@ -45,8 +45,13 @@ class GulaDropdown<T> extends StatelessWidget {
             ? Icon(prefixIcon, size: 20, color: AppColors.textSecondary)
             : null,
         filled: true,
-        fillColor: fillColor ?? (enabled ? AppColors.surfaceLight : AppColors.neutral50),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        fillColor:
+            fillColor ??
+            (enabled ? AppColors.surfaceLight : AppColors.neutral50),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(effectiveRadius),
           borderSide: const BorderSide(color: AppColors.border),

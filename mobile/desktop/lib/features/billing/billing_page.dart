@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
-import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_table.dart';
 import '../../widgets/core/gula_loading.dart';
 import '../../widgets/core/gula_badge.dart';
@@ -44,15 +41,24 @@ class _BillingPageState extends ConsumerState<BillingPage> {
   }
 
   Widget _buildContent(BillingProvider state) {
-    if (state.isLoading) return const GulaLoading(type: GulaLoadingType.shimmer);
+    if (state.isLoading)
+      return const GulaLoading(type: GulaLoadingType.shimmer);
 
     return GulaTable(
       columns: [
         GulaTableColumn(key: 'invoiceNumber', label: 'Invoice #', flex: 1),
         GulaTableColumn(key: 'patientName', label: 'Patient', flex: 2),
-        GulaTableColumn(key: 'amount', label: 'Amount', flex: 1,
-          cellBuilder: (v, row) => Text('\$$v', style: const TextStyle(fontWeight: FontWeight.w600))),
-        GulaTableColumn(key: 'status', label: 'Status', flex: 1,
+        GulaTableColumn(
+          key: 'amount',
+          label: 'Amount',
+          flex: 1,
+          cellBuilder: (v, row) =>
+              Text('\$$v', style: const TextStyle(fontWeight: FontWeight.w600)),
+        ),
+        GulaTableColumn(
+          key: 'status',
+          label: 'Status',
+          flex: 1,
           cellBuilder: (v, row) {
             final statusMap = {
               'paid': GulaBadgeStatus.success,
@@ -60,11 +66,23 @@ class _BillingPageState extends ConsumerState<BillingPage> {
               'overdue': GulaBadgeStatus.error,
               'cancelled': GulaBadgeStatus.cancelled,
             };
-            return GulaBadge(label: v.toString(), status: statusMap[v] ?? GulaBadgeStatus.neutral);
+            return GulaBadge(
+              label: v.toString(),
+              status: statusMap[v] ?? GulaBadgeStatus.neutral,
+            );
           },
         ),
-        GulaTableColumn(key: 'date', label: 'Date', flex: 1,
-          cellBuilder: (v, row) => Text(DateTime.tryParse(v.toString())?.toLocal().toString().substring(0, 10) ?? '')),
+        GulaTableColumn(
+          key: 'date',
+          label: 'Date',
+          flex: 1,
+          cellBuilder: (v, row) => Text(
+            DateTime.tryParse(
+                  v.toString(),
+                )?.toLocal().toString().substring(0, 10) ??
+                '',
+          ),
+        ),
       ],
       rows: state.invoices,
       isSortable: true,

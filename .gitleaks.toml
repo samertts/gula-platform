@@ -1,0 +1,15 @@
+title = "Gula Platform secret scanning"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Only redacted security reports and explicitly synthetic fixtures are excluded. Never add live credentials here."
+paths = [
+  '''^security-audit/2026-08-12/''',
+  '''^docs/security/''',
+  '''^backend/tests/fixtures/''',
+  '''^frontend-v2/src/test/fixtures/''',
+  '''^frontend-v3/src/test/fixtures/''',
+  '''^mobile/.*/test/fixtures/'''
+]

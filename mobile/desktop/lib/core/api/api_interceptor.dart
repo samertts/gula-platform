@@ -2,14 +2,42 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api_exceptions.dart';
+import '../security/api_url_validator.dart';
+
+class EndpointGuardInterceptor extends Interceptor {
+  final bool allowDebugEndpoints;
+
+  EndpointGuardInterceptor({this.allowDebugEndpoints = kDebugMode});
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    if (isApprovedApiRequest(
+      options.uri,
+      allowDebugEndpoints: allowDebugEndpoints,
+    )) {
+      handler.next(options);
+      return;
+    }
+
+    handler.reject(
+      DioException(
+        requestOptions: options,
+        error: StateError('Request target is not an approved API endpoint.'),
+        type: DioExceptionType.unknown,
+      ),
+    );
+  }
+}
 
 class AuthInterceptor extends Interceptor {
+  final Dio dio;
   final String Function() getToken;
   final String Function()? getRefreshToken;
   final Future<bool> Function()? onRefreshToken;
   final void Function()? onAuthFailure;
 
   AuthInterceptor({
+    required this.dio,
     required this.getToken,
     this.getRefreshToken,
     this.onRefreshToken,
@@ -39,7 +67,7 @@ class AuthInterceptor extends Interceptor {
             final opts = err.requestOptions;
             opts.headers['Authorization'] = 'Bearer ${getToken()}';
             try {
-              final response = await Dio().fetch(opts);
+              final response = await dio.fetch(opts);
               handler.resolve(response);
               return;
             } catch (_) {}
@@ -104,7 +132,8 @@ class LoggingInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     debugPrint(
-        '[API ✗] ${err.response?.statusCode} ${err.requestOptions.uri}: ${err.message}');
+      '[API ✗] ${err.response?.statusCode} ${err.requestOptions.uri}: ${err.message}',
+    );
     handler.next(err);
   }
 }
@@ -119,29 +148,35 @@ class ErrorMappingInterceptor extends Interceptor {
     if (err.type == DioExceptionType.connectionTimeout ||
         err.type == DioExceptionType.sendTimeout ||
         err.type == DioExceptionType.receiveTimeout) {
-      handler.reject(DioException(
-        requestOptions: err.requestOptions,
-        error: NetworkException('Connection timed out'),
-        type: err.type,
-      ));
+      handler.reject(
+        DioException(
+          requestOptions: err.requestOptions,
+          error: NetworkException('Connection timed out'),
+          type: err.type,
+        ),
+      );
       return;
     }
 
     if (err.type == DioExceptionType.connectionError) {
-      handler.reject(DioException(
-        requestOptions: err.requestOptions,
-        error: NetworkException('No internet connection'),
-        type: err.type,
-      ));
+      handler.reject(
+        DioException(
+          requestOptions: err.requestOptions,
+          error: NetworkException('No internet connection'),
+          type: err.type,
+        ),
+      );
       return;
     }
 
     final apiError = parseApiError(map, statusCode);
-    handler.reject(DioException(
-      requestOptions: err.requestOptions,
-      error: apiError,
-      response: err.response,
-      type: err.type,
-    ));
+    handler.reject(
+      DioException(
+        requestOptions: err.requestOptions,
+        error: apiError,
+        response: err.response,
+        type: err.type,
+      ),
+    );
   }
 }

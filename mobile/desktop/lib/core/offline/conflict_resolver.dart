@@ -1,14 +1,4 @@
-import 'dart:convert';
-
-import 'package:flutter/foundation.dart';
-
-enum ConflictStrategy {
-  localWins,
-  remoteWins,
-  lastWriterWins,
-  manual,
-  merge,
-}
+enum ConflictStrategy { localWins, remoteWins, lastWriterWins, manual, merge }
 
 class ConflictRecord {
   final String entityType;
@@ -41,7 +31,10 @@ class ConflictResolution {
     this.detail,
   });
 
-  factory ConflictResolution.automatic(Map<String, dynamic> data, ConflictStrategy strategy) {
+  factory ConflictResolution.automatic(
+    Map<String, dynamic> data,
+    ConflictStrategy strategy,
+  ) {
     return ConflictResolution(
       resolved: true,
       resolvedData: data,
@@ -59,7 +52,10 @@ class ConflictResolver {
 
   ConflictResolver({this.defaultStrategy = ConflictStrategy.lastWriterWins});
 
-  ConflictResolution resolve(ConflictRecord record, {ConflictStrategy? strategy}) {
+  ConflictResolution resolve(
+    ConflictRecord record, {
+    ConflictStrategy? strategy,
+  }) {
     final s = strategy ?? defaultStrategy;
     switch (s) {
       case ConflictStrategy.localWins:
@@ -75,7 +71,9 @@ class ConflictResolver {
       case ConflictStrategy.lastWriterWins:
         return _resolveLww(record);
       case ConflictStrategy.manual:
-        return ConflictResolution.pending('Manual resolution required for ${record.entityType}:${record.entityId}');
+        return ConflictResolution.pending(
+          'Manual resolution required for ${record.entityType}:${record.entityId}',
+        );
       case ConflictStrategy.merge:
         return _resolveMerge(record);
     }
@@ -136,11 +134,16 @@ class ConflictResolver {
     return ConflictResolution.automatic(merged, ConflictStrategy.merge);
   }
 
-  static bool hasConflict(Map<String, dynamic> local, Map<String, dynamic> remote) {
+  static bool hasConflict(
+    Map<String, dynamic> local,
+    Map<String, dynamic> remote,
+  ) {
     if (local.isEmpty || remote.isEmpty) return false;
 
-    final localUpdated = local['updated_at'] as String? ?? local['updatedAt'] as String?;
-    final remoteUpdated = remote['updated_at'] as String? ?? remote['updatedAt'] as String?;
+    final localUpdated =
+        local['updated_at'] as String? ?? local['updatedAt'] as String?;
+    final remoteUpdated =
+        remote['updated_at'] as String? ?? remote['updatedAt'] as String?;
 
     if (localUpdated == null || remoteUpdated == null) return false;
 

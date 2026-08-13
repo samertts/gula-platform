@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from html import escape
+import json
 from typing import Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -22,6 +26,8 @@ from ..ehr.models import (
     MedicationRequest,
     MedicationStatement,
 )
+from ..fhir.terminology import observation_code, test_matches_code
+from ..models.audit_log import AuditLog
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
@@ -29,7 +35,17 @@ from ..national.domain.encounter import Encounter
 from ..security.dependencies import get_current_user
 from ..services import ehr_service
 
-router = APIRouter(prefix="/fhir", tags=["fhir"])
+class FHIRJSONResponse(JSONResponse):
+    """FHIR R4 JSON representation for successful external exchange requests."""
+
+    media_type = "application/fhir+json"
+
+
+router = APIRouter(
+    prefix="/fhir",
+    tags=["fhir"],
+    default_response_class=FHIRJSONResponse,
+)
 
 _SUPPORTED_CREATE = frozenset({
     "AllergyIntolerance", "CarePlan", "Composition", "Condition",
@@ -91,6 +107,19 @@ def _codeable_concept(
     if display and not code:
         result["text"] = display
     return result
+
+
+@router.get("/metadata", summary="FHIR CapabilityStatement")
+def fhir_metadata(
+    current_user: LabUser = Depends(get_current_user),
+):
+    """Expose the standard FHIR discovery resource to authenticated partners."""
+    # The dependency intentionally enforces the same tenant-aware authentication
+    # policy as every clinical exchange endpoint.
+    del current_user
+    from app.fhir._capabilities import get_capability_statement
+
+    return get_capability_statement()
 
 
 # ── Patient (proxy) ───────────────────────────────────────────────────────
@@ -357,7 +386,7 @@ def _lab_result_to_observation(result: LabResult, order: LabOrder) -> dict:
         "resourceType": "Observation",
         "id": str(result.id),
         "status": "final",
-        "code": _codeable_concept(result.test_name, result.test_name) or {"text": result.test_name},
+        "code": observation_code(result.test_name),
         "subject": {"reference": f"Patient/{order.patient_id}", "type": "Patient"},
         "effectiveDateTime": _fmt_fhir_datetime(order.created_at),
         "issued": _fmt_fhir_datetime(result.created_at),
@@ -409,9 +438,9 @@ def fhir_search_observation(
     )
     if patient:
         q = q.filter(LabOrder.patient_id == patient)
-    if code:
-        q = q.filter(LabResult.test_name.ilike(f"%{code}%"))
     results = q.order_by(LabResult.created_at.desc()).limit(100).all()
+    if code:
+        results = [result for result in results if test_matches_code(result.test_name, code)]
     entries = []
     for r in results:
         order = (
@@ -427,6 +456,132 @@ def fhir_search_observation(
     bundle["entry"] = entries
     bundle["total"] = len(entries)
     return bundle
+
+
+# ── Provenance (tamper-evident audit projection) ──────────────────────────
+
+
+def _audit_details(entry: AuditLog) -> dict[str, Any]:
+    """Read structured audit details safely; legacy text is deliberately ignored."""
+    if not entry.details:
+        return {}
+    try:
+        parsed = json.loads(entry.details)
+    except (TypeError, json.JSONDecodeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def _audit_log_to_provenance(entry: AuditLog, target: str) -> dict[str, Any]:
+    """Project a scoped, hash-chained audit event into a FHIR R4 Provenance."""
+    resource: dict[str, Any] = {
+        "resourceType": "Provenance",
+        "id": str(entry.id),
+        "target": [{"reference": target}],
+        "recorded": _fmt_fhir_datetime(entry.created_at),
+        "activity": {
+            "coding": [{
+                "system": "urn:gula:audit-action",
+                "code": entry.action,
+                "display": entry.action.replace(".", " ").title(),
+            }],
+        },
+        "agent": [{
+            "type": {"text": "authenticated user"},
+            "who": {"identifier": {"system": "urn:gula:user-id", "value": str(entry.user_id)}},
+        }],
+    }
+    if entry.chain_hash:
+        resource["extension"] = [{
+            "url": "https://gula.health/fhir/StructureDefinition/audit-chain-hash",
+            "valueString": entry.chain_hash,
+        }]
+    return resource
+
+
+@router.get("/Provenance", summary="FHIR Provenance search from tenant-scoped audit records")
+def fhir_search_provenance(
+    target: str = Query(..., description="FHIR target reference, for example Observation/123"),
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return audit lineage for one target without exposing another tenant's events."""
+    if "/" not in target or target.startswith("/") or target.endswith("/"):
+        raise HTTPException(status_code=422, detail="target must be a FHIR ResourceType/id reference")
+
+    resource_type, resource_id = target.split("/", 1)
+    if not resource_type or not resource_id or "/" in resource_id:
+        raise HTTPException(status_code=422, detail="target must be a FHIR ResourceType/id reference")
+
+    events = (
+        db.query(AuditLog)
+        .filter(AuditLog.lab_id == current_user.lab_id, AuditLog.resource_type == "FHIR")
+        .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+        .limit(500)
+        .all()
+    )
+    matching_events = [
+        event
+        for event in events
+        if _audit_details(event).get("fhir_resource_type") == resource_type
+        and _audit_details(event).get("fhir_resource_id") == resource_id
+    ]
+    return {
+        "resourceType": "Bundle",
+        "type": "searchset",
+        "total": len(matching_events),
+        "entry": [
+            {"fullUrl": f"Provenance/{event.id}", "resource": _audit_log_to_provenance(event, target)}
+            for event in matching_events
+        ],
+    }
+
+
+# ── Aggregate population health analytics (no patient identifiers) ─────────
+
+
+@router.get("/analytics/population-summary", summary="Aggregate laboratory population summary")
+def fhir_population_summary(
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Provide a tenant-local aggregate only; no patient or result values are returned."""
+    rows = (
+        db.query(LabResult.flag, func.count(LabResult.id))
+        .join(LabOrder, LabResult.order_id == LabOrder.id)
+        .filter(LabOrder.lab_id == current_user.lab_id)
+        .group_by(LabResult.flag)
+        .all()
+    )
+    distribution = {str(flag or "unflagged"): int(count) for flag, count in rows}
+    total = sum(distribution.values())
+    critical_count = sum(
+        count
+        for flag, count in distribution.items()
+        if flag.strip().casefold() in {"critical", "crit", "c"}
+    )
+    result_distribution = [
+        {
+            "name": "resultDistribution",
+            "part": [
+                {"name": "flag", "valueString": flag},
+                {"name": "count", "valueInteger": count},
+            ],
+        }
+        for flag, count in sorted(distribution.items())
+    ]
+    return {
+        "resourceType": "Parameters",
+        "parameter": [
+            {"name": "testVolume", "valueInteger": total},
+            {"name": "criticalValueCount", "valueInteger": critical_count},
+            {
+                "name": "criticalValueRate",
+                "valueDecimal": round(critical_count / total, 6) if total else 0,
+            },
+            *result_distribution,
+        ],
+    }
 
 
 # ── MedicationRequest ────────────────────────────────────────────────────
@@ -991,7 +1146,9 @@ def fhir_read_composition(
 
 
 def _clinical_note_to_composition(rec: ClinicalNote) -> dict:
-    section_text = rec.content or ""
+    # Clinical notes are user-authored. Escape them before embedding in a FHIR
+    # Narrative XHTML div so downstream renderers never execute supplied markup.
+    section_text = escape(rec.content or "")
     return {
         "resourceType": "Composition",
         "id": rec.id,
@@ -1071,6 +1228,16 @@ def fhir_search_composition(
 
 
 # ── Bundle / Patient-everything ──────────────────────────────────────────
+
+
+@router.get("/Patient/{patient_id}/$everything", summary="FHIR Patient $everything operation")
+def fhir_patient_everything(
+    patient_id: str,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return the tenant-scoped FHIR R4 record collection for one patient."""
+    return fhir_read_bundle(patient_id, current_user, db)
 
 
 @router.get("/Bundle/{bundle_id}", summary="FHIR Bundle read - returns patient-everything")
@@ -1187,7 +1354,7 @@ def fhir_read_bundle(
     return {
         "resourceType": "Bundle",
         "id": bundle_id,
-        "type": "searchset",
+        "type": "collection",
         "entry": entries,
         "total": len(entries),
     }
@@ -1214,7 +1381,6 @@ def fhir_create_resource(
     if patient_id and resource_type != "Patient":
         ehr_service.get_national_patient_or_404(db, patient_id, current_user.lab_id)
     _create_fhir_resource(db, resource_type, resource_id, body, patient_id, encounter_id, current_user, now)
-    db.commit()
     return {"resourceType": resource_type, "id": resource_id}
 
 
@@ -1238,7 +1404,6 @@ def fhir_update_resource(
     patient_id = _extract_patient_ref(body)
     encounter_id = _extract_encounter_ref(body)
     _update_fhir_resource(db, resource_type, resource_id, body, patient_id, encounter_id, current_user, now)
-    db.commit()
     return {"resourceType": resource_type, "id": resource_id}
 
 
@@ -1263,7 +1428,6 @@ def fhir_delete_resource(
         record.deleted_at = datetime.now(UTC)
     if hasattr(record, "deleted_by"):
         record.deleted_by = current_user.id
-    db.commit()
     return {"resourceType": resource_type, "id": resource_id, "status": "deleted"}
 
 

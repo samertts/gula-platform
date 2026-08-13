@@ -12,9 +12,12 @@ class AppPermissions {
   static Future<bool> requestPhotos() => _request(Permission.photos);
   static Future<bool> requestLocation() => _request(Permission.location);
   static Future<bool> requestBluetooth() => _request(Permission.bluetooth);
-  static Future<bool> requestBluetoothScan() => _request(Permission.bluetoothScan);
-  static Future<bool> requestBluetoothConnect() => _request(Permission.bluetoothConnect);
-  static Future<bool> requestNotification() => _request(Permission.notification);
+  static Future<bool> requestBluetoothScan() =>
+      _request(Permission.bluetoothScan);
+  static Future<bool> requestBluetoothConnect() =>
+      _request(Permission.bluetoothConnect);
+  static Future<bool> requestNotification() =>
+      _request(Permission.notification);
   static Future<bool> requestReminders() => _request(Permission.reminders);
 
   static Future<bool> requestPrint() async {

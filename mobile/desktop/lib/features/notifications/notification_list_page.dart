@@ -6,14 +6,14 @@ import '../../widgets/core/gula_loading.dart';
 import '../../widgets/data/notification_tile.dart';
 import '../../widgets/layout/section_header.dart';
 import '../../widgets/layout/page_container.dart';
-import '../../core/theme/app_colors.dart';
 import 'notification_provider.dart';
 
 class NotificationListPage extends ConsumerStatefulWidget {
   const NotificationListPage({super.key});
 
   @override
-  ConsumerState<NotificationListPage> createState() => _NotificationListPageState();
+  ConsumerState<NotificationListPage> createState() =>
+      _NotificationListPageState();
 }
 
 class _NotificationListPageState extends ConsumerState<NotificationListPage> {
@@ -37,7 +37,12 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
             title: 'Notifications',
             subtitle: '${state.unreadCount} unread',
             trailing: state.unreadCount > 0
-                ? GulaButton(label: 'Mark All Read', variant: GulaButtonVariant.text, onPressed: () => ref.read(notificationListProvider).markAllAsRead())
+                ? GulaButton(
+                    label: 'Mark All Read',
+                    variant: GulaButtonVariant.text,
+                    onPressed: () =>
+                        ref.read(notificationListProvider).markAllAsRead(),
+                  )
                 : null,
           ),
           const SizedBox(height: 16),
@@ -48,22 +53,27 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
   }
 
   Widget _buildList(NotificationProvider state) {
-    if (state.isLoading) return const GulaLoading(type: GulaLoadingType.shimmer);
+    if (state.isLoading)
+      return const GulaLoading(type: GulaLoadingType.shimmer);
 
     return ListView.separated(
       itemCount: state.notifications.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final n = state.notifications[index];
+        final id = n['id']?.toString() ?? '';
+        final createdAt =
+            DateTime.tryParse(n['createdAt']?.toString() ?? '') ??
+            DateTime.now();
         return NotificationTile(
-          id: n['id'],
-          title: n['title'],
-          body: n['body'],
-          type: n['type'],
-          severity: n['severity'],
+          id: id,
+          title: n['title']?.toString() ?? '',
+          body: n['body']?.toString() ?? '',
+          type: n['type']?.toString() ?? '',
+          severity: n['severity']?.toString() ?? '',
           isRead: n['isRead'] == 1,
-          createdAt: DateTime.parse(n['createdAt']),
-          onTap: () => ref.read(notificationListProvider).markAsRead(n['id']),
+          createdAt: createdAt,
+          onTap: () => ref.read(notificationListProvider).markAsRead(id),
         );
       },
     );

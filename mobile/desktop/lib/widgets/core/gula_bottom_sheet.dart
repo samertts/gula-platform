@@ -78,15 +78,21 @@ class GulaBottomSheet {
       title: title,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: options.map((option) => ListTile(
-          leading: option.icon != null ? Icon(option.icon) : null,
-          title: Text(option.label),
-          subtitle: option.subtitle != null ? Text(option.subtitle!) : null,
-          trailing: option.trailing,
-          onTap: () {
-            Navigator.of(context).pop(option.value);
-          },
-        )).toList(),
+        children: options
+            .map(
+              (option) => ListTile(
+                leading: option.icon != null ? Icon(option.icon) : null,
+                title: Text(option.label),
+                subtitle: option.subtitle != null
+                    ? Text(option.subtitle!)
+                    : null,
+                trailing: option.trailing,
+                onTap: () {
+                  Navigator.of(context).pop(option.value);
+                },
+              ),
+            )
+            .toList(),
       ),
     );
   }

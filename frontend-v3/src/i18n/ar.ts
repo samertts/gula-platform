@@ -8,6 +8,7 @@ const ar = {
     citizenWorkspace: "مساحتي الصحية",
     patients: "المرضى",
     orders: "الطلبات",
+    reports: "التقارير",
     results: "النتائج",
     samples: "العينات",
     labs: "المختبرات",

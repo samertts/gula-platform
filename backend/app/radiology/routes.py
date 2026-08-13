@@ -5,12 +5,14 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
+from app.models.patient import Patient
 from app.radiology.device import (
     DeviceMonitoringService,
     ModalityWorklistService,
@@ -24,6 +26,7 @@ from app.radiology.pacs import (
     ImageViewerService,
 )
 from app.radiology.services import RadiologyService
+from app.security.dependencies import get_current_user
 
 logger = logging.getLogger("gula.radiology.routes")
 
@@ -242,6 +245,51 @@ def _get_study_service(db: Session) -> DICOMStudyService:
     return DICOMStudyService(db)
 
 
+def _patient_for_user(db: Session, current_user: LabUser, patient_id: str) -> Patient:
+    conditions = [Patient.health_id == patient_id]
+    try:
+        conditions.append(Patient.id == int(patient_id))
+    except (TypeError, ValueError):
+        pass
+    patient = db.query(Patient).filter(
+        Patient.lab_id == current_user.lab_id,
+        or_(*conditions),
+    ).first()
+    if patient is None:
+        raise HTTPException(status_code=404, detail="Patient not found in the current laboratory")
+    return patient
+
+
+def _tenant_patient_keys(db: Session, current_user: LabUser) -> set[str]:
+    rows = db.query(Patient.id, Patient.health_id).filter(Patient.lab_id == current_user.lab_id).all()
+    keys: set[str] = set()
+    for patient_id, health_id in rows:
+        keys.add(str(patient_id))
+        if health_id:
+            keys.add(str(health_id))
+    return keys
+
+
+def _critical_finding_for_user(db: Session, current_user: LabUser, finding_id: str):
+    svc = _get_radiology_service(db)
+    finding = svc.get_critical_finding(finding_id)
+    if finding is None:
+        raise HTTPException(status_code=404, detail="Critical finding not found")
+    exam = svc.get_exam(finding.exam_id)
+    if exam is None:
+        raise HTTPException(status_code=404, detail="Critical finding not found")
+    _patient_for_user(db, current_user, exam.patient_id)
+    return finding
+
+
+def _study_for_user(db: Session, current_user: LabUser, study_uid: str):
+    study = _get_study_service(db).get_study(study_uid)
+    if study is None:
+        raise HTTPException(status_code=404, detail="Study not found")
+    _patient_for_user(db, current_user, study.patient_id)
+    return study
+
+
 # ==============================================================================
 # Order & Scheduling
 # ==============================================================================
@@ -251,8 +299,9 @@ def _get_study_service(db: Session) -> DICOMStudyService:
 def create_order(
     data: RadiologyOrderCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _patient_for_user(db, current_user, data.patient_id)
     svc = _get_radiology_service(db)
     order = svc.create_order(
         patient_id=data.patient_id,
@@ -282,9 +331,12 @@ def list_orders(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    if patient_id:
+        _patient_for_user(db, current_user, patient_id)
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from) if date_from else None
     to_ = datetime.fromisoformat(date_to) if date_to else None
     orders = svc.search_orders(
@@ -296,35 +348,9 @@ def list_orders(
         priority=priority,
         skip=skip,
         limit=limit,
+        patient_ids=tenant_patient_ids,
     )
     return {"items": [_to_dict(o) for o in orders], "total": len(orders), "skip": skip, "limit": limit}
-
-
-@router.get("/orders/{order_id}")
-def get_order(
-    order_id: str,
-    db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
-):
-    svc = _get_radiology_service(db)
-    order = svc.get_order(order_id)
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    return _to_dict(order)
-
-
-@router.put("/orders/{order_id}/status")
-def update_order_status(
-    order_id: str,
-    data: OrderStatusUpdate,
-    db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
-):
-    svc = _get_radiology_service(db)
-    order = svc.update_order_status(order_id, data.status)
-    if not order:
-        raise HTTPException(status_code=404, detail="Order not found")
-    return _to_dict(order)
 
 
 @router.get("/orders/search")
@@ -337,9 +363,12 @@ def search_orders(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    if patient_id:
+        _patient_for_user(db, current_user, patient_id)
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from) if date_from else None
     to_ = datetime.fromisoformat(date_to) if date_to else None
     orders = svc.search_orders(
@@ -350,8 +379,42 @@ def search_orders(
         date_to=to_,
         skip=skip,
         limit=limit,
+        patient_ids=tenant_patient_ids,
     )
     return {"items": [_to_dict(o) for o in orders], "total": len(orders), "skip": skip, "limit": limit}
+
+
+@router.get("/orders/{order_id}")
+def get_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+):
+    svc = _get_radiology_service(db)
+    order = svc.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    _patient_for_user(db, current_user, order.patient_id)
+    return _to_dict(order)
+
+
+@router.put("/orders/{order_id}/status")
+def update_order_status(
+    order_id: str,
+    data: OrderStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+):
+    svc = _get_radiology_service(db)
+    order = svc.get_order(order_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    _patient_for_user(db, current_user, order.patient_id)
+    updated = svc.update_order_status(order_id, data.status)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return _to_dict(updated)
+
 
 
 @router.get("/appointments")
@@ -364,9 +427,12 @@ def list_appointments(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    if patient_id:
+        _patient_for_user(db, current_user, patient_id)
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from) if date_from else None
     to_ = datetime.fromisoformat(date_to) if date_to else None
     apps = svc.list_appointments(
@@ -377,6 +443,7 @@ def list_appointments(
         status=status,
         skip=skip,
         limit=limit,
+        patient_ids=tenant_patient_ids,
     )
     return {"items": [_to_dict(a) for a in apps], "total": len(apps), "skip": skip, "limit": limit}
 
@@ -385,8 +452,9 @@ def list_appointments(
 def create_appointment(
     data: RadiologyAppointmentCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _patient_for_user(db, current_user, data.patient_id)
     svc = _get_radiology_service(db)
     appt = svc.schedule_appointment(
         order_id=data.order_id,
@@ -410,9 +478,13 @@ def create_appointment(
 def checkin_appointment(
     appointment_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    appt = svc.get_appointment(appointment_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    _patient_for_user(db, current_user, appt.patient_id)
     appt = svc.check_in_appointment(appointment_id)
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
@@ -423,9 +495,13 @@ def checkin_appointment(
 def arrive_appointment(
     appointment_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    appt = svc.get_appointment(appointment_id)
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+    _patient_for_user(db, current_user, appt.patient_id)
     appt = svc.arrive_appointment(appointment_id)
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
@@ -436,12 +512,13 @@ def arrive_appointment(
 def get_appointment(
     appointment_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     appt = svc.get_appointment(appointment_id)
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
+    _patient_for_user(db, current_user, appt.patient_id)
     return _to_dict(appt)
 
 
@@ -461,9 +538,12 @@ def list_exams(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    if patient_id:
+        _patient_for_user(db, current_user, patient_id)
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from) if date_from else None
     to_ = datetime.fromisoformat(date_to) if date_to else None
     exams = svc.list_exams(
@@ -475,6 +555,7 @@ def list_exams(
         technologist_id=technologist_id,
         skip=skip,
         limit=limit,
+        patient_ids=tenant_patient_ids,
     )
     return {"items": [_to_dict(e) for e in exams], "total": len(exams), "skip": skip, "limit": limit}
 
@@ -483,8 +564,9 @@ def list_exams(
 def create_exam(
     data: RadiologyExamCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _patient_for_user(db, current_user, data.patient_id)
     svc = _get_radiology_service(db)
     exam = svc.create_exam(
         order_id=data.order_id,
@@ -508,12 +590,13 @@ def create_exam(
 def get_exam(
     exam_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     exam = svc.get_exam(exam_id)
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
+    _patient_for_user(db, current_user, exam.patient_id)
     return _to_dict(exam)
 
 
@@ -522,9 +605,13 @@ def update_exam_status(
     exam_id: str,
     data: RadiologyExamStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    existing = svc.get_exam(exam_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Exam not found")
+    _patient_for_user(db, current_user, existing.patient_id)
     exam = svc.update_exam_status(exam_id, data.status)
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
@@ -536,9 +623,13 @@ def update_exam_images(
     exam_id: str,
     data: RadiologyExamImagesUpdate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    existing = svc.get_exam(exam_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Exam not found")
+    _patient_for_user(db, current_user, existing.patient_id)
     exam = svc.update_exam_images(exam_id, data.images_count, data.series_count)
     if not exam:
         raise HTTPException(status_code=404, detail="Exam not found")
@@ -550,11 +641,12 @@ def technologist_worklist(
     modality: str | None = None,
     date: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     date_ = datetime.fromisoformat(date) if date else datetime.now(UTC)
-    exams = svc.get_technologist_worklist(modality=modality, date=date_)
+    exams = svc.get_technologist_worklist(modality=modality, date=date_, patient_ids=tenant_patient_ids)
     return {"items": [_to_dict(e) for e in exams], "total": len(exams)}
 
 
@@ -563,10 +655,11 @@ def radiologist_worklist(
     status: str | None = None,
     priority: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
-    exams = svc.get_radiologist_worklist(status=status, priority=priority)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
+    exams = svc.get_radiologist_worklist(status=status, priority=priority, patient_ids=tenant_patient_ids)
     return {"items": [_to_dict(e) for e in exams], "total": len(exams)}
 
 
@@ -574,10 +667,13 @@ def radiologist_worklist(
 def modality_worklist(
     device_id: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
-    entries = svc.get_modality_worklist(modality_device_id=device_id)
+    entries = svc.get_modality_worklist(
+        modality_device_id=device_id,
+        patient_ids=_tenant_patient_keys(db, current_user),
+    )
     return {"items": [_to_dict(e) for e in entries], "total": len(entries)}
 
 
@@ -591,7 +687,7 @@ def list_protocols(
     modality: str | None = None,
     body_part: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     protocols = svc.list_protocols(modality=modality, body_part=body_part)
@@ -602,7 +698,7 @@ def list_protocols(
 def create_protocol(
     data: ProtocolCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     protocol = svc.create_protocol(
@@ -627,7 +723,7 @@ def create_protocol(
 def get_protocol(
     protocol_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     protocol = svc.get_protocol(protocol_id)
@@ -651,9 +747,12 @@ def list_reports(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    if patient_id:
+        _patient_for_user(db, current_user, patient_id)
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from) if date_from else None
     to_ = datetime.fromisoformat(date_to) if date_to else None
     reports = svc.search_reports(
@@ -664,6 +763,40 @@ def list_reports(
         date_to=to_,
         skip=skip,
         limit=limit,
+        patient_ids=tenant_patient_ids,
+    )
+    return {"items": [_to_dict(r) for r in reports], "total": len(reports), "skip": skip, "limit": limit}
+
+
+@router.get("/reports/search")
+def search_reports(
+    patient_id: str | None = None,
+    radiologist_id: str | None = None,
+    status: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    critical: bool | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+):
+    if patient_id:
+        _patient_for_user(db, current_user, patient_id)
+    svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
+    from_ = datetime.fromisoformat(date_from) if date_from else None
+    to_ = datetime.fromisoformat(date_to) if date_to else None
+    reports = svc.search_reports(
+        patient_id=patient_id,
+        radiologist_id=radiologist_id,
+        status=status,
+        date_from=from_,
+        date_to=to_,
+        critical_finding=critical,
+        skip=skip,
+        limit=limit,
+        patient_ids=tenant_patient_ids,
     )
     return {"items": [_to_dict(r) for r in reports], "total": len(reports), "skip": skip, "limit": limit}
 
@@ -672,8 +805,9 @@ def list_reports(
 def create_report(
     data: RadiologyReportCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _patient_for_user(db, current_user, data.patient_id)
     svc = _get_radiology_service(db)
     report = svc.create_report(
         exam_id=data.exam_id,
@@ -699,12 +833,13 @@ def create_report(
 def get_report(
     report_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     report = svc.get_report(report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
+    _patient_for_user(db, current_user, report.patient_id)
     return _to_dict(report)
 
 
@@ -713,9 +848,13 @@ def save_report_draft(
     report_id: str,
     data: RadiologyReportDraftUpdate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    existing = svc.get_report(report_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Report not found")
+    _patient_for_user(db, current_user, existing.patient_id)
     report = svc.save_report_draft(
         report_id=report_id,
         findings=data.findings,
@@ -734,9 +873,13 @@ def finalize_report(
     report_id: str,
     data: RadiologyReportFinalize,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    existing = svc.get_report(report_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Report not found")
+    _patient_for_user(db, current_user, existing.patient_id)
     report = svc.finalize_report(report_id, radiologist_id=data.radiologist_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
@@ -748,9 +891,13 @@ def amend_report(
     report_id: str,
     data: RadiologyReportAmend,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    existing = svc.get_report(report_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Report not found")
+    _patient_for_user(db, current_user, existing.patient_id)
     report = svc.amend_report(
         report_id=report_id,
         findings=data.findings,
@@ -768,42 +915,18 @@ def amend_report(
 def verify_report(
     report_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    existing = svc.get_report(report_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Report not found")
+    _patient_for_user(db, current_user, existing.patient_id)
     report = svc.verify_report(report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Report not found")
     return _to_dict(report)
 
-
-@router.get("/reports/search")
-def search_reports(
-    patient_id: str | None = None,
-    radiologist_id: str | None = None,
-    status: str | None = None,
-    date_from: str | None = None,
-    date_to: str | None = None,
-    critical: bool | None = None,
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
-    db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
-):
-    svc = _get_radiology_service(db)
-    from_ = datetime.fromisoformat(date_from) if date_from else None
-    to_ = datetime.fromisoformat(date_to) if date_to else None
-    reports = svc.search_reports(
-        patient_id=patient_id,
-        radiologist_id=radiologist_id,
-        status=status,
-        date_from=from_,
-        date_to=to_,
-        critical_finding=critical,
-        skip=skip,
-        limit=limit,
-    )
-    return {"items": [_to_dict(r) for r in reports], "total": len(reports), "skip": skip, "limit": limit}
 
 
 @router.get("/report-templates")
@@ -811,7 +934,7 @@ def list_report_templates(
     modality: str | None = None,
     body_part: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     templates = svc.list_report_templates(modality=modality, body_part=body_part)
@@ -822,7 +945,7 @@ def list_report_templates(
 def create_report_template(
     data: ReportTemplateCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
     template = svc.create_report_template(
@@ -842,19 +965,6 @@ def create_report_template(
 # ==============================================================================
 
 
-@router.get("/studies/{study_uid}")
-def get_study(
-    study_uid: str,
-    db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
-):
-    svc = _get_study_service(db)
-    study = svc.get_study(study_uid)
-    if not study:
-        raise HTTPException(status_code=404, detail="Study not found")
-    return _to_dict(study)
-
-
 @router.get("/studies/search")
 def search_studies(
     patient_id: str | None = None,
@@ -866,9 +976,12 @@ def search_studies(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    if patient_id:
+        _patient_for_user(db, current_user, patient_id)
     svc = _get_study_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from) if date_from else None
     to_ = datetime.fromisoformat(date_to) if date_to else None
     studies = svc.search_studies(
@@ -880,16 +993,29 @@ def search_studies(
         study_description=study_description,
         skip=skip,
         limit=limit,
+        patient_ids=tenant_patient_ids,
     )
     return {"items": [_to_dict(s) for s in studies], "total": len(studies), "skip": skip, "limit": limit}
+
+
+@router.get("/studies/{study_uid}")
+def get_study(
+    study_uid: str,
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+):
+    study = _study_for_user(db, current_user, study_uid)
+    return _to_dict(study)
+
 
 
 @router.get("/studies/{study_uid}/series")
 def get_study_series(
     study_uid: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _study_for_user(db, current_user, study_uid)
     svc = _get_storage_service(db)
     instances = svc.get_study_instances(study_uid)
     series_set: dict[str, dict[str, Any]] = {}
@@ -910,10 +1036,11 @@ def get_series_images(
     study_uid: str,
     series_uid: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _study_for_user(db, current_user, study_uid)
     svc = _get_storage_service(db)
-    instances = svc.get_series_instances(series_uid)
+    instances = svc.get_series_instances(series_uid, study_instance_uid=study_uid)
     return {"items": [_to_dict(i) for i in instances], "total": len(instances)}
 
 
@@ -921,8 +1048,12 @@ def get_series_images(
 def view_image(
     image_uid: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    record = _get_storage_service(db).retrieve(image_uid)
+    if not record:
+        raise HTTPException(status_code=404, detail="Image not found")
+    _patient_for_user(db, current_user, record.patient_id)
     viewer = ImageViewerService(db)
     url = viewer.get_streaming_url(image_uid)
     if not url:
@@ -934,12 +1065,13 @@ def view_image(
 def download_image(
     image_uid: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     storage_svc = _get_storage_service(db)
     record = storage_svc.retrieve(image_uid)
     if not record:
         raise HTTPException(status_code=404, detail="Image not found")
+    _patient_for_user(db, current_user, record.patient_id)
     return {
         "sop_instance_uid": record.sop_instance_uid,
         "file_path": record.file_path,
@@ -952,8 +1084,9 @@ def download_image(
 def create_share(
     data: ImageShareCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _study_for_user(db, current_user, data.study_uid)
     sharing = ImageSharingService(db)
     share = sharing.create_share(
         study_uid=data.study_uid,
@@ -970,9 +1103,13 @@ def create_share(
 def revoke_share(
     share_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     sharing = ImageSharingService(db)
+    share = sharing.get_share(share_id)
+    if not share:
+        raise HTTPException(status_code=404, detail="Share not found")
+    _study_for_user(db, current_user, share.study_uid)
     revoked = sharing.revoke_share(share_id)
     if not revoked:
         raise HTTPException(status_code=404, detail="Share not found or already revoked")
@@ -984,8 +1121,9 @@ def get_study_thumbnail(
     study_uid: str,
     size: int = Query(256, ge=32, le=1024),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _study_for_user(db, current_user, study_uid)
     storage_svc = _get_storage_service(db)
     instances = storage_svc.get_study_instances(study_uid)
     if not instances:
@@ -1006,7 +1144,7 @@ def list_devices(
     modality_type: str | None = None,
     status: str | None = None,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     device_svc = DeviceMonitoringService(db)
     devices = device_svc.list_devices(modality_type=modality_type, status=status)
@@ -1017,7 +1155,7 @@ def list_devices(
 def register_device(
     data: ModalityDeviceCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     device_svc = DeviceMonitoringService(db)
     device = device_svc.register_device(
@@ -1044,7 +1182,7 @@ def update_device_status(
     device_id: str,
     data: DeviceStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     device_svc = DeviceMonitoringService(db)
     device = device_svc.update_device_status(device_id, data.status)
@@ -1057,10 +1195,13 @@ def update_device_status(
 def get_device_worklist(
     device_id: str,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     wl_svc = ModalityWorklistService(db)
-    entries = wl_svc.get_worklist_for_device(device_id)
+    entries = wl_svc.get_worklist_for_device(
+        device_id,
+        patient_ids=_tenant_patient_keys(db, current_user),
+    )
     return {"items": [_to_dict(e) for e in entries], "total": len(entries)}
 
 
@@ -1068,7 +1209,7 @@ def get_device_worklist(
 def receive_mpps(
     data: MPPSReceive,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     mpps_handler = MPPSHandler(db)
     mpps_data = {
@@ -1089,7 +1230,7 @@ def receive_mpps(
 @router.get("/device-health")
 def get_device_health(
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     device_svc = DeviceMonitoringService(db)
     stale = device_svc.detect_stale_devices()
@@ -1116,9 +1257,16 @@ def list_critical_findings(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    if exam_id:
+        svc = _get_radiology_service(db)
+        exam = svc.get_exam(exam_id)
+        if exam is None:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        _patient_for_user(db, current_user, exam.patient_id)
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from) if date_from else None
     to_ = datetime.fromisoformat(date_to) if date_to else None
     findings = svc.list_critical_findings(
@@ -1129,6 +1277,7 @@ def list_critical_findings(
         date_to=to_,
         skip=skip,
         limit=limit,
+        patient_ids=tenant_patient_ids,
     )
     return {"items": [_to_dict(f) for f in findings], "total": len(findings), "skip": skip, "limit": limit}
 
@@ -1137,9 +1286,18 @@ def list_critical_findings(
 def create_critical_finding(
     data: CriticalFindingCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    exam = svc.get_exam(data.exam_id)
+    if exam is None:
+        raise HTTPException(status_code=404, detail="Exam not found")
+    _patient_for_user(db, current_user, exam.patient_id)
+    if data.report_id:
+        report = svc.get_report(data.report_id)
+        if report is None:
+            raise HTTPException(status_code=404, detail="Report not found")
+        _patient_for_user(db, current_user, report.patient_id)
     finding = svc.create_critical_finding(
         exam_id=data.exam_id,
         finding_type=data.finding_type,
@@ -1158,8 +1316,9 @@ def acknowledge_critical_finding(
     finding_id: str,
     data: CriticalFindingAcknowledge,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _critical_finding_for_user(db, current_user, finding_id)
     svc = _get_radiology_service(db)
     finding = svc.acknowledge_critical_finding(
         finding_id=finding_id,
@@ -1177,8 +1336,9 @@ def notify_critical_finding(
     notified_by: str = Query(...),
     notified_to: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _critical_finding_for_user(db, current_user, finding_id)
     svc = _get_radiology_service(db)
     finding = svc.notify_critical_finding(
         finding_id=finding_id,
@@ -1200,14 +1360,15 @@ def get_dashboard(
     date_from: str = Query(...),
     date_to: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from)
     to_ = datetime.fromisoformat(date_to)
-    volume = svc.get_exam_volume(from_, to_)
-    tat = svc.get_report_tat(from_, to_)
-    utilization = svc.get_modality_utilization(from_, to_)
+    volume = svc.get_exam_volume(from_, to_, patient_ids=tenant_patient_ids)
+    tat = svc.get_report_tat(from_, to_, patient_ids=tenant_patient_ids)
+    utilization = svc.get_modality_utilization(from_, to_, patient_ids=tenant_patient_ids)
     return {
         "exam_volume": volume,
         "report_tat": tat,
@@ -1220,13 +1381,14 @@ def get_workload(
     date_from: str = Query(...),
     date_to: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from)
     to_ = datetime.fromisoformat(date_to)
-    radiologist_workload = svc.get_workload_by_radiologist(from_, to_)
-    technologist_workload = svc.get_workload_by_technologist(from_, to_)
+    radiologist_workload = svc.get_workload_by_radiologist(from_, to_, patient_ids=tenant_patient_ids)
+    technologist_workload = svc.get_workload_by_technologist(from_, to_, patient_ids=tenant_patient_ids)
     return {
         "radiologists": radiologist_workload,
         "technologists": technologist_workload,
@@ -1238,12 +1400,13 @@ def get_report_tat(
     date_from: str = Query(...),
     date_to: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from)
     to_ = datetime.fromisoformat(date_to)
-    return svc.get_report_tat(from_, to_)
+    return svc.get_report_tat(from_, to_, patient_ids=tenant_patient_ids)
 
 
 @router.get("/dashboard/modality-utilization")
@@ -1251,12 +1414,13 @@ def get_modality_utilization(
     date_from: str = Query(...),
     date_to: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
     svc = _get_radiology_service(db)
+    tenant_patient_ids = _tenant_patient_keys(db, current_user)
     from_ = datetime.fromisoformat(date_from)
     to_ = datetime.fromisoformat(date_to)
-    return {"items": svc.get_modality_utilization(from_, to_)}
+    return {"items": svc.get_modality_utilization(from_, to_, patient_ids=tenant_patient_ids)}
 
 
 # ==============================================================================
@@ -1271,14 +1435,16 @@ def citizen_reports(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _patient_for_user(db, current_user, patient_id)
     svc = _get_radiology_service(db)
     reports = svc.search_reports(
         patient_id=patient_id,
         status=status,
         skip=skip,
         limit=limit,
+        patient_ids=_tenant_patient_keys(db, current_user),
     )
     items = []
     for r in reports:
@@ -1292,8 +1458,9 @@ def citizen_reports(
 def citizen_images(
     patient_id: str = Query(...),
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _patient_for_user(db, current_user, patient_id)
     storage_svc = _get_storage_service(db)
     records = storage_svc.query(patient_id=patient_id)
     viewer = ImageViewerService(db)
@@ -1311,8 +1478,9 @@ def citizen_images(
 def citizen_create_share(
     data: ImageShareCreate,
     db: Session = Depends(get_db),
-    current_user: LabUser = Depends(lambda: None),
+    current_user: LabUser = Depends(get_current_user),
 ):
+    _study_for_user(db, current_user, data.study_uid)
     sharing = ImageSharingService(db)
     share = sharing.create_share(
         study_uid=data.study_uid,

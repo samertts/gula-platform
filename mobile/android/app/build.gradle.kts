@@ -1,3 +1,6 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -11,30 +14,46 @@ android {
     namespace = "io.gula.android"
     compileSdk = 35
 
-    defaultConfig {
-        applicationId = "io.gula.android"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables { useSupportLibrary = true }
+    signingConfigs {
+        create("release") {
+            val propsFile = rootProject.file("signing.properties")
+            if (propsFile.exists()) {
+                val props = Properties().apply {
+                    load(FileInputStream(propsFile))
+                }
+                storeFile = file(props.getProperty("storeFile"))
+                storePassword = props.getProperty("storePassword")
+                keyAlias = props.getProperty("keyAlias")
+                keyPassword = props.getProperty("keyPassword")
+            }
+        }
     }
 
-    buildTypes {
-        debug {
-            isMinifyEnabled = false
-            buildConfigField("String", "API_BASE_URL", "\"https://staging.gulaplatform.com/api/v1/\"")
-            buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://staging-api.gulaplatform.com/\"")
+        defaultConfig {
+            applicationId = "io.gula.android"
+            minSdk = 26
+            targetSdk = 35
+            versionCode = 1
+            versionName = "1.0.0"
+            testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+            vectorDrawables { useSupportLibrary = true }
         }
-        release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            buildConfigField("String", "API_BASE_URL", "\"https://api.gulaplatform.com/api/v1/\"")
-            buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://api.gulaplatform.com/\"")
+
+        buildTypes {
+            debug {
+                isMinifyEnabled = false
+                buildConfigField("String", "API_BASE_URL", "\"https://staging.gulaplatform.com/api/v1/\"")
+                buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://staging-api.gulaplatform.com/\"")
+            }
+            release {
+                isMinifyEnabled = true
+                isShrinkResources = true
+                signingConfig = signingConfigs.getByName("release")
+                proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+                buildConfigField("String", "API_BASE_URL", "\"https://api.gula-platform.org/api/v1/\"")
+                buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://api.gula-platform.org/\"")
+            }
         }
-    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -77,8 +96,8 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.8")
 
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.55.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.55.1")
+    implementation("com.google.dagger:hilt-android:2.55")
+    ksp("com.google.dagger:hilt-android-compiler:2.55")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     implementation("androidx.hilt:hilt-work:1.2.0")
     ksp("androidx.hilt:hilt-compiler:1.2.0")
@@ -109,6 +128,9 @@ dependencies {
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
+    // Runtime permissions for Compose
+    implementation("com.google.accompanist:accompanist-permissions:0.37.3")
+
     // CameraX
     val cameraxVersion = "1.5.0"
     implementation("androidx.camera:camera-core:$cameraxVersion")
@@ -120,10 +142,10 @@ dependencies {
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
     // Biometric
-    implementation("androidx.biometric:biometric:1.4.0")
+    implementation("androidx.biometric:biometric:1.1.0")
 
     // Security (EncryptedSharedPreferences)
-    implementation("androidx.security:security-crypto:1.1.0-alpha08")
+    implementation("androidx.security:security-crypto:1.1.0")
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.7.0")
@@ -139,6 +161,7 @@ dependencies {
     testImplementation("app.cash.turbine:turbine:1.2.0")
     testImplementation("io.mockk:mockk:1.13.14")
 
+    androidTestImplementation(composeBom)
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
@@ -148,5 +171,5 @@ dependencies {
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.0")
 
     // Desugaring
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.2.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

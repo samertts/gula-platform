@@ -51,40 +51,16 @@ actor APIAuthMiddleware {
 
         let task = Task<String, Error> {
             defer { refreshTask = nil }
-
-            guard let url = URL(string: "\(APIClient.shared.baseURL)/auth/refresh") else {
-                throw APIError.unknown
-            }
-
-            var request = URLRequest(url: url)
-            request.httpMethod = "POST"
-            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            let body = ["refresh_token": refreshToken]
-            request.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                throw APIError.unknown
-            }
-
-            guard httpResponse.statusCode == 200 else {
+            do {
+                // APIClient owns the pinned URLSession; never use the shared system
+                // session for an authenticated or token-refresh request.
+                let newToken = try await APIClient.shared.refreshTokenForMiddleware(refreshToken)
+                currentToken = newToken
+                return newToken
+            } catch {
                 await AuthManager.shared.forceLogout()
-                throw APIError.authentication
+                throw error
             }
-
-            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-            guard let newToken = json?["access_token"] as? String else {
-                throw APIError.authentication
-            }
-
-            currentToken = newToken
-            KeychainManager.shared.set(key: "access_token", value: newToken)
-
-            if let newRefresh = json?["refresh_token"] as? String {
-                KeychainManager.shared.set(key: "refresh_token", value: newRefresh)
-            }
-
-            return newToken
         }
 
         refreshTask = task

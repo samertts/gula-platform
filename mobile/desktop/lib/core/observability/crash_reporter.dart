@@ -16,29 +16,26 @@ class CrashReporter {
     if (!enableInDebug && kDebugMode) return;
 
     try {
-      await SentryFlutter.init(
-        (options) {
-          options.dsn = dsn ?? AppConstants.sentryDsn;
-          options.tracesSampleRate = 0.2;
-          options.enableAppHangTracking = true;
-          options.enableAutoPerformanceTracing = true;
-          options.enableAutoSessionTracking = true;
-          options.attachScreenshot = true;
-          options.attachViewHierarchy = true;
-          options.maxBreadcrumbs = 100;
-          options.debug = kDebugMode;
-          options.environment = kDebugMode ? 'development' : 'production';
-          options.reportPackages = true;
-          options.sendDefaultPii = false;
-          options.beforeSend = (event, hint) {
-            if (kDebugMode) {
-              debugPrint('[Sentry] Event: ${event.eventId}');
-            }
-            return event;
-          };
-        },
-        appRunner: () {},
-      );
+      await SentryFlutter.init((options) {
+        options.dsn = dsn ?? AppConstants.sentryDsn;
+        options.tracesSampleRate = 0.2;
+        options.enableAppHangTracking = true;
+        options.enableAutoPerformanceTracing = true;
+        options.enableAutoSessionTracking = true;
+        options.attachScreenshot = true;
+        options.attachViewHierarchy = true;
+        options.maxBreadcrumbs = 100;
+        options.debug = kDebugMode;
+        options.environment = kDebugMode ? 'development' : 'production';
+        options.reportPackages = true;
+        options.sendDefaultPii = false;
+        options.beforeSend = (event, hint) {
+          if (kDebugMode) {
+            debugPrint('[Sentry] Event: ${event.eventId}');
+          }
+          return event;
+        };
+      }, appRunner: () {});
       _initialized = true;
     } catch (e) {
       debugPrint('Sentry init error: $e');
@@ -63,7 +60,7 @@ class CrashReporter {
             }
           }
           if (level != null) {
-            scope.setLevel(SentryLevel.fromName(level));
+            scope.level = SentryLevel.fromName(level);
           }
         },
       );
@@ -88,7 +85,7 @@ class CrashReporter {
             }
           }
           if (level != null) {
-            scope.setLevel(SentryLevel.fromName(level));
+            scope.level = SentryLevel.fromName(level);
           }
         },
       );
@@ -105,11 +102,7 @@ class CrashReporter {
     if (!_initialized) return;
     try {
       Sentry.configureScope((scope) {
-        scope.setUser(SentryUser(
-          id: id,
-          email: email,
-          username: username,
-        ));
+        scope.setUser(SentryUser(id: id, email: email, username: username));
       });
     } catch (e) {
       debugPrint('Sentry setUser error: $e');
@@ -135,12 +128,14 @@ class CrashReporter {
   }) async {
     if (!_initialized) return;
     try {
-      Sentry.addBreadcrumb(Breadcrumb(
-        message: message,
-        category: category,
-        level: level != null ? SentryLevel.fromName(level) : SentryLevel.info,
-        data: data,
-      ));
+      Sentry.addBreadcrumb(
+        Breadcrumb(
+          message: message,
+          category: category,
+          level: level != null ? SentryLevel.fromName(level) : SentryLevel.info,
+          data: data,
+        ),
+      );
     } catch (e) {
       debugPrint('Sentry breadcrumb error: $e');
     }

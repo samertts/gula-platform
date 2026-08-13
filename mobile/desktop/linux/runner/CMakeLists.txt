@@ -1,49 +1,25 @@
 cmake_minimum_required(VERSION 3.13)
-project(gula_desktop LANGUAGES CXX)
+project(runner LANGUAGES CXX)
 
-set(BINARY_NAME "gula_desktop")
-set(FLUTTER_MANAGED_DIR "../flutter")
-
-cmake_policy(SET CMP0063 NEW)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-add_subdirectory(${FLUTTER_MANAGED_DIR} flutter)
-
-set(RUNNER_SOURCES
-  main.cc
-  my_application.cc
-  my_application.h
+# Define the application target. To change its name, change BINARY_NAME in the
+# top-level CMakeLists.txt, not the value here, or `flutter run` will no longer
+# work.
+#
+# Any new source files that you add to the application should be added here.
+add_executable(${BINARY_NAME}
+  "main.cc"
+  "my_application.cc"
+  "${FLUTTER_MANAGED_DIR}/generated_plugin_registrant.cc"
 )
 
-add_executable(${BINARY_NAME} ${RUNNER_SOURCES})
+# Apply the standard set of build settings. This can be removed for applications
+# that need different build settings.
+apply_standard_settings(${BINARY_NAME})
 
-target_include_directories(${BINARY_NAME} PRIVATE
-  "${CMAKE_CURRENT_SOURCE_DIR}"
-  "${FLUTTER_MANAGED_DIR}"
-)
+# Add preprocessor definitions for the application ID.
+add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
 
-target_link_libraries(${BINARY_NAME} PRIVATE
-  flutter_wrapper_plugin
-  flutter_wrapper_app
-  PkgConfig::GTK
-  PkgConfig::GLIB
-  PkgConfig::atk
-  PkgConfig::cairo
-  PkgConfig::pango
-  PkgConfig::freetype2
-  PkgConfig::fontconfig
-  PkgConfig::x11
-)
-
-add_dependencies(${BINARY_NAME} flutter_assemble)
-
-install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
-
-# AppImage packaging support
-install(FILES "${CMAKE_SOURCE_DIR}/linux/resources/gula_desktop.desktop"
-  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/applications")
-install(FILES "${CMAKE_SOURCE_DIR}/linux/resources/gula_desktop.png"
-  DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/icons/hicolor/512x512/apps")
+# Add dependency libraries. Add any application-specific dependencies here.
+target_link_libraries(${BINARY_NAME} PRIVATE flutter)
+target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
+target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")

@@ -68,7 +68,8 @@ class TamperDetection {
   static Future<void> _checkDebugMode() async {
     _isDebugMode = false;
     try {
-      _isDebugMode = Platform.environment.containsKey('FLUTTER_TEST') ||
+      _isDebugMode =
+          Platform.environment.containsKey('FLUTTER_TEST') ||
           Platform.environment['DEBUG'] == 'true';
     } catch (_) {}
   }
@@ -77,7 +78,11 @@ class TamperDetection {
     _isEmulator = false;
     try {
       if (Platform.isAndroid) {
-        final props = ['ro.hardware', 'ro.build.fingerprint', 'ro.product.model'];
+        final props = [
+          'ro.hardware',
+          'ro.build.fingerprint',
+          'ro.product.model',
+        ];
         for (final prop in props) {
           try {
             final result = await Process.run('getprop', [prop]);

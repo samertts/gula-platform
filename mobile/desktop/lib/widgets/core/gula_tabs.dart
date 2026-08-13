@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 
 class GulaTab {
   final String label;
@@ -77,8 +76,14 @@ class _GulaTabsState extends State<GulaTabs> with TickerProviderStateMixin {
           indicatorWeight: 3,
           labelColor: AppColors.primary700,
           unselectedLabelColor: AppColors.textSecondary,
-          labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+          labelStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+          ),
           tabs: widget.tabs.map((tab) {
             return Tab(
               child: Row(
@@ -92,14 +97,20 @@ class _GulaTabsState extends State<GulaTabs> with TickerProviderStateMixin {
                   if (tab.badgeCount != null) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.error500,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         '${tab.badgeCount}',
-                        style: const TextStyle(color: Colors.white, fontSize: 11),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],

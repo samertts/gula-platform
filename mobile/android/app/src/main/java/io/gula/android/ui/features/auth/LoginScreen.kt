@@ -18,7 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.gula.android.ui.components.core.GulaButton
-import io.gula.android.ui.components.core.GulaButtonVariant
+import io.gula.android.ui.components.core.ButtonVariant
 import io.gula.android.ui.components.core.GulaTextField
 
 @Composable
@@ -101,7 +101,7 @@ fun LoginScreen(
         if (uiState.error != null) {
             Spacer(Modifier.height(8.dp))
             Text(
-                text = uiState.error,
+                text = uiState.error.orEmpty(),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,
@@ -123,7 +123,7 @@ fun LoginScreen(
             GulaButton(
                 onClick = { viewModel.loginWithBiometric() },
                 text = "Login with Biometrics",
-                variant = GulaButtonVariant.OUTLINE,
+                variant = ButtonVariant.OUTLINE,
                 icon = Icons.Default.Fingerprint,
                 modifier = Modifier.fillMaxWidth(),
             )

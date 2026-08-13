@@ -71,8 +71,20 @@ def background_tasks_enabled() -> bool:
 # ─── App Info ────────────────────────────────────────────────────────────────
 APP_NAME = "GULA Platform"
 APP_VERSION = "2.5.0"
-BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+BASE_URL = os.getenv("BASE_URL", "")
+if not BASE_URL:
+    if IS_PRODUCTION:
+        sys.exit("BASE_URL must be set in production")
+    BASE_URL = "http://localhost:8000"
+elif IS_PRODUCTION and not BASE_URL.startswith("https://"):
+    sys.exit("BASE_URL must use HTTPS in production")
 PLATFORM_NAME_AR = "منصة غولا الصحية"
+
+# ─── Telegram access control ─────────────────────────────────────────────────
+# Only this Telegram numeric user ID may send messages to the platform.
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_ADMIN_USER_ID = os.getenv("TELEGRAM_ADMIN_USER_ID", "").strip()
+TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
 
 # ─── Database ────────────────────────────────────────────────────────────────
 DATABASE_URL = os.getenv("DATABASE_URL", "")
@@ -113,6 +125,12 @@ def _is_weak_secret(value: str) -> bool:
     return any(pat in lower for pat in _WEAK_PATTERNS)
 
 
+def _validate_production_secret(name: str, value: str) -> None:
+    """Fail fast when a production secret is missing strength requirements."""
+    if IS_PRODUCTION and (len(value) < 32 or _is_weak_secret(value)):
+        sys.exit(f"{name} must be a strong random secret of at least 32 characters")
+
+
 # ─── JWT Access Token ────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 if not SECRET_KEY:
@@ -120,8 +138,8 @@ if not SECRET_KEY:
         sys.exit(1)
     SECRET_KEY = secrets.token_urlsafe(64)
     logger.warning("SECRET_KEY not set - using random key. Sessions won't survive restarts.")
-elif IS_PRODUCTION and _is_weak_secret(SECRET_KEY):
-    sys.exit(1)
+elif IS_PRODUCTION:
+    _validate_production_secret("SECRET_KEY", SECRET_KEY)
 
 JWT_ALGORITHM = "HS256"
 # JWT_EXPIRE_MINUTES is the primary setting (default: 15 min).
@@ -142,8 +160,12 @@ if not REFRESH_TOKEN_SECRET:
     logger.warning(
         "REFRESH_TOKEN_SECRET not set - using random key. Set it in .env for production.",
     )
+elif IS_PRODUCTION:
+    _validate_production_secret("REFRESH_TOKEN_SECRET", REFRESH_TOKEN_SECRET)
 
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+if REFRESH_TOKEN_EXPIRE_DAYS < 1 or REFRESH_TOKEN_EXPIRE_DAYS > 30:
+    sys.exit("REFRESH_TOKEN_EXPIRE_DAYS must be between 1 and 30 days")
 
 # ─── Encryption ──────────────────────────────────────────────────────────────
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
@@ -151,8 +173,8 @@ if not ENCRYPTION_KEY:
     if IS_PRODUCTION:
         sys.exit(1)
     logger.warning("ENCRYPTION_KEY not set. Set it in .env for production.")
-elif IS_PRODUCTION and _is_weak_secret(ENCRYPTION_KEY):
-    sys.exit(1)
+elif IS_PRODUCTION:
+    _validate_production_secret("ENCRYPTION_KEY", ENCRYPTION_KEY)
 
 # ─── National ID HMAC ────────────────────────────────────────────────────────
 # Must NOT change in production or existing lookups will break
@@ -171,6 +193,10 @@ if not AUDIT_ANCHOR_KEY:
         sys.exit(1)
     AUDIT_ANCHOR_KEY = NID_HMAC_KEY
     logger.warning("AUDIT_ANCHOR_KEY not set. Set in .env for production.")
+
+if IS_PRODUCTION:
+    _validate_production_secret("NID_HMAC_KEY", NID_HMAC_KEY)
+    _validate_production_secret("AUDIT_ANCHOR_KEY", AUDIT_ANCHOR_KEY)
 
 # ─── Result Links ────────────────────────────────────────────────────────────
 RESULT_TOKEN_LENGTH = 32
@@ -196,6 +222,8 @@ STARTUP_TIMEOUT_SECONDS = int(os.getenv("STARTUP_TIMEOUT_SECONDS", "120"))
 # For full cross-process session invalidation and rate limiting, set REDIS_URL.
 REDIS_URL = os.getenv("REDIS_URL", "")
 if not REDIS_URL:
+    if IS_PRODUCTION:
+        sys.exit("REDIS_URL must be set in production for shared revocation and rate limiting")
     logger.warning(
         "REDIS_URL not set — using in-memory store (not shared across workers). "
         "Set REDIS_URL for full rate-limiting and cross-process session invalidation.",

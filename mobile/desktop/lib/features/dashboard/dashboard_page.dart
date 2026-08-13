@@ -66,7 +66,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
   Widget _buildKpiGrid(DashboardState state) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 800 ? 3 : 2);
+        final crossAxisCount = constraints.maxWidth > 1200
+            ? 4
+            : (constraints.maxWidth > 800 ? 3 : 2);
         return GridView.count(
           crossAxisCount: crossAxisCount,
           shrinkWrap: true,
@@ -153,10 +155,14 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               SizedBox(
                 height: 250,
                 child: BarChartWidget(
-                  data: state.ordersByDay.map((d) => BarChartData(
-                    label: d['day'] as String,
-                    value: (d['orders'] as num).toDouble(),
-                  )).toList(),
+                  data: state.ordersByDay
+                      .map(
+                        (d) => BarChartData(
+                          label: d['day'] as String,
+                          value: (d['orders'] as num).toDouble(),
+                        ),
+                      )
+                      .toList(),
                   showLegend: false,
                 ),
               ),
@@ -171,7 +177,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             children: [
               SectionHeader(title: 'Recent Activity'),
               const SizedBox(height: 12),
-              ...state.recentActivities.take(5).map((activity) => _buildActivityItem(activity)),
+              ...state.recentActivities
+                  .take(5)
+                  .map((activity) => _buildActivityItem(activity)),
             ],
           ),
         ),
@@ -194,10 +202,26 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 height: 200,
                 child: PieChartWidget(
                   data: [
-                    PieChartDataItem(label: 'Completed', value: 45, color: AppColors.success500),
-                    PieChartDataItem(label: 'Pending', value: 15, color: AppColors.warning500),
-                    PieChartDataItem(label: 'Validated', value: 30, color: AppColors.info500),
-                    PieChartDataItem(label: 'Critical', value: 3, color: AppColors.error500),
+                    PieChartDataItem(
+                      label: 'Completed',
+                      value: 45,
+                      color: AppColors.success500,
+                    ),
+                    PieChartDataItem(
+                      label: 'Pending',
+                      value: 15,
+                      color: AppColors.warning500,
+                    ),
+                    PieChartDataItem(
+                      label: 'Validated',
+                      value: 30,
+                      color: AppColors.info500,
+                    ),
+                    PieChartDataItem(
+                      label: 'Critical',
+                      value: 3,
+                      color: AppColors.error500,
+                    ),
                   ],
                   showLegend: true,
                 ),
@@ -270,9 +294,21 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(activity.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(
+                  activity.title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 if (activity.subtitle != null)
-                  Text(activity.subtitle!, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                  Text(
+                    activity.subtitle!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
               ],
             ),
           ),

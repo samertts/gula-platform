@@ -6,8 +6,9 @@ import 'package:flutter/foundation.dart';
 class ConnectivityService {
   final Connectivity _connectivity = Connectivity();
   final ValueNotifier<bool> isOnline = ValueNotifier(true);
-  final ValueNotifier<ConnectivityResult> connectionType =
-      ValueNotifier(ConnectivityResult.wifi);
+  final ValueNotifier<ConnectivityResult> connectionType = ValueNotifier(
+    ConnectivityResult.wifi,
+  );
 
   StreamSubscription<List<ConnectivityResult>>? _subscription;
   bool _initialized = false;
@@ -29,10 +30,12 @@ class ConnectivityService {
   }
 
   void _updateStatus(List<ConnectivityResult> results) {
-    final hasConnection = results.any((r) =>
-        r == ConnectivityResult.mobile ||
-        r == ConnectivityResult.wifi ||
-        r == ConnectivityResult.ethernet);
+    final hasConnection = results.any(
+      (r) =>
+          r == ConnectivityResult.mobile ||
+          r == ConnectivityResult.wifi ||
+          r == ConnectivityResult.ethernet,
+    );
 
     isOnline.value = hasConnection;
 

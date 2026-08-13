@@ -1,5 +1,6 @@
 package io.gula.android.data.remote.interceptor
 
+import io.gula.android.BuildConfig
 import io.gula.android.security.EncryptedPrefs
 import kotlinx.coroutines.runBlocking
 import okhttp3.Authenticator
@@ -7,6 +8,8 @@ import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Route
 import org.json.JSONObject
 import javax.inject.Inject
@@ -54,17 +57,14 @@ class AuthInterceptor @Inject constructor(
                 val json = JSONObject().apply {
                     put("refresh_token", refreshToken)
                 }
-                val body = okhttp3.RequestBody.create(
-                    okhttp3.MediaType.parse("application/json"),
-                    json.toString()
-                )
+                val body = json.toString().toRequestBody("application/json".toMediaType())
                 val request = Request.Builder()
-                    .url("${BASE_URL}auth/refresh")
+                    .url("${BuildConfig.API_BASE_URL}auth/refresh")
                     .post(body)
                     .build()
                 val response = client.newCall(request).execute()
                 if (response.isSuccessful) {
-                    val bodyStr = response.body()?.string()
+                    val bodyStr = response.body?.string()
                     val jsonResponse = JSONObject(bodyStr)
                     val newAccessToken = jsonResponse.optString("access_token")
                     val newRefreshToken = jsonResponse.optString("refresh_token")
@@ -83,9 +83,6 @@ class AuthInterceptor @Inject constructor(
         }
     }
 
-    companion object {
-        private const val BASE_URL = "https://api.gulaplatform.com/api/v1/"
-    }
 }
 
 @Singleton
@@ -102,17 +99,14 @@ class TokenAuthenticator @Inject constructor(
                     return try {
                         val client = OkHttpClient.Builder().build()
                         val json = JSONObject().apply { put("refresh_token", refreshToken) }
-                        val body = okhttp3.RequestBody.create(
-                            okhttp3.MediaType.parse("application/json"),
-                            json.toString()
-                        )
+                        val body = json.toString().toRequestBody("application/json".toMediaType())
                         val refreshRequest = Request.Builder()
-                            .url("${response.request.url.scheme()}://${response.request.url.host()}/auth/refresh")
+                            .url("${BuildConfig.API_BASE_URL}auth/refresh")
                             .post(body)
                             .build()
                         val refreshResponse = client.newCall(refreshRequest).execute()
                         if (refreshResponse.isSuccessful) {
-                            val bodyStr = refreshResponse.body()?.string()
+                            val bodyStr = refreshResponse.body?.string()
                             val jsonResponse = JSONObject(bodyStr)
                             val newAccessToken = jsonResponse.optString("access_token")
                             if (newAccessToken.isNotBlank()) {

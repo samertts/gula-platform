@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 import '../core/gula_sidebar.dart';
 import '../core/gula_app_bar.dart';
 import '../core/gula_offline_banner.dart';
 import '../core/gula_sync_indicator.dart';
 import '../../core/providers/app_providers.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class DesktopScaffold extends ConsumerStatefulWidget {
@@ -37,7 +36,8 @@ class _DesktopScaffoldState extends ConsumerState<DesktopScaffold> {
                 children: [
                   GulaSidebar(
                     isCollapsed: _sidebarCollapsed,
-                    onToggle: () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
+                    onToggle: () =>
+                        setState(() => _sidebarCollapsed = !_sidebarCollapsed),
                     userRole: authProvider.userRole ?? '',
                     userName: authProvider.userName ?? '',
                     userEmail: authProvider.userEmail ?? '',
@@ -46,7 +46,9 @@ class _DesktopScaffoldState extends ConsumerState<DesktopScaffold> {
                     child: Column(
                       children: [
                         GulaAppBar(
-                          onMenuTap: () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
+                          onMenuTap: () => setState(
+                            () => _sidebarCollapsed = !_sidebarCollapsed,
+                          ),
                           syncIndicator: GulaSyncIndicator(
                             status: syncProvider.status,
                             progress: syncProvider.progress,
@@ -56,9 +58,7 @@ class _DesktopScaffoldState extends ConsumerState<DesktopScaffold> {
                           userName: authProvider.userName,
                           onLogout: () => authProvider.logout(),
                         ),
-                        Expanded(
-                          child: widget.child,
-                        ),
+                        Expanded(child: widget.child),
                       ],
                     ),
                   ),

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.ai_fabric.agents.base import AgentContext
 from app.ai_fabric.governance import EvaluationDimension, PromptStatus, PromptVersion
@@ -13,10 +13,15 @@ from app.ai_fabric.public_health import (
 )
 from app.ai_fabric.rag import SearchMode
 from app.ai_fabric.sdk import UnifiedAISDK
+from app.security.dependencies import get_current_user, require_permission
 
 logger = logging.getLogger("gula.ai_fabric.routes")
 
-router = APIRouter(prefix="/ai/fabric", tags=["AI Fabric"])
+router = APIRouter(
+    prefix="/ai/fabric",
+    tags=["AI Fabric"],
+    dependencies=[Depends(get_current_user)],
+)
 sdk = UnifiedAISDK()
 
 
@@ -59,7 +64,12 @@ async def rag_query(query: str = Query(..., min_length=1), collection: str = "de
 
 
 @router.post("/rag/index")
-async def rag_index(collection: str, texts: list[str], sources: list[str] | None = None):
+async def rag_index(
+    collection: str,
+    texts: list[str],
+    sources: list[str] | None = None,
+    _current_user=Depends(require_permission("system:admin")),
+):
     from app.ai_fabric.rag import Chunk
     chunks = [Chunk(text=text, source=sources[i] if sources and i < len(sources) else "") for i, text in enumerate(texts)]
     count = await sdk.rag.index_documents(collection, chunks)
@@ -184,14 +194,24 @@ async def ph_outbreak_detect(disease: str, region: str, cases: list[dict[str, An
 
 
 @router.post("/governance/prompt/register")
-async def gov_prompt_register(name: str, content: str, version: str = "1.0.0", author: str = ""):
+async def gov_prompt_register(
+    name: str,
+    content: str,
+    version: str = "1.0.0",
+    author: str = "",
+    _current_user=Depends(require_permission("system:admin")),
+):
     prompt = PromptVersion(name=name, content=content, version=version, author=author)
     sdk.governance.prompt_registry.register(prompt)
     return {"id": prompt.id, "name": name, "version": version}
 
 
 @router.get("/governance/prompt/{name}")
-async def gov_prompt_get(name: str, version: str | None = None):
+async def gov_prompt_get(
+    name: str,
+    version: str | None = None,
+    _current_user=Depends(require_permission("system:admin")),
+):
     prompt = sdk.governance.prompt_registry.get(name, version)
     if not prompt:
         raise HTTPException(404, f"Prompt {name} v{version or 'latest'} not found")
@@ -199,7 +219,12 @@ async def gov_prompt_get(name: str, version: str | None = None):
 
 
 @router.post("/governance/promote")
-async def gov_prompt_promote(name: str, version: str, status: str):
+async def gov_prompt_promote(
+    name: str,
+    version: str,
+    status: str,
+    _current_user=Depends(require_permission("system:admin")),
+):
     target = PromptStatus(status) if status in ("draft", "review", "approved", "active", "deprecated", "retired") else PromptStatus.ACTIVE
     prompt = sdk.governance.prompt_registry.promote(name, version, target)
     if not prompt:
@@ -208,12 +233,22 @@ async def gov_prompt_promote(name: str, version: str, status: str):
 
 
 @router.post("/governance/model/submit")
-async def gov_model_submit(model_name: str, version: str, submitted_by: str):
+async def gov_model_submit(
+    model_name: str,
+    version: str,
+    submitted_by: str,
+    _current_user=Depends(require_permission("system:admin")),
+):
     return sdk.governance.model_approval.submit(model_name, version, submitted_by)
 
 
 @router.post("/governance/model/approve")
-async def gov_model_approve(model_name: str, version: str, reviewer: str):
+async def gov_model_approve(
+    model_name: str,
+    version: str,
+    reviewer: str,
+    _current_user=Depends(require_permission("system:admin")),
+):
     record = sdk.governance.model_approval.approve(model_name, version, reviewer)
     if not record:
         raise HTTPException(404, "Model approval record not found")
@@ -221,7 +256,13 @@ async def gov_model_approve(model_name: str, version: str, reviewer: str):
 
 
 @router.post("/governance/evaluate")
-async def gov_evaluate(model: str, version: str, dimension: str, score: float):
+async def gov_evaluate(
+    model: str,
+    version: str,
+    dimension: str,
+    score: float,
+    _current_user=Depends(require_permission("system:admin")),
+):
     dim = EvaluationDimension(dimension) if dimension in ("accuracy", "bias", "safety", "hallucination", "toxicity", "fairness", "robustness") else EvaluationDimension.ACCURACY
     result = sdk.governance.evaluation_framework.evaluate(model, version, dim, score)
     return {"model": model, "dimension": dim.value, "score": result.score, "passed": result.passed}
@@ -253,17 +294,17 @@ async def obs_model_performance(model: str):
 
 
 @router.post("/security/inspect-input")
-async def sec_inspect_input(text: str):
+async def sec_inspect_input(text: str, _current_user=Depends(require_permission("system:admin"))):
     return sdk.firewall.inspect_input(text)
 
 
 @router.post("/security/inspect-output")
-async def sec_inspect_output(text: str):
+async def sec_inspect_output(text: str, _current_user=Depends(require_permission("system:admin"))):
     return sdk.firewall.inspect_output(text)
 
 
 @router.post("/security/redact")
-async def sec_redact(text: str):
+async def sec_redact(text: str, _current_user=Depends(require_permission("system:admin"))):
     result = sdk.firewall.pii.redact(text)
     return {"redacted": result.redacted_text, "pii_types": result.pii_types_found, "count": result.count}
 
@@ -279,13 +320,20 @@ async def agent_statistics():
 
 
 @router.post("/agents/run")
-async def run_agent(agent_name: str, action: str, user_id: str = "", lab_id: str = "", **kwargs: Any):
+async def run_agent(
+    agent_name: str,
+    action: str,
+    user_id: str = "",
+    lab_id: str = "",
+    _current_user=Depends(require_permission("system:admin")),
+    **kwargs: Any,
+):
     context = AgentContext(user_id=user_id, lab_id=lab_id)
     return sdk.agent_registry.get_by_name(agent_name).run(context, kwargs | {"action": action}) if sdk.agent_registry.get_by_name(agent_name) else {"error": f"Agent {agent_name} not found"}
 
 
 @router.post("/agents/initialize-all")
-async def initialize_agents():
+async def initialize_agents(_current_user=Depends(require_permission("system:admin"))):
     count = sdk.agent_registry.initialize_all()
     return {"initialized": count}
 

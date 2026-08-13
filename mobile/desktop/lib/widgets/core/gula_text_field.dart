@@ -10,6 +10,7 @@ class GulaTextField extends StatelessWidget {
   final String? helperText;
   final TextEditingController? controller;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
   final FormFieldSetter<String>? onSaved;
   final String? Function(String?)? validator;
   final TextInputType? keyboardType;
@@ -41,6 +42,7 @@ class GulaTextField extends StatelessWidget {
     this.helperText,
     this.controller,
     this.onChanged,
+    this.onSubmitted,
     this.onSaved,
     this.validator,
     this.keyboardType,
@@ -74,6 +76,7 @@ class GulaTextField extends StatelessWidget {
       controller: controller,
       initialValue: initialValue,
       onChanged: onChanged,
+      onFieldSubmitted: onSubmitted,
       onSaved: onSaved,
       validator: validator,
       keyboardType: keyboardType,
@@ -100,11 +103,17 @@ class GulaTextField extends StatelessWidget {
         suffixIcon: suffixIcon != null
             ? InkWell(
                 onTap: onSuffixIconTap,
-                child: Icon(suffixIcon, size: 20, color: AppColors.textSecondary),
+                child: Icon(
+                  suffixIcon,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
               )
             : suffix,
         filled: true,
-        fillColor: fillColor ?? (enabled ? AppColors.surfaceLight : AppColors.neutral50),
+        fillColor:
+            fillColor ??
+            (enabled ? AppColors.surfaceLight : AppColors.neutral50),
         contentPadding: EdgeInsets.symmetric(
           horizontal: isRtl ? 16 : 12,
           vertical: 12,
@@ -134,13 +143,21 @@ class GulaTextField extends StatelessWidget {
           borderSide: const BorderSide(color: AppColors.neutral200),
         ),
         labelStyle: TextStyle(
-          color: errorText != null ? AppColors.error500 : AppColors.textSecondary,
+          color: errorText != null
+              ? AppColors.error500
+              : AppColors.textSecondary,
           fontSize: 14,
         ),
         hintStyle: const TextStyle(color: AppColors.neutral400, fontSize: 14),
         errorStyle: const TextStyle(color: AppColors.error500, fontSize: 12),
-        helperStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-        counterStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+        helperStyle: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 12,
+        ),
+        counterStyle: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+        ),
       ),
     );
   }

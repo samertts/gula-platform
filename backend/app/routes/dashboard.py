@@ -138,7 +138,6 @@ def dashboard(
                 "normal_range_high": r.normal_range_high,
                 "flag": r.flag,
                 "date": r.created_at.isoformat() if r.created_at else None,
-                "token": r.token,
             },
         )
 

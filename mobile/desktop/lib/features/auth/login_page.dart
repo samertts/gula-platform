@@ -55,7 +55,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Login failed: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'Login failed: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: AppColors.error500,
           ),
         );
@@ -75,7 +77,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Demo mode unavailable: ${e.toString().replaceAll('Exception: ', '')}'),
+            content: Text(
+              'Demo mode unavailable: ${e.toString().replaceAll('Exception: ', '')}',
+            ),
             backgroundColor: AppColors.warning500,
           ),
         );
@@ -106,7 +110,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       color: AppColors.primary500,
                       borderRadius: BorderRadius.all(Radius.circular(16)),
                     ),
-                    child: const Icon(Icons.science, color: Colors.white, size: 32),
+                    child: const Icon(
+                      Icons.science,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
                   const SizedBox(height: 24),
                   const Text(
@@ -133,7 +141,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     prefixIcon: Icons.email_outlined,
-                    validator: (v) => AppValidators.required(v, fieldName: 'Email'),
+                    validator: (v) =>
+                        AppValidators.required(v, fieldName: 'Email'),
                   ),
                   const SizedBox(height: 16),
                   GulaTextField(
@@ -143,9 +152,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
                     prefixIcon: Icons.lock_outlined,
-                    suffixIcon: _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                    onSuffixIconTap: () => setState(() => _obscurePassword = !_obscurePassword),
-                    validator: (v) => AppValidators.required(v, fieldName: 'Password'),
+                    suffixIcon: _obscurePassword
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    onSuffixIconTap: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                    validator: (v) =>
+                        AppValidators.required(v, fieldName: 'Password'),
                     onChanged: (_) => setState(() {}),
                   ),
                   const SizedBox(height: 12),
@@ -160,11 +173,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             width: 24,
                             child: Checkbox(
                               value: _rememberMe,
-                              onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                              onChanged: (v) =>
+                                  setState(() => _rememberMe = v ?? false),
                             ),
                           ),
                           const SizedBox(width: 8),
-                          const Text('Remember me', style: TextStyle(fontSize: 13)),
+                          const Text(
+                            'Remember me',
+                            style: TextStyle(fontSize: 13),
+                          ),
                         ],
                       ),
                       GestureDetector(
@@ -190,14 +207,23 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   ),
                   const SizedBox(height: 12),
                   TextButton.icon(
-                    onPressed: _isDemoLoading || _isLoading ? null : _handleDemo,
+                    onPressed: _isDemoLoading || _isLoading
+                        ? null
+                        : _handleDemo,
                     icon: const Icon(Icons.shield_outlined),
-                    label: Text(_isDemoLoading ? 'Opening isolated demo...' : 'View isolated demo'),
+                    label: Text(
+                      _isDemoLoading
+                          ? 'Opening isolated demo...'
+                          : 'View isolated demo',
+                    ),
                   ),
                   const Text(
                     'Synthetic data only; no production access.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),

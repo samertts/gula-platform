@@ -6,10 +6,13 @@ import os
 import time
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+
+from config import DEFAULT_API_BASE_URL, validate_api_base_url
 
 logger = logging.getLogger("nhdw.api")
 
@@ -49,7 +52,7 @@ class ApiClient:
         if hasattr(self, "_initialized") and self._initialized:
             return
         self._initialized = True
-        self.base_url = base_url.rstrip("/")
+        self.base_url = validate_api_base_url(base_url or DEFAULT_API_BASE_URL)
         self.timeout = timeout
         self.token: str | None = None
         self.refresh_token: str | None = None
@@ -64,10 +67,9 @@ class ApiClient:
         self._session = requests.Session()
         adapter = HTTPAdapter(max_retries=retry_strategy, pool_connections=10, pool_maxsize=20)
         self._session.mount("https://", adapter)
-        self._session.mount("http://", adapter)
 
     def set_base_url(self, url: str):
-        self.base_url = url.rstrip("/")
+        self.base_url = validate_api_base_url(url)
         self._refresh_url = f"{self.base_url}/auth/refresh"
 
     @property
@@ -80,6 +82,7 @@ class ApiClient:
                 f"{self.base_url}/auth/login",
                 json={"username": username, "password": password},
                 timeout=self.timeout,
+                allow_redirects=False,
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -119,6 +122,7 @@ class ApiClient:
                 self._refresh_url,
                 json={"refresh_token": self.refresh_token},
                 timeout=self.timeout,
+                allow_redirects=False,
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -151,6 +155,7 @@ class ApiClient:
     def _request(self, method: str, endpoint: str, **kwargs) -> Any:
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
         kwargs.setdefault("timeout", self.timeout)
+        kwargs.setdefault("allow_redirects", False)
         kwargs["headers"] = {**self._get_headers(), **kwargs.pop("headers", {})}
 
         for attempt in range(2):
@@ -200,8 +205,21 @@ class ApiClient:
         return resp.json()
 
     def download_file(self, url: str, dest_path: str | Path):
+        target_url = url if url.startswith(("https://", "http://")) else f"{self.base_url}/{url.lstrip('/')}"
+        parsed = urlparse(target_url)
+        if parsed.scheme != "https" or (parsed.hostname or "").lower().rstrip(".") not in {
+            "api.gula-platform.org",
+            "staging-api.gula-platform.org",
+        }:
+            raise NetworkError("Download URL is not an approved HTTPS API endpoint")
         headers = {"Authorization": f"Bearer {self.token}"} if self.token else {}
-        resp = self._session.get(url, headers=headers, timeout=self.timeout * 2, stream=True)
+        resp = self._session.get(
+            target_url,
+            headers=headers,
+            timeout=self.timeout * 2,
+            stream=True,
+            allow_redirects=False,
+        )
         if resp.status_code >= 400:
             self._handle_error(resp)
         dest = Path(dest_path)

@@ -24,15 +24,31 @@ class OrderProvider extends ChangeNotifier {
 
     try {
       await Future.delayed(const Duration(milliseconds: 300));
-      _orders = List.generate(15, (i) => {
-        'id': '${i + 1}',
-        'orderNumber': 'ORD-2025-${(8900 + i)}',
-        'patientName': ['Ahmed Ali', 'Sara Mohammed', 'Hussein Jassim', 'Noor Hasan', 'Zainab Khalid'][i % 5],
-        'status': ['pending', 'completed', 'validated', 'cancelled'][i % 4],
-        'testTypes': ['CBC, LFT, Lipid Profile', 'Thyroid Panel', 'Blood Glucose', 'Renal Function'][i % 4],
-        'doctorName': 'Dr. ${['Ali', 'Hasan', 'Ammar', 'Layla'][i % 4]}',
-        'createdAt': DateTime.now().subtract(Duration(hours: i * 3)).toIso8601String(),
-      });
+      _orders = List.generate(
+        15,
+        (i) => {
+          'id': '${i + 1}',
+          'orderNumber': 'ORD-2025-${(8900 + i)}',
+          'patientName': [
+            'Ahmed Ali',
+            'Sara Mohammed',
+            'Hussein Jassim',
+            'Noor Hasan',
+            'Zainab Khalid',
+          ][i % 5],
+          'status': ['pending', 'completed', 'validated', 'cancelled'][i % 4],
+          'testTypes': [
+            'CBC, LFT, Lipid Profile',
+            'Thyroid Panel',
+            'Blood Glucose',
+            'Renal Function',
+          ][i % 4],
+          'doctorName': 'Dr. ${['Ali', 'Hasan', 'Ammar', 'Layla'][i % 4]}',
+          'createdAt': DateTime.now()
+              .subtract(Duration(hours: i * 3))
+              .toIso8601String(),
+        },
+      );
       _totalPages = 5;
       _isLoading = false;
       notifyListeners();

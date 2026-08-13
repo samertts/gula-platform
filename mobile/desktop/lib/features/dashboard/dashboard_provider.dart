@@ -1,9 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/providers/app_providers.dart';
-import '../../widgets/charts/kpi_card.dart';
-
 class DashboardState {
   final bool isLoading;
   final bool hasError;
@@ -106,11 +103,41 @@ class DashboardProvider extends ChangeNotifier {
         todayOrders: 28,
         todaySamples: 35,
         recentActivities: [
-          RecentActivity(id: '1', type: 'result', title: 'Critical result: Hemoglobin', subtitle: 'Patient: Ali Ahmed', timestamp: DateTime.now().subtract(const Duration(minutes: 5))),
-          RecentActivity(id: '2', type: 'order', title: 'New order created', subtitle: 'Order #ORD-2025-0891', timestamp: DateTime.now().subtract(const Duration(minutes: 15))),
-          RecentActivity(id: '3', type: 'sample', title: 'Sample collected', subtitle: 'Barcode: BL20250321-001', timestamp: DateTime.now().subtract(const Duration(minutes: 30))),
-          RecentActivity(id: '4', type: 'patient', title: 'New patient registered', subtitle: 'Sarah Mohammed', timestamp: DateTime.now().subtract(const Duration(hours: 1))),
-          RecentActivity(id: '5', type: 'result', title: 'Results validated', subtitle: 'Order #ORD-2025-0885', timestamp: DateTime.now().subtract(const Duration(hours: 2))),
+          RecentActivity(
+            id: '1',
+            type: 'result',
+            title: 'Critical result: Hemoglobin',
+            subtitle: 'Patient: Ali Ahmed',
+            timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
+          ),
+          RecentActivity(
+            id: '2',
+            type: 'order',
+            title: 'New order created',
+            subtitle: 'Order #ORD-2025-0891',
+            timestamp: DateTime.now().subtract(const Duration(minutes: 15)),
+          ),
+          RecentActivity(
+            id: '3',
+            type: 'sample',
+            title: 'Sample collected',
+            subtitle: 'Barcode: BL20250321-001',
+            timestamp: DateTime.now().subtract(const Duration(minutes: 30)),
+          ),
+          RecentActivity(
+            id: '4',
+            type: 'patient',
+            title: 'New patient registered',
+            subtitle: 'Sarah Mohammed',
+            timestamp: DateTime.now().subtract(const Duration(hours: 1)),
+          ),
+          RecentActivity(
+            id: '5',
+            type: 'result',
+            title: 'Results validated',
+            subtitle: 'Order #ORD-2025-0885',
+            timestamp: DateTime.now().subtract(const Duration(hours: 2)),
+          ),
         ],
         ordersByDay: [
           {'day': 'Mon', 'orders': 12},

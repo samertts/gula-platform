@@ -110,9 +110,14 @@ class ArabicUtils {
 
   static bool isArabicText(String text) {
     if (text.isEmpty) return false;
-    final arabicChars = text.runes.where(
-      (r) => r >= 0x0600 && r <= 0x06FF || r >= 0x0750 && r <= 0x077F || r >= 0x08A0 && r <= 0x08FF,
-    ).length;
+    final arabicChars = text.runes
+        .where(
+          (r) =>
+              r >= 0x0600 && r <= 0x06FF ||
+              r >= 0x0750 && r <= 0x077F ||
+              r >= 0x08A0 && r <= 0x08FF,
+        )
+        .length;
     return arabicChars > text.length * 0.5;
   }
 

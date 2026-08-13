@@ -28,10 +28,10 @@ class GulaAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Container(
       height: AppDimensions.appBarHeight,
       decoration: BoxDecoration(
-        color: Theme.of(context).appBarTheme.backgroundColor ?? AppColors.surfaceLight,
-        border: Border(
-          bottom: BorderSide(color: AppColors.divider),
-        ),
+        color:
+            Theme.of(context).appBarTheme.backgroundColor ??
+            AppColors.surfaceLight,
+        border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
       child: Row(
         children: [
@@ -76,7 +76,11 @@ class GulaAppBar extends StatelessWidget implements PreferredSizeWidget {
       icon: Stack(
         clipBehavior: Clip.none,
         children: [
-          const Icon(Icons.notifications_outlined, size: 20, color: AppColors.textSecondary),
+          const Icon(
+            Icons.notifications_outlined,
+            size: 20,
+            color: AppColors.textSecondary,
+          ),
           Positioned(
             right: -4,
             top: -4,
@@ -157,7 +161,8 @@ class GulaAppBar extends StatelessWidget implements PreferredSizeWidget {
               radius: 16,
               backgroundColor: AppColors.primary100,
               child: Text(
-                (userName?.isNotEmpty == true ? userName![0] : 'U').toUpperCase(),
+                (userName?.isNotEmpty == true ? userName![0] : 'U')
+                    .toUpperCase(),
                 style: const TextStyle(
                   color: AppColors.primary700,
                   fontSize: 14,
@@ -166,7 +171,11 @@ class GulaAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.arrow_drop_down, size: 18, color: AppColors.textSecondary),
+            const Icon(
+              Icons.arrow_drop_down,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
           ],
         ),
       ),

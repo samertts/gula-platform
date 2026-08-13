@@ -14,6 +14,8 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const DEMO_SESSION_KEY = "gula_demo_active";
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -22,21 +24,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let mounted = true;
     const restoreSession = async () => {
+      const hasDemoMarker = window.sessionStorage.getItem(DEMO_SESSION_KEY) === "true";
       try {
-        const session = await authApi.session();
-        if (mounted) {
-          setUser(session.user);
-          setDemoMode(session.demo_mode);
+        if (hasDemoMarker) {
+          const session = await authApi.session();
+          if (!session.demo_mode) {
+            throw new Error("Demo marker exists but the server session is not a demo session");
+          }
+          if (mounted) {
+            setUser(session.user);
+            setDemoMode(true);
+          }
+        } else {
+          const session = await authApi.session();
+          if (mounted) {
+            setUser(session.user);
+            setDemoMode(session.demo_mode);
+          }
         }
       } catch {
-        if (mounted) setUser(null);
+        window.sessionStorage.removeItem(DEMO_SESSION_KEY);
+        if (mounted) {
+          setUser(null);
+          setDemoMode(false);
+        }
       } finally {
         if (mounted) setIsLoading(false);
       }
     };
 
     const handleSessionExpired = () => {
-      if (mounted) setUser(null);
+      window.sessionStorage.removeItem(DEMO_SESSION_KEY);
+      if (mounted) {
+        setUser(null);
+        setDemoMode(false);
+      }
     };
 
     window.addEventListener("gula:session-expired", handleSessionExpired);
@@ -49,20 +71,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (data: LoginRequest) => {
     const res = await authApi.login(data);
+    window.sessionStorage.removeItem(DEMO_SESSION_KEY);
     setUser(res.user);
     setDemoMode(Boolean(res.demo_mode));
   };
 
   const startDemo = async () => {
     const res = await authApi.demoAccess();
+    window.sessionStorage.setItem(DEMO_SESSION_KEY, "true");
     setUser(res.user);
     setDemoMode(true);
   };
 
   const logout = async () => {
     try {
-      await authApi.logout();
+      if (demoMode) {
+        await authApi.endDemo();
+      } else {
+        await authApi.logout();
+      }
     } finally {
+      window.sessionStorage.removeItem(DEMO_SESSION_KEY);
       setUser(null);
       setDemoMode(false);
     }

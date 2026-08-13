@@ -1,4 +1,4 @@
-import 'package:fl_chart/fl_chart.dart';
+import 'package:fl_chart/fl_chart.dart' as fl;
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -34,26 +34,26 @@ class BarChartWidget extends StatelessWidget {
           ),
         SizedBox(
           height: height ?? 250,
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
+          child: fl.BarChart(
+            fl.BarChartData(
+              alignment: fl.BarChartAlignment.spaceAround,
               maxY: _maxY,
               minY: 0,
-              barTouchData: BarTouchData(
+              barTouchData: fl.BarTouchData(
                 enabled: true,
-                touchTooltipData: BarTouchTooltipData(
+                touchTooltipData: fl.BarTouchTooltipData(
                   getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    return BarTooltipItem(
+                    return fl.BarTooltipItem(
                       '${data[group.x.toInt()].label}\n${rod.toY.toStringAsFixed(0)}',
                       const TextStyle(color: Colors.white, fontSize: 12),
                     );
                   },
                 ),
               ),
-              titlesData: FlTitlesData(
+              titlesData: fl.FlTitlesData(
                 show: true,
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
+                bottomTitles: fl.AxisTitles(
+                  sideTitles: fl.SideTitles(
                     showTitles: true,
                     getTitlesWidget: (value, meta) {
                       if (value.toInt() >= 0 && value.toInt() < data.length) {
@@ -61,7 +61,10 @@ class BarChartWidget extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             data[value.toInt()].label,
-                            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         );
                       }
@@ -69,30 +72,37 @@ class BarChartWidget extends StatelessWidget {
                     },
                   ),
                 ),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
+                leftTitles: fl.AxisTitles(
+                  sideTitles: fl.SideTitles(
                     showTitles: true,
                     reservedSize: 40,
                     getTitlesWidget: (value, meta) => Text(
                       value.toInt().toString(),
-                      style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: const fl.AxisTitles(
+                  sideTitles: fl.SideTitles(showTitles: false),
+                ),
+                rightTitles: const fl.AxisTitles(
+                  sideTitles: fl.SideTitles(showTitles: false),
+                ),
               ),
-              gridData: FlGridData(
+              gridData: fl.FlGridData(
                 show: true,
                 drawVerticalLine: false,
                 horizontalInterval: _maxY / 4,
               ),
-              borderData: FlBorderData(show: false),
+              borderData: fl.FlBorderData(show: false),
               barGroups: data.asMap().entries.map((entry) {
-                return BarChartGroupData(
+                return fl.BarChartGroupData(
                   x: entry.key,
                   barRods: [
-                    BarChartRodData(
+                    fl.BarChartRodData(
                       toY: entry.value.value,
                       color: entry.value.color ?? AppColors.primary500,
                       width: 20,
@@ -111,21 +121,25 @@ class BarChartWidget extends StatelessWidget {
           const SizedBox(height: 12),
           Wrap(
             spacing: 16,
-            children: data.map((d) => Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: d.color ?? AppColors.primary500,
-                    borderRadius: BorderRadius.circular(2),
+            children: data
+                .map(
+                  (d) => Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: d.color ?? AppColors.primary500,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(d.label, style: const TextStyle(fontSize: 12)),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 4),
-                Text(d.label, style: const TextStyle(fontSize: 12)),
-              ],
-            )).toList(),
+                )
+                .toList(),
           ),
         ],
       ],
@@ -133,7 +147,10 @@ class BarChartWidget extends StatelessWidget {
   }
 
   double get _maxY {
-    final max = data.fold<double>(0, (prev, d) => d.value > prev ? d.value : prev);
+    final max = data.fold<double>(
+      0,
+      (prev, d) => d.value > prev ? d.value : prev,
+    );
     return (max * 1.2).ceilToDouble();
   }
 }
