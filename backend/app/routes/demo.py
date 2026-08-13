@@ -22,7 +22,30 @@ from ..services.audit_service import log_action
 
 router = APIRouter(prefix="/demo", tags=["demo"])
 
-_DEMO_EMAIL = "demo.viewer@gula-demo.iq"
+_DEMO_PERSONAS = {
+    "doctor": {
+        "name": "Demo Doctor",
+        "email": "demo.doctor@gula-demo.iq",
+        "role": "doctor",
+    },
+    "technician": {
+        "name": "Demo Lab Technician",
+        "email": "demo.technician@gula-demo.iq",
+        "role": "technician",
+    },
+    "lab_admin": {
+        "name": "Demo Lab Administrator",
+        "email": "demo.lab-admin@gula-demo.iq",
+        "role": "lab_admin",
+    },
+    "citizen": {
+        "name": "Demo Citizen",
+        "email": "demo.citizen@gula-demo.iq",
+        "role": "citizen",
+    },
+}
+
+_DEFAULT_DEMO_PERSONA = "doctor"
 
 
 def _demo_unavailable() -> None:
@@ -34,10 +57,14 @@ def _demo_unavailable() -> None:
 def start_demo_session(
     request: Request,
     response: Response,
+    persona: str = _DEFAULT_DEMO_PERSONA,
     db: Session = Depends(get_db),
 ):
     _demo_unavailable()
     rate_limit_auth(request)
+    selected = _DEMO_PERSONAS.get(persona)
+    if selected is None:
+        raise HTTPException(status_code=422, detail="Unknown demo persona")
 
     lab = db.query(Lab).filter(Lab.name == "GULA Synthetic Demo Lab").first()
     if lab is None:
@@ -51,21 +78,27 @@ def start_demo_session(
         db.add(lab)
         db.flush()
 
-    user = db.query(LabUser).filter(LabUser.email == _DEMO_EMAIL).first()
+    user = db.query(LabUser).filter(LabUser.email == selected["email"]).first()
     if user is None:
         user = LabUser(
             lab_id=lab.id,
-            name="Demo Viewer",
-            email=_DEMO_EMAIL,
+            name=selected["name"],
+            email=selected["email"],
             # The public route never accepts a password. Keep the stored hash
             # random so the synthetic account cannot be used as a credential.
             password_hash=hash_password(secrets.token_urlsafe(32)),
-            role="doctor",
+            role=selected["role"],
             is_active=True,
         )
         db.add(user)
         db.flush()
-    elif not user.is_active or user.lab_id != lab.id:
+    elif (
+        not user.is_active
+        or user.lab_id != lab.id
+        or user.role != selected["role"]
+    ):
+        # Fail closed if a synthetic identity was deactivated, moved, or had
+        # its role changed outside the deterministic demo catalogue.
         raise HTTPException(status_code=503, detail="Demo account is not available")
 
     payload = build_token_payload(user)
@@ -93,6 +126,7 @@ def start_demo_session(
     db.commit()
     return {
         "demo_mode": True,
+        "demo_persona": persona,
         "message": "Synthetic demo session started",
         "message_ar": "تم بدء جلسة العرض التجريبي بالبيانات الاصطناعية",
         "user": {

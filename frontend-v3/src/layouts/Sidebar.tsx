@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
+import { cn, getRoleLabel } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { NAV_ITEMS, hasPermission } from "@/permissions";
@@ -157,10 +157,11 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             {!collapsed && (
               <div className="min-w-0">
                 <p className="truncate text-xs font-semibold">{user?.name || "مستخدم GULA"}</p>
-                <p className="truncate text-[10px] text-muted-foreground">{user?.role || "مستخدم"}</p>
+                <p className="truncate text-[10px] text-muted-foreground">{demoMode ? `${getRoleLabel(user?.role || "citizen")} · قراءة فقط` : getRoleLabel(user?.role || "citizen")}</p>
               </div>
             )}
           </div>
+          {demoMode && !collapsed && <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[10px] leading-5 text-amber-700 dark:text-amber-200">الجلسة اصطناعية؛ عمليات الكتابة والتكاملات الخارجية محظورة.</p>}
         </div>
 
         <nav className="flex-1 space-y-4 overflow-y-auto p-3" aria-label="أقسام المنصة">

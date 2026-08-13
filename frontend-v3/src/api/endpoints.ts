@@ -1,4 +1,4 @@
-import { api, apiClient } from "./client";
+import { api, apiClient, type DemoPersonaId } from "@/api/client";
 import type {
   LoginRequest,
   LoginResponse,
@@ -44,17 +44,19 @@ export const authApi = {
     api.post<LoginResponse>("/login", data).then((r) => r.data),
   logout: () => api.post<Record<string, unknown>>("/logout").then((r) => r.data),
   session: () => api.get<{ user: UserInfo; demo_mode: boolean }>("/session").then((r) => r.data),
-  demoAccess: async () => {
+  demoAccess: async (persona: DemoPersonaId = "doctor") => {
     const response = await apiClient.startDemoSession<{
       demo_mode: true;
+      demo_persona: DemoPersonaId;
       user: UserInfo;
-    }>();
+    }>(persona);
     return {
       user: response.user,
       demo_mode: true,
+      demo_persona: response.demo_persona,
     };
   },
-  demoDashboard: () => apiClient.demoDashboard<Record<string, unknown>>(),
+  demoDashboard: (persona?: DemoPersonaId) => apiClient.demoDashboard<Record<string, unknown>>(persona),
   endDemo: () => Promise.resolve({ demo_mode: false }),
   requestVerification: (identifier: string) => api.post<Record<string, unknown>>("/auth/verification/request", { identifier }).then((r) => r.data),
   confirmVerification: (identifier: string, code: string) => api.post<Record<string, unknown>>("/auth/verification/confirm", { identifier, code }).then((r) => r.data),
@@ -83,7 +85,7 @@ export const setupApi = {
 export const dashboardApi = {
   greeting: () => api.get<{ greeting: string; message: string; user_name: string }>("/greeting").then((r) => r.data),
   dashboard: () => api.get<DashboardData>("/dashboard").then((r) => r.data),
-  demo: () => apiClient.demoDashboard<Record<string, unknown>>(),
+  demo: (persona?: DemoPersonaId) => apiClient.demoDashboard<Record<string, unknown>>(persona),
 };
 
 // ── Patients ──

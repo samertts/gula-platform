@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { UserInfo, LoginRequest } from "@/types";
 import { authApi } from "@/api/endpoints";
-import { setApiMode } from "@/api/client";
+import { setApiMode, type DemoPersonaId } from "@/api/client";
 
 interface AuthContextType {
   user: UserInfo | null;
@@ -9,12 +9,14 @@ interface AuthContextType {
   isLoading: boolean;
   demoMode: boolean;
   login: (data: LoginRequest) => Promise<void>;
-  startDemo: () => Promise<void>;
+  startDemo: (persona?: DemoPersonaId) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 const DEMO_SESSION_KEY = "gula_demo_active";
+const DEMO_PERSONA_KEY = "gula_demo_persona";
+const DEFAULT_DEMO_PERSONA: DemoPersonaId = "doctor";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -26,9 +28,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const restoreSession = async () => {
       const hasDemoMarker = window.sessionStorage.getItem(DEMO_SESSION_KEY) === "true";
+      const storedPersona = (window.sessionStorage.getItem(DEMO_PERSONA_KEY) as DemoPersonaId | null) ?? DEFAULT_DEMO_PERSONA;
       try {
         const session = hasDemoMarker
-          ? await authApi.demoAccess()
+          ? await authApi.demoAccess(storedPersona)
           : await authApi.session();
         if (mounted) {
           setUser(session.user);
@@ -72,9 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDemoMode(Boolean(res.demo_mode));
   };
 
-  const startDemo = async () => {
-    const res = await authApi.demoAccess();
+  const startDemo = async (persona: DemoPersonaId = DEFAULT_DEMO_PERSONA) => {
+    const res = await authApi.demoAccess(persona);
     window.sessionStorage.setItem(DEMO_SESSION_KEY, "true");
+    window.sessionStorage.setItem(DEMO_PERSONA_KEY, persona);
     setUser(res.user);
     setDemoMode(true);
   };
@@ -88,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } finally {
       window.sessionStorage.removeItem(DEMO_SESSION_KEY);
+      window.sessionStorage.removeItem(DEMO_PERSONA_KEY);
       setApiMode("live");
       setUser(null);
       setDemoMode(false);
