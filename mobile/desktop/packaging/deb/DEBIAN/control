@@ -1,0 +1,9 @@
+Package: gula-platform
+Version: 0.1.0
+Section: science
+Priority: optional
+Architecture: amd64
+Maintainer: GULA Platform <apps@gulaplatform.com>
+Depends: libgtk-3-0, libsecret-1-0, libayatana-appindicator3-1
+Description: GULA Platform desktop client
+ Secure medical laboratory information management desktop application.
