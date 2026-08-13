@@ -2,6 +2,10 @@
 set -eu
 
 PORT_VALUE="${PORT:-10000}"
+# The image contains both /app/backend and /app/shared. Gunicorn starts the
+# application package from the backend workdir, so retain that path and add
+# the image root for imports from the shared package.
+export PYTHONPATH="/app${PYTHONPATH:+:${PYTHONPATH}}"
 echo "GULA backend starting on 0.0.0.0:${PORT_VALUE}" >&2
 
 # Opt-in only: prints an import traceback without exposing environment values.
