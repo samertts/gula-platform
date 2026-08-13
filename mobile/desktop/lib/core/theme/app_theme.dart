@@ -33,7 +33,8 @@ class AppTheme {
       tabBarStyle: FlexTabBarStyle.forBackground,
       tooltipsMatchBackground: true,
       bottomAppBarElevation: 2,
-      lightColors: const ColorScheme(
+    ).copyWith(
+      colorScheme: const ColorScheme(
         brightness: Brightness.light,
         primary: AppColors.primary600,
         onPrimary: AppColors.textOnPrimary,
@@ -112,7 +113,8 @@ class AppTheme {
       appBarStyle: FlexAppBarStyle.primary,
       appBarOpacity: 1.0,
       tooltipsMatchBackground: true,
-      lightColors: const ColorScheme(
+    ).copyWith(
+      colorScheme: const ColorScheme(
         brightness: Brightness.dark,
         primary: AppColors.primary400,
         onPrimary: Color(0xFF003300),
