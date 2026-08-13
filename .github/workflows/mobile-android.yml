@@ -135,6 +135,7 @@ jobs:
 
   instrumented-test:
     name: Instrumented Tests (API ${{ matrix.api-level }})
+    if: ${{ inputs.run_instrumented_tests == true }}
     needs: [lint]
     runs-on: ubuntu-latest
     timeout-minutes: 45
