@@ -5,7 +5,7 @@ import axios, {
 } from "axios";
 
 const LIVE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
-const DEMO_API_BASE_URL = import.meta.env.VITE_DEMO_API_BASE_URL?.replace(/\/$/, "") ?? "";
+const DEMO_API_BASE_URL = (import.meta.env.VITE_DEMO_API_BASE_URL ?? "/demo-api").replace(/\/$/, "");
 const API_MODE_STORAGE_KEY = "gula.api-mode";
 
 export type ApiMode = "live" | "demo";

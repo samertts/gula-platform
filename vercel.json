@@ -46,6 +46,10 @@
   ],
   "rewrites": [
     {
+      "source": "/demo-api/:path*",
+      "destination": "/api/demo-api/:path*"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://api.gula-platform.org/api/:path*"
     },
