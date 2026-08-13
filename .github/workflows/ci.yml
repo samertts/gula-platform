@@ -31,44 +31,51 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: Check Python syntax
         run: |
-          python -c "
-          import pathlib, sys
+          python - <<'PYEOF'
+          import pathlib
+          import sys
+
           errors = []
           for p in sorted(pathlib.Path('backend/app').rglob('*.py')):
-              if '__pycache__' in str(p): continue
+              if '__pycache__' in str(p):
+                  continue
               try:
                   compile(p.read_text(), str(p), 'exec')
               except SyntaxError as e:
                   errors.append(f'{p}: {e}')
           if errors:
-              for e in errors: print(e)
+              for e in errors:
+                  print(e)
               sys.exit(1)
-          else:
-              total = sum(1 for _ in pathlib.Path('backend/app').rglob('*.py'))
-              print(f'OK: {total} Python files pass syntax check')
-          "
+          total = sum(1 for _ in pathlib.Path('backend/app').rglob('*.py'))
+          print(f'OK: {total} Python files pass syntax check')
+          PYEOF
       - name: Check service Python syntax
         run: |
-          python -c "
-          import pathlib, sys
+          python - <<'PYEOF'
+          import pathlib
+          import sys
+
           errors = []
           for root in ['services', 'nhop-platform', 'edge_agent', 'shared']:
               base = pathlib.Path(root)
-              if not base.exists(): continue
+              if not base.exists():
+                  continue
               for p in sorted(base.rglob('*.py')):
-                  if '__pycache__' in str(p): continue
-                  if 'node_modules' in str(p): continue
-                  if p.stat().st_size == 0: continue
+                  if '__pycache__' in str(p) or 'node_modules' in str(p):
+                      continue
+                  if p.stat().st_size == 0:
+                      continue
                   try:
                       compile(p.read_text(), str(p), 'exec')
                   except SyntaxError as e:
                       errors.append(f'{p}: {e}')
           if errors:
-              for e in errors: print(e)
+              for e in errors:
+                  print(e)
               sys.exit(1)
-          else:
-              print('OK: All service Python files pass syntax check')
-          "
+          print('OK: All service Python files pass syntax check')
+          PYEOF
       - name: Lint with flake8
         run: |
           pip install flake8
@@ -141,18 +148,26 @@ jobs:
         run: |
           cd backend
           alembic upgrade head
-          python -c "
-          import os, psycopg2
+          python - <<'PYEOF'
+          import os
+          import psycopg2
+
           conn = psycopg2.connect(os.environ['DATABASE_URL'])
-          cur = conn.cursor()
-          required = ['labs', 'lab_users', 'patients', 'lab_orders', 'lab_results']
-          for table in required:
-              cur.execute("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name=%s)", (table,))
-              exists = cur.fetchone()[0]
-              assert exists, f'Missing table: {table}'
-              print(f'Table {table}: OK')
-          print('All required tables verified')
-          "
+          try:
+              with conn.cursor() as cur:
+                  required = ['labs', 'lab_users', 'patients', 'lab_orders', 'lab_results']
+                  for table in required:
+                      cur.execute(
+                          "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name=%s)",
+                          (table,),
+                      )
+                      exists = cur.fetchone()[0]
+                      assert exists, f'Missing table: {table}'
+                      print(f'Table {table}: OK')
+                  print('All required tables verified')
+          finally:
+              conn.close()
+          PYEOF
           alembic downgrade -1 || echo "Downgrade not possible (base migration)"
           alembic upgrade head
           echo "Migration round-trip: OK"
