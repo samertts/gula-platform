@@ -225,7 +225,7 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-timeout factory_boy
+          pip install -r requirements-dev.txt
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gula_test
