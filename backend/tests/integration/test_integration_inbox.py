@@ -80,3 +80,30 @@ def test_device_observation_cannot_be_final(db):
             "observation_id": "obs-1",
             "status": "final",
         }))
+
+
+def test_workforce_attendance_event_is_staged_without_clinical_approval(db):
+    result = stage_event(
+        db,
+        envelope(
+            event_type="workforce.attendance.recorded",
+            entity_id="attendance-1",
+            payload={"event_id": "attendance-1", "event_type": "clock_in", "employee_id": "employee-1"},
+        ),
+    )
+
+    row = db.query(IntegrationInboxEvent).one()
+    assert result.status == "staged"
+    assert row.status == "pending_review"
+    assert row.processed_at is None
+
+
+def test_workforce_assignment_requires_versioned_payload(db):
+    with pytest.raises(ValueError, match="missing required fields"):
+        stage_event(
+            db,
+            envelope(
+                event_type="workforce.assignment.changed",
+                payload={"subject_id": "subject-1"},
+            ),
+        )

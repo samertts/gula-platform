@@ -36,6 +36,10 @@ def _validate_payload(envelope: IntegrationEventEnvelope) -> None:
         required = {"subject_id", "credential_id", "credential_version", "credential_state", "claims", "key_id"}
         if not isinstance(payload.get("claims"), dict):
             raise ValueError("identity claims must be an object")
+    elif envelope.event_type == "workforce.attendance.recorded":
+        required = {"event_id", "event_type"}
+    elif envelope.event_type == "workforce.assignment.changed":
+        required = {"assignment_id", "subject_id", "assignment_version", "change_type"}
     else:
         raise ValueError(f"unsupported integration event type: {envelope.event_type}")
 
