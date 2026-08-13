@@ -217,16 +217,19 @@ RATE_LIMIT_PUBLIC = int(os.getenv("RATE_LIMIT_PUBLIC", "30"))
 # Default: 120 seconds (covers DB backoff + Redis + migrations + kernel boot).
 STARTUP_TIMEOUT_SECONDS = int(os.getenv("STARTUP_TIMEOUT_SECONDS", "120"))
 
-# ─── Redis (optional — MVP deployments run without Redis; in-memory fallback ──
-# is used automatically by redis_client.py when REDIS_URL is absent.
-# For full cross-process session invalidation and rate limiting, set REDIS_URL.
+# ─── Redis (optional only with an explicit production acknowledgement) ───────
+# Production remains fail-closed by default: Redis is required for shared
+# session revocation and rate limiting. A single-replica deployment may opt into
+# the in-memory fallback only by setting ALLOW_DEGRADED_REDIS=true explicitly.
 REDIS_URL = os.getenv("REDIS_URL", "")
+ALLOW_DEGRADED_REDIS = os.getenv("ALLOW_DEGRADED_REDIS", "false").lower() == "true"
 if not REDIS_URL:
-    if IS_PRODUCTION:
-        sys.exit("REDIS_URL must be set in production for shared revocation and rate limiting")
+    if IS_PRODUCTION and not ALLOW_DEGRADED_REDIS:
+        sys.exit("REDIS_URL must be set in production unless ALLOW_DEGRADED_REDIS=true")
     logger.warning(
-        "REDIS_URL not set — using in-memory store (not shared across workers). "
-        "Set REDIS_URL for full rate-limiting and cross-process session invalidation.",
+        "REDIS_URL not set — using an explicitly acknowledged in-memory store "
+        "(not shared across workers). Set REDIS_URL for full rate-limiting and "
+        "cross-process session invalidation.",
     )
 
 # ─── Redis Sentinel / Cluster (HA mode) ──────────────────────────────────────
