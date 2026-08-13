@@ -29,15 +29,17 @@ describe("العرض التجريبي المعزول", () => {
     const getSpy = vi.spyOn(apiClient.api, "get");
 
     try {
-      const dashboard = await dashboardApi.demo();
+      const expected = {
+        doctor: { total_patients: 24, today_orders: 11, today_results: 17, critical_alerts: 2 },
+        technician: { total_patients: 12, today_orders: 18, today_results: 26, critical_alerts: 1 },
+        lab_admin: { total_patients: 48, today_orders: 32, today_results: 39, critical_alerts: 4 },
+        citizen: { total_patients: 1, today_orders: 2, today_results: 2, critical_alerts: 0 },
+      } as const;
 
-      expect(dashboard).toMatchObject({
-        demo_mode: true,
-        total_patients: 15,
-        today_orders: 8,
-        today_results: 12,
-        critical_alerts: 2,
-      });
+      for (const persona of DEMO_PERSONAS) {
+        const dashboard = await dashboardApi.demo(persona.id);
+        expect(dashboard).toMatchObject({ demo_mode: true, ...expected[persona.id] });
+      }
       expect(getSpy).not.toHaveBeenCalled();
     } finally {
       getSpy.mockRestore();

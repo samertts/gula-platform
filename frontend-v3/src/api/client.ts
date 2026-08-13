@@ -73,15 +73,21 @@ function syntheticDemoUser(persona: DemoPersona) {
   };
 }
 
-const SYNTHETIC_DEMO_DASHBOARD = {
-  demo_mode: true,
-  total_patients: 15,
-  today_orders: 8,
-  today_results: 12,
-  critical_alerts: 2,
-  synthetic_notice: "All values are generated for demonstration and training only.",
-  synthetic_notice_ar: "جميع القيم مولدة للعرض والتدريب فقط.",
+const SYNTHETIC_DEMO_DASHBOARDS: Record<DemoPersonaId, Record<string, unknown>> = {
+  doctor: { total_patients: 24, today_orders: 11, today_results: 17, critical_alerts: 2 },
+  technician: { total_patients: 12, today_orders: 18, today_results: 26, critical_alerts: 1 },
+  lab_admin: { total_patients: 48, today_orders: 32, today_results: 39, critical_alerts: 4 },
+  citizen: { total_patients: 1, today_orders: 2, today_results: 2, critical_alerts: 0 },
 };
+
+function syntheticDemoDashboard(personaId: DemoPersonaId = "doctor") {
+  return {
+    demo_mode: true,
+    ...(SYNTHETIC_DEMO_DASHBOARDS[personaId] ?? SYNTHETIC_DEMO_DASHBOARDS.doctor),
+    synthetic_notice: "All values are generated for demonstration and training only.",
+    synthetic_notice_ar: "جميع القيم مولدة للعرض والتدريب فقط.",
+  };
+}
 
 export type ApiMode = "live" | "demo";
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
@@ -224,9 +230,9 @@ class ApiClient {
     } as T;
   }
 
-  async demoDashboard<T>() {
+  async demoDashboard<T>(personaId: DemoPersonaId = "doctor") {
     if (this.mode !== "demo") this.setMode("demo");
-    return SYNTHETIC_DEMO_DASHBOARD as T;
+    return syntheticDemoDashboard(personaId) as T;
   }
 
   private async handleError(error: AxiosError) {
