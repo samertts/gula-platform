@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.contracts.integration import IntegrationEventEnvelope
 from app.models.integration_inbox import IntegrationInboxEvent
-
 
 SUPPORTED_EVENT_TYPES = {
     "sample.custody.transitioned",
@@ -92,8 +92,37 @@ def stage_event(db: Session, envelope: IntegrationEventEnvelope) -> InboxResult:
         actor_id=envelope.actor_id,
         payload=json.dumps(envelope.payload, ensure_ascii=False, sort_keys=True, default=str),
         status="pending_review",
-        received_at=envelope.occurred_at.astimezone(timezone.utc),
+        received_at=envelope.occurred_at.astimezone(UTC),
     )
     db.add(record)
     db.flush()
     return InboxResult("staged", envelope.event_id, envelope.idempotency_key, record.id)
+
+
+def reject_event(db: Session, inbox_id: int, reason: str) -> IntegrationInboxEvent:
+    """Quarantine an event explicitly; never apply or silently overwrite it."""
+    normalized_reason = reason.strip()
+    if len(normalized_reason) < 3:
+        raise ValueError("rejection reason must contain at least 3 characters")
+
+    record = db.get(IntegrationInboxEvent, inbox_id)
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inbox event not found")
+    if record.status == "rejected":
+        if record.rejection_reason != normalized_reason:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Inbox event is already rejected with a different reason",
+            )
+        return record
+    if record.status != "pending_review":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Inbox event cannot be rejected from status {record.status}",
+        )
+
+    record.status = "rejected"
+    record.rejection_reason = normalized_reason
+    record.processed_at = datetime.now(UTC)
+    db.flush()
+    return record

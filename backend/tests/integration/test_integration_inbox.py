@@ -1,14 +1,13 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
+from app.contracts.integration import IntegrationEventEnvelope
+from app.database import Base
+from app.integration.inbox import reject_event, stage_event
+from app.models.integration_inbox import IntegrationInboxEvent
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-
-from app.contracts.integration import IntegrationEventEnvelope
-from app.database import Base
-from app.integration.inbox import stage_event
-from app.models.integration_inbox import IntegrationInboxEvent
 
 
 @pytest.fixture()
@@ -34,7 +33,7 @@ def envelope(**overrides):
         "schema_version": 1,
         "source_service": "lablink-core",
         "tenant_id": "tenant-1",
-        "occurred_at": datetime.now(timezone.utc),
+        "occurred_at": datetime.now(UTC),
         "actor_id": "device-1",
         "entity_id": "sample-1",
         "correlation_id": "corr-1",
@@ -132,3 +131,26 @@ def test_frontend_sync_event_rejects_scalar_payload(db):
                 payload={"action_id": "sync-1", "action_type": "UPDATE_TASK", "payload": "unsafe"},
             ),
         )
+
+
+
+def test_reject_event_is_explicit_and_idempotent(db):
+    stage_event(db, envelope())
+    row = db.query(IntegrationInboxEvent).one()
+
+    rejected = reject_event(db, row.id, "schema mismatch")
+    repeated = reject_event(db, row.id, "schema mismatch")
+
+    assert rejected.status == "rejected"
+    assert repeated.id == row.id
+    assert row.rejection_reason == "schema mismatch"
+    assert row.processed_at is not None
+
+
+def test_reject_event_conflict_cannot_change_reason(db):
+    stage_event(db, envelope())
+    row = db.query(IntegrationInboxEvent).one()
+    reject_event(db, row.id, "invalid source")
+
+    with pytest.raises(Exception, match="already rejected"):
+        reject_event(db, row.id, "different reason")
