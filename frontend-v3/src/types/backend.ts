@@ -8,7 +8,8 @@ export type UserRole =
   | 'staff'
   | 'lab_staff'
   | 'technician'
-  | 'citizen';
+  | 'citizen'
+  | 'demo_viewer';
 
 export type Permission =
   | 'patients:read'

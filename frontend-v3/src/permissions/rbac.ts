@@ -58,6 +58,8 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'lab:read', 'dashboard:read',
   ],
   citizen: [],
+  // Synthetic demo identity: read-only shell access only; no clinical or admin permissions.
+  demo_viewer: ['dashboard:read'],
 };
 
 export function hasPermission(role: UserRole, permission: Permission): boolean {
@@ -76,7 +78,7 @@ export function canManageRole(actorRole: UserRole, targetRole: UserRole): boolea
   const levels: Record<UserRole, number> = {
     master_admin: 100, ministry_admin: 90, province_admin: 80,
     admin: 50, lab_admin: 50, doctor: 40, staff: 20,
-    lab_staff: 20, technician: 20, citizen: 10,
+    lab_staff: 20, technician: 20, citizen: 10, demo_viewer: 0,
   };
   return (levels[actorRole] ?? 0) > (levels[targetRole] ?? 0);
 }

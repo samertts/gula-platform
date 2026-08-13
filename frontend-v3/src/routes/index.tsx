@@ -99,7 +99,7 @@ function LazyPage({ children }: { children: ReactNode }) {
 
 const adminRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'ministry_admin', 'province_admin'];
 const staffRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'doctor', 'staff', 'lab_staff', 'technician'];
-const readonlyRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'doctor', 'staff', 'lab_staff'];
+const readonlyRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'doctor', 'staff', 'lab_staff', 'demo_viewer'];
 const labRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'staff', 'lab_staff'];
 
 export const router = createBrowserRouter([
