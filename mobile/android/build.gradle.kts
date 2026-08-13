@@ -8,6 +8,23 @@ plugins {
     id("com.google.devtools.ksp") version "2.1.20-1.0.31" apply false
 }
 
+allprojects {
+    configurations.all {
+        resolutionStrategy {
+            force("io.netty:netty-codec-http2:4.1.118.Final")
+            force("io.netty:netty-handler:4.1.118.Final")
+            force("io.netty:netty-codec-http:4.1.118.Final")
+            force("io.netty:netty-codec:4.1.118.Final")
+            force("com.google.protobuf:protobuf-java:3.25.5")
+            force("com.google.protobuf:protobuf-kotlin:3.25.5")
+            force("org.jdom:jdom2:2.0.6.1")
+            force("org.bouncycastle:bcprov-jdk18on:1.80")
+            force("org.bitbucket.b_c:jose4j:0.9.6")
+            force("org.apache.commons:commons-compress:1.26.0")
+        }
+    }
+}
+
 tasks.register("clean", Delete::class) {
     delete(rootProject.layout.buildDirectory)
 }
