@@ -31,7 +31,7 @@ class SyncQueueManager {
     );
   }
 
-  Future<List<SyncQueue>> getPending({int limit = 50}) async {
+  Future<List<SyncQueueData>> getPending({int limit = 50}) async {
     final query = _db.select(_db.syncQueue)
       ..where((q) => q.status.equals('pending'))
       ..orderBy([(q) => OrderingTerm.asc(q.createdAt)])
@@ -39,7 +39,7 @@ class SyncQueueManager {
     return await query.get();
   }
 
-  Future<List<SyncQueue>> getFailed({int limit = 50}) async {
+  Future<List<SyncQueueData>> getFailed({int limit = 50}) async {
     final query = _db.select(_db.syncQueue)
       ..where((q) => q.status.equals('failed'))
       ..where((q) => q.retryCount < q.maxRetries)
@@ -62,11 +62,15 @@ class SyncQueueManager {
   }
 
   Future<void> markFailed(int id, String error) async {
+    final current = await (_db.select(_db.syncQueue)
+      ..where((q) => q.id.equals(id))
+    ).getSingleOrNull();
+    final retryCount = (current?.retryCount ?? 0) + 1;
     await (_db.update(_db.syncQueue)
       ..where((q) => q.id.equals(id))
     ).write(SyncQueueCompanion(
       status: const Value('failed'),
-      retryCount: Value(_db.syncQueue.retryCount + 1),
+      retryCount: Value(retryCount),
       lastError: Value(error),
       updatedAt: Value(DateTime.now().toIso8601String()),
     ));
@@ -82,15 +86,19 @@ class SyncQueueManager {
   }
 
   Future<int> getPendingCount() async {
-    final query = _db.select(_db.syncQueue)
-      ..where((q) => q.status.equals('pending'));
-    return await query.count();
+    final countExpression = _db.syncQueue.id.count();
+    final query = _db.selectOnly(_db.syncQueue)
+      ..addColumns([countExpression])
+      ..where(_db.syncQueue.status.equals('pending'));
+    return (await query.getSingle()).read(countExpression) ?? 0;
   }
 
   Future<int> getFailedCount() async {
-    final query = _db.select(_db.syncQueue)
-      ..where((q) => q.status.equals('failed'));
-    return await query.count();
+    final countExpression = _db.syncQueue.id.count();
+    final query = _db.selectOnly(_db.syncQueue)
+      ..addColumns([countExpression])
+      ..where(_db.syncQueue.status.equals('failed'));
+    return (await query.getSingle()).read(countExpression) ?? 0;
   }
 
   Future<void> clearDeadLetters() async {

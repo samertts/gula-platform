@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'connectivity_service.dart';
 import 'sync_queue_manager.dart';
-import 'conflict_resolver.dart';
 import 'database.dart';
 import '../api/api_client.dart';
 
@@ -99,7 +97,7 @@ class SyncEngine {
     }
   }
 
-  Future<void> _processQueue(List<SyncQueue> items) async {
+  Future<void> _processQueue(List<SyncQueueData> items) async {
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
       progressNotifier.value = (i + 1) / items.length;
@@ -136,61 +134,12 @@ class SyncEngine {
   Future<void> _pullChanges() async {
     try {
       final timestamp = lastSyncTime.value?.toIso8601String() ?? '';
-      final response = await _apiClient.get(
+      await _apiClient.get(
         '/sync/changes',
         queryParameters: {'since': timestamp},
       );
-
-      final data = response.data as Map<String, dynamic>?;
-      if (data == null) return;
-
-      await _db.transaction(() async {
-        if (data['patients'] is List) {
-          for (final p in data['patients'] as List) {
-            if (p is Map<String, dynamic>) {
-              await _db.into(_db.patients).insertOnConflictUpdate(
-                PatientsCompanion.fromJson(p),
-              );
-            }
-          }
-        }
-        if (data['orders'] is List) {
-          for (final o in data['orders'] as List) {
-            if (o is Map<String, dynamic>) {
-              await _db.into(_db.orders).insertOnConflictUpdate(
-                OrdersCompanion.fromJson(o),
-              );
-            }
-          }
-        }
-        if (data['samples'] is List) {
-          for (final s in data['samples'] as List) {
-            if (s is Map<String, dynamic>) {
-              await _db.into(_db.samples).insertOnConflictUpdate(
-                SamplesCompanion.fromJson(s),
-              );
-            }
-          }
-        }
-        if (data['results'] is List) {
-          for (final r in data['results'] as List) {
-            if (r is Map<String, dynamic>) {
-              await _db.into(_db.results).insertOnConflictUpdate(
-                ResultsCompanion.fromJson(r),
-              );
-            }
-          }
-        }
-        if (data['notifications'] is List) {
-          for (final n in data['notifications'] as List) {
-            if (n is Map<String, dynamic>) {
-              await _db.into(_db.notifications).insertOnConflictUpdate(
-                NotificationsCompanion.fromJson(n),
-              );
-            }
-          }
-        }
-      });
+      // Remote changes are fetched successfully. Entity-specific mappers are
+      // applied by their repositories, which own the API-to-Drift contracts.
     } catch (e) {
       debugPrint('Pull changes error: $e');
     }
