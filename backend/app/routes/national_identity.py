@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from ..gateways.national_identity_gateway import verify_national_id
+from ..config import DEMO_MODE, IS_PRODUCTION
+from ..gateways.mode import AdapterMode
+from ..gateways.national_identity_gateway import get_national_identity_gateway, verify_national_id
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 
@@ -21,4 +23,10 @@ def verify(
         raise HTTPException(status_code=400, detail="Invalid national ID")
     if len(data.national_id) > 20:
         raise HTTPException(status_code=400, detail="National ID too long")
+    gateway = get_national_identity_gateway()
+    if IS_PRODUCTION and not DEMO_MODE and gateway.current_mode() is AdapterMode.STUB:
+        raise HTTPException(
+            status_code=503,
+            detail="National identity verification is not configured for production",
+        )
     return verify_national_id(data.national_id)
