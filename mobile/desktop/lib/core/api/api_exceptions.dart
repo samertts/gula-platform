@@ -11,22 +11,22 @@ class ApiException implements Exception {
 
 class AuthException extends ApiException {
   const AuthException([String message = 'Authentication required'])
-      : super(message, statusCode: 401);
+    : super(message, statusCode: 401);
 }
 
 class UnauthorizedException extends ApiException {
   const UnauthorizedException([String message = 'Forbidden'])
-      : super(message, statusCode: 403);
+    : super(message, statusCode: 403);
 }
 
 class NotFoundException extends ApiException {
   const NotFoundException([String message = 'Resource not found'])
-      : super(message, statusCode: 404);
+    : super(message, statusCode: 404);
 }
 
 class ConflictException extends ApiException {
   const ConflictException([String message = 'Resource conflict'])
-      : super(message, statusCode: 409);
+    : super(message, statusCode: 409);
 }
 
 class ValidationException extends ApiException {
@@ -44,11 +44,7 @@ class ValidationError {
   final String msg;
   final String type;
 
-  const ValidationError({
-    this.loc = const [],
-    this.msg = '',
-    this.type = '',
-  });
+  const ValidationError({this.loc = const [], this.msg = '', this.type = ''});
 }
 
 class NetworkException extends ApiException {
@@ -66,16 +62,17 @@ class RateLimitException extends ApiException {
 
 class ServerException extends ApiException {
   const ServerException([String message = 'Internal server error'])
-      : super(message, statusCode: 500);
+    : super(message, statusCode: 500);
 }
 
 class OfflineException extends ApiException {
   const OfflineException([String message = 'Device is offline'])
-      : super(message, statusCode: -1);
+    : super(message, statusCode: -1);
 }
 
 ApiException parseApiError(Map<String, dynamic>? data, int? statusCode) {
-  final message = data?['detail'] as String? ??
+  final message =
+      data?['detail'] as String? ??
       data?['message'] as String? ??
       'Unknown error';
 
@@ -89,8 +86,7 @@ ApiException parseApiError(Map<String, dynamic>? data, int? statusCode) {
     case 409:
       return ConflictException(message);
     case 422:
-      return ValidationException(message,
-          errors: _parseValidationErrors(data));
+      return ValidationException(message, errors: _parseValidationErrors(data));
     case 429:
       return RateLimitException(
         message: message,
@@ -112,13 +108,15 @@ List<ValidationError> _parseValidationErrors(Map<String, dynamic>? data) {
     for (final e in data['detail'] as List) {
       if (e is Map<String, dynamic>) {
         final location = e['loc'];
-        errors.add(ValidationError(
-          loc: location is Iterable
-              ? location.map((value) => value.toString()).toList()
-              : const [],
-          msg: e['msg'] as String? ?? '',
-          type: e['type'] as String? ?? '',
-        ));
+        errors.add(
+          ValidationError(
+            loc: location is Iterable
+                ? location.map((value) => value.toString()).toList()
+                : const [],
+            msg: e['msg'] as String? ?? '',
+            type: e['type'] as String? ?? '',
+          ),
+        );
       }
     }
   }

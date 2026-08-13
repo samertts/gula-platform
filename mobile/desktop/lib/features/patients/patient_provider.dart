@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
 class PatientProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _patients = [];
   bool _isLoading = false;
@@ -31,17 +30,38 @@ class PatientProvider extends ChangeNotifier {
     try {
       await Future.delayed(const Duration(milliseconds: 300));
 
-      _patients = List.generate(20, (i) => {
-        'id': '${i + 1}',
-        'firstName': ['Ahmed', 'Ali', 'Sara', 'Mariam', 'Hussein', 'Zainab', 'Mohammed', 'Fatima', 'Omar', 'Noor'][i % 10],
-        'fatherName': ['Jasim', 'Hassan', 'Khalid', 'Abbas', 'Hamza'][i % 5],
-        'lastName': ['Al-Tamimi', 'Al-Jubouri', 'Al-Janabi', 'Al-Bayati', 'Al-Saadi'][i % 5],
-        'gender': i % 2 == 0 ? 'm' : 'f',
-        'dateOfBirth': '198${i % 9 + 1}-0${i % 9 + 1}-${(i % 28 + 1).toString().padLeft(2, '0')}',
-        'nationalId': '${10000000000000 + i}',
-        'phone': '0770${1000000 + i}',
-        'bloodGroup': ['A+', 'B+', 'O+', 'AB+', 'A-'][i % 5],
-      });
+      _patients = List.generate(
+        20,
+        (i) => {
+          'id': '${i + 1}',
+          'firstName': [
+            'Ahmed',
+            'Ali',
+            'Sara',
+            'Mariam',
+            'Hussein',
+            'Zainab',
+            'Mohammed',
+            'Fatima',
+            'Omar',
+            'Noor',
+          ][i % 10],
+          'fatherName': ['Jasim', 'Hassan', 'Khalid', 'Abbas', 'Hamza'][i % 5],
+          'lastName': [
+            'Al-Tamimi',
+            'Al-Jubouri',
+            'Al-Janabi',
+            'Al-Bayati',
+            'Al-Saadi',
+          ][i % 5],
+          'gender': i % 2 == 0 ? 'm' : 'f',
+          'dateOfBirth':
+              '198${i % 9 + 1}-0${i % 9 + 1}-${(i % 28 + 1).toString().padLeft(2, '0')}',
+          'nationalId': '${10000000000000 + i}',
+          'phone': '0770${1000000 + i}',
+          'bloodGroup': ['A+', 'B+', 'O+', 'AB+', 'A-'][i % 5],
+        },
+      );
       _totalItems = 200;
       _totalPages = 10;
       _isLoading = false;

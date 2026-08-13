@@ -14,12 +14,54 @@ class PharmacyPage extends StatefulWidget {
 }
 
 class _PharmacyPageState extends State<PharmacyPage> {
-  final _medications = List.generate(12, (i) => {
-    'name': ['Amoxicillin', 'Metformin', 'Omeprazole', 'Atorvastatin', 'Lisinopril', 'Metoprolol', 'Losartan', 'Levothyroxine', 'Albuterol', 'Pantoprazole', 'Gabapentin', 'Sertraline'][i],
-    'dosage': ['500mg', '850mg', '20mg', '10mg', '10mg', '50mg', '50mg', '100mcg', '90mcg', '40mg', '300mg', '50mg'][i],
-    'quantity': [200, 150, 100, 80, 120, 90, 110, 60, 50, 70, 40, 85][i],
-    'expiry': ['2026-03', '2025-12', '2025-09', '2026-06', '2025-11', '2026-01', '2025-10', '2025-08', '2025-07', '2026-04', '2025-06', '2026-02'][i],
-  });
+  final _medications = List.generate(
+    12,
+    (i) => {
+      'name': [
+        'Amoxicillin',
+        'Metformin',
+        'Omeprazole',
+        'Atorvastatin',
+        'Lisinopril',
+        'Metoprolol',
+        'Losartan',
+        'Levothyroxine',
+        'Albuterol',
+        'Pantoprazole',
+        'Gabapentin',
+        'Sertraline',
+      ][i],
+      'dosage': [
+        '500mg',
+        '850mg',
+        '20mg',
+        '10mg',
+        '10mg',
+        '50mg',
+        '50mg',
+        '100mcg',
+        '90mcg',
+        '40mg',
+        '300mg',
+        '50mg',
+      ][i],
+      'quantity': [200, 150, 100, 80, 120, 90, 110, 60, 50, 70, 40, 85][i],
+      'expiry': [
+        '2026-03',
+        '2025-12',
+        '2025-09',
+        '2026-06',
+        '2025-11',
+        '2026-01',
+        '2025-10',
+        '2025-08',
+        '2025-07',
+        '2026-04',
+        '2025-06',
+        '2026-02',
+      ][i],
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -45,17 +87,35 @@ class _PharmacyPageState extends State<PharmacyPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(med['name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text(
+                        med['name']?.toString() ?? '',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text('${med['dosage']?.toString() ?? ''} • Qty: $quantity',
-                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      Text(
+                        '${med['dosage']?.toString() ?? ''} • Qty: $quantity',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          GulaBadge(label: 'Exp: ${med['expiry']?.toString() ?? ''}', status: GulaBadgeStatus.neutral, showDot: false),
+                          GulaBadge(
+                            label: 'Exp: ${med['expiry']?.toString() ?? ''}',
+                            status: GulaBadgeStatus.neutral,
+                            showDot: false,
+                          ),
                           if (quantity < 60)
-                            const GulaBadge(label: 'Low', status: GulaBadgeStatus.error),
+                            const GulaBadge(
+                              label: 'Low',
+                              status: GulaBadgeStatus.error,
+                            ),
                         ],
                       ),
                     ],

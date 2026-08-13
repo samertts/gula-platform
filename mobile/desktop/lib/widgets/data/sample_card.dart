@@ -76,13 +76,19 @@ class SampleCard extends StatelessWidget {
                 if (patientName != null) ...[
                   Text(
                     patientName!,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ],
                 if (collectedAt != null)
                   Text(
                     'Collected: ${collectedAt!.toLocal().toString().substring(0, 16)}',
-                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
               ],
             ),
@@ -96,15 +102,30 @@ class SampleCard extends StatelessWidget {
   Widget _buildStatusBadge(String status) {
     switch (status) {
       case 'collected':
-        return const GulaBadge(label: 'Collected', status: GulaBadgeStatus.info);
+        return const GulaBadge(
+          label: 'Collected',
+          status: GulaBadgeStatus.info,
+        );
       case 'received':
-        return const GulaBadge(label: 'Received', status: GulaBadgeStatus.pending);
+        return const GulaBadge(
+          label: 'Received',
+          status: GulaBadgeStatus.pending,
+        );
       case 'processing':
-        return const GulaBadge(label: 'Processing', status: GulaBadgeStatus.warning);
+        return const GulaBadge(
+          label: 'Processing',
+          status: GulaBadgeStatus.warning,
+        );
       case 'analyzed':
-        return const GulaBadge(label: 'Analyzed', status: GulaBadgeStatus.success);
+        return const GulaBadge(
+          label: 'Analyzed',
+          status: GulaBadgeStatus.success,
+        );
       case 'rejected':
-        return const GulaBadge(label: 'Rejected', status: GulaBadgeStatus.error);
+        return const GulaBadge(
+          label: 'Rejected',
+          status: GulaBadgeStatus.error,
+        );
       default:
         return GulaBadge(label: status, status: GulaBadgeStatus.neutral);
     }

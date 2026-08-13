@@ -63,29 +63,47 @@ class _PatientListPageState extends ConsumerState<PatientListPage> {
             ],
           ),
           const SizedBox(height: 16),
-          Expanded(
-            child: _buildContent(patientState),
-          ),
+          Expanded(child: _buildContent(patientState)),
         ],
       ),
     );
   }
 
   Widget _buildContent(PatientProvider state) {
-    if (state.isLoading) return const GulaLoading(type: GulaLoadingType.shimmer);
-    if (state.hasError) return GulaErrorWidget(message: state.error!, onRetry: () => state.loadPatients());
+    if (state.isLoading)
+      return const GulaLoading(type: GulaLoadingType.shimmer);
+    if (state.hasError)
+      return GulaErrorWidget(
+        message: state.error!,
+        onRetry: () => state.loadPatients(),
+      );
 
     final columns = [
-      GulaTableColumn(key: 'fullName', label: 'Name', flex: 2, sortable: true,
+      GulaTableColumn(
+        key: 'fullName',
+        label: 'Name',
+        flex: 2,
+        sortable: true,
         cellBuilder: (v, row) {
-          final name = [row['firstName'], row['fatherName'], row['lastName']].where((n) => n != null).join(' ');
+          final name = [
+            row['firstName'],
+            row['fatherName'],
+            row['lastName'],
+          ].where((n) => n != null).join(' ');
           return Row(
             children: [
               CircleAvatar(
                 radius: 16,
-                backgroundColor: row['gender'] == 'f' ? AppColors.secondary50 : AppColors.primary50,
-                child: Icon(row['gender'] == 'f' ? Icons.female : Icons.male, size: 16,
-                    color: row['gender'] == 'f' ? AppColors.secondary500 : AppColors.primary500),
+                backgroundColor: row['gender'] == 'f'
+                    ? AppColors.secondary50
+                    : AppColors.primary50,
+                child: Icon(
+                  row['gender'] == 'f' ? Icons.female : Icons.male,
+                  size: 16,
+                  color: row['gender'] == 'f'
+                      ? AppColors.secondary500
+                      : AppColors.primary500,
+                ),
               ),
               const SizedBox(width: 12),
               Text(name, style: const TextStyle(fontWeight: FontWeight.w500)),
@@ -95,7 +113,11 @@ class _PatientListPageState extends ConsumerState<PatientListPage> {
       ),
       GulaTableColumn(key: 'nationalId', label: 'National ID', flex: 1),
       GulaTableColumn(key: 'phone', label: 'Phone', flex: 1),
-      GulaTableColumn(key: 'gender', label: 'Gender', flex: 0, width: 80,
+      GulaTableColumn(
+        key: 'gender',
+        label: 'Gender',
+        flex: 0,
+        width: 80,
         cellBuilder: (v, row) => GulaBadge(
           label: v == 'm' ? 'Male' : 'Female',
           status: v == 'm' ? GulaBadgeStatus.info : GulaBadgeStatus.success,
@@ -119,7 +141,10 @@ class _PatientListPageState extends ConsumerState<PatientListPage> {
         itemBuilder: (context) => [
           const PopupMenuItem(value: 'view', child: Text('View Details')),
           const PopupMenuItem(value: 'edit', child: Text('Edit')),
-          const PopupMenuItem(value: 'delete', child: Text('Delete', style: TextStyle(color: AppColors.error500))),
+          const PopupMenuItem(
+            value: 'delete',
+            child: Text('Delete', style: TextStyle(color: AppColors.error500)),
+          ),
         ],
         onSelected: (value) {
           final id = row['id'];

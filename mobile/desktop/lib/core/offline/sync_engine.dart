@@ -16,7 +16,9 @@ class SyncEngine {
   final ConnectivityService _connectivityService;
   final SyncQueueManager _queueManager;
 
-  final ValueNotifier<SyncStatus> statusNotifier = ValueNotifier(SyncStatus.idle);
+  final ValueNotifier<SyncStatus> statusNotifier = ValueNotifier(
+    SyncStatus.idle,
+  );
   final ValueNotifier<double> progressNotifier = ValueNotifier(0.0);
   final ValueNotifier<String?> lastSyncError = ValueNotifier(null);
   final ValueNotifier<DateTime?> lastSyncTime = ValueNotifier(null);
@@ -30,10 +32,10 @@ class SyncEngine {
     required ApiClient apiClient,
     required ConnectivityService connectivityService,
     required SyncQueueManager queueManager,
-  })  : _db = db,
-        _apiClient = apiClient,
-        _connectivityService = connectivityService,
-        _queueManager = queueManager;
+  }) : _db = db,
+       _apiClient = apiClient,
+       _connectivityService = connectivityService,
+       _queueManager = queueManager;
 
   int get syncIntervalSeconds => _syncIntervalSeconds;
 
@@ -112,7 +114,10 @@ class SyncEngine {
             await _apiClient.post('/${item.entityType}', data: payload);
             break;
           case 'update':
-            await _apiClient.put('/${item.entityType}/${item.entityId}', data: payload);
+            await _apiClient.put(
+              '/${item.entityType}/${item.entityId}',
+              data: payload,
+            );
             break;
           case 'delete':
             await _apiClient.delete('/${item.entityType}/${item.entityId}');

@@ -12,7 +12,8 @@ class NotificationListPage extends ConsumerStatefulWidget {
   const NotificationListPage({super.key});
 
   @override
-  ConsumerState<NotificationListPage> createState() => _NotificationListPageState();
+  ConsumerState<NotificationListPage> createState() =>
+      _NotificationListPageState();
 }
 
 class _NotificationListPageState extends ConsumerState<NotificationListPage> {
@@ -36,7 +37,12 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
             title: 'Notifications',
             subtitle: '${state.unreadCount} unread',
             trailing: state.unreadCount > 0
-                ? GulaButton(label: 'Mark All Read', variant: GulaButtonVariant.text, onPressed: () => ref.read(notificationListProvider).markAllAsRead())
+                ? GulaButton(
+                    label: 'Mark All Read',
+                    variant: GulaButtonVariant.text,
+                    onPressed: () =>
+                        ref.read(notificationListProvider).markAllAsRead(),
+                  )
                 : null,
           ),
           const SizedBox(height: 16),
@@ -47,7 +53,8 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
   }
 
   Widget _buildList(NotificationProvider state) {
-    if (state.isLoading) return const GulaLoading(type: GulaLoadingType.shimmer);
+    if (state.isLoading)
+      return const GulaLoading(type: GulaLoadingType.shimmer);
 
     return ListView.separated(
       itemCount: state.notifications.length,
@@ -55,7 +62,8 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
       itemBuilder: (context, index) {
         final n = state.notifications[index];
         final id = n['id']?.toString() ?? '';
-        final createdAt = DateTime.tryParse(n['createdAt']?.toString() ?? '') ??
+        final createdAt =
+            DateTime.tryParse(n['createdAt']?.toString() ?? '') ??
             DateTime.now();
         return NotificationTile(
           id: id,

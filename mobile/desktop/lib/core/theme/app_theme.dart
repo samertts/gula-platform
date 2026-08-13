@@ -262,14 +262,8 @@ class AppTheme {
         fontSize: 14,
         fontWeight: FontWeight.w400,
       ),
-      hintStyle: const TextStyle(
-        color: AppColors.neutral400,
-        fontSize: 14,
-      ),
-      errorStyle: const TextStyle(
-        color: AppColors.error500,
-        fontSize: 12,
-      ),
+      hintStyle: const TextStyle(color: AppColors.neutral400, fontSize: 14),
+      errorStyle: const TextStyle(color: AppColors.error500, fontSize: 12),
       helperStyle: const TextStyle(
         color: AppColors.textSecondary,
         fontSize: 12,
@@ -290,10 +284,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
         ),
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -310,10 +301,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
         ),
         side: const BorderSide(color: AppColors.primary500),
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -329,10 +317,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
         ),
-        textStyle: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
+        textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
       ),
     );
   }

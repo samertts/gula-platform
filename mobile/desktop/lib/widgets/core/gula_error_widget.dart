@@ -28,11 +28,7 @@ class GulaErrorWidget extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 64,
-              color: AppColors.error300,
-            ),
+            Icon(icon, size: 64, color: AppColors.error300),
             const SizedBox(height: 16),
             if (title != null) ...[
               Text(

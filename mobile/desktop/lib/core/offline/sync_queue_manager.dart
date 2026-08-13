@@ -16,19 +16,21 @@ class SyncQueueManager {
     required Map<String, dynamic> payload,
     int maxRetries = 5,
   }) async {
-    await _db.into(_db.syncQueue).insert(
-      SyncQueueCompanion(
-        entityType: Value(entityType),
-        entityId: Value(entityId),
-        operation: Value(operation),
-        payload: Value(jsonEncode(payload)),
-        status: const Value('pending'),
-        retryCount: const Value(0),
-        maxRetries: Value(maxRetries),
-        createdAt: Value(DateTime.now().toIso8601String()),
-        updatedAt: Value(DateTime.now().toIso8601String()),
-      ),
-    );
+    await _db
+        .into(_db.syncQueue)
+        .insert(
+          SyncQueueCompanion(
+            entityType: Value(entityType),
+            entityId: Value(entityId),
+            operation: Value(operation),
+            payload: Value(jsonEncode(payload)),
+            status: const Value('pending'),
+            retryCount: const Value(0),
+            maxRetries: Value(maxRetries),
+            createdAt: Value(DateTime.now().toIso8601String()),
+            updatedAt: Value(DateTime.now().toIso8601String()),
+          ),
+        );
   }
 
   Future<List<SyncQueueData>> getPending({int limit = 50}) async {
@@ -49,12 +51,12 @@ class SyncQueueManager {
   }
 
   Future<void> markInProgress(int id) async {
-    await (_db.update(_db.syncQueue)
-      ..where((q) => q.id.equals(id))
-    ).write(const SyncQueueCompanion(
-      status: Value('in_progress'),
-      updatedAt: Value(''),
-    ));
+    await (_db.update(_db.syncQueue)..where((q) => q.id.equals(id))).write(
+      const SyncQueueCompanion(
+        status: Value('in_progress'),
+        updatedAt: Value(''),
+      ),
+    );
   }
 
   Future<void> markCompleted(int id) async {
@@ -62,27 +64,27 @@ class SyncQueueManager {
   }
 
   Future<void> markFailed(int id, String error) async {
-    final current = await (_db.select(_db.syncQueue)
-      ..where((q) => q.id.equals(id))
-    ).getSingleOrNull();
+    final current = await (_db.select(
+      _db.syncQueue,
+    )..where((q) => q.id.equals(id))).getSingleOrNull();
     final retryCount = (current?.retryCount ?? 0) + 1;
-    await (_db.update(_db.syncQueue)
-      ..where((q) => q.id.equals(id))
-    ).write(SyncQueueCompanion(
-      status: const Value('failed'),
-      retryCount: Value(retryCount),
-      lastError: Value(error),
-      updatedAt: Value(DateTime.now().toIso8601String()),
-    ));
+    await (_db.update(_db.syncQueue)..where((q) => q.id.equals(id))).write(
+      SyncQueueCompanion(
+        status: const Value('failed'),
+        retryCount: Value(retryCount),
+        lastError: Value(error),
+        updatedAt: Value(DateTime.now().toIso8601String()),
+      ),
+    );
   }
 
   Future<void> markDeadLetter(int id) async {
-    await (_db.update(_db.syncQueue)
-      ..where((q) => q.id.equals(id))
-    ).write(const SyncQueueCompanion(
-      status: Value('dead_letter'),
-      updatedAt: Value(''),
-    ));
+    await (_db.update(_db.syncQueue)..where((q) => q.id.equals(id))).write(
+      const SyncQueueCompanion(
+        status: Value('dead_letter'),
+        updatedAt: Value(''),
+      ),
+    );
   }
 
   Future<int> getPendingCount() async {
@@ -102,9 +104,9 @@ class SyncQueueManager {
   }
 
   Future<void> clearDeadLetters() async {
-    await (_db.delete(_db.syncQueue)
-      ..where((q) => q.status.equals('dead_letter'))
-    ).go();
+    await (_db.delete(
+      _db.syncQueue,
+    )..where((q) => q.status.equals('dead_letter'))).go();
   }
 
   Future<void> clearAll() async {
@@ -128,9 +130,8 @@ class SyncQueueManager {
   Future<void> retryFailed() async {
     final failed = await getFailed();
     for (final item in failed) {
-      await (_db.update(_db.syncQueue)
-        ..where((q) => q.id.equals(item.id))
-      ).write(const SyncQueueCompanion(status: Value('pending')));
+      await (_db.update(_db.syncQueue)..where((q) => q.id.equals(item.id)))
+          .write(const SyncQueueCompanion(status: Value('pending')));
     }
   }
 }

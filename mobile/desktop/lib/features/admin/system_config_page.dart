@@ -42,13 +42,29 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('General Settings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'General Settings',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const Divider(height: 24),
-                    GulaTextField(label: 'Laboratory Name', controller: _labNameController),
+                    GulaTextField(
+                      label: 'Laboratory Name',
+                      controller: _labNameController,
+                    ),
                     const SizedBox(height: 16),
-                    GulaTextField(label: 'Address', controller: _addressController),
+                    GulaTextField(
+                      label: 'Address',
+                      controller: _addressController,
+                    ),
                     const SizedBox(height: 16),
-                    GulaTextField(label: 'Phone', controller: _phoneController, keyboardType: TextInputType.phone),
+                    GulaTextField(
+                      label: 'Phone',
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                    ),
                   ],
                 ),
               ),
@@ -57,7 +73,13 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Sync Settings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Sync Settings',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const Divider(height: 24),
                     const ListTile(
                       title: Text('Auto Sync'),
@@ -77,7 +99,13 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Security Settings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Security Settings',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const Divider(height: 24),
                     const ListTile(
                       title: Text('Two-Factor Authentication'),
@@ -86,7 +114,9 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
                     ),
                     const ListTile(
                       title: Text('Session Timeout'),
-                      subtitle: Text('Auto logout after 120 minutes of inactivity'),
+                      subtitle: Text(
+                        'Auto logout after 120 minutes of inactivity',
+                      ),
                       trailing: Switch(value: true, onChanged: null),
                     ),
                   ],
@@ -96,13 +126,23 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  GulaButton(label: 'Reset to Defaults', variant: GulaButtonVariant.text, onPressed: () {}),
+                  GulaButton(
+                    label: 'Reset to Defaults',
+                    variant: GulaButtonVariant.text,
+                    onPressed: () {},
+                  ),
                   const SizedBox(width: 12),
-                  GulaButton(label: 'Save Configuration', onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Configuration saved'), backgroundColor: AppColors.success500),
-                    );
-                  }),
+                  GulaButton(
+                    label: 'Save Configuration',
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Configuration saved'),
+                          backgroundColor: AppColors.success500,
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ],

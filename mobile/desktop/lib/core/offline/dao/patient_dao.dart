@@ -6,16 +6,21 @@ class PatientDao {
   final AppDatabase _db;
   PatientDao(this._db);
 
-  Future<List<Patient>> getAll({String? search, int? limit, int? offset}) async {
-    final query = _db.select(_db.patients)
-      ..where((p) => p.deletedAt.isNull());
+  Future<List<Patient>> getAll({
+    String? search,
+    int? limit,
+    int? offset,
+  }) async {
+    final query = _db.select(_db.patients)..where((p) => p.deletedAt.isNull());
     if (search != null && search.isNotEmpty) {
       final pattern = '%$search%';
-      query.where((p) =>
-          p.fullName.like(pattern) |
-          p.nationalId.like(pattern) |
-          p.phone.like(pattern) |
-          p.id.like(pattern));
+      query.where(
+        (p) =>
+            p.fullName.like(pattern) |
+            p.nationalId.like(pattern) |
+            p.phone.like(pattern) |
+            p.id.like(pattern),
+      );
     }
     if (limit != null) query.limit(limit, offset: offset);
     query.orderBy([(p) => OrderingTerm.desc(p.updatedAt)]);
@@ -28,17 +33,20 @@ class PatientDao {
   }
 
   Future<Patient?> getByNationalId(String nationalId) async {
-    final query = _db.select(_db.patients)..where((p) => p.nationalId.equals(nationalId));
+    final query = _db.select(_db.patients)
+      ..where((p) => p.nationalId.equals(nationalId));
     return await query.getSingleOrNull();
   }
 
   Future<List<Patient>> search(String query) async {
     final pattern = '%$query%';
     final stmt = _db.select(_db.patients)
-      ..where((p) =>
-          p.fullName.like(pattern) |
-          p.nationalId.like(pattern) |
-          p.phone.like(pattern));
+      ..where(
+        (p) =>
+            p.fullName.like(pattern) |
+            p.nationalId.like(pattern) |
+            p.phone.like(pattern),
+      );
     stmt.limit(50);
     return await stmt.get();
   }
@@ -60,9 +68,8 @@ class PatientDao {
   }
 
   Future<int> softDelete(String id) async {
-    return await (_db.update(_db.patients)
-      ..where((p) => p.id.equals(id))
-    ).write(const PatientsCompanion(deletedAt: Value(null)));
+    return await (_db.update(_db.patients)..where((p) => p.id.equals(id)))
+        .write(const PatientsCompanion(deletedAt: Value(null)));
   }
 
   Future<int> count({String? search}) async {
@@ -85,8 +92,8 @@ class PatientDao {
   }
 
   Future<void> markSynced(String id) async {
-    await (_db.update(_db.patients)
-      ..where((p) => p.id.equals(id))
-    ).write(const PatientsCompanion(syncStatus: Value('synced')));
+    await (_db.update(_db.patients)..where((p) => p.id.equals(id))).write(
+      const PatientsCompanion(syncStatus: Value('synced')),
+    );
   }
 }

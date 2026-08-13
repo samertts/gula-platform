@@ -16,11 +16,7 @@ void main() async {
 
   await _initializeApp();
 
-  runApp(
-    ProviderScope(
-      child: _AppEntry(),
-    ),
-  );
+  runApp(ProviderScope(child: _AppEntry()));
 }
 
 Future<void> _initializeApp() async {
@@ -28,8 +24,14 @@ Future<void> _initializeApp() async {
     await windowManager.ensureInitialized();
 
     const windowOptions = WindowOptions(
-      size: Size(AppConstants.defaultDesktopWidth, AppConstants.defaultDesktopHeight),
-      minimumSize: Size(AppConstants.minDesktopWidth, AppConstants.minDesktopHeight),
+      size: Size(
+        AppConstants.defaultDesktopWidth,
+        AppConstants.defaultDesktopHeight,
+      ),
+      minimumSize: Size(
+        AppConstants.minDesktopWidth,
+        AppConstants.minDesktopHeight,
+      ),
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: false,

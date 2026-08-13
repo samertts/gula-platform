@@ -103,11 +103,17 @@ class GulaTextField extends StatelessWidget {
         suffixIcon: suffixIcon != null
             ? InkWell(
                 onTap: onSuffixIconTap,
-                child: Icon(suffixIcon, size: 20, color: AppColors.textSecondary),
+                child: Icon(
+                  suffixIcon,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
               )
             : suffix,
         filled: true,
-        fillColor: fillColor ?? (enabled ? AppColors.surfaceLight : AppColors.neutral50),
+        fillColor:
+            fillColor ??
+            (enabled ? AppColors.surfaceLight : AppColors.neutral50),
         contentPadding: EdgeInsets.symmetric(
           horizontal: isRtl ? 16 : 12,
           vertical: 12,
@@ -137,13 +143,21 @@ class GulaTextField extends StatelessWidget {
           borderSide: const BorderSide(color: AppColors.neutral200),
         ),
         labelStyle: TextStyle(
-          color: errorText != null ? AppColors.error500 : AppColors.textSecondary,
+          color: errorText != null
+              ? AppColors.error500
+              : AppColors.textSecondary,
           fontSize: 14,
         ),
         hintStyle: const TextStyle(color: AppColors.neutral400, fontSize: 14),
         errorStyle: const TextStyle(color: AppColors.error500, fontSize: 12),
-        helperStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-        counterStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+        helperStyle: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 12,
+        ),
+        counterStyle: const TextStyle(
+          color: AppColors.textSecondary,
+          fontSize: 11,
+        ),
       ),
     );
   }

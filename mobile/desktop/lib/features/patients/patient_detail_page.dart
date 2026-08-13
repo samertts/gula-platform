@@ -27,12 +27,19 @@ class PatientDetailPage extends StatelessWidget {
                   onPressed: () => context.pop(),
                 ),
                 const SizedBox(width: 8),
-                const Expanded(
-                  child: SectionHeader(title: 'Patient Details'),
+                const Expanded(child: SectionHeader(title: 'Patient Details')),
+                GulaButton(
+                  label: 'Edit',
+                  variant: GulaButtonVariant.outline,
+                  icon: Icons.edit,
+                  onPressed: () {},
                 ),
-                GulaButton(label: 'Edit', variant: GulaButtonVariant.outline, icon: Icons.edit, onPressed: () {}),
                 const SizedBox(width: 8),
-                GulaButton(label: 'New Order', icon: Icons.add, onPressed: () {}),
+                GulaButton(
+                  label: 'New Order',
+                  icon: Icons.add,
+                  onPressed: () {},
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -46,20 +53,40 @@ class PatientDetailPage extends StatelessWidget {
                       children: [
                         Row(
                           children: [
-                            const CircleAvatar(radius: 32, backgroundColor: AppColors.primary100,
-                              child: Icon(Icons.person, size: 32, color: AppColors.primary700)),
+                            const CircleAvatar(
+                              radius: 32,
+                              backgroundColor: AppColors.primary100,
+                              child: Icon(
+                                Icons.person,
+                                size: 32,
+                                color: AppColors.primary700,
+                              ),
+                            ),
                             const SizedBox(width: 16),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Ahmed Jasim Al-Tamimi',
-                                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                                const Text(
+                                  'Ahmed Jasim Al-Tamimi',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    const GulaBadge(label: 'Male', status: GulaBadgeStatus.info, showDot: false),
+                                    const GulaBadge(
+                                      label: 'Male',
+                                      status: GulaBadgeStatus.info,
+                                      showDot: false,
+                                    ),
                                     const SizedBox(width: 8),
-                                    GulaBadge(label: 'A+', status: GulaBadgeStatus.neutral, showDot: false),
+                                    GulaBadge(
+                                      label: 'A+',
+                                      status: GulaBadgeStatus.neutral,
+                                      showDot: false,
+                                    ),
                                   ],
                                 ),
                               ],
@@ -87,9 +114,21 @@ class PatientDetailPage extends StatelessWidget {
                           children: [
                             SectionHeader(title: 'Recent Orders'),
                             const Divider(height: 1),
-                            _orderItem('ORD-2025-0891', 'CBC, LFT', 'Completed'),
-                            _orderItem('ORD-2025-0850', 'Thyroid Panel', 'Pending'),
-                            _orderItem('ORD-2025-0812', 'Lipid Profile', 'Validated'),
+                            _orderItem(
+                              'ORD-2025-0891',
+                              'CBC, LFT',
+                              'Completed',
+                            ),
+                            _orderItem(
+                              'ORD-2025-0850',
+                              'Thyroid Panel',
+                              'Pending',
+                            ),
+                            _orderItem(
+                              'ORD-2025-0812',
+                              'Lipid Profile',
+                              'Validated',
+                            ),
                           ],
                         ),
                       ),
@@ -123,8 +162,22 @@ class PatientDetailPage extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 120, child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+          ),
         ],
       ),
     );
@@ -135,7 +188,12 @@ class PatientDetailPage extends StatelessWidget {
       dense: true,
       title: Text('#$orderNum', style: const TextStyle(fontSize: 13)),
       subtitle: Text(tests, style: const TextStyle(fontSize: 12)),
-      trailing: GulaBadge(label: status, status: status == 'Completed' ? GulaBadgeStatus.success : GulaBadgeStatus.pending),
+      trailing: GulaBadge(
+        label: status,
+        status: status == 'Completed'
+            ? GulaBadgeStatus.success
+            : GulaBadgeStatus.pending,
+      ),
     );
   }
 
@@ -143,7 +201,10 @@ class PatientDetailPage extends StatelessWidget {
     return ListTile(
       dense: true,
       title: Text(test, style: const TextStyle(fontSize: 13)),
-      trailing: Text('$value $unit', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+      trailing: Text(
+        '$value $unit',
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }

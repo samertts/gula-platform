@@ -22,12 +22,26 @@ class OrderDetailPage extends StatelessWidget {
           children: [
             Row(
               children: [
-                IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => context.pop(),
+                ),
                 const SizedBox(width: 8),
-                const Expanded(child: SectionHeader(title: 'Order #ORD-2025-0891')),
-                GulaButton(label: 'Print', variant: GulaButtonVariant.outline, icon: Icons.print, onPressed: () {}),
+                const Expanded(
+                  child: SectionHeader(title: 'Order #ORD-2025-0891'),
+                ),
+                GulaButton(
+                  label: 'Print',
+                  variant: GulaButtonVariant.outline,
+                  icon: Icons.print,
+                  onPressed: () {},
+                ),
                 const SizedBox(width: 8),
-                GulaButton(label: 'Cancel', variant: GulaButtonVariant.danger, onPressed: () {}),
+                GulaButton(
+                  label: 'Cancel',
+                  variant: GulaButtonVariant.danger,
+                  onPressed: () {},
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -39,9 +53,22 @@ class OrderDetailPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Order Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        const Text(
+                          'Order Information',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const Divider(height: 24),
-                        _infoRow('Status', 'Pending', GulaBadge(label: 'Pending', status: GulaBadgeStatus.pending)),
+                        _infoRow(
+                          'Status',
+                          'Pending',
+                          GulaBadge(
+                            label: 'Pending',
+                            status: GulaBadgeStatus.pending,
+                          ),
+                        ),
                         _infoRow('Patient', 'Ahmed Ali'),
                         _infoRow('Doctor', 'Dr. Ali Hasan'),
                         _infoRow('Created', '2025-03-21 09:30'),
@@ -56,7 +83,13 @@ class OrderDetailPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Test Results', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        const Text(
+                          'Test Results',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                         const Divider(height: 24),
                         _resultItem('Complete Blood Count', 'Completed'),
                         _resultItem('Liver Function Test', 'Pending'),
@@ -72,17 +105,32 @@ class OrderDetailPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Samples', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Samples',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
                   const Divider(height: 24),
                   GulaTable(
                     columns: [
-                      GulaTableColumn(key: 'barcode', label: 'Barcode', flex: 1),
+                      GulaTableColumn(
+                        key: 'barcode',
+                        label: 'Barcode',
+                        flex: 1,
+                      ),
                       GulaTableColumn(key: 'type', label: 'Type', flex: 1),
                       GulaTableColumn(key: 'status', label: 'Status', flex: 1),
                     ],
                     rows: [
-                      {'barcode': 'BL20250321-001', 'type': 'Blood', 'status': 'Collected'},
-                      {'barcode': 'BL20250321-002', 'type': 'Blood', 'status': 'Processing'},
+                      {
+                        'barcode': 'BL20250321-001',
+                        'type': 'Blood',
+                        'status': 'Collected',
+                      },
+                      {
+                        'barcode': 'BL20250321-002',
+                        'type': 'Blood',
+                        'status': 'Processing',
+                      },
                     ],
                     onRefresh: () {},
                   ),
@@ -100,8 +148,24 @@ class OrderDetailPage extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          SizedBox(width: 100, child: Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-          badge ?? Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+          SizedBox(
+            width: 100,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
+            ),
+          ),
+          badge ??
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
         ],
       ),
     );
@@ -111,7 +175,12 @@ class OrderDetailPage extends StatelessWidget {
     return ListTile(
       dense: true,
       title: Text(test, style: const TextStyle(fontSize: 13)),
-      trailing: GulaBadge(label: status, status: status == 'Completed' ? GulaBadgeStatus.success : GulaBadgeStatus.pending),
+      trailing: GulaBadge(
+        label: status,
+        status: status == 'Completed'
+            ? GulaBadgeStatus.success
+            : GulaBadgeStatus.pending,
+      ),
     );
   }
 }

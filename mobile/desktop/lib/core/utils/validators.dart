@@ -72,7 +72,9 @@ class AppValidators {
   static String? numeric(String? value, {String? fieldName}) {
     if (value == null || value.trim().isEmpty) return null;
     if (!RegExp(r'^\d+(\.\d+)?$').hasMatch(value.trim())) {
-      return fieldName != null ? '$fieldName يجب أن يكون رقمًا' : 'يجب أن يكون رقمًا';
+      return fieldName != null
+          ? '$fieldName يجب أن يكون رقمًا'
+          : 'يجب أن يكون رقمًا';
     }
     return null;
   }
@@ -101,7 +103,9 @@ class AppValidators {
     if (value == null || value.trim().isEmpty) return null;
     final num? parsed = num.tryParse(value.trim());
     if (parsed == null) {
-      return fieldName != null ? '$fieldName يجب أن يكون رقمًا' : 'يجب أن يكون رقمًا';
+      return fieldName != null
+          ? '$fieldName يجب أن يكون رقمًا'
+          : 'يجب أن يكون رقمًا';
     }
     if (parsed < min || parsed > max) {
       return fieldName != null

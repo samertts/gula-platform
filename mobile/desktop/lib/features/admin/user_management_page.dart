@@ -33,7 +33,11 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionHeader(title: 'User Management', actionLabel: 'Add User', onAction: () {}),
+          SectionHeader(
+            title: 'User Management',
+            actionLabel: 'Add User',
+            onAction: () {},
+          ),
           const SizedBox(height: 16),
           Expanded(child: _buildContent(state)),
         ],
@@ -42,21 +46,53 @@ class _UserManagementPageState extends ConsumerState<UserManagementPage> {
   }
 
   Widget _buildContent(AdminProvider state) {
-    if (state.isLoadingUsers) return const GulaLoading(type: GulaLoadingType.shimmer);
+    if (state.isLoadingUsers)
+      return const GulaLoading(type: GulaLoadingType.shimmer);
 
     return GulaTable(
       columns: [
         GulaTableColumn(key: 'name', label: 'Name', flex: 2),
         GulaTableColumn(key: 'email', label: 'Email', flex: 2),
-        GulaTableColumn(key: 'role', label: 'Role', flex: 1,
-          cellBuilder: (v, row) => GulaBadge(label: v.toString(), status: v == 'labAdmin' ? GulaBadgeStatus.info : GulaBadgeStatus.neutral)),
-        GulaTableColumn(key: 'status', label: 'Status', flex: 1,
-          cellBuilder: (v, row) => GulaBadge(label: v.toString(), status: v == 'active' ? GulaBadgeStatus.success : GulaBadgeStatus.cancelled)),
-        GulaTableColumn(key: 'actions', label: 'Actions', flex: 1,
+        GulaTableColumn(
+          key: 'role',
+          label: 'Role',
+          flex: 1,
+          cellBuilder: (v, row) => GulaBadge(
+            label: v.toString(),
+            status: v == 'labAdmin'
+                ? GulaBadgeStatus.info
+                : GulaBadgeStatus.neutral,
+          ),
+        ),
+        GulaTableColumn(
+          key: 'status',
+          label: 'Status',
+          flex: 1,
+          cellBuilder: (v, row) => GulaBadge(
+            label: v.toString(),
+            status: v == 'active'
+                ? GulaBadgeStatus.success
+                : GulaBadgeStatus.cancelled,
+          ),
+        ),
+        GulaTableColumn(
+          key: 'actions',
+          label: 'Actions',
+          flex: 1,
           cellBuilder: (v, row) => Row(
             children: [
-              GulaButton(label: 'Edit', variant: GulaButtonVariant.text, height: 32, onPressed: () {}),
-              GulaButton(label: 'Suspend', variant: GulaButtonVariant.danger, height: 32, onPressed: () {}),
+              GulaButton(
+                label: 'Edit',
+                variant: GulaButtonVariant.text,
+                height: 32,
+                onPressed: () {},
+              ),
+              GulaButton(
+                label: 'Suspend',
+                variant: GulaButtonVariant.danger,
+                height: 32,
+                onPressed: () {},
+              ),
             ],
           ),
         ),

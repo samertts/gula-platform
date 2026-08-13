@@ -1,4 +1,3 @@
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -47,7 +46,9 @@ class AuthManager {
   BiometricAuth get biometricAuth => _biometricAuth;
   ApiClient get apiClient => _apiClient;
 
-  final ValueNotifier<AuthStatus> statusNotifier = ValueNotifier(AuthStatus.uninitialized);
+  final ValueNotifier<AuthStatus> statusNotifier = ValueNotifier(
+    AuthStatus.uninitialized,
+  );
   final ValueNotifier<String?> errorNotifier = ValueNotifier(null);
 
   Future<void> initialize({required String apiUrl}) async {
@@ -96,10 +97,7 @@ class AuthManager {
     try {
       final response = await _apiClient.post(
         ApiEndpoints.login,
-        data: {
-          'email': email,
-          'password': password,
-        },
+        data: {'email': email, 'password': password},
         idempotent: true,
       );
 
@@ -167,7 +165,8 @@ class AuthManager {
     _userRole = (user['role'] ?? data['role']) as String?;
     _userName = (user['name'] ?? user['full_name'] ?? data['name']) as String?;
     _userEmail = (user['email'] ?? data['email']) as String?;
-    _userProfile = (user['profile'] ?? data['profile']) as Map<String, dynamic>?;
+    _userProfile =
+        (user['profile'] ?? data['profile']) as Map<String, dynamic>?;
 
     if (_token != null) {
       await _storage.saveToken(_token!);
@@ -193,7 +192,8 @@ class AuthManager {
       _token = (data['access_token'] ?? data['token']) as String?;
       _refreshToken = data['refresh_token'] as String?;
       if (_token != null) await _storage.saveToken(_token!);
-      if (_refreshToken != null) await _storage.saveRefreshToken(_refreshToken!);
+      if (_refreshToken != null)
+        await _storage.saveRefreshToken(_refreshToken!);
       return true;
     } catch (e) {
       return false;

@@ -20,28 +20,42 @@ class SecureConfig {
   static const _keyLastSync = 'last_sync_timestamp';
   static const _keyEncryptionKey = 'encryption_key';
 
-  static AndroidOptions _androidOptions() => const AndroidOptions(
-        encryptedSharedPreferences: true,
-      );
+  static AndroidOptions _androidOptions() =>
+      const AndroidOptions(encryptedSharedPreferences: true);
 
-  static IOSOptions _iosOptions() => const IOSOptions(
-        accessibility: KeychainAccessibility.passcode,
-      );
+  static IOSOptions _iosOptions() =>
+      const IOSOptions(accessibility: KeychainAccessibility.passcode);
 
   static Future<void> write(String key, String value) async {
-    await _storage.write(key: key, value: value, aOptions: _androidOptions(), iOptions: _iosOptions());
+    await _storage.write(
+      key: key,
+      value: value,
+      aOptions: _androidOptions(),
+      iOptions: _iosOptions(),
+    );
   }
 
   static Future<String?> read(String key) async {
-    return await _storage.read(key: key, aOptions: _androidOptions(), iOptions: _iosOptions());
+    return await _storage.read(
+      key: key,
+      aOptions: _androidOptions(),
+      iOptions: _iosOptions(),
+    );
   }
 
   static Future<void> delete(String key) async {
-    await _storage.delete(key: key, aOptions: _androidOptions(), iOptions: _iosOptions());
+    await _storage.delete(
+      key: key,
+      aOptions: _androidOptions(),
+      iOptions: _iosOptions(),
+    );
   }
 
   static Future<void> clear() async {
-    await _storage.deleteAll(aOptions: _androidOptions(), iOptions: _iosOptions());
+    await _storage.deleteAll(
+      aOptions: _androidOptions(),
+      iOptions: _iosOptions(),
+    );
   }
 
   static Future<void> setApiUrl(String url) => write(_keyApiUrl, url);
@@ -50,7 +64,8 @@ class SecureConfig {
   static Future<void> setToken(String token) => write(_keyToken, token);
   static Future<String?> getToken() => read(_keyToken);
 
-  static Future<void> setRefreshToken(String token) => write(_keyRefreshToken, token);
+  static Future<void> setRefreshToken(String token) =>
+      write(_keyRefreshToken, token);
   static Future<String?> getRefreshToken() => read(_keyRefreshToken);
 
   static Future<void> setUserId(String id) => write(_keyUserId, id);
@@ -78,7 +93,8 @@ class SecureConfig {
   static Future<void> setDeviceId(String id) => write(_keyDeviceId, id);
   static Future<String?> getDeviceId() => read(_keyDeviceId);
 
-  static Future<void> setLastSync(String timestamp) => write(_keyLastSync, timestamp);
+  static Future<void> setLastSync(String timestamp) =>
+      write(_keyLastSync, timestamp);
   static Future<String?> getLastSync() => read(_keyLastSync);
 
   static Future<String> getOrCreateEncryptionKey() async {

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-
 class CameraService {
   bool _isInitialized = false;
 

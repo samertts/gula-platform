@@ -36,7 +36,10 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
         children: [
           SectionHeader(title: 'Inventory'),
           const SizedBox(height: 16),
-          SizedBox(width: 300, child: GulaSearchBar(hint: 'Search inventory...')),
+          SizedBox(
+            width: 300,
+            child: GulaSearchBar(hint: 'Search inventory...'),
+          ),
           const SizedBox(height: 16),
           Expanded(child: _buildContent(state)),
         ],
@@ -45,37 +48,55 @@ class _InventoryPageState extends ConsumerState<InventoryPage> {
   }
 
   Widget _buildContent(InventoryProvider state) {
-    if (state.isLoading) return const GulaLoading(type: GulaLoadingType.shimmer);
+    if (state.isLoading)
+      return const GulaLoading(type: GulaLoadingType.shimmer);
 
     return GulaTable(
       columns: [
         GulaTableColumn(key: 'name', label: 'Item', flex: 2, sortable: true),
         GulaTableColumn(key: 'category', label: 'Category', flex: 1),
-        GulaTableColumn(key: 'quantity', label: 'Quantity', flex: 1,
+        GulaTableColumn(
+          key: 'quantity',
+          label: 'Quantity',
+          flex: 1,
           cellBuilder: (v, row) {
             final qty = v as int;
             final minQty = row['minQuantity'] as int;
             final isLow = qty <= minQty;
             return Row(
               children: [
-                Text(qty.toString(), style: TextStyle(fontWeight: FontWeight.w600, color: isLow ? AppColors.error500 : AppColors.textPrimary)),
+                Text(
+                  qty.toString(),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: isLow ? AppColors.error500 : AppColors.textPrimary,
+                  ),
+                ),
                 if (isLow) ...[
                   const SizedBox(width: 8),
-                  const GulaBadge(label: 'Low Stock', status: GulaBadgeStatus.error),
+                  const GulaBadge(
+                    label: 'Low Stock',
+                    status: GulaBadgeStatus.error,
+                  ),
                 ],
               ],
             );
           },
         ),
         GulaTableColumn(key: 'unit', label: 'Unit', flex: 1),
-        GulaTableColumn(key: 'expiryDate', label: 'Expiry', flex: 1,
+        GulaTableColumn(
+          key: 'expiryDate',
+          label: 'Expiry',
+          flex: 1,
           cellBuilder: (v, row) {
             final date = DateTime.tryParse(v.toString());
             if (date == null) return const SizedBox.shrink();
             final isExpiring = date.difference(DateTime.now()).inDays < 30;
             return Text(
               date.toLocal().toString().substring(0, 10),
-              style: TextStyle(color: isExpiring ? AppColors.error500 : AppColors.textPrimary),
+              style: TextStyle(
+                color: isExpiring ? AppColors.error500 : AppColors.textPrimary,
+              ),
             );
           },
         ),

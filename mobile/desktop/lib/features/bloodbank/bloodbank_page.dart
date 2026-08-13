@@ -46,15 +46,21 @@ class _BloodBankPageState extends State<BloodBankPage> {
               final u = _units[index];
               Color bgColor;
               switch (u['status']) {
-                case 'critical': bgColor = AppColors.error50;
-                case 'low': bgColor = AppColors.warning50;
-                default: bgColor = AppColors.success50;
+                case 'critical':
+                  bgColor = AppColors.error50;
+                case 'low':
+                  bgColor = AppColors.warning50;
+                default:
+                  bgColor = AppColors.success50;
               }
               Color borderColor;
               switch (u['status']) {
-                case 'critical': borderColor = AppColors.error200;
-                case 'low': borderColor = AppColors.warning200;
-                default: borderColor = AppColors.success200;
+                case 'critical':
+                  borderColor = AppColors.error200;
+                case 'low':
+                  borderColor = AppColors.warning200;
+                default:
+                  borderColor = AppColors.success200;
               }
               return Container(
                 padding: const EdgeInsets.all(16),
@@ -66,14 +72,25 @@ class _BloodBankPageState extends State<BloodBankPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(u['group']?.toString() ?? '', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    Text(
+                      u['group']?.toString() ?? '',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('${u['units']} units', style: const TextStyle(fontSize: 14)),
+                    Text(
+                      '${u['units']} units',
+                      style: const TextStyle(fontSize: 14),
+                    ),
                     const SizedBox(height: 4),
                     GulaBadge(
                       label: u['status'].toString(),
-                      status: u['status'] == 'available' ? GulaBadgeStatus.success
-                          : u['status'] == 'low' ? GulaBadgeStatus.warning
+                      status: u['status'] == 'available'
+                          ? GulaBadgeStatus.success
+                          : u['status'] == 'low'
+                          ? GulaBadgeStatus.warning
                           : GulaBadgeStatus.error,
                     ),
                   ],

@@ -34,14 +34,13 @@ class ResultDao {
   }
 
   Future<List<Result>> getByOrderId(String orderId) async {
-    return await (_db.select(_db.results)
-      ..where((r) => r.orderId.equals(orderId))
-    ).get();
+    return await (_db.select(
+      _db.results,
+    )..where((r) => r.orderId.equals(orderId))).get();
   }
 
   Future<List<Result>> getCritical({String? labId}) async {
-    final query = _db.select(_db.results)
-      ..where((r) => r.isCritical.equals(1));
+    final query = _db.select(_db.results)..where((r) => r.isCritical.equals(1));
     if (labId != null) query.where((r) => r.labId.equals(labId));
     query.orderBy([(r) => OrderingTerm.desc(r.createdAt)]);
     return await query.get();
@@ -76,14 +75,14 @@ class ResultDao {
   }
 
   Future<List<Result>> getPendingSync() async {
-    return await (_db.select(_db.results)
-      ..where((r) => r.syncStatus.equals('pending'))
-    ).get();
+    return await (_db.select(
+      _db.results,
+    )..where((r) => r.syncStatus.equals('pending'))).get();
   }
 
   Future<void> markSynced(String id) async {
-    await (_db.update(_db.results)
-      ..where((r) => r.id.equals(id))
-    ).write(const ResultsCompanion(syncStatus: Value('synced')));
+    await (_db.update(_db.results)..where((r) => r.id.equals(id))).write(
+      const ResultsCompanion(syncStatus: Value('synced')),
+    );
   }
 }

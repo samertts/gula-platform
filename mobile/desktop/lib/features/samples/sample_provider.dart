@@ -18,14 +18,25 @@ class SampleProvider extends ChangeNotifier {
     notifyListeners();
 
     await Future.delayed(const Duration(milliseconds: 300));
-    _samples = List.generate(15, (i) => {
-      'id': '${i + 1}',
-      'barcode': 'BL20250321-${(100 + i).toString().padLeft(3, '0')}',
-      'sampleType': ['Blood', 'Urine', 'Stool', 'Serum', 'Plasma'][i % 5],
-      'status': ['collected', 'received', 'processing', 'analyzed', 'rejected'][i % 5],
-      'patientName': ['Ahmed Ali', 'Sara Mohammed', 'Hussein Jassim'][i % 3],
-      'collectedAt': DateTime.now().subtract(Duration(hours: i * 2)).toIso8601String(),
-    });
+    _samples = List.generate(
+      15,
+      (i) => {
+        'id': '${i + 1}',
+        'barcode': 'BL20250321-${(100 + i).toString().padLeft(3, '0')}',
+        'sampleType': ['Blood', 'Urine', 'Stool', 'Serum', 'Plasma'][i % 5],
+        'status': [
+          'collected',
+          'received',
+          'processing',
+          'analyzed',
+          'rejected',
+        ][i % 5],
+        'patientName': ['Ahmed Ali', 'Sara Mohammed', 'Hussein Jassim'][i % 3],
+        'collectedAt': DateTime.now()
+            .subtract(Duration(hours: i * 2))
+            .toIso8601String(),
+      },
+    );
     _totalPages = 5;
     _isLoading = false;
     notifyListeners();

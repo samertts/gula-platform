@@ -10,10 +10,7 @@ import '../../widgets/layout/section_header.dart';
 class ReportViewerPage extends StatelessWidget {
   final String reportId;
 
-  const ReportViewerPage({
-    super.key,
-    required this.reportId,
-  });
+  const ReportViewerPage({super.key, required this.reportId});
 
   @override
   Widget build(BuildContext context) {

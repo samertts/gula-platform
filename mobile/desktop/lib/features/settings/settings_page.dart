@@ -36,32 +36,68 @@ class SettingsPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Appearance', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Appearance',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const Divider(height: 24),
                     ListTile(
                       title: const Text('Theme'),
-                      subtitle: Text(themeState.mode == AppThemeMode.light ? 'Light' : themeState.mode == AppThemeMode.dark ? 'Dark' : 'High Contrast'),
+                      subtitle: Text(
+                        themeState.mode == AppThemeMode.light
+                            ? 'Light'
+                            : themeState.mode == AppThemeMode.dark
+                            ? 'Dark'
+                            : 'High Contrast',
+                      ),
                       trailing: SegmentedButton<AppThemeMode>(
                         segments: const [
-                          ButtonSegment(value: AppThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode, size: 18)),
-                          ButtonSegment(value: AppThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode, size: 18)),
-                          ButtonSegment(value: AppThemeMode.highContrast, label: Text('HC'), icon: Icon(Icons.contrast, size: 18)),
+                          ButtonSegment(
+                            value: AppThemeMode.light,
+                            label: Text('Light'),
+                            icon: Icon(Icons.light_mode, size: 18),
+                          ),
+                          ButtonSegment(
+                            value: AppThemeMode.dark,
+                            label: Text('Dark'),
+                            icon: Icon(Icons.dark_mode, size: 18),
+                          ),
+                          ButtonSegment(
+                            value: AppThemeMode.highContrast,
+                            label: Text('HC'),
+                            icon: Icon(Icons.contrast, size: 18),
+                          ),
                         ],
                         selected: {themeState.mode},
-                        onSelectionChanged: (v) => themeState.setThemeMode(v.first),
+                        onSelectionChanged: (v) =>
+                            themeState.setThemeMode(v.first),
                       ),
                     ),
                     const Divider(),
                     ListTile(
                       title: const Text('Language'),
-                      subtitle: Text(themeState.locale.languageCode == 'ar' ? 'العربية' : 'English'),
+                      subtitle: Text(
+                        themeState.locale.languageCode == 'ar'
+                            ? 'العربية'
+                            : 'English',
+                      ),
                       trailing: SegmentedButton<Locale>(
                         segments: const [
-                          ButtonSegment(value: Locale('ar'), label: Text('العربية')),
-                          ButtonSegment(value: Locale('en'), label: Text('English')),
+                          ButtonSegment(
+                            value: Locale('ar'),
+                            label: Text('العربية'),
+                          ),
+                          ButtonSegment(
+                            value: Locale('en'),
+                            label: Text('English'),
+                          ),
                         ],
                         selected: {themeState.locale},
-                        onSelectionChanged: (v) => themeState.setLocale(v.first),
+                        onSelectionChanged: (v) =>
+                            themeState.setLocale(v.first),
                       ),
                     ),
                   ],
@@ -74,11 +110,19 @@ class SettingsPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Notifications', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Notifications',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const Divider(height: 24),
                     SwitchListTile(
                       title: const Text('Push Notifications'),
-                      subtitle: const Text('Receive notifications for critical results and updates'),
+                      subtitle: const Text(
+                        'Receive notifications for critical results and updates',
+                      ),
                       value: settingsState.enableNotifications,
                       onChanged: (v) => settingsState.setNotifications(v),
                     ),
@@ -98,7 +142,13 @@ class SettingsPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Synchronization', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Synchronization',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const Divider(height: 24),
                     SwitchListTile(
                       title: const Text('Auto Sync'),
@@ -108,14 +158,28 @@ class SettingsPage extends ConsumerWidget {
                     ),
                     ListTile(
                       title: const Text('Sync Interval'),
-                      subtitle: Text('Every ${settingsState.syncInterval} seconds'),
+                      subtitle: Text(
+                        'Every ${settingsState.syncInterval} seconds',
+                      ),
                       trailing: SizedBox(
                         width: 120,
                         child: DropdownButtonFormField<int>(
                           value: settingsState.syncInterval,
-                          items: [15, 30, 60, 120].map((v) => DropdownMenuItem(value: v, child: Text('$v sec'))).toList(),
-                          onChanged: (v) { if (v != null) settingsState.setSyncInterval(v); },
-                          decoration: const InputDecoration(border: OutlineInputBorder(), contentPadding: EdgeInsets.symmetric(horizontal: 8)),
+                          items: [15, 30, 60, 120]
+                              .map(
+                                (v) => DropdownMenuItem(
+                                  value: v,
+                                  child: Text('$v sec'),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            if (v != null) settingsState.setSyncInterval(v);
+                          },
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 8),
+                          ),
                         ),
                       ),
                     ),
@@ -129,11 +193,19 @@ class SettingsPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Printing', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Printing',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const Divider(height: 24),
                     SwitchListTile(
                       title: const Text('Auto-Print Labels'),
-                      subtitle: const Text('Automatically print labels when collecting samples'),
+                      subtitle: const Text(
+                        'Automatically print labels when collecting samples',
+                      ),
                       value: settingsState.autoPrintLabels,
                       onChanged: (v) => settingsState.setAutoPrintLabels(v),
                     ),
@@ -148,12 +220,19 @@ class SettingsPage extends ConsumerWidget {
               const SizedBox(height: 16),
 
               // Admin
-              if (authProvider.userRole == 'labAdmin' || authProvider.userRole == 'masterAdmin')
+              if (authProvider.userRole == 'labAdmin' ||
+                  authProvider.userRole == 'masterAdmin')
                 GulaCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Administration', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      const Text(
+                        'Administration',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       const Divider(height: 24),
                       ListTile(
                         leading: const Icon(Icons.people_outlined),
@@ -183,11 +262,19 @@ class SettingsPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('About', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'About',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                     const Divider(height: 24),
                     const ListTile(
                       title: Text('Version'),
-                      subtitle: Text('${AppConstants.appVersion} (${AppConstants.appBuildNumber})'),
+                      subtitle: Text(
+                        '${AppConstants.appVersion} (${AppConstants.appBuildNumber})',
+                      ),
                     ),
                     const ListTile(
                       title: Text('GULA Platform'),
@@ -198,7 +285,10 @@ class SettingsPage extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('App is up to date'), backgroundColor: AppColors.success500),
+                          const SnackBar(
+                            content: Text('App is up to date'),
+                            backgroundColor: AppColors.success500,
+                          ),
                         );
                       },
                     ),

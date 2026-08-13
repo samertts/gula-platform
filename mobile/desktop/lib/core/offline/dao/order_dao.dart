@@ -6,17 +6,24 @@ class OrderDao {
   final AppDatabase _db;
   OrderDao(this._db);
 
-  Future<List<Order>> getAll({String? status, String? search, int? limit, int? offset}) async {
+  Future<List<Order>> getAll({
+    String? status,
+    String? search,
+    int? limit,
+    int? offset,
+  }) async {
     final query = _db.select(_db.orders);
     if (status != null && status.isNotEmpty) {
       query.where((o) => o.status.equals(status));
     }
     if (search != null && search.isNotEmpty) {
       final pattern = '%$search%';
-      query.where((o) =>
-          o.orderNumber.like(pattern) |
-          o.patientName.like(pattern) |
-          o.id.like(pattern));
+      query.where(
+        (o) =>
+            o.orderNumber.like(pattern) |
+            o.patientName.like(pattern) |
+            o.id.like(pattern),
+      );
     }
     if (limit != null) query.limit(limit, offset: offset);
     query.orderBy([(o) => OrderingTerm.desc(o.createdAt)]);
@@ -61,14 +68,14 @@ class OrderDao {
   }
 
   Future<List<Order>> getPendingSync() async {
-    return await (_db.select(_db.orders)
-      ..where((o) => o.syncStatus.equals('pending'))
-    ).get();
+    return await (_db.select(
+      _db.orders,
+    )..where((o) => o.syncStatus.equals('pending'))).get();
   }
 
   Future<void> markSynced(String id) async {
-    await (_db.update(_db.orders)
-      ..where((o) => o.id.equals(id))
-    ).write(const OrdersCompanion(syncStatus: Value('synced')));
+    await (_db.update(_db.orders)..where((o) => o.id.equals(id))).write(
+      const OrdersCompanion(syncStatus: Value('synced')),
+    );
   }
 }

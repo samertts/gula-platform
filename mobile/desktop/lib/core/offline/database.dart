@@ -165,15 +165,17 @@ class CacheEntries extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [
-  Patients,
-  Orders,
-  Samples,
-  Results,
-  Notifications,
-  SyncQueue,
-  CacheEntries,
-])
+@DriftDatabase(
+  tables: [
+    Patients,
+    Orders,
+    Samples,
+    Results,
+    Notifications,
+    SyncQueue,
+    CacheEntries,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -207,12 +209,24 @@ class AppDatabase extends _$AppDatabase {
 
   Future<Map<String, int>> getTableCounts() async {
     return {
-      'patients': (await customSelect('SELECT COUNT(*) AS count FROM patients').getSingle()).read<int>('count'),
-      'orders': (await customSelect('SELECT COUNT(*) AS count FROM orders').getSingle()).read<int>('count'),
-      'samples': (await customSelect('SELECT COUNT(*) AS count FROM samples').getSingle()).read<int>('count'),
-      'results': (await customSelect('SELECT COUNT(*) AS count FROM results').getSingle()).read<int>('count'),
-      'notifications': (await customSelect('SELECT COUNT(*) AS count FROM notifications').getSingle()).read<int>('count'),
-      'syncQueue': (await customSelect('SELECT COUNT(*) AS count FROM sync_queue').getSingle()).read<int>('count'),
+      'patients': (await customSelect(
+        'SELECT COUNT(*) AS count FROM patients',
+      ).getSingle()).read<int>('count'),
+      'orders': (await customSelect(
+        'SELECT COUNT(*) AS count FROM orders',
+      ).getSingle()).read<int>('count'),
+      'samples': (await customSelect(
+        'SELECT COUNT(*) AS count FROM samples',
+      ).getSingle()).read<int>('count'),
+      'results': (await customSelect(
+        'SELECT COUNT(*) AS count FROM results',
+      ).getSingle()).read<int>('count'),
+      'notifications': (await customSelect(
+        'SELECT COUNT(*) AS count FROM notifications',
+      ).getSingle()).read<int>('count'),
+      'syncQueue': (await customSelect(
+        'SELECT COUNT(*) AS count FROM sync_queue',
+      ).getSingle()).read<int>('count'),
     };
   }
 }

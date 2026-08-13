@@ -44,9 +44,17 @@ class _ResultListPageState extends ConsumerState<ResultListPage> {
           const SizedBox(height: 16),
           Row(
             children: [
-              SizedBox(width: 300, child: GulaSearchBar(hint: 'Search results...')),
+              SizedBox(
+                width: 300,
+                child: GulaSearchBar(hint: 'Search results...'),
+              ),
               const Spacer(),
-              GulaButton(label: 'Validation Queue', variant: GulaButtonVariant.outline, icon: Icons.verified, onPressed: () => context.push('/results/validation')),
+              GulaButton(
+                label: 'Validation Queue',
+                variant: GulaButtonVariant.outline,
+                icon: Icons.verified,
+                onPressed: () => context.push('/results/validation'),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -57,15 +65,27 @@ class _ResultListPageState extends ConsumerState<ResultListPage> {
   }
 
   Widget _buildContent(ResultProvider state) {
-    if (state.isLoading) return const GulaLoading(type: GulaLoadingType.shimmer);
+    if (state.isLoading)
+      return const GulaLoading(type: GulaLoadingType.shimmer);
 
     return GulaTable(
       columns: [
-        GulaTableColumn(key: 'testName', label: 'Test', flex: 2, sortable: true),
-        GulaTableColumn(key: 'result', label: 'Result', flex: 1,
+        GulaTableColumn(
+          key: 'testName',
+          label: 'Test',
+          flex: 2,
+          sortable: true,
+        ),
+        GulaTableColumn(
+          key: 'result',
+          label: 'Result',
+          flex: 1,
           cellBuilder: (v, row) => Row(
             children: [
-              Text(v.toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                v.toString(),
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               if (row['flag'] != null && row['flag'] != 'normal') ...[
                 const SizedBox(width: 8),
                 CriticalValueFlag(flag: row['flag']?.toString() ?? ''),
@@ -76,10 +96,17 @@ class _ResultListPageState extends ConsumerState<ResultListPage> {
         GulaTableColumn(key: 'unit', label: 'Unit', flex: 1),
         GulaTableColumn(key: 'referenceRange', label: 'Ref Range', flex: 1),
         GulaTableColumn(key: 'patientName', label: 'Patient', flex: 1),
-        GulaTableColumn(key: 'status', label: 'Status', flex: 1,
+        GulaTableColumn(
+          key: 'status',
+          label: 'Status',
+          flex: 1,
           cellBuilder: (v, row) => GulaBadge(
             label: v.toString(),
-            status: v == 'verified' ? GulaBadgeStatus.success : v == 'completed' ? GulaBadgeStatus.info : GulaBadgeStatus.pending,
+            status: v == 'verified'
+                ? GulaBadgeStatus.success
+                : v == 'completed'
+                ? GulaBadgeStatus.info
+                : GulaBadgeStatus.pending,
           ),
         ),
       ],

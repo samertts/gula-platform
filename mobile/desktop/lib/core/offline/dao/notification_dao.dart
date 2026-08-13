@@ -42,19 +42,20 @@ class NotificationDao {
   }
 
   Future<int> markAsRead(String id) async {
-    return await (_db.update(_db.notifications)
-      ..where((n) => n.id.equals(id))
-    ).write(const NotificationsCompanion(isRead: Value(1)));
+    return await (_db.update(_db.notifications)..where((n) => n.id.equals(id)))
+        .write(const NotificationsCompanion(isRead: Value(1)));
   }
 
   Future<int> markAllAsRead() async {
     return await (_db.update(_db.notifications)
-      ..where((n) => n.isRead.equals(0))
-    ).write(const NotificationsCompanion(isRead: Value(1)));
+          ..where((n) => n.isRead.equals(0)))
+        .write(const NotificationsCompanion(isRead: Value(1)));
   }
 
   Future<int> delete(String id) async {
-    return await (_db.delete(_db.notifications)..where((n) => n.id.equals(id))).go();
+    return await (_db.delete(
+      _db.notifications,
+    )..where((n) => n.id.equals(id))).go();
   }
 
   Future<int> deleteAll() async {
@@ -71,19 +72,20 @@ class NotificationDao {
 
   Future<int> count() async {
     final countExpression = _db.notifications.id.count();
-    final query = _db.selectOnly(_db.notifications)..addColumns([countExpression]);
+    final query = _db.selectOnly(_db.notifications)
+      ..addColumns([countExpression]);
     return (await query.getSingle()).read(countExpression) ?? 0;
   }
 
   Future<List<Notification>> getPendingSync() async {
-    return await (_db.select(_db.notifications)
-      ..where((n) => n.syncStatus.equals('pending'))
-    ).get();
+    return await (_db.select(
+      _db.notifications,
+    )..where((n) => n.syncStatus.equals('pending'))).get();
   }
 
   Future<void> markSynced(String id) async {
-    await (_db.update(_db.notifications)
-      ..where((n) => n.id.equals(id))
-    ).write(const NotificationsCompanion(syncStatus: Value('synced')));
+    await (_db.update(_db.notifications)..where((n) => n.id.equals(id))).write(
+      const NotificationsCompanion(syncStatus: Value('synced')),
+    );
   }
 }

@@ -11,7 +11,10 @@ class EndpointGuardInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    if (isApprovedApiRequest(options.uri, allowDebugEndpoints: allowDebugEndpoints)) {
+    if (isApprovedApiRequest(
+      options.uri,
+      allowDebugEndpoints: allowDebugEndpoints,
+    )) {
       handler.next(options);
       return;
     }
@@ -129,7 +132,8 @@ class LoggingInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
     debugPrint(
-        '[API ✗] ${err.response?.statusCode} ${err.requestOptions.uri}: ${err.message}');
+      '[API ✗] ${err.response?.statusCode} ${err.requestOptions.uri}: ${err.message}',
+    );
     handler.next(err);
   }
 }
@@ -144,29 +148,35 @@ class ErrorMappingInterceptor extends Interceptor {
     if (err.type == DioExceptionType.connectionTimeout ||
         err.type == DioExceptionType.sendTimeout ||
         err.type == DioExceptionType.receiveTimeout) {
-      handler.reject(DioException(
-        requestOptions: err.requestOptions,
-        error: NetworkException('Connection timed out'),
-        type: err.type,
-      ));
+      handler.reject(
+        DioException(
+          requestOptions: err.requestOptions,
+          error: NetworkException('Connection timed out'),
+          type: err.type,
+        ),
+      );
       return;
     }
 
     if (err.type == DioExceptionType.connectionError) {
-      handler.reject(DioException(
-        requestOptions: err.requestOptions,
-        error: NetworkException('No internet connection'),
-        type: err.type,
-      ));
+      handler.reject(
+        DioException(
+          requestOptions: err.requestOptions,
+          error: NetworkException('No internet connection'),
+          type: err.type,
+        ),
+      );
       return;
     }
 
     final apiError = parseApiError(map, statusCode);
-    handler.reject(DioException(
-      requestOptions: err.requestOptions,
-      error: apiError,
-      response: err.response,
-      type: err.type,
-    ));
+    handler.reject(
+      DioException(
+        requestOptions: err.requestOptions,
+        error: apiError,
+        response: err.response,
+        type: err.type,
+      ),
+    );
   }
 }

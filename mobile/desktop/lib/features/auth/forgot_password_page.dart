@@ -70,10 +70,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   const SizedBox(height: 24),
                   const Text(
                     'Reset Password',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -89,7 +86,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       prefixIcon: Icons.email_outlined,
-                      validator: (v) => AppValidators.email(v) ?? AppValidators.required(v, fieldName: 'Email'),
+                      validator: (v) =>
+                          AppValidators.email(v) ??
+                          AppValidators.required(v, fieldName: 'Email'),
                     ),
                     const SizedBox(height: 24),
                     GulaButton(
@@ -100,11 +99,18 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       height: AppDimensions.buttonHeightLg,
                     ),
                   ] else ...[
-                    const Icon(Icons.check_circle, color: AppColors.success500, size: 64),
+                    const Icon(
+                      Icons.check_circle,
+                      color: AppColors.success500,
+                      size: 64,
+                    ),
                     const SizedBox(height: 16),
                     const Text(
                       'Email sent!',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(

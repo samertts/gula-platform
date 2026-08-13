@@ -5,7 +5,8 @@ import '../../core/theme/app_dimensions.dart';
 import 'gula_button.dart';
 
 class GulaDialog {
-  static Future<T?> show<T>(BuildContext context, {
+  static Future<T?> show<T>(
+    BuildContext context, {
     required String title,
     required Widget content,
     String? confirmLabel,
@@ -38,7 +39,9 @@ class GulaDialog {
             ),
           GulaButton(
             label: confirmLabel ?? 'Confirm',
-            variant: isDestructive ? GulaButtonVariant.danger : GulaButtonVariant.primary,
+            variant: isDestructive
+                ? GulaButtonVariant.danger
+                : GulaButtonVariant.primary,
             color: confirmColor,
             onPressed: () {
               onConfirm?.call();
@@ -103,10 +106,7 @@ class GulaDialog {
           borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
         ),
         actions: [
-          GulaButton(
-            label: 'OK',
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+          GulaButton(label: 'OK', onPressed: () => Navigator.of(context).pop()),
         ],
       ),
     );
@@ -132,10 +132,7 @@ class GulaDialog {
           borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
         ),
         actions: [
-          GulaButton(
-            label: 'OK',
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+          GulaButton(label: 'OK', onPressed: () => Navigator.of(context).pop()),
         ],
       ),
     );

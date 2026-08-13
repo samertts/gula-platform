@@ -30,12 +30,7 @@ class GulaEmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            customWidget ??
-                Icon(
-                  icon,
-                  size: 64,
-                  color: AppColors.neutral300,
-                ),
+            customWidget ?? Icon(icon, size: 64, color: AppColors.neutral300),
             const SizedBox(height: 16),
             Text(
               title,

@@ -6,7 +6,8 @@ class AppConstants {
   static const String appBuildNumber = '1';
   static const String packageName = 'com.gula.platform.desktop';
   static const String companyName = 'GULA Platform';
-  static const String copyright = 'Copyright © 2025 GULA Platform. All rights reserved.';
+  static const String copyright =
+      'Copyright © 2025 GULA Platform. All rights reserved.';
 
   static const String defaultApiUrl = 'https://api.gula-platform.org/api/v1';
   static const String sentryDsn = '';
@@ -37,9 +38,12 @@ class AppConstants {
   static const int notificationPollSeconds = 30;
   static const int healthCheckSeconds = 60;
 
-  static const String appStoreUrl = 'https://apps.apple.com/app/gula-platform/id0000000000';
-  static const String playStoreUrl = 'https://play.google.com/store/apps/details?id=com.gula.platform.desktop';
-  static const String githubReleaseUrl = 'https://github.com/samertts/gula-platform/releases';
+  static const String appStoreUrl =
+      'https://apps.apple.com/app/gula-platform/id0000000000';
+  static const String playStoreUrl =
+      'https://play.google.com/store/apps/details?id=com.gula.platform.desktop';
+  static const String githubReleaseUrl =
+      'https://github.com/samertts/gula-platform/releases';
   static const String supportEmail = 'support@gula-platform.com';
   static const String privacyPolicyUrl = 'https://gula-platform.com/privacy';
   static const String termsOfServiceUrl = 'https://gula-platform.com/terms';

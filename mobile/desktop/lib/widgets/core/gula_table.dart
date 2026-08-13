@@ -100,11 +100,13 @@ class _GulaTableState extends State<GulaTable> {
     final col = widget.columns.firstWhere((c) => c.key == _sortColumn);
     final sorted = List<Map<String, dynamic>>.from(widget.rows);
     sorted.sort((a, b) {
-      final aVal = (col.sortValue != null
+      final aVal =
+          (col.sortValue != null
               ? col.sortValue!(a[_sortColumn])
               : a[_sortColumn]?.toString()) ??
           '';
-      final bVal = (col.sortValue != null
+      final bVal =
+          (col.sortValue != null
               ? col.sortValue!(b[_sortColumn])
               : b[_sortColumn]?.toString()) ??
           '';
@@ -130,7 +132,10 @@ class _GulaTableState extends State<GulaTable> {
             const SizedBox(height: 16),
             Text(
               widget.emptyMessage ?? 'No data available',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 16),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 16,
+              ),
             ),
           ],
         ),
@@ -145,8 +150,9 @@ class _GulaTableState extends State<GulaTable> {
         Expanded(
           child: SingleChildScrollView(
             child: DataTable(
-              sortColumnIndex: widget.columns
-                  .indexWhere((c) => c.key == _sortColumn),
+              sortColumnIndex: widget.columns.indexWhere(
+                (c) => c.key == _sortColumn,
+              ),
               sortAscending: _sortAscending,
               columnSpacing: 24,
               headingRowHeight: 48,
@@ -240,7 +246,10 @@ class _GulaTableState extends State<GulaTable> {
         children: [
           Text(
             '${widget.page} of ${widget.totalPages}',
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(width: 16),
           IconButton(

@@ -114,10 +114,7 @@ class GulaAlert extends StatelessWidget {
                 ],
                 if (actions != null) ...[
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: actions!,
-                  ),
+                  Wrap(spacing: 8, children: actions!),
                 ],
               ],
             ),
@@ -125,7 +122,11 @@ class GulaAlert extends StatelessWidget {
           if (dismissible)
             InkWell(
               onTap: onDismiss,
-              child: Icon(Icons.close, size: 18, color: AppColors.textSecondary),
+              child: Icon(
+                Icons.close,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
             ),
         ],
       ),

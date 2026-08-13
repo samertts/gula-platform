@@ -2,13 +2,23 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-enum UpdateStatus { idle, checking, available, downloading, readyToInstall, error, upToDate }
+enum UpdateStatus {
+  idle,
+  checking,
+  available,
+  downloading,
+  readyToInstall,
+  error,
+  upToDate,
+}
 
 /// Update facade retained for the desktop UI while native update providers are
 /// configured per release channel. It never downloads or installs software
 /// without an explicitly integrated, platform-reviewed updater.
 class AutoUpdater {
-  final ValueNotifier<UpdateStatus> statusNotifier = ValueNotifier(UpdateStatus.idle);
+  final ValueNotifier<UpdateStatus> statusNotifier = ValueNotifier(
+    UpdateStatus.idle,
+  );
   final ValueNotifier<double> downloadProgress = ValueNotifier(0.0);
   final ValueNotifier<String?> updateVersion = ValueNotifier(null);
   final ValueNotifier<String?> updateError = ValueNotifier(null);
@@ -21,10 +31,7 @@ class AutoUpdater {
   bool get isInitialized => _initialized;
   UpdateStatus get status => _status;
 
-  Future<void> initialize({
-    String? feedUrl,
-    int checkIntervalHours = 6,
-  }) async {
+  Future<void> initialize({String? feedUrl, int checkIntervalHours = 6}) async {
     if (_initialized) return;
     _initialized = true;
     _feedUrl = feedUrl;
@@ -43,12 +50,14 @@ class AutoUpdater {
   }
 
   Future<void> downloadUpdate() async {
-    updateError.value = 'Automatic downloads are not configured for this release channel.';
+    updateError.value =
+        'Automatic downloads are not configured for this release channel.';
     _setStatus(UpdateStatus.error);
   }
 
   Future<void> installUpdate() async {
-    updateError.value = 'Automatic installation is not configured for this release channel.';
+    updateError.value =
+        'Automatic installation is not configured for this release channel.';
     _setStatus(UpdateStatus.error);
   }
 

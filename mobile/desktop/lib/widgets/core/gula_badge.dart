@@ -4,7 +4,15 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_dimensions.dart';
 
 enum GulaBadgeStatus {
-  success, warning, error, info, neutral, critical, urgent, pending, cancelled
+  success,
+  warning,
+  error,
+  info,
+  neutral,
+  critical,
+  urgent,
+  pending,
+  cancelled,
 }
 
 class GulaBadge extends StatelessWidget {
