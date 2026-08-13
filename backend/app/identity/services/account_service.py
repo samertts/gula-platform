@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import datetime, timedelta
 
@@ -8,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus, AccountType
 from app.identity.repositories.account_repository import AccountRepository
+from app.identity.services.account_lifecycle_service import AccountLifecycleService
 from app.security.auth import _DUMMY_HASH, hash_password, verify_password
 
 PASSWORD_MIN_LENGTH = 12
@@ -30,12 +32,19 @@ class AccountService:
         username: str | None = None,
         password: str | None = None,
     ) -> Account:
+        email = email.strip().lower() if email else None
+        phone = re.sub(r"\s+", "", phone) if phone else None
+        username = username.strip().lower() if username else None
+        if not any((email, phone, username)):
+            raise ValueError("At least one normalized account identifier is required")
+        if password is not None and len(password) < PASSWORD_MIN_LENGTH:
+            raise ValueError(f"Password must contain at least {PASSWORD_MIN_LENGTH} characters")
+
         password_hash = None
         if password:
             password_hash = hash_password(password)
 
         account = Account(
-            id=...,
             uuid=str(uuid.uuid4()),
             identity_id=identity_id,
             account_type=account_type.value,
@@ -63,12 +72,21 @@ class AccountService:
             verify_password(password, _DUMMY_HASH)
             return None
 
+        if account.status in {
+            AccountStatus.pending_verification.value,
+            AccountStatus.suspended.value,
+            AccountStatus.disabled.value,
+            AccountStatus.deactivated.value,
+        } or not account.is_active:
+            verify_password(password, account.password_hash or _DUMMY_HASH)
+            return None
+
         password_is_valid = verify_password(password, account.password_hash or _DUMMY_HASH)
 
-        if account.is_locked:
+        if account.is_locked or account.status == AccountStatus.locked.value:
             if account.locked_until and account.locked_until > datetime.now(UTC):
                 return None
-            account.is_locked = False
+            AccountLifecycleService.transition(account, AccountStatus.active)
             account.failed_login_attempts = 0
             await self.repo.session.flush()
 
@@ -76,7 +94,7 @@ class AccountService:
             account.failed_login_attempts += 1
             account.last_failed_login = datetime.now(UTC)
             if account.failed_login_attempts >= ACCOUNT_LOCKOUT_THRESHOLD:
-                account.is_locked = True
+                AccountLifecycleService.transition(account, AccountStatus.locked)
                 account.locked_until = datetime.now(UTC) + timedelta(
                     minutes=ACCOUNT_LOCKOUT_DURATION_MINUTES,
                 )
@@ -111,7 +129,7 @@ class AccountService:
         account = await self.repo.get_by_id(account_id)
         if not account:
             return False
-        account.is_locked = True
+        AccountLifecycleService.transition(account, AccountStatus.locked)
         account.locked_until = None
         account.lock_reason = reason
         await self.repo.session.flush()
@@ -121,7 +139,7 @@ class AccountService:
         account = await self.repo.get_by_id(account_id)
         if not account:
             return False
-        account.is_locked = False
+        AccountLifecycleService.transition(account, AccountStatus.active)
         account.locked_until = None
         account.lock_reason = None
         account.failed_login_attempts = 0
