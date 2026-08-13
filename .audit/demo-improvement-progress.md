@@ -14,3 +14,9 @@
 ## Safety boundary
 
 The demo environment remains synthetic and read-only. No production data, secrets, MX/TXT records, or production branch were changed.
+
+## Latest CI iteration
+
+- Commit `0c355909` changed the Lighthouse config path from `frontend-v3/lighthouse.config.json` to the existing `frontend-v3/lighthouserc.json`.
+- Local structural validation passed before the push.
+- The subsequent GitHub checks showed the earlier Lighthouse failure was no longer the active failure; Vercel remained the only reported failure with a deployment rate-limit message while other checks were pending or successful.
