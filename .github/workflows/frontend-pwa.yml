@@ -174,9 +174,9 @@ jobs:
   deploy-vercel-production:
     name: Deploy Production to Vercel
     needs: [build]
-    # Production is deployed by Vercel's Git integration by default. This
-    # explicit CLI path is opt-in so a missing token cannot break CI.
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.VERCEL_CI_ENABLED == 'true'
+    # Deploy explicitly for main pushes and manual production dispatches.
+    # The Vercel token is stored only in GitHub Secrets.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
