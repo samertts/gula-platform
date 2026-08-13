@@ -37,6 +37,10 @@ export const legacyRouteRules: Record<string, LegacyRouteRule> = {
     title: "ضبط الجودة",
     rationale: "يتوفر مسار ضبط جودة محمي في frontend-v3.",
   },
+  "/ehr": {
+    title: "السجل الصحي الإلكتروني",
+    rationale: "يبقى السجل السريري في جسر آمن؛ عقد clinical.ehr.record.read محجوب حتى يثبت ربط هوية الجلسة بالتعيين والصلاحية الدقيقة وعزل المنشأة.",
+  },
   "/admin/audit": {
     target: "/admin/audit",
     title: "سجل التدقيق",
