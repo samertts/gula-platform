@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
-import '../../widgets/core/gula_card.dart';
 import '../../widgets/core/gula_badge.dart';
 import '../../widgets/layout/section_header.dart';
 import '../../widgets/layout/page_container.dart';
@@ -68,7 +66,7 @@ class _BloodBankPageState extends State<BloodBankPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(u['group'], style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                    Text(u['group']?.toString() ?? '', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     Text('${u['units']} units', style: const TextStyle(fontSize: 14)),
                     const SizedBox(height: 4),

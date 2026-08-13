@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_text_field.dart';
-import '../../widgets/core/gula_card.dart';
 import '../../widgets/layout/page_container.dart';
 
 class ResultEntryPage extends StatefulWidget {
