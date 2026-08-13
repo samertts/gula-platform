@@ -61,6 +61,12 @@ def test_demo_access_creates_each_persona_in_isolated_lab(client, db, monkeypatc
     assert {user.role for user in users} == {"doctor", "technician", "lab_admin", "citizen"}
     assert len({user.email for user in users}) == 4
 
+    doctor = db.query(demo_module.LabUser).filter(demo_module.LabUser.email == "demo.doctor@gula-demo.iq").one()
+    doctor.role = "master_admin"
+    db.commit()
+    rejected = client.post("/demo/access?persona=doctor")
+    assert rejected.status_code == 503
+
 
 def test_demo_read_only_blocks_mutations(monkeypatch):
     monkeypatch.setattr(middleware_module, "DEMO_MODE", True)

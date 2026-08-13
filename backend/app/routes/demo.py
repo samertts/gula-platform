@@ -92,7 +92,13 @@ def start_demo_session(
         )
         db.add(user)
         db.flush()
-    elif not user.is_active or user.lab_id != lab.id:
+    elif (
+        not user.is_active
+        or user.lab_id != lab.id
+        or user.role != selected["role"]
+    ):
+        # Fail closed if a synthetic identity was deactivated, moved, or had
+        # its role changed outside the deterministic demo catalogue.
         raise HTTPException(status_code=503, detail="Demo account is not available")
 
     payload = build_token_payload(user)
