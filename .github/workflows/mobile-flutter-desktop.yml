@@ -330,7 +330,7 @@ jobs:
         run: flutter build macos --release
 
       - name: Sign macOS app
-        if: ${{ secrets.MACOS_CERTIFICATE != '' && secrets.MACOS_CERTIFICATE_PWD != '' }}
+        if: ${{ env.MACOS_CERTIFICATE != '' && env.MACOS_CERTIFICATE_PWD != '' }}
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
@@ -364,7 +364,7 @@ jobs:
             "build/macos/Build/Products/Release/"
 
       - name: Notarize DMG
-        if: ${{ github.ref == 'refs/heads/main' && secrets.MACOS_CERTIFICATE != '' && secrets.MACOS_APP_PASSWORD != '' && secrets.MACOS_TEAM_ID != '' }}
+        if: ${{ github.ref == 'refs/heads/main' && env.MACOS_CERTIFICATE != '' && env.MACOS_APP_PASSWORD != '' && env.MACOS_TEAM_ID != '' }}
         env:
           MACOS_APP_PASSWORD: ${{ secrets.MACOS_APP_PASSWORD }}
           MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
