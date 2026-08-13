@@ -4,6 +4,20 @@ import { mockLogin, setupAuthenticatedPage } from "./helpers";
 test.describe("Patient Search", () => {
   test.beforeEach(async ({ page }) => {
     await mockLogin(page);
+    await page.route("**/api/authz/me", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ user: { lab_id: 1 } }),
+      });
+    });
+    await page.route("**/api/authz/check", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ allowed: true }),
+      });
+    });
     await page.route("**/api/patients**", async (route) => {
       const url = route.request().url();
       const hasSearch = Boolean(new URL(url).searchParams.get("search"));
