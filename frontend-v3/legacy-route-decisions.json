@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "decisions": [
+    {
+      "source": "frontend-v2",
+      "sourceFiles": ["frontend-v2/src/App.tsx"],
+      "decision": "decommissioned",
+      "v3Entry": null,
+      "rationale": "التطبيق القديم غير مركب في سطح الإنتاج؛ لا تعني مساراته تماثلًا وظيفيًا أو سماحًا بعرض بيانات سريرية.",
+      "routes": ["/", "/admin/architecture", "/admin/audit", "/admin/infrastructure", "/admin/integrations", "/appointments", "/citizen/appointments", "/citizen/assistant", "/citizen/consent", "/citizen/dashboard", "/citizen/family", "/citizen/history", "/citizen/medications", "/citizen/profile", "/citizen/register", "/citizen/results", "/citizen/security", "/citizen/verification", "/intelligence", "/lab/dashboard", "/lab/devices", "/lab/imaging", "/lab/inventory", "/lab/qc", "/lab/queue", "/lab/samples", "/ministry/analytics", "/ministry/audit", "/ministry/dashboard", "/ministry/epidemiology", "/patients", "/patients/:id", "/settings"]
+    },
+    {
+      "source": "apps/gula-web-suite",
+      "sourceFiles": ["apps/gula-web-suite/client/src/App.tsx"],
+      "decision": "decommissioned",
+      "v3Entry": null,
+      "rationale": "سطح تجريبي مستقل لا يملك عقود تشغيلية معتمدة ولا يركب ضمن frontend-v3.",
+      "routes": ["/", "/404"]
+    },
+    {
+      "source": "platform/apps/citizen",
+      "sourceFiles": ["platform/apps/citizen/src/App.tsx", "platform/apps/citizen/src/utils/routes.ts"],
+      "decision": "safe_bridge",
+      "v3Entry": "/citizen",
+      "rationale": "تصل كل المسارات الفرعية إلى مدخل مواطن انتقالي آمن؛ لا يطلب الجسر بيانات تشغيلية ولا يفعل الدفع أو الموافقة أو العمل دون اتصال.",
+      "routes": ["/", "/appointments", "/assistant", "/consent", "/digital-card", "/emergency-card", "/family", "/health-id", "/lab-results", "/login", "/medical-history", "/notifications", "/offline-wallet", "/payments", "/prescriptions", "/profile", "/qr-verify", "/radiology", "/register", "/settings", "/telemedicine", "/vaccinations"]
+    },
+    {
+      "source": "platform/apps/doctor",
+      "sourceFiles": ["platform/apps/doctor/src/App.tsx", "platform/apps/doctor/src/utils/routes.ts"],
+      "decision": "safe_bridge",
+      "v3Entry": "/doctor",
+      "rationale": "تصل المسارات الفرعية إلى جسر طبيب آمن؛ عقد قراءة ملاحظة واحدة خادمي فقط ولا يخول قوائم المرضى أو الوصفات أو التوقيع أو العمل دون اتصال.",
+      "routes": ["/dashboard", "/decision-support", "/decision-support/:patientId", "/digital-signature", "/login", "/notifications", "/offline", "/patients", "/patients/:patientId", "/patients/:patientId/diagnoses", "/patients/:patientId/lab-requests", "/patients/:patientId/orders", "/patients/:patientId/radiology", "/patients/:patientId/timeline", "/patients/:patientId/visits", "/prescriptions", "/prescriptions/:prescriptionId", "/prescriptions/new", "/referrals", "/referrals/new", "/schedule", "/settings", "/telemedicine", "/telemedicine/:consultationId", "/voice-dictation"]
+    },
+    {
+      "source": "platform/apps/hospital",
+      "sourceFiles": ["platform/apps/hospital/src/App.tsx"],
+      "decision": "safe_bridge",
+      "v3Entry": "/hospital",
+      "rationale": "تصل المسارات الفرعية إلى جسر مستشفى آمن ولا تفعل القبول أو الخروج أو إدارة الأسرة أو المخزون أو المالية.",
+      "routes": ["/admissions", "/assets", "/beds", "/clinics", "/dashboard", "/departments", "/discharge", "/finance", "/hr", "/inventory", "/login", "/maintenance", "/operating-theatre", "/reporting", "/settings"]
+    },
+    {
+      "source": "platform/apps/laboratory",
+      "sourceFiles": ["platform/apps/laboratory/src/utils/routes.ts"],
+      "decision": "safe_bridge",
+      "v3Entry": "/laboratory",
+      "rationale": "تصل المسارات الفرعية إلى جسر مختبر آمن؛ لا تستبدل أي خطوة عينة أو نتيجة أو جهاز أو مخزون بعقد غير موثق.",
+      "routes": ["/analyzer-integration", "/audit-log", "/autoverification", "/barcode-printing", "/blood-bank", "/dashboard", "/histopathology", "/instrument-monitor", "/inventory", "/login", "/microbiology", "/molecular", "/offline-mode", "/quality-control", "/receiving", "/reports", "/result-validation", "/sample-collection", "/sample-tracking", "/settings", "/worklist"]
+    },
+    {
+      "source": "platform/apps/ministry",
+      "sourceFiles": ["platform/apps/ministry/src/App.tsx"],
+      "decision": "safe_bridge",
+      "v3Entry": "/ministry",
+      "rationale": "تصل المسارات الفرعية إلى جسر وزارة آمن ولا تعرض بيانات سيادية أو تقارير أو تنبيهات تشغيلية.",
+      "routes": ["/alerts", "/births", "/blood", "/dashboard", "/emergency", "/hospitals", "/labs", "/login", "/medications", "/mortality", "/regional", "/reports", "/resources", "/settings", "/surveillance", "/vaccination", "/workforce"]
+    },
+    {
+      "source": "platform/apps/nurse",
+      "sourceFiles": ["platform/apps/nurse/src/App.tsx", "platform/apps/nurse/src/utils/routes.ts"],
+      "decision": "safe_bridge",
+      "v3Entry": "/nurse",
+      "rationale": "تصل المسارات الفرعية إلى جسر تمريض آمن؛ عقد مهام المستخدم الحالي لا يفعل القياسات أو أدوية أو أوامر حالة أو عمل دون اتصال.",
+      "routes": ["/*", "/admissions", "/barcode", "/bedside", "/care-plan", "/dashboard", "/discharge", "/login", "/medications", "/offline", "/patient-round", "/qr-verification", "/settings", "/shift-handover", "/tasks", "/vitals", "/ward"]
+    },
+    {
+      "source": "platform/apps/radiology",
+      "sourceFiles": ["platform/apps/radiology/src/App.tsx"],
+      "decision": "safe_bridge",
+      "v3Entry": "/radiology",
+      "rationale": "تصل المسارات الفرعية إلى جسر أشعة آمن؛ عقد قراءة الأوامر لا يفعل DICOM أو التقارير أو الجدولة أو نتائج حرجة.",
+      "routes": ["/", "/admin", "/contrast-tracking", "/critical-findings", "/dashboard", "/dicom-viewer", "/image-sharing", "/login", "/orders", "/protocols", "/quality", "/reports", "/scheduling", "/settings", "/worklist"]
+    },
+    {
+      "source": "platform/apps/pharmacy",
+      "sourceFiles": ["platform/apps/pharmacy/App.tsx"],
+      "decision": "not_client_route",
+      "v3Entry": null,
+      "rationale": "القيم الحرفية في التطبيق هي نقاط استدعاء مصادقة وليست تعريفات صفحة عميل؛ لا تنشئ مسارات frontend-v3.",
+      "routes": ["/auth/logout", "/auth/session"]
+    }
+  ]
+}

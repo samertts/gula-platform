@@ -13,9 +13,11 @@
     "verify:unification": "node scripts/verify-frontend-unification.mjs",
     "verify:contracts": "node scripts/verify-contract-governance.mjs",
     "verify:integration-boundary": "node scripts/verify-integration-boundary.mjs",
+    "generate:data-source-inventory": "node scripts/data-source-inventory.mjs",
+    "verify:data-sources": "node scripts/verify-data-source-governance.mjs",
     "generate:route-gate": "node ../scripts/contract-audit/generate-frontend-page-map.mjs",
     "verify:audit-artifacts": "node ../scripts/contract-audit/verify-audit-artifacts.mjs",
-    "check": "pnpm typecheck && pnpm test && pnpm verify:unification && pnpm verify:contracts && pnpm verify:integration-boundary && pnpm generate:route-gate && pnpm verify:audit-artifacts && pnpm build",
+    "check": "pnpm typecheck && pnpm test && pnpm verify:unification && pnpm verify:contracts && pnpm verify:integration-boundary && pnpm generate:data-source-inventory && pnpm verify:data-sources && pnpm generate:route-gate && pnpm verify:audit-artifacts && pnpm build",
     "test:watch": "vitest --passWithNoTests --exclude 'e2e/**'",
     "test:e2e": "playwright test"
   },

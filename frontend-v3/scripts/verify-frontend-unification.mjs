@@ -37,7 +37,17 @@ const checks = [
   {
     file: "FRONTEND_UNIFICATION.md",
     fragments: ["السطح الأمامي المرجعي", "طبقة القراءة الموحدة", "التدفقات السريرية الفرعية"],
-    reason: "وثيقة توحيد الواجهة لا تصف النطاق وحالات الانتقال بصورة كافية.",
+      reason: "وثيقة توحيد الواجهة لا تصف النطاق وحالات الانتقال بصورة كافية.",
+  },
+  {
+    file: "legacy-route-decisions.json",
+    fragments: ["frontend-v2", "platform/apps/doctor", "platform/apps/radiology", "safe_bridge"],
+    reason: "سجل قرار المسارات الانتقالية route-by-route غير مكتمل.",
+  },
+  {
+    file: "ROUTE_BY_ROUTE_UNIFICATION.md",
+    fragments: ["جرد قابل للتحقق آليًا", "safe_bridge", "مسار جديد بلا سجل"],
+    reason: "وثيقة قرار المسارات التفصيلية مفقودة أو لا تصف ضابط التغطية.",
   },
 ];
 
@@ -59,6 +69,48 @@ for (const check of checks) {
 const catalogPath = resolve(root, "src/pages/migration/frontendSurfaceCatalog.ts");
 if (existsSync(catalogPath) && readFileSync(catalogPath, "utf8").includes("pending_contract")) {
   failures.push("سجل مصادر الواجهات يحتوي حالة معلقة خارج جسر frontend-v3 الآمن.");
+}
+
+const decisionsPath = resolve(root, "legacy-route-decisions.json");
+if (existsSync(decisionsPath)) {
+  try {
+    const { decisions } = JSON.parse(readFileSync(decisionsPath, "utf8"));
+    const allowedDecisions = new Set(["decommissioned", "safe_bridge", "not_client_route"]);
+    const decisionBySource = new Map();
+
+    for (const entry of decisions ?? []) {
+      if (!entry?.source || !allowedDecisions.has(entry.decision) || !entry.rationale || !Array.isArray(entry.routes) || !entry.routes.length) {
+        failures.push("سجل قرار المسارات يحتوي إدخالًا ناقصًا أو قرارًا غير معتمد.");
+        continue;
+      }
+      if (entry.decision === "safe_bridge" && !entry.v3Entry) {
+        failures.push(`سجل قرار المسارات: ${entry.source} جسر آمن بلا مدخل frontend-v3.`);
+      }
+      if (new Set(entry.routes).size !== entry.routes.length) {
+        failures.push(`سجل قرار المسارات: ${entry.source} يحتوي مسارًا مكررًا.`);
+      }
+      decisionBySource.set(entry.source, new Set(entry.routes));
+    }
+
+    for (const entry of decisions ?? []) {
+      for (const sourceFile of entry.sourceFiles ?? []) {
+        const sourcePath = resolve(root, "..", sourceFile);
+        if (!existsSync(sourcePath)) {
+          failures.push(`سجل قرار المسارات: ملف المصدر مفقود (${sourceFile}).`);
+          continue;
+        }
+        const literalRoutes = [...readFileSync(sourcePath, "utf8").matchAll(/["'](\/[^"']*)["']/g)].map((match) => match[1]);
+        const registered = decisionBySource.get(entry.source) ?? new Set();
+        for (const route of new Set(literalRoutes)) {
+          if (!registered.has(route)) {
+            failures.push(`سجل قرار المسارات: ${entry.source} يحتوي ${route} بلا قرار موثق.`);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    failures.push(`تعذر تحليل سجل قرار المسارات: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 if (failures.length) {
