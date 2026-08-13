@@ -1,7 +1,7 @@
 """Add a reviewed, explicit legacy laboratory to facility scope bridge.
 
-Revision ID: 20260813_0001
-Revises: 20260812_0003
+Revision ID: 20260813_0002
+Revises: 20260813_0001
 """
 
 from __future__ import annotations
@@ -10,8 +10,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "20260813_0001"
-down_revision = "20260812_0003"
+revision = "20260813_0002"
+down_revision = "20260813_0001"
 branch_labels = None
 depends_on = None
 

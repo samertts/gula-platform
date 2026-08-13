@@ -1,7 +1,7 @@
 """Add explicit operational scope references to NIAM assignments.
 
-Revision ID: 20260813_0002
-Revises: 20260813_0001
+Revision ID: 20260813_0003
+Revises: 20260813_0002
 """
 
 from __future__ import annotations
@@ -10,8 +10,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "20260813_0002"
-down_revision = "20260813_0001"
+revision = "20260813_0003"
+down_revision = "20260813_0002"
 branch_labels = None
 depends_on = None
 
