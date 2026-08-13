@@ -83,7 +83,7 @@ export const setupApi = {
 export const dashboardApi = {
   greeting: () => api.get<{ greeting: string; message: string; user_name: string }>("/greeting").then((r) => r.data),
   dashboard: () => api.get<DashboardData>("/dashboard").then((r) => r.data),
-  demo: () => api.get<Record<string, unknown>>("/dashboard").then((r) => r.data),
+  demo: () => apiClient.demoDashboard<Record<string, unknown>>(),
 };
 
 // ── Patients ──
