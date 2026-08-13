@@ -1,58 +1,20 @@
 import { test, expect } from "@playwright/test";
 import { mockLogin, setupAuthenticatedPage } from "./helpers";
 
-test.describe("Patient Search", () => {
+test.describe("Patient workspace read safety", () => {
   test.beforeEach(async ({ page }) => {
     await mockLogin(page);
-    await page.route("**/api/authz/me", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ user: { lab_id: 1 } }),
-      });
-    });
-    await page.route("**/api/authz/check", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ allowed: true }),
-      });
-    });
-    await page.route("**/api/patients**", async (route) => {
-      const url = route.request().url();
-      const hasSearch = Boolean(new URL(url).searchParams.get("search"));
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(
-          hasSearch
-            ? {
-                items: [
-                  { id: 3, full_name: "محمود علي", phone: "07701111111", lab_id: 1 },
-                ],
-                total: 1,
-              }
-            : {
-                items: [
-                  { id: 1, full_name: "محمد أحمد", phone: "07701234567", lab_id: 1 },
-                  { id: 2, full_name: "سارة خالد", phone: "07707654321", lab_id: 1 },
-                  { id: 3, full_name: "محمود علي", phone: "07701111111", lab_id: 1 },
-                ],
-                total: 3,
-              },
-        ),
-      });
-    });
     await setupAuthenticatedPage(page);
   });
 
-  test("should navigate to patients page", async ({ page }) => {
+  test("navigates to the patients surface", async ({ page }) => {
     await page.goto("/patients");
     await expect(page).toHaveURL(/\/patients/);
+    await expect(page.locator('[data-contract-id="patients.read"]')).toBeVisible();
   });
 
-  test("should display patients list after login", async ({ page }) => {
+  test("blocks direct patient reads until server enforcement is proven", async ({ page }) => {
     await page.goto("/patients");
-    await expect(page.locator("text=محمد أحمد")).toBeVisible();
+    await expect(page.getByText("قراءة المرضى غير متاحة لهذه الجلسة")).toBeVisible();
   });
 });

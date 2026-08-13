@@ -60,10 +60,10 @@ async function mockAuthenticatedRoutes(page: Page) {
 test.describe("Authentication", () => {
   test("should display login page with correct Arabic text", async ({ page }) => {
     await page.goto("/login");
-    await expect(page.locator("h2")).toContainText("مرحباً بعودتك");
+    await expect(page.locator("h2")).toContainText("اختر مسار الوصول المناسب لك");
     await expect(page.locator('label[for="email"]')).toContainText("البريد الإلكتروني");
     await expect(page.locator('label[for="password"]')).toContainText("كلمة المرور");
-    await expect(page.locator('button[type="submit"]')).toContainText("تسجيل الدخول");
+    await expect(page.locator('button[type="submit"]')).toContainText("الدخول إلى مساحة المواطن");
   });
 
   test("should show validation error for empty fields", async ({ page }) => {

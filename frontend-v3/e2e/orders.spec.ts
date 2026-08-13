@@ -1,52 +1,20 @@
 import { test, expect } from "@playwright/test";
 import { mockLogin, setupAuthenticatedPage } from "./helpers";
 
-test.describe("Laboratory Orders", () => {
+test.describe("Order workspace read safety", () => {
   test.beforeEach(async ({ page }) => {
     await mockLogin(page);
-    await page.route("**/api/authz/me", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ user: { lab_id: 1 } }),
-      });
-    });
-    await page.route("**/api/authz/check", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ allowed: true }),
-      });
-    });
-    await page.route("**/api/lims/orders**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          items: [
-            { id: 101, patient_name: "محمد أحمد", test: "CBC", status: "pending", created_at: "2026-07-22" },
-            { id: 102, patient_name: "سارة خالد", test: "TSH", status: "completed", created_at: "2026-07-22" },
-          ],
-          total: 2,
-        }),
-      });
-    });
     await setupAuthenticatedPage(page);
   });
 
-  test("should navigate to orders page", async ({ page }) => {
+  test("navigates to the orders surface", async ({ page }) => {
     await page.goto("/orders");
     await expect(page).toHaveURL(/\/orders/);
+    await expect(page.locator('[data-contract-id="orders.read"]')).toBeVisible();
   });
 
-  test("should display orders list", async ({ page }) => {
+  test("blocks direct order reads until server enforcement is proven", async ({ page }) => {
     await page.goto("/orders");
-    await expect(page.locator("text=محمد أحمد")).toBeVisible();
-  });
-
-  test("should display order status badges", async ({ page }) => {
-    await page.goto("/orders");
-    await expect(page.locator("text=pending").first()).toBeVisible();
-    await expect(page.locator("text=completed").first()).toBeVisible();
+    await expect(page.getByText("قراءة الطلبات غير متاحة لهذه الجلسة")).toBeVisible();
   });
 });

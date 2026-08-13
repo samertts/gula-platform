@@ -1,37 +1,20 @@
 import { test, expect } from "@playwright/test";
 import { mockLogin, setupAuthenticatedPage } from "./helpers";
 
-test.describe("Samples", () => {
+test.describe("Samples safe transitional surface", () => {
   test.beforeEach(async ({ page }) => {
     await mockLogin(page);
-    await page.route("**/api/samples**", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          items: [
-            { id: 301, barcode: "SMP-001", patient_name: "محمد أحمد", sample_type: "blood", status: "collected" },
-            { id: 302, barcode: "SMP-002", patient_name: "سارة خالد", sample_type: "urine", status: "pending" },
-          ],
-          total: 2,
-        }),
-      });
-    });
     await setupAuthenticatedPage(page);
   });
 
-  test("should navigate to samples page", async ({ page }) => {
+  test("navigates to the samples surface", async ({ page }) => {
     await page.goto("/samples");
     await expect(page).toHaveURL(/\/samples/);
   });
 
-  test("should display sample barcodes", async ({ page }) => {
+  test("shows a safe bridge instead of ungoverned sample data", async ({ page }) => {
     await page.goto("/samples");
-    await expect(page.locator("text=SMP-001")).toBeVisible();
-  });
-
-  test("should display sample types", async ({ page }) => {
-    await page.goto("/samples");
-    await expect(page.locator("text=blood").first()).toBeVisible();
+    await expect(page.locator('[data-unification-state="safe-bridge"]')).toBeVisible();
+    await expect(page.getByText("مسار انتقالي موحّد")).toBeVisible();
   });
 });
