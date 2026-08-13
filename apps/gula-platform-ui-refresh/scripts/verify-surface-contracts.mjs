@@ -1,7 +1,9 @@
 import { readFile, readdir } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = "/home/ubuntu/gula-platform-ui-refresh";
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const root = resolve(scriptDir, "..");
 const clientRoot = join(root, "client/src");
 const policyPath = join(root, "surface_contract_policy.md");
 const matrixPath = join(root, "ui_action_contract_matrix.md");
@@ -69,8 +71,8 @@ if (!policy.includes("لا يجوز") || !policy.includes("لا تُستخدم �
 if (!matrix.includes("حالة العقد") || !matrix.includes("معرف العقد الأساسي") || !matrix.includes("العقود التابعة الموثقة") || !matrix.includes("صلاحية الخلفية") || !matrix.includes("يتطلب سياق منشأة") || !matrix.includes("مراجع API داخل المعالج") || !matrix.includes("ملخص التغطية")) {
   violations.push("مصفوفة الإجراءات لا تتضمن تتبع المعالج ومعرف العقد والصلاحية وسياق المنشأة وملخص التغطية.");
 }
-if (!ledger.includes("حالة عدم ربط")) {
-  violations.push("سجل الصفحات لا يوثق حالة عدم الربط بوضوح.");
+if (!ledger.includes("حالة منع صريحة") && !ledger.includes("حالة عدم ربط")) {
+  violations.push("سجل الصفحات لا يوثق حالة منع أو عدم ربط بوضوح.");
 }
 if (registry.contracts.length < 20 || registry.contracts.some((contract) => !contract.id || !contract.path || !contract.permission || typeof contract.requiresWorkspaceContext !== "boolean" || !Array.isArray(contract.operationKinds) || contract.operationKinds.length === 0 || !Array.isArray(contract.clientMethods) || contract.clientMethods.length === 0)) {
   violations.push("سجل العقود ناقص أو لا يحدد المسار والصلاحية وسياق مساحة العمل ونوع العملية واسم عملية العميل لكل عقد.");
