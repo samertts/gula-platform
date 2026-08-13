@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 import '../../widgets/core/gula_card.dart';
 import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_badge.dart';
@@ -32,7 +31,12 @@ class _EmergencyPageState extends State<EmergencyPage> {
         children: [
           Row(
             children: [
-              const Expanded(child: SectionHeader(title: 'Emergency Department', subtitle: '${_patients.length} active patients')),
+              Expanded(
+                child: SectionHeader(
+                  title: 'Emergency Department',
+                  subtitle: '${_patients.length} active patients',
+                ),
+              ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
@@ -57,6 +61,7 @@ class _EmergencyPageState extends State<EmergencyPage> {
               itemCount: _patients.length,
               itemBuilder: (context, index) {
                 final p = _patients[index];
+                final vitals = p['vitals'] as Map<String, String>;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: GulaCard(
@@ -81,7 +86,7 @@ class _EmergencyPageState extends State<EmergencyPage> {
                               children: [
                                 Row(
                                   children: [
-                                    Text(p['name'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                                    Text(p['name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                                     const SizedBox(width: 8),
                                     GulaBadge(
                                       label: p['priority'].toString().toUpperCase(),
@@ -92,17 +97,17 @@ class _EmergencyPageState extends State<EmergencyPage> {
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                Text(p['condition'], style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                                Text(p['condition']?.toString() ?? '', style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    _vitalChip('BP', p['vitals']['bp']),
+                                    _vitalChip('BP', vitals['bp'] ?? ''),
                                     const SizedBox(width: 8),
-                                    _vitalChip('HR', p['vitals']['hr']),
+                                    _vitalChip('HR', vitals['hr'] ?? ''),
                                     const SizedBox(width: 8),
-                                    _vitalChip('O2', p['vitals']['o2']),
+                                    _vitalChip('O2', vitals['o2'] ?? ''),
                                     const SizedBox(width: 8),
-                                    _vitalChip('Temp', p['vitals']['temp']),
+                                    _vitalChip('Temp', vitals['temp'] ?? ''),
                                   ],
                                 ),
                               ],

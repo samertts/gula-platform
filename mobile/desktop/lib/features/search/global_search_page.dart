@@ -2,14 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
-import '../../core/utils/constants.dart';
 import '../../widgets/core/gula_card.dart';
-import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_search_bar.dart';
 import '../../widgets/core/gula_badge.dart';
 import '../../widgets/layout/page_container.dart';
-import '../../widgets/layout/section_header.dart';
 
 class GlobalSearchPage extends StatefulWidget {
   const GlobalSearchPage({super.key});
@@ -99,12 +95,12 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
                         decoration: BoxDecoration(color: iconColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
                         child: Icon(icon, color: iconColor, size: 20),
                       ),
-                      title: Text(r['title'], style: const TextStyle(fontWeight: FontWeight.w500)),
-                      subtitle: Text(r['subtitle'], style: const TextStyle(fontSize: 12)),
+                      title: Text(r['title']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w500)),
+                      subtitle: Text(r['subtitle']?.toString() ?? '', style: const TextStyle(fontSize: 12)),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          GulaBadge(label: r['type'], status: GulaBadgeStatus.neutral, showDot: false),
+                          GulaBadge(label: r['type']?.toString() ?? '', status: GulaBadgeStatus.neutral, showDot: false),
                           const SizedBox(width: 8),
                           const Icon(Icons.chevron_right, color: AppColors.neutral400),
                         ],

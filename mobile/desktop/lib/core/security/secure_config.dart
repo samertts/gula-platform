@@ -22,15 +22,11 @@ class SecureConfig {
 
   static AndroidOptions _androidOptions() => const AndroidOptions(
         encryptedSharedPreferences: true,
-        accessibility: KeychainAccessibility.passcode,
       );
 
   static IOSOptions _iosOptions() => const IOSOptions(
         accessibility: KeychainAccessibility.passcode,
-        authenticationType: BiometricType.biometricAny,
       );
-
-  static const _defaultOptions = _DefaultOptions();
 
   static Future<void> write(String key, String value) async {
     await _storage.write(key: key, value: value, aOptions: _androidOptions(), iOptions: _iosOptions());
@@ -98,12 +94,4 @@ class SecureConfig {
     final bytes = List<int>.generate(32, (_) => random.nextInt(256));
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
-}
-
-class _DefaultOptions extends IOSOptions {
-  const _DefaultOptions()
-      : super(
-          accessibility: KeychainAccessibility.passcode,
-          authenticationType: BiometricType.biometricAny,
-        );
 }
