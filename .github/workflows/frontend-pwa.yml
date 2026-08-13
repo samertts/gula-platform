@@ -156,9 +156,13 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
-          vercel deploy --prebuilt --token=$VERCEL_TOKEN > vercel-url.txt
-          echo "VERCEL_URL=$(cat vercel-url.txt)" >> $GITHUB_ENV
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "VERCEL_TOKEN is not configured; skipping optional Vercel preview CLI deployment."
+            exit 0
+          fi
+          vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+          vercel deploy --prebuilt --token="$VERCEL_TOKEN" > vercel-url.txt
+          echo "VERCEL_URL=$(cat vercel-url.txt)" >> "$GITHUB_ENV"
 
       - name: Comment PR with preview URL
         uses: actions/github-script@v7
@@ -201,8 +205,12 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-          vercel deploy --prod --prebuilt --token=$VERCEL_TOKEN
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "VERCEL_TOKEN is not configured; skipping optional Vercel production CLI deployment."
+            exit 0
+          fi
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          vercel deploy --prod --prebuilt --token="$VERCEL_TOKEN"
 
       - name: Upload source maps to Sentry
         env:
@@ -210,7 +218,11 @@ jobs:
           SENTRY_ORG: gula-platform
           SENTRY_PROJECT: frontend-pwa
         run: |
-          npx @sentry/cli releases new ${{ github.ref_name }}
-          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps dist/assets/
-          npx @sentry/cli releases set-commits ${{ github.ref_name }} --auto
-          npx @sentry/cli releases finalize ${{ github.ref_name }}
+          if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+            echo "SENTRY_AUTH_TOKEN is not configured; skipping optional source-map upload."
+            exit 0
+          fi
+          npx @sentry/cli releases new "${{ github.ref_name }}"
+          npx @sentry/cli releases files "${{ github.ref_name }}" upload-sourcemaps frontend-v3/dist/assets/
+          npx @sentry/cli releases set-commits "${{ github.ref_name }}" --auto
+          npx @sentry/cli releases finalize "${{ github.ref_name }}"
