@@ -19,6 +19,17 @@ test.describe("سطح التقارير الآمن", () => {
         window.sessionStorage.setItem("gula_demo_active", "true");
       });
 
+      await page.route("**/api/session", async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            user: { id: 0, email: "demo@gula.test", name: "مستخدم المعاينة", role: "master_admin" },
+            demo_mode: true,
+          }),
+        });
+      });
+
       await page.route("**/api/dashboard", async (route) => {
         await route.fulfill({
           status: 200,
