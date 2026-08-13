@@ -123,6 +123,25 @@ class ClinicalLabFacilityBinding(Base):
 ClinicalEhrFacilityBindingStatus = ClinicalLabFacilityBindingStatus
 
 
+class NationalFacility(Base):
+    """Canonical national EHR facility resource used by reviewed scope bridges."""
+
+    __tablename__ = "national_facilities"
+    __table_args__ = (UniqueConstraint("facility_code", name="uq_national_facilities_facility_code"),)
+
+    id = Column(String(26), primary_key=True, default=_binding_id)
+    facility_code = Column(String(100), nullable=True)
+    name = Column(String(255), nullable=False)
+    status = Column(String(20), nullable=False, default="active")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+
+
 class ClinicalEhrFacilityBinding(Base):
     """Reviewed bridge from ``national_facilities.id`` to NIAM's facility resource."""
 
