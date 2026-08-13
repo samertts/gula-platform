@@ -250,8 +250,25 @@ jobs:
 
       - name: Build AppImage
         run: |
-          sudo snap install appimagecraft
-          appimagecraft build
+          mkdir -p build/appimage/AppDir/usr/bin
+          mkdir -p build/appimage/AppDir/usr/share/applications
+          mkdir -p build/appimage/AppDir/usr/share/icons/hicolor/512x512/apps
+          cp -a build/linux/x64/release/bundle/. build/appimage/AppDir/usr/bin/
+          cp packaging/linux/gula_desktop.desktop build/appimage/AppDir/
+          cp packaging/linux/gula_desktop.desktop build/appimage/AppDir/usr/share/applications/
+          cp packaging/linux/gula_desktop.png build/appimage/AppDir/
+          cp packaging/linux/gula_desktop.png build/appimage/AppDir/usr/share/icons/hicolor/512x512/apps/
+          cat > build/appimage/AppDir/AppRun <<'EOF'
+          #!/bin/sh
+          APPDIR="$(dirname "$(readlink -f "$0")")"
+          exec "$APPDIR/usr/bin/gula_desktop" "$@"
+          EOF
+          chmod +x build/appimage/AppDir/AppRun
+          curl -fsSL -o appimagetool-x86_64.AppImage \
+            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run \
+            build/appimage/AppDir build/appimage/GULA_Platform-${{ github.ref_name }}-x86_64.AppImage
 
       - name: Build deb package
         run: |
