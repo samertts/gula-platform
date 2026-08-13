@@ -80,6 +80,12 @@ elif IS_PRODUCTION and not BASE_URL.startswith("https://"):
     sys.exit("BASE_URL must use HTTPS in production")
 PLATFORM_NAME_AR = "منصة غولا الصحية"
 
+# ─── Telegram access control ─────────────────────────────────────────────────
+# Only this Telegram numeric user ID may send messages to the platform.
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_ADMIN_USER_ID = os.getenv("TELEGRAM_ADMIN_USER_ID", "").strip()
+TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
+
 # ─── Database ────────────────────────────────────────────────────────────────
 DATABASE_URL = os.getenv("DATABASE_URL", "")
 if not DATABASE_URL:

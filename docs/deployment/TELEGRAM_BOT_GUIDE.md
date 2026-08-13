@@ -29,3 +29,36 @@ export TELEGRAM_CHAT_ID="your_chat_id_here"
 POST /api/v1/telegram/test-alert
 ```
 سيقوم البوت بإرسال تقرير فوري لحالة المنصة والتنبيهات السريرية إلى حسابك على التيليغرام مباشرة.
+
+## 4. صلاحية المحادثة الخاصة بالمالك فقط
+
+يجب ضبط `TELEGRAM_ADMIN_USER_ID` على **المعرّف الرقمي لحسابك في تيليغرام**، وليس اسم المستخدم. هذا الحساب وحده يستطيع إرسال رسائل إلى المنصة واستلام ردودها. بقية الحسابات يمكنها استقبال التنبيهات المرسلة من المنصة، لكن أي رسائل واردة منها تُهمل دون رد.
+
+```bash
+export TELEGRAM_ADMIN_USER_ID="123456789"
+export TELEGRAM_WEBHOOK_SECRET="ضع-سرًا-عشوائيًا-طويلًا-هنا"
+```
+
+بعد نشر المنصة، اضبط webhook مرة واحدة:
+
+```bash
+curl -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+  -d "url=${BASE_URL}/api/v1/telegram/webhook" \
+  -d "secret_token=${TELEGRAM_WEBHOOK_SECRET}"
+```
+
+## 5. إنشاء حساب المالك الأعلى
+
+لا تُحفظ كلمة المرور داخل المستودع. من مجلد `backend` شغّل أداة التهيئة عبر متغيرات مؤقتة:
+
+```bash
+export OWNER_NAME="اسم المالك"
+export OWNER_EMAIL="owner@example.com"
+export OWNER_PASSWORD="كلمة-مرور-قوية-لا-تقل-عن-12-حرفًا"
+export OWNER_LAB_NAME="GULA Platform"
+python -m scripts.bootstrap_owner
+```
+
+الحساب يُنشأ بالدور `master_admin` ويكون فعالًا مباشرة. تسجيل الدخول يتم عبر `POST /login` من الواجهة أو عميل API باستخدام البريد وكلمة المرور، وبعدها تُحفظ جلسة الدخول في cookie آمنة. لأن دور `master_admin` مميّز، يجب إكمال إعداد المصادقة متعددة العوامل من قسم MFA قبل أول دخول فعلي.
+
+> لا تستخدم بيانات المثال كما هي، ولا ترسل كلمة المرور أو رمز MFA إلى تيليغرام.

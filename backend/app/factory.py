@@ -625,6 +625,8 @@ def _register_routes(app: FastAPI) -> None:
 
     from .national.notification_platform.api.routes import router as notification_platform_router
     app.include_router(notification_platform_router)
+    from .notifications.telegram_chat import router as telegram_chat_router
+    app.include_router(telegram_chat_router)
 
     from .national.document_platform.api.routes import router as document_router
     app.include_router(document_router)
