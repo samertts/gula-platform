@@ -166,7 +166,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run instrumented tests (API ${{ matrix.api-level }})
-        uses: reactivecircus/android-emulator-runner@v3
+        uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
           target: ${{ matrix.target }}
