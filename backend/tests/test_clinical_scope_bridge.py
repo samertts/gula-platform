@@ -75,9 +75,9 @@ def test_scope_migration_is_additive_and_reversible():
     from pathlib import Path
 
     migration = (
-        Path(__file__).parents[1] / "migrations/versions/20260813_0001_clinical_scope_bridge.py"
+        Path(__file__).parents[1] / "migrations/versions/20260813_0002_clinical_scope_bridge.py"
     ).read_text()
-    assert 'down_revision = "20260812_0003"' in migration
+    assert 'down_revision = "20260813_0001"' in migration
     assert "clinical_lab_facility_bindings" in migration
     assert 'ForeignKey("labs.id"' in migration
     assert 'ForeignKey("facilities.id"' in migration
