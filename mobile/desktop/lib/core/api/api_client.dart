@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import 'api_interceptor.dart';
-import 'api_exceptions.dart';
 import '../security/api_url_validator.dart';
 import '../security/certificate_pinner.dart';
 

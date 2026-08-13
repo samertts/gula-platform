@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 import '../core/gula_sidebar.dart';
 import '../core/gula_app_bar.dart';
 import '../core/gula_offline_banner.dart';

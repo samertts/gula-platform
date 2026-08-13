@@ -1,8 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/providers/app_providers.dart';
-import '../../widgets/charts/kpi_card.dart';
 
 class DashboardState {
   final bool isLoading;

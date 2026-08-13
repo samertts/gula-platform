@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/validators.dart';
 import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_text_field.dart';

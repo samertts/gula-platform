@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../core/offline/sync_engine.dart';
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 
 class GulaSyncIndicator extends StatelessWidget {
   final SyncStatus status;

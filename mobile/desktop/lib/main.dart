@@ -6,7 +6,6 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'app_router.dart';
 import 'core/observability/crash_reporter.dart';
-import 'core/offline/connectivity_service.dart';
 import 'core/providers/app_providers.dart';
 import 'core/security/tamper_detection.dart';
 import 'core/update/auto_updater.dart';

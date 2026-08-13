@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/providers/app_providers.dart';
 
 class PatientProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _patients = [];
