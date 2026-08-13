@@ -36,6 +36,7 @@ class AuthRepositoryImplTest {
         encryptedPrefs = mockk()
 
         every { encryptedPrefs.isLoggedIn } returns false
+        every { encryptedPrefs.isLoggedIn = any() } just Runs
         every { encryptedPrefs.accessToken = any() } just Runs
         every { encryptedPrefs.refreshToken = any() } just Runs
         every { encryptedPrefs.userId = any() } just Runs
