@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import base64
+import os
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from cryptography.hazmat.primitives import serialization
@@ -48,6 +50,16 @@ def verify_identity_bundle(bundle_data: dict[str, Any], public_key_pem: bytes) -
         )
     except Exception as exc:
         raise ValueError("identity bundle signature verification failed") from exc
+
+    issued_at = datetime.fromisoformat(bundle.issued_at.replace("Z", "+00:00"))
+    if issued_at.tzinfo is None:
+        raise ValueError("identity bundle issued_at must be timezone-aware")
+    now = datetime.now(UTC)
+    max_age = int(os.getenv("GULA_IDENTITY_BUNDLE_MAX_AGE_SECONDS", "86400"))
+    if issued_at > now + timedelta(minutes=5):
+        raise ValueError("identity bundle issued_at is in the future")
+    if issued_at < now - timedelta(seconds=max_age):
+        raise ValueError("identity bundle has expired")
 
     return IntegrationEventEnvelope.model_validate(
         {
