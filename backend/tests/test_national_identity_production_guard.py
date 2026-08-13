@@ -1,10 +1,9 @@
 from types import SimpleNamespace
 
-import pytest
-from fastapi import HTTPException
-
 import app.routes.national_identity as route
+import pytest
 from app.gateways.mode import AdapterMode
+from fastapi import HTTPException
 
 
 def test_production_rejects_stub_national_identity(monkeypatch):

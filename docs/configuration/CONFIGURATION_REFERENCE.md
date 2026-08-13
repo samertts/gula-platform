@@ -290,6 +290,10 @@ All Kernel flags default to `true` so the Kernel is fully active out of the box.
 | Variable | Default | Required | Secret | Description |
 |----------|---------|----------|--------|-------------|
 | `ALERT_WEBHOOK_URL` | `""` | No | Yes | Webhook URL for health alert notifications (Telegram, Discord, Slack). POST on grade transitions. |
+| `TELEGRAM_BOT_TOKEN` | `""` | No | Yes | Telegram Bot API token. Server-side only; never expose to frontend bundles. |
+| `TELEGRAM_CHAT_ID` | `""` | No | No | Backwards-compatible single authorized Telegram chat ID. Prefer `TELEGRAM_ALLOWED_CHAT_IDS` for production. |
+| `TELEGRAM_ALLOWED_CHAT_IDS` | `""` | No | No | Comma-separated allowlist of authorized Telegram chat IDs for webhook commands. |
+| `TELEGRAM_WEBHOOK_SECRET_TOKEN` | `""` | Yes when webhook is enabled | Yes | Secret used to validate `X-Telegram-Bot-Api-Secret-Token`; webhook rejects requests when missing or invalid. |
 | `HEALTH_ALERT_INTERVAL_SECONDS` | `60` | No | No | Interval (seconds) between health check evaluations. |
 | `SENTRY_DSN` | `""` | No | Yes | Sentry error tracking DSN. Leave empty to disable. |
 | `SENTRY_TRACES_RATE` | `0.05` | No | No | Sentry performance trace sample rate (0.05 = 5% of requests). |

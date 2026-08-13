@@ -1,64 +1,48 @@
-# دليل تفعيل وربط بوت تليغرام (Telegram Bot Guide) لمنصة GULA
+# دليل تشغيل Telegram Bot بأمان
 
-يتيح هذا الدليل تفعيل خدمة **Telegram Bot** لمراقبة المنصة بالكامل، تلقي التنبيهات السريرية الحرجة فور حدوثها، وإرسال النتائج المخبرية تلقائياً.
-
----
-
-## 1. خطوات إنشاء البوت عبر Telegram
-1. فتح تطبيق تيليغرام والبحث عن المساعد الرسمي: **@BotFather**.
-2. إرسال الأمر `/newbot` واتباع التعليمات لتسمية البوت (مثال: `GulaHealthBot`).
-3. ستقوم بالحصول على **Bot Token** (مثال: `123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ`).
-4. الحصول على **Chat ID** الخاص بك عبر بوت مثل **@userinfobot** أو إرسال رسالة للبوت ثم زيارة الرابط:
-   `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates` لمعرفة رقم الـ `chat_id`.
+يتيح هذا الدليل تفعيل **Telegram Bot** للتنبيهات التشغيلية والسريرية الحرجة ضمن ضوابط المصادقة والتفويض. لا تضع أي رمز أو كلمة مرور حقيقية داخل المستودع أو ملفات الواجهة الأمامية.
 
 ---
 
-## 2. إعداد المتغيرات البيئية (Environment Variables)
-قم بإضافة المتغيرات التالية إلى ملف التكوين أو بيئة التشغيل على السيرفر:
+## 1. إنشاء البوت والحصول على Chat ID
+
+استخدم **@BotFather** لإنشاء البوت، ثم احصل على Chat ID الإداري من رسالة واردة للبوت أو من قناة داخلية موثوقة. يجب استخدام Chat ID رقمي، وليس اسم المستخدم.
+
+لا تستخدم `getUpdates` أو أي أداة تعرض التوكن في سجل shell مشترك. خزّن التوكن في Secret Manager أو متغير بيئة محمي.
+
+## 2. متغيرات التشغيل المطلوبة
+
+اضبط المتغيرات التالية على الخادم أو مزود النشر فقط:
 
 ```bash
-export TELEGRAM_BOT_TOKEN="your_bot_token_here"
-export TELEGRAM_CHAT_ID="your_chat_id_here"
+export TELEGRAM_BOT_TOKEN="<bot-token>"
+export TELEGRAM_ALLOWED_CHAT_IDS="<admin-chat-id>"
+export TELEGRAM_WEBHOOK_SECRET_TOKEN="<random-secret-at-least-32-bytes>"
 ```
 
----
+يمكن استخدام `TELEGRAM_CHAT_ID` كبديل متوافق لمعرف واحد، لكن `TELEGRAM_ALLOWED_CHAT_IDS` هو الخيار المفضل للإنتاج. لا تُرسل `TELEGRAM_BOT_TOKEN` أو `TELEGRAM_WEBHOOK_SECRET_TOKEN` إلى المتصفح أو Telegram أو ملفات السجل.
 
-## 3. اختبار الاتصال عبر الواجهة الخلفية
-يمكنك اختبار إرسال التنبيهات الفورية عبر استدعاء نقطة النهاية الآمنة:
-```http
-POST /api/v1/telegram/test-alert
-```
-سيقوم البوت بإرسال تقرير فوري لحالة المنصة والتنبيهات السريرية إلى حسابك على التيليغرام مباشرة.
+## 3. تسجيل Webhook مع Telegram
 
-## 4. صلاحية المحادثة الخاصة بالمالك فقط
-
-يجب ضبط `TELEGRAM_ADMIN_USER_ID` على **المعرّف الرقمي لحسابك في تيليغرام**، وليس اسم المستخدم. هذا الحساب وحده يستطيع إرسال رسائل إلى المنصة واستلام ردودها. بقية الحسابات يمكنها استقبال التنبيهات المرسلة من المنصة، لكن أي رسائل واردة منها تُهمل دون رد.
+استخدم نفس قيمة `TELEGRAM_WEBHOOK_SECRET_TOKEN` في حقل `secret_token` عند تسجيل webhook. لا تضع القيمة الفعلية في سجل الأوامر؛ استخدم Secret Manager أو ملف عملية محمي.
 
 ```bash
-export TELEGRAM_ADMIN_USER_ID="123456789"
-export TELEGRAM_WEBHOOK_SECRET="ضع-سرًا-عشوائيًا-طويلًا-هنا"
+curl --fail-with-body --silent --show-error -X POST \
+  "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
+  --data-urlencode "url=${BASE_URL}/api/v1/telegram/webhook" \
+  --data-urlencode "secret_token=${TELEGRAM_WEBHOOK_SECRET_TOKEN}"
 ```
 
-بعد نشر المنصة، اضبط webhook مرة واحدة:
+يتحقق backend من الترويسة `X-Telegram-Bot-Api-Secret-Token` باستخدام مقارنة ثابتة الزمن، ويرفض أي Chat ID غير موجود في allowlist. إذا لم يكن secret أو allowlist مضبوطاً، يُغلق المسار fail-closed ولا يعالج الأوامر.
 
-```bash
-curl -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
-  -d "url=${BASE_URL}/api/v1/telegram/webhook" \
-  -d "secret_token=${TELEGRAM_WEBHOOK_SECRET}"
-```
+## 4. صلاحيات الأوامر والتنبيهات
 
-## 5. إنشاء حساب المالك الأعلى
+يتطلب `POST /api/v1/telegram/test-alert` جلسة GULA مصادقاً عليها بدور `master_admin` أو `ministry_admin`. لا يُعد هذا المسار health check عاماً ولا يجوز نشره دون مصادقة.
 
-لا تُحفظ كلمة المرور داخل المستودع. من مجلد `backend` شغّل أداة التهيئة عبر متغيرات مؤقتة:
+الأوامر الواردة من Telegram تُقبل فقط من Chat IDs المصرح بها. يجب تقليل بيانات المرضى في التنبيهات إلى الحد الأدنى، وعدم إرسال أرقام وطنية أو رموز وصول أو كلمات مرور أو تفاصيل غير لازمة عبر الرسائل.
 
-```bash
-export OWNER_NAME="اسم المالك"
-export OWNER_EMAIL="owner@example.com"
-export OWNER_PASSWORD="كلمة-مرور-قوية-لا-تقل-عن-12-حرفًا"
-export OWNER_LAB_NAME="GULA Platform"
-python -m scripts.bootstrap_owner
-```
+## 5. التحقق بعد النشر
 
-الحساب يُنشأ بالدور `master_admin` ويكون فعالًا مباشرة. تسجيل الدخول يتم عبر `POST /login` من الواجهة أو عميل API باستخدام البريد وكلمة المرور، وبعدها تُحفظ جلسة الدخول في cookie آمنة. لأن دور `master_admin` مميّز، يجب إكمال إعداد المصادقة متعددة العوامل من قسم MFA قبل أول دخول فعلي.
+تحقق من حالة webhook باستخدام واجهة Telegram من بيئة إدارية محمية، ثم اختبر رسالة تشغيلية اصطناعية فقط. لا تُرسل نتيجة مريض حقيقية في اختبار التكامل. راجع سجلات GULA للتأكد من تسجيل حالات الرفض للـ secret غير الصحيح والـ Chat ID غير المصرح به دون كشف قيم الأسرار.
 
-> لا تستخدم بيانات المثال كما هي، ولا ترسل كلمة المرور أو رمز MFA إلى تيليغرام.
+إذا ظهر خطأ `503 Telegram webhook is not configured`، فلا تُخفّض الحماية؛ اضبط المتغيرات المطلوبة في Secret Manager ثم أعد تشغيل الخدمة. وإذا ظهر `403`، راجع التطابق الحرفي للـ secret وChat ID المصرح به.

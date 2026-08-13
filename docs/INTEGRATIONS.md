@@ -236,3 +236,17 @@ surfaced in `/metrics/prom` labels when set.
 6. Add a unit test in `backend/tests/test_gateways.py` that confirms
    stub mode produces the expected response shape.
 7. Update this file with the new section.
+
+
+## 7. Telegram webhook security
+
+The Telegram webhook is fail-closed and requires both transport authentication and destination authorization. Configure the following server-side secrets; do not expose them to the frontend:
+
+```bash
+TELEGRAM_WEBHOOK_SECRET_TOKEN=<random-32-byte-value>
+TELEGRAM_ALLOWED_CHAT_IDS=<admin-chat-id>[,<second-admin-chat-id>]
+```
+
+When registering the webhook with Telegram, use the same value as `secret_token`. The backend validates `X-Telegram-Bot-Api-Secret-Token` using constant-time comparison and rejects chat IDs that are not in the allowlist. `TELEGRAM_CHAT_ID` remains a backwards-compatible single-chat fallback, but `TELEGRAM_ALLOWED_CHAT_IDS` is preferred for production. The `/telegram/test-alert` endpoint requires `master_admin` or `ministry_admin`; it is not a public health-check endpoint.
+
+Do not enable the bot webhook before both variables are present. Commands that return clinical alert summaries must only be used from explicitly authorized administrative chats, and patient identifiers should be minimized in operational notification content.
