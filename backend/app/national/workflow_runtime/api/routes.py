@@ -23,7 +23,7 @@ from backend.app.national.workflow_runtime.infrastructure.repository import (
     SQLAlchemyWorkflowTemplateRepository,
     SQLAlchemyWorkflowTimerRepository,
 )
-from backend.app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/national/workflows", tags=["National Workflows"])
 
