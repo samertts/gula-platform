@@ -62,10 +62,7 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v4
         with:
-          path: |
-            mobile/desktop/.dart_tool/
-            mobile/desktop/.packages
-            ~/.pub-cache
+          path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('mobile/desktop/pubspec.yaml') }}
           restore-keys: |
             pub-${{ runner.os }}-
@@ -74,7 +71,9 @@ jobs:
         run: flutter pub get
 
       - name: Generate Dart sources
-        run: dart run build_runner build
+        run: |
+          rm -rf .dart_tool/build
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Run dart analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
@@ -119,7 +118,9 @@ jobs:
         run: flutter pub get
 
       - name: Generate Dart sources
-        run: dart run build_runner build
+        run: |
+          rm -rf .dart_tool/build
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Run flutter tests with coverage
         run: flutter test --coverage --machine > test-results.json
@@ -175,7 +176,9 @@ jobs:
         run: flutter pub get
 
       - name: Generate Dart sources
-        run: dart run build_runner build
+        run: |
+          rm -rf .dart_tool/build
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Windows MSIX
         run: |
@@ -238,7 +241,9 @@ jobs:
         run: flutter pub get
 
       - name: Generate Dart sources
-        run: dart run build_runner build
+        run: |
+          rm -rf .dart_tool/build
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Linux release
         run: flutter build linux --release
@@ -319,7 +324,9 @@ jobs:
         run: flutter pub get
 
       - name: Generate Dart sources
-        run: dart run build_runner build
+        run: |
+          rm -rf .dart_tool/build
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Build macOS release
         run: flutter build macos --release
