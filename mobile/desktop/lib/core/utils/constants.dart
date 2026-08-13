@@ -58,10 +58,10 @@ class AppConstants {
   static const double defaultDesktopWidth = 1280;
   static const double defaultDesktopHeight = 800;
 
-  static const RegExp nationalIdRegex = RegExp(r'^\d{14}$');
-  static const RegExp phoneRegex = RegExp(r'^\+?964\d{10}$');
-  static const RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-  static const RegExp iqNationalIdRegex = RegExp(r'^\d{14}$');
-  static const RegExp sampleBarcodeRegex = RegExp(r'^[A-Z0-9]{6,20}$');
-  static const RegExp hcvCodeRegex = RegExp(r'^[A-Z]{2}\d{8}$');
+  static final RegExp nationalIdRegex = RegExp(r'^\d{14}$');
+  static final RegExp phoneRegex = RegExp(r'^\+?964\d{10}$');
+  static final RegExp emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+  static final RegExp iqNationalIdRegex = RegExp(r'^\d{14}$');
+  static final RegExp sampleBarcodeRegex = RegExp(r'^[A-Z0-9]{6,20}$');
+  static final RegExp hcvCodeRegex = RegExp(r'^[A-Z]{2}\d{8}$');
 }
