@@ -19,6 +19,7 @@ Design:
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
 from typing import Any
 
@@ -42,6 +43,7 @@ from ..gateways.residency_gateway import (
     verify_residency,
 )
 from ..contracts.integration import IntegrationEventEnvelope
+from ..integration.identity_bundle import verify_identity_bundle
 from ..integration.inbox import stage_event
 from ..models.service_account import ServiceAccount
 from ..security.dependencies import require_service_account
@@ -134,6 +136,42 @@ def receive_integration_event(
         db.rollback()
         logger.exception("Integration event staging failed event_id=%s", envelope.event_id)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Event staging unavailable")
+
+    return {
+        "event_id": result.event_id,
+        "idempotency_key": result.idempotency_key,
+        "status": result.status,
+        "inbox_id": result.inbox_id,
+        "clinical_approval": "not_performed",
+    }
+
+
+# ── POST /integrations/identity-bundles ──────────────────────────────────────
+
+
+@router.post("/identity-bundles", status_code=status.HTTP_202_ACCEPTED, summary="Import a signed offline identity bundle")
+def receive_identity_bundle(
+    bundle: dict[str, Any],
+    principal=Depends(require_service_account),
+    db=Depends(get_db),
+) -> dict:
+    """Verify an offline identity bundle before staging its minimum claims."""
+    _authorize_event_ingress(principal)
+    encoded_key = os.getenv("GULA_IDENTITY_PUBLIC_KEY_PEM", "")
+    if not encoded_key.strip():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Identity public key is not configured")
+    public_key_pem = encoded_key.replace("\\n", "\n").encode("utf-8")
+    try:
+        envelope = verify_identity_bundle(bundle, public_key_pem)
+        result = stage_event(db, envelope)
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except Exception:
+        db.rollback()
+        logger.exception("Signed identity bundle import failed")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Identity bundle import unavailable")
 
     return {
         "event_id": result.event_id,

@@ -32,6 +32,10 @@ def _validate_payload(envelope: IntegrationEventEnvelope) -> None:
         required = {"sample_id", "observation_id", "status"}
         if payload.get("status") != "pending_review":
             raise ValueError("device observations must remain pending_review")
+    elif envelope.event_type == "identity.subject.mapped":
+        required = {"subject_id", "credential_id", "credential_version", "credential_state", "claims", "key_id"}
+        if not isinstance(payload.get("claims"), dict):
+            raise ValueError("identity claims must be an object")
     else:
         raise ValueError(f"unsupported integration event type: {envelope.event_type}")
 
