@@ -46,3 +46,21 @@
 في التشغيل الأول فشلت 22 حالة من navigation suite لأن pattern الاختبار `**/api/**` كان يعترض أيضًا ملفات المصدر `/src/api/endpoints.ts` و`/src/api/client.ts` ويعيد لها JSON. أدى ذلك إلى خطأ MIME في JavaScript وصفحة بيضاء وفشل `#email`. تم إصلاح الاختبار في `frontend-v3/e2e/navigation.spec.ts` ليعترض كل الطلبات ثم يمرر أي URL لا يبدأ مساره بـ `/api/` إلى Vite عبر `route.fallback()`.
 
 بعد الإصلاح نجحت navigation suite كاملة: 22/22 خلال 35.9 ثانية. ثم نجحت مجموعة Playwright الكاملة: 41/41 خلال دقيقة و6 ثوانٍ تقريبًا. الاختبارات الحالية mock-based؛ لذلك تثبت سلامة الواجهة والعقود المحلية، ولا تثبت بعد مصادقة حقيقية بحساب Railway أو عمليات كتابة على قاعدة اختبار.
+
+## المرحلة 4: اختبار جلسة حية آمنة بالعرض التجريبي
+
+في الإنتاج، فتحت `https://www.gula-platform.org/login` ثم ضغطت زر العرض التجريبي الآمن. انتقلت الواجهة إلى `/dashboard` وظهرت مؤشرات الجلسة الاصطناعية: `demo_mode`، طبيب تجريبي، قراءة فقط، وعبارة أن العمليات السريرية والتكاملات الخارجية محظورة. ظهرت أيضًا مؤشرات `RBAC · Tenant isolation · Audit` وبيانات اصطناعية مثل 24 مريضًا و11 طلبًا و17 نتيجة وتنبيهين حرجين.
+
+هذا الاختبار يثبت مسار Vercel والـ client routing والعرض التجريبي المعزول، لكنه لا يختبر حسابًا حقيقيًا أو كتابة إلى Railway PostgreSQL، وهو مقصود لأسباب السلامة.
+
+## فحوصات حدود المصادقة الحية
+
+نُفذت فحوصات قراءة فقط على API الإنتاجي. أعاد `GET /session` HTTP 401 مع `AUTHENTICATION_REQUIRED`، وأعاد `GET /dashboard` HTTP 401 بالرمز نفسه، ما يثبت أن المسارات المحمية لا تُعرض بدون جلسة. أعاد `POST /login` مع payload فارغ HTTP 422 مع `VALIDATION_ERROR` وحقلي email/password مفقودين. لم تُرسل كلمة مرور ولم تُنشأ جلسة ولم تُكتب بيانات.
+
+## التحقق بعد الرفع إلى GitHub
+
+رُفع إصلاح navigation والتقرير في commit `e6cc4169` بعد إعادة تأسيسه فوق آخر `main`. أغلقت workflows التالية بنجاح على هذا commit: CI Pipeline، Quality Gate، Foundation Gate، Security Hardening، Formatting Check، OpenSSF Scorecard، Constitution Compliance، CodeQL Analysis، CodeQL Advanced، Frontend E2E Tests، وFrontend PWA Build & Deploy.
+
+## النطاق الذي لم يُنفذ بعد
+
+لم يُنفذ تسجيل دخول حي بحساب مؤسسي حقيقي أو حساب اختبار Railway لأن ذلك يتطلب credential مخصصًا لم يُقدم كسر اختبار، ولم تُنفذ أي كتابة إلى PostgreSQL. لذلك ما زالت اختبارات RBAC عبر حسابات متعددة، tenant isolation على بيانات اختبار، workflow patient/order/sample/result، audit verification، idempotency، version conflict، rollback، performance load، وoffline reconciliation بحاجة إلى بيئة اختبار معزولة وحسابات اختبار.
