@@ -10,6 +10,18 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+configurations.all {
+    resolutionStrategy {
+        force("io.netty:netty-codec-http2:4.1.118.Final")
+        force("io.netty:netty-handler:4.1.118.Final")
+        force("io.netty:netty-codec-http:4.1.118.Final")
+        force("io.netty:netty-codec:4.1.118.Final")
+        force("com.google.protobuf:protobuf-java:3.25.5")
+        force("com.google.protobuf:protobuf-kotlin:3.25.5")
+        force("org.jdom:jdom2:2.0.6.1")
+    }
+}
+
 android {
     namespace = "io.gula.android"
     compileSdk = 35

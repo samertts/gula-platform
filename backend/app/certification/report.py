@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -146,8 +148,15 @@ th {{ text-align: left; padding: 10px 8px; background: #f9fafb; border-bottom: 2
 </html>"""
 
 
+def _safe_output_path(path: str | Path) -> Path:
+    safe_root = Path(os.environ.get("GULA_TEMP_DIR", tempfile.gettempdir())).resolve()
+    target = Path(path).resolve()
+    if not str(target).startswith(str(safe_root)):
+        return safe_root / target.name
+    return target
+
 def generate_pdf_report(report: CertificationReport, output_path: str | Path) -> Path:
-    output = Path(output_path)
+    output = _safe_output_path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     html = report.to_html()
     try:
@@ -160,14 +169,14 @@ def generate_pdf_report(report: CertificationReport, output_path: str | Path) ->
 
 
 def generate_json_report(report: CertificationReport, output_path: str | Path) -> Path:
-    output = Path(output_path)
+    output = _safe_output_path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(report.to_json(), encoding="utf-8")
     return output
 
 
 def generate_markdown_report(report: CertificationReport, output_path: str | Path) -> Path:
-    output = Path(output_path)
+    output = _safe_output_path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(report.to_markdown(), encoding="utf-8")
     return output

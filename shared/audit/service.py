@@ -72,36 +72,58 @@ def query_audit_log(
     limit: int = 100,
     offset: int = 0,
 ) -> list[dict[str, Any]]:
-    from sqlalchemy import text
+    from sqlalchemy import bindparam, column, select, table
+
+    audit_logs = table(
+        "audit_logs",
+        column("id"),
+        column("action"),
+        column("entity_type"),
+        column("entity_id"),
+        column("user_id"),
+        column("lab_id"),
+        column("details"),
+        column("previous_hash"),
+        column("chain_hash"),
+        column("timestamp"),
+    )
     conditions = []
-    params: dict[str, Any] = {"limit": limit, "offset": offset}
+    params: dict[str, Any] = {}
     if entity_type:
-        conditions.append("entity_type = :entity_type")
+        conditions.append(audit_logs.c.entity_type == bindparam("entity_type"))
         params["entity_type"] = entity_type
     if entity_id is not None:
-        conditions.append("entity_id = :entity_id")
+        conditions.append(audit_logs.c.entity_id == bindparam("entity_id"))
         params["entity_id"] = str(entity_id)
     if user_id is not None:
-        conditions.append("user_id = :user_id")
+        conditions.append(audit_logs.c.user_id == bindparam("user_id"))
         params["user_id"] = user_id
     if lab_id is not None:
-        conditions.append("lab_id = :lab_id")
+        conditions.append(audit_logs.c.lab_id == bindparam("lab_id"))
         params["lab_id"] = lab_id
     if action:
-        conditions.append("action = :action")
+        conditions.append(audit_logs.c.action == bindparam("action"))
         params["action"] = action
-    where_clause = " AND ".join(conditions) if conditions else "TRUE"
-    rows = db_session.execute(
-        text(f"""
-            SELECT id, action, entity_type, entity_id, user_id, lab_id, details,
-                   previous_hash, chain_hash, timestamp
-            FROM audit_logs
-            WHERE {where_clause}
-            ORDER BY id DESC
-            LIMIT :limit OFFSET :offset
-        """),
-        params,
-    ).mappings().all()
+    stmt = (
+        select(
+            audit_logs.c.id,
+            audit_logs.c.action,
+            audit_logs.c.entity_type,
+            audit_logs.c.entity_id,
+            audit_logs.c.user_id,
+            audit_logs.c.lab_id,
+            audit_logs.c.details,
+            audit_logs.c.previous_hash,
+            audit_logs.c.chain_hash,
+            audit_logs.c.timestamp,
+        )
+        .select_from(audit_logs)
+        .where(*conditions)
+        .order_by(audit_logs.c.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = db_session.execute(stmt, params).mappings().all()
     return [dict(r) for r in rows]
 
 

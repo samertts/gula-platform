@@ -63,6 +63,15 @@ class ResidencyGateway(ExternalGateway):
         super().__init__()
         self.mode = resolve_mode(_ADAPTER_KEY, _REQUIRED_CREDS)
 
+    def _mask_sensitive(self, data: Any) -> Any:
+        if isinstance(data, dict):
+            masked = data.copy()
+            for key in ["passport_no", "national_id", "phone", "address", "full_name"]:
+                if key in masked:
+                    masked[key] = "***MASKED***"
+            return masked
+        return data
+
     def current_mode(self) -> AdapterMode:
         return self.mode
 
@@ -109,8 +118,8 @@ class ResidencyGateway(ExternalGateway):
                     "[SHADOW] gateway=%s action=%s stub=%r live=%r",
                     self.name,
                     action,
-                    stub,
-                    live,
+                    self._mask_sensitive(stub),
+                    self._mask_sensitive(live),
                 )
             except Exception as exc:
                 logger.warning(

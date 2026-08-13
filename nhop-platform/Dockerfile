@@ -9,14 +9,18 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential libpq-dev curl \
     && rm -rf /var/lib/apt/lists/*
 
+RUN addgroup --system app && adduser --system --ingroup app app
+
 WORKDIR /app
 
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 
-COPY app/ ./app/
-COPY alembic/ ./alembic/
-COPY alembic.ini ./
+COPY --chown=app:app app/ ./app/
+COPY --chown=app:app alembic/ ./alembic/
+COPY --chown=app:app alembic.ini ./
+
+USER app
 
 EXPOSE 8000
 

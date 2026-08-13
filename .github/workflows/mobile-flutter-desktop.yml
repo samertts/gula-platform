@@ -8,6 +8,15 @@ on:
         required: false
         default: 'release'
         type: string
+    secrets:
+      MACOS_CERTIFICATE:
+        required: false
+      MACOS_CERTIFICATE_PWD:
+        required: false
+      MACOS_APP_PASSWORD:
+        required: false
+      MACOS_TEAM_ID:
+        required: false
   push:
     branches: [main, develop]
     paths:
@@ -50,17 +59,17 @@ jobs:
         working-directory: mobile/desktop
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('mobile/desktop/pubspec.yaml') }}
@@ -95,17 +104,17 @@ jobs:
         working-directory: mobile/desktop
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: |
             mobile/desktop/.dart_tool/
@@ -127,7 +136,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: flutter-test-results-${{ matrix.os }}
           path: mobile/desktop/test-results.json
@@ -136,7 +145,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: flutter-coverage-${{ matrix.os }}
           path: mobile/desktop/coverage/
@@ -153,17 +162,17 @@ jobs:
         working-directory: mobile/desktop
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: |
             mobile/desktop/.dart_tool/
@@ -186,7 +195,7 @@ jobs:
           dart run msix:create --store
 
       - name: Upload Windows MSIX
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: gula-desktop-windows-msix
           path: mobile/desktop/build/windows/x64/runner/Release/*.msix
@@ -194,7 +203,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Windows executable
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: gula-desktop-windows-exe
           path: mobile/desktop/build/windows/runner/Release/
@@ -211,7 +220,7 @@ jobs:
         working-directory: mobile/desktop
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Install Linux dependencies
         run: |
@@ -221,14 +230,14 @@ jobs:
             libayatana-appindicator3-dev libcurl4-openssl-dev librpm-dev rpm
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: |
             mobile/desktop/.dart_tool/
@@ -249,7 +258,10 @@ jobs:
         run: flutter build linux --release
 
       - name: Build AppImage
+        env:
+          RELEASE_REF: ${{ github.ref_name }}
         run: |
+          SAFE_REF=$(printf '%s' "$RELEASE_REF" | tr -c 'A-Za-z0-9._-' '-')
           mkdir -p build/appimage/AppDir/usr/bin
           mkdir -p build/appimage/AppDir/usr/share/applications
           mkdir -p build/appimage/AppDir/usr/share/icons/hicolor/512x512/apps
@@ -268,15 +280,18 @@ jobs:
             https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x appimagetool-x86_64.AppImage
           ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run \
-            build/appimage/AppDir build/appimage/GULA_Platform-${{ github.ref_name }}-x86_64.AppImage
+            build/appimage/AppDir "build/appimage/GULA_Platform-$SAFE_REF-x86_64.AppImage"
 
       - name: Build deb package
+        env:
+          RELEASE_REF: ${{ github.ref_name }}
         run: |
+          SAFE_REF=$(printf '%s' "$RELEASE_REF" | tr -c 'A-Za-z0-9._-' '-')
           sudo apt-get install -y dpkg-dev
           flutter build linux --release
           mkdir -p packaging/deb/usr/bin
           cp -r build/linux/x64/release/bundle/* packaging/deb/usr/bin/
-          dpkg-deb --build packaging/deb gula-platform_${{ github.ref_name }}_amd64.deb
+          dpkg-deb --build packaging/deb "gula-platform_${SAFE_REF}_amd64.deb"
 
       - name: Build rpm package
         run: |
@@ -289,7 +304,7 @@ jobs:
           cp ~/rpmbuild/RPMS/x86_64/*.rpm .
 
       - name: Upload Linux AppImage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: gula-desktop-linux-appimage
           path: mobile/desktop/build/appimage/*.AppImage
@@ -297,7 +312,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Linux deb
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: gula-desktop-linux-deb
           path: mobile/desktop/*.deb
@@ -305,7 +320,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Linux rpm
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: gula-desktop-linux-rpm
           path: mobile/desktop/*.rpm
@@ -322,17 +337,17 @@ jobs:
         working-directory: mobile/desktop
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ~/.pub-cache
           key: pub-macos-${{ hashFiles('mobile/desktop/pubspec.yaml') }}
@@ -399,7 +414,7 @@ jobs:
           xcrun stapler staple "GULA_Platform-${{ github.ref_name }}.dmg"
 
       - name: Upload macOS DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: gula-desktop-macos-dmg
           path: mobile/desktop/GULA_Platform-*.dmg

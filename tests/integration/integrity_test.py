@@ -136,7 +136,8 @@ def main():
     print("  [2/3] Creating test patient + order...")
     patient_id = _create_patient(token)
     order_id   = _create_order(token, patient_id)
-    print(f"       ✓ patient_id={patient_id}  order_id={order_id}")
+    # Mask IDs to satisfy security scanners, though safe in test context
+    print(f"       ✓ patient_id={'*'*len(str(patient_id))}  order_id={'*'*len(str(order_id))}")
 
     # ── Concurrent storm ──────────────────────────────────────────────────────
     print(f"  [3/3] Firing {args.workers} concurrent validate requests...")

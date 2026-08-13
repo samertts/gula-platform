@@ -1,7 +1,9 @@
 import json
 import logging
 import os
+import tempfile
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger("gula.contracts")
@@ -346,8 +348,18 @@ class ContractGenerator:
 
         return "\n".join(scalar_types + type_defs + model_types)
 
+    def _safe_path(self, path: str | Path) -> str:
+        # Ensure output stays within a safe temporary or configured directory
+        safe_root = Path(os.environ.get("GULA_EXPORT_ROOT", tempfile.gettempdir())).resolve()
+        target = Path(path).resolve()
+        if not str(target).startswith(str(safe_root)):
+            # If traversal attempted, force into safe root
+            return str(safe_root / target.name)
+        return str(target)
+
     def export_all(self, output_dir: str) -> list[str]:
         exported = []
+        output_dir = self._safe_path(output_dir)
         os.makedirs(output_dir, exist_ok=True)
 
         openapi_path = os.path.join(output_dir, "openapi.json")
@@ -400,11 +412,15 @@ class ContractGenerator:
         return output_path
 
     def _write_json(self, data: dict, path: str) -> None:
+        path = self._safe_path(path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, default=str, ensure_ascii=False)
         logger.debug("Written: %s (%d bytes)", path, os.path.getsize(path))
 
     def _write_text(self, text: str, path: str) -> None:
+        path = self._safe_path(path)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
         logger.debug("Written: %s (%d bytes)", path, os.path.getsize(path))

@@ -16,8 +16,17 @@ class CertificationEngine:
     ]
 
     def __init__(self, project_root: Path | str | None = None):
-        self.project_root = Path(project_root) if project_root else Path.cwd()
+        self.project_root = Path(project_root).resolve() if project_root else Path.cwd().resolve()
         self._evaluators: dict[CertificationDimension, type] | None = None
+
+    def _safe_path(self, module_path: str | None) -> Path:
+        if not module_path:
+            return self.project_root
+        target = Path(module_path).resolve()
+        if not str(target).startswith(str(self.project_root)):
+            # Fallback to project root if traversal attempted
+            return self.project_root
+        return target
 
     @property
     def evaluators(self) -> dict[CertificationDimension, type]:
@@ -27,7 +36,7 @@ class CertificationEngine:
         return self._evaluators
 
     def evaluate_module(self, module_path: str | None = None) -> CertificationReport:
-        target = Path(module_path) if module_path else self.project_root
+        target = self._safe_path(module_path)
         report = CertificationReport(module_path=str(target))
 
         for dimension, evaluator_cls in self.evaluators.items():
@@ -45,7 +54,7 @@ class CertificationEngine:
         dimension: CertificationDimension,
         module_path: str | None = None,
     ) -> CertificationReport:
-        target = Path(module_path) if module_path else self.project_root
+        target = self._safe_path(module_path)
         report = CertificationReport(module_path=str(target))
 
         evaluator_cls = self.evaluators.get(dimension)

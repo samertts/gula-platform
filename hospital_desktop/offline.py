@@ -159,6 +159,19 @@ INDEXES = [
 ]
 
 
+_ALLOWED_COLUMNS = {
+    "patients": frozenset({"id", "mrn", "national_id", "name_ar", "name_en", "date_of_birth", "gender", "phone", "address", "department", "status", "data", "updated_at", "deleted"}),
+    "admissions": frozenset({"id", "patient_id", "patient_name", "department", "room", "bed", "doctor", "diagnosis", "admission_date", "admission_type", "status", "data", "updated_at", "deleted"}),
+    "visits": frozenset({"id", "patient_id", "visit_type", "department", "check_in_time", "status", "priority", "data", "updated_at", "deleted"}),
+    "clinical_tasks": frozenset({"id", "patient_id", "patient_name", "task_type", "description", "assignee", "status", "priority", "due_date", "data", "updated_at", "deleted"}),
+    "messages": frozenset({"id", "subject", "body", "sender_id", "sender_name", "recipient_id", "recipient_name", "status", "sent_at", "data", "updated_at", "deleted"}),
+    "alerts": frozenset({"id", "type", "severity", "title", "message", "patient_id", "status", "created_at", "acknowledged_by", "resolved_at", "data", "updated_at", "deleted"}),
+    "sync_log": frozenset({"id", "entity_type", "entity_id", "action", "data", "status", "created_at", "synced_at", "error"}),
+    "metadata": frozenset({"key", "value"}),
+    "department_occupancy": frozenset({"department", "total_beds", "occupied_beds", "available_beds", "data", "updated_at"}),
+}
+
+
 class OfflineDatabase:
     def __init__(self, db_path: str | Path):
         self._path = Path(db_path)
@@ -167,6 +180,18 @@ class OfflineDatabase:
         self._conn.row_factory = sqlite3.Row
         self._lock = threading.Lock()
         self.init_schema()
+
+    @staticmethod
+    def _validate_entity_type(entity_type: str) -> str:
+        if entity_type not in LOCAL_SCHEMA:
+            raise ValueError(f"Unknown entity type: {entity_type}")
+        return entity_type
+
+    @staticmethod
+    def _validate_columns(table: str, data: dict) -> None:
+        unknown = set(data).difference(_ALLOWED_COLUMNS[table])
+        if unknown:
+            raise ValueError(f"Unknown columns for {table}: {sorted(unknown)}")
 
     def init_schema(self):
         with self._lock:
@@ -177,9 +202,8 @@ class OfflineDatabase:
             self._conn.commit()
 
     def save(self, entity_type: str, data: dict) -> dict:
-        table = entity_type
-        if table not in LOCAL_SCHEMA:
-            raise ValueError(f"Unknown entity type: {entity_type}")
+        table = self._validate_entity_type(entity_type)
+        self._validate_columns(table, data)
 
         entity_id = data.get("id", "")
         if not entity_id:
@@ -194,12 +218,12 @@ class OfflineDatabase:
             ).fetchone()
 
             placeholders = ", ".join(f":{k}" for k in data.keys())
-            columns = ", ".join(data.keys())
+            columns = ", ".join(f'"{k}"' for k in data.keys())
             values = {k: (json.dumps(v, ensure_ascii=False) if isinstance(v, (dict, list)) else v)
                       for k, v in data.items()}
 
             if existing:
-                set_clause = ", ".join(f"{k} = :{k}" for k in data.keys())
+                set_clause = ", ".join(f'"{k}" = :{k}' for k in data.keys())
                 self._conn.execute(
                     f"UPDATE {table} SET {set_clause} WHERE id = :id",
                     values,
@@ -215,7 +239,7 @@ class OfflineDatabase:
         return data
 
     def get(self, entity_type: str, entity_id: str) -> dict | None:
-        table = entity_type
+        table = self._validate_entity_type(entity_type)
         with self._lock:
             row = self._conn.execute(
                 f"SELECT * FROM {table} WHERE id = ? AND deleted = 0",
@@ -226,7 +250,7 @@ class OfflineDatabase:
         return dict(row)
 
     def query(self, entity_type: str, filters: dict | None = None) -> list[dict]:
-        table = entity_type
+        table = self._validate_entity_type(entity_type)
         where_clause = "deleted = 0"
         params = []
 
@@ -260,7 +284,7 @@ class OfflineDatabase:
         return [dict(r) for r in rows]
 
     def delete(self, entity_type: str, entity_id: str):
-        table = entity_type
+        table = self._validate_entity_type(entity_type)
         with self._lock:
             self._conn.execute(
                 f"UPDATE {table} SET deleted = 1, updated_at = ? WHERE id = ?",

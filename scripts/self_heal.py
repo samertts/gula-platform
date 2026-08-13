@@ -42,16 +42,13 @@ from enum import Enum
 from pathlib import Path
 
 import requests
-import urllib3
-
 from backend.app._compat import UTC
 
-_TLS_VERIFY_SETTING = os.getenv("ASHS_VERIFY_TLS", "true").lower()
-if _TLS_VERIFY_SETTING not in {"true", "false"}:
-    raise RuntimeError("ASHS_VERIFY_TLS must be 'true' or 'false'")
-TLS_VERIFY: bool = _TLS_VERIFY_SETTING == "true"
-if not TLS_VERIFY:
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+# TLS certificate verification is intentionally fail-closed. Local health checks may
+# use the default HTTP endpoint, but HTTPS connections must never disable validation.
+if os.getenv("ASHS_VERIFY_TLS", "true").lower() != "true":
+    raise RuntimeError("ASHS_VERIFY_TLS=false is not permitted; use a trusted CA bundle")
+TLS_VERIFY: bool = True
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging.basicConfig(

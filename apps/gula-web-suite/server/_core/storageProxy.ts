@@ -1,9 +1,34 @@
 import type { Express } from "express";
 import { ENV } from "./env";
+import { normalizeKey, validateStorageUrl } from "../storage";
+
+const storageBuckets = new Map<string, { count: number; resetAt: number }>();
+const STORAGE_WINDOW_MS = 60_000;
+const STORAGE_MAX_REQUESTS = 120;
 
 export function registerStorageProxy(app: Express) {
   app.get("/manus-storage/*", async (req, res) => {
-    const key = (req.params as Record<string, string>)[0];
+    const now = Date.now();
+    const rateKey = req.ip || req.socket.remoteAddress || "unknown";
+    const current = storageBuckets.get(rateKey);
+    const bucket = !current || current.resetAt <= now
+      ? { count: 0, resetAt: now + STORAGE_WINDOW_MS }
+      : current;
+    bucket.count += 1;
+    storageBuckets.set(rateKey, bucket);
+    if (bucket.count > STORAGE_MAX_REQUESTS) {
+      res.status(429).send("Too many storage requests");
+      return;
+    }
+    let key: string;
+    try {
+      const rawParam = (req.params as unknown as Record<string, string | string[]>)[0];
+      const rawKey = Array.isArray(rawParam) ? rawParam.join("/") : rawParam ?? "";
+      key = normalizeKey(rawKey);
+    } catch {
+      res.status(400).send("Invalid storage key");
+      return;
+    }
     if (!key) {
       res.status(400).send("Missing storage key");
       return;
@@ -32,11 +57,12 @@ export function registerStorageProxy(app: Express) {
         return;
       }
 
-      const { url } = (await forgeResp.json()) as { url: string };
-      if (!url) {
+      const { url: rawUrl } = (await forgeResp.json()) as { url: string };
+      if (!rawUrl) {
         res.status(502).send("Empty signed URL from backend");
         return;
       }
+      const url = validateStorageUrl(rawUrl);
 
       res.set("Cache-Control", "no-store");
       res.redirect(307, url);

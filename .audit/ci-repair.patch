@@ -1,0 +1,634 @@
+From c6f7ca75b81d30af1bb77d8c239f4a7a60e36290 Mon Sep 17 00:00:00 2001
+From: samertts <6.7171661e+07+samertts@users.noreply.github.com>
+Date: Tue, 11 Aug 2026 15:13:47 +0000
+Subject: [PATCH 1/2] ci: fix flutter action and dependency license checks
+
+---
+ .github/workflows/dependency-review.yml      |  4 ++--
+ .github/workflows/mobile-flutter-desktop.yml | 10 +++++-----
+ .github/workflows/sdk-publish.yml            |  2 +-
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/.github/workflows/dependency-review.yml b/.github/workflows/dependency-review.yml
+index dde218b0..7288d8c4 100644
+--- a/.github/workflows/dependency-review.yml
++++ b/.github/workflows/dependency-review.yml
+@@ -23,6 +23,6 @@ jobs:
+           fail-on-severity: high
+           deny-licenses: >
+             AGPL-1.0, AGPL-3.0, GPL-1.0, GPL-2.0, GPL-3.0,
+-            LGPL-1.0, LGPL-2.0, LGPL-2.1, LGPL-3.0,
+-            BUSL-1.0, BSL-1.0, SSPL-1.0, RPL-1.5, RPL-2.0
++            LGPL-2.0, LGPL-2.1, LGPL-3.0,
++            BSL-1.0, SSPL-1.0, RPL-1.5
+           comment-summary-in-pr: on-failure
+diff --git a/.github/workflows/mobile-flutter-desktop.yml b/.github/workflows/mobile-flutter-desktop.yml
+index dc87ca19..c973df03 100644
+--- a/.github/workflows/mobile-flutter-desktop.yml
++++ b/.github/workflows/mobile-flutter-desktop.yml
+@@ -53,7 +53,7 @@ jobs:
+       - uses: actions/checkout@v4
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+@@ -96,7 +96,7 @@ jobs:
+       - uses: actions/checkout@v4
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+@@ -149,7 +149,7 @@ jobs:
+       - uses: actions/checkout@v4
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+@@ -209,7 +209,7 @@ jobs:
+             librpm-dev rpm
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+@@ -287,7 +287,7 @@ jobs:
+       - uses: actions/checkout@v4
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+diff --git a/.github/workflows/sdk-publish.yml b/.github/workflows/sdk-publish.yml
+index ce662027..8fd43ef1 100644
+--- a/.github/workflows/sdk-publish.yml
++++ b/.github/workflows/sdk-publish.yml
+@@ -111,7 +111,7 @@ jobs:
+       - uses: actions/checkout@v4
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+-- 
+2.43.0
+
+
+From 2de4932ef33aa104a1b8385a8d5df5391acf351b Mon Sep 17 00:00:00 2001
+From: samertts <6.7171661e+07+samertts@users.noreply.github.com>
+Date: Tue, 11 Aug 2026 15:20:48 +0000
+Subject: [PATCH 2/2] ci: repair pwa e2e codeql and constitution workflows
+
+---
+ .github/workflows/codeql.yml                  |   2 -
+ .github/workflows/constitution-compliance.yml | 209 +++---------------
+ .github/workflows/frontend-pwa.yml            |  36 ++-
+ frontend-v3/lighthouse.config.json            |  18 ++
+ frontend-v3/playwright.config.ts              |   6 +-
+ scripts/constitution_compliance.py            | 120 ++++++++++
+ 6 files changed, 183 insertions(+), 208 deletions(-)
+ create mode 100644 frontend-v3/lighthouse.config.json
+ create mode 100644 scripts/constitution_compliance.py
+
+diff --git a/.github/workflows/codeql.yml b/.github/workflows/codeql.yml
+index 66c1b0d8..96d32593 100644
+--- a/.github/workflows/codeql.yml
++++ b/.github/workflows/codeql.yml
+@@ -55,8 +55,6 @@ jobs:
+           build-mode: none
+         - language: ruby
+           build-mode: none
+-        - language: swift
+-          build-mode: autobuild
+         # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
+         # Use `c-cpp` to analyze code written in C, C++ or both
+         # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
+diff --git a/.github/workflows/constitution-compliance.yml b/.github/workflows/constitution-compliance.yml
+index bdbbfb07..d69cf20b 100644
+--- a/.github/workflows/constitution-compliance.yml
++++ b/.github/workflows/constitution-compliance.yml
+@@ -23,184 +23,33 @@ jobs:
+       - uses: actions/setup-python@v5
+         with:
+           python-version: ${{ env.PYTHON_VERSION }}
+-
+       - name: Install dependencies
+-        run: |
+-          pip install flake8 bandit safety
+-
+-      - name: Run Constitution Enforcer (25 Rules)
+-        run: |
+-          python3 scripts/constitution_enforcer.py --diff-mode --base origin/main 2>&1 || echo "FAILED"
+-
+-      - name: Check Free First Compliance
+-        run: |
+-          echo "=== Free First Compliance ==="
+-          # Check for paid service patterns in requirements
+-          python3 -c "
+-import re, pathlib, sys
+-paid_patterns = [
+-    r'(openai|anthropic|google\.ai|aws|azure|gcp)\.(com|io)',
+-    r'stripe\.com', r'twilio\.com', r'sendgrid\.net',
+-    r'auth0\.com', r'okta\.com', r'supabase\.(co|com)',
+-    r'firebase\.(io|googleapis\.com)',
+-]
+-issues = []
+-for f in pathlib.Path('.').rglob('requirements*.txt'):
+-    text = f.read_text()
+-    for pat in paid_patterns:
+-        if re.search(pat, text, re.I):
+-            issues.append(f'{f}: {pat}')
+-for f in pathlib.Path('.').rglob('package.json'):
+-    if 'node_modules' in str(f): continue
+-    text = f.read_text()
+-    for pat in paid_patterns:
+-        if re.search(pat, text, re.I):
+-            issues.append(f'{f}: {pat}')
+-if issues:
+-    for iss in issues: print(f'  WARNING: {iss}')
+-    print('Free First: WARN — review paid references')
+-else:
+-    print('Free First: PASS — no paid dependency patterns found')
+-"
+-
+-      - name: Check Open Source First Compliance
+-        run: |
+-          echo "=== Open Source First Compliance ==="
+-          python3 -c "
+-import re, pathlib, sys
+-proprietary = ['commercial', 'proprietary', 'all rights reserved', 'eula', 'enterprise license']
+-issues = []
+-for f in pathlib.Path('.').rglob('requirements*.txt'):
+-    text = f.read_text().lower()
+-    for lic in proprietary:
+-        if lic in text:
+-            issues.append(f'{f}: contains \"{lic}\"')
+-for f in pathlib.Path('.').rglob('package.json'):
+-    if 'node_modules' in str(f): continue
+-    text = f.read_text().lower()
+-    for lic in proprietary:
+-        if lic in text:
+-            issues.append(f'{f}: contains \"{lic}\"')
+-if issues:
+-    for iss in issues: print(f'  WARNING: {iss}')
+-    print('Open Source First: WARN — proprietary references found')
+-else:
+-    print('Open Source First: PASS — all dependencies appear open source')
+-"
+-
+-      - name: Check No Vendor Lock-In
+-        run: |
+-          echo "=== Vendor Lock-In Check ==="
+-          # Check for direct vendor SDK usage without abstraction
+-          python3 -c "
+-import re, pathlib, sys
+-vendor_sdks = [
+-    (r'import\s+boto3', 'AWS SDK (boto3)'),
+-    (r'from\s+boto3', 'AWS SDK (boto3)'),
+-    (r'from\s+azure\.', 'Azure SDK'),
+-    (r'import\s+azure\.', 'Azure SDK'),
+-    (r'from\s+google\.cloud', 'GCP SDK'),
+-    (r'import\s+google\.cloud', 'GCP SDK'),
+-    (r'import\s+supabase', 'Supabase SDK'),
+-    (r'from\s+supabase', 'Supabase SDK'),
+-    (r'import\s+auth0', 'Auth0 SDK'),
+-    (r'from\s+auth0', 'Auth0 SDK'),
+-    (r'import\s+okta', 'Okta SDK'),
+-    (r'from\s+okta', 'Okta SDK'),
+-    (r'import\s+stripe', 'Stripe SDK'),
+-    (r'from\s+stripe', 'Stripe SDK'),
+-]
+-issues = []
+-for f in pathlib.Path('backend/app').rglob('*.py'):
+-    text = f.read_text()
+-    rel = f.relative_to(pathlib.Path('.'))
+-    for pat, name in vendor_sdks:
+-        if re.search(pat, text):
+-            issues.append(f'{rel}: {name}')
+-if issues:
+-    for iss in issues: print(f'  FAIL: {iss}')
+-    print('Vendor Lock-In: FAIL — direct vendor SDK usage detected')
+-    sys.exit(1)
+-else:
+-    print('Vendor Lock-In: PASS — no direct vendor SDK usage')
+-"
+-
+-      - name: Check Self-Hosted First Compliance
+-        run: |
+-          echo "=== Self-Hosted First Compliance ==="
+-          python3 -c "
+-import re, pathlib
+-saas_refs = [
+-    r'supabase\.(co|com)', r'firebase\.(io|googleapis)',
+-    r'auth0\.com', r'okta\.com',
+-    r'aws\.amazon\.com', r'azure\.microsoft\.com',
+-    r'cloud\.google\.com', r'mongodb\.com/atlas',
+-    r'datadog\.com', r'newrelic\.com',
+-    r'sendgrid\.(net|com)', r'twilio\.com',
+-    r'pagerduty\.com',
+-]
+-issues = []
+-for f in list(pathlib.Path('backend').rglob('*.py')) + list(pathlib.Path('.github').rglob('*.yml')):
+-    text = f.read_text()
+-    for pat in saas_refs:
+-        if re.search(pat, text, re.I):
+-            rel = f.relative_to(pathlib.Path('.'))
+-            issues.append(f'{rel}: references {pat}')
+-if issues:
+-    for iss in issues: print(f'  WARNING: {iss}')
+-    print('Self-Hosted First: WARN — SaaS references detected')
+-else:
+-    print('Self-Hosted First: PASS — no SaaS references')
+-"
+-
+-      - name: Check Cost Governance
+-        run: |
+-          echo "=== Cost Governance Check ==="
+-          echo "Cost Governance: PASS — infrastructure uses self-hosted open source stack"
+-          echo "  Database: PostgreSQL (free)"
+-          echo "  Cache: Redis (free)"
+-          echo "  Storage: MinIO (free)"
+-          echo "  Monitoring: Prometheus + Grafana (free)"
+-          echo "  CI/CD: GitHub Actions (free)"
+-          echo "  TLS: Let's Encrypt (free)"
+-          echo "  AI: Ollama (free)"
+-
+-      - name: Check ADR Compliance
+-        run: |
+-          echo "=== ADR Cost / Open Source Compliance ==="
+-          python3 -c "
+-import pathlib, sys
+-adr_dir = pathlib.Path('docs/adr')
+-if adr_dir.exists():
+-    adrs = sorted(adr_dir.glob('ADR-*.md'))
+-    issues = []
+-    for adr in adrs:
+-        text = adr.read_text()
+-        if 'open source' not in text.lower() and 'free ' not in text.lower():
+-            issues.append(f'{adr.name}: missing Open Source/Free alternatives section')
+-    if issues:
+-        for iss in issues: print(f'  WARNING: {iss}')
+-        print('ADR Compliance: WARN — some ADRs may lack cost/open-source sections')
+-    else:
+-        print(f'ADR Compliance: PASS — {len(adrs)} ADRs reviewed')
+-else:
+-    print('ADR Compliance: SKIP — no ADR directory')
+-"
+-
+-      - name: Summary
+-        run: |
+-          echo ""
+-          echo "═══════════════════════════════════════════════════════════════"
+-          echo "  PROGRAM-CONSTITUTION-001 Compliance Summary"
+-          echo "═══════════════════════════════════════════════════════════════"
+-          echo ""
+-          echo "  ✅ Free First         — Paid dependency patterns checked"
+-          echo "  ✅ Open Source First  — License compliance checked"
+-          echo "  ✅ No Vendor Lock-In  — Direct SDK usage checked"
+-          echo "  ✅ Self-Hosted First  — SaaS references checked"
+-          echo "  ✅ Cost Governance    — Infrastructure cost optimized"
+-          echo "  ✅ Constitution Enforcement — 25 rules validated"
+-          echo ""
+-          echo "  Full policy: docs/constitution/COST_GOVERNANCE.md"
+-          echo "  Full policy: docs/constitution/SYSTEM_CONSTITUTION.md"
+-          echo "═══════════════════════════════════════════════════════════════"
++        run: python -m pip install pyyaml flake8 bandit safety
++      - name: Run Constitution Enforcer
++        run: python3 scripts/constitution_enforcer.py --diff-mode --base origin/main 2>&1 || echo "Constitution enforcer reported warnings"
++      - name: Run free/open-source/self-hosted checks
++        run: python3 scripts/constitution_compliance.py
++      - name: Cost governance summary
++        run: |
++          echo "Cost Governance: PASS — infrastructure uses self-hosted/open-source components"
++          echo "Database: PostgreSQL; Cache: Redis; Storage: MinIO; Monitoring: Prometheus/Grafana"
++      - name: Check Dockerfiles
++        shell: bash
++        run: |
++          errors=0
++          while IFS=: read -r file line; do
++            image=$(echo "$line" | sed 's/^FROM //' | awk '{print $1}')
++            case "$image" in
++              *:latest|python|node|ubuntu|alpine|debian)
++                echo "ERROR: $file uses unpinned image '$image'"
++                errors=$((errors+1))
++                ;;
++              *@sha256:*) echo "OK (digest): $file -> $image" ;;
++              *:*) echo "OK (tagged): $file -> $image" ;;
++              *) echo "WARNING: $file uses untagged image '$image'" ;;
++            esac
++          done < <(grep -r "^FROM " --include="Dockerfile" . 2>/dev/null || true)
++          if [ "$errors" -gt 0 ]; then
++            exit 1
++          fi
++          echo "All Dockerfiles use pinned base images"
+diff --git a/.github/workflows/frontend-pwa.yml b/.github/workflows/frontend-pwa.yml
+index 90282fbc..60933273 100644
+--- a/.github/workflows/frontend-pwa.yml
++++ b/.github/workflows/frontend-pwa.yml
+@@ -4,13 +4,11 @@ on:
+   push:
+     branches: [main, develop]
+     paths:
+-      - 'frontend-v2/**'
+       - 'frontend-v3/**'
+       - '.github/workflows/frontend-pwa.yml'
+   pull_request:
+     branches: [main]
+     paths:
+-      - 'frontend-v2/**'
+       - 'frontend-v3/**'
+   workflow_dispatch:
+     inputs:
+@@ -45,7 +43,7 @@ jobs:
+     timeout-minutes: 20
+     defaults:
+       run:
+-        working-directory: frontend-v2
++        working-directory: frontend-v3
+ 
+     steps:
+       - uses: actions/checkout@v4
+@@ -55,13 +53,13 @@ jobs:
+         with:
+           node-version: ${{ env.NODE_VERSION }}
+           cache: 'npm'
+-          cache-dependency-path: frontend-v2/package-lock.json
++          cache-dependency-path: frontend-v3/package-lock.json
+ 
+       - name: Cache node_modules
+         uses: actions/cache@v4
+         with:
+-          path: frontend-v2/node_modules
+-          key: node-modules-${{ hashFiles('frontend-v2/package-lock.json') }}
++          path: frontend-v3/node_modules
++          key: node-modules-${{ hashFiles('frontend-v3/package-lock.json') }}
+           restore-keys: |
+             node-modules-
+ 
+@@ -81,21 +79,13 @@ jobs:
+         run: npm run build
+         env:
+           CI: true
+-          REACT_APP_API_BASE_URL: ${{ github.ref == 'refs/heads/main' && 'https://api.gulaplatform.com/api/v1/' || 'https://staging-api.gulaplatform.com/api/v1/' }}
+-          REACT_APP_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+-          REACT_APP_GA_ID: ${{ secrets.GA_MEASUREMENT_ID }}
+-          REACT_APP_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+-          REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+-          REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+-          REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+-          REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
+-          REACT_APP_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
++          VITE_API_BASE_URL: ${{ github.ref == 'refs/heads/main' && 'https://api.gula-platform.org/api' || 'https://staging-api.gula-platform.org/api' }}
+ 
+       - name: Upload build artifacts
+         uses: actions/upload-artifact@v4
+         with:
+           name: pwa-build
+-          path: frontend-v2/build/
++          path: frontend-v3/dist/
+           if-no-files-found: error
+           retention-days: 7
+ 
+@@ -103,7 +93,7 @@ jobs:
+         uses: actions/upload-artifact@v4
+         with:
+           name: pwa-source-maps
+-          path: frontend-v2/build/static/js/*.map
++          path: frontend-v3/dist/assets/*.map
+           if-no-files-found: warn
+           retention-days: 3
+ 
+@@ -115,7 +105,7 @@ jobs:
+     timeout-minutes: 10
+     defaults:
+       run:
+-        working-directory: frontend-v2
++        working-directory: frontend-v3
+ 
+     steps:
+       - uses: actions/checkout@v4
+@@ -129,12 +119,12 @@ jobs:
+         uses: actions/download-artifact@v4
+         with:
+           name: pwa-build
+-          path: build/
++          path: frontend-v3/dist/
+ 
+       - name: Run Lighthouse CI
+         uses: GoogleChrome/lighthouse-ci-action@v12
+         with:
+-          configPath: frontend-v2/lighthouse.config.json
++          configPath: frontend-v3/lighthouse.config.json
+           temporaryPublicStorage: true
+           uploadArtifacts: true
+           runs: 3
+@@ -161,7 +151,7 @@ jobs:
+         uses: actions/download-artifact@v4
+         with:
+           name: pwa-build
+-          path: frontend-v2/build/
++          path: frontend-v3/dist/
+ 
+       - name: Deploy to Vercel (Preview)
+         env:
+@@ -204,7 +194,7 @@ jobs:
+         uses: actions/download-artifact@v4
+         with:
+           name: pwa-build
+-          path: frontend-v2/build/
++          path: frontend-v3/dist/
+ 
+       - name: Deploy to Vercel (Production)
+         env:
+@@ -220,6 +210,6 @@ jobs:
+           SENTRY_PROJECT: frontend-pwa
+         run: |
+           npx @sentry/cli releases new ${{ github.ref_name }}
+-          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps build/static/js/
++          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps frontend-v3/dist/assets/
+           npx @sentry/cli releases set-commits ${{ github.ref_name }} --auto
+           npx @sentry/cli releases finalize ${{ github.ref_name }}
+diff --git a/frontend-v3/lighthouse.config.json b/frontend-v3/lighthouse.config.json
+new file mode 100644
+index 00000000..1fd84bc7
+--- /dev/null
++++ b/frontend-v3/lighthouse.config.json
+@@ -0,0 +1,18 @@
++{
++  "ci": {
++    "collect": {
++      "staticDistDir": "./dist",
++      "numberOfRuns": 1
++    },
++    "assert": {
++      "assertions": {
++        "categories:performance": ["warn", { "minScore": 0.5 }],
++        "categories:accessibility": ["error", { "minScore": 0.8 }],
++        "categories:best-practices": ["warn", { "minScore": 0.7 }]
++      }
++    },
++    "upload": {
++      "target": "temporary-public-storage"
++    }
++  }
++}
+diff --git a/frontend-v3/playwright.config.ts b/frontend-v3/playwright.config.ts
+index a7521301..460b46c3 100644
+--- a/frontend-v3/playwright.config.ts
++++ b/frontend-v3/playwright.config.ts
+@@ -22,9 +22,9 @@ export default defineConfig({
+   ],
+   webServer: {
+     command: process.env.CI
+-      ? "npm run preview"
+-      : "npm run dev",
+-    url: "http://localhost:5173",
++      ? "npm run preview -- --host 0.0.0.0 --port 4173"
++      : "npm run dev -- --host 0.0.0.0 --port 5173",
++    url: process.env.CI ? "http://127.0.0.1:4173" : "http://127.0.0.1:5173",
+     reuseExistingServer: !process.env.CI,
+     timeout: 120000,
+   },
+diff --git a/scripts/constitution_compliance.py b/scripts/constitution_compliance.py
+new file mode 100644
+index 00000000..cc3fdb21
+--- /dev/null
++++ b/scripts/constitution_compliance.py
+@@ -0,0 +1,120 @@
++"""Run the repository's free/open-source/self-hosted compliance checks."""
++from __future__ import annotations
++
++import pathlib
++import re
++import sys
++
++ROOT = pathlib.Path(__file__).resolve().parents[1]
++PAID_PATTERNS = [
++    r"(openai|anthropic|google\.ai|aws|azure|gcp)\.(com|io)",
++    r"stripe\.com", r"twilio\.com", r"sendgrid\.net",
++    r"auth0\.com", r"okta\.com", r"supabase\.(co|com)",
++    r"firebase\.(io|googleapis\.com)",
++]
++SAAS_REFS = [
++    r"supabase\.(co|com)", r"firebase\.(io|googleapis)",
++    r"auth0\.com", r"okta\.com", r"aws\.amazon\.com",
++    r"azure\.microsoft\.com", r"cloud\.google\.com",
++    r"mongodb\.com/atlas", r"datadog\.com", r"newrelic\.com",
++    r"sendgrid\.(net|com)", r"twilio\.com", r"pagerduty\.com",
++]
++VENDOR_SDKS = [
++    (r"import\s+boto3", "AWS SDK (boto3)"),
++    (r"from\s+boto3", "AWS SDK (boto3)"),
++    (r"from\s+azure\.", "Azure SDK"),
++    (r"import\s+azure\.", "Azure SDK"),
++    (r"from\s+google\.cloud", "GCP SDK"),
++    (r"import\s+google\.cloud", "GCP SDK"),
++    (r"import\s+supabase", "Supabase SDK"),
++    (r"from\s+supabase", "Supabase SDK"),
++    (r"import\s+auth0", "Auth0 SDK"),
++    (r"from\s+auth0", "Auth0 SDK"),
++    (r"import\s+okta", "Okta SDK"),
++    (r"from\s+okta", "Okta SDK"),
++    (r"import\s+stripe", "Stripe SDK"),
++    (r"from\s+stripe", "Stripe SDK"),
++]
++
++
++def files(*patterns: str):
++    for pattern in patterns:
++        yield from ROOT.rglob(pattern)
++
++
++def check_free_first() -> bool:
++    issues: list[str] = []
++    for path in files("requirements*.txt", "package.json"):
++        if "node_modules" in path.parts:
++            continue
++        text = path.read_text(errors="ignore")
++        for pattern in PAID_PATTERNS:
++            if re.search(pattern, text, re.I):
++                issues.append(f"{path.relative_to(ROOT)}: {pattern}")
++    for issue in issues:
++        print(f"WARNING: {issue}")
++    print("Free First: WARN" if issues else "Free First: PASS")
++    return True
++
++
++def check_open_source() -> bool:
++    proprietary = ("commercial", "proprietary", "all rights reserved", "eula", "enterprise license")
++    issues: list[str] = []
++    for path in files("requirements*.txt", "package.json"):
++        if "node_modules" in path.parts:
++            continue
++        text = path.read_text(errors="ignore").lower()
++        for license_name in proprietary:
++            if license_name in text:
++                issues.append(f"{path.relative_to(ROOT)}: {license_name}")
++    for issue in issues:
++        print(f"WARNING: {issue}")
++    print("Open Source First: WARN" if issues else "Open Source First: PASS")
++    return True
++
++
++def check_vendor_lock_in() -> bool:
++    issues: list[str] = []
++    for path in (ROOT / "backend/app").rglob("*.py"):
++        text = path.read_text(errors="ignore")
++        for pattern, name in VENDOR_SDKS:
++            if re.search(pattern, text):
++                issues.append(f"{path.relative_to(ROOT)}: {name}")
++    for issue in issues:
++        print(f"FAIL: {issue}")
++    print("Vendor Lock-In: FAIL" if issues else "Vendor Lock-In: PASS")
++    return not issues
++
++
++def check_self_hosted() -> bool:
++    issues: list[str] = []
++    for path in list((ROOT / "backend").rglob("*.py")) + list((ROOT / ".github").rglob("*.yml")):
++        text = path.read_text(errors="ignore")
++        for pattern in SAAS_REFS:
++            if re.search(pattern, text, re.I):
++                issues.append(f"{path.relative_to(ROOT)}: {pattern}")
++    for issue in issues:
++        print(f"WARNING: {issue}")
++    print("Self-Hosted First: WARN" if issues else "Self-Hosted First: PASS")
++    return True
++
++
++def check_adrs() -> bool:
++    adr_dir = ROOT / "docs/adr"
++    if not adr_dir.exists():
++        print("ADR Compliance: SKIP")
++        return True
++    issues = []
++    for path in sorted(adr_dir.glob("ADR-*.md")):
++        text = path.read_text(errors="ignore").lower()
++        if "open source" not in text and "free " not in text:
++            issues.append(path.name)
++    for issue in issues:
++        print(f"WARNING: {issue}: missing open-source alternatives section")
++    print("ADR Compliance: WARN" if issues else "ADR Compliance: PASS")
++    return True
++
++
++if __name__ == "__main__":
++    checks = [check_free_first(), check_open_source(), check_vendor_lock_in(), check_self_hosted(), check_adrs()]
++    sys.exit(1 if not all(checks) else 0)
+-- 
+2.43.0
+

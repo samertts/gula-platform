@@ -51,8 +51,9 @@ def is_token_blacklisted(jti: str) -> bool:
     return cache.get(f"blacklist:jti:{jti}") is not None
 
 
-# Pre-computed dummy hash for timing-safe login (prevents user enumeration).
-_DUMMY_HASH: str = "$2b$12$KOyWdwU2QI3BzsWt.4RGgua1dx53C7jHfc8UzpEKylbB5QwaGPJ6G"
+# Generate a process-local dummy hash so missing-user login paths have the
+# same bcrypt work factor without embedding credential-like material in source.
+_DUMMY_HASH: str = _shared_hash_password(f"gula-timing-dummy:{uuid4().hex}")
 
 
 def hash_password(password: str) -> str:

@@ -124,16 +124,19 @@ class VectorStore:
         try:
             vec_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
             params: dict[str, Any] = {"vec": vec_str, "limit": limit}
-            where_clauses = []
             lab = lab_id or self.lab_id
             if lab is not None:
-                where_clauses.append("e.lab_id = :lab")
                 params["lab"] = lab
             if content_type:
-                where_clauses.append("e.content_type = :ct")
                 params["ct"] = content_type
-            where_sql = " AND ".join(where_clauses) if where_clauses else "TRUE"
-            sql = text(f"SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e WHERE {where_sql} ORDER BY score DESC LIMIT :limit")
+            if lab is not None and content_type:
+                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e WHERE e.lab_id = :lab AND e.content_type = :ct ORDER BY score DESC LIMIT :limit")
+            elif lab is not None:
+                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e WHERE e.lab_id = :lab ORDER BY score DESC LIMIT :limit")
+            elif content_type:
+                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e WHERE e.content_type = :ct ORDER BY score DESC LIMIT :limit")
+            else:
+                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e ORDER BY score DESC LIMIT :limit")
             rows = db.execute(sql, params).fetchall()
             results = []
             for row in rows:
@@ -203,16 +206,13 @@ class VectorStore:
     def search_by_metadata(self, metadata_filter: dict[str, Any], limit: int = 50) -> list[VectorSearchResult]:
         db = next(get_db())
         try:
-            filter_pairs = ["metadata @> :filter_json::jsonb"]
             params: dict[str, Any] = {"filter_json": json.dumps(metadata_filter), "limit": limit}
             if self.lab_id is not None:
-                filter_pairs.append("lab_id = :lab")
                 params["lab"] = self.lab_id
-            where = " AND ".join(filter_pairs)
-            rows = db.execute(
-                text(f"SELECT id, content_type, content_id, text, metadata FROM ai_embeddings WHERE {where} LIMIT :limit"),
-                params,
-            ).fetchall()
+                sql = text("SELECT id, content_type, content_id, text, metadata FROM ai_embeddings WHERE metadata @> :filter_json::jsonb AND lab_id = :lab LIMIT :limit")
+            else:
+                sql = text("SELECT id, content_type, content_id, text, metadata FROM ai_embeddings WHERE metadata @> :filter_json::jsonb LIMIT :limit")
+            rows = db.execute(sql, params).fetchall()
             return [
                 VectorSearchResult(
                     id=row.id, content_type=row.content_type, content_id=row.content_id,

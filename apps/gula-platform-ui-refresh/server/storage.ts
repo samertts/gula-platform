@@ -17,8 +17,29 @@ function getForgeConfig() {
   return { forgeUrl: forgeUrl.replace(/\/+$/, ""), forgeKey };
 }
 
-function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
+const STORAGE_ALLOWED_HOSTS = new Set(
+  (process.env.GULA_STORAGE_ALLOWED_HOSTS ?? "")
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+export function normalizeKey(relKey: string): string {
+  const key = relKey.replace(/^\/+/, "");
+  const segments = key.split("/");
+  if (!key || key.includes("\\") || segments.some((segment) => !segment || segment === "." || segment === "..")) {
+    throw new Error("Invalid storage key");
+  }
+  return key;
+}
+
+export function validateStorageUrl(rawUrl: string): string {
+  const parsed = new URL(rawUrl);
+  const host = parsed.hostname.toLowerCase();
+  if (parsed.protocol !== "https:" || parsed.username || parsed.password || !STORAGE_ALLOWED_HOSTS.has(host)) {
+    throw new Error("Storage URL origin is not allowlisted");
+  }
+  return parsed.toString();
 }
 
 function appendHashSuffix(relKey: string): string {
@@ -49,8 +70,9 @@ export async function storagePut(
     throw new Error(`Storage presign failed (${presignResp.status}): ${msg}`);
   }
 
-  const { url: s3Url } = (await presignResp.json()) as { url: string };
-  if (!s3Url) throw new Error("Forge returned empty presign URL");
+  const { url: rawS3Url } = (await presignResp.json()) as { url: string };
+  if (!rawS3Url) throw new Error("Forge returned empty presign URL");
+  const s3Url = validateStorageUrl(rawS3Url);
 
   // 2. PUT file directly to S3
   const blob =
@@ -60,6 +82,7 @@ export async function storagePut(
 
   const uploadResp = await fetch(s3Url, {
     method: "PUT",
+    redirect: "manual",
     headers: { "Content-Type": contentType },
     body: blob,
   });
@@ -93,5 +116,6 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
   }
 
   const { url } = (await resp.json()) as { url: string };
-  return url;
+  if (!url) throw new Error("Forge returned empty signed URL");
+  return validateStorageUrl(url);
 }

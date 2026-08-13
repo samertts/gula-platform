@@ -1,0 +1,167 @@
+[
+  {
+    "url": "https://www.gula-platform.org/",
+    "status": 200,
+    "elapsed_ms": 2099.4,
+    "location": null,
+    "content_type": "text/html; charset=utf-8",
+    "server": "Vercel",
+    "allow_origin": "*",
+    "body_prefix": "<!doctype html> <html lang=\"ar\" dir=\"rtl\">   <head>     <meta charset=\"UTF-8\" />     <meta name=\"application-name\" content=\"GULA Platform\" />     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />     <meta name=\"description\" content=\"منصة غولا - نظام معلومات المختبرات الطبية\" />     <meta name=\"theme-color\" content=\"#0f172a\" media=\"(prefers-color-scheme: dark)\" />     <meta ",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://www.gula-platform.org/login",
+    "status": 404,
+    "elapsed_ms": 2157.0,
+    "location": null,
+    "content_type": "application/json",
+    "server": "Vercel",
+    "allow_origin": null,
+    "body_prefix": "{\"error\": {\"code\": \"404\", \"message\": \"The page could not be found\"}}",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://www.gula-platform.org/robots.txt",
+    "status": 404,
+    "elapsed_ms": 1634.8,
+    "location": null,
+    "content_type": "application/json",
+    "server": "Vercel",
+    "allow_origin": null,
+    "body_prefix": "{\"error\": {\"code\": \"404\", \"message\": \"The page could not be found\"}}",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://www.gula-platform.org/.well-known/security.txt",
+    "status": 404,
+    "elapsed_ms": 2359.9,
+    "location": null,
+    "content_type": "application/json",
+    "server": "Vercel",
+    "allow_origin": null,
+    "body_prefix": "{\"error\": {\"code\": \"404\", \"message\": \"The page could not be found\"}}",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://www.gula-platform.org/manifest.webmanifest",
+    "status": 200,
+    "elapsed_ms": 3100.4,
+    "location": null,
+    "content_type": "application/manifest+json; charset=utf-8",
+    "server": "Vercel",
+    "allow_origin": "*",
+    "body_prefix": "{\"name\":\"غولا | GULA - نظام معلومات المختبرات\",\"short_name\":\"غولا\",\"description\":\"منصة غولا - نظام معلومات المختبرات الطبية\",\"start_url\":\"/\",\"display\":\"standalone\",\"background_color\":\"#0f172a\",\"theme_color\":\"#0f172a\",\"lang\":\"ar\",\"scope\":\"/\",\"orientation\":\"any\",\"dir\":\"rtl\",\"icons\":[{\"src\":\"/pwa-192x192.png\",\"sizes\":\"192x192\",\"type\":\"image/png\"},{\"src\":\"/pwa-512x512.png\",\"sizes\":\"512x512\",\"type\":\"im",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://www.gula-platform.org/sw.js",
+    "status": 200,
+    "elapsed_ms": 2439.1,
+    "location": null,
+    "content_type": "application/javascript; charset=utf-8",
+    "server": "Vercel",
+    "allow_origin": "*",
+    "body_prefix": "if(!self.define){let s,e={};const l=(l,i)=>(l=new URL(l+\".js\",i).href,e[l]||new Promise(e=>{if(\"document\"in self){const s=document.createElement(\"script\");s.src=l,s.onload=e,document.head.appendChild(s)}else s=l,importScripts(l),e()}).then(()=>{let s=e[l];if(!s)throw new Error(`Module ${l} didn’t register its module`);return s}));self.define=(i,a)=>{const n=s||(\"document\"in self?document.currentSc",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://www.gula-platform.org/service-worker.js",
+    "status": 404,
+    "elapsed_ms": 3512.8,
+    "location": null,
+    "content_type": "application/json",
+    "server": "Vercel",
+    "allow_origin": null,
+    "body_prefix": "{\"error\": {\"code\": \"404\", \"message\": \"The page could not be found\"}}",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://www.gula-platform.org/api/health",
+    "status": 526,
+    "elapsed_ms": 3123.8,
+    "location": null,
+    "content_type": "text/html; charset=UTF-8",
+    "server": "Vercel",
+    "allow_origin": null,
+    "body_prefix": "<!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]--> <!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]--> <head>  <title>gula-platform.org | 526: Invalid SSL certificate</title> <meta charset",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://www.gula-platform.org/api/v1/health",
+    "status": 526,
+    "elapsed_ms": 2474.7,
+    "location": null,
+    "content_type": "text/html; charset=UTF-8",
+    "server": "Vercel",
+    "allow_origin": null,
+    "body_prefix": "<!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]--> <!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]--> <head>  <title>gula-platform.org | 526: Invalid SSL certificate</title> <meta charset",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://www.gula-platform.org/health",
+    "status": 404,
+    "elapsed_ms": 2184.1,
+    "location": null,
+    "content_type": "application/json",
+    "server": "Vercel",
+    "allow_origin": null,
+    "body_prefix": "{\"error\": {\"code\": \"404\", \"message\": \"The page could not be found\"}}",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://api.gula-platform.org/",
+    "status": 526,
+    "elapsed_ms": 2809.5,
+    "location": null,
+    "content_type": "text/html; charset=UTF-8",
+    "server": "cloudflare",
+    "allow_origin": null,
+    "body_prefix": "<!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]--> <!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]--> <head>  <title>gula-platform.org | 526: Invalid SSL certificate</title> <meta charset",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://api.gula-platform.org/health",
+    "status": 526,
+    "elapsed_ms": 1752.7,
+    "location": null,
+    "content_type": "text/html; charset=UTF-8",
+    "server": "cloudflare",
+    "allow_origin": null,
+    "body_prefix": "<!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]--> <!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]--> <head>  <title>gula-platform.org | 526: Invalid SSL certificate</title> <meta charset",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://api.gula-platform.org/openapi.json",
+    "status": 526,
+    "elapsed_ms": 1765.4,
+    "location": null,
+    "content_type": "text/html; charset=UTF-8",
+    "server": "cloudflare",
+    "allow_origin": null,
+    "body_prefix": "<!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]--> <!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]--> <head>  <title>gula-platform.org | 526: Invalid SSL certificate</title> <meta charset",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://api.gula-platform.org/docs",
+    "status": 526,
+    "elapsed_ms": 2585.3,
+    "location": null,
+    "content_type": "text/html; charset=UTF-8",
+    "server": "cloudflare",
+    "allow_origin": null,
+    "body_prefix": "<!DOCTYPE html> <!--[if lt IE 7]> <html class=\"no-js ie6 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 7]>    <html class=\"no-js ie7 oldie\" lang=\"en-US\"> <![endif]--> <!--[if IE 8]>    <html class=\"no-js ie8 oldie\" lang=\"en-US\"> <![endif]--> <!--[if gt IE 8]><!--> <html class=\"no-js\" lang=\"en-US\"> <!--<![endif]--> <head>  <title>gula-platform.org | 526: Invalid SSL certificate</title> <meta charset",
+    "reflected_test_marker": false
+  },
+  {
+    "url": "https://www.gula-platform.org/?q=%3Cscript%3Ealert%281%29%3C/script%3E",
+    "status": 200,
+    "elapsed_ms": 2059.0,
+    "location": null,
+    "content_type": "text/html; charset=utf-8",
+    "server": "Vercel",
+    "allow_origin": "*",
+    "body_prefix": "<!doctype html> <html lang=\"ar\" dir=\"rtl\">   <head>     <meta charset=\"UTF-8\" />     <meta name=\"application-name\" content=\"GULA Platform\" />     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />     <meta name=\"description\" content=\"منصة غولا - نظام معلومات المختبرات الطبية\" />     <meta name=\"theme-color\" content=\"#0f172a\" media=\"(prefers-color-scheme: dark)\" />     <meta ",
+    "reflected_test_marker": false
+  }
+]

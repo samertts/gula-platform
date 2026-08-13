@@ -336,6 +336,13 @@ def _check_enterprise_metrics(quality_thresh: int = 500, bypass: bool = False) -
 CheckResult = tuple[str, list[str]]
 
 
+def _redact(text: str) -> str:
+    # Basic redaction for common secret patterns in log output
+    import re
+    text = re.sub(r"(?i)(key|secret|token|password|auth|bearer)\s*[:=]\s*['\"]?[a-zA-Z0-9_\-\.]{8,}['\"]?", r"\1=***REDACTED***", text)
+    return text
+
+
 def run_checks(
     checks: list[tuple[str, Any, Any]],
     strict: bool = False,
@@ -496,7 +503,7 @@ def main(argv: list[str] | None = None) -> int:
 
     results = run_checks(checks, strict=args.strict, ci=args.ci)
     output = format_results(results, ci=args.ci)
-    print(output)
+    print(_redact(output))
 
     return determine_exit_code(results, args.strict)
 

@@ -202,7 +202,7 @@ class GulaClient:
                 last_exc = e
                 if attempt < self._max_retries:
                     backoff = 2 ** attempt
-                    logger.warning("Timeout on %s %s, retrying in %ds", method, path, backoff)
+                    logger.warning("Timeout on %s %s, retrying in %ds", method, self._sanitize_path(path), backoff)
                     await asyncio.sleep(backoff)
                     continue
                 raise
@@ -211,7 +211,7 @@ class GulaClient:
                 last_exc = e
                 if attempt < self._max_retries:
                     backoff = 2 ** attempt
-                    logger.warning("Transport error on %s %s, retrying in %ds", method, path, backoff)
+                    logger.warning("Transport error on %s %s, retrying in %ds", method, self._sanitize_path(path), backoff)
                     await asyncio.sleep(backoff)
                     continue
                 raise
@@ -220,6 +220,11 @@ class GulaClient:
             raise last_exc
 
         return None
+
+    def _sanitize_path(self, path: str) -> str:
+        # Redact common sensitive identifiers in URL paths (e.g. NID, passport)
+        import re
+        return re.sub(r"/(?:\d{10,12}|[A-Z0-9]{6,12})(?=/|$)", "/***ID***", path)
 
     @staticmethod
     def _try_decode(response: httpx.Response) -> dict | None:

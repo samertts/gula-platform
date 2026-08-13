@@ -27,6 +27,28 @@
  */
 import { ENV } from "./env";
 
+const AUDIO_ALLOWED_HOSTS = new Set(
+  (process.env.GULA_AUDIO_ALLOWED_HOSTS ?? "")
+    .split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean),
+);
+const AUDIO_MAX_BYTES = 16 * 1024 * 1024;
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
+
+function validateAudioUrl(rawUrl: string): string {
+  const parsed = new URL(rawUrl);
+  const host = parsed.hostname.toLowerCase();
+  const localDevelopment = !ENV.isProduction && parsed.protocol === "http:" && LOOPBACK_HOSTS.has(host);
+  if (parsed.username || parsed.password || parsed.protocol !== "https:" && !localDevelopment) {
+    throw new Error("Audio URL must use HTTPS and may not contain credentials");
+  }
+  if (!localDevelopment && !AUDIO_ALLOWED_HOSTS.has(host)) {
+    throw new Error("Audio URL host is not allowlisted");
+  }
+  return parsed.toString();
+}
+
 export type TranscribeOptions = {
   audioUrl: string; // URL to the audio file (e.g., S3 URL)
   language?: string; // Optional: specify language code (e.g., "en", "es", "zh")
@@ -90,11 +112,15 @@ export async function transcribeAudio(
       };
     }
 
-    // Step 2: Download audio from URL
+    // Step 2: Download audio from a configured storage origin only.
     let audioBuffer: Buffer;
     let mimeType: string;
     try {
-      const response = await fetch(options.audioUrl);
+      const audioUrl = validateAudioUrl(options.audioUrl);
+      const response = await fetch(audioUrl, { redirect: "manual" });
+      if (response.status >= 300 && response.status < 400) {
+        return { error: "Audio redirects are not allowed", code: "INVALID_FORMAT" };
+      }
       if (!response.ok) {
         return {
           error: "Failed to download audio file",
@@ -102,19 +128,28 @@ export async function transcribeAudio(
           details: `HTTP ${response.status}: ${response.statusText}`
         };
       }
-      
-      audioBuffer = Buffer.from(await response.arrayBuffer());
-      mimeType = response.headers.get('content-type') || 'audio/mpeg';
-      
-      // Check file size (16MB limit)
-      const sizeMB = audioBuffer.length / (1024 * 1024);
-      if (sizeMB > 16) {
-        return {
-          error: "Audio file exceeds maximum size limit",
-          code: "FILE_TOO_LARGE",
-          details: `File size is ${sizeMB.toFixed(2)}MB, maximum allowed is 16MB`
-        };
+      const declaredLength = Number(response.headers.get("content-length"));
+      if (Number.isFinite(declaredLength) && declaredLength > AUDIO_MAX_BYTES) {
+        return { error: "Audio file exceeds maximum size limit", code: "FILE_TOO_LARGE" };
       }
+      if (!response.body) {
+        return { error: "Audio response has no body", code: "INVALID_FORMAT" };
+      }
+      const chunks: Uint8Array[] = [];
+      let totalBytes = 0;
+      const reader = response.body.getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > AUDIO_MAX_BYTES) {
+          await reader.cancel();
+          return { error: "Audio file exceeds maximum size limit", code: "FILE_TOO_LARGE" };
+        }
+        chunks.push(value);
+      }
+      audioBuffer = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)));
+      mimeType = response.headers.get("content-type") || "audio/mpeg";
     } catch (error) {
       return {
         error: "Failed to fetch audio file",

@@ -24,17 +24,33 @@ jobs:
   android-nightly:
     name: Android Nightly Build
     uses: ./.github/workflows/mobile-android.yml
-    secrets: inherit
+    secrets:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      PLAY_SERVICE_ACCOUNT_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_KEY }}
 
   ios-nightly:
     name: iOS Nightly Build
     uses: ./.github/workflows/mobile-ios.yml
-    secrets: inherit
+    secrets:
+      IOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+      IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+      IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+      IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+      APP_STORE_CONNECT_USERNAME: ${{ secrets.APP_STORE_CONNECT_USERNAME }}
+      APP_STORE_CONNECT_PASSWORD: ${{ secrets.APP_STORE_CONNECT_PASSWORD }}
+      APP_STORE_CONNECT_TEAM_ID: ${{ secrets.APP_STORE_CONNECT_TEAM_ID }}
 
   desktop-nightly:
     name: Desktop Nightly Build
     uses: ./.github/workflows/mobile-flutter-desktop.yml
-    secrets: inherit
+    secrets:
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      MACOS_APP_PASSWORD: ${{ secrets.MACOS_APP_PASSWORD }}
+      MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
 
   backend-integration:
     name: Backend Integration Tests
@@ -66,10 +82,10 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -82,8 +98,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:test_password@localhost:5432/labdb
           REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: nightly-secret-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          REFRESH_TOKEN_SECRET: nightly-refresh-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          SECRET_KEY: ${{ format('nightly-test-{0}-{1}', github.run_id, github.run_attempt) }}
+          REFRESH_TOKEN_SECRET: ${{ format('nightly-refresh-{0}-{1}', github.run_id, github.run_attempt) }}
           ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
           NID_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
           DEVICE_HMAC_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
@@ -99,7 +115,7 @@ jobs:
 
       - name: Upload integration test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: integration-test-results
           path: backend/pytest-integration.xml
@@ -126,10 +142,10 @@ jobs:
           - 6379:6379
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -142,8 +158,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:test_password@localhost:5432/labdb
           REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: chaos-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          REFRESH_TOKEN_SECRET: chaos-test-refresh-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          SECRET_KEY: ${{ format('chaos-test-{0}-{1}', github.run_id, github.run_attempt) }}
+          REFRESH_TOKEN_SECRET: ${{ format('chaos-refresh-{0}-{1}', github.run_id, github.run_attempt) }}
           ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
           ENV: test
           RUNTIME_MODE: test
@@ -154,7 +170,7 @@ jobs:
 
       - name: Upload chaos results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: chaos-test-results
           path: backend/chaos-results.log
@@ -180,10 +196,10 @@ jobs:
           - 6379:6379
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -197,8 +213,8 @@ jobs:
         env:
           DATABASE_URL: postgresql://postgres:test_password@localhost:5432/labdb
           REDIS_URL: redis://localhost:6379/0
-          SECRET_KEY: bench-test-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-          REFRESH_TOKEN_SECRET: bench-test-refresh-key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+          SECRET_KEY: ${{ format('bench-test-{0}-{1}', github.run_id, github.run_attempt) }}
+          REFRESH_TOKEN_SECRET: ${{ format('bench-refresh-{0}-{1}', github.run_id, github.run_attempt) }}
           ENCRYPTION_KEY: "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw="
           ENV: development
           RUNTIME_MODE: api
@@ -223,7 +239,7 @@ jobs:
 
       - name: Upload benchmark results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: performance-benchmark
           path: |
@@ -277,7 +293,7 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Build Docker image
         run: |
@@ -293,7 +309,7 @@ jobs:
           exit-code: 0
 
       - name: Run Grype scan
-        uses: anchore/scan-action@v5
+        uses: anchore/scan-action@869c549e657a088dc0441b08ce4fc0ecdac2bb65
         with:
           image: gula-backend:nightly
           fail-build: true
@@ -301,7 +317,7 @@ jobs:
 
       - name: Upload security reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: nightly-security-reports
           path: trivy-report.txt
@@ -316,28 +332,39 @@ jobs:
 
     steps:
       - name: Generate nightly report
+        env:
+          REPORT_REF_NAME: ${{ github.ref_name }}
+          REPORT_SHA: ${{ github.sha }}
+          REPORT_EVENT: ${{ github.event_name }}
+          ANDROID_RESULT: ${{ needs.android-nightly.result }}
+          IOS_RESULT: ${{ needs.ios-nightly.result }}
+          DESKTOP_RESULT: ${{ needs.desktop-nightly.result }}
+          BACKEND_RESULT: ${{ needs.backend-integration.result }}
+          CHAOS_RESULT: ${{ needs.chaos-tests.result }}
+          PERFORMANCE_RESULT: ${{ needs.performance-benchmarks.result }}
+          CONTAINER_RESULT: ${{ needs.container-security.result }}
         run: |
-          echo "# Nightly Build Report - $(date -u)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Branch:** \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Results" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Component | Result |" >> $GITHUB_STEP_SUMMARY
-          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
-          echo "| Android Nightly | ${{ needs.android-nightly.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| iOS Nightly | ${{ needs.ios-nightly.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Desktop Nightly | ${{ needs.desktop-nightly.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Backend Integration | ${{ needs.backend-integration.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Chaos Tests | ${{ needs.chaos-tests.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Performance Benchmarks | ${{ needs.performance-benchmarks.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Container Security | ${{ needs.container-security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "# Nightly Build Report - $(date -u)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Branch:** \`$REPORT_REF_NAME\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Commit:** \`$REPORT_SHA\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Trigger:** $REPORT_EVENT" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Component | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-----------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Android Nightly | $ANDROID_RESULT |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| iOS Nightly | $IOS_RESULT |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Desktop Nightly | $DESKTOP_RESULT |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend Integration | $BACKEND_RESULT |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Chaos Tests | $CHAOS_RESULT |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Performance Benchmarks | $PERFORMANCE_RESULT |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Container Security | $CONTAINER_RESULT |" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Create issue on failure
         if: failure()
-        uses: actions/github-script@v7
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b
         with:
           script: |
             github.rest.issues.create({
@@ -360,7 +387,7 @@ jobs:
 
       - name: Send Slack notification
         if: ${{ !github.event.inputs.skip_notify }}
-        uses: slackapi/slack-github-action@v2
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a
         with:
           payload: |
             {
@@ -376,7 +403,7 @@ jobs:
 
       - name: Send Telegram notification
         if: ${{ !github.event.inputs.skip_notify }}
-        uses: appleboy/telegram-action@1.1.0
+        uses: appleboy/telegram-action@221e6b684967abe813051ee4a37dd61770a83ad3
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}

@@ -46,7 +46,7 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
     - name: Select Xcode
       shell: bash
@@ -55,61 +55,86 @@ runs:
     - name: Setup provisioning
       if: inputs.certificate-base64 != ''
       shell: bash
+      env:
+        CERTIFICATE_BASE64: ${{ inputs.certificate-base64 }}
+        CERTIFICATE_PASSWORD: ${{ inputs.certificate-password }}
+        PROVISIONING_PROFILE_BASE64: ${{ inputs.provisioning-profile-base64 }}
       run: |
-        KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
+        KEYCHAIN_PATH="$RUNNER_TEMP/build.keychain"
         KEYCHAIN_PASSWORD=$(openssl rand -base64 12)
+        CERTIFICATE_PATH="$RUNNER_TEMP/certificate.p12"
+        PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
 
         security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
         security set-keychain-settings -lut 3600 "$KEYCHAIN_PATH"
         security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-        echo "${{ inputs.certificate-base64 }}" | base64 -d > $RUNNER_TEMP/certificate.p12
-        security import $RUNNER_TEMP/certificate.p12 \
+        printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$CERTIFICATE_PATH"
+        security import "$CERTIFICATE_PATH" \
           -k "$KEYCHAIN_PATH" \
-          -P "${{ inputs.certificate-password }}" \
+          -P "$CERTIFICATE_PASSWORD" \
           -T /usr/bin/codesign
 
-        echo "${{ inputs.provisioning-profile-base64 }}" | base64 -d > $RUNNER_TEMP/profile.mobileprovision
-        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-        cp $RUNNER_TEMP/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+        printf '%s' "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+        mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+        cp "$PROFILE_PATH" "$HOME/Library/MobileDevice/Provisioning Profiles/"
 
         security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
 
     - name: Resolve SPM packages
       shell: bash
       working-directory: ${{ github.workspace }}/mobile/ios
+      env:
+        WORKSPACE_PATH: ${{ inputs.workspace-path }}
+        SCHEME: ${{ inputs.scheme }}
       run: |
         xcodebuild -resolvePackageDependencies \
-          -workspace "${{ inputs.workspace-path }}" \
-          -scheme "${{ inputs.scheme }}" \
+          -workspace "$WORKSPACE_PATH" \
+          -scheme "$SCHEME" \
           -derivedDataPath /tmp/GulaDerivedData
 
     - name: Archive
       shell: bash
       working-directory: ${{ github.workspace }}/mobile/ios
+      env:
+        WORKSPACE_PATH: ${{ inputs.workspace-path }}
+        SCHEME: ${{ inputs.scheme }}
+        BUILD_TYPE: ${{ inputs.build-type }}
       run: |
+        case "$BUILD_TYPE" in
+          release) CONFIGURATION="Release" ;;
+          debug) CONFIGURATION="Debug" ;;
+          *) echo "Unsupported iOS build type" >&2; exit 2 ;;
+        esac
         xcodebuild archive \
-          -workspace "${{ inputs.workspace-path }}" \
-          -scheme "${{ inputs.scheme }}" \
-          -configuration ${{ inputs.build-type == 'release' && 'Release' || 'Debug' }} \
+          -workspace "$WORKSPACE_PATH" \
+          -scheme "$SCHEME" \
+          -configuration "$CONFIGURATION" \
           -derivedDataPath /tmp/GulaDerivedData \
-          -archivePath $RUNNER_TEMP/Gula.xcarchive \
+          -archivePath "$RUNNER_TEMP/Gula.xcarchive" \
           -allowProvisioningUpdates
 
     - name: Export IPA
       shell: bash
       working-directory: ${{ github.workspace }}/mobile/ios
+      env:
+        EXPORT_METHOD: ${{ inputs.export-method }}
+        TEAM_ID: ${{ inputs.team-id }}
       run: |
-        EXPORT_OPTIONS=$RUNNER_TEMP/ExportOptions.plist
-        cat > $EXPORT_OPTIONS << EOF
+        case "$EXPORT_METHOD" in
+          app-store|ad-hoc|development) ;; 
+          *) echo "Unsupported iOS export method" >&2; exit 2 ;;
+        esac
+        EXPORT_OPTIONS="$RUNNER_TEMP/ExportOptions.plist"
+        cat > "$EXPORT_OPTIONS" << EOF
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
           <key>method</key>
-          <string>${{ inputs.export-method }}</string>
+          <string>$EXPORT_METHOD</string>
           <key>teamID</key>
-          <string>${{ inputs.team-id }}</string>
+          <string>$TEAM_ID</string>
           <key>signingStyle</key>
           <string>manual</string>
           <key>stripSwiftSymbols</key>
@@ -125,20 +150,22 @@ runs:
         EOF
 
         xcodebuild -exportArchive \
-          -archivePath $RUNNER_TEMP/Gula.xcarchive \
-          -exportPath $RUNNER_TEMP/Gula.ipa \
-          -exportOptionsPlist $EXPORT_OPTIONS \
+          -archivePath "$RUNNER_TEMP/Gula.xcarchive" \
+          -exportPath "$RUNNER_TEMP/Gula.ipa" \
+          -exportOptionsPlist "$EXPORT_OPTIONS" \
           -allowProvisioningUpdates
 
     - name: Set output paths
       id: set-paths
       shell: bash
       run: |
-        echo "ipa-path=$RUNNER_TEMP/Gula.ipa/Gula.ipa" >> $GITHUB_OUTPUT
-        echo "archive-path=$RUNNER_TEMP/Gula.xcarchive" >> $GITHUB_OUTPUT
+        {
+          echo "ipa-path=$RUNNER_TEMP/Gula.ipa/Gula.ipa"
+          echo "archive-path=$RUNNER_TEMP/Gula.xcarchive"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Upload IPA
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: ios-build-${{ inputs.build-type }}
         path: ${{ runner.temp }}/Gula.ipa/*
@@ -146,7 +173,7 @@ runs:
         retention-days: 7
 
     - name: Upload dSYMs
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       with:
         name: ios-dsyms-${{ inputs.build-type }}
         path: ${{ runner.temp }}/Gula.xcarchive/dSYMs/

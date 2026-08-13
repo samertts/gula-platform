@@ -56,7 +56,7 @@ class MigrationGenerator:
 
     def generate(self) -> None:
         ts_str = self._ts.strftime("%Y%m%d_%H%M%S")
-        hash_str = hashlib.md5(self._message.encode()).hexdigest()[:8]
+        hash_str = hashlib.sha256(self._message.encode()).hexdigest()[:8]
         revision = f"{ts_str}_{hash_str}"
         filename = f"{revision}_{self._message.lower().replace(' ', '_')[:60].strip('_')}.py"
         filepath = self._target_dir / filename

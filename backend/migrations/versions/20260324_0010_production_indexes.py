@@ -102,4 +102,4 @@ def downgrade() -> None:
         "ix_labs_active",
     ]
     for idx in indexes:
-        op.execute(text(f"DROP INDEX IF EXISTS {idx}"))
+        op.drop_index(idx)

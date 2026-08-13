@@ -1,0 +1,89 @@
+From c6f7ca75b81d30af1bb77d8c239f4a7a60e36290 Mon Sep 17 00:00:00 2001
+From: samertts <6.7171661e+07+samertts@users.noreply.github.com>
+Date: Tue, 11 Aug 2026 15:13:47 +0000
+Subject: [PATCH] ci: fix flutter action and dependency license checks
+
+---
+ .github/workflows/dependency-review.yml      |  4 ++--
+ .github/workflows/mobile-flutter-desktop.yml | 10 +++++-----
+ .github/workflows/sdk-publish.yml            |  2 +-
+ 3 files changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/.github/workflows/dependency-review.yml b/.github/workflows/dependency-review.yml
+index dde218b0..7288d8c4 100644
+--- a/.github/workflows/dependency-review.yml
++++ b/.github/workflows/dependency-review.yml
+@@ -23,6 +23,6 @@ jobs:
+           fail-on-severity: high
+           deny-licenses: >
+             AGPL-1.0, AGPL-3.0, GPL-1.0, GPL-2.0, GPL-3.0,
+-            LGPL-1.0, LGPL-2.0, LGPL-2.1, LGPL-3.0,
+-            BUSL-1.0, BSL-1.0, SSPL-1.0, RPL-1.5, RPL-2.0
++            LGPL-2.0, LGPL-2.1, LGPL-3.0,
++            BSL-1.0, SSPL-1.0, RPL-1.5
+           comment-summary-in-pr: on-failure
+diff --git a/.github/workflows/mobile-flutter-desktop.yml b/.github/workflows/mobile-flutter-desktop.yml
+index dc87ca19..c973df03 100644
+--- a/.github/workflows/mobile-flutter-desktop.yml
++++ b/.github/workflows/mobile-flutter-desktop.yml
+@@ -53,7 +53,7 @@ jobs:
+       - uses: actions/checkout@v4
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+@@ -96,7 +96,7 @@ jobs:
+       - uses: actions/checkout@v4
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+@@ -149,7 +149,7 @@ jobs:
+       - uses: actions/checkout@v4
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+@@ -209,7 +209,7 @@ jobs:
+             librpm-dev rpm
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+@@ -287,7 +287,7 @@ jobs:
+       - uses: actions/checkout@v4
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+diff --git a/.github/workflows/sdk-publish.yml b/.github/workflows/sdk-publish.yml
+index ce662027..8fd43ef1 100644
+--- a/.github/workflows/sdk-publish.yml
++++ b/.github/workflows/sdk-publish.yml
+@@ -111,7 +111,7 @@ jobs:
+       - uses: actions/checkout@v4
+ 
+       - name: Setup Flutter
+-        uses: subosito/flutter-action@v3
++        uses: subosito/flutter-action@v2
+         with:
+           channel: stable
+           flutter-version: ${{ env.FLUTTER_VERSION }}
+-- 
+2.43.0
+

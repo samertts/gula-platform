@@ -2,6 +2,7 @@ import collections
 import contextvars
 import logging
 import os
+import re
 import threading
 import time
 
@@ -189,6 +190,9 @@ _MAX_OVERFLOW = max(0, int(os.getenv("DB_MAX_OVERFLOW", "10")))  # per worker
 _POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "10"))
 _POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))
 _STMT_TIMEOUT = os.getenv("DB_STMT_TIMEOUT", "30s")
+if not re.fullmatch(r"[1-9][0-9]*(?:ms|s|min|h)", _STMT_TIMEOUT):
+    logger.warning("Invalid DB_STMT_TIMEOUT; falling back to 30s")
+    _STMT_TIMEOUT = "30s"
 
 logger.debug(
     "DB pool config: %d workers × (%d base + %d overflow) = %d max connections",
@@ -226,7 +230,7 @@ else:
 def set_pg_session_config(dbapi_conn, connection_record):
     try:
         cursor = dbapi_conn.cursor()
-        cursor.execute(f"SET statement_timeout = '{_STMT_TIMEOUT}'")
+        cursor.execute("SELECT set_config('statement_timeout', %s, false)", (_STMT_TIMEOUT,))
         cursor.execute("SET work_mem = '16MB'")  # Limit sort/hash memory per query
         cursor.execute("SET idle_in_transaction_session_timeout = '60s'")
         cursor.close()

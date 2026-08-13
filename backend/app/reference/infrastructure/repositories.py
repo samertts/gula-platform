@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import datetime
 
-from sqlalchemy import and_, text
+from sqlalchemy import bindparam, column, func, select, table, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.reference.domain.interfaces import (
@@ -17,6 +17,21 @@ from app.reference.domain.models import (
     OrderStatus,
     PatientDomain,
     ReferenceRange,
+)
+
+
+_PATIENTS = table(
+    "patients",
+    column("id"),
+    column("name"),
+    column("date_of_birth"),
+    column("gender"),
+    column("phone"),
+    column("lab_id"),
+    column("national_id"),
+    column("address"),
+    column("created_at"),
+    column("updated_at"),
 )
 
 
@@ -98,49 +113,46 @@ class SQLPatientRepository(PatientRepository):
         limit: int = 20,
         offset: int = 0,
     ) -> tuple[Sequence[PatientDomain], int]:
-        conditions: list = []
-        if name:
-            conditions.append(text("name ILIKE :name"))
-        if phone:
-            conditions.append(text("phone = :phone"))
-        if lab_id:
-            conditions.append(text("lab_id = :lab_id"))
-        if national_id:
-            conditions.append(text("national_id = :national_id"))
-
-        where_clause = and_(*conditions) if conditions else text("TRUE")
-        base_sql = f"""
-            FROM patients
-            WHERE {where_clause.compile(
-                compile_kwargs={"literal_binds": False}
-            )}
-        """
-
+        conditions = []
         params: dict = {}
         if name:
+            conditions.append(_PATIENTS.c.name.ilike(bindparam("name")))
             params["name"] = f"%{name}%"
         if phone:
+            conditions.append(_PATIENTS.c.phone == bindparam("phone"))
             params["phone"] = phone
         if lab_id:
+            conditions.append(_PATIENTS.c.lab_id == bindparam("lab_id"))
             params["lab_id"] = lab_id
         if national_id:
+            conditions.append(_PATIENTS.c.national_id == bindparam("national_id"))
             params["national_id"] = national_id
 
-        count_stmt = text(f"SELECT COUNT(*) AS total {base_sql}")
+        count_stmt = select(func.count().label("total")).select_from(_PATIENTS).where(*conditions)
         total_row = (
             await self._session.execute(count_stmt, params)
         ).mappings().one()
         total = total_row["total"]
 
-        data_stmt = text(f"""
-            SELECT id AS patient_id, name, date_of_birth, gender, phone,
-                   lab_id, national_id, address, created_at, updated_at
-            {base_sql}
-            ORDER BY created_at DESC
-            LIMIT :limit OFFSET :offset
-        """)
-        params["limit"] = limit
-        params["offset"] = offset
+        data_stmt = (
+            select(
+                _PATIENTS.c.id.label("patient_id"),
+                _PATIENTS.c.name,
+                _PATIENTS.c.date_of_birth,
+                _PATIENTS.c.gender,
+                _PATIENTS.c.phone,
+                _PATIENTS.c.lab_id,
+                _PATIENTS.c.national_id,
+                _PATIENTS.c.address,
+                _PATIENTS.c.created_at,
+                _PATIENTS.c.updated_at,
+            )
+            .select_from(_PATIENTS)
+            .where(*conditions)
+            .order_by(_PATIENTS.c.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
         rows = (
             await self._session.execute(data_stmt, params)
         ).mappings().all()

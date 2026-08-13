@@ -7,10 +7,17 @@ import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
 
 export async function setupVite(app: Express, server: Server) {
+  const configuredHosts = (process.env.VITE_ALLOWED_HOSTS ?? "")
+    .split(",")
+    .map((host) => host.trim())
+    .filter(Boolean);
+  const allowedHosts = configuredHosts.length > 0
+    ? configuredHosts
+    : ["localhost", "127.0.0.1", "::1"];
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
-    allowedHosts: true as const,
+    allowedHosts,
   };
 
   const vite = await createViteServer({

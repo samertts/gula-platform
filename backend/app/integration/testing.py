@@ -2,16 +2,56 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import random
 import time
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 
 from backend.app.integration.standards import FHIRService
 
 logger = logging.getLogger("gula.integration.testing")
+
+_LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
+_ALLOWED_HOSTS = {
+    host.strip().lower()
+    for host in os.getenv("GULA_INTEGRATION_ALLOWED_HOSTS", "").split(",")
+    if host.strip()
+}
+_ALLOWED_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"}
+
+
+def _validate_target(url: str) -> str:
+    """Allow only configured integration hosts; never follow a redirect to another host."""
+    parsed = urlsplit(url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme not in {"http", "https"} or not host:
+        raise ValueError("Integration targets must use http(s) and include a hostname")
+    if parsed.username or parsed.password or parsed.fragment:
+        raise ValueError("Integration targets may not contain credentials or fragments")
+    if host not in _LOOPBACK_HOSTS and host not in _ALLOWED_HOSTS:
+        raise ValueError("Integration target host is not in GULA_INTEGRATION_ALLOWED_HOSTS")
+    if parsed.scheme != "https" and host not in _LOOPBACK_HOSTS:
+        raise ValueError("Non-loopback integration targets must use HTTPS")
+    return url.rstrip("/")
+
+
+def _join_target(base_url: str, path: str) -> str:
+    base = _validate_target(base_url)
+    path_parts = urlsplit(path)
+    if path_parts.scheme or path_parts.netloc or path.startswith("//"):
+        raise ValueError("Integration endpoint paths must be relative")
+    if any(segment == ".." for segment in path_parts.path.split("/")):
+        raise ValueError("Integration endpoint paths may not traverse parent directories")
+    candidate = urljoin(f"{base}/", path.lstrip("/"))
+    parsed_base = urlsplit(base)
+    parsed_candidate = urlsplit(candidate)
+    if (parsed_base.scheme, parsed_base.netloc) != (parsed_candidate.scheme, parsed_candidate.netloc):
+        raise ValueError("Integration endpoint changed the target origin")
+    return candidate
 
 
 @dataclass
@@ -78,8 +118,11 @@ class ContractTester:
     async def test_endpoint(self, name: str, base_url: str, path: str, method: str = "GET") -> TestResult:
         start = time.monotonic()
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
+            method = method.upper()
+            if method not in _ALLOWED_METHODS:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+            url = _join_target(base_url, path)
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
                 resp = await client.request(method, url)
                 result = TestResult(
                     name=f"contract_{name}",
@@ -172,13 +215,16 @@ class IntegrationTester:
         start = time.monotonic()
         errors: list[str] = []
         details: dict[str, Any] = {"steps": []}
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
             for i, step in enumerate(scenario["steps"]):
-                method = step.get("method", "GET")
-                path = step.get("path", "/")
-                url = f"{base_url.rstrip('/')}/{path.lstrip('/')}"
+                method = str(step.get("method", "GET")).upper()
+                path = str(step.get("path", "/"))
+                if method not in _ALLOWED_METHODS:
+                    errors.append(f"Step {i}: unsupported HTTP method {method}")
+                    continue
                 body = step.get("body")
                 try:
+                    url = _join_target(base_url, path)
                     resp = await client.request(method, url, json=body)
                     step_result = {
                         "step": i,
@@ -215,7 +261,10 @@ class LoadTester:
         self._endpoints: list[dict[str, Any]] = []
 
     def add_endpoint(self, method: str, url: str, body: dict[str, Any] | None = None) -> None:
-        self._endpoints.append({"method": method, "url": url, "body": body})
+        method = method.upper()
+        if method not in _ALLOWED_METHODS:
+            raise ValueError(f"Unsupported HTTP method: {method}")
+        self._endpoints.append({"method": method, "url": _validate_target(url), "body": body})
 
     async def run(
         self,
@@ -236,7 +285,7 @@ class LoadTester:
             async with sem:
                 ep = random.choice(self._endpoints)
                 try:
-                    async with httpx.AsyncClient(timeout=30.0) as client:
+                    async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
                         t0 = time.monotonic()
                         method = ep["method"]
                         url = ep["url"]

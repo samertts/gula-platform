@@ -21,10 +21,23 @@
  *   1 — one or more critical or serious violations found
  */
 
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const process = require('process');
+
+function validateHttpUrl(value) {
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error('Target must be a valid URL');
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new Error('Target URL must use http or https');
+  }
+  return parsed.toString();
+}
 
 const GREEN = '\x1b[92m';
 const RED = '\x1b[91m';
@@ -66,7 +79,9 @@ if (!targetUrl && !reportFile) {
  * Run axe-core against the target page using Puppeteer.
  */
 async function runAxeScan(url) {
-  console.log(`Running axe-core scan against ${url}...`);
+  const safeUrl = validateHttpUrl(url);
+  const safeUrlLiteral = JSON.stringify(safeUrl);
+  console.log(`Running axe-core scan against ${safeUrl}...`);
   let result;
 
   try {
@@ -83,7 +98,7 @@ async function runAxeScan(url) {
         });
         const page = await browser.newPage();
         await page.setBypassCSP(true);
-        await page.goto('${url}', { waitUntil: 'networkidle0', timeout: 30000 });
+        await page.goto(${safeUrlLiteral}, { waitUntil: 'networkidle0', timeout: 30000 });
         const results = await new AxeBuilder({ page }).analyze();
         await browser.close();
         fs.writeFileSync('/tmp/axe-results.json', JSON.stringify(results, null, 2));
@@ -93,11 +108,11 @@ async function runAxeScan(url) {
 
     const tmpFile = '/tmp/axe-scan.js';
     fs.writeFileSync(tmpFile, script);
-    execSync(`cd /tmp && node axe-scan.js`, { stdio: 'pipe', timeout: 60000 });
+    execFileSync('node', ['axe-scan.js'], { cwd: '/tmp', stdio: 'pipe', timeout: 60000 });
     result = JSON.parse(fs.readFileSync('/tmp/axe-results.json', 'utf8'));
   } catch (e) {
     console.warn(YELLOW + '⚠ Puppeteer/axe-core not available, running simplified checks' + RESET);
-    result = runSimplifiedChecks(url);
+    result = runSimplifiedChecks(safeUrl);
   }
 
   return result;
@@ -107,17 +122,22 @@ async function runAxeScan(url) {
  * Run simplified HTML validation when axe-core is not available.
  */
 function runSimplifiedChecks(url) {
+  const safeUrl = validateHttpUrl(url);
   const violations = [];
 
   try {
-    const html = execSync(`curl -sL "${url}" 2>/dev/null || true`, { timeout: 15000 }).toString();
+    const html = execFileSync(
+      'curl',
+      ['--fail', '--silent', '--show-error', '--location', '--max-time', '15', '--', safeUrl],
+      { timeout: 15000 },
+    ).toString();
     if (!html) {
       violations.push({
         id: 'page-unreachable',
         impact: 'critical',
         tags: ['critical'],
-        description: `Could not fetch ${url}`,
-        nodes: [{ html: url }],
+        description: `Could not fetch ${safeUrl}`,
+        nodes: [{ html: safeUrl }],
       });
       return { violations, passes: [], incomplete: [] };
     }
@@ -361,7 +381,12 @@ async function main() {
   } else {
     results = await runAxeScan(targetUrl);
     try {
-      html = execSync(`curl -sL "${targetUrl}" 2>/dev/null || true`, { timeout: 15000 }).toString();
+      const safeTargetUrl = validateHttpUrl(targetUrl);
+      html = execFileSync(
+        'curl',
+        ['--fail', '--silent', '--show-error', '--location', '--max-time', '15', '--', safeTargetUrl],
+        { timeout: 15000 },
+      ).toString();
     } catch (e) { /* ignore */ }
   }
 

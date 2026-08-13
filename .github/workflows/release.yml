@@ -35,20 +35,24 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Validate semantic version
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [[ ! "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid version: ${{ github.event.inputs.version }}"
+          if [[ ! "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version: $RELEASE_VERSION"
             echo "Version must be a semantic version (e.g. 2.1.0)"
             exit 1
           fi
 
       - name: Check version not already tagged
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if git rev-parse "refs/tags/v${{ github.event.inputs.version }}" >/dev/null 2>&1; then
-            echo "Tag v${{ github.event.inputs.version }} already exists"
+          if git rev-parse "refs/tags/v$RELEASE_VERSION" >/dev/null 2>&1; then
+            echo "Tag v$RELEASE_VERSION already exists"
             exit 1
           fi
 
@@ -66,7 +70,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -76,8 +80,10 @@ jobs:
           git config user.email "releases@gulaplatform.com"
 
       - name: Update mobile version file
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$RELEASE_VERSION"
           cat > mobile/version.json << EOF
           {
             "version": "$VERSION",
@@ -90,16 +96,20 @@ jobs:
           EOF
 
       - name: Update Android version
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$RELEASE_VERSION"
           VERSION_CODE=$(echo $VERSION | awk -F. '{print $1*10000+$2*100+$3}')
           cd mobile/android
           sed -i "s/versionName = \".*\"/versionName = \"$VERSION\"/" app/build.gradle.kts
           sed -i "s/versionCode = [0-9]*/versionCode = $VERSION_CODE/" app/build.gradle.kts
 
       - name: Update iOS version
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$RELEASE_VERSION"
           VERSION_CODE=$(echo $VERSION | awk -F. '{print $1*10000+$2*100+$3}')
           cd mobile/ios
           sed -i "s/MARKETING_VERSION = [0-9.]*;/MARKETING_VERSION = $VERSION;/" Gula.xcodeproj/project.pbxproj 2>/dev/null || \
@@ -107,21 +117,27 @@ jobs:
           plutil -replace CFBundleVersion -string "$VERSION_CODE" Gula/Info.plist
 
       - name: Update backend config
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$RELEASE_VERSION"
           sed -i "s/APP_VERSION = \".*\"/APP_VERSION = \"$VERSION\"/" backend/app/config.py
 
       - name: Update Flutter desktop version
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
         run: |
-          VERSION="${{ github.event.inputs.version }}"
+          VERSION="$RELEASE_VERSION"
           cd mobile/desktop
           sed -i "s/^version: .*/version: $VERSION/" pubspec.yaml
 
       - name: Commit and tag version bump
+        env:
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
         run: |
           git add -A
-          git commit -m "chore(release): bump version to v${{ github.event.inputs.version }}"
-          git tag -a "v${{ github.event.inputs.version }}" -m "Release v${{ github.event.inputs.version }}"
+          git commit -m "chore(release): bump version to v$RELEASE_VERSION"
+          git tag -a "v$RELEASE_VERSION" -m "Release v$RELEASE_VERSION"
           git push origin HEAD --tags
 
   build-all:
@@ -130,7 +146,12 @@ jobs:
     uses: ./.github/workflows/mobile-android.yml
     with:
       build_type: release
-    secrets: inherit
+    secrets:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      PLAY_SERVICE_ACCOUNT_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_KEY }}
 
   build-ios:
     name: Build iOS
@@ -138,13 +159,24 @@ jobs:
     uses: ./.github/workflows/mobile-ios.yml
     with:
       build_type: release
-    secrets: inherit
+    secrets:
+      IOS_BUILD_CERTIFICATE_BASE64: ${{ secrets.IOS_BUILD_CERTIFICATE_BASE64 }}
+      IOS_P12_PASSWORD: ${{ secrets.IOS_P12_PASSWORD }}
+      IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+      IOS_KEYCHAIN_PASSWORD: ${{ secrets.IOS_KEYCHAIN_PASSWORD }}
+      APP_STORE_CONNECT_USERNAME: ${{ secrets.APP_STORE_CONNECT_USERNAME }}
+      APP_STORE_CONNECT_PASSWORD: ${{ secrets.APP_STORE_CONNECT_PASSWORD }}
+      APP_STORE_CONNECT_TEAM_ID: ${{ secrets.APP_STORE_CONNECT_TEAM_ID }}
 
   build-desktop:
     name: Build Desktop
     needs: [bump-version]
     uses: ./.github/workflows/mobile-flutter-desktop.yml
-    secrets: inherit
+    secrets:
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      MACOS_APP_PASSWORD: ${{ secrets.MACOS_APP_PASSWORD }}
+      MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
 
   generate-changelog:
     name: Generate Changelog
@@ -153,12 +185,12 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
 
       - name: Generate changelog
-        uses: orhun/git-cliff-action@v2
+        uses: orhun/git-cliff-action@b7913b664658dd091d9971658cb02a19047baa79
         with:
           config: cliff.toml
           args: --verbose --latest --strip header
@@ -166,7 +198,7 @@ jobs:
           OUTPUT: CHANGELOG.md
 
       - name: Upload changelog
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: release-changelog
           path: CHANGELOG.md
@@ -181,20 +213,20 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           path: release-artifacts/
 
       - name: Download changelog
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: release-changelog
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65
         with:
           tag_name: v${{ github.event.inputs.version }}
           name: GULA Platform v${{ github.event.inputs.version }}
@@ -221,16 +253,16 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Download Android AAB
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: gula-android-release-aab
           path: mobile/android/app/build/outputs/bundle/release/
 
       - name: Download iOS IPA
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: gula-ios-release
           path: mobile/ios/build/
@@ -271,7 +303,7 @@ jobs:
 
     steps:
       - name: Send Slack notification
-        uses: slackapi/slack-github-action@v2
+        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a
         with:
           payload: |
             {
@@ -297,7 +329,7 @@ jobs:
         continue-on-error: true
 
       - name: Send Telegram notification
-        uses: appleboy/telegram-action@1.1.0
+        uses: appleboy/telegram-action@221e6b684967abe813051ee4a37dd61770a83ad3
         with:
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}

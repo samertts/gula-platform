@@ -1286,6 +1286,12 @@ def _rule_label(rule: RuleResult) -> str:
         return f"[{_red('FAIL')}]"
 
 
+def _redact(text: str) -> str:
+    import re
+    text = re.sub(r"(?i)(key|secret|token|password|auth|bearer)\s*[:=]\s*['\"]?[a-zA-Z0-9_\-\.]{8,}['\"]?", r"\1=***REDACTED***", text)
+    return text
+
+
 def print_report(results: list[RuleResult], score: float, json_output: bool) -> None:
     if json_output:
         report = {
@@ -1295,7 +1301,7 @@ def print_report(results: list[RuleResult], score: float, json_output: bool) -> 
             "passed": score >= 100.0,
             "rules": results,
         }
-        print(json.dumps(report, indent=2, ensure_ascii=False))
+        print(_redact(json.dumps(report, indent=2, ensure_ascii=False)))
         return
 
     print()
@@ -1311,7 +1317,7 @@ def print_report(results: list[RuleResult], score: float, json_output: bool) -> 
         label = _rule_label(rule)
         print(f"  {label}  {_bold(rule['rule'])}: {rule['title']}")
         for detail in rule["details"]:
-            print(f"    {detail}")
+            print(f"    {_redact(detail)}")
         print()
 
     print(_bold("─" * 72))

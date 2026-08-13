@@ -63,18 +63,22 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       # ── Resolve image tag ─────────────────────────────────────────────────
       - name: Resolve image tag
         id: tag
+        env:
+          IMAGE_TAG_INPUT: ${{ github.event.inputs.image_tag }}
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_RUN_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          INPUT="${{ github.event.inputs.image_tag }}"
+          INPUT="$IMAGE_TAG_INPUT"
           if [ -n "$INPUT" ]; then
             TAG="$INPUT"
-          elif [ "${{ github.event_name }}" = "workflow_run" ]; then
+          elif [ "$EVENT_NAME" = "workflow_run" ]; then
             # Use the SHA from the triggering workflow run
-            TAG="${{ github.event.workflow_run.head_sha }}"
+            TAG="$WORKFLOW_RUN_HEAD_SHA"
             TAG="${TAG::7}"
           else
             TAG="${GITHUB_SHA::7}"
@@ -84,7 +88,7 @@ jobs:
 
       # ── Setup kubectl ─────────────────────────────────────────────────────
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede
         with:
           version: "v1.28.0"
 
@@ -100,14 +104,17 @@ jobs:
       # ── Determine active slot (blue/green) ───────────────────────────────
       - name: Determine active & target slots
         id: slots
+        env:
+          NAMESPACE: ${{ env.NAMESPACE }}
+          FORCE_SLOT: ${{ github.event.inputs.force_slot }}
         run: |
           # Read current active slot from service annotation
           ACTIVE=$(kubectl get svc gula-backend-active \
-            -n ${{ env.NAMESPACE }} \
+            -n "$NAMESPACE" \
             -o jsonpath='{.metadata.annotations.blue-green/active-slot}' \
             2>/dev/null || echo "blue")
 
-          FORCE="${{ github.event.inputs.force_slot }}"
+          FORCE="$FORCE_SLOT"
           if [ "$FORCE" = "blue" ] || [ "$FORCE" = "green" ]; then
             TARGET="$FORCE"
           elif [ "$ACTIVE" = "blue" ]; then
@@ -122,7 +129,7 @@ jobs:
 
       # ── Log in to GHCR ───────────────────────────────────────────────────
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -271,7 +278,7 @@ jobs:
     needs: blue-green-deploy
     steps:
       - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
+        uses: azure/setup-kubectl@776406bce94f63e41d621b960d78ee25c8b76ede
         with:
           version: "v1.28.0"
 
