@@ -8,7 +8,6 @@ exec gunicorn \
   -k uvicorn.workers.UvicornWorker \
   app.main:app \
   --workers 1 \
-  --preload \
   --log-level info \
   --capture-output \
   --timeout 60 \
