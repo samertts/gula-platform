@@ -55,8 +55,6 @@ updates:
     allow:
       - dependency-type: "production"
         update-types: ["version-update:semver-patch"]
-    # Vendor directory (if using pip --no-index)
-    vendor: false
 
   # ============================================================================
   # npm — Frontend v3 (React + Vite + TypeScript)
