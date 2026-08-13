@@ -129,9 +129,7 @@ jobs:
   deploy-vercel-preview:
     name: Deploy Preview to Vercel
     needs: [build]
-    # Vercel is connected to Git and deploys previews automatically. Enable this
-    # optional CLI path only after VERCEL_CI_ENABLED and VERCEL_TOKEN are set.
-    if: github.event_name == 'pull_request' && vars.VERCEL_CI_ENABLED == 'true'
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -174,9 +172,7 @@ jobs:
   deploy-vercel-production:
     name: Deploy Production to Vercel
     needs: [build]
-    # Production is deployed by Vercel's Git integration by default. This
-    # explicit CLI path is opt-in so a missing token cannot break CI.
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.VERCEL_CI_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
