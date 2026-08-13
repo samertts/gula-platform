@@ -5,7 +5,9 @@ import axios, {
 } from "axios";
 
 const LIVE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
-const DEMO_API_BASE_URL = (import.meta.env.VITE_DEMO_API_BASE_URL ?? "/demo-api").replace(/\/$/, "");
+// Demo is deliberately same-origin so a stale deployment variable cannot
+// redirect a public visitor to an unprovisioned or production API host.
+const DEMO_API_BASE_URL = "/demo-api";
 const API_MODE_STORAGE_KEY = "gula.api-mode";
 
 export type ApiMode = "live" | "demo";
