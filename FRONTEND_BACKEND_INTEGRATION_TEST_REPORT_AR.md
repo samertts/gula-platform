@@ -64,3 +64,7 @@
 ## النطاق الذي لم يُنفذ بعد
 
 لم يُنفذ تسجيل دخول حي بحساب مؤسسي حقيقي أو حساب اختبار Railway لأن ذلك يتطلب credential مخصصًا لم يُقدم كسر اختبار، ولم تُنفذ أي كتابة إلى PostgreSQL. لذلك ما زالت اختبارات RBAC عبر حسابات متعددة، tenant isolation على بيانات اختبار، workflow patient/order/sample/result، audit verification، idempotency، version conflict، rollback، performance load، وoffline reconciliation بحاجة إلى بيئة اختبار معزولة وحسابات اختبار.
+
+## إغلاق CI النهائي
+
+أُعيد تشغيل CI الذي أُلغي في المحاولة الأولى بسبب توقف عابر أثناء Backend Tests. في المحاولة الثانية اكتملت جميع jobs بنجاح، بما فيها Syntax Gate وLint وMigration Check وSecurity Scan وData Preservation Gate وBackend Tests. بذلك لا توجد نتيجة CI فاشلة غير معالجة مرتبطة بتنفيذ إصلاح navigation أو تقرير التكامل.
