@@ -68,3 +68,9 @@
 ## إغلاق CI النهائي
 
 أُعيد تشغيل CI الذي أُلغي في المحاولة الأولى بسبب توقف عابر أثناء Backend Tests. في المحاولة الثانية اكتملت جميع jobs بنجاح، بما فيها Syntax Gate وLint وMigration Check وSecurity Scan وData Preservation Gate وBackend Tests. بذلك لا توجد نتيجة CI فاشلة غير معالجة مرتبطة بتنفيذ إصلاح navigation أو تقرير التكامل.
+
+## إصلاح Security Hardening المكتشف أثناء التنفيذ
+
+ظهر فشل جديد على commit `eb285f31` في Python Dependency Audit لأن `backend/requirements-lock.txt` كان يثبت `cryptography==43.0.0` بينما `pyOpenSSL==26.4.0` يتطلب إصدارًا أحدث، ففشل resolver قبل بدء audit. تم تحديث pin إلى `cryptography==50.0.0`، وهو الإصدار المتوافق الموجود في `backend/uv.lock`، دون خفض أي إصدار أمني.
+
+التحقق المحلي بعد الإصلاح نجح: `uv pip install --system --dry-run -r backend/requirements-lock.txt` حلّ 72 حزمة دون تعارض، و`uvx --from pip-audit pip-audit -r backend/requirements-lock.txt --strict --progress-spinner off` أعاد `No known vulnerabilities found`. يحتاج هذا الإصلاح إلى commit وCI جديد قبل اعتباره مغلقًا نهائيًا.
