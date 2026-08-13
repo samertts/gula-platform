@@ -87,7 +87,10 @@ TELEGRAM_ADMIN_USER_ID = os.getenv("TELEGRAM_ADMIN_USER_ID", "").strip()
 TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
 
 # ─── Database ────────────────────────────────────────────────────────────────
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+# Railway may inject a database reference under a distinct application key.
+# Prefer that explicit key to avoid any collision with a provider-managed
+# DATABASE_URL variable, while retaining standard local/container support.
+DATABASE_URL = os.getenv("GULA_DATABASE_URL", "") or os.getenv("DATABASE_URL", "")
 if not DATABASE_URL:
     if IS_PRODUCTION:
         sys.exit(1)
