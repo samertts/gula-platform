@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-13T00:09:55.740Z",
+  "generatedAt": "2026-08-13T20:27:47.378Z",
   "generator": "scripts/contract-audit/extract-route-snapshots.mjs",
   "limitations": [
     "استخراج ثابت من ملفات الراوتر؛ لا يثبت تسجيل المسار في مصنع التطبيق أو سلوك الخدمة النهائي.",
@@ -710,6 +710,22 @@
           "inputModel": null,
           "inputLocation": "استعلام/مسار/لا يوجد جسم طلب معلن",
           "responseShape": "كائن JSON يتضمن items وtotal (وقد يتضمن skip وlimit)",
+          "requiresCurrentUser": true,
+          "tenantContextEvidence": "يمرر المستخدم إلى مساعد/خدمة؛ يلزم تتبع إضافي",
+          "tenantReference": true,
+          "explicitPermissionGuard": false,
+          "authorizationStatus": "محجوب: لا يظهر حارس هوية وصلاحية دقيقان معًا",
+          "tenancyStatus": "محجوب: لا يظهر عزل منشأة مباشر في دالة الموجه",
+          "negativeVerification": "دليل اختبار مُكتشف: backend/tests/test_radiology_tenant_isolation.py — رفض المورد عند اختلاف المختبر؛ لم يعتمد التنفيذ التشغيلي في هذه البيئة.",
+          "functionalEligibility": "ممنوع من الربط الوظيفي"
+        },
+        {
+          "method": "GET",
+          "path": "/radiology/clinical/orders",
+          "handler": "list_clinical_orders",
+          "inputModel": null,
+          "inputLocation": "استعلام/مسار/لا يوجد جسم طلب معلن",
+          "responseShape": "غير معلن في الموجه؛ يتطلب تتبع الخدمة",
           "requiresCurrentUser": true,
           "tenantContextEvidence": "يمرر المستخدم إلى مساعد/خدمة؛ يلزم تتبع إضافي",
           "tenantReference": true,
@@ -3101,6 +3117,22 @@
           "functionalEligibility": "ممنوع من الربط الوظيفي"
         },
         {
+          "method": "GET",
+          "path": "/nursing/clinical/my-tasks",
+          "handler": "list_clinical_my_tasks",
+          "inputModel": null,
+          "inputLocation": "استعلام/مسار/لا يوجد جسم طلب معلن",
+          "responseShape": "كائن ترقيم صفحات من _paginated_response",
+          "requiresCurrentUser": true,
+          "tenantContextEvidence": "مباشر في دالة الموجه",
+          "tenantReference": true,
+          "explicitPermissionGuard": false,
+          "authorizationStatus": "محجوب: لا يظهر حارس هوية وصلاحية دقيقان معًا",
+          "tenancyStatus": "دليل ثابت مباشر؛ لا يعد تحققًا تشغيليًا",
+          "negativeVerification": "محجوب: غير موجود: لم يعثر الجرد النصي على اختبار رفض/عزل موجّه للتمريض",
+          "functionalEligibility": "ممنوع من الربط الوظيفي"
+        },
+        {
           "method": "POST",
           "path": "/nursing/tasks",
           "handler": "create_task",
@@ -5395,6 +5427,31 @@
             "name": "db",
             "type": "Session",
             "default": "Depends(get_db),"
+          },
+          {
+            "name": "national_facility_id",
+            "type": "str,",
+            "default": null
+          },
+          {
+            "name": "note_id",
+            "type": "str,",
+            "default": null
+          },
+          {
+            "name": "current_user",
+            "type": "LabUser",
+            "default": "Depends(get_current_user),"
+          },
+          {
+            "name": "db",
+            "type": "Session",
+            "default": "Depends(get_db),"
+          },
+          {
+            "name": "try",
+            "type": "ClinicalEhrReadGate().authorize(",
+            "default": null
           },
           {
             "name": "note_id",
@@ -8788,6 +8845,22 @@
           "explicitPermissionGuard": false,
           "authorizationStatus": "محجوب: لا يظهر حارس هوية وصلاحية دقيقان معًا",
           "tenancyStatus": "دليل ثابت مباشر؛ لا يعد تحققًا تشغيليًا",
+          "negativeVerification": "محجوب: غير موجود: لم يعثر الجرد النصي على اختبار رفض/عزل موجّه لمسارات EHR",
+          "functionalEligibility": "ممنوع من الربط الوظيفي"
+        },
+        {
+          "method": "GET",
+          "path": "/ehr/clinical/facilities/{national_facility_id}/notes/{note_id}",
+          "handler": "get_clinical_note_for_verified_facility",
+          "inputModel": null,
+          "inputLocation": "استعلام/مسار/لا يوجد جسم طلب معلن",
+          "responseShape": "غير معلن في الموجه؛ يتطلب تتبع الخدمة",
+          "requiresCurrentUser": true,
+          "tenantContextEvidence": "يمرر المستخدم إلى مساعد/خدمة؛ يلزم تتبع إضافي",
+          "tenantReference": true,
+          "explicitPermissionGuard": false,
+          "authorizationStatus": "محجوب: لا يظهر حارس هوية وصلاحية دقيقان معًا",
+          "tenancyStatus": "محجوب: لا يظهر عزل منشأة مباشر في دالة الموجه",
           "negativeVerification": "محجوب: غير موجود: لم يعثر الجرد النصي على اختبار رفض/عزل موجّه لمسارات EHR",
           "functionalEligibility": "ممنوع من الربط الوظيفي"
         },
