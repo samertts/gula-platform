@@ -38,11 +38,11 @@ class SampleDao {
     ).get();
   }
 
-  Future<void> upsert(SampleCompanion sample) async {
+  Future<void> upsert(SamplesCompanion sample) async {
     await _db.into(_db.samples).insertOnConflictUpdate(sample);
   }
 
-  Future<void> upsertAll(List<SampleCompanion> samples) async {
+  Future<void> upsertAll(List<SamplesCompanion> samples) async {
     await _db.batch((batch) {
       for (final s in samples) {
         batch.insert(_db.samples, s, mode: InsertMode.insertOrReplace);
@@ -55,9 +55,12 @@ class SampleDao {
   }
 
   Future<int> count({String? status}) async {
-    final query = _db.select(_db.samples);
-    if (status != null) query.where((s) => s.status.equals(status));
-    return await query.count();
+    final countExpression = _db.samples.id.count();
+    final query = _db.selectOnly(_db.samples)..addColumns([countExpression]);
+    if (status != null) {
+      query.where(_db.samples.status.equals(status));
+    }
+    return (await query.getSingle()).read(countExpression) ?? 0;
   }
 
   Future<List<Sample>> getPendingSync() async {
@@ -69,6 +72,6 @@ class SampleDao {
   Future<void> markSynced(String id) async {
     await (_db.update(_db.samples)
       ..where((s) => s.id.equals(id))
-    ).write(const SampleCompanion(syncStatus: Value('synced')));
+    ).write(const SamplesCompanion(syncStatus: Value('synced')));
   }
 }

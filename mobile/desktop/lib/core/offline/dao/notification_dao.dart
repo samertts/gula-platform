@@ -29,11 +29,11 @@ class NotificationDao {
     return await query.getSingleOrNull();
   }
 
-  Future<void> upsert(NotificationCompanion notification) async {
+  Future<void> upsert(NotificationsCompanion notification) async {
     await _db.into(_db.notifications).insertOnConflictUpdate(notification);
   }
 
-  Future<void> upsertAll(List<NotificationCompanion> notifications) async {
+  Future<void> upsertAll(List<NotificationsCompanion> notifications) async {
     await _db.batch((batch) {
       for (final n in notifications) {
         batch.insert(_db.notifications, n, mode: InsertMode.insertOrReplace);
@@ -44,13 +44,13 @@ class NotificationDao {
   Future<int> markAsRead(String id) async {
     return await (_db.update(_db.notifications)
       ..where((n) => n.id.equals(id))
-    ).write(const NotificationCompanion(isRead: Value(1)));
+    ).write(const NotificationsCompanion(isRead: Value(1)));
   }
 
   Future<int> markAllAsRead() async {
     return await (_db.update(_db.notifications)
       ..where((n) => n.isRead.equals(0))
-    ).write(const NotificationCompanion(isRead: Value(1)));
+    ).write(const NotificationsCompanion(isRead: Value(1)));
   }
 
   Future<int> delete(String id) async {
@@ -62,13 +62,17 @@ class NotificationDao {
   }
 
   Future<int> getUnreadCount() async {
-    final query = _db.select(_db.notifications)
-      ..where((n) => n.isRead.equals(0));
-    return await query.count();
+    final countExpression = _db.notifications.id.count();
+    final query = _db.selectOnly(_db.notifications)
+      ..addColumns([countExpression])
+      ..where(_db.notifications.isRead.equals(0));
+    return (await query.getSingle()).read(countExpression) ?? 0;
   }
 
   Future<int> count() async {
-    return await _db.select(_db.notifications).count();
+    final countExpression = _db.notifications.id.count();
+    final query = _db.selectOnly(_db.notifications)..addColumns([countExpression]);
+    return (await query.getSingle()).read(countExpression) ?? 0;
   }
 
   Future<List<Notification>> getPendingSync() async {
@@ -80,6 +84,6 @@ class NotificationDao {
   Future<void> markSynced(String id) async {
     await (_db.update(_db.notifications)
       ..where((n) => n.id.equals(id))
-    ).write(const NotificationCompanion(syncStatus: Value('synced')));
+    ).write(const NotificationsCompanion(syncStatus: Value('synced')));
   }
 }
