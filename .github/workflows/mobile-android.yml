@@ -123,9 +123,6 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
 
-      - name: Run kover coverage
-        run: ./gradlew koverHtmlReportDebug
-
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -133,7 +130,6 @@ jobs:
           name: android-unit-test-results
           path: |
             mobile/android/app/build/reports/tests/
-            mobile/android/app/build/reports/kover/
           if-no-files-found: warn
           retention-days: 14
 
