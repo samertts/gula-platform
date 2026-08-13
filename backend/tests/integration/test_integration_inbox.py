@@ -107,3 +107,28 @@ def test_workforce_assignment_requires_versioned_payload(db):
                 payload={"subject_id": "subject-1"},
             ),
         )
+
+
+def test_frontend_sync_event_requires_object_payload_and_is_staged(db):
+    result = stage_event(
+        db,
+        envelope(
+            event_type="frontend.sync.requested",
+            entity_id="sync-1",
+            payload={"action_id": "sync-1", "action_type": "UPDATE_TASK", "payload": {"taskId": "task-1"}},
+        ),
+    )
+    row = db.query(IntegrationInboxEvent).one()
+    assert result.status == "staged"
+    assert row.status == "pending_review"
+
+
+def test_frontend_sync_event_rejects_scalar_payload(db):
+    with pytest.raises(ValueError, match="must be an object"):
+        stage_event(
+            db,
+            envelope(
+                event_type="frontend.sync.requested",
+                payload={"action_id": "sync-1", "action_type": "UPDATE_TASK", "payload": "unsafe"},
+            ),
+        )

@@ -16,6 +16,7 @@ SUPPORTED_EVENT_TYPES = {
     "identity.subject.mapped",
     "workforce.attendance.recorded",
     "workforce.assignment.changed",
+    "frontend.sync.requested",
 }
 
 
@@ -43,6 +44,10 @@ def _validate_payload(envelope: IntegrationEventEnvelope) -> None:
         required = {"event_id", "event_type"}
     elif envelope.event_type == "workforce.assignment.changed":
         required = {"assignment_id", "subject_id", "assignment_version", "change_type"}
+    elif envelope.event_type == "frontend.sync.requested":
+        required = {"action_id", "action_type", "payload"}
+        if not isinstance(payload.get("payload"), dict):
+            raise ValueError("frontend sync payload must be an object")
     else:
         raise ValueError(f"unsupported integration event type: {envelope.event_type}")
 
