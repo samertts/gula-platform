@@ -108,6 +108,7 @@ flutter:
 msix_config:
   display_name: GULA Platform
   publisher_display_name: GULA Platform
+  publisher: CN=GULA Platform
   identity_name: com.gulaplatform.desktop
   msix_version: 2.1.0.0
   logo_path: packaging/linux/gula_desktop.png

@@ -280,9 +280,13 @@ jobs:
 
       - name: Build rpm package
         run: |
-          mkdir -p ~/rpmbuild/SOURCES/
-          tar czf ~/rpmbuild/SOURCES/gula-platform.tar.gz build/linux/x64/release/bundle/
-          rpmbuild -ba packaging/gula-platform.spec
+          mkdir -p ~/rpmbuild/SOURCES/gula-platform-2.1.0
+          cp -a build/linux/x64/release/bundle/. ~/rpmbuild/SOURCES/gula-platform-2.1.0/
+          cp packaging/linux/gula_desktop.desktop ~/rpmbuild/SOURCES/
+          cp packaging/linux/gula_desktop.png ~/rpmbuild/SOURCES/
+          tar -C ~/rpmbuild/SOURCES -czf ~/rpmbuild/SOURCES/gula-platform-2.1.0.tar.gz gula-platform-2.1.0
+          rpmbuild -ba --define "_topdir $HOME/rpmbuild" packaging/gula-platform.spec
+          cp ~/rpmbuild/RPMS/x86_64/*.rpm .
 
       - name: Upload Linux AppImage
         uses: actions/upload-artifact@v4
