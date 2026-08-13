@@ -18,6 +18,7 @@ export interface DemoPersona {
   name: string;
   nameAr: string;
   descriptionAr: string;
+  descriptionEn: string;
   email: string;
 }
 
@@ -28,6 +29,7 @@ export const DEMO_PERSONAS: DemoPersona[] = [
     name: "Demo Doctor",
     nameAr: "طبيب تجريبي",
     descriptionAr: "استعراض المرضى والطلبات والنتائج الاصطناعية للقراءة.",
+    descriptionEn: "Read-only view of synthetic patients, orders, and results.",
     email: "demo.doctor@gula-demo.invalid",
   },
   {
@@ -36,6 +38,7 @@ export const DEMO_PERSONAS: DemoPersona[] = [
     name: "Demo Lab Technician",
     nameAr: "فني مختبر تجريبي",
     descriptionAr: "استعراض سير العمل المختبري والعينات والنتائج الاصطناعية.",
+    descriptionEn: "Synthetic laboratory workflow, samples, and results.",
     email: "demo.technician@gula-demo.invalid",
   },
   {
@@ -44,6 +47,7 @@ export const DEMO_PERSONAS: DemoPersona[] = [
     name: "Demo Lab Administrator",
     nameAr: "مدير مختبر تجريبي",
     descriptionAr: "استعراض لوحة المختبر والموظفين والتقارير دون عمليات كتابة.",
+    descriptionEn: "Read-only laboratory dashboard, staff, and reports.",
     email: "demo.lab-admin@gula-demo.invalid",
   },
   {
@@ -52,6 +56,7 @@ export const DEMO_PERSONAS: DemoPersona[] = [
     name: "Demo Citizen",
     nameAr: "مواطن تجريبي",
     descriptionAr: "استعراض مساحة المواطن ببيانات اصطناعية معزولة.",
+    descriptionEn: "Explore the citizen workspace with isolated synthetic data.",
     email: "demo.citizen@gula-demo.invalid",
   },
 ];

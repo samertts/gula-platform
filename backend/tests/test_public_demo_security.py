@@ -43,6 +43,25 @@ def test_public_demo_exposes_safe_personas():
     assert "DEMO_MODE" in inspect.getsource(demo_module._demo_unavailable)
 
 
+def test_demo_access_creates_each_persona_in_isolated_lab(client, db, monkeypatch):
+    monkeypatch.setattr(demo_module, "DEMO_MODE", True)
+    monkeypatch.setattr(demo_module, "IS_PRODUCTION", False)
+    monkeypatch.setattr(demo_module, "rate_limit_auth", lambda _request: None)
+
+    for persona_id, expected_role in (("doctor", "doctor"), ("technician", "technician"), ("lab_admin", "lab_admin"), ("citizen", "citizen")):
+        response = client.post(f"/demo/access?persona={persona_id}")
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["demo_mode"] is True
+        assert body["demo_persona"] == persona_id
+        assert body["user"]["role"] == expected_role
+        assert body["user"]["lab_name"] == "GULA Synthetic Demo Lab"
+
+    users = db.query(demo_module.LabUser).filter(demo_module.LabUser.email.like("demo.%@gula-demo.iq")).all()
+    assert {user.role for user in users} == {"doctor", "technician", "lab_admin", "citizen"}
+    assert len({user.email for user in users}) == 4
+
+
 def test_demo_read_only_blocks_mutations(monkeypatch):
     monkeypatch.setattr(middleware_module, "DEMO_MODE", True)
     middleware = DemoReadOnlyMiddleware(lambda _scope: None)

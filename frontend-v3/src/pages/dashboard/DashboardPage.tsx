@@ -12,6 +12,13 @@ const statCards = [
   { label: "التنبيهات الحرجة", key: "critical_alerts", icon: AlertTriangle, color: "from-rose-500 to-orange-500", surface: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200" },
 ] as const;
 
+const DEMO_ROLE_SUMMARIES: Record<string, { label: string; summary: string }> = {
+  doctor: { label: "طبيب تجريبي", summary: "قراءة المرضى والطلبات والنتائج الاصطناعية ضمن نطاق العرض." },
+  technician: { label: "فني مختبر تجريبي", summary: "استعراض مسار العينات والنتائج المختبرية الاصطناعية." },
+  lab_admin: { label: "مدير مختبر تجريبي", summary: "استعراض مؤشرات المختبر والموظفين والتقارير دون عمليات كتابة." },
+  citizen: { label: "مواطن تجريبي", summary: "استعراض مساحة المواطن ببيانات اصطناعية ومعزولة بالكامل." },
+};
+
 const quickLinks = [
   { label: "المرضى", description: "الوصول إلى السجلات المصرح بها", path: "/patients", icon: Users },
   { label: "الطلبات", description: "متابعة مسار الطلبات والعينات", path: "/orders", icon: ClipboardList },
@@ -21,6 +28,7 @@ const quickLinks = [
 
 export function DashboardPage() {
   const { demoMode, user } = useAuth();
+  const demoRole = DEMO_ROLE_SUMMARIES[user?.role ?? ""] ?? DEMO_ROLE_SUMMARIES.doctor;
   const { data, isLoading, isError } = useQuery<Record<string, unknown>>({
     queryKey: ["dashboard", demoMode ? "demo" : "institution"],
     queryFn: async () => {
@@ -45,6 +53,7 @@ export function DashboardPage() {
               )}
             </div>
             <p className="text-sm text-cyan-200">صباح الخير{user?.name ? `، ${user.name}` : ""}</p>
+            {demoMode && <div className="mt-3 inline-flex max-w-xl flex-wrap items-center gap-2 rounded-xl border border-amber-200/20 bg-amber-200/10 px-3 py-2 text-xs text-amber-100"><ShieldCheck className="h-3.5 w-3.5" /><strong>{demoRole.label}</strong><span className="text-amber-100/70">— {demoRole.summary}</span></div>}
             <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">مركز العمليات الصحية</h1>
             <p className="mt-3 max-w-xl text-sm leading-7 text-slate-300">نظرة موحّدة على سير العمل، مؤشرات الأداء، والتنبيهات ذات الأولوية ضمن مساحة العمل الحالية.</p>
           </div>

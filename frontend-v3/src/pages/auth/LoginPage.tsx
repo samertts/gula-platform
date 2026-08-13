@@ -234,7 +234,7 @@ export function LoginPage() {
               </div>
               <label className="mt-4 block text-xs font-semibold text-amber-950 dark:text-amber-100" htmlFor="demo-persona">اختر دور العرض التجريبي</label>
               <select id="demo-persona" value={demoPersona} onChange={(event) => setDemoPersona(event.target.value as DemoPersonaId)} className="mt-2 h-11 w-full rounded-xl border border-amber-500/25 bg-white px-3 text-sm text-amber-950 outline-none transition focus:border-amber-500/60 focus:ring-2 focus:ring-amber-500/20 dark:bg-slate-950/40 dark:text-amber-100" disabled={demoLoading || loading}>
-                {DEMO_PERSONAS.map((persona) => <option key={persona.id} value={persona.id}>{persona.nameAr} — {persona.descriptionAr}</option>)}
+                {DEMO_PERSONAS.map((persona) => <option key={persona.id} value={persona.id}>{locale === "ar" ? persona.nameAr : persona.name} — {locale === "ar" ? persona.descriptionAr : persona.descriptionEn}</option>)}
               </select>
               <button type="button" className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-500/25 bg-white px-4 py-2.5 text-sm font-bold text-amber-900 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-500/45 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-950/40 dark:text-amber-100" onClick={handleDemo} disabled={demoLoading || loading}>
                 <ShieldCheck className="h-4 w-4" /> {demoLoading ? t("loginPage.demoLoading") : t("loginPage.startDemo")}
