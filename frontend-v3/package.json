@@ -12,7 +12,10 @@
     "test": "vitest run --passWithNoTests --exclude 'e2e/**'",
     "verify:unification": "node scripts/verify-frontend-unification.mjs",
     "verify:contracts": "node scripts/verify-contract-governance.mjs",
-    "check": "pnpm typecheck && pnpm test && pnpm verify:unification && pnpm verify:contracts && pnpm build",
+    "verify:integration-boundary": "node scripts/verify-integration-boundary.mjs",
+    "generate:route-gate": "node ../scripts/contract-audit/generate-frontend-page-map.mjs",
+    "verify:audit-artifacts": "node ../scripts/contract-audit/verify-audit-artifacts.mjs",
+    "check": "pnpm typecheck && pnpm test && pnpm verify:unification && pnpm verify:contracts && pnpm verify:integration-boundary && pnpm generate:route-gate && pnpm verify:audit-artifacts && pnpm build",
     "test:watch": "vitest --passWithNoTests --exclude 'e2e/**'",
     "test:e2e": "playwright test"
   },
