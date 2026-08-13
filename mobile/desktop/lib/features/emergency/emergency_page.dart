@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 import '../../widgets/core/gula_card.dart';
 import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_badge.dart';
@@ -16,13 +15,28 @@ class EmergencyPage extends StatefulWidget {
 }
 
 class _EmergencyPageState extends State<EmergencyPage> {
-  final _patients = List.generate(5, (i) => {
-    'name': ['Ahmed Ali', 'Emergency Case 2', 'Trauma Patient', 'Cardiac Arrest', 'Accident Victim'][i],
-    'priority': ['critical', 'high', 'high', 'critical', 'medium'][i],
-    'condition': ['Chest Pain', 'Severe Bleeding', 'Head Trauma', 'Cardiac Arrest', 'Fracture'][i],
-    'time': DateTime.now().subtract(Duration(minutes: i * 10)),
-    'vitals': {'bp': '140/90', 'hr': '110', 'o2': '94%', 'temp': '37.2°C'},
-  });
+  final _patients = List.generate(
+    5,
+    (i) => {
+      'name': [
+        'Ahmed Ali',
+        'Emergency Case 2',
+        'Trauma Patient',
+        'Cardiac Arrest',
+        'Accident Victim',
+      ][i],
+      'priority': ['critical', 'high', 'high', 'critical', 'medium'][i],
+      'condition': [
+        'Chest Pain',
+        'Severe Bleeding',
+        'Head Trauma',
+        'Cardiac Arrest',
+        'Fracture',
+      ][i],
+      'time': DateTime.now().subtract(Duration(minutes: i * 10)),
+      'vitals': {'bp': '140/90', 'hr': '110', 'o2': '94%', 'temp': '37.2°C'},
+    },
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -32,9 +46,17 @@ class _EmergencyPageState extends State<EmergencyPage> {
         children: [
           Row(
             children: [
-              const Expanded(child: SectionHeader(title: 'Emergency Department', subtitle: '${_patients.length} active patients')),
+              Expanded(
+                child: SectionHeader(
+                  title: 'Emergency Department',
+                  subtitle: '${_patients.length} active patients',
+                ),
+              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.error50,
                   borderRadius: BorderRadius.circular(8),
@@ -45,7 +67,13 @@ class _EmergencyPageState extends State<EmergencyPage> {
                   children: [
                     Icon(Icons.warning, color: AppColors.error500, size: 20),
                     SizedBox(width: 8),
-                    Text('2 Critical', style: TextStyle(color: AppColors.error500, fontWeight: FontWeight.w600)),
+                    Text(
+                      '2 Critical',
+                      style: TextStyle(
+                        color: AppColors.error500,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -57,6 +85,7 @@ class _EmergencyPageState extends State<EmergencyPage> {
               itemCount: _patients.length,
               itemBuilder: (context, index) {
                 final p = _patients[index];
+                final vitals = p['vitals'] as Map<String, String>;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: GulaCard(
@@ -68,8 +97,10 @@ class _EmergencyPageState extends State<EmergencyPage> {
                             width: 8,
                             height: 80,
                             decoration: BoxDecoration(
-                              color: p['priority'] == 'critical' ? AppColors.critical
-                                  : p['priority'] == 'high' ? AppColors.urgent
+                              color: p['priority'] == 'critical'
+                                  ? AppColors.critical
+                                  : p['priority'] == 'high'
+                                  ? AppColors.urgent
                                   : AppColors.warning500,
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -81,28 +112,44 @@ class _EmergencyPageState extends State<EmergencyPage> {
                               children: [
                                 Row(
                                   children: [
-                                    Text(p['name'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                                    Text(
+                                      p['name']?.toString() ?? '',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16,
+                                      ),
+                                    ),
                                     const SizedBox(width: 8),
                                     GulaBadge(
-                                      label: p['priority'].toString().toUpperCase(),
-                                      status: p['priority'] == 'critical' ? GulaBadgeStatus.critical
-                                          : p['priority'] == 'high' ? GulaBadgeStatus.urgent
+                                      label: p['priority']
+                                          .toString()
+                                          .toUpperCase(),
+                                      status: p['priority'] == 'critical'
+                                          ? GulaBadgeStatus.critical
+                                          : p['priority'] == 'high'
+                                          ? GulaBadgeStatus.urgent
                                           : GulaBadgeStatus.warning,
                                     ),
                                   ],
                                 ),
                                 const SizedBox(height: 8),
-                                Text(p['condition'], style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                                Text(
+                                  p['condition']?.toString() ?? '',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
-                                    _vitalChip('BP', p['vitals']['bp']),
+                                    _vitalChip('BP', vitals['bp'] ?? ''),
                                     const SizedBox(width: 8),
-                                    _vitalChip('HR', p['vitals']['hr']),
+                                    _vitalChip('HR', vitals['hr'] ?? ''),
                                     const SizedBox(width: 8),
-                                    _vitalChip('O2', p['vitals']['o2']),
+                                    _vitalChip('O2', vitals['o2'] ?? ''),
                                     const SizedBox(width: 8),
-                                    _vitalChip('Temp', p['vitals']['temp']),
+                                    _vitalChip('Temp', vitals['temp'] ?? ''),
                                   ],
                                 ),
                               ],
@@ -111,9 +158,18 @@ class _EmergencyPageState extends State<EmergencyPage> {
                           Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              GulaButton(label: 'Assess', height: 36, onPressed: () {}),
+                              GulaButton(
+                                label: 'Assess',
+                                height: 36,
+                                onPressed: () {},
+                              ),
                               const SizedBox(height: 8),
-                              GulaButton(label: 'Orders', variant: GulaButtonVariant.outline, height: 36, onPressed: () {}),
+                              GulaButton(
+                                label: 'Orders',
+                                variant: GulaButtonVariant.outline,
+                                height: 36,
+                                onPressed: () {},
+                              ),
                             ],
                           ),
                         ],
@@ -136,7 +192,10 @@ class _EmergencyPageState extends State<EmergencyPage> {
         color: AppColors.neutral50,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text('$label: $value', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+      child: Text(
+        '$label: $value',
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+      ),
     );
   }
 }

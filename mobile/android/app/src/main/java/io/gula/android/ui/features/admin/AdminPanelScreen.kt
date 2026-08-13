@@ -22,8 +22,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import io.gula.android.data.remote.api.GulaApi
-import io.gula.android.data.remote.dto.LabResponseDto
-import io.gula.android.data.remote.dto.LabUserResponseDto
+import io.gula.android.data.remote.api.LabResponseDto
+import io.gula.android.data.remote.api.LabUserResponseDto
 
 data class AdminUiState(
     val isLoading: Boolean = false,

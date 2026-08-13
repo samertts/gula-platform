@@ -48,21 +48,24 @@ class LineChartWidget extends StatelessWidget {
               maxY: (maxY * 1.2).ceilToDouble(),
               lineBarsData: [
                 LineChartBarData(
-                  spots: data.asMap().entries.map((e) =>
-                    FlSpot(e.key.toDouble(), e.value.y)
-                  ).toList(),
+                  spots: data
+                      .asMap()
+                      .entries
+                      .map((e) => FlSpot(e.key.toDouble(), e.value.y))
+                      .toList(),
                   isCurved: isCurved,
                   color: lineColor ?? AppColors.primary500,
                   barWidth: 2.5,
                   isStrokeCapRound: true,
                   dotData: FlDotData(
                     show: showDots,
-                    getDotPainter: (spot, percent, bar, index) => FlDotCirclePainter(
-                      radius: 4,
-                      color: lineColor ?? AppColors.primary500,
-                      strokeWidth: 2,
-                      strokeColor: Colors.white,
-                    ),
+                    getDotPainter: (spot, percent, bar, index) =>
+                        FlDotCirclePainter(
+                          radius: 4,
+                          color: lineColor ?? AppColors.primary500,
+                          strokeWidth: 2,
+                          strokeColor: Colors.white,
+                        ),
                   ),
                   belowBarData: BarAreaData(
                     show: true,
@@ -75,7 +78,10 @@ class LineChartWidget extends StatelessWidget {
                 bottomTitles: AxisTitles(
                   sideTitles: SideTitles(
                     showTitles: true,
-                    interval: (data.length / 6).ceilToDouble().clamp(1, double.infinity),
+                    interval: (data.length / 6).ceilToDouble().clamp(
+                      1,
+                      double.infinity,
+                    ),
                     getTitlesWidget: (value, meta) {
                       final index = value.toInt();
                       if (index >= 0 && index < data.length) {
@@ -83,7 +89,10 @@ class LineChartWidget extends StatelessWidget {
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
                             data[index].label,
-                            style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         );
                       }
@@ -97,17 +106,27 @@ class LineChartWidget extends StatelessWidget {
                     reservedSize: 40,
                     getTitlesWidget: (value, meta) => Text(
                       value.toInt().toString(),
-                      style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
               ),
               gridData: FlGridData(
                 show: true,
                 drawVerticalLine: false,
-                horizontalInterval: (maxY / 4).ceilToDouble().clamp(1, double.infinity),
+                horizontalInterval: (maxY / 4).ceilToDouble().clamp(
+                  1,
+                  double.infinity,
+                ),
               ),
               borderData: FlBorderData(show: false),
               lineTouchData: LineTouchData(
@@ -115,7 +134,9 @@ class LineChartWidget extends StatelessWidget {
                 touchTooltipData: LineTouchTooltipData(
                   getTooltipItems: (touchedSpots) => touchedSpots.map((spot) {
                     final index = spot.x.toInt();
-                    final label = index >= 0 && index < data.length ? data[index].label : '';
+                    final label = index >= 0 && index < data.length
+                        ? data[index].label
+                        : '';
                     return LineTooltipItem(
                       '$label\n${spot.y.toStringAsFixed(1)}',
                       const TextStyle(color: Colors.white, fontSize: 12),

@@ -49,7 +49,7 @@ fun SampleDetailScreen(
                     GulaCard {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Barcode, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                                Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                                 Spacer(Modifier.width(12.dp))
                                 Column {
                                     Text(sample.barcode, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)

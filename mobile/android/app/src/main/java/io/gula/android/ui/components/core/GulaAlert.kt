@@ -83,6 +83,7 @@ enum class AlertType {
         INFO -> Icons.Default.Info
     }
 
+    @Composable
     fun colors(): Pair<Color, Color> = when (this) {
         SUCCESS -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onSurface
         ERROR -> MaterialTheme.colorScheme.error to MaterialTheme.colorScheme.onSurface
@@ -90,6 +91,7 @@ enum class AlertType {
         INFO -> MaterialTheme.colorScheme.secondary to MaterialTheme.colorScheme.onSurface
     }
 
+    @Composable
     fun backgroundColor(): Color = when (this) {
         SUCCESS -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
         ERROR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)

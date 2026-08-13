@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureConfig {
@@ -18,32 +20,42 @@ class SecureConfig {
   static const _keyLastSync = 'last_sync_timestamp';
   static const _keyEncryptionKey = 'encryption_key';
 
-  static AndroidOptions _androidOptions() => const AndroidOptions(
-        encryptedSharedPreferences: true,
-        accessibility: KeychainAccessibility.passcode,
-      );
+  static AndroidOptions _androidOptions() =>
+      const AndroidOptions(encryptedSharedPreferences: true);
 
-  static IOSOptions _iosOptions() => const IOSOptions(
-        accessibility: KeychainAccessibility.passcode,
-        authenticationType: BiometricType.biometricAny,
-      );
-
-  static const _defaultOptions = _DefaultOptions();
+  static IOSOptions _iosOptions() =>
+      const IOSOptions(accessibility: KeychainAccessibility.passcode);
 
   static Future<void> write(String key, String value) async {
-    await _storage.write(key: key, value: value, aOptions: _androidOptions(), iOptions: _iosOptions());
+    await _storage.write(
+      key: key,
+      value: value,
+      aOptions: _androidOptions(),
+      iOptions: _iosOptions(),
+    );
   }
 
   static Future<String?> read(String key) async {
-    return await _storage.read(key: key, aOptions: _androidOptions(), iOptions: _iosOptions());
+    return await _storage.read(
+      key: key,
+      aOptions: _androidOptions(),
+      iOptions: _iosOptions(),
+    );
   }
 
   static Future<void> delete(String key) async {
-    await _storage.delete(key: key, aOptions: _androidOptions(), iOptions: _iosOptions());
+    await _storage.delete(
+      key: key,
+      aOptions: _androidOptions(),
+      iOptions: _iosOptions(),
+    );
   }
 
   static Future<void> clear() async {
-    await _storage.deleteAll(aOptions: _androidOptions(), iOptions: _iosOptions());
+    await _storage.deleteAll(
+      aOptions: _androidOptions(),
+      iOptions: _iosOptions(),
+    );
   }
 
   static Future<void> setApiUrl(String url) => write(_keyApiUrl, url);
@@ -52,7 +64,8 @@ class SecureConfig {
   static Future<void> setToken(String token) => write(_keyToken, token);
   static Future<String?> getToken() => read(_keyToken);
 
-  static Future<void> setRefreshToken(String token) => write(_keyRefreshToken, token);
+  static Future<void> setRefreshToken(String token) =>
+      write(_keyRefreshToken, token);
   static Future<String?> getRefreshToken() => read(_keyRefreshToken);
 
   static Future<void> setUserId(String id) => write(_keyUserId, id);
@@ -80,7 +93,8 @@ class SecureConfig {
   static Future<void> setDeviceId(String id) => write(_keyDeviceId, id);
   static Future<String?> getDeviceId() => read(_keyDeviceId);
 
-  static Future<void> setLastSync(String timestamp) => write(_keyLastSync, timestamp);
+  static Future<void> setLastSync(String timestamp) =>
+      write(_keyLastSync, timestamp);
   static Future<String?> getLastSync() => read(_keyLastSync);
 
   static Future<String> getOrCreateEncryptionKey() async {
@@ -92,15 +106,8 @@ class SecureConfig {
   }
 
   static String _generateKey() {
-    final bytes = List<int>.generate(32, (_) => DateTime.now().microsecondsSinceEpoch % 256);
+    final random = Random.secure();
+    final bytes = List<int>.generate(32, (_) => random.nextInt(256));
     return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
   }
-}
-
-class _DefaultOptions extends IOSOptions {
-  const _DefaultOptions()
-      : super(
-          accessibility: KeychainAccessibility.passcode,
-          authenticationType: BiometricType.biometricAny,
-        );
 }

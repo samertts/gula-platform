@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=GULA Platform
+Comment=Medical Laboratory Information Management System
+Exec=gula_desktop
+Icon=gula_desktop
+Terminal=false
+Categories=Office;Science;MedicalSoftware;
+StartupWMClass=gula_desktop

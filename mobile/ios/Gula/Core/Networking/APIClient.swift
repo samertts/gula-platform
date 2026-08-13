@@ -11,7 +11,7 @@ actor APIClient {
     private let monitor = NWPathMonitor()
 
     private var baseURL: String {
-        UserDefaults.standard.string(forKey: "api_base_url") ?? "https://api.gula.iq"
+        UserDefaults.standard.string(forKey: "api_base_url") ?? "https://api.gula-platform.org/api/v1"
     }
 
     private var accessToken: String? {
@@ -252,6 +252,11 @@ actor APIClient {
     func clearTokens() {
         KeychainManager.shared.delete(key: "access_token")
         KeychainManager.shared.delete(key: "refresh_token")
+    }
+
+    /// Refresh through the same pinned URLSession used by every API request.
+    func refreshTokenForMiddleware(_ refreshToken: String) async throws -> String {
+        try await refreshAccessToken(refreshToken: refreshToken)
     }
 
     func registerDeviceToken(token: String, platform: String) async throws {

@@ -17,14 +17,34 @@ class GulaDrawer extends StatelessWidget {
   });
 
   static const List<Map<String, dynamic>> _menuItems = [
-    {'label': 'Dashboard', 'route': '/dashboard', 'icon': Icons.dashboard_outlined},
+    {
+      'label': 'Dashboard',
+      'route': '/dashboard',
+      'icon': Icons.dashboard_outlined,
+    },
     {'label': 'Patients', 'route': '/patients', 'icon': Icons.people_outline},
     {'label': 'Orders', 'route': '/orders', 'icon': Icons.assignment_outlined},
     {'label': 'Samples', 'route': '/samples', 'icon': Icons.science_outlined},
-    {'label': 'Results', 'route': '/results', 'icon': Icons.description_outlined},
-    {'label': 'Reports', 'route': '/reports', 'icon': Icons.assessment_outlined},
-    {'label': 'Notifications', 'route': '/notifications', 'icon': Icons.notifications_outlined},
-    {'label': 'Settings', 'route': '/settings', 'icon': Icons.settings_outlined},
+    {
+      'label': 'Results',
+      'route': '/results',
+      'icon': Icons.description_outlined,
+    },
+    {
+      'label': 'Reports',
+      'route': '/reports',
+      'icon': Icons.assessment_outlined,
+    },
+    {
+      'label': 'Notifications',
+      'route': '/notifications',
+      'icon': Icons.notifications_outlined,
+    },
+    {
+      'label': 'Settings',
+      'route': '/settings',
+      'icon': Icons.settings_outlined,
+    },
   ];
 
   @override
@@ -36,7 +56,9 @@ class GulaDrawer extends StatelessWidget {
           Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
-              children: _menuItems.map((item) => _buildMenuItem(context, item)).toList(),
+              children: _menuItems
+                  .map((item) => _buildMenuItem(context, item))
+                  .toList(),
             ),
           ),
           const Divider(height: 1),
@@ -61,7 +83,11 @@ class GulaDrawer extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             userName,
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           Text(
             userEmail,

@@ -37,8 +37,10 @@ class GulaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final effectiveRadius = borderRadius ?? AppDimensions.radiusLg;
-    final effectiveMargin = margin ?? const EdgeInsets.all(AppDimensions.space2);
-    final effectivePadding = padding ?? const EdgeInsets.all(AppDimensions.space4);
+    final effectiveMargin =
+        margin ?? const EdgeInsets.all(AppDimensions.space2);
+    final effectivePadding =
+        padding ?? const EdgeInsets.all(AppDimensions.space4);
 
     switch (variant) {
       case GulaCardVariant.elevated:
@@ -53,10 +55,7 @@ class GulaCard extends StatelessWidget {
           child: InkWell(
             onTap: onTap,
             onLongPress: onLongPress,
-            child: Padding(
-              padding: effectivePadding,
-              child: child,
-            ),
+            child: Padding(padding: effectivePadding, child: child),
           ),
         );
       case GulaCardVariant.outlined:
@@ -65,20 +64,14 @@ class GulaCard extends StatelessWidget {
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(effectiveRadius),
-            side: BorderSide(
-              color: borderColor ?? AppColors.border,
-              width: 1,
-            ),
+            side: BorderSide(color: borderColor ?? AppColors.border, width: 1),
           ),
           color: color ?? theme.cardColor,
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: onTap,
             onLongPress: onLongPress,
-            child: Padding(
-              padding: effectivePadding,
-              child: child,
-            ),
+            child: Padding(padding: effectivePadding, child: child),
           ),
         );
       case GulaCardVariant.filled:
@@ -87,9 +80,7 @@ class GulaCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: color ?? AppColors.neutral50,
             borderRadius: BorderRadius.circular(effectiveRadius),
-            border: Border.all(
-              color: borderColor ?? AppColors.neutral100,
-            ),
+            border: Border.all(color: borderColor ?? AppColors.neutral100),
           ),
           child: Material(
             color: Colors.transparent,
@@ -97,10 +88,7 @@ class GulaCard extends StatelessWidget {
               onTap: onTap,
               onLongPress: onLongPress,
               borderRadius: BorderRadius.circular(effectiveRadius),
-              child: Padding(
-                padding: effectivePadding,
-                child: child,
-              ),
+              child: Padding(padding: effectivePadding, child: child),
             ),
           ),
         );

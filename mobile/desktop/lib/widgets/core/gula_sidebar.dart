@@ -11,7 +11,7 @@ class SidebarItem {
   final List<String>? roles;
   final List<SidebarItem>? children;
 
-  SidebarItem({
+  const SidebarItem({
     required this.label,
     required this.route,
     required this.icon,
@@ -37,20 +37,76 @@ class GulaSidebar extends StatelessWidget {
   });
 
   static const List<SidebarItem> _items = [
-    SidebarItem(label: 'Dashboard', route: '/dashboard', icon: Icons.dashboard_outlined),
-    SidebarItem(label: 'Patients', route: '/patients', icon: Icons.people_outline),
-    SidebarItem(label: 'Orders', route: '/orders', icon: Icons.assignment_outlined),
-    SidebarItem(label: 'Samples', route: '/samples', icon: Icons.science_outlined),
-    SidebarItem(label: 'Results', route: '/results', icon: Icons.description_outlined),
-    SidebarItem(label: 'Reports', route: '/reports', icon: Icons.assessment_outlined),
-    SidebarItem(label: 'Notifications', route: '/notifications', icon: Icons.notifications_outlined),
-    SidebarItem(label: 'Inventory', route: '/inventory', icon: Icons.inventory_2_outlined),
-    SidebarItem(label: 'Billing', route: '/billing', icon: Icons.payments_outlined),
-    SidebarItem(label: 'Pharmacy', route: '/pharmacy', icon: Icons.medical_services_outlined),
-    SidebarItem(label: 'Radiology', route: '/radiology', icon: Icons.radiology_outlined),
-    SidebarItem(label: 'Blood Bank', route: '/bloodbank', icon: Icons.bloodtype_outlined),
-    SidebarItem(label: 'Emergency', route: '/emergency', icon: Icons.local_hospital_outlined),
-    SidebarItem(label: 'Settings', route: '/settings', icon: Icons.settings_outlined),
+    SidebarItem(
+      label: 'Dashboard',
+      route: '/dashboard',
+      icon: Icons.dashboard_outlined,
+    ),
+    SidebarItem(
+      label: 'Patients',
+      route: '/patients',
+      icon: Icons.people_outline,
+    ),
+    SidebarItem(
+      label: 'Orders',
+      route: '/orders',
+      icon: Icons.assignment_outlined,
+    ),
+    SidebarItem(
+      label: 'Samples',
+      route: '/samples',
+      icon: Icons.science_outlined,
+    ),
+    SidebarItem(
+      label: 'Results',
+      route: '/results',
+      icon: Icons.description_outlined,
+    ),
+    SidebarItem(
+      label: 'Reports',
+      route: '/reports',
+      icon: Icons.assessment_outlined,
+    ),
+    SidebarItem(
+      label: 'Notifications',
+      route: '/notifications',
+      icon: Icons.notifications_outlined,
+    ),
+    SidebarItem(
+      label: 'Inventory',
+      route: '/inventory',
+      icon: Icons.inventory_2_outlined,
+    ),
+    SidebarItem(
+      label: 'Billing',
+      route: '/billing',
+      icon: Icons.payments_outlined,
+    ),
+    SidebarItem(
+      label: 'Pharmacy',
+      route: '/pharmacy',
+      icon: Icons.medical_services_outlined,
+    ),
+    SidebarItem(
+      label: 'Radiology',
+      route: '/radiology',
+      icon: Icons.science_outlined,
+    ),
+    SidebarItem(
+      label: 'Blood Bank',
+      route: '/bloodbank',
+      icon: Icons.bloodtype_outlined,
+    ),
+    SidebarItem(
+      label: 'Emergency',
+      route: '/emergency',
+      icon: Icons.local_hospital_outlined,
+    ),
+    SidebarItem(
+      label: 'Settings',
+      route: '/settings',
+      icon: Icons.settings_outlined,
+    ),
   ];
 
   @override
@@ -64,9 +120,7 @@ class GulaSidebar extends StatelessWidget {
       width: width,
       decoration: BoxDecoration(
         color: AppColors.neutral900,
-        border: Border(
-          right: BorderSide(color: AppColors.neutral800),
-        ),
+        border: Border(right: BorderSide(color: AppColors.neutral800)),
       ),
       child: Column(
         children: [
@@ -75,7 +129,9 @@ class GulaSidebar extends StatelessWidget {
           Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
-              children: _items.map((item) => _buildMenuItem(context, item)).toList(),
+              children: _items
+                  .map((item) => _buildMenuItem(context, item))
+                  .toList(),
             ),
           ),
           const Divider(color: AppColors.neutral800, height: 1),

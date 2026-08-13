@@ -7,11 +7,7 @@ class CriticalValueFlag extends StatelessWidget {
   final String flag;
   final double? size;
 
-  const CriticalValueFlag({
-    super.key,
-    required this.flag,
-    this.size,
-  });
+  const CriticalValueFlag({super.key, required this.flag, this.size});
 
   @override
   Widget build(BuildContext context) {

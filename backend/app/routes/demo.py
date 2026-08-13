@@ -7,6 +7,8 @@ separate database and Redis instance containing synthetic data only.
 
 from __future__ import annotations
 
+import secrets
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
 
@@ -21,7 +23,6 @@ from ..services.audit_service import log_action
 router = APIRouter(prefix="/demo", tags=["demo"])
 
 _DEMO_EMAIL = "demo.viewer@gula-demo.iq"
-_DEMO_PASSWORD = "disabled-in-demo-route"
 
 
 def _demo_unavailable() -> None:
@@ -56,8 +57,10 @@ def start_demo_session(
             lab_id=lab.id,
             name="Demo Viewer",
             email=_DEMO_EMAIL,
-            password_hash=hash_password(_DEMO_PASSWORD),
-            role="admin",
+            # The public route never accepts a password. Keep the stored hash
+            # random so the synthetic account cannot be used as a credential.
+            password_hash=hash_password(secrets.token_urlsafe(32)),
+            role="doctor",
             is_active=True,
         )
         db.add(user)

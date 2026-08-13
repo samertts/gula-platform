@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE || '/api';
 
 // Web sessions are cookie-only. Tokens must never be persisted in browser storage
 // or attached as bearer headers by this legacy client.

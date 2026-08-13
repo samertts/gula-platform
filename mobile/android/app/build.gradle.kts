@@ -50,8 +50,8 @@ android {
                 isShrinkResources = true
                 signingConfig = signingConfigs.getByName("release")
                 proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-                buildConfigField("String", "API_BASE_URL", "\"https://api.gulaplatform.com/api/v1/\"")
-                buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://api.gulaplatform.com/\"")
+                buildConfigField("String", "API_BASE_URL", "\"https://api.gula-platform.org/api/v1/\"")
+                buildConfigField("String", "API_BASE_URL_ALTERNATE", "\"https://api.gula-platform.org/\"")
             }
         }
 
@@ -128,6 +128,9 @@ dependencies {
     // WorkManager
     implementation("androidx.work:work-runtime-ktx:2.10.0")
 
+    // Runtime permissions for Compose
+    implementation("com.google.accompanist:accompanist-permissions:0.37.3")
+
     // CameraX
     val cameraxVersion = "1.5.0"
     implementation("androidx.camera:camera-core:$cameraxVersion")
@@ -158,6 +161,7 @@ dependencies {
     testImplementation("app.cash.turbine:turbine:1.2.0")
     testImplementation("io.mockk:mockk:1.13.14")
 
+    androidTestImplementation(composeBom)
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
@@ -167,5 +171,5 @@ dependencies {
     androidTestImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.0")
 
     // Desugaring
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.2.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }

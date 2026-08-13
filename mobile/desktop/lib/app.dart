@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_router.dart';
 import 'core/providers/app_providers.dart';
 import 'core/theme/app_theme.dart';
-import 'core/theme/theme_provider.dart';
 import 'l10n/l10n.dart';
 
 class GulaApp extends ConsumerWidget {
@@ -15,9 +14,9 @@ class GulaApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final themeProvider = ref.watch(themeProviderProvider);
-    final locale = themeProvider.locale;
-    final isRtl = themeProvider.isRtl;
+    final themeState = ref.watch(themeProvider);
+    final locale = themeState.locale;
+    final isRtl = themeState.isRtl;
 
     return MaterialApp.router(
       title: 'GULA Platform',
@@ -40,7 +39,7 @@ class GulaApp extends ConsumerWidget {
       },
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: themeProvider.themeMode,
+      themeMode: themeState.themeMode,
       routerConfig: appRouter.router,
       builder: (context, child) {
         return Directionality(

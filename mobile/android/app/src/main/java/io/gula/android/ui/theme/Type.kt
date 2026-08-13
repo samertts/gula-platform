@@ -2,23 +2,13 @@ package io.gula.android.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-val TajawalFontFamily = FontFamily(
-    Font(android.R.font.noto_sans_arabic_ui_regular, FontWeight.Normal),
-    Font(android.R.font.noto_sans_arabic_ui_bold, FontWeight.Bold),
-    Font(android.R.font.noto_sans_arabic_ui_regular, FontWeight.Medium),
-)
+val TajawalFontFamily = FontFamily.SansSerif
 
-val ArabicFontFamily = FontFamily(
-    Font(android.R.font.noto_sans_arabic_ui_regular, FontWeight.Normal),
-    Font(android.R.font.noto_sans_arabic_ui_bold, FontWeight.Bold),
-    Font(android.R.font.noto_sans_arabic_ui_regular, FontWeight.Medium),
-    Font(android.R.font.noto_sans_arabic_ui_regular, FontWeight.Light),
-)
+val ArabicFontFamily = FontFamily.SansSerif
 
 val GulaTypography = Typography(
     displayLarge = TextStyle(

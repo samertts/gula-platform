@@ -6,7 +6,7 @@
 
 ## Context
 
-The Platform Constitution mandates FHIR content-type on every clinical endpoint, and the Engineering Constitution requires "all clinical data exchange via FHIR R4." However, the existing API uses custom JSON schemas for internal operations and FHIR R4 only for the EHR interoperability endpoints (`/ehr/fhir`). A deployment model is needed that balances constitutional compliance with practical API design.
+The Platform Constitution mandates FHIR content-type on every clinical endpoint, and the Engineering Constitution requires "all clinical data exchange via FHIR R4." However, the existing API uses custom JSON schemas for internal operations and FHIR R4 only for the EHR interoperability endpoints (`/fhir`). A deployment model is needed that balances constitutional compliance with practical API design.
 
 ## Decision
 
@@ -15,15 +15,17 @@ Adopt a **dual-model strategy**: internal API uses canonical GULA JSON schemas, 
 | Interface | Format | Purpose |
 |-----------|--------|---------|
 | Internal API (routes) | GULA JSON | Lab operations, dashboard, internal workflows |
-| EHR Bridge (`/ehr/fhir`) | FHIR R4 | Hospital/ministry interoperability |
+| EHR Bridge (`/fhir`) | FHIR R4 | Hospital/ministry interoperability |
 | Device Bridge | ASTM/HL7 → FHIR | Lab instrument data normalized to FHIR |
 | Patient-facing APIs | GULA JSON + FHIR export | QR cards, citizen portal, data portability |
 
 ### Endpoints
 
-- `GET /ehr/fhir/Patient/{id}` — FHIR Patient resource
-- `GET /ehr/fhir/Observation/{id}` — FHIR Observation (lab results)
-- `GET /ehr/fhir/DiagnosticReport/{id}` — FHIR DiagnosticReport
+- `GET /fhir/metadata` — FHIR CapabilityStatement discovery
+- `GET /fhir/Patient/{id}` — FHIR Patient resource
+- `GET /fhir/Observation/{id}` — FHIR Observation (lab results)
+- `GET /fhir/DiagnosticReport/{id}` — FHIR DiagnosticReport
+- `GET /fhir/Patient/{id}/$everything` — tenant-scoped FHIR record collection
 - `GET /patients/{id}/fhir` — FHIR export for a patient
 - `Content-Type: application/fhir+json` on FHIR endpoints
 
@@ -38,7 +40,7 @@ Adopt a **dual-model strategy**: internal API uses canonical GULA JSON schemas, 
 
 - All new clinical exchange endpoints MUST support FHIR R4
 - Internal APIs continue using custom JSON schemas
-- The EHR bridge (`backend/app/routes/ehr_fhir.py`) is the canonical FHIR implementation
+- The EHR bridge (`backend/app/routes/ehr_fhir.py`) at `/fhir` is the canonical FHIR implementation
 - FHIR resource mappings are documented in `docs/fhir/`
 - Non-FHIR clinical endpoints must be evaluated for FHIR conversion on a case-by-case basis
 - Content negotiation (Accept header) may be added in the future to serve FHIR from internal endpoints

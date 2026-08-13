@@ -13,6 +13,9 @@ class AuditLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, nullable=True, index=True)
     user_role = Column(String(50), nullable=True)
+    # NULL is retained only for pre-tenant legacy events. New audit events
+    # include lab_id so they can be safely scoped for compliance and FHIR provenance.
+    lab_id = Column(Integer, nullable=True, index=True)
     action = Column(String(50), nullable=False, index=True)  # view, create, update, delete
     resource_type = Column(String(50), nullable=False)  # patient, test, result
     resource_id = Column(Integer, nullable=True)

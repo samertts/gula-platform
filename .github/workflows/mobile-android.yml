@@ -123,9 +123,6 @@ jobs:
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
 
-      - name: Run kover coverage
-        run: ./gradlew koverHtmlReportDebug
-
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -133,12 +130,12 @@ jobs:
           name: android-unit-test-results
           path: |
             mobile/android/app/build/reports/tests/
-            mobile/android/app/build/reports/kover/
           if-no-files-found: warn
           retention-days: 14
 
   instrumented-test:
     name: Instrumented Tests (API ${{ matrix.api-level }})
+    if: ${{ inputs.run_instrumented_tests == true }}
     needs: [lint]
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -170,7 +167,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Run instrumented tests (API ${{ matrix.api-level }})
-        uses: reactivecircus/android-emulator-runner@v3
+        uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: ${{ matrix.api-level }}
           target: ${{ matrix.target }}

@@ -17,7 +17,8 @@ class TrendIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUp = value >= 0;
-    final trendColor = color ?? (isUp ? AppColors.success500 : AppColors.error500);
+    final trendColor =
+        color ?? (isUp ? AppColors.success500 : AppColors.error500);
 
     return Row(
       mainAxisSize: MainAxisSize.min,

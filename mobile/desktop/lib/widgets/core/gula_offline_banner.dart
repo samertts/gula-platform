@@ -7,11 +7,7 @@ class GulaOfflineBanner extends StatelessWidget {
   final bool isOffline;
   final String? message;
 
-  const GulaOfflineBanner({
-    super.key,
-    required this.isOffline,
-    this.message,
-  });
+  const GulaOfflineBanner({super.key, required this.isOffline, this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -27,11 +23,7 @@ class GulaOfflineBanner extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.wifi_off,
-            size: 16,
-            color: Colors.white,
-          ),
+          const Icon(Icons.wifi_off, size: 16, color: Colors.white),
           const SizedBox(width: 8),
           Text(
             message ?? 'No internet connection. Working in offline mode.',

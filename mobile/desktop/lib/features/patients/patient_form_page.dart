@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/validators.dart';
 import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_text_field.dart';
@@ -62,7 +61,11 @@ class _PatientFormPageState extends State<PatientFormPage> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isEditing ? 'Patient updated successfully' : 'Patient created successfully'),
+          content: Text(
+            _isEditing
+                ? 'Patient updated successfully'
+                : 'Patient created successfully',
+          ),
           backgroundColor: AppColors.success500,
         ),
       );
@@ -84,31 +87,60 @@ class _PatientFormPageState extends State<PatientFormPage> {
               children: [
                 Row(
                   children: [
-                    IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.pop(),
+                    ),
                     const SizedBox(width: 8),
                     SectionHeader(
                       title: _isEditing ? 'Edit Patient' : 'Add Patient',
-                      subtitle: _isEditing ? 'Update patient information' : 'Register a new patient',
+                      subtitle: _isEditing
+                          ? 'Update patient information'
+                          : 'Register a new patient',
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                const Text('Personal Information', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Personal Information',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: GulaTextField(label: 'First Name *', controller: _firstNameController,
-                        validator: (v) => AppValidators.required(v, fieldName: 'First Name'))),
+                    Expanded(
+                      child: GulaTextField(
+                        label: 'First Name *',
+                        controller: _firstNameController,
+                        validator: (v) =>
+                            AppValidators.required(v, fieldName: 'First Name'),
+                      ),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: GulaTextField(label: 'Father Name', controller: _fatherNameController)),
+                    Expanded(
+                      child: GulaTextField(
+                        label: 'Father Name',
+                        controller: _fatherNameController,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: GulaTextField(label: 'Grand Father Name', controller: _grandFatherNameController)),
+                    Expanded(
+                      child: GulaTextField(
+                        label: 'Grand Father Name',
+                        controller: _grandFatherNameController,
+                      ),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: GulaTextField(label: 'Last Name', controller: _lastNameController)),
+                    Expanded(
+                      child: GulaTextField(
+                        label: 'Last Name',
+                        controller: _lastNameController,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -119,8 +151,14 @@ class _PatientFormPageState extends State<PatientFormPage> {
                         label: 'Gender *',
                         value: _gender,
                         items: [
-                          DropdownMenuItem(value: 'm', child: const Text('Male')),
-                          DropdownMenuItem(value: 'f', child: const Text('Female')),
+                          DropdownMenuItem(
+                            value: 'm',
+                            child: const Text('Male'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'f',
+                            child: const Text('Female'),
+                          ),
                         ],
                         onChanged: (v) => setState(() => _gender = v),
                       ),
@@ -133,7 +171,12 @@ class _PatientFormPageState extends State<PatientFormPage> {
                           label: 'Date of Birth',
                           hint: 'YYYY-MM-DD',
                           controller: TextEditingController(
-                            text: _dateOfBirth?.toIso8601String().substring(0, 10) ?? '',
+                            text:
+                                _dateOfBirth?.toIso8601String().substring(
+                                  0,
+                                  10,
+                                ) ??
+                                '',
                           ),
                           readOnly: true,
                           suffixIcon: Icons.calendar_today,
@@ -143,29 +186,56 @@ class _PatientFormPageState extends State<PatientFormPage> {
                   ],
                 ),
                 const SizedBox(height: 24),
-                const Text('Contact & Identification', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const Text(
+                  'Contact & Identification',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: GulaTextField(label: 'National ID', controller: _nationalIdController,
-                        validator: AppValidators.nationalId)),
+                    Expanded(
+                      child: GulaTextField(
+                        label: 'National ID',
+                        controller: _nationalIdController,
+                        validator: AppValidators.nationalId,
+                      ),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: GulaTextField(label: 'Phone', controller: _phoneController,
-                        keyboardType: TextInputType.phone, validator: AppValidators.phone)),
+                    Expanded(
+                      child: GulaTextField(
+                        label: 'Phone',
+                        controller: _phoneController,
+                        keyboardType: TextInputType.phone,
+                        validator: AppValidators.phone,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: GulaTextField(label: 'Email', controller: _emailController,
-                        keyboardType: TextInputType.emailAddress, validator: AppValidators.email)),
+                    Expanded(
+                      child: GulaTextField(
+                        label: 'Email',
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        validator: AppValidators.email,
+                      ),
+                    ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: GulaDropdown<String?>(
                         label: 'Blood Group',
                         value: _bloodGroup,
-                        items: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
-                            .map((bg) => DropdownMenuItem(value: bg, child: Text(bg))).toList(),
+                        items:
+                            ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+                                .map(
+                                  (bg) => DropdownMenuItem(
+                                    value: bg,
+                                    child: Text(bg),
+                                  ),
+                                )
+                                .toList(),
                         onChanged: (v) => setState(() => _bloodGroup = v),
                       ),
                     ),
@@ -174,20 +244,42 @@ class _PatientFormPageState extends State<PatientFormPage> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: GulaTextField(label: 'City', controller: _cityController)),
+                    Expanded(
+                      child: GulaTextField(
+                        label: 'City',
+                        controller: _cityController,
+                      ),
+                    ),
                     const SizedBox(width: 16),
-                    Expanded(child: GulaTextField(label: 'Address', controller: _addressController)),
+                    Expanded(
+                      child: GulaTextField(
+                        label: 'Address',
+                        controller: _addressController,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                GulaTextField(label: 'Notes', controller: _notesController, maxLines: 3),
+                GulaTextField(
+                  label: 'Notes',
+                  controller: _notesController,
+                  maxLines: 3,
+                ),
                 const SizedBox(height: 32),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    GulaButton(label: 'Cancel', variant: GulaButtonVariant.text, onPressed: () => context.pop()),
+                    GulaButton(
+                      label: 'Cancel',
+                      variant: GulaButtonVariant.text,
+                      onPressed: () => context.pop(),
+                    ),
                     const SizedBox(width: 12),
-                    GulaButton(label: _isEditing ? 'Update' : 'Save', isLoading: _isLoading, onPressed: _save),
+                    GulaButton(
+                      label: _isEditing ? 'Update' : 'Save',
+                      isLoading: _isLoading,
+                      onPressed: _save,
+                    ),
                   ],
                 ),
               ],

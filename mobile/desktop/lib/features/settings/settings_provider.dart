@@ -14,11 +14,30 @@ class SettingsProvider extends ChangeNotifier {
   bool get autoSync => _autoSync;
   int get syncInterval => _syncInterval;
 
-  void setNotifications(bool v) { _enableNotifications = v; notifyListeners(); }
-  void setSound(bool v) { _enableSound = v; notifyListeners(); }
-  void setAutoPrintLabels(bool v) { _autoPrintLabels = v; notifyListeners(); }
-  void setAutoSync(bool v) { _autoSync = v; notifyListeners(); }
-  void setSyncInterval(int v) { _syncInterval = v; notifyListeners(); }
+  void setNotifications(bool v) {
+    _enableNotifications = v;
+    notifyListeners();
+  }
+
+  void setSound(bool v) {
+    _enableSound = v;
+    notifyListeners();
+  }
+
+  void setAutoPrintLabels(bool v) {
+    _autoPrintLabels = v;
+    notifyListeners();
+  }
+
+  void setAutoSync(bool v) {
+    _autoSync = v;
+    notifyListeners();
+  }
+
+  void setSyncInterval(int v) {
+    _syncInterval = v;
+    notifyListeners();
+  }
 }
 
 final settingsProvider = ChangeNotifierProvider<SettingsProvider>((ref) {

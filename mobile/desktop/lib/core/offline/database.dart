@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
@@ -78,7 +77,7 @@ class Samples extends Table {
   TextColumn get barcode => text()();
   TextColumn get status => text()();
   TextColumn get containerType => text().nullable()();
-  TextColumn get volume => RealColumn().nullable()();
+  RealColumn get volume => real().nullable()();
   TextColumn get collectedAt => text().nullable()();
   TextColumn get collectedBy => text().nullable()();
   TextColumn get receivedAt => text().nullable()();
@@ -108,8 +107,8 @@ class Results extends Table {
   TextColumn get unit => text().nullable()();
   TextColumn get referenceRange => text().nullable()();
   TextColumn get flag => text().nullable()();
-  TextColumn get isAbnormal => IntColumn()();
-  TextColumn get isCritical => IntColumn()();
+  IntColumn get isAbnormal => integer()();
+  IntColumn get isCritical => integer()();
   TextColumn get validatedBy => text().nullable()();
   TextColumn get validatedAt => text().nullable()();
   TextColumn get performedBy => text().nullable()();
@@ -133,8 +132,8 @@ class Notifications extends Table {
   TextColumn get severity => text()();
   TextColumn get entityType => text().nullable()();
   TextColumn get entityId => text().nullable()();
-  TextColumn get isRead => IntColumn()();
-  TextColumn get isActioned => IntColumn()();
+  IntColumn get isRead => integer()();
+  IntColumn get isActioned => integer()();
   TextColumn get createdAt => text()();
   TextColumn get syncStatus => text()();
 
@@ -149,8 +148,8 @@ class SyncQueue extends Table {
   TextColumn get operation => text()();
   TextColumn get payload => text()();
   TextColumn get status => text()();
-  TextColumn get retryCount => integer()();
-  TextColumn get maxRetries => integer()();
+  IntColumn get retryCount => integer()();
+  IntColumn get maxRetries => integer()();
   TextColumn get createdAt => text()();
   TextColumn get updatedAt => text()();
   TextColumn get lastError => text().nullable()();
@@ -166,15 +165,17 @@ class CacheEntries extends Table {
   Set<Column> get primaryKey => {key};
 }
 
-@DriftDatabase(tables: [
-  Patients,
-  Orders,
-  Samples,
-  Results,
-  Notifications,
-  SyncQueue,
-  CacheEntries,
-])
+@DriftDatabase(
+  tables: [
+    Patients,
+    Orders,
+    Samples,
+    Results,
+    Notifications,
+    SyncQueue,
+    CacheEntries,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
@@ -208,12 +209,24 @@ class AppDatabase extends _$AppDatabase {
 
   Future<Map<String, int>> getTableCounts() async {
     return {
-      'patients': await customSelect('SELECT COUNT(*) FROM patients').getSingle().read<int>(0),
-      'orders': await customSelect('SELECT COUNT(*) FROM orders').getSingle().read<int>(0),
-      'samples': await customSelect('SELECT COUNT(*) FROM samples').getSingle().read<int>(0),
-      'results': await customSelect('SELECT COUNT(*) FROM results').getSingle().read<int>(0),
-      'notifications': await customSelect('SELECT COUNT(*) FROM notifications').getSingle().read<int>(0),
-      'syncQueue': await customSelect('SELECT COUNT(*) FROM sync_queue').getSingle().read<int>(0),
+      'patients': (await customSelect(
+        'SELECT COUNT(*) AS count FROM patients',
+      ).getSingle()).read<int>('count'),
+      'orders': (await customSelect(
+        'SELECT COUNT(*) AS count FROM orders',
+      ).getSingle()).read<int>('count'),
+      'samples': (await customSelect(
+        'SELECT COUNT(*) AS count FROM samples',
+      ).getSingle()).read<int>('count'),
+      'results': (await customSelect(
+        'SELECT COUNT(*) AS count FROM results',
+      ).getSingle()).read<int>('count'),
+      'notifications': (await customSelect(
+        'SELECT COUNT(*) AS count FROM notifications',
+      ).getSingle()).read<int>('count'),
+      'syncQueue': (await customSelect(
+        'SELECT COUNT(*) AS count FROM sync_queue',
+      ).getSingle()).read<int>('count'),
     };
   }
 }

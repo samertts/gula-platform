@@ -31,17 +31,37 @@ def audit_log(action: str) -> Callable:
                 if request and db:
                     user_id = getattr(request.state, "user_id", None) or 0
                     lab_id = getattr(request.state, "lab_id", None) or 0
+                    fhir_resource_type = kwargs.get("resource_type")
+                    fhir_resource_id = kwargs.get("resource_id")
+                    if isinstance(result, dict):
+                        fhir_resource_type = fhir_resource_type or result.get("resourceType")
+                        fhir_resource_id = fhir_resource_id or result.get("id")
+                    numeric_resource_id = (
+                        int(fhir_resource_id)
+                        if isinstance(fhir_resource_id, int)
+                        or (isinstance(fhir_resource_id, str) and fhir_resource_id.isdigit())
+                        else None
+                    )
                     log_action(
                         db=db,
                         action=action,
                         resource_type="FHIR",
-                        resource_id=kwargs.get("resource_id") or kwargs.get("resource_type", ""),
+                        resource_id=numeric_resource_id,
                         user_id=user_id,
                         lab_id=lab_id,
-                        details={"method": request.method, "path": request.url.path},
+                        details={
+                            "fhir_resource_id": str(fhir_resource_id) if fhir_resource_id is not None else None,
+                            "fhir_resource_type": fhir_resource_type,
+                            "method": request.method,
+                            "path": request.url.path,
+                        },
                     )
+                    db.commit()
             except Exception:
-                logger.warning("audit_log decorator failed", exc_info=True)
+                # Audit integrity takes precedence over mutation availability:
+                # the dependency rolls back an uncommitted clinical mutation.
+                logger.exception("audit_log decorator failed")
+                raise
             return result
         return wrapper
     return decorator

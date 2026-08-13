@@ -57,7 +57,7 @@ fun DashboardScreen(
             GulaLoadingIndicator(message = "Loading dashboard...")
         } else if (uiState.error != null && uiState.stats.patientsCount == 0) {
             GulaErrorView(
-                message = uiState.error,
+                message = uiState.error.orEmpty(),
                 onRetry = { viewModel.refresh() },
                 modifier = Modifier.padding(padding),
             )

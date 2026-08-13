@@ -17,7 +17,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import io.gula.android.ui.components.core.GulaButton
-import io.gula.android.ui.components.core.GulaButtonVariant
 import io.gula.android.ui.components.core.GulaTextField
 
 @Composable
@@ -139,7 +138,7 @@ fun RegisterScreen(
         if (uiState.error != null) {
             Spacer(Modifier.height(8.dp))
             Text(
-                text = uiState.error,
+                text = uiState.error.orEmpty(),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
                 textAlign = TextAlign.Center,

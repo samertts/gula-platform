@@ -45,7 +45,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: frontend-v2
+        working-directory: frontend-v3
 
     steps:
       - uses: actions/checkout@v4
@@ -55,47 +55,48 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
-          cache-dependency-path: frontend-v2/package-lock.json
+          cache-dependency-path: frontend-v3/package-lock.json
 
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: frontend-v2/node_modules
-          key: node-modules-${{ hashFiles('frontend-v2/package-lock.json') }}
+          path: frontend-v3/node_modules
+          key: node-modules-${{ hashFiles('frontend-v3/package-lock.json') }}
           restore-keys: |
             node-modules-
 
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit
 
+      - name: Verify browser bundle does not reference server secrets
+        run: |
+          if rg -n --hidden --glob '!node_modules' 'VITE_(GEMINI|OPENAI|ANTHROPIC|GROQ|.*_SECRET|.*_PRIVATE_KEY|.*_TOKEN)' src; then
+            echo 'A server-side secret-like VITE variable is referenced by browser code.' >&2
+            exit 1
+          fi
+
       - name: Lint
-        run: npm run lint 2>/dev/null || echo "No lint script configured"
+        run: npm run lint
 
       - name: Type check
-        run: npx tsc --noEmit 2>/dev/null || echo "No TypeScript check configured"
+        run: npm run typecheck
 
       - name: Run tests
-        run: npm test -- --watchAll=false --ci 2>/dev/null || echo "No test script configured"
+        run: npm test -- --run
 
       - name: Build PWA
         run: npm run build
         env:
           CI: true
-          REACT_APP_API_BASE_URL: ${{ github.ref == 'refs/heads/main' && 'https://api.gulaplatform.com/api/v1/' || 'https://staging-api.gulaplatform.com/api/v1/' }}
-          REACT_APP_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          REACT_APP_GA_ID: ${{ secrets.GA_MEASUREMENT_ID }}
-          REACT_APP_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
-          REACT_APP_FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
-          REACT_APP_FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
-          REACT_APP_FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
-          REACT_APP_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.FIREBASE_MESSAGING_SENDER_ID }}
-          REACT_APP_FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          VITE_API_BASE_URL: /api
+          VITE_WS_URL: wss://api.gula-platform.org
+          VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: pwa-build
-          path: frontend-v2/dist/
+          path: frontend-v3/dist/
           if-no-files-found: error
           retention-days: 7
 
@@ -103,7 +104,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pwa-source-maps
-          path: frontend-v2/dist/assets/*.map
+          path: frontend-v3/dist/assets/*.map
           if-no-files-found: warn
           retention-days: 3
 
@@ -115,7 +116,7 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: frontend-v2
+        working-directory: frontend-v3
 
     steps:
       - uses: actions/checkout@v4
@@ -129,12 +130,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pwa-build
-          path: frontend-v2/dist/
+          path: frontend-v3/dist/
 
       - name: Run Lighthouse CI
         uses: GoogleChrome/lighthouse-ci-action@v12
         with:
-          configPath: frontend-v2/lighthouserc.json
+          configPath: frontend-v3/lighthouserc.json
           temporaryPublicStorage: true
           uploadArtifacts: true
           runs: 3
@@ -161,7 +162,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pwa-build
-          path: frontend-v2/dist/
+          path: frontend-v3/dist/
 
       - name: Deploy to Vercel (Preview)
         env:
@@ -201,7 +202,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pwa-build
-          path: frontend-v2/dist/
+          path: frontend-v3/dist/
 
       - name: Deploy to Vercel (Production)
         env:
@@ -217,6 +218,6 @@ jobs:
           SENTRY_PROJECT: frontend-pwa
         run: |
           npx @sentry/cli releases new ${{ github.ref_name }}
-          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps frontend-v2/dist/assets/
+          npx @sentry/cli releases files ${{ github.ref_name }} upload-sourcemaps frontend-v3/dist/assets/
           npx @sentry/cli releases set-commits ${{ github.ref_name }} --auto
           npx @sentry/cli releases finalize ${{ github.ref_name }}

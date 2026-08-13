@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 import '../../core/utils/validators.dart';
 import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_text_field.dart';
@@ -39,7 +38,10 @@ class _SampleCollectionPageState extends State<SampleCollectionPage> {
     await Future.delayed(const Duration(seconds: 1));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sample collected successfully'), backgroundColor: AppColors.success500),
+        const SnackBar(
+          content: Text('Sample collected successfully'),
+          backgroundColor: AppColors.success500,
+        ),
       );
       context.pop();
     }
@@ -58,9 +60,18 @@ class _SampleCollectionPageState extends State<SampleCollectionPage> {
               children: [
                 Row(
                   children: [
-                    IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => context.pop(),
+                    ),
                     const SizedBox(width: 8),
-                    const Text('Sample Collection', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                    const Text(
+                      'Sample Collection',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -77,7 +88,8 @@ class _SampleCollectionPageState extends State<SampleCollectionPage> {
                   hint: 'Search patient',
                   controller: _patientController,
                   prefixIcon: Icons.search,
-                  validator: (v) => AppValidators.required(v, fieldName: 'Patient'),
+                  validator: (v) =>
+                      AppValidators.required(v, fieldName: 'Patient'),
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -86,8 +98,22 @@ class _SampleCollectionPageState extends State<SampleCollectionPage> {
                       child: GulaDropdown<String?>(
                         label: 'Sample Type *',
                         value: _sampleType,
-                        items: ['Blood', 'Urine', 'Stool', 'Swab', 'Serum', 'Plasma']
-                            .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                        items:
+                            [
+                                  'Blood',
+                                  'Urine',
+                                  'Stool',
+                                  'Swab',
+                                  'Serum',
+                                  'Plasma',
+                                ]
+                                .map(
+                                  (t) => DropdownMenuItem(
+                                    value: t,
+                                    child: Text(t),
+                                  ),
+                                )
+                                .toList(),
                         onChanged: (v) => setState(() => _sampleType = v),
                       ),
                     ),
@@ -96,22 +122,47 @@ class _SampleCollectionPageState extends State<SampleCollectionPage> {
                       child: GulaDropdown<String?>(
                         label: 'Container',
                         value: _containerType,
-                        items: ['EDTA Tube', 'Plain Tube', 'Citrate Tube', 'Sterile Container', 'Swab']
-                            .map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                        items:
+                            [
+                                  'EDTA Tube',
+                                  'Plain Tube',
+                                  'Citrate Tube',
+                                  'Sterile Container',
+                                  'Swab',
+                                ]
+                                .map(
+                                  (t) => DropdownMenuItem(
+                                    value: t,
+                                    child: Text(t),
+                                  ),
+                                )
+                                .toList(),
                         onChanged: (v) => setState(() => _containerType = v),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                GulaTextField(label: 'Volume (mL)', controller: _volumeController, keyboardType: TextInputType.number),
+                GulaTextField(
+                  label: 'Volume (mL)',
+                  controller: _volumeController,
+                  keyboardType: TextInputType.number,
+                ),
                 const SizedBox(height: 32),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    GulaButton(label: 'Cancel', variant: GulaButtonVariant.text, onPressed: () => context.pop()),
+                    GulaButton(
+                      label: 'Cancel',
+                      variant: GulaButtonVariant.text,
+                      onPressed: () => context.pop(),
+                    ),
                     const SizedBox(width: 12),
-                    GulaButton(label: 'Collect Sample', isLoading: _isLoading, onPressed: _collect),
+                    GulaButton(
+                      label: 'Collect Sample',
+                      isLoading: _isLoading,
+                      onPressed: _collect,
+                    ),
                   ],
                 ),
               ],

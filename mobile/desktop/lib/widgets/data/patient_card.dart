@@ -35,9 +35,11 @@ class PatientCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fullName = [firstName, fatherName, lastName]
-        .where((n) => n != null && n.isNotEmpty)
-        .join(' ');
+    final fullName = [
+      firstName,
+      fatherName,
+      lastName,
+    ].where((n) => n != null && n.isNotEmpty).join(' ');
 
     return GulaCard(
       onTap: onTap,
@@ -47,10 +49,14 @@ class PatientCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 24,
-            backgroundColor: gender == 'f' ? AppColors.secondary50 : AppColors.primary50,
+            backgroundColor: gender == 'f'
+                ? AppColors.secondary50
+                : AppColors.primary50,
             child: Icon(
               gender == 'f' ? Icons.female : Icons.male,
-              color: gender == 'f' ? AppColors.secondary500 : AppColors.primary500,
+              color: gender == 'f'
+                  ? AppColors.secondary500
+                  : AppColors.primary500,
               size: 24,
             ),
           ),
@@ -71,20 +77,34 @@ class PatientCard extends StatelessWidget {
                 Row(
                   children: [
                     if (nationalId != null) ...[
-                      const Icon(Icons.badge_outlined, size: 14, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.badge_outlined,
+                        size: 14,
+                        color: AppColors.textSecondary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         nationalId!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                       const SizedBox(width: 12),
                     ],
                     if (phone != null) ...[
-                      const Icon(Icons.phone_outlined, size: 14, color: AppColors.textSecondary),
+                      const Icon(
+                        Icons.phone_outlined,
+                        size: 14,
+                        color: AppColors.textSecondary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         phone!,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ],
@@ -94,7 +114,9 @@ class PatientCard extends StatelessWidget {
                   children: [
                     GulaBadge(
                       label: gender == 'm' ? 'Male' : 'Female',
-                      status: gender == 'm' ? GulaBadgeStatus.info : GulaBadgeStatus.success,
+                      status: gender == 'm'
+                          ? GulaBadgeStatus.info
+                          : GulaBadgeStatus.success,
                       showDot: false,
                     ),
                     if (bloodGroup != null) ...[

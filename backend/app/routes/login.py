@@ -4,6 +4,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ..config import DEMO_MODE, JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS, USE_SECURE_COOKIES
@@ -44,13 +45,14 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     rate_limit_auth(request)
 
     client_ip = get_client_ip(request)
-    email = data.email
+    identifier = data.email
 
     # ── Try lab staff / admin first ────────────────────────────────────────────
+    # The UI accepts email or phone; both are normalized before lookup.
     lab_user = (
         db.query(LabUser)
         .filter(
-            LabUser.email == email,
+            LabUser.email == identifier,
             LabUser.is_active,
         )
         .first()
@@ -62,7 +64,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         citizen = (
             db.query(User)
             .filter(
-                User.email == email,
+                or_(User.email == identifier, User.phone == identifier),
                 User.is_active,
             )
             .first()
@@ -85,7 +87,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
             resource_type="auth",
             user_id=user.id if user else None,
             user_role=user.role if user else None,
-            details=f"Failed login for email_hmac: {hmac.new(NID_HMAC_KEY.encode(), email.encode(), hashlib.sha256).hexdigest()[:16]}",
+            details=f"Failed login for identifier_hmac: {hmac.new(NID_HMAC_KEY.encode(), identifier.encode(), hashlib.sha256).hexdigest()[:16]}",
             ip_address=client_ip,
         )
         db.commit()

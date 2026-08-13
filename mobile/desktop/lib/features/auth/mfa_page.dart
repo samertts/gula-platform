@@ -85,10 +85,7 @@ class _MfaPageState extends ConsumerState<MfaPage> {
                   const SizedBox(height: 24),
                   const Text(
                     'Two-Factor Authentication',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -106,7 +103,8 @@ class _MfaPageState extends ConsumerState<MfaPage> {
                     textInputAction: TextInputAction.done,
                     prefixIcon: Icons.pin_outlined,
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Code is required';
+                      if (v == null || v.trim().isEmpty)
+                        return 'Code is required';
                       if (v.trim().length < 6) return 'Code must be 6 digits';
                       return null;
                     },

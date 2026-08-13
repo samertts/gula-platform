@@ -25,17 +25,17 @@ fun GulaDialog(
             icon = icon?.let { { Icon(it, contentDescription = null) } },
             title = if (title.isNotBlank()) { @Composable { Text(title) } } else null,
             text = if (text.isNotBlank()) { @Composable { Text(text) } } else null,
-            confirmButton = if (onConfirm != null) {
-                {
+            confirmButton = {
+                onConfirm?.let { confirm ->
                     GulaButton(
-                        onClick = onConfirm,
+                        onClick = confirm,
                         text = confirmText,
                         loading = confirmLoading,
                         enabled = confirmEnabled,
                         variant = ButtonVariant.PRIMARY,
                     )
                 }
-            } else null,
+            },
             dismissButton = {
                 TextButton(onClick = onDismissButton ?: onDismiss) {
                     Text(dismissText)

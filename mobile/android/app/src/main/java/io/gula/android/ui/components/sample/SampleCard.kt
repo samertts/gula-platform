@@ -31,7 +31,7 @@ fun SampleCard(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.Barcode, contentDescription = null,
+                        Icons.Default.QrCodeScanner, contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp),
                     )

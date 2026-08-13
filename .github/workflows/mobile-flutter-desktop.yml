@@ -31,7 +31,7 @@ on:
           - profile
 
 env:
-  FLUTTER_VERSION: '3.27.0'
+  FLUTTER_VERSION: '3.44.0'
 
 permissions:
   contents: read
@@ -62,16 +62,18 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v4
         with:
-          path: |
-            mobile/desktop/.dart_tool/
-            mobile/desktop/.packages
-            ~/.pub-cache
+          path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('mobile/desktop/pubspec.yaml') }}
           restore-keys: |
             pub-${{ runner.os }}-
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Generate Dart sources
+        run: |
+          dart run build_runner clean
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Run dart analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
@@ -114,6 +116,11 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Generate Dart sources
+        run: |
+          dart run build_runner clean
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Run flutter tests with coverage
         run: flutter test --coverage --machine > test-results.json
@@ -168,6 +175,11 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate Dart sources
+        run: |
+          dart run build_runner clean
+          dart run build_runner build --delete-conflicting-outputs
+
       - name: Build Windows MSIX
         run: |
           flutter build windows --release
@@ -177,7 +189,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: gula-desktop-windows-msix
-          path: mobile/desktop/build/windows/msix/
+          path: mobile/desktop/build/windows/x64/runner/Release/*.msix
           if-no-files-found: error
           retention-days: 30
 
@@ -206,7 +218,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev \
             liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev \
-            librpm-dev rpm
+            libayatana-appindicator3-dev libcurl4-openssl-dev librpm-dev rpm
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -228,13 +240,35 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate Dart sources
+        run: |
+          dart run build_runner clean
+          dart run build_runner build --delete-conflicting-outputs
+
       - name: Build Linux release
         run: flutter build linux --release
 
       - name: Build AppImage
         run: |
-          sudo snap install appimagecraft
-          appimagecraft build
+          mkdir -p build/appimage/AppDir/usr/bin
+          mkdir -p build/appimage/AppDir/usr/share/applications
+          mkdir -p build/appimage/AppDir/usr/share/icons/hicolor/512x512/apps
+          cp -a build/linux/x64/release/bundle/. build/appimage/AppDir/usr/bin/
+          cp packaging/linux/gula_desktop.desktop build/appimage/AppDir/
+          cp packaging/linux/gula_desktop.desktop build/appimage/AppDir/usr/share/applications/
+          cp packaging/linux/gula_desktop.png build/appimage/AppDir/
+          cp packaging/linux/gula_desktop.png build/appimage/AppDir/usr/share/icons/hicolor/512x512/apps/
+          cat > build/appimage/AppDir/AppRun <<'EOF'
+          #!/bin/sh
+          APPDIR="$(dirname "$(readlink -f "$0")")"
+          exec "$APPDIR/usr/bin/gula_desktop" "$@"
+          EOF
+          chmod +x build/appimage/AppDir/AppRun
+          curl -fsSL -o appimagetool-x86_64.AppImage \
+            https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
+          chmod +x appimagetool-x86_64.AppImage
+          ARCH=x86_64 ./appimagetool-x86_64.AppImage --appimage-extract-and-run \
+            build/appimage/AppDir build/appimage/GULA_Platform-${{ github.ref_name }}-x86_64.AppImage
 
       - name: Build deb package
         run: |
@@ -246,9 +280,13 @@ jobs:
 
       - name: Build rpm package
         run: |
-          mkdir -p ~/rpmbuild/SOURCES/
-          tar czf ~/rpmbuild/SOURCES/gula-platform.tar.gz build/linux/x64/release/bundle/
-          rpmbuild -ba packaging/gula-platform.spec
+          mkdir -p ~/rpmbuild/SOURCES/gula-platform-2.1.0
+          cp -a build/linux/x64/release/bundle/. ~/rpmbuild/SOURCES/gula-platform-2.1.0/
+          cp packaging/linux/gula_desktop.desktop ~/rpmbuild/SOURCES/
+          cp packaging/linux/gula_desktop.png ~/rpmbuild/SOURCES/
+          tar -C ~/rpmbuild/SOURCES -czf ~/rpmbuild/SOURCES/gula-platform-2.1.0.tar.gz gula-platform-2.1.0
+          rpmbuild -ba --define "_topdir $HOME/rpmbuild" packaging/gula-platform.spec
+          cp ~/rpmbuild/RPMS/x86_64/*.rpm .
 
       - name: Upload Linux AppImage
         uses: actions/upload-artifact@v4
@@ -296,9 +334,7 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v4
         with:
-          path: |
-            mobile/desktop/.dart_tool/
-            ~/.pub-cache
+          path: ~/.pub-cache
           key: pub-macos-${{ hashFiles('mobile/desktop/pubspec.yaml') }}
           restore-keys: |
             pub-macos-
@@ -306,10 +342,16 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate Dart sources
+        run: |
+          dart run build_runner clean
+          dart run build_runner build --delete-conflicting-outputs
+
       - name: Build macOS release
         run: flutter build macos --release
 
       - name: Sign macOS app
+        if: ${{ env.MACOS_CERTIFICATE != '' && env.MACOS_CERTIFICATE_PWD != '' }}
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
@@ -325,26 +367,25 @@ jobs:
           /usr/bin/codesign --force --sign "Developer ID Application: GULA Platform" \
             --options runtime \
             --entitlements macos/Runner/Release.entitlements \
-            build/macos/Build/Products/Release/gula_platform.app
+            build/macos/Build/Products/Release/gula_desktop.app
 
       - name: Build DMG
         run: |
           brew install create-dmg
           create-dmg \
             --volname "GULA Platform" \
-            --volicon "macos/Runner/AppIcon.icns" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
-            --icon "gula_platform.app" 150 200 \
-            --hide-extension "gula_platform.app" \
+            --icon "gula_desktop.app" 150 200 \
+            --hide-extension "gula_desktop.app" \
             --app-drop-link 450 200 \
             --no-internet-enable \
             "GULA_Platform-${{ github.ref_name }}.dmg" \
             "build/macos/Build/Products/Release/"
 
       - name: Notarize DMG
-        if: github.ref == 'refs/heads/main'
+        if: ${{ github.ref == 'refs/heads/main' && env.MACOS_CERTIFICATE != '' && env.MACOS_APP_PASSWORD != '' && env.MACOS_TEAM_ID != '' }}
         env:
           MACOS_APP_PASSWORD: ${{ secrets.MACOS_APP_PASSWORD }}
           MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}

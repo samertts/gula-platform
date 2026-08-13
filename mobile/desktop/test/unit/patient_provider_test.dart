@@ -1,49 +1,39 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
-import 'package:mockito/annotations.dart';
+
 import '../../lib/features/patients/patient_provider.dart';
-import '../../lib/core/offline/database.dart';
 
-import 'patient_provider_test.mocks.dart';
-
-@GenerateMocks([PatientDao])
 void main() {
-  late MockPatientDao mockPatientDao;
-  late PatientProvider patientProvider;
-
-  setUp(() {
-    mockPatientDao = MockPatientDao();
-    patientProvider = PatientProvider(patientDao: mockPatientDao);
-  });
-
   group('PatientProvider', () {
-    test('initial state is empty list', () {
-      expect(patientProvider.patients, isEmpty);
-      expect(patientProvider.isLoading, false);
+    test('starts with an empty non-loading state', () {
+      final provider = PatientProvider();
+
+      expect(provider.patients, isEmpty);
+      expect(provider.isLoading, isFalse);
+      expect(provider.hasError, isFalse);
     });
 
-    test('loadPatients populates list', () async {
-      final patients = List.generate(3, (i) => Patient(
-        id: i,
-        fullName: 'Patient $i',
-        phone: '0770123456$i',
-      ));
-      when(mockPatientDao.getAll()).thenAnswer((_) async => patients);
+    test('loads the deterministic patient page', () async {
+      final provider = PatientProvider();
 
-      await patientProvider.loadPatients();
-      expect(patientProvider.patients.length, 3);
+      await provider.loadPatients(page: 2, search: 'Ahmed');
+
+      expect(provider.isLoading, isFalse);
+      expect(provider.page, 2);
+      expect(provider.searchQuery, 'Ahmed');
+      expect(provider.patients, hasLength(20));
+      expect(provider.totalItems, 200);
+      expect(provider.totalPages, 10);
     });
 
-    test('search filters patients', () async {
-      final patients = List.generate(3, (i) => Patient(
-        id: i,
-        fullName: 'Patient $i',
-        phone: '0770123456$i',
-      ));
-      when(mockPatientDao.searchByName(any)).thenAnswer((_) async => [patients[0]]);
+    test('deletes a patient from the loaded page', () async {
+      final provider = PatientProvider();
+      await provider.loadPatients();
 
-      await patientProvider.searchPatients('Patient 0');
-      expect(patientProvider.patients.length, 1);
+      final id = provider.patients.first['id'] as String;
+      await provider.deletePatient(id);
+
+      expect(provider.patients.any((patient) => patient['id'] == id), isFalse);
+      expect(provider.patients, hasLength(19));
     });
   });
 }

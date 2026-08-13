@@ -79,7 +79,7 @@ fun ProfileScreen(
             GulaButton(
                 onClick = onBack,
                 text = "Back",
-                variant = GulaButtonVariant.OUTLINE,
+                variant = ButtonVariant.OUTLINE,
                 modifier = Modifier.fillMaxWidth(),
             )
         }

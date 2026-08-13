@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
-import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_search_bar.dart';
 import '../../widgets/core/gula_table.dart';
 import '../../widgets/core/gula_loading.dart';
@@ -43,7 +40,10 @@ class _SampleListPageState extends ConsumerState<SampleListPage> {
             onAction: () => context.push('/samples/collect'),
           ),
           const SizedBox(height: 16),
-          SizedBox(width: 300, child: GulaSearchBar(hint: 'Search by barcode...')),
+          SizedBox(
+            width: 300,
+            child: GulaSearchBar(hint: 'Search by barcode...'),
+          ),
           const SizedBox(height: 16),
           Expanded(child: _buildContent(state)),
         ],
@@ -52,15 +52,30 @@ class _SampleListPageState extends ConsumerState<SampleListPage> {
   }
 
   Widget _buildContent(SampleProvider state) {
-    if (state.isLoading) return const GulaLoading(type: GulaLoadingType.shimmer);
+    if (state.isLoading)
+      return const GulaLoading(type: GulaLoadingType.shimmer);
 
     return GulaTable(
       columns: [
-        GulaTableColumn(key: 'barcode', label: 'Barcode', flex: 1, sortable: true,
-          cellBuilder: (v, row) => Text(v.toString(), style: const TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.w600))),
+        GulaTableColumn(
+          key: 'barcode',
+          label: 'Barcode',
+          flex: 1,
+          sortable: true,
+          cellBuilder: (v, row) => Text(
+            v.toString(),
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
         GulaTableColumn(key: 'sampleType', label: 'Type', flex: 1),
         GulaTableColumn(key: 'patientName', label: 'Patient', flex: 2),
-        GulaTableColumn(key: 'status', label: 'Status', flex: 1,
+        GulaTableColumn(
+          key: 'status',
+          label: 'Status',
+          flex: 1,
           cellBuilder: (v, row) {
             final statusMap = {
               'collected': GulaBadgeStatus.info,
@@ -69,11 +84,23 @@ class _SampleListPageState extends ConsumerState<SampleListPage> {
               'analyzed': GulaBadgeStatus.success,
               'rejected': GulaBadgeStatus.error,
             };
-            return GulaBadge(label: v.toString(), status: statusMap[v] ?? GulaBadgeStatus.neutral);
+            return GulaBadge(
+              label: v.toString(),
+              status: statusMap[v] ?? GulaBadgeStatus.neutral,
+            );
           },
         ),
-        GulaTableColumn(key: 'collectedAt', label: 'Collected', flex: 1,
-          cellBuilder: (v, row) => Text(DateTime.tryParse(v.toString())?.toLocal().toString().substring(0, 16) ?? '')),
+        GulaTableColumn(
+          key: 'collectedAt',
+          label: 'Collected',
+          flex: 1,
+          cellBuilder: (v, row) => Text(
+            DateTime.tryParse(
+                  v.toString(),
+                )?.toLocal().toString().substring(0, 16) ??
+                '',
+          ),
+        ),
       ],
       rows: state.samples,
       isSortable: true,

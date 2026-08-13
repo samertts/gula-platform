@@ -1,5 +1,6 @@
 package io.gula.android.ui.features.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -11,8 +12,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import io.gula.android.ui.components.core.ButtonVariant
 import io.gula.android.ui.components.core.GulaButton
-import io.gula.android.ui.components.core.GulaButtonVariant
+import io.gula.android.ui.components.core.GulaCard
+import io.gula.android.ui.components.core.GulaTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,7 +139,7 @@ fun SettingsScreen(
             GulaButton(
                 onClick = { showLogoutDialog = true },
                 text = "Sign Out",
-                variant = GulaButtonVariant.DANGER,
+                variant = ButtonVariant.DANGER,
                 modifier = Modifier.fillMaxWidth(),
                 icon = Icons.Default.Logout,
             )
@@ -186,7 +189,3 @@ fun SettingsScreen(
         )
     }
 }
-
-private fun Modifier.clickable(onClick: () -> Unit): Modifier = this.then(
-    androidx.compose.foundation.clickable(onClick = onClick)
-)

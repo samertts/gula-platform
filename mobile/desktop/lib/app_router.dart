@@ -108,9 +108,8 @@ class AppRouter {
               GoRoute(
                 path: ':orderId',
                 name: 'orderDetail',
-                builder: (context, state) => OrderDetailPage(
-                  orderId: state.pathParameters['orderId']!,
-                ),
+                builder: (context, state) =>
+                    OrderDetailPage(orderId: state.pathParameters['orderId']!),
               ),
             ],
           ),
@@ -250,7 +249,10 @@ class AppRouter {
     final isMfaRoute = state.matchedLocation == '/mfa';
     final isForgotPasswordRoute = state.matchedLocation == '/forgot-password';
 
-    if (!isAuthenticated && !isLoginRoute && !isForgotPasswordRoute && !isMfaRoute) {
+    if (!isAuthenticated &&
+        !isLoginRoute &&
+        !isForgotPasswordRoute &&
+        !isMfaRoute) {
       return '/login';
     }
 

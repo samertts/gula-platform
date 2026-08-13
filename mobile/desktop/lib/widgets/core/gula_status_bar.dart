@@ -24,9 +24,7 @@ class GulaStatusBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: AppColors.neutral900,
-        border: Border(
-          top: BorderSide(color: AppColors.neutral800),
-        ),
+        border: Border(top: BorderSide(color: AppColors.neutral800)),
       ),
       child: Row(
         children: [
