@@ -4,6 +4,11 @@ set -eu
 PORT_VALUE="${PORT:-10000}"
 echo "GULA backend starting on 0.0.0.0:${PORT_VALUE}" >&2
 
+# Opt-in only: prints an import traceback without exposing environment values.
+if [ "${GULA_STARTUP_DIAGNOSTICS:-false}" = "true" ]; then
+  python3 /app/backend/railway_startup_probe.py
+fi
+
 exec gunicorn \
   -k uvicorn.workers.UvicornWorker \
   app.main:app \
