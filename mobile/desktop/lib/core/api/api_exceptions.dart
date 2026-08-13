@@ -58,8 +58,8 @@ class NetworkException extends ApiException {
 class RateLimitException extends ApiException {
   final int? retryAfterSeconds;
 
-  const RateLimitException(
-    [String message = 'Rate limit exceeded'], {
+  const RateLimitException({
+    String message = 'Rate limit exceeded',
     this.retryAfterSeconds,
   }) : super(message, statusCode: 429);
 }
@@ -92,8 +92,10 @@ ApiException parseApiError(Map<String, dynamic>? data, int? statusCode) {
       return ValidationException(message,
           errors: _parseValidationErrors(data));
     case 429:
-      return RateLimitException(message,
-          retryAfterSeconds: data?['retry_after_seconds'] as int?);
+      return RateLimitException(
+        message: message,
+        retryAfterSeconds: data?['retry_after_seconds'] as int?,
+      );
     case 500:
     case 502:
     case 503:
