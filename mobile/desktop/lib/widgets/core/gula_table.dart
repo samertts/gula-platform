@@ -100,8 +100,14 @@ class _GulaTableState extends State<GulaTable> {
     final col = widget.columns.firstWhere((c) => c.key == _sortColumn);
     final sorted = List<Map<String, dynamic>>.from(widget.rows);
     sorted.sort((a, b) {
-      final aVal = col.sortValue != null ? col.sortValue!(a[_sortColumn]) : a[_sortColumn]?.toString() ?? '';
-      final bVal = col.sortValue != null ? col.sortValue!(b[_sortColumn]) : b[_sortColumn]?.toString() ?? '';
+      final aVal = (col.sortValue != null
+              ? col.sortValue!(a[_sortColumn])
+              : a[_sortColumn]?.toString()) ??
+          '';
+      final bVal = (col.sortValue != null
+              ? col.sortValue!(b[_sortColumn])
+              : b[_sortColumn]?.toString()) ??
+          '';
       return _sortAscending
           ? Comparable.compare(aVal, bVal)
           : Comparable.compare(bVal, aVal);
@@ -168,7 +174,7 @@ class _GulaTableState extends State<GulaTable> {
         ),
         numeric: col.textAlign == TextAlign.right,
         onSort: col.sortable
-            ? (ascending) {
+            ? (_, ascending) {
                 setState(() {
                   if (_sortColumn == col.key) {
                     _sortAscending = !_sortAscending;

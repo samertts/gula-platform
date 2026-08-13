@@ -207,12 +207,12 @@ class AppDatabase extends _$AppDatabase {
 
   Future<Map<String, int>> getTableCounts() async {
     return {
-      'patients': (await customSelect('SELECT COUNT(*) FROM patients').getSingle()).read<int>(0),
-      'orders': (await customSelect('SELECT COUNT(*) FROM orders').getSingle()).read<int>(0),
-      'samples': (await customSelect('SELECT COUNT(*) FROM samples').getSingle()).read<int>(0),
-      'results': (await customSelect('SELECT COUNT(*) FROM results').getSingle()).read<int>(0),
-      'notifications': (await customSelect('SELECT COUNT(*) FROM notifications').getSingle()).read<int>(0),
-      'syncQueue': (await customSelect('SELECT COUNT(*) FROM sync_queue').getSingle()).read<int>(0),
+      'patients': (await customSelect('SELECT COUNT(*) AS count FROM patients').getSingle()).read<int>('count'),
+      'orders': (await customSelect('SELECT COUNT(*) AS count FROM orders').getSingle()).read<int>('count'),
+      'samples': (await customSelect('SELECT COUNT(*) AS count FROM samples').getSingle()).read<int>('count'),
+      'results': (await customSelect('SELECT COUNT(*) AS count FROM results').getSingle()).read<int>('count'),
+      'notifications': (await customSelect('SELECT COUNT(*) AS count FROM notifications').getSingle()).read<int>('count'),
+      'syncQueue': (await customSelect('SELECT COUNT(*) AS count FROM sync_queue').getSingle()).read<int>('count'),
     };
   }
 }

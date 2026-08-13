@@ -337,8 +337,8 @@ class AppTheme {
     );
   }
 
-  static CardTheme _cardTheme() {
-    return CardTheme(
+  static CardThemeData _cardTheme() {
+    return CardThemeData(
       elevation: 1,
       margin: const EdgeInsets.all(AppDimensions.space2),
       shape: RoundedRectangleBorder(
@@ -351,7 +351,6 @@ class AppTheme {
 
   static ChipThemeData _chipTheme() {
     return ChipThemeData(
-      height: AppDimensions.chipHeight,
       padding: const EdgeInsets.symmetric(horizontal: AppDimensions.space2),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
@@ -372,8 +371,8 @@ class AppTheme {
     );
   }
 
-  static DialogTheme _dialogTheme() {
-    return DialogTheme(
+  static DialogThemeData _dialogTheme() {
+    return DialogThemeData(
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
       ),
@@ -592,8 +591,8 @@ class AppTheme {
     );
   }
 
-  static CardTheme _cardThemeDark() {
-    return CardTheme(
+  static CardThemeData _cardThemeDark() {
+    return CardThemeData(
       elevation: 2,
       margin: const EdgeInsets.all(AppDimensions.space2),
       shape: RoundedRectangleBorder(
@@ -621,8 +620,8 @@ class AppTheme {
     );
   }
 
-  static DialogTheme _dialogThemeDark() {
-    return DialogTheme(
+  static DialogThemeData _dialogThemeDark() {
+    return DialogThemeData(
       backgroundColor: const Color(0xFF2C2C2C),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
