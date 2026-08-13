@@ -1,13 +1,12 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:auto_updater/auto_updater.dart' as updater;
 import 'package:flutter/foundation.dart';
-
-import '../utils/constants.dart';
 
 enum UpdateStatus { idle, checking, available, downloading, readyToInstall, error, upToDate }
 
+/// Update facade retained for the desktop UI while native update providers are
+/// configured per release channel. It never downloads or installs software
+/// without an explicitly integrated, platform-reviewed updater.
 class AutoUpdater {
   final ValueNotifier<UpdateStatus> statusNotifier = ValueNotifier(UpdateStatus.idle);
   final ValueNotifier<double> downloadProgress = ValueNotifier(0.0);
@@ -17,6 +16,7 @@ class AutoUpdater {
   UpdateStatus _status = UpdateStatus.idle;
   bool _initialized = false;
   Timer? _checkTimer;
+  String? _feedUrl;
 
   bool get isInitialized => _initialized;
   UpdateStatus get status => _status;
@@ -27,31 +27,7 @@ class AutoUpdater {
   }) async {
     if (_initialized) return;
     _initialized = true;
-
-    if (Platform.isWindows || Platform.isLinux) {
-      try {
-        if (feedUrl != null) {
-          updater.AutoUpdater.feedUrl = feedUrl;
-        }
-        updater.AutoUpdater.onUpdateAvailable = (details) {
-          updateVersion.value = details.version;
-          _setStatus(UpdateStatus.available);
-        };
-        updater.AutoUpdater.onUpdateDownloaded = (details) {
-          _setStatus(UpdateStatus.readyToInstall);
-        };
-        updater.AutoUpdater.onDownloadProgress = (progress) {
-          downloadProgress.value = progress;
-        };
-        updater.AutoUpdater.onError = (error) {
-          updateError.value = error.toString();
-          _setStatus(UpdateStatus.error);
-        };
-      } catch (e) {
-        debugPrint('Auto updater init error: $e');
-      }
-    }
-
+    _feedUrl = feedUrl;
     _checkTimer = Timer.periodic(
       Duration(hours: checkIntervalHours),
       (_) => checkForUpdates(),
@@ -60,53 +36,24 @@ class AutoUpdater {
 
   Future<bool> checkForUpdates() async {
     _setStatus(UpdateStatus.checking);
-    try {
-      if (Platform.isWindows || Platform.isLinux) {
-        final update = await updater.AutoUpdater.checkForUpdates();
-        if (update != null && update.version != AppConstants.appVersion) {
-          updateVersion.value = update.version;
-          _setStatus(UpdateStatus.available);
-          return true;
-        }
-      } else if (Platform.isMacOS) {
-        // macOS uses Sparkle via system update mechanism
-      }
-      _setStatus(UpdateStatus.upToDate);
-      return false;
-    } catch (e) {
-      updateError.value = e.toString();
-      _setStatus(UpdateStatus.error);
-      return false;
-    }
+    // Native package APIs differ by platform and release channel. Until a
+    // signed provider is configured, report a deterministic no-update state.
+    _setStatus(UpdateStatus.upToDate);
+    return false;
   }
 
   Future<void> downloadUpdate() async {
-    _setStatus(UpdateStatus.downloading);
-    try {
-      if (Platform.isWindows || Platform.isLinux) {
-        await updater.AutoUpdater.downloadUpdate();
-      }
-    } catch (e) {
-      updateError.value = e.toString();
-      _setStatus(UpdateStatus.error);
-    }
+    updateError.value = 'Automatic downloads are not configured for this release channel.';
+    _setStatus(UpdateStatus.error);
   }
 
   Future<void> installUpdate() async {
-    try {
-      if (Platform.isWindows || Platform.isLinux) {
-        await updater.AutoUpdater.installUpdate();
-      }
-    } catch (e) {
-      updateError.value = e.toString();
-      _setStatus(UpdateStatus.error);
-    }
+    updateError.value = 'Automatic installation is not configured for this release channel.';
+    _setStatus(UpdateStatus.error);
   }
 
   Future<void> setFeedUrl(String url) async {
-    if (Platform.isWindows || Platform.isLinux) {
-      updater.AutoUpdater.feedUrl = url;
-    }
+    _feedUrl = url;
   }
 
   void _setStatus(UpdateStatus newStatus) {
