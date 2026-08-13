@@ -16,11 +16,11 @@ import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.ResponseBody.Companion.toResponseBody
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import retrofit2.Response
-import kotlin.test.assertEquals
-import kotlin.test.assertIs
 
 class AuthRepositoryImplTest {
 
@@ -72,7 +72,8 @@ class AuthRepositoryImplTest {
 
         val result = repository.login("test@example.com", "password123")
 
-        val tokens = assertIs<Resource.Success<io.gula.android.domain.model.AuthTokens>>(result).data
+        assertTrue(result is Resource.Success)
+        val tokens = (result as Resource.Success).data
         assertEquals("access-token", tokens.accessToken)
         assertEquals("refresh-token", tokens.refreshToken)
         coVerify(exactly = 1) { userDao.insert(match { it.id == 7 && it.email == "test@example.com" }) }
@@ -87,8 +88,8 @@ class AuthRepositoryImplTest {
 
         val result = repository.login("wrong@example.com", "wrongpass")
 
-        val error = assertIs<Resource.Error>(result)
-        assertEquals("Invalid email or password", error.message)
+        assertTrue(result is Resource.Error)
+        assertEquals("Invalid email or password", (result as Resource.Error<*>).message)
     }
 
     @Test
@@ -98,7 +99,7 @@ class AuthRepositoryImplTest {
 
         val result = repository.loginWithBiometric()
 
-        val error = assertIs<Resource.Error>(result)
-        assertEquals("No saved session", error.message)
+        assertTrue(result is Resource.Error)
+        assertEquals("No saved session", (result as Resource.Error<*>).message)
     }
 }
