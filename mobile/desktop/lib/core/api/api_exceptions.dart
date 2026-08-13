@@ -10,29 +10,33 @@ class ApiException implements Exception {
 }
 
 class AuthException extends ApiException {
-  const AuthException([super.message = 'Authentication required', super.statusCode = 401]);
+  const AuthException([String message = 'Authentication required'])
+      : super(message, statusCode: 401);
 }
 
 class UnauthorizedException extends ApiException {
-  const UnauthorizedException([super.message = 'Forbidden', super.statusCode = 403]);
+  const UnauthorizedException([String message = 'Forbidden'])
+      : super(message, statusCode: 403);
 }
 
 class NotFoundException extends ApiException {
-  const NotFoundException([super.message = 'Resource not found', super.statusCode = 404]);
+  const NotFoundException([String message = 'Resource not found'])
+      : super(message, statusCode: 404);
 }
 
 class ConflictException extends ApiException {
-  const ConflictException([super.message = 'Resource conflict', super.statusCode = 409]);
+  const ConflictException([String message = 'Resource conflict'])
+      : super(message, statusCode: 409);
 }
 
 class ValidationException extends ApiException {
   final List<ValidationError> errors;
 
   const ValidationException(
-    super.message, {
+    String message, {
     this.errors = const [],
-    super.statusCode = 422,
-  });
+    int? statusCode = 422,
+  }) : super(message, statusCode: statusCode);
 }
 
 class ValidationError {
@@ -48,25 +52,25 @@ class ValidationError {
 }
 
 class NetworkException extends ApiException {
-  const NetworkException([super.message = 'Network error']);
+  const NetworkException([String message = 'Network error']) : super(message);
 }
 
 class RateLimitException extends ApiException {
   final int? retryAfterSeconds;
 
   const RateLimitException([
-    super.message = 'Rate limit exceeded',
-    this.retryAfterSeconds,
-    super.statusCode = 429,
-  ]);
+    String message = 'Rate limit exceeded',
+  ], {this.retryAfterSeconds}) : super(message, statusCode: 429);
 }
 
 class ServerException extends ApiException {
-  const ServerException([super.message = 'Internal server error', super.statusCode = 500]);
+  const ServerException([String message = 'Internal server error'])
+      : super(message, statusCode: 500);
 }
 
 class OfflineException extends ApiException {
-  const OfflineException([super.message = 'Device is offline', super.statusCode = -1]);
+  const OfflineException([String message = 'Device is offline'])
+      : super(message, statusCode: -1);
 }
 
 ApiException parseApiError(Map<String, dynamic>? data, int? statusCode) {
@@ -104,8 +108,11 @@ List<ValidationError> _parseValidationErrors(Map<String, dynamic>? data) {
   if (data['detail'] is List) {
     for (final e in data['detail'] as List) {
       if (e is Map<String, dynamic>) {
+        final location = e['loc'];
         errors.add(ValidationError(
-          loc: List<String>.from(e['loc'] ?? []),
+          loc: location is Iterable
+              ? location.map((value) => value.toString()).toList()
+              : const [],
           msg: e['msg'] as String? ?? '',
           type: e['type'] as String? ?? '',
         ));
