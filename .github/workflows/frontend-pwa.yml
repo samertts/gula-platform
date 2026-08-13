@@ -103,7 +103,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pwa-source-maps
-          path: frontend-v2/build/static/js/*.map
+          path: frontend-v3/dist/assets/*.map
           if-no-files-found: warn
           retention-days: 3
 
@@ -115,7 +115,7 @@ jobs:
     timeout-minutes: 10
     defaults:
       run:
-        working-directory: frontend-v2
+        working-directory: frontend-v3
 
     steps:
       - uses: actions/checkout@v4
@@ -134,7 +134,7 @@ jobs:
       - name: Run Lighthouse CI
         uses: GoogleChrome/lighthouse-ci-action@v12
         with:
-          configPath: frontend-v2/lighthouse.config.json
+          configPath: frontend-v3/lighthouse.config.json
           temporaryPublicStorage: true
           uploadArtifacts: true
           runs: 3
@@ -161,7 +161,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pwa-build
-          path: frontend-v2/build/
+          path: frontend-v3/dist/
 
       - name: Deploy to Vercel (Preview)
         env:
@@ -204,7 +204,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pwa-build
-          path: frontend-v2/build/
+          path: frontend-v3/dist/
 
       - name: Deploy to Vercel (Production)
         env:

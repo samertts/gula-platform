@@ -59,10 +59,10 @@ updates:
     vendor: false
 
   # ============================================================================
-  # npm — Frontend (React + Firebase)
+  # npm — Frontend v3 (React + Vite + TypeScript)
   # ============================================================================
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/frontend-v3/"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -73,6 +73,7 @@ updates:
       - "dependencies"
       - "automated"
       - "javascript"
+      - "frontend-v3"
     reviewers:
       - "samertts"
     assignees:
@@ -92,8 +93,6 @@ updates:
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
       - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "firebase"
         update-types: ["version-update:semver-major"]
     allow:
       - dependency-type: "production"
