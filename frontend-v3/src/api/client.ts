@@ -10,6 +10,26 @@ const LIVE_API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "/api";
 const DEMO_API_BASE_URL = "/demo-api";
 const API_MODE_STORAGE_KEY = "gula.api-mode";
 
+const SYNTHETIC_DEMO_USER = {
+  id: "demo-viewer",
+  name: "زائر العرض التجريبي",
+  email: "demo.viewer@gula-demo.invalid",
+  role: "demo_viewer",
+  lab_id: "demo-tenant",
+  lab_name: "GULA Synthetic Demo",
+  is_verified: true,
+};
+
+const SYNTHETIC_DEMO_DASHBOARD = {
+  demo_mode: true,
+  total_patients: 15,
+  today_orders: 8,
+  today_results: 12,
+  critical_alerts: 2,
+  synthetic_notice: "All values are generated for demonstration and training only.",
+  synthetic_notice_ar: "جميع القيم مولدة للعرض والتدريب فقط.",
+};
+
 export type ApiMode = "live" | "demo";
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
 type RestWriteMethod = "post" | "put" | "patch" | "delete";
@@ -139,16 +159,19 @@ class ApiClient {
   }
 
   async startDemoSession<T>() {
-    if (!DEMO_API_BASE_URL) {
-      throw new Error("DEMO_API_NOT_CONFIGURED");
-    }
-    const response = await axios.post<T>(
-      `${DEMO_API_BASE_URL}/demo/access`,
-      {},
-      { headers: { "Content-Type": "application/json" }, withCredentials: true, timeout: 30_000 },
-    );
+    // Public Demo is intentionally frontend-local: it cannot reach the live API,
+    // and all values are synthetic constants. The optional Vercel function remains
+    // available for deployments that need a server-side HttpOnly demo session.
     this.setMode("demo");
-    return response.data;
+    return {
+      demo_mode: true,
+      user: SYNTHETIC_DEMO_USER,
+    } as T;
+  }
+
+  async demoDashboard<T>() {
+    if (this.mode !== "demo") this.setMode("demo");
+    return SYNTHETIC_DEMO_DASHBOARD as T;
   }
 
   private async handleError(error: AxiosError) {
@@ -198,7 +221,7 @@ class ApiClient {
   }
 
   get isDemoConfigured(): boolean {
-    return Boolean(DEMO_API_BASE_URL);
+    return true;
   }
 }
 

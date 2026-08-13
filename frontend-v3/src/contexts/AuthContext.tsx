@@ -27,13 +27,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const restoreSession = async () => {
       const hasDemoMarker = window.sessionStorage.getItem(DEMO_SESSION_KEY) === "true";
       try {
-        const session = await authApi.session();
-        if (hasDemoMarker && !session.demo_mode) {
-          throw new Error("Demo marker exists but the server session is not a demo session");
-        }
+        const session = hasDemoMarker
+          ? await authApi.demoAccess()
+          : await authApi.session();
         if (mounted) {
           setUser(session.user);
           setDemoMode(Boolean(session.demo_mode));
+          if (hasDemoMarker) window.sessionStorage.setItem(DEMO_SESSION_KEY, "true");
         }
       } catch {
         window.sessionStorage.removeItem(DEMO_SESSION_KEY);

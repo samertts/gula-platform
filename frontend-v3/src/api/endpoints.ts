@@ -54,8 +54,8 @@ export const authApi = {
       demo_mode: true,
     };
   },
-  demoDashboard: () => api.get<Record<string, unknown>>("/dashboard").then((r) => r.data),
-  endDemo: () => api.post<Record<string, unknown>>("/logout").then((r) => r.data),
+  demoDashboard: () => apiClient.demoDashboard<Record<string, unknown>>(),
+  endDemo: () => Promise.resolve({ demo_mode: false }),
   requestVerification: (identifier: string) => api.post<Record<string, unknown>>("/auth/verification/request", { identifier }).then((r) => r.data),
   confirmVerification: (identifier: string, code: string) => api.post<Record<string, unknown>>("/auth/verification/confirm", { identifier, code }).then((r) => r.data),
   register: (data: Record<string, unknown>) =>
