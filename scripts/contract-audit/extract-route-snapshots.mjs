@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = path.resolve(scriptDir, "../..");
-const sourceRoot = "/home/ubuntu/gula-platform/backend/app";
+const sourceRoot = path.join(repositoryRoot, "backend/app");
 const outputPath = path.join(repositoryRoot, "docs/contract-audit/generated/route-snapshots.json");
 const markdownOutputPath = path.join(repositoryRoot, "docs/contract-audit/generated/ROUTE_CONTRACT_CATALOG.md");
 

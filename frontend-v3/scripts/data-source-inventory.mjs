@@ -1,7 +1,9 @@
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = process.cwd();
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const root = resolve(scriptDir, "..");
 const sourceRoot = resolve(root, "src");
 const outputPath = resolve(root, "data-source-inventory.json");
 
@@ -81,7 +83,7 @@ export async function writeDataSourceInventory() {
   return inventory;
 }
 
-const directExecution = process.argv[1] && resolve(process.argv[1]) === resolve(import.meta.url.replace("file://", ""));
+const directExecution = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (directExecution) {
   const inventory = await writeDataSourceInventory();
   console.log(`تم توليد جرد مصادر البيانات: ${inventory.surfaces.length} سطحًا.`);

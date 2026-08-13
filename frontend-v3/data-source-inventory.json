@@ -10,6 +10,14 @@
   ],
   "surfaces": [
     {
+      "source": "src/api/client.ts",
+      "kinds": [
+        "demo-surface"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
       "source": "src/api/endpoints.ts",
       "kinds": [
         "demo-surface",
@@ -120,14 +128,6 @@
       "kinds": [
         "endpoint-import",
         "react-query-read"
-      ],
-      "classification": "unbound",
-      "status": "non-operational"
-    },
-    {
-      "source": "src/pages/auth/RegisterPage.tsx",
-      "kinds": [
-        "endpoint-import"
       ],
       "classification": "unbound",
       "status": "non-operational"

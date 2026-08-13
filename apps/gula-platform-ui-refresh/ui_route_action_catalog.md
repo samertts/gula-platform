@@ -32,9 +32,8 @@
 | `compliance` | `CompliancePage` | `pages/compliance/CompliancePage.tsx` | complianceApi.systemStatus | isLoading، error، Loading | أزرار: 3؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
 | `control-plane` | `ControlPlanePageLazy` | `pages/control-plane/ControlPlanePage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `critical-care` | `CriticalCareApiPageLazy` | `pages/critical-care/CriticalCareApiPage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
-| `dashboard` | `DashboardPage` | `pages/dashboard/DashboardPage.tsx` | dashboardApi.demo، dashboardApi.dashboard | isLoading، isError، Loading | أزرار: 0؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
+| `dashboard` | `DashboardPage` | `pages/dashboard/DashboardPage.tsx` | dashboardApi.demo | isLoading، isError، Loading | أزرار: 0؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
 | `edge` | `EdgePage` | `pages/edge/EdgePage.tsx` | edgeApi.listDevices، edgeApi.quarantineDevice، edgeApi.revokeDevice، edgeApi.reinstateDevice، edgeApi.listTasks، edgeApi.fleetSummary | isLoading، error، EmptyState، Loading | أزرار: 6؛ onClick: 7؛ mutations: 4 | يتطلب تحققًا يدويًا من معالجات الإجراءات |
-| `ehr` | `EhrPage` | `pages/ehr/EhrPage.tsx` | patientsApi.get، ordersApi.list، resultsApi.list | isLoading، error، EmptyState، Loading | أزرار: 4؛ onClick: 4؛ mutations: 0 | يتطلب تحققًا يدويًا من معالجات الإجراءات |
 | `ems` | `EmsApiPageLazy` | `pages/ems/EmsApiPage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `fhir` | `FhirPage` | `pages/fhir/FhirPage.tsx` | — | — | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `financial` | `FinancialPage` | `pages/financial/FinancialPage.tsx` | financialApi.billingStatus، financialApi.billingRates، financialApi.listInvoices، financialApi.listPayments، financialApi.listTransactions | isLoading، error، EmptyState، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | يتطلب تحققًا يدويًا من معالجات الإجراءات |
@@ -46,7 +45,7 @@
 | `kernel` | `KernelPageLazy` | `pages/kernel/KernelPage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `labs` | `LabsPage` | `pages/labs/LabsPage.tsx` | adminApi.labs | isLoading، Loading | أزرار: 1؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
 | `lifecycle-platform` | `LifecyclePlatformApiPageLazy` | `pages/lifecycle-platform/LifecyclePlatformApiPage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
-| `login` | `LoginPage` | `pages/auth/LoginPage.tsx` | — | error، Loading | أزرار: 3؛ onClick: 2؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
+| `login` | `LoginPage` | `pages/auth/LoginPage.tsx` | — | error، Loading | أزرار: 4؛ onClick: 3؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `national-data` | `NationalDataPage` | `pages/national-data/NationalDataPage.tsx` | nationalDataApi.listGoldenRecords، nationalDataApi.listDataCatalog، nationalDataApi.listDeidentificationJobs، nationalDataApi.recordDataQualityCheck | isLoading، error، EmptyState، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | يتطلب تحققًا يدويًا من معالجات الإجراءات |
 | `national/background-platform` | `NationalBackgroundPlatformApiPageLazy` | `pages/national/background-platform/NationalBackgroundPlatformApiPage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `national/document-platform` | `NationalDocumentPlatformApiPageLazy` | `pages/national/document-platform/NationalDocumentPlatformApiPage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
@@ -67,18 +66,19 @@
 | `niam/trust` | `NiamTrustPage` | `pages/niam/TrustPage.tsx` | — | isLoading، Loading | أزرار: 3؛ onClick: 2؛ mutations: 2 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `niam/workflows` | `NiamWorkflowsPage` | `pages/niam/WorkflowsPage.tsx` | — | isLoading، Loading | أزرار: 3؛ onClick: 2؛ mutations: 2 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `notifications` | `NotificationsPage` | `pages/notifications/NotificationsPage.tsx` | notificationsApi.send، notificationsApi.history | isLoading، error، Loading | أزرار: 4؛ onClick: 4؛ mutations: 2 | يتطلب تحققًا يدويًا من معالجات الإجراءات |
-| `orders` | `OrdersPage` | `pages/orders/OrdersPage.tsx` | ordersApi.list | isLoading، Loading | أزرار: 0؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
+| `orders` | `OrdersPage` | `pages/orders/OrdersPage.tsx` | — | isLoading، error، EmptyState، Loading | أزرار: 0؛ onClick: 0؛ mutations: 0 | سطح قالب أو عرض ساكن محتمل |
 | `patient-card` | `PatientCardPage` | `pages/patient-card/PatientCardPage.tsx` | patientCardApi.get | isLoading، error، EmptyState، Loading | أزرار: 2؛ onClick: 2؛ mutations: 0 | يتطلب تحققًا يدويًا من معالجات الإجراءات |
-| `patients` | `PatientsPage` | `pages/patients/PatientsPage.tsx` | patientsApi.list | isLoading، Loading | أزرار: 0؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
+| `patients` | `PatientsPage` | `pages/patients/PatientsPage.tsx` | — | isLoading، error، EmptyState، Loading | أزرار: 0؛ onClick: 0؛ mutations: 0 | سطح قالب أو عرض ساكن محتمل |
 | `pharmacy` | `PharmacyPageLazy` | `pages/pharmacy/PharmacyPage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `pilot-platform` | `PilotPlatformApiPageLazy` | `pages/pilot-platform/PilotPlatformApiPage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `platform` | `PlatformPageLazy` | `pages/platform/PlatformPage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `profile` | `ProfilePage` | `pages/profile/ProfilePage.tsx` | — | — | أزرار: 1؛ onClick: 0؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `public-health` | `PublicHealthApiPageLazy` | `pages/public-health/PublicHealthApiPage.tsx` | — | isLoading، Loading | أزرار: 1؛ onClick: 1؛ mutations: 0 | إجراءات مرئية بلا مرجع API محلي واضح |
 | `qc` | `QCPage` | `pages/qc/QCPage.tsx` | qcApi.list | isLoading، error، EmptyState، Loading | أزرار: 0؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
-| `register` | `RegisterPage` | `pages/auth/RegisterPage.tsx` | authApi.registerCitizen، authApi.requestVerification، authApi.confirmVerification | error، Loading | أزرار: 2؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
-| `results` | `ResultsPage` | `pages/results/ResultsPage.tsx` | resultsApi.list | isLoading، Loading | أزرار: 0؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
-| `samples` | `SamplesPage` | `pages/samples/SamplesPage.tsx` | samplesApi.list | isLoading، Loading | أزرار: 0؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
+| `register` | `RegisterPage` | `pages/auth/RegisterPage.tsx` | — | — | أزرار: 0؛ onClick: 0؛ mutations: 0 | سطح قالب أو عرض ساكن محتمل |
+| `reports` | `ReportsPage` | `pages/reports/ReportsPage.tsx` | — | — | أزرار: 0؛ onClick: 0؛ mutations: 0 | سطح قالب أو عرض ساكن محتمل |
+| `results` | `ResultsPage` | `pages/results/ResultsPage.tsx` | — | — | أزرار: 0؛ onClick: 0؛ mutations: 0 | سطح قالب أو عرض ساكن محتمل |
+| `samples` | `SamplesPage` | `pages/samples/SamplesPage.tsx` | — | — | أزرار: 0؛ onClick: 0؛ mutations: 0 | سطح قالب أو عرض ساكن محتمل |
 | `security` | `SecurityPage` | `pages/security/SecurityPage.tsx` | securityApi.status | isLoading، error، Loading | أزرار: 2؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |
 | `settings` | `SettingsPage` | `pages/settings/SettingsPage.tsx` | — | — | أزرار: 0؛ onClick: 0؛ mutations: 0 | سطح قالب أو عرض ساكن محتمل |
 | `stats` | `StatsPage` | `pages/stats/StatsPage.tsx` | statsApi.summary | isLoading، error، Loading | أزرار: 0؛ onClick: 0؛ mutations: 0 | يحتاج مواءمة مع عقد الخلفية |

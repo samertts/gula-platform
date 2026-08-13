@@ -341,4 +341,4 @@ const lines = [
 ];
 
 await writeFile(outputPath, lines.join("\n"), "utf8");
-console.log(`مصفوفة الإجراءات مكتملة: ${rows.length} عنصرًا عبر المكونات المتداخلة → ${relative(process.cwd(), outputPath)}`);
+console.log(`مصفوفة الإجراءات مكتملة: ${rows.length} عنصرًا عبر المكونات المتداخلة → ${relative(appRoot, outputPath)}`);

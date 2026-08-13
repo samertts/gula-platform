@@ -1,9 +1,12 @@
 import { readFile, readdir, writeFile } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const repoRoot = "/home/ubuntu/gula-platform";
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const appRoot = resolve(scriptDir, "..");
+const repoRoot = resolve(appRoot, "../..");
 const routesPath = join(repoRoot, "frontend-v3/src/routes/index.tsx");
-const outputPath = "/home/ubuntu/gula-platform-ui-refresh/ui_route_action_catalog.md";
+const outputPath = join(appRoot, "ui_route_action_catalog.md");
 
 async function listFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -83,4 +86,4 @@ const lines = [
 ];
 
 await writeFile(outputPath, lines.join("\n"), "utf8");
-console.log(`كتالوج الواجهة مكتمل: ${routeRows.length} مسارًا → ${relative(process.cwd(), outputPath)}`);
+console.log(`كتالوج الواجهة مكتمل: ${routeRows.length} مسارًا → ${relative(appRoot, outputPath)}`);
