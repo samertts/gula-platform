@@ -18,10 +18,11 @@ Design:
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from ..gateways.base import CircuitState, ExternalGateway
 from ..gateways.cloudflare_gateway import (
@@ -40,8 +41,15 @@ from ..gateways.residency_gateway import (
     get_residency_gateway,
     verify_residency,
 )
+from ..contracts.integration import IntegrationEventEnvelope
+from ..integration.inbox import stage_event
+from ..models.service_account import ServiceAccount
+from ..security.dependencies import require_service_account
+from ..database import get_db
 from ..models.lab_user import LabUser
 from ..security.rbac import require_role
+
+logger = logging.getLogger("gula.integrations.router")
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 
@@ -84,6 +92,55 @@ def _snapshot(name: str, gw: ExternalGateway) -> dict:
         "cache_size": len(gw._cache),
         "cache_ttl": gw.cache_ttl,
         "timeout": gw.timeout,
+    }
+
+
+def _authorize_event_ingress(principal: Any) -> Any:
+    """Only scoped service accounts or platform administrators may publish."""
+    if isinstance(principal, ServiceAccount):
+        scopes = principal.scopes or ""
+        if "integration:events:write" not in scopes:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Service account lacks integration:events:write scope",
+            )
+        return principal
+    if getattr(principal, "role", None) not in {"master_admin", "ministry_admin"}:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Integration event ingress requires an authorized service principal",
+        )
+    return principal
+
+
+# ── POST /integrations/events ────────────────────────────────────────────────
+
+
+@router.post("/events", status_code=status.HTTP_202_ACCEPTED, summary="Stage an external event")
+def receive_integration_event(
+    envelope: IntegrationEventEnvelope,
+    principal=Depends(require_service_account),
+    db=Depends(get_db),
+) -> dict:
+    """Validate and durably stage an event; clinical approval remains in GULA."""
+    _authorize_event_ingress(principal)
+    try:
+        result = stage_event(db, envelope)
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    except Exception:
+        db.rollback()
+        logger.exception("Integration event staging failed event_id=%s", envelope.event_id)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Event staging unavailable")
+
+    return {
+        "event_id": result.event_id,
+        "idempotency_key": result.idempotency_key,
+        "status": result.status,
+        "inbox_id": result.inbox_id,
+        "clinical_approval": "not_performed",
     }
 
 
