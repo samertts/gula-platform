@@ -4,8 +4,12 @@ import { mockLogin, setupAuthenticatedPage } from "./helpers";
 test.describe("Navigation & Routing", () => {
   test.beforeEach(async ({ page }) => {
     await mockLogin(page);
-    await page.route("**/api/**", async (route) => {
+    await page.route("**/*", async (route) => {
       const pathname = new URL(route.request().url()).pathname;
+      if (!pathname.startsWith("/api/")) {
+        await route.fallback();
+        return;
+      }
       if (pathname === "/api/session" || pathname === "/api/login" || pathname === "/api/auth/refresh") {
         await route.fallback();
         return;
