@@ -65,7 +65,16 @@ if (candidateReads.length !== 2 || candidateReads.some((entry) => entry.decision
   throw new Error("فشل تدقيق المخرجات: يجب منع عقدي المرضى والطلبات حتى يثبت فرض الصلاحية الخادمي.");
 }
 
-for (const phrase of ["patients.read", "orders.read", "server_enforcement_required", "POST /authz/check", "قرار المنع"]) {
+for (const phrase of [
+  "patients.read",
+  "orders.read",
+  "clinical.radiology.order.read",
+  "clinical.ehr.record.read",
+  "clinical.nursing.task.read",
+  "server_enforcement_required",
+  "POST /authz/check",
+  "قرار المنع",
+]) {
   if (!candidateMatrix.includes(phrase)) {
     throw new Error(`فشل تدقيق المخرجات: مصفوفة العقود المرشحة لا تتضمن الدليل الإلزامي (${phrase}).`);
   }
