@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
-import '../../widgets/core/gula_card.dart';
 import '../../widgets/core/gula_button.dart';
-import '../../widgets/core/gula_badge.dart';
 import '../../widgets/core/gula_table.dart';
 import '../../widgets/data/critical_value_flag.dart';
 import '../../widgets/layout/page_container.dart';
@@ -49,7 +44,7 @@ class _ResultValidationPageState extends State<ResultValidationPage> {
                       Text(v.toString(), style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
                       if (row['flag'] != 'normal') ...[
                         const SizedBox(width: 8),
-                        CriticalValueFlag(flag: row['flag']),
+                        CriticalValueFlag(flag: row['flag']?.toString() ?? ''),
                       ],
                     ],
                   ),

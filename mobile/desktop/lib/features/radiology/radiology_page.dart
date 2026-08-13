@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 import '../../widgets/core/gula_card.dart';
 import '../../widgets/core/gula_badge.dart';
 import '../../widgets/core/gula_search_bar.dart';
@@ -44,11 +43,11 @@ class _RadiologyPageState extends State<RadiologyPage> {
                     leading: Container(
                       width: 40, height: 40,
                       decoration: BoxDecoration(color: AppColors.info50, borderRadius: BorderRadius.circular(8)),
-                      child: const Icon(Icons.radiology, color: AppColors.info500),
+                      child: const Icon(Icons.medical_services_outlined, color: AppColors.info500),
                     ),
-                    title: Text(s['study'], style: const TextStyle(fontWeight: FontWeight.w500)),
-                    subtitle: Text('${s['patient']} • ${s['id']}'),
-                    trailing: _buildStatusBadge(s['status']),
+                    title: Text(s['study']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w500)),
+                    subtitle: Text('${s['patient']?.toString() ?? ''} • ${s['id']?.toString() ?? ''}'),
+                    trailing: _buildStatusBadge(s['status']?.toString() ?? ''),
                   ),
                 );
               },

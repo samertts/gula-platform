@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
-import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_card.dart';
 import '../../widgets/core/gula_badge.dart';
 import '../../widgets/layout/section_header.dart';
@@ -42,20 +40,21 @@ class _PharmacyPageState extends State<PharmacyPage> {
               itemCount: _medications.length,
               itemBuilder: (context, index) {
                 final med = _medications[index];
+                final quantity = med['quantity'] as int? ?? 0;
                 return GulaCard(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(med['name'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                      Text(med['name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                       const SizedBox(height: 4),
-                      Text('${med['dosage']} • Qty: ${med['quantity']}',
+                      Text('${med['dosage']?.toString() ?? ''} • Qty: $quantity',
                           style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          GulaBadge(label: 'Exp: ${med['expiry']}', status: GulaBadgeStatus.neutral, showDot: false),
-                          if (med['quantity'] < 60)
+                          GulaBadge(label: 'Exp: ${med['expiry']?.toString() ?? ''}', status: GulaBadgeStatus.neutral, showDot: false),
+                          if (quantity < 60)
                             const GulaBadge(label: 'Low', status: GulaBadgeStatus.error),
                         ],
                       ),

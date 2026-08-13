@@ -1,11 +1,9 @@
-import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
-import '../utils/constants.dart';
 
 class PrintingService {
   Future<void> printPdf(Uint8List pdfData, {String jobName = 'GULA Report'}) async {
@@ -42,11 +40,9 @@ class PrintingService {
             style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
           ),
         ),
-        footer: (context) => pw.Footer(
-          child: pw.Text(
-            'Page ${context.pageNumber} of ${context.pagesCount}',
-            style: const pw.TextStyle(fontSize: 10),
-          ),
+        footer: (context) => pw.Text(
+          'Page ${context.pageNumber} of ${context.pagesCount}',
+          style: const pw.TextStyle(fontSize: 10),
         ),
         build: (context) => [
           pw.Header(level: 1, text: title),
@@ -184,7 +180,7 @@ class PrintingService {
             ...((receiptData['items'] as List?) ?? []).map((item) => pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text(item['name'] ?? ''),
+                pw.Text(item['name']?.toString() ?? ''),
                 pw.Text('${item['quantity'] ?? ''} x ${item['price'] ?? ''}'),
               ],
             )),
