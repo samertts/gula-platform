@@ -24,7 +24,7 @@ from backend.app.national.task_engine.infrastructure.repository import (
     SQLAlchemyTaskQueueRepository,
     SQLAlchemyTaskSLARepository,
 )
-from backend.app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user
 
 router = APIRouter(prefix="/national/tasks", tags=["National Task Engine"])
 

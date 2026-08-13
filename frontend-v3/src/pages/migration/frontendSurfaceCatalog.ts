@@ -48,7 +48,7 @@ export const frontendSurfaceCatalog: readonly FrontendSurface[] = [
     entryPath: "/doctor",
     status: "bridge",
     title: "مساحة الطبيب",
-    rationale: "تظهر مساحة انتقالية آمنة داخل frontend-v3؛ لا تُفعّل تدفقات الطبيب قبل إثبات العقود والصلاحيات المكافئة.",
+    rationale: "يوجد عقد خادمي محدود لملاحظة واحدة عبر tRPC، لكن لا تملك frontend-v3 قناة جلسة ونطاق معتمدة له؛ يبقى المدخل جسرًا آمنًا ولا تُفعّل القوائم أو الكتابات.",
   },
   {
     id: "hospital",
@@ -83,7 +83,7 @@ export const frontendSurfaceCatalog: readonly FrontendSurface[] = [
     entryPath: "/nurse",
     status: "bridge",
     title: "مساحة التمريض",
-    rationale: "تظهر مساحة انتقالية آمنة داخل frontend-v3؛ لا تُفعّل تدفقات التمريض قبل إثبات العقود والصلاحيات المكافئة.",
+    rationale: "يوجد عقد خادمي محدود لمهام المستخدم الحالي عبر tRPC، لكن لا تملك frontend-v3 قناة جلسة ونطاق معتمدة له؛ يبقى المدخل جسرًا آمنًا وتبقى القياسات والأوامر والكتابات محجوبة.",
   },
   {
     id: "pharmacy",
@@ -100,7 +100,7 @@ export const frontendSurfaceCatalog: readonly FrontendSurface[] = [
     entryPath: "/radiology",
     status: "bridge",
     title: "مساحة الأشعة",
-    rationale: "تظهر مساحة انتقالية آمنة داخل frontend-v3؛ لا تُفعّل تدفقات الأشعة قبل إثبات عقود DICOM والصلاحيات المكافئة.",
+    rationale: "يوجد عقد خادمي محدود لقراءة أوامر الأشعة عبر tRPC، لكن لا تملك frontend-v3 قناة جلسة ونطاق معتمدة له؛ يبقى المدخل جسرًا آمنًا ولا تُفعّل أي قراءة DICOM أو كتابة.",
   },
 ] as const;
 

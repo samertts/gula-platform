@@ -1,0 +1,21 @@
+# حالة فرع GitHub المرجعية لتدقيق العقود
+
+الالتزام المرجعي السابق للتدقيق: 64c5211a
+
+## حالة الفرع الحالية
+الفرع: `chore/ui-refresh-trpc-integration`
+
+- معدل: `frontend-v3/package.json`
+- غير متتبع: `docs/contract-audit/`
+- غير متتبع: `frontend-v3/scripts/verify-integration-boundary.mjs`
+- غير متتبع: `scripts/contract-audit/`
+
+## رأس الفرع
+[33m64c5211a[m refactor(frontend-v3): route all legacy sources through safe bridges
+
+## فرق ملفات التدقيق مقارنة بالالتزام المرجعي
+M	frontend-v3/package.json
+
+## دليل التحقق المؤرخ للالتزام المرجعي
+
+تبيّن من GitHub Actions أن الالتزام `64c5211a` كانت له عمليات تحقق مؤرخة بدأت في `2026-08-12T23:50:54Z`، أي قبل إنشاء مخرجات تدقيق العقود في هذا الفرع. ويتضمن سجل الفحص المتاح: نجاح `quality-gate` في `23:51:03Z`، ونجاح `preview` في `23:51:21Z`، ونجاح تحليل Python وJavaScript/TypeScript، إضافة إلى فشل مستقل لاختبار باسم `test` في `23:51:38Z`. يثبت هذا السجل وجود المرجع وحالة فحوصه قبل التدقيق، ولا يحول الفحص الناجح إلى اعتماد وظيفي للعقود السريرية أو يتجاهل الفحص الفاشل. مصدر الاستعلام هو نقطة GitHub API الخاصة بفحوص الالتزام: <https://github.com/samertts/gula-platform/commit/64c5211a>.

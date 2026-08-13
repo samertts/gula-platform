@@ -13,6 +13,7 @@ from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
+from app.radiology.clinical_read_gate import ClinicalRadiologyReadDenied, ClinicalRadiologyReadGate
 from app.radiology.device import (
     DeviceMonitoringService,
     ModalityWorklistService,
@@ -351,6 +352,45 @@ def list_orders(
         patient_ids=tenant_patient_ids,
     )
     return {"items": [_to_dict(o) for o in orders], "total": len(orders), "skip": skip, "limit": limit}
+
+
+@router.get("/clinical/orders")
+def list_clinical_orders(
+    patient_id: str | None = None,
+    modality: str | None = None,
+    status: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+    priority: str | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+):
+    """List radiology orders only after an exact clinical scope and policy decision.
+
+    This is deliberately a read-only adapter. It does not reinterpret a legacy
+    lab identifier as a facility identifier; the gate resolves the explicit
+    bridge and authorizes the canonical person, assignment, organization, and
+    facility before the established laboratory-scoped query executes.
+    """
+    try:
+        ClinicalRadiologyReadGate().authorize(db=db, lab_user=current_user)
+    except ClinicalRadiologyReadDenied as exc:
+        raise HTTPException(status_code=403, detail="Clinical radiology access is not permitted") from exc
+
+    return list_orders(
+        patient_id=patient_id,
+        modality=modality,
+        status=status,
+        date_from=date_from,
+        date_to=date_to,
+        priority=priority,
+        skip=skip,
+        limit=limit,
+        db=db,
+        current_user=current_user,
+    )
 
 
 @router.get("/orders/search")

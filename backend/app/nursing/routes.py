@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
+from app.nursing.clinical_read_gate import ClinicalNursingTaskReadDenied, ClinicalNursingTaskReadGate
 from app.nursing.coordination import CareCoordinatorService
 from app.nursing.medication import MedicationAdminService
 from app.nursing.models import (
@@ -522,6 +523,32 @@ def list_tasks(
     return _paginated_response(
         [_model_to_dict(t) for t in tasks], len(tasks), skip, limit,
     )
+
+
+@router.get("/clinical/my-tasks", summary="Read only the current nurse's clinical tasks")
+def list_clinical_my_tasks(
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return at most fifty assigned tasks after the clinical gate succeeds.
+
+    The endpoint deliberately exposes no patient, assignment, status, or task
+    type filter: callers can read only the current legacy user's own task list.
+    Existing task creation and state-change endpoints remain outside this
+    contract.
+    """
+    try:
+        ClinicalNursingTaskReadGate().authorize(db=db, lab_user=current_user)
+    except ClinicalNursingTaskReadDenied:
+        raise HTTPException(status_code=403, detail="Clinical nursing access is not permitted")
+
+    tasks = NursingService.get_tasks(
+        db=db,
+        lab_id=current_user.lab_id,
+        nurse_id=str(current_user.id),
+        limit=50,
+    )
+    return _paginated_response([_model_to_dict(task) for task in tasks], len(tasks), 0, 50)
 
 
 @router.post("/tasks", summary="Create nursing task", status_code=201)

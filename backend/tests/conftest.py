@@ -21,7 +21,11 @@ os.environ["RUNTIME_MODE"] = "test"
 os.environ["FEATURE_BACKGROUND_TASKS"] = "false"
 
 os.environ.setdefault("ENV", "test")
-os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+# A developer shell or CI service may already expose a production-like URL.
+# Tests intentionally use SQLite and must not import that external dialect while
+# collecting fixtures, otherwise a MySQL/PostgreSQL driver can be required before
+# the test isolation setup has even started.
+os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ.setdefault("SECRET_KEY", "test-secret-key-not-for-production-" + "x" * 32)
 os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=")
 os.environ.setdefault("NID_HMAC_KEY", "a" * 64)

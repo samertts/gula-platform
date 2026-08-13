@@ -10,6 +10,85 @@ const API_MODE_STORAGE_KEY = "gula.api-mode";
 
 export type ApiMode = "live" | "demo";
 type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
+type RestWriteMethod = "post" | "put" | "patch" | "delete";
+
+const IDENTITY_AND_DECISION_ALLOWLIST = new Set([
+  "POST /login",
+  "POST /logout",
+  "POST /demo/access",
+  "POST /auth/verification/request",
+  "POST /auth/verification/confirm",
+  "POST /auth/forgot-password",
+  "POST /auth/reset-password",
+  "POST /auth/change-password",
+  "POST /register/citizen",
+  "POST /authz/check",
+  "POST /consent/check",
+]);
+
+const INITIALIZATION_READ_ALLOWLIST = new Set([
+  "GET /session",
+  "GET /setup/status",
+  "GET /greeting",
+]);
+
+export class OperationalWriteBlockedError extends Error {
+  constructor(
+    public readonly method: string,
+    public readonly url: string,
+  ) {
+    super("أُوقفت العملية لأن عقد الكتابة وتفويضها وأثرها التشغيلي لم تُعتمد بعد.");
+    this.name = "OperationalWriteBlockedError";
+  }
+}
+
+export class OperationalReadBlockedError extends Error {
+  constructor(
+    public readonly method: string,
+    public readonly url: string,
+  ) {
+    super("أُوقفت القراءة لأن مصدر البيانات غير مصنف بعقد خادمي مفروض أو جسر آمن.");
+    this.name = "OperationalReadBlockedError";
+  }
+}
+
+function toRequestKey(method?: string, url?: string): string {
+  const normalizedMethod = (method ?? "get").toUpperCase();
+  const normalizedUrl = (url ?? "").split("?")[0] || "/";
+  return `${normalizedMethod} ${normalizedUrl.startsWith("/") ? normalizedUrl : `/${normalizedUrl}`}`;
+}
+
+/**
+ * يمنع العميل نفسه أي كتابة تشغيلية غير مشمولة بعقد مفوض ومراجع. الاستثناءات
+ * ضيقة ومحصورة في المصادقة والتحقق وقرارات القراءة؛ ولا تشمل كتابة بيانات سريرية
+ * أو إدارية أو أجهزة أو إشعارات ذات أثر خارجي.
+ */
+export function assertFrontendWriteIsAllowed(method?: string, url?: string): void {
+  const normalizedMethod = (method ?? "get").toLowerCase();
+  if (!( ["post", "put", "patch", "delete"] as RestWriteMethod[]).includes(normalizedMethod as RestWriteMethod)) {
+    return;
+  }
+
+  const key = toRequestKey(normalizedMethod, url);
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key)) {
+    throw new OperationalWriteBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
+  }
+}
+
+/**
+ * ترفض القراءات المباشرة كذلك؛ فلا يصح أن يعالج الحاجز الكتابات فقط بينما يبقى
+ * `GET` مباشرًا قادرًا على عرض سجل سريري أو مختبري. الاستثناءات هي تهيئة جلسة
+ * وهوية أولية ضيقة لا تمنح عرض مورد تشغيلي.
+ */
+export function assertFrontendReadIsAllowed(method?: string, url?: string): void {
+  const normalizedMethod = (method ?? "get").toLowerCase();
+  if (normalizedMethod !== "get") return;
+
+  const key = toRequestKey(normalizedMethod, url);
+  if (!INITIALIZATION_READ_ALLOWLIST.has(key)) {
+    throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
+  }
+}
 
 function initialMode(): ApiMode {
   if (typeof window === "undefined") return "live";
@@ -32,6 +111,12 @@ class ApiClient {
       headers: { "Content-Type": "application/json" },
       withCredentials: true,
       timeout: 30_000,
+    });
+
+    this.instance.interceptors.request.use((config) => {
+      assertFrontendReadIsAllowed(config.method, config.url);
+      assertFrontendWriteIsAllowed(config.method, config.url);
+      return config;
     });
 
     this.instance.interceptors.response.use(
