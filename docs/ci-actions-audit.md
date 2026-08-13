@@ -1,77 +1,83 @@
-# تدقيق إخفاقات GitHub Actions — GULA Platform
+# تدقيق GitHub Actions النهائي — GULA Platform
 
-**الحالة:** اكتمل إصلاح الأسباب القابلة لإعادة الإنتاج محليًا؛ تبقى متطلبات بنية تحتية وأسرار موثقة أدناه.
-**تاريخ الحصر:** 12 أغسطس 2026
-**المصدر:** GitHub Actions repository run API and failed-job logs
+**الحالة النهائية:** اكتملت إصلاحات المسارات القابلة للمعالجة برمجياً والتحقق منها في GitHub Actions. يمر مسار Flutter Desktop كاملاً على Linux وmacOS وWindows، كما يمر CI Pipeline ومسارات الأمن والحوكمة ذات الصلة. لا توجد أسرار إنتاج أو شهادات نشر حقيقية مضافة ضمن هذا العمل.
 
-## الحصر الأولي
+**تاريخ التحقق:** 13 أغسطس 2026
+**الالتزام المتحقق منه:** `3fefa553935f9527f8b6f392e47318266a694679`
+**النطاق:** إصلاح أعطال CI/CD القابلة لإعادة الإنتاج، مع إبقاء النشر والإصدار الموقّع محميين بالاعتمادات المملوكة لبيئة الإنتاج.
 
-استُرجع **1,000 تشغيل فاشل متاح عبر واجهة GitHub Actions**. هذا الرقم يمثل السجل المتاح من الواجهة في وقت التدقيق وقد يتضمن تكرارات تاريخية لنفس السبب؛ لذلك يجري قياس الأسباب الفريدة وإصلاح ملفات سير العمل الحالية بدل معالجة كل تشغيل قديم منفردًا.
+## ملخص التحقق البعيد
 
-| سير العمل/الاسم التاريخي | إخفاقات في السجل المسترجع | سبب ممثل تم جمعه |
-| --- | ---: | --- |
-| CI Pipeline وCI - Build, Test & Security Scan | 475 | فشل flake8 في السجل الأحدث؛ إخفاقات بناء/Trivy تاريخية مع tags فروع غير صالحة |
-| Deploy GULA Platform / Verify Railway Deployment | 136 | مصادقة SSH فاشلة (`Permission denied`) |
-| CodeQL Advanced | 63 | لغات بلا مصدر أو autobuild غير قابل للتحديد (Ruby/Swift/Java) |
-| Constitution Compliance | 63 | سجل ممثل من ملف/سير عمل تاريخي لم تعد سجلاته متاحة |
-| Quality Gate / Production Quality Gates | 64 | YAML غير صالح؛ مراجع submodule غير معرفة؛ متطلبات PWA غير واقعية في سجل أقدم |
-| Frontend PWA وE2E | 59 | مسار artifact `frontend-v2/build` مفقود وweb server لم يبدأ خلال المهلة |
-| Mobile Android/iOS/Flutter Desktop | 24 | إعداد Gradle/اعتماد Flutter غير صالح؛ workspace iOS مفقود |
-| SDK Publish Packages | 5 | إصدار Flutter action غير متاح؛ نشر حزم يحتاج معالجة release/credentials |
-| Dependency Review | 20 | قائمة تراخيص غير صالحة في إعداد الإجراء |
-| OpenSSF Scorecard | 16 | checkout يتعامل مع مجلد مضمّن كـsubmodule بلا URL |
-
-## الأدلة التقنية المختصرة
-
-1. أحدث CI Pipeline فشل في مرحلة `Syntax Gate / Lint with flake8` فقط؛ بقية مراحل الاختبار والترحيل لم تبدأ بسبب الاعتماد على هذه البوابة.
-2. سجل CodeQL يثبت أن Ruby غير موجودة ضمن مصدر المشروع وأن Java/Kotlin وSwift لا يملكان أمر بناء تلقائي قابلًا للاكتشاف. يجب ضبط اللغات والبناء يدويًا بدل الفشل التلقائي.
-3. سجل iOS يثبت غياب `Gula.xcworkspace`، وليس فشل اختبار iOS حقيقيًا؛ يجب اكتشاف المشروع/الـworkspace ثم تخطي المسارات غير الموجودة بصورة صريحة أو تثبيت مسار المشروع الصحيح.
-4. سجل Flutter Desktop وSDK يثبت أن `subosito/flutter-action@v3` غير قابل للحل، لذا يجب تثبيت إصدار صالح ومثبت أو إيقاف job المشروط عند غياب مشروع Flutter.
-5. سجل النشر يتطلب إصلاح سر/مفتاح SSH أو تحويل النشر إلى مزود موثق؛ لا يمكن اختراع بيانات اعتماد من داخل المستودع.
-
-## مراجع التشغيل
-
-- [أحدث CI Pipeline فاشل](https://github.com/samertts/gula-platform/actions/runs/31641735327)
-- [أحدث CodeQL Advanced فاشل](https://github.com/samertts/gula-platform/actions/runs/31601169224)
-- [أحدث Verify Railway Deployment فاشل](https://github.com/samertts/gula-platform/actions/runs/31601169117)
-- [أحدث Mobile iOS CI/CD فاشل](https://github.com/samertts/gula-platform/actions/runs/31603286513)
-- [أحدث SDK Publish Packages فاشل](https://github.com/samertts/gula-platform/actions/runs/31602450263)
-
-> لا تُعامل أخطاء الأسرار أو شهادات النشر بوصفها أخطاء كود: سيُعالج منطق سير العمل وشرطه، لكن ستبقى البيانات الحساسة مطلوبة من مالك بيئة النشر عند الحاجة.
-
-## مراجع الإصلاحات
-
-تؤكد وثائق Android Developers أن `androidx.biometric:biometric:1.1.0` هو الإصدار المستقر المنشور، وأن `androidx.security:security-crypto:1.1.0` هو الإصدار المستقر المنشور. استُبدلت الإصدارات غير القابلة للحل في Gradle بهذين الإصدارين. تعذّر تشغيل بناء Android محليًا فقط لغياب Android SDK في بيئة الفحص؛ سير عمل Android يهيّئ SDK قبل البناء، ولذلك يجب أن يتحقق منه التنفيذ البعيد.
-
-- [AndroidX Biometric releases](https://developer.android.com/jetpack/androidx/releases/biometric)
-- [AndroidX Security releases](https://developer.android.com/jetpack/androidx/releases/security)
-
-## الإصلاحات التي أُجريت
-
-| المجال | الإصلاح | الحالة |
+| المسار | النتيجة | دليل التشغيل |
 | --- | --- | --- |
-| Python CI | أزيل الاستيراد المكرر في مصنع التطبيق، ورُفعت `pytest-asyncio` إلى سلسلة متوافقة مع pytest 9، وأضيفت `pytest-timeout` لاعتماد أوامر CI والمهام الليلية. | متحقق محليًا |
-| PWA | صُححت مخرجات Vite من `build/` إلى `dist/`، وأضيف إعداد Lighthouse، وقُيد نشر Vercel بالتشغيل اليدوي. | متحقق محليًا |
-| E2E | وُحِّد استرجاع جلسة HttpOnly المحاكية، وحُجبت Service Workers في الاختبارات، وصُححت اعتراضات API وعقود بيانات المرضى والنتائج والعينات. | متحقق محليًا |
-| Flutter وSDK | استُخدم إصدار Flutter action صالح، وحُصر نشر SDK في الإصدار المنشور أو التشغيل اليدوي المصرح. | قيد التحقق البعيد |
-| Android | ثُبتت إصدارات AndroidX القابلة للحل. | قيد التحقق البعيد لغياب SDK محليًا |
+| Mobile – Flutter Desktop CI/CD | **نجاح كامل**: تحليل Dart واختبارات Flutter وحزم Linux وmacOS وWindows | [تشغيل 31674257345][1] |
+| CI Pipeline | **نجاح** | [تشغيل 31674257333][2] |
+| Security Hardening | **نجاح** | [تشغيل 31674257314][3] |
+| CodeQL Analysis | **نجاح** | [تشغيل 31674257378][4] |
+| CodeQL Advanced | **نجاح** | [تشغيل 31674257348][5] |
+| Formatting Check | **نجاح** | [تشغيل 31674261096][6] |
+| Foundation Gate | **نجاح** | [تشغيل 31674257323][7] |
+| Quality Gate | **نجاح** | [تشغيل 31674257329][8] |
+| OpenSSF Scorecard | **نجاح** | [تشغيل 31674257373][9] |
+| Constitution Compliance | **نجاح** | [تشغيل 31674257349][10] |
+| Mobile – Android CI/CD | **نجاح كامل** في آخر تشغيل ذي صلة؛ يشمل Lint واختبارات الوحدة ورسم الاعتمادات وبناء APK. الاختبارات على المحاكي اختيارية عمداً. | [تشغيل 31654721771][11] |
+| Mobile – iOS CI/CD | **نجاح** في آخر تشغيل متاح. | [تشغيل 31651660798][12] |
+| Frontend – PWA Build & Deploy | **نجاح** في آخر تشغيل ذي صلة. | [تشغيل 31672191113][13] |
 
-## نتائج التحقق المحلي
+> يمثل ذلك نتيجة تشغيلات فعلية في GitHub Actions، وليس مجرد نجاح محلي. وعلى وجه الخصوص، يثبت تشغيل Flutter النهائي إنشاء حزمة AppImage وDeb وRPM على Linux، وDMG على macOS، وMSIX على Windows.[1]
 
-| الفحص | النتيجة |
+## إصلاحات Flutter Desktop المنفذة
+
+عولجت أخطاء التحليل والاختبارات الناتجة عن واجهات Flutter وDrift وRiverpod والحزم الحديثة، بما في ذلك تعارضات `FlexThemeData`، وأسماء Drift Companion، واستعلامات الإحصاء، وقيم الخرائط الديناميكية، وواجهات Sentry والطباعة والباركود، والاختبارات المتقادمة. وأصبح تحليل Dart واختبارات Flutter ناجحين في التشغيل النهائي.[1]
+
+كما أُنشئت ملفات المشاريع الأصلية المتوافقة مع Flutter 3.44 لمنصات Linux وmacOS وWindows، واستبدلت مصادر runner غير المتوافقة بقوالب Flutter الحديثة، وأضيف تعريف توافق MSVC المؤقت للإضافات التي ما زالت تستخدم coroutine التجريبي. عولجت كذلك مشكلة غياب مسارات `native_assets` في بيئات CI النظيفة بجعل تثبيتها اختيارياً عند عدم إنتاج أي تبعية لأصول أصلية.[1]
+
+| منصة الحزمة | الإصلاح | ناتج التحقق |
+| --- | --- | --- |
+| Linux | تثبيت تبعيات CMake وSentry، إضافة AppImage مستقل عبر `appimagetool`، وبيانات Debian ووصف RPM. | AppImage وDeb وRPM ناجحة.[1] |
+| macOS | جعل التوقيع والتوثيق مشروطين بتوفر الأسرار، مع استمرار إنتاج DMG غير الموقّع للاختبار. | DMG ناجح.[1] |
+| Windows | إضافة إعداد `msix` وبيانات الهوية والناشر غير الموقّع، وتصحيح مسار الأثر، وتحديث runner وCMake. | MSIX ناجح.[1] |
+
+## حالة Android وiOS
+
+أُصلحت في Android اعتمادات Gradle وأخطاء Kotlin وعقود اختبارات المستودعات، مع إتاحة اختبارات المحاكي من خلال تشغيل اختياري حتى لا تمنع المسار الافتراضي. يؤكد أحدث تشغيل أن Lint واختبارات الوحدة وفحص الاعتمادات وبناء APK ناجحة.[11]
+
+لم يعد بند غياب `Gula.xcworkspace` عائقاً مؤكداً في الحالة الحالية؛ آخر تشغيل iOS متاح ناجح. لذلك لا يُسجل iOS كمتطلب خارجي مفتوح في هذا التقرير.[12]
+
+## التحقق المحلي المساند
+
+| الفحص | النتيجة المسجلة |
 | --- | --- |
-| اختبارات الخلفية الكاملة: `pytest tests/ -v --timeout=60 -x` | **2,337 ناجحًا** و**6 حالات فرعية ناجحة** |
-| بوابة CI لـ flake8: `flake8 app/ --select=E9,F --ignore=F401,F841 --count` | **0 مخالفات** |
-| اختبارات Playwright E2E الكاملة | **40 ناجحًا** |
-| lint وTypeScript واختبارات الوحدة في `frontend-v3` | **ناجحة**؛ لا توجد اختبارات وحدة مكتشفة بعد الاستبعاد المقرر لـ E2E |
-| بناء الإنتاج لـ `frontend-v2` و`frontend-v3` | **ناجح**، مع توليد Service Worker في كل منهما |
+| اختبارات الخلفية الكاملة | **2,337 ناجحاً** و**6 حالات فرعية ناجحة** |
+| بوابة flake8 الحرجة | **0 مخالفة** |
+| Playwright E2E | **40 ناجحاً** |
+| بناء إنتاج `frontend-v2` و`frontend-v3` | **ناجح** |
+| Flutter Desktop بعد التحديثات | تحليل واختبارات ناجحة محلياً؛ بُني Linux وRPM وAppImage محلياً قبل التحقق البعيد |
 
 ## متطلبات خارج نطاق تعديل الشفرة
 
-| سير العمل | المتطلب | الإجراء المطلوب من مالك بيئة النشر |
-| --- | --- | --- |
-| Deploy GULA Platform | مفتاح أو سر SSH صالح | إضافة/تدوير السر المطلوب في أسرار GitHub ثم إعادة تشغيل النشر. |
-| Mobile iOS CI/CD | مشروع أو workspace Xcode فعلي | تثبيت مسار المشروع الصحيح أو إضافة `Gula.xcworkspace` إلى المستودع. |
-| Android المحلي | Android SDK | لا يلزم تعديل للمستودع؛ تتولى بيئة CI إعداد SDK، لكن ينبغي مراقبة التشغيل البعيد التالي. |
+لا ينبغي اعتبار العناصر التالية أخطاء كود أو تجاوزها ببيانات اعتماد وهمية:
 
-> لم تُنفذ أي عملية نشر للإنتاج أو نشر حزمة إلى سجل خارجي ضمن هذا العمل؛ قيود سير العمل تمنع النشر غير المقصود، وتبقى الأسرار والإصدارات الرسمية تحت سيطرة المالك.
+| المجال | الحالة المقصودة | الإجراء الذي يبقى بيد مالك بيئة الإنتاج |
+| --- | --- | --- |
+| توقيع وتوثيق macOS | الحزمة تنجح من دون توقيع؛ خطوات التوقيع والتوثيق محروسة بشروط وجود الأسرار. | توفير شهادة Developer ID وكلمة مرورها وApple Team ID وكلمة مرور توثيق التطبيق عندما تصبح قناة التوزيع الرسمية جاهزة. |
+| نشر الإنتاج عبر SSH أو أي مزود سحابي | لا تُنفذ عملية نشر إنتاج بمفاتيح افتراضية أو سرية ضمن المستودع. | إضافة أو تدوير أسرار النشر الفعلية وتحديد بيئة الهدف، ثم تنفيذ نشر معتمد. |
+| إصدار أو نشر SDK إلى سجل خارجي | النشر العام يجب أن يكون مقيداً بإصدار معتمد واعتمادات ناشر مملوكة. | توفير مفاتيح النشر وقرار إصدار رسمي قبل تفعيل النشر. |
+
+> لم تُنفذ خلال هذا العمل أي عملية تحويل أموال أو نشر إنتاج أو نشر حزمة عامة إلى سجل خارجي. يظل استخدام مزودي المدفوعات، المحافظ، المفاتيح الخاصة، وشهادات النشر معطلاً أو محروساً حتى اكتمال المتطلبات القانونية والتشغيلية.
+
+## المراجع
+
+[1]: https://github.com/samertts/gula-platform/actions/runs/31674257345 "Mobile – Flutter Desktop CI/CD: successful run"
+[2]: https://github.com/samertts/gula-platform/actions/runs/31674257333 "CI Pipeline: successful run"
+[3]: https://github.com/samertts/gula-platform/actions/runs/31674257314 "Security Hardening: successful run"
+[4]: https://github.com/samertts/gula-platform/actions/runs/31674257378 "CodeQL Analysis: successful run"
+[5]: https://github.com/samertts/gula-platform/actions/runs/31674257348 "CodeQL Advanced: successful run"
+[6]: https://github.com/samertts/gula-platform/actions/runs/31674261096 "Formatting Check: successful run"
+[7]: https://github.com/samertts/gula-platform/actions/runs/31674257323 "Foundation Gate: successful run"
+[8]: https://github.com/samertts/gula-platform/actions/runs/31674257329 "Quality Gate: successful run"
+[9]: https://github.com/samertts/gula-platform/actions/runs/31674257373 "OpenSSF Scorecard: successful run"
+[10]: https://github.com/samertts/gula-platform/actions/runs/31674257349 "Constitution Compliance: successful run"
+[11]: https://github.com/samertts/gula-platform/actions/runs/31654721771 "Mobile – Android CI/CD: successful run"
+[12]: https://github.com/samertts/gula-platform/actions/runs/31651660798 "Mobile – iOS CI/CD: successful run"
+[13]: https://github.com/samertts/gula-platform/actions/runs/31672191113 "Frontend – PWA Build & Deploy: successful run"
