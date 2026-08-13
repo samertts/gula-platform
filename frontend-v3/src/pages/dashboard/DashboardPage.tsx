@@ -28,7 +28,7 @@ const quickLinks = [
 
 export function DashboardPage() {
   const { demoMode, user } = useAuth();
-  const demoRole = DEMO_ROLE_SUMMARIES[user?.role ?? ""] ?? DEMO_ROLE_SUMMARIES.doctor;
+  const demoRole = DEMO_ROLE_SUMMARIES[user?.role ?? ""] ?? DEMO_ROLE_SUMMARIES.doctor!;
   const { data, isLoading, isError } = useQuery<Record<string, unknown>>({
     queryKey: ["dashboard", demoMode ? "demo" : "institution"],
     queryFn: async () => {
