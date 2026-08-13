@@ -32,6 +32,36 @@ _ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset(
 )
 
 
+class HealthcheckHostMiddleware:
+    """Normalize Host only for unauthenticated liveness/readiness probes.
+
+    Railway may send internal addresses or generated hostnames in its health
+    probe.  Those are not application-facing hosts, but FastAPI's strict
+    TrustedHostMiddleware rejects them before the liveness endpoint runs.
+    This outer ASGI layer replaces the Host header exclusively on fixed health
+    paths; every user-facing and clinical path still reaches TrustedHostMiddleware
+    with its original header and remains strictly validated.
+    """
+
+    def __init__(self, app, canonical_host: str) -> None:
+        self.app = app
+        self._canonical_host = canonical_host.encode("ascii")
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope.get("type") == "http" and scope.get("path") in _ALWAYS_ALLOWED_PATHS:
+            normalized_scope = dict(scope)
+            headers = [
+                (key, value)
+                for key, value in scope.get("headers", [])
+                if key.lower() != b"host"
+            ]
+            headers.append((b"host", self._canonical_host))
+            normalized_scope["headers"] = headers
+            await self.app(normalized_scope, receive, send)
+            return
+        await self.app(scope, receive, send)
+
+
 class MaxBodySizeMiddleware(BaseHTTPMiddleware):
     """Reject oversized request bodies."""
 

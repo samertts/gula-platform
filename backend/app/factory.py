@@ -379,6 +379,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
     from app.middleware import (
         ConcurrencyLimitMiddleware,
         DemoReadOnlyMiddleware,
+        HealthcheckHostMiddleware,
         KernelMiddleware,
         MaxBodySizeMiddleware,
         ReadinessMiddleware,
@@ -459,6 +460,11 @@ def _build_middleware_stack(app: FastAPI) -> None:
 
     if not _is_openapi_mode():
         app.add_middleware(ConcurrencyLimitMiddleware)
+
+    # Registered last so it runs first and normalizes only fixed health paths
+    # before strict host validation. All application traffic keeps its original Host.
+    if IS_PRODUCTION:
+        app.add_middleware(HealthcheckHostMiddleware, canonical_host=_trusted_hosts[0])
 
 
 def _register_routes(app: FastAPI) -> None:
