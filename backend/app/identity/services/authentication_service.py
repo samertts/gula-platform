@@ -104,7 +104,7 @@ class AuthenticationService:
         }
 
     async def refresh_session(self, refresh_token_jti: str) -> dict | None:
-        session = await self.session_repo.find_by_token_jti(refresh_token_jti)
+        session = await self.session_repo.find_by_refresh_token_jti(refresh_token_jti)
         if not session or not session.is_active or session.expires_at < datetime.now(UTC):
             return None
 

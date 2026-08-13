@@ -24,6 +24,21 @@ class Assignment(IdentityBaseEntity):
 
     organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="SET NULL"), nullable=True, index=True)
     facility_id = Column(String(26), nullable=True, index=True)
+    # These resource references are deliberately separate from the legacy NIAM
+    # text identifiers above. Clinical authorization never infers a facility
+    # from a legacy value; it needs an explicit, FK-backed operational scope.
+    clinical_organization_resource_id = Column(
+        Integer,
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    clinical_facility_resource_id = Column(
+        Integer,
+        ForeignKey("facilities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     department_id = Column(String(26), nullable=True, index=True)
     unit = Column(String(200), nullable=True)
     committee = Column(String(200), nullable=True)

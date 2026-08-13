@@ -16,6 +16,14 @@ describe("جسر المسارات الانتقالية", () => {
     expect(rule).not.toHaveProperty("target");
   });
 
+  it("يبقي السجل السريري في جسر غير تشغيلي إلى اعتماد عقده السريري", () => {
+    const rule = resolveLegacyRoute("/ehr");
+
+    expect(rule).toMatchObject({ title: "السجل الصحي الإلكتروني" });
+    expect(rule).not.toHaveProperty("target");
+    expect(rule?.rationale).toContain("clinical.ehr.record.read");
+  });
+
   it("يحافظ على تحويلات frontend-v2 المثبتة", () => {
     expect(resolveLegacyRoute("/lab/queue")).toMatchObject({ target: "/orders" });
   });

@@ -240,6 +240,7 @@ jobs:
         run: |
           cd backend
           pip install -r requirements.txt
+          pip install -r requirements-dev.txt
           pip install pytest pytest-asyncio pytest-timeout factory_boy
       - name: Generate ephemeral test secrets
         id: test_secrets

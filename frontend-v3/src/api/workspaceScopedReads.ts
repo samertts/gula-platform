@@ -14,16 +14,36 @@ export const SCOPED_READ_CONTRACTS = {
   },
 } as const;
 
+/**
+ * موجهات `/patients` و`/lims/orders` تعزل بـ `lab_id`، لكنها لا تستدعي
+ * حارس صلاحية دقيقًا في الخادم. فحص `/authz/check` الذي يجريه المتصفح لا
+ * يكفي وحده لإلزام القرار لأن أي عميل يمكنه تجاوز خطوة الواجهة وطلب القراءة
+ * مباشرة. تبقى هذه القيمة ثابتة حتى يستهلك frontend-v3 جسرًا خادميًا موثقًا
+ * أو يضاف الحارس الصريح إلى الموجهات التنفيذية.
+ */
+export const DIRECT_REST_SCOPED_READS_BLOCKED = true;
+
 type JsonRecord = Record<string, unknown>;
 
 export class WorkspaceReadBlockedError extends Error {
   constructor(
-    public readonly reason: "missing_workspace" | "permission_denied" | "invalid_authorization_response",
+    public readonly reason:
+      | "missing_workspace"
+      | "permission_denied"
+      | "invalid_authorization_response"
+      | "server_enforcement_required",
     message: string,
   ) {
     super(message);
     this.name = "WorkspaceReadBlockedError";
   }
+}
+
+function requireServerEnforcedRead(contractId: string): never {
+  throw new WorkspaceReadBlockedError(
+    "server_enforcement_required",
+    `أُوقفت قراءة ${contractId} لأن فرض الصلاحية الخادمي للعقد غير مثبت بعد.`,
+  );
 }
 
 export interface VerifiedWorkspaceScope {
@@ -93,12 +113,18 @@ function extractList<T>(payload: unknown, keys: string[]): T[] {
 
 export const workspaceScopedReads = {
   async listPatients(params?: { search?: string; skip?: number; limit?: number }): Promise<Patient[]> {
+    if (DIRECT_REST_SCOPED_READS_BLOCKED) {
+      return requireServerEnforcedRead(SCOPED_READ_CONTRACTS.patients.id);
+    }
     await requireVerifiedWorkspacePermission(SCOPED_READ_CONTRACTS.patients.permission);
     const response = await api.get<unknown>(SCOPED_READ_CONTRACTS.patients.path, { params });
     return extractList<Patient>(response.data, ["items", "patients", "data"]);
   },
 
   async listOrders(params?: { search?: string; skip?: number; limit?: number }): Promise<LabOrder[]> {
+    if (DIRECT_REST_SCOPED_READS_BLOCKED) {
+      return requireServerEnforcedRead(SCOPED_READ_CONTRACTS.orders.id);
+    }
     await requireVerifiedWorkspacePermission(SCOPED_READ_CONTRACTS.orders.permission);
     const response = await api.get<unknown>(SCOPED_READ_CONTRACTS.orders.path, { params });
     return extractList<LabOrder>(response.data, ["items", "orders", "data"]);

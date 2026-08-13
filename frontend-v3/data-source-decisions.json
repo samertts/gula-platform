@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "scope": "frontend-v3",
+  "policy": "لا تعرض الواجهة بيانات سريرية أو مخبرية تشغيلية ولا تنفذ كتابة إلا عبر عقد موثق يفرض التفويض والسياق على الخادم. إلى حين اعتماد قناة الجلسة والبوابة، تبقى القراءات غير المثبتة في جسر آمن والكتابات محجوبة على مستوى العميل قبل الشبكة.",
+  "approvedReadSurfaces": [
+    {
+      "source": "src/pages/patients/PatientsPage.tsx",
+      "contract": "patients.read",
+      "decision": "safe-read-blocked-until-server-enforcement",
+      "evidence": "workspaceScopedReads.listPatients"
+    },
+    {
+      "source": "src/pages/orders/OrdersPage.tsx",
+      "contract": "orders.read",
+      "decision": "safe-read-blocked-until-server-enforcement",
+      "evidence": "workspaceScopedReads.listOrders"
+    },
+    {
+      "source": "src/pages/ehr/EhrPage.tsx",
+      "contract": "clinical.ehr.record.read",
+      "decision": "safe-bridge",
+      "evidence": "LegacyRouteBridge"
+    },
+    {
+      "source": "src/pages/results/ResultsPage.tsx",
+      "contract": "test-results.read",
+      "decision": "safe-bridge",
+      "evidence": "LegacyRouteBridge"
+    },
+    {
+      "source": "src/pages/samples/SamplesPage.tsx",
+      "contract": null,
+      "decision": "safe-bridge",
+      "evidence": "LegacyRouteBridge"
+    }
+  ],
+  "unusedClinicalMutationHooks": [
+    "useCreatePatient",
+    "useUpdatePatient",
+    "useCreateOrder",
+    "useCancelOrder",
+    "useCreateResult",
+    "useCreateSample"
+  ],
+  "visibleOperationalWrites": [
+    { "source": "src/pages/edge/EdgePage.tsx", "operation": "edgeApi.quarantineDevice", "decision": "blocked-pending-device-authority-contract" },
+    { "source": "src/pages/edge/EdgePage.tsx", "operation": "edgeApi.revokeDevice", "decision": "blocked-pending-device-authority-contract" },
+    { "source": "src/pages/edge/EdgePage.tsx", "operation": "edgeApi.reinstateDevice", "decision": "blocked-pending-device-authority-contract" },
+    { "source": "src/pages/hospital/HospitalPage.tsx", "operation": "hospitalApi.create", "decision": "blocked-pending-organization-authority-contract" },
+    { "source": "src/pages/hospital/HospitalPage.tsx", "operation": "hospitalApi.createDepartment", "decision": "blocked-pending-organization-authority-contract" },
+    { "source": "src/pages/niam/AdaptiveAuthPage.tsx", "operation": "POST /niam/adaptive-auth/policies", "decision": "blocked-pending-niam-administration-contract" },
+    { "source": "src/pages/niam/CertificatesPage.tsx", "operation": "POST /niam/certificates/issue", "decision": "blocked-pending-niam-administration-contract" },
+    { "source": "src/pages/niam/FederationPage.tsx", "operation": "POST /niam/federation/providers", "decision": "blocked-pending-niam-administration-contract" },
+    { "source": "src/pages/niam/GovernancePage.tsx", "operation": "POST /niam/governance/authorities", "decision": "blocked-pending-niam-administration-contract" },
+    { "source": "src/pages/niam/TrustPage.tsx", "operation": "POST /niam/trust/frameworks", "decision": "blocked-pending-niam-administration-contract" },
+    { "source": "src/pages/niam/WorkflowsPage.tsx", "operation": "POST /niam/workflows/definitions", "decision": "blocked-pending-niam-administration-contract" },
+    { "source": "src/pages/notifications/NotificationsPage.tsx", "operation": "notificationsApi.send", "decision": "blocked-pending-external-effect-policy" }
+  ]
+}
