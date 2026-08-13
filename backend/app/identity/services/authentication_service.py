@@ -101,8 +101,17 @@ class AuthenticationService:
             "account_uuid": account.uuid,
         }
 
-    async def refresh_session(self, refresh_token_jti: str) -> dict | None:
-        session = await self.session_repo.find_by_refresh_token_jti(refresh_token_jti)
+    async def refresh_session(self, refresh_token: str) -> dict | None:
+        from app.security.auth import blacklist_token, decode_refresh_token
+
+        payload = decode_refresh_token(refresh_token)
+        if not payload:
+            return None
+        refresh_jti = payload.get("jti")
+        if not refresh_jti:
+            return None
+
+        session = await self.session_repo.find_by_refresh_token_jti(refresh_jti)
         if not session or not session.is_active or session.expires_at < datetime.now(UTC):
             return None
 
@@ -110,6 +119,8 @@ class AuthenticationService:
         if not account or not account.is_active:
             return None
 
+        remaining_seconds = max(1, int((session.expires_at - datetime.now(UTC)).total_seconds()))
+        blacklist_token(refresh_jti, remaining_seconds)
         await self.session_repo.soft_delete(session.id)
         return await self._create_session(
             account=account,
