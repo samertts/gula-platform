@@ -42,7 +42,7 @@ class SyncQueueManager {
   Future<List<SyncQueueData>> getFailed({int limit = 50}) async {
     final query = _db.select(_db.syncQueue)
       ..where((q) => q.status.equals('failed'))
-      ..where((q) => q.retryCount < q.maxRetries)
+      ..where((q) => q.retryCount.isSmallerThan(q.maxRetries))
       ..orderBy([(q) => OrderingTerm.asc(q.createdAt)])
       ..limit(limit);
     return await query.get();

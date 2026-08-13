@@ -10,6 +10,7 @@ class GulaTextField extends StatelessWidget {
   final String? helperText;
   final TextEditingController? controller;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
   final FormFieldSetter<String>? onSaved;
   final String? Function(String?)? validator;
   final TextInputType? keyboardType;
@@ -41,6 +42,7 @@ class GulaTextField extends StatelessWidget {
     this.helperText,
     this.controller,
     this.onChanged,
+    this.onSubmitted,
     this.onSaved,
     this.validator,
     this.keyboardType,
@@ -74,6 +76,7 @@ class GulaTextField extends StatelessWidget {
       controller: controller,
       initialValue: initialValue,
       onChanged: onChanged,
+      onFieldSubmitted: onSubmitted,
       onSaved: onSaved,
       validator: validator,
       keyboardType: keyboardType,

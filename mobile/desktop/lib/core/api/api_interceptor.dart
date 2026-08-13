@@ -19,7 +19,7 @@ class EndpointGuardInterceptor extends Interceptor {
     handler.reject(
       DioException(
         requestOptions: options,
-        error: const StateError('Request target is not an approved API endpoint.'),
+        error: StateError('Request target is not an approved API endpoint.'),
         type: DioExceptionType.unknown,
       ),
     );

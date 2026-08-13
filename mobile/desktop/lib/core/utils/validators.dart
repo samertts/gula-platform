@@ -113,7 +113,8 @@ class AppValidators {
 
   static String? url(String? value) {
     if (value == null || value.trim().isEmpty) return null;
-    if (!Uri.tryParse(value.trim())?.hasScheme ?? true) {
+    final uri = Uri.tryParse(value.trim());
+    if (uri?.hasScheme != true) {
       return 'رابط غير صالح';
     }
     return null;

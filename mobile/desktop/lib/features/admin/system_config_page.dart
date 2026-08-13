@@ -95,7 +95,7 @@ class _SystemConfigPageState extends State<SystemConfigPage> {
               ),
               const SizedBox(height: 24),
               Row(
-                mainAxisAlignment: End,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   GulaButton(label: 'Reset to Defaults', variant: GulaButtonVariant.text, onPressed: () {}),
                   const SizedBox(width: 12),

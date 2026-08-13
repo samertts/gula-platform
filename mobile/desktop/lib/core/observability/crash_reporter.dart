@@ -63,7 +63,7 @@ class CrashReporter {
             }
           }
           if (level != null) {
-            scope.setLevel(SentryLevel.fromName(level));
+            scope.level = SentryLevel.fromName(level);
           }
         },
       );
@@ -88,7 +88,7 @@ class CrashReporter {
             }
           }
           if (level != null) {
-            scope.setLevel(SentryLevel.fromName(level));
+            scope.level = SentryLevel.fromName(level);
           }
         },
       );
