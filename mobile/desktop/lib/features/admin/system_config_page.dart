@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_colors.dart';
-import '../../core/theme/app_dimensions.dart';
 import '../../widgets/core/gula_card.dart';
 import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_text_field.dart';
