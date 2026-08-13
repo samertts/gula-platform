@@ -47,6 +47,14 @@ from sqlalchemy.pool import StaticPool
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
+@pytest.fixture(autouse=True)
+def approved_onboarding_in_test(monkeypatch):
+    """Exercise the pending-approval registration path without opening production."""
+    import app.routes.register as register_routes
+
+    monkeypatch.setattr(register_routes, "PUBLIC_SELF_REGISTRATION_ENABLED", True)
+
+
 @pytest.fixture(scope="function")
 def db_engine():
     import app.models.audit_log
