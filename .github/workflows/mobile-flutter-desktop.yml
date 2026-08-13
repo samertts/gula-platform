@@ -218,7 +218,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev \
             liblzma-dev libstdc++-12-dev libsecret-1-dev libjsoncpp-dev \
-            libayatana-appindicator3-dev librpm-dev rpm
+            libayatana-appindicator3-dev libcurl4-openssl-dev librpm-dev rpm
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -313,9 +313,7 @@ jobs:
       - name: Cache pub dependencies
         uses: actions/cache@v4
         with:
-          path: |
-            mobile/desktop/.dart_tool/
-            ~/.pub-cache
+          path: ~/.pub-cache
           key: pub-macos-${{ hashFiles('mobile/desktop/pubspec.yaml') }}
           restore-keys: |
             pub-macos-
@@ -332,6 +330,7 @@ jobs:
         run: flutter build macos --release
 
       - name: Sign macOS app
+        if: ${{ secrets.MACOS_CERTIFICATE != '' && secrets.MACOS_CERTIFICATE_PWD != '' }}
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
@@ -347,26 +346,25 @@ jobs:
           /usr/bin/codesign --force --sign "Developer ID Application: GULA Platform" \
             --options runtime \
             --entitlements macos/Runner/Release.entitlements \
-            build/macos/Build/Products/Release/gula_platform.app
+            build/macos/Build/Products/Release/gula_desktop.app
 
       - name: Build DMG
         run: |
           brew install create-dmg
           create-dmg \
             --volname "GULA Platform" \
-            --volicon "macos/Runner/AppIcon.icns" \
             --window-pos 200 120 \
             --window-size 600 400 \
             --icon-size 100 \
-            --icon "gula_platform.app" 150 200 \
-            --hide-extension "gula_platform.app" \
+            --icon "gula_desktop.app" 150 200 \
+            --hide-extension "gula_desktop.app" \
             --app-drop-link 450 200 \
             --no-internet-enable \
             "GULA_Platform-${{ github.ref_name }}.dmg" \
             "build/macos/Build/Products/Release/"
 
       - name: Notarize DMG
-        if: github.ref == 'refs/heads/main'
+        if: ${{ github.ref == 'refs/heads/main' && secrets.MACOS_CERTIFICATE != '' && secrets.MACOS_APP_PASSWORD != '' && secrets.MACOS_TEAM_ID != '' }}
         env:
           MACOS_APP_PASSWORD: ${{ secrets.MACOS_APP_PASSWORD }}
           MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
