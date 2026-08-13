@@ -6,7 +6,6 @@ import '../../widgets/core/gula_loading.dart';
 import '../../widgets/data/notification_tile.dart';
 import '../../widgets/layout/section_header.dart';
 import '../../widgets/layout/page_container.dart';
-import '../../core/theme/app_colors.dart';
 import 'notification_provider.dart';
 
 class NotificationListPage extends ConsumerStatefulWidget {
@@ -55,15 +54,18 @@ class _NotificationListPageState extends ConsumerState<NotificationListPage> {
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final n = state.notifications[index];
+        final id = n['id']?.toString() ?? '';
+        final createdAt = DateTime.tryParse(n['createdAt']?.toString() ?? '') ??
+            DateTime.now();
         return NotificationTile(
-          id: n['id'],
-          title: n['title'],
-          body: n['body'],
-          type: n['type'],
-          severity: n['severity'],
+          id: id,
+          title: n['title']?.toString() ?? '',
+          body: n['body']?.toString() ?? '',
+          type: n['type']?.toString() ?? '',
+          severity: n['severity']?.toString() ?? '',
           isRead: n['isRead'] == 1,
-          createdAt: DateTime.parse(n['createdAt']),
-          onTap: () => ref.read(notificationListProvider).markAsRead(n['id']),
+          createdAt: createdAt,
+          onTap: () => ref.read(notificationListProvider).markAsRead(id),
         );
       },
     );
