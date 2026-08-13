@@ -13,6 +13,9 @@ from app.models.integration_inbox import IntegrationInboxEvent
 SUPPORTED_EVENT_TYPES = {
     "sample.custody.transitioned",
     "device.observation.pending",
+    "identity.subject.mapped",
+    "workforce.attendance.recorded",
+    "workforce.assignment.changed",
 }
 
 
