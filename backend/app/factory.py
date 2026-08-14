@@ -181,6 +181,14 @@ def import_all_models() -> None:
         Transportation,
         Workstation,
     )
+    from .billing.models import (  # noqa: F401
+        BillingAuditEvent,
+        BillingInvoice,
+        BillingInvoiceLine,
+        BillingPayment,
+        InsuranceCoverage,
+    )
+    from .models.claim import Claim, ClaimItem  # noqa: F401
     from .models import (  # noqa: F401
         AuditLog,
         AuthorizationAudit,
@@ -505,6 +513,7 @@ def _register_routes(app: FastAPI) -> None:
         test_results,
         verification,
     )
+    from .billing import routes as billing_routes
     from .routes import ai as ai_routes
     from .routes import citizen_portal as citizen_portal_routes
     from .routes import citizen_relationship_admin as citizen_relationship_admin_routes
@@ -528,6 +537,7 @@ def _register_routes(app: FastAPI) -> None:
         app.include_router(r.router)
 
     app.include_router(tiers_routes.router)
+    app.include_router(billing_routes.router)
 
     from .financial import register_routes as register_financial_routes
     register_financial_routes(app)

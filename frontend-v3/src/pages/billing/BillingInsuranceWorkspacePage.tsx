@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   AlertTriangle,
@@ -22,6 +22,8 @@ import {
   Stethoscope,
   WalletCards,
 } from "lucide-react";
+import { billingApi, type BillingAlertRecord, type BillingClaimRecord, type BillingCoverageRecord, type BillingInvoiceRecord, type BillingPaymentRecord } from "@/api/endpoints";
+import { useAuth } from "@/contexts/AuthContext";
 import { PageHeader } from "@/components/shared/PageComponents";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -157,15 +159,50 @@ const invoiceVariant = (state: InvoiceState): "success" | "warning" | "destructi
 const claimVariant = (state: ClaimState): "success" | "warning" | "destructive" | "outline" | "secondary" => state === "مدفوعة" || state === "مقبولة" ? "success" : state === "مرفوضة" ? "destructive" : state === "مُرسلة" ? "secondary" : state === "مسودة" ? "outline" : "warning";
 const coverageVariant = (state: CoverageState): "success" | "warning" | "destructive" | "outline" => state === "سارية" ? "success" : state === "منتهية" ? "destructive" : state === "تنتهي قريبًا" ? "warning" : "outline";
 
+const invoiceStateFromApi = (state: string): InvoiceState => state === "paid" ? "مدفوعة" : state === "submitted" ? "مُرسلة" : state === "overdue" ? "متأخرة" : state === "validated" ? "جاهزة للإرسال" : "مسودة";
+const claimStateFromApi = (state: string): ClaimState => state === "paid" ? "مدفوعة" : state === "accepted" ? "مقبولة" : state === "rejected" ? "مرفوضة" : state === "submitted" ? "مُرسلة" : "مسودة";
+const coverageStateFromApi = (policy: BillingCoverageRecord): CoverageState => policy.state === "expired" || policy.expires_on < new Date().toISOString().slice(0, 10) ? "منتهية" : policy.state === "active" ? "سارية" : "تحتاج تحقق";
+const numberValue = (value: string | null | undefined) => Number(value ?? 0);
+const invoiceFromApi = (invoice: BillingInvoiceRecord): Invoice => ({ id: invoice.id, number: invoice.invoice_number, patient: `مريض #${invoice.patient_id}`, encounter: invoice.encounter_ref, serviceCount: invoice.lines.length, grossAmount: numberValue(invoice.gross_amount), coveredAmount: numberValue(invoice.covered_amount), patientDue: numberValue(invoice.patient_due), state: invoiceStateFromApi(invoice.status), issuedAt: invoice.issued_at ?? invoice.created_at, claimId: invoice.claim_reference ?? undefined });
+const claimFromApi = (claim: BillingClaimRecord): Claim => ({ id: claim.id, number: claim.external_ref ?? `CLM-${claim.id}`, invoiceNumber: "مرجع الفاتورة غير متاح", patient: `مريض #${claim.patient_id}`, payer: "جهة اصطناعية مرتبطة بالـAPI", memberId: "عضوية محلية", amount: numberValue(claim.total_amount), state: claimStateFromApi(claim.status), submittedAt: claim.submitted_at ?? "لم تُرسل", updatedAt: claim.updated_at ?? claim.created_at ?? "غير متاح" });
+const policyFromApi = (policy: BillingCoverageRecord): InsurancePolicy => ({ id: policy.id, patient: `مريض #${policy.patient_id}`, payer: policy.payer, plan: policy.plan, memberId: policy.member_id, expires: policy.expires_on, state: coverageStateFromApi(policy), verification: policy.verification, lastChecked: policy.last_checked_at ?? "لم يُتحقق" });
+const paymentFromApi = (payment: BillingPaymentRecord): Payment => ({ id: payment.id, invoiceNumber: `فاتورة #${payment.invoice_id}`, patient: `مريض #${payment.patient_id}`, amount: numberValue(payment.amount), method: payment.method === "synthetic_settlement" ? "تسوية محاكاة" : "مراجعة داخلية", recordedAt: payment.created_at, reference: payment.reference });
+const alertFromApi = (alert: BillingAlertRecord, index: number): BillingAlert => ({ id: index + 1, title: alert.type === "claim_rejected" ? "مطالبة مرفوضة تحتاج مراجعة" : alert.type === "coverage_expiring" ? "بطاقة تأمين تحتاج تحققًا" : "فاتورة متأخرة", detail: `${alert.reference} · ${alert.message}`, tone: alert.severity === "high" ? "critical" : "warning", category: alert.type === "claim_rejected" ? "مطالبات" : alert.type === "coverage_expiring" ? "تأمين" : "مستحقات" });
+
 export default function BillingInsuranceWorkspacePage() {
+  const { demoMode } = useAuth();
   const [activeTab, setActiveTab] = useState<BillingTab>("overview");
   const [services] = useState(INITIAL_SERVICES);
   const [invoices, setInvoices] = useState(INITIAL_INVOICES);
   const [claims, setClaims] = useState(INITIAL_CLAIMS);
   const [policies, setPolicies] = useState(INITIAL_POLICIES);
   const [payments, setPayments] = useState(INITIAL_PAYMENTS);
+  const [liveAlerts, setLiveAlerts] = useState<BillingAlert[]>(ALERTS);
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState("");
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveError, setLiveError] = useState("");
+
+  useEffect(() => {
+    if (demoMode) return;
+    let cancelled = false;
+    setLiveLoading(true);
+    setLiveError("");
+    Promise.all([billingApi.invoices(), billingApi.claims(), billingApi.coverages(), billingApi.payments(), billingApi.alerts()])
+      .then(([apiInvoices, apiClaims, apiCoverages, apiPayments, apiAlerts]) => {
+        if (cancelled) return;
+        setInvoices(apiInvoices.map(invoiceFromApi));
+        setClaims(apiClaims.map(claimFromApi));
+        setPolicies(apiCoverages.map(policyFromApi));
+        setPayments(apiPayments.map(paymentFromApi));
+        setLiveAlerts(apiAlerts.map(alertFromApi));
+      })
+      .catch(() => {
+        if (!cancelled) setLiveError("تعذر تحميل بيانات الفوترة من backend؛ لم يتم استبدال البيانات الحالية تلقائيًا.");
+      })
+      .finally(() => { if (!cancelled) setLiveLoading(false); });
+    return () => { cancelled = true; };
+  }, [demoMode]);
 
   const term = search.trim().toLocaleLowerCase("ar");
   const filteredServices = useMemo(() => !term ? services : services.filter((item) => `${item.code} ${item.name} ${item.group} ${item.codeSystem}`.toLocaleLowerCase("ar").includes(term)), [services, term]);
@@ -185,6 +222,10 @@ export default function BillingInsuranceWorkspacePage() {
   const pendingVerification = policies.filter((policy) => policy.state !== "سارية").length;
 
   const createInvoice = () => {
+    if (!demoMode) {
+      setNotice("إنشاء فاتورة live يتطلب اختيار مريض وزيارة من عقد خادمي معتمد؛ لم تُنشأ فاتورة بلا patient_id.");
+      return;
+    }
     const nextId = invoices.length + 1;
     setInvoices((current) => [{ id: nextId, number: `INV-260814-${String(11 + nextId).padStart(3, "0")}`, patient: "مريض اصطناعي جديد", encounter: `ENC-SYN-${String(200 + nextId)}`, serviceCount: 1, grossAmount: 180, coveredAmount: 0, patientDue: 180, state: "مسودة", issuedAt: "14 أغسطس 2026" }, ...current]);
     setNotice("تم إنشاء فاتورة اصطناعية محليًا؛ لم يتم ربطها بزيارة حقيقية أو إنشاء مطالبة خارجية.");
@@ -192,6 +233,15 @@ export default function BillingInsuranceWorkspacePage() {
   };
 
   const advanceClaim = (claimId: number) => {
+    if (!demoMode) {
+      void billingApi.advanceClaim(claimId)
+        .then((updated) => {
+          setClaims((current) => current.map((claim) => claim.id === claimId ? claimFromApi(updated) : claim));
+          setNotice("تم تحديث حالة المطالبة عبر backend التجريبي فقط؛ لم يُرسل أي payload خارجي.");
+        })
+        .catch(() => setLiveError("تعذر تحديث حالة المطالبة عبر backend."));
+      return;
+    }
     setClaims((current) => current.map((claim) => {
       if (claim.id !== claimId) return claim;
       const nextState: ClaimState = claim.state === "مسودة" ? "مُرسلة" : claim.state === "مُرسلة" ? "مقبولة" : claim.state === "مقبولة" ? "مدفوعة" : claim.state === "مرفوضة" ? "مُرسلة" : "مدفوعة";
@@ -201,6 +251,16 @@ export default function BillingInsuranceWorkspacePage() {
   };
 
   const simulatePayment = (invoice: Invoice) => {
+    if (!demoMode) {
+      void billingApi.simulateSettlement(invoice.id)
+        .then((updated) => {
+          setInvoices((current) => current.map((item) => item.id === invoice.id ? invoiceFromApi(updated) : item));
+          setPayments((current) => [...updated.payments.map(paymentFromApi), ...current]);
+          setNotice("تم تسجيل تسوية backend محاكاة فقط؛ لم يُستدعَ مزود دفع أو تحويل مالي.");
+        })
+        .catch(() => setLiveError("تعذر تسجيل التسوية المحاكاة عبر backend."));
+      return;
+    }
     setInvoices((current) => current.map((item) => item.id === invoice.id ? { ...item, state: "مدفوعة" } : item));
     if (invoice.claimId) setClaims((current) => current.map((claim) => claim.number === invoice.claimId ? { ...claim, state: "مدفوعة", updatedAt: "الآن" } : claim));
     setPayments((current) => [{ id: current.length + 1, invoiceNumber: invoice.number, patient: invoice.patient, amount: invoice.patientDue || invoice.coveredAmount, method: "تسوية محاكاة", recordedAt: "14 أغسطس 2026 الآن", reference: `PAY-SYN-${String(current.length + 22).padStart(4, "0")}` }, ...current]);
@@ -208,6 +268,15 @@ export default function BillingInsuranceWorkspacePage() {
   };
 
   const verifyPolicy = (policyId: number) => {
+    if (!demoMode) {
+      void billingApi.verifyCoverage(policyId)
+        .then((updated) => {
+          setPolicies((current) => current.map((policy) => policy.id === policyId ? policyFromApi(updated) : policy));
+          setNotice("تم تسجيل التحقق المحلي عبر backend فقط؛ لم يتم الاتصال بجهة تأمين خارجية.");
+        })
+        .catch(() => setLiveError("تعذر تسجيل التحقق المحلي عبر backend."));
+      return;
+    }
     setPolicies((current) => current.map((policy) => policy.id === policyId ? { ...policy, state: "سارية", verification: "تمت المطابقة في سجل تجريبي محلي", lastChecked: "الآن" } : policy));
     setNotice("تمت محاكاة التحقق من بطاقة التأمين داخل GULA فقط، دون الاتصال بجهة تأمين خارجية.");
   };
@@ -220,6 +289,8 @@ export default function BillingInsuranceWorkspacePage() {
     <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm leading-7 text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100"><div className="flex items-start gap-3"><Info className="mt-1 h-5 w-5 shrink-0" /><p><strong>نطاق الدفعة:</strong> لا توجد بوابة دفع، ولا إرسال EDI، ولا تحقق من شركة تأمين حقيقية. الحالات والأرقام محاكاة محلية، ويجب ربطها لاحقًا بعقود قانونية وفنية معتمدة وسجل تدقيق خادمي.</p></div><div className="flex flex-wrap gap-3"><Link to="/patient-management" className="inline-flex items-center gap-1 font-medium underline underline-offset-4">فتح دليل المرضى <ArrowLeft className="h-4 w-4" /></Link><Link to="/lab-operations" className="inline-flex items-center gap-1 font-medium underline underline-offset-4">فتح عمليات المختبر <ArrowLeft className="h-4 w-4" /></Link></div></div>
 
     <Card><CardContent className="p-0"><div className="flex flex-wrap border-b">{tabs.map((tab) => { const Icon = tab.icon; return <button key={tab.id} type="button" onClick={() => selectTab(tab.id)} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id ? "border-b-2 border-emerald-600 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground hover:text-foreground"}`}><Icon className="h-4 w-4" />{tab.label}</button>; })}</div></CardContent></Card>
+    {liveLoading && <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-800" role="status"><RefreshCw className="ml-2 inline h-4 w-4 animate-spin" />جارٍ تحميل بيانات backend التجريبية...</div>}
+    {liveError && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900" role="alert"><Info className="ml-2 inline h-4 w-4" />{liveError}</div>}
     {notice && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300" role="status"><CheckCircle2 className="ml-2 inline h-4 w-4" />{notice}</div>}
 
     {activeTab === "overview" && <Overview invoices={invoices} claims={claims} policies={policies} onTab={selectTab} onCreateInvoice={createInvoice} />}
@@ -228,7 +299,7 @@ export default function BillingInsuranceWorkspacePage() {
     {activeTab === "claims" && <Claims claims={filteredClaims} search={search} onSearch={setSearch} onAdvance={advanceClaim} />}
     {activeTab === "insurance" && <Insurance policies={filteredPolicies} search={search} onSearch={setSearch} onVerify={verifyPolicy} />}
     {activeTab === "payments" && <Payments payments={payments} />}
-    {activeTab === "alerts" && <Alerts alerts={ALERTS} />}
+    {activeTab === "alerts" && <Alerts alerts={liveAlerts} />}
 
     <Card className="border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20"><CardContent className="flex items-start gap-3 p-5 text-sm leading-7"><LifeBuoy className="mt-1 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-400" /><p><strong>حدود الامتثال:</strong> هذه الوحدة لا تقدم ترميزًا سريريًا أو قرارًا حول الاستحقاق، ولا تتحقق من تغطية حقيقية، ولا تسجل مدفوعات فعلية. قبل التشغيل، يجب إضافة تفويضات دقيقة، تشفير، فصل صلاحيات، قواعد سوق محلية، ومراجعة قانونية ومالية.</p></CardContent></Card>
   </div>;

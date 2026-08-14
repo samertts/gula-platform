@@ -23,6 +23,14 @@ from app.models import (
     Lab, LabUser, User, Patient, TestType,
     LabOrder, LabResult, AuditLog, Sample, QualityControl,
 )
+from app.models.claim import Claim, ClaimItem  # noqa: F401
+from app.billing.models import (  # noqa: F401
+    BillingAuditEvent,
+    BillingInvoice,
+    BillingInvoiceLine,
+    BillingPayment,
+    InsuranceCoverage,
+)
 
 # Include NationalBase and other declarative bases so Alembic detects their tables
 from app.national.base import NationalBase

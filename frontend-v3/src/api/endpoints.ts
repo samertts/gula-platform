@@ -1309,6 +1309,89 @@ export const insuranceApi = {
   get: (insuranceId: string) => api.get<Record<string, unknown>>(`/insurance/${insuranceId}`).then((r) => r.data),
 };
 
+// ── Billing & Insurance ──
+export type BillingInvoiceRecord = {
+  id: number;
+  patient_id: number;
+  encounter_ref: string;
+  invoice_number: string;
+  status: string;
+  currency: string;
+  gross_amount: string;
+  covered_amount: string;
+  patient_due: string;
+  claim_reference?: string | null;
+  due_at?: string | null;
+  issued_at?: string | null;
+  created_at: string;
+  lines: Array<{ id: number; line_number: number; service_code: string; description: string; quantity: number; unit_amount: string; line_amount: string }>;
+  payments: BillingPaymentRecord[];
+};
+
+export type BillingPaymentRecord = {
+  id: number;
+  invoice_id: number;
+  patient_id: number;
+  amount: string;
+  currency: string;
+  method: string;
+  reference: string;
+  kind: string;
+  created_at: string;
+};
+
+export type BillingClaimRecord = {
+  id: number;
+  patient_id: number;
+  order_id?: number | null;
+  status: string;
+  total_amount?: string | null;
+  currency: string;
+  external_ref?: string | null;
+  submitted_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
+export type BillingCoverageRecord = {
+  id: number;
+  patient_id: number;
+  payer: string;
+  plan: string;
+  member_id: string;
+  expires_on: string;
+  state: string;
+  verification: string;
+  last_checked_at?: string | null;
+  active: boolean;
+};
+
+export type BillingSummaryRecord = {
+  open_invoices: number;
+  outstanding: string;
+  rejected_claims: number;
+  pending_verification: number;
+  synthetic: boolean;
+  external_integrations: boolean;
+  as_of: string;
+};
+
+export type BillingAlertRecord = { type: string; severity: string; reference: string; message: string };
+
+export const billingApi = {
+  summary: () => api.get<BillingSummaryRecord>("/billing/summary").then((r) => r.data),
+  invoices: (search?: string) => api.get<BillingInvoiceRecord[]>("/billing/invoices", { params: search ? { search } : undefined }).then((r) => r.data),
+  invoice: (id: number) => api.get<BillingInvoiceRecord>(`/billing/invoices/${id}`).then((r) => r.data),
+  createInvoice: (data: Record<string, unknown>, idempotencyKey: string) => api.post<BillingInvoiceRecord>("/billing/invoices", data, { headers: { "Idempotency-Key": idempotencyKey } }).then((r) => r.data),
+  simulateSettlement: (id: number) => api.post<BillingInvoiceRecord>(`/billing/invoices/${id}/simulate-settlement`).then((r) => r.data),
+  claims: (search?: string) => api.get<BillingClaimRecord[]>("/billing/claims", { params: search ? { search } : undefined }).then((r) => r.data),
+  advanceClaim: (id: number) => api.post<BillingClaimRecord>(`/billing/claims/${id}/advance`).then((r) => r.data),
+  coverages: (search?: string) => api.get<BillingCoverageRecord[]>("/billing/coverages", { params: search ? { search } : undefined }).then((r) => r.data),
+  verifyCoverage: (id: number) => api.post<BillingCoverageRecord>(`/billing/coverages/${id}/verify-local`).then((r) => r.data),
+  payments: () => api.get<BillingPaymentRecord[]>("/billing/payments").then((r) => r.data),
+  alerts: () => api.get<BillingAlertRecord[]>("/billing/alerts").then((r) => r.data),
+};
+
 // ── Citizen Portal ──
 export const citizenPortalApi = {
   login: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/citizen/login", data).then((r) => r.data),

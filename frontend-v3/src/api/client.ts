@@ -251,6 +251,9 @@ export class OperationalReadBlockedError extends Error {
   }
 }
 
+const BILLING_READ_PATTERN = /^GET \/billing\/(summary|invoices(?:\/\d+)?|claims|coverages|payments|alerts)$/;
+const BILLING_WRITE_PATTERN = /^POST \/billing\/(invoices|coverages|claims\/\d+\/advance|coverages\/\d+\/verify-local|invoices\/\d+\/simulate-settlement)$/;
+
 function toRequestKey(method?: string, url?: string): string {
   const normalizedMethod = (method ?? "get").toUpperCase();
   const normalizedUrl = (url ?? "").split("?")[0] || "/";
@@ -271,6 +274,9 @@ export function assertFrontendWriteIsAllowed(method?: string, url?: string): voi
   const key = toRequestKey(normalizedMethod, url);
   const workspaceSwitch = normalizedMethod === "post" && /^POST \/niam\/workspaces\/[^/]+\/switch$/.test(key);
   const membershipMutation = normalizedMethod === "post" && /^POST \/niam\/memberships\/(?:applications(?:\/[^/]+\/approve)?|invitations(?:\/[^/]+\/(?:accept|revoke))?|[^/]+\/(?:revoke|suspend|reactivate))$/.test(key);
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && BILLING_WRITE_PATTERN.test(key)) {
+    return;
+  }
   if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation) {
     throw new OperationalWriteBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
@@ -287,6 +293,7 @@ export function assertFrontendReadIsAllowed(method?: string, url?: string): void
 
   const key = toRequestKey(normalizedMethod, url);
   const workspaceDetail = /^GET \/niam\/workspaces\/[^/]+$/.test(key);
+  if (BILLING_READ_PATTERN.test(key)) return;
   if (!INITIALIZATION_READ_ALLOWLIST.has(key) && !workspaceDetail) {
     throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
