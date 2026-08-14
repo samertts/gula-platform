@@ -1,8 +1,6 @@
 import React from 'react';
 import { useI18n } from '../i18n';
-import { useConfig } from '../config';
 import { ErrorProvider } from '../errors';
-import { useTheme } from '../../components';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -14,7 +12,6 @@ interface AppShellProps {
 
 export const AppShell: React.FC<AppShellProps> = ({ children, header, sidebar, footer, className }) => {
   const { direction } = useI18n();
-  const { config } = useConfig();
 
   return (
     <div

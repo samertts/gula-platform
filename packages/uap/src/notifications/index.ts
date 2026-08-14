@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { secureId } from '../security/secureRandom';
 
 export type NotificationChannel = 'push' | 'sms' | 'email' | 'in_app' | 'webhook';
 export type NotificationPriority = 'low' | 'normal' | 'high' | 'critical';
@@ -62,7 +63,7 @@ export const useNotificationPlatform = create<NotificationState>((set, get) => (
   addNotification: (notif) => {
     const notification: Notification = {
       ...notif,
-      id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: secureId('notif'),
       createdAt: Date.now(),
       status: 'pending',
       retries: 0,

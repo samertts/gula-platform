@@ -155,6 +155,7 @@ class GulaClient:
         idempotency_key: str | None = None,
     ) -> Any:
         url = f"{self.base_url}{path}"
+        safe_path = self._sanitize_path(path)
         headers = self._build_headers(idempotency_key)
         last_exc: Exception | None = None
 
@@ -169,7 +170,7 @@ class GulaClient:
                 )
 
                 if attempt > 1:
-                    logger.info("Retry attempt %d/%d for %s %s", attempt, self._max_retries, method, path)
+                    logger.info("Retry attempt %d/%d for %s %s", attempt, self._max_retries, method, safe_path)
 
                 if response.is_success:
                     if response.status_code == 204:
@@ -185,7 +186,7 @@ class GulaClient:
                         "HTTP %d on %s %s, retrying in %ds (attempt %d/%d)",
                         response.status_code,
                         method,
-                        path,
+                        safe_path,
                         backoff,
                         attempt,
                         self._max_retries,
@@ -202,7 +203,7 @@ class GulaClient:
                 last_exc = e
                 if attempt < self._max_retries:
                     backoff = 2 ** attempt
-                    logger.warning("Timeout on %s %s, retrying in %ds", method, self._sanitize_path(path), backoff)
+                    logger.warning("Timeout on %s %s, retrying in %ds", method, safe_path, backoff)
                     await asyncio.sleep(backoff)
                     continue
                 raise
@@ -211,7 +212,7 @@ class GulaClient:
                 last_exc = e
                 if attempt < self._max_retries:
                     backoff = 2 ** attempt
-                    logger.warning("Transport error on %s %s, retrying in %ds", method, self._sanitize_path(path), backoff)
+                    logger.warning("Transport error on %s %s, retrying in %ds", method, safe_path, backoff)
                     await asyncio.sleep(backoff)
                     continue
                 raise

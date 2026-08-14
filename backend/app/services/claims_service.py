@@ -55,9 +55,7 @@ def create_claim(
             .first()
         )
         if existing:
-            logger.info(
-                "[CLAIMS] Idempotent return for key=%s claim_id=%d", idempotency_key, existing.id,
-            )
+            logger.info("[CLAIMS] Idempotent claim request reused")
             return existing
 
     # ── Security: verify patient belongs to this lab ──────────────────────────
@@ -102,13 +100,7 @@ def create_claim(
 
     db.commit()
     db.refresh(claim)
-    logger.info(
-        "[CLAIMS] Created claim_id=%d lab_id=%d patient_id=%d total=%s",
-        claim.id,
-        lab_id,
-        patient_id,
-        total,
-    )
+    logger.info("[CLAIMS] Claim created successfully")
     return claim
 
 
@@ -146,7 +138,7 @@ def validate_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
     claim.updated_at = datetime.now(UTC)
     db.commit()
     db.refresh(claim)
-    logger.info("[CLAIMS] Validated claim_id=%d lab_id=%d", claim_id, lab_id)
+    logger.info("[CLAIMS] Claim validated successfully")
     return claim
 
 
@@ -200,9 +192,7 @@ def submit_claim(db: Session, claim_id: int, lab_id: int) -> Claim:
 
     db.commit()
     db.refresh(claim)
-    logger.info(
-        "[CLAIMS] Submitted claim_id=%d lab_id=%d total=%s", claim_id, lab_id, claim.total_amount,
-    )
+    logger.info("[CLAIMS] Claim submitted successfully")
     return claim
 
 

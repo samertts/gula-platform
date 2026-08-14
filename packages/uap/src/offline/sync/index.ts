@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { secureId } from '../../security/secureRandom';
 import type { SyncOperation, SyncConflict, SyncConfig, SyncStatus, NetworkStatus } from '../types';
 import { DEFAULT_SYNC_CONFIG } from '../types';
 import { getStorage } from '../db';
@@ -41,7 +42,7 @@ export const useSyncQueue = create<SyncState>((set, get) => ({
   enqueue: (op) => {
     const operation: SyncOperation = {
       ...op,
-      id: `sync-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: secureId('sync'),
       timestamp: Date.now(),
       retries: 0,
       status: 'pending',

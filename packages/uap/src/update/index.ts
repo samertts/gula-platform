@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { secureRandomInt } from '../security/secureRandom';
 
 export type UpdateChannel = 'stable' | 'beta' | 'canary' | 'nightly';
 
@@ -96,10 +97,10 @@ export const checkVersionCompatibility = (current: string, required: string): bo
   return cMinor >= rMinor;
 };
 
-export const generateDeltaPatch = (oldVersion: string, newVersion: string): Record<string, number> => {
+export const generateDeltaPatch = (_oldVersion: string, _newVersion: string): Record<string, number> => {
   return {
-    added: Math.floor(Math.random() * 10),
-    modified: Math.floor(Math.random() * 20),
-    deleted: Math.floor(Math.random() * 5),
+    added: secureRandomInt(10),
+    modified: secureRandomInt(20),
+    deleted: secureRandomInt(5),
   };
 };

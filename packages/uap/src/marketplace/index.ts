@@ -58,7 +58,7 @@ interface MarketplaceState {
   isInstalled: (id: string) => boolean;
 }
 
-const CATEGORY_ROLES: Record<AppCategory, string> = {
+export const CATEGORY_ROLES: Record<AppCategory, string> = {
   citizen: 'citizen',
   doctor: 'doctor',
   nurse: 'nurse',

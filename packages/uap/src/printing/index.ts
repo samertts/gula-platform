@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { secureId } from '../security/secureRandom';
 
 export type PrintJobStatus = 'queued' | 'printing' | 'completed' | 'failed';
 export type PrintFormat = 'a4' | 'a5' | 'label' | 'thermal' | 'receipt';
@@ -39,7 +40,7 @@ export const usePrinting = create<PrintingState>((set, get) => ({
   activeJobId: null,
 
   print: async (job) => {
-    const id = `print-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const id = secureId('print');
     const printJob: PrintJob = {
       ...job,
       id,
@@ -80,7 +81,7 @@ export const generateBarcodeSvg = (data: string, width = 200, height = 80): stri
   const chars = data.split('');
   const barWidth = width / chars.length;
   let bars = '';
-  chars.forEach((c, i) => {
+  chars.forEach((_, i) => {
     const bar = i % 2 === 0 ? `#000` : `#fff`;
     bars += `<rect x="${i * barWidth}" y="0" width="${barWidth}" height="${height}" fill="${bar}" />`;
   });

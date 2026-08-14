@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { secureId } from '../security/secureRandom';
 
 export type MetricType = 'counter' | 'gauge' | 'histogram' | 'timing';
 
@@ -62,8 +63,7 @@ interface TelemetryState {
   clearMetrics: () => void;
 }
 
-const generateSessionId = () =>
-  `sess-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+const generateSessionId = (): string => secureId('sess');
 
 export const useTelemetry = create<TelemetryState>((set, get) => ({
   metrics: [],
@@ -99,7 +99,7 @@ export const useTelemetry = create<TelemetryState>((set, get) => ({
     if (!get().enabled) return;
     const crash: CrashReport = {
       ...report,
-      id: `crash-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: secureId('crash'),
       browserInfo: navigator.userAgent,
       url: window.location.href,
       timestamp: Date.now(),
@@ -129,7 +129,6 @@ export const initTelemetry = () => {
   if (window.performance) {
     window.addEventListener('load', () => {
       setTimeout(() => {
-        const perf = window.performance.timing;
         const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
         if (nav) {
           telemetry.setPerformance({

@@ -15,9 +15,8 @@
     "sourceMap": true,
     "outDir": "dist",
     "rootDir": "src",
-    "baseUrl": ".",
     "paths": {
-      "@uap/*": ["src/*"]
+      "@uap/*": ["./src/*"]
     },
     "resolveJsonModule": true,
     "isolatedModules": true,

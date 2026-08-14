@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import logging
 import secrets
 from base64 import urlsafe_b64encode
@@ -60,7 +61,12 @@ def generate_client_secret() -> str:
 
 
 def hash_token(token: str) -> str:
-    return hashlib.sha256(token.encode()).hexdigest()
+    """Create a server-bound fingerprint for OAuth token lookup."""
+    return hmac.new(
+        SECRET_KEY.encode("utf-8"),
+        token.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
 
 
 def generate_auth_code() -> str:

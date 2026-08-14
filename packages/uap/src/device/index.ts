@@ -1,5 +1,31 @@
 import { create } from 'zustand';
 
+export interface RequestDeviceOptions {
+  acceptAllDevices?: boolean;
+  filters?: Array<Record<string, unknown>>;
+  optionalServices?: string[];
+}
+
+export interface BluetoothDevice {
+  id: string;
+  name?: string | null;
+  gatt?: unknown;
+}
+
+export interface NDEFReader {
+  scan: () => Promise<void>;
+}
+
+interface NavigatorWithBluetooth extends Navigator {
+  bluetooth?: {
+    requestDevice: (options: RequestDeviceOptions) => Promise<BluetoothDevice>;
+  };
+}
+
+interface WindowWithNDEFReader extends Window {
+  NDEFReader?: new () => NDEFReader;
+}
+
 export interface DeviceInfo {
   id: string;
   name: string;
@@ -95,13 +121,15 @@ export const scanBarcode = async (): Promise<string> => {
 };
 
 export const requestBluetooth = async (options?: RequestDeviceOptions): Promise<BluetoothDevice> => {
-  if (!navigator.bluetooth) throw new Error('Bluetooth not available');
-  return navigator.bluetooth.requestDevice(options || { acceptAllDevices: true });
+  const bluetooth = (navigator as NavigatorWithBluetooth).bluetooth;
+  if (!bluetooth) throw new Error('Bluetooth not available');
+  return bluetooth.requestDevice(options || { acceptAllDevices: true });
 };
 
 export const requestNFC = async (): Promise<NDEFReader> => {
-  if (!('NDEFReader' in window)) throw new Error('NFC not available');
-  const reader = new (window as any).NDEFReader();
+  const nfcWindow = window as WindowWithNDEFReader;
+  if (!nfcWindow.NDEFReader) throw new Error('NFC not available');
+  const reader = new nfcWindow.NDEFReader();
   await reader.scan();
   return reader;
 };

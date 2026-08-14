@@ -39,8 +39,7 @@ class BookingEngine:
             status=AppointmentStatus.PENDING,
         )
         self._appointments[apt.id] = apt
-        logger.info("[BOOKING] Created id=%s patient=%s lab=%s time=%s",
-                     apt.id, patient_id, lab_id, slot_time.isoformat())
+        logger.info("[BOOKING] Appointment created successfully")
         return apt
 
     def get(self, appointment_id: str) -> Appointment | None:

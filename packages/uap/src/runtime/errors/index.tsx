@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { secureId } from '../../security/secureRandom';
 
 export type ErrorSeverity = 'info' | 'warning' | 'error' | 'fatal';
 
@@ -39,7 +40,7 @@ export const ErrorProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const captureError = useCallback((error: Omit<AppError, 'id' | 'timestamp'>) => {
     const entry: AppError = {
       ...error,
-      id: `err-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: secureId('err'),
       timestamp: Date.now(),
     };
     setErrors((prev) => [entry, ...prev].slice(0, 50));

@@ -1,4 +1,4 @@
-import type { OfflineEntry, ChangeCallback } from './types';
+import type { OfflineEntry } from '../types';
 
 interface StorageBackend {
   get<T>(collection: string, id: string): Promise<OfflineEntry<T> | null>;

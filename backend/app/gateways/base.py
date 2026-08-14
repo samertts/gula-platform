@@ -359,14 +359,13 @@ class ExternalGateway:
         lvl = logging.INFO if success else logging.WARNING
         logger.log(
             lvl,
-            "[EXTERNAL_API] gateway=%s trust=%s action=%s success=%s source=%s duration_ms=%.1f%s",
+            "[EXTERNAL_API] gateway=%s trust=%s action=%s success=%s source=%s duration_ms=%.1f",
             self.name,
             self.trust_level.value,
             action,
             success,
             source,
             duration_ms,
-            f" details={details!r}" if details else "",
         )
 
     # ── Validation hook ───────────────────────────────────────────────────────
@@ -412,18 +411,16 @@ class ExternalGateway:
         try:
             external = self._do_call(action, **call_kwargs)
             logger.info(
-                "[SHADOW] gateway=%s action=%s external=%r internal=%r",
+                "[SHADOW] gateway=%s action=%s comparison=completed",
                 self.name,
                 action,
-                external,
-                internal_data,
             )
         except Exception as exc:
             logger.warning(
-                "[SHADOW] gateway=%s action=%s external_error=%r",
+                "[SHADOW] gateway=%s action=%s comparison=failed error_type=%s",
                 self.name,
                 action,
-                str(exc),
+                type(exc).__name__,
             )
 
         return ExternalDataResult(

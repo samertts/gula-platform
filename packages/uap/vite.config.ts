@@ -1,25 +1,28 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { resolve } from "path";
+import { fileURLToPath } from "url";
+
+const packageRoot = fileURLToPath(new URL('.', import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
   build: {
     lib: {
       entry: {
-        index: resolve(__dirname, "src/index.ts"),
-        tokens: resolve(__dirname, "src/tokens/index.ts"),
-        components: resolve(__dirname, "src/components/index.ts"),
-        runtime: resolve(__dirname, "src/runtime/index.ts"),
-        offline: resolve(__dirname, "src/offline/index.ts"),
-        device: resolve(__dirname, "src/device/index.ts"),
-        update: resolve(__dirname, "src/update/index.ts"),
-        marketplace: resolve(__dirname, "src/marketplace/index.ts"),
-        notifications: resolve(__dirname, "src/notifications/index.ts"),
-        printing: resolve(__dirname, "src/printing/index.ts"),
-        telemetry: resolve(__dirname, "src/telemetry/index.ts"),
-        sdk: resolve(__dirname, "src/sdk/index.ts"),
-        quality: resolve(__dirname, "src/quality/index.ts"),
+        index: resolve(packageRoot, "src/index.ts"),
+        tokens: resolve(packageRoot, "src/tokens/index.ts"),
+        components: resolve(packageRoot, "src/components/index.ts"),
+        runtime: resolve(packageRoot, "src/runtime/index.ts"),
+        offline: resolve(packageRoot, "src/offline/index.ts"),
+        device: resolve(packageRoot, "src/device/index.ts"),
+        update: resolve(packageRoot, "src/update/index.ts"),
+        marketplace: resolve(packageRoot, "src/marketplace/index.ts"),
+        notifications: resolve(packageRoot, "src/notifications/index.ts"),
+        printing: resolve(packageRoot, "src/printing/index.ts"),
+        telemetry: resolve(packageRoot, "src/telemetry/index.ts"),
+        sdk: resolve(packageRoot, "src/sdk/index.ts"),
+        quality: resolve(packageRoot, "src/quality/index.ts"),
       },
       formats: ["es", "cjs"],
     },

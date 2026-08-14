@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { cn } from '../utils';
 import { Sun, Moon, Monitor } from 'lucide-react';
 
-type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 interface ThemeContextValue {
   mode: ThemeMode;
