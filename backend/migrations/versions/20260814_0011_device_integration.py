@@ -1,7 +1,7 @@
 """Device integration catalog, safe event log, and simulated print jobs.
 
 Revision ID: 20260814_0011
-Revises: 20260814_0010
+Revises: 20260815_0002
 """
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "20260814_0011"
-down_revision = "20260814_0010"
+down_revision = "20260815_0002"
 branch_labels = None
 depends_on = None
 
