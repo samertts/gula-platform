@@ -108,3 +108,15 @@ The authenticated alert detail reports Apache HttpClient versions before **4.5.1
 The authenticated alert detail reports `org.apache.commons:commons-lang3` versions `>=3.0, <3.18.0` are affected by uncontrolled recursion (CVE-2025-48924 / GHSA-j288-q9x7-2f5v). The observed transitive version is **3.16.0** and the patched version is **3.18.0**. The dependency is introduced through Android tooling (`com.android.tools.build:gradle` and related lint/test listener paths). No alert action was performed.
 
 The Dependabot `?page=2` navigation returned the same dynamically loaded first-page list in the authenticated browser; it did not expose additional alert rows. Further inventory should use the dashboard filters or post-refresh counts rather than infer unseen rows from that URL.
+
+## Post-f06ddc7b CodeQL dashboard snapshot — 2026-08-14
+
+After `CodeQL Advanced` completed successfully for `f06ddc7b`, the authenticated dashboard temporarily reported **2,022 open / 648 closed** Code Scanning alerts and still displayed the **CodeQL is reporting errors** banner. The visible list included legacy SSRF alerts in `backend/app/integration/testing.py` (#2634, #2633, #336, #335), weak hashing alerts #2672/#2671 for the SHA3-512 changes, and clear-text logging #2667 for quality_gate. This dashboard state is inconsistent with the successful workflow and requires checking the CodeQL Analysis run/status page and alert refresh before treating it as final. No alerts were modified.
+
+## Post-f06ddc7b Dependabot refresh — 2026-08-14
+
+After the Android dependency-submission workflow succeeded, the authenticated Dependabot dashboard stabilized at **29 open / 351 closed** alerts, down from 33 open / 347 closed before the push. The visible remaining set is primarily Netty advisories in `mobile/android/settings.gradle.kts`; the page also shows Guava temporary-directory vulnerability #469 and no longer lists the previously observed JDOM2, Apache HttpClient, Commons Lang, or jose4j alerts. The dashboard still labels the dependency snapshot as checked for `f6cb9df`, so the count is authoritative for the current UI but may lag the pushed `f06ddc7b` commit. No alert was dismissed or modified.
+
+### Dependabot alert #469 detail
+
+The authenticated alert reports `com.google.guava:guava` **30.1.1-jre** introduced by `com.squareup.moshi:moshi-kotlin-codegen:1.15.2`. The patched floor is `32.0.0-android`; maintainers recommend **32.0.1** because 32.0.0 can break Windows functionality. The alert is CVE-2023-2976 / GHSA-7g45-4rm6-3mm3 (CWE-379/CWE-552). No alert action was performed.
