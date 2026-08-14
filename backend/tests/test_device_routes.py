@@ -234,3 +234,111 @@ def test_lab_staff_cannot_register_connector_or_profile(client, make_lab, make_l
         json={"profile_key": "denied.profile", "protocol": "ASTM"},
         headers=headers,
     ).status_code == 403
+
+
+
+def _monitoring_payload(gateway_ref: str, **overrides):
+    payload = {
+        "gateway_ref": gateway_ref,
+        "gateway_status": "degraded",
+        "gateway_version": "sim-gateway-0.4.0",
+        "outbox_pending_count": 18,
+        "outbox_oldest_age_seconds": 420,
+        "outbox_retry_count": 4,
+        "outbox_dead_letter_count": 1,
+        "disk_used_percent": 86.0,
+        "disk_free_bytes": 4294967296,
+        "worker_lag_seconds": 140,
+        "transport_latency_ms": 2500,
+        "simulation_only": True,
+        "safe_metadata": {"source": "synthetic-test"},
+    }
+    payload.update(overrides)
+    return payload
+
+
+def test_monitoring_metrics_create_alerts_acknowledge_and_auto_resolve(client, make_lab, make_lab_user):
+    lab = make_lab("Monitoring Lab")
+    other_lab = make_lab("Other Monitoring Lab")
+    user = make_lab_user(lab.id, role="admin")
+    other_user = make_lab_user(other_lab.id, role="admin")
+    headers = auth_headers(user.id, lab.id, "admin")
+    other_headers = auth_headers(other_user.id, other_lab.id, "admin")
+
+    ingest = client.post(
+        "/device-integration/monitoring/metrics",
+        json=_monitoring_payload("gateway-monitor-001"),
+        headers=headers,
+    )
+    assert ingest.status_code == 201
+    assert ingest.json()["outbox_oldest_age_seconds"] == 420
+    assert ingest.json()["simulation_only"] is True
+
+    snapshot = client.get("/device-integration/monitoring", headers=headers)
+    assert snapshot.status_code == 200
+    assert snapshot.json()["gateway_count"] == 1
+    assert snapshot.json()["open_alert_count"] >= 5
+    assert snapshot.json()["critical_alert_count"] == 0
+
+    alerts = client.get("/device-integration/monitoring/alerts", headers=headers)
+    assert alerts.status_code == 200
+    assert alerts.json()["total"] >= 5
+    assert all(alert["simulation_only"] is True for alert in alerts.json()["alerts"])
+    assert all("payload" not in alert for alert in alerts.json()["alerts"])
+
+    alert_id = alerts.json()["alerts"][0]["id"]
+    acknowledged = client.post(
+        f"/device-integration/monitoring/alerts/{alert_id}/acknowledge",
+        json={"note": "reviewed in synthetic test"},
+        headers=headers,
+    )
+    assert acknowledged.status_code == 200
+    assert acknowledged.json()["status"] == "acknowledged"
+
+    healthy = client.post(
+        "/device-integration/monitoring/metrics",
+        json=_monitoring_payload(
+            "gateway-monitor-001",
+            gateway_status="healthy",
+            outbox_pending_count=0,
+            outbox_oldest_age_seconds=0,
+            outbox_retry_count=0,
+            outbox_dead_letter_count=0,
+            disk_used_percent=40,
+            disk_free_bytes=32000000000,
+            worker_lag_seconds=0,
+            transport_latency_ms=40,
+        ),
+        headers=headers,
+    )
+    assert healthy.status_code == 201
+    recovered = client.get("/device-integration/monitoring", headers=headers)
+    assert recovered.status_code == 200
+    assert recovered.json()["open_alert_count"] == 0
+
+    other_snapshot = client.get("/device-integration/monitoring", headers=other_headers)
+    assert other_snapshot.status_code == 200
+    assert other_snapshot.json()["gateway_count"] == 0
+
+
+def test_monitoring_rejects_secret_metadata_and_staff_cannot_ingest_or_ack(client, make_lab, make_lab_user):
+    lab = make_lab("Monitoring Boundary Lab")
+    admin = make_lab_user(lab.id, role="admin")
+    staff = make_lab_user(lab.id, role="lab_staff")
+    admin_headers = auth_headers(admin.id, lab.id, "admin")
+    staff_headers = auth_headers(staff.id, lab.id, "lab_staff")
+
+    secret = client.post(
+        "/device-integration/monitoring/metrics",
+        json=_monitoring_payload("gateway-secret-001", safe_metadata={"api_token": "never-store"}),
+        headers=admin_headers,
+    )
+    assert secret.status_code == 422
+    assert secret.json()["detail"] == "Request validation failed."
+
+    assert client.get("/device-integration/monitoring", headers=staff_headers).status_code == 200
+    assert client.post(
+        "/device-integration/monitoring/metrics",
+        json=_monitoring_payload("gateway-staff-001"),
+        headers=staff_headers,
+    ).status_code == 403

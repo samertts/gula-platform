@@ -19,6 +19,8 @@ from .models import (
     PRINT_STATUSES,
     DeviceConnector,
     DeviceEvent,
+    DeviceGatewayAlert,
+    DeviceGatewayMetricSnapshot,
     DevicePrintJob,
     DeviceProtocolProfile,
     IntegratedDevice,
@@ -28,6 +30,8 @@ from .schemas import (
     ConnectorStatusUpdateRequest,
     DeviceRegisterRequest,
     DeviceStatusUpdateRequest,
+    GatewayAlertAcknowledgeRequest,
+    GatewayMetricIngestRequest,
     PrinterJobRequest,
     ProtocolProfileRequest,
 )
@@ -626,3 +630,208 @@ def simulate_connector(db: Session, lab_id: int, connector_uid: str, payload) ->
         "simulation_only": True,
         "safe_summary": summary,
     }
+
+
+MONITORING_THRESHOLDS = {
+    "outbox_oldest_age_warning_seconds": 300.0,
+    "outbox_oldest_age_critical_seconds": 900.0,
+    "disk_used_warning_percent": 85.0,
+    "disk_used_critical_percent": 95.0,
+    "dead_letter_warning_count": 1.0,
+    "dead_letter_critical_count": 10.0,
+    "worker_lag_warning_seconds": 120.0,
+    "worker_lag_critical_seconds": 600.0,
+    "transport_latency_warning_ms": 2000.0,
+    "transport_latency_critical_ms": 10000.0,
+}
+
+
+def _alert_specs(payload: GatewayMetricIngestRequest) -> list[dict]:
+    specs: list[dict] = []
+
+    if payload.outbox_oldest_age_seconds >= MONITORING_THRESHOLDS["outbox_oldest_age_critical_seconds"]:
+        specs.append({"key": "outbox_oldest_age", "severity": "critical", "title": "تأخير Outbox حرج", "metric": "outbox_oldest_age_seconds", "value": payload.outbox_oldest_age_seconds, "threshold": MONITORING_THRESHOLDS["outbox_oldest_age_critical_seconds"], "summary": "أقدم رسالة في Outbox تجاوزت حد التأخير الحرج."})
+    elif payload.outbox_oldest_age_seconds >= MONITORING_THRESHOLDS["outbox_oldest_age_warning_seconds"]:
+        specs.append({"key": "outbox_oldest_age", "severity": "warning", "title": "تأخير Outbox مرتفع", "metric": "outbox_oldest_age_seconds", "value": payload.outbox_oldest_age_seconds, "threshold": MONITORING_THRESHOLDS["outbox_oldest_age_warning_seconds"], "summary": "أقدم رسالة في Outbox تجاوزت حد التنبيه."})
+
+    if payload.disk_used_percent >= MONITORING_THRESHOLDS["disk_used_critical_percent"]:
+        specs.append({"key": "disk_usage", "severity": "critical", "title": "استهلاك القرص حرج", "metric": "disk_used_percent", "value": payload.disk_used_percent, "threshold": MONITORING_THRESHOLDS["disk_used_critical_percent"], "summary": "استهلاك قرص Gateway تجاوز الحد الحرج؛ يجب إيقاف قبول بيانات جديدة وفق runbook."})
+    elif payload.disk_used_percent >= MONITORING_THRESHOLDS["disk_used_warning_percent"]:
+        specs.append({"key": "disk_usage", "severity": "warning", "title": "استهلاك القرص مرتفع", "metric": "disk_used_percent", "value": payload.disk_used_percent, "threshold": MONITORING_THRESHOLDS["disk_used_warning_percent"], "summary": "استهلاك قرص Gateway تجاوز حد التنبيه."})
+
+    if payload.outbox_dead_letter_count >= MONITORING_THRESHOLDS["dead_letter_critical_count"]:
+        specs.append({"key": "dead_letters", "severity": "critical", "title": "رسائل Dead Letter حرجة", "metric": "outbox_dead_letter_count", "value": float(payload.outbox_dead_letter_count), "threshold": MONITORING_THRESHOLDS["dead_letter_critical_count"], "summary": "تراكمت رسائل Dead Letter وتحتاج مراجعة تشغيلية."})
+    elif payload.outbox_dead_letter_count >= MONITORING_THRESHOLDS["dead_letter_warning_count"]:
+        specs.append({"key": "dead_letters", "severity": "warning", "title": "رسائل Dead Letter موجودة", "metric": "outbox_dead_letter_count", "value": float(payload.outbox_dead_letter_count), "threshold": MONITORING_THRESHOLDS["dead_letter_warning_count"], "summary": "توجد رسائل Dead Letter تحتاج مراجعة قبل الحذف أو إعادة المعالجة."})
+
+    if payload.worker_lag_seconds >= MONITORING_THRESHOLDS["worker_lag_critical_seconds"]:
+        specs.append({"key": "worker_lag", "severity": "critical", "title": "العامل متأخر حرجًا", "metric": "worker_lag_seconds", "value": payload.worker_lag_seconds, "threshold": MONITORING_THRESHOLDS["worker_lag_critical_seconds"], "summary": "تأخر عامل Gateway عن heartbeat أو المعالجة تجاوز الحد الحرج."})
+    elif payload.worker_lag_seconds >= MONITORING_THRESHOLDS["worker_lag_warning_seconds"]:
+        specs.append({"key": "worker_lag", "severity": "warning", "title": "العامل متأخر", "metric": "worker_lag_seconds", "value": payload.worker_lag_seconds, "threshold": MONITORING_THRESHOLDS["worker_lag_warning_seconds"], "summary": "تأخر عامل Gateway عن heartbeat أو المعالجة تجاوز حد التنبيه."})
+
+    if payload.transport_latency_ms is not None:
+        if payload.transport_latency_ms >= MONITORING_THRESHOLDS["transport_latency_critical_ms"]:
+            specs.append({"key": "transport_latency", "severity": "critical", "title": "تأخير النقل حرج", "metric": "transport_latency_ms", "value": payload.transport_latency_ms, "threshold": MONITORING_THRESHOLDS["transport_latency_critical_ms"], "summary": "زمن النقل بين Gateway وGULA تجاوز الحد الحرج."})
+        elif payload.transport_latency_ms >= MONITORING_THRESHOLDS["transport_latency_warning_ms"]:
+            specs.append({"key": "transport_latency", "severity": "warning", "title": "تأخير النقل مرتفع", "metric": "transport_latency_ms", "value": payload.transport_latency_ms, "threshold": MONITORING_THRESHOLDS["transport_latency_warning_ms"], "summary": "زمن النقل بين Gateway وGULA تجاوز حد التنبيه."})
+
+    if payload.gateway_status in {"offline", "error"}:
+        specs.append({"key": "gateway_status", "severity": "critical", "title": "Gateway غير متاحة", "metric": "gateway_status", "value": None, "threshold": None, "summary": "حالة Gateway تشير إلى انقطاع أو خطأ حرج."})
+    elif payload.gateway_status == "degraded":
+        specs.append({"key": "gateway_status", "severity": "warning", "title": "Gateway متدهورة", "metric": "gateway_status", "value": None, "threshold": None, "summary": "Gateway تعمل بحالة متدهورة وتحتاج متابعة."})
+
+    return specs
+
+
+def _upsert_gateway_alert(db: Session, *, lab_id: int, payload: GatewayMetricIngestRequest, spec: dict, captured_at: datetime) -> DeviceGatewayAlert:
+    alert = (
+        db.query(DeviceGatewayAlert)
+        .filter(
+            DeviceGatewayAlert.lab_id == lab_id,
+            DeviceGatewayAlert.gateway_ref == payload.gateway_ref,
+            DeviceGatewayAlert.alert_key == spec["key"],
+            DeviceGatewayAlert.status.in_(["open", "acknowledged"]),
+        )
+        .order_by(DeviceGatewayAlert.last_seen_at.desc())
+        .first()
+    )
+    if alert is None:
+        alert = DeviceGatewayAlert(
+            lab_id=lab_id,
+            gateway_ref=payload.gateway_ref,
+            alert_key=spec["key"],
+            first_seen_at=captured_at,
+            acknowledged_at=None,
+            resolved_at=None,
+            correlation_id=str(uuid4()),
+            simulation_only=True,
+        )
+        db.add(alert)
+    alert.severity = spec["severity"]
+    alert.status = "open" if alert.status != "acknowledged" else alert.status
+    alert.title = spec["title"]
+    alert.summary = spec["summary"]
+    alert.metric_key = spec["metric"]
+    alert.current_value = spec["value"]
+    alert.threshold_value = spec["threshold"]
+    alert.last_seen_at = captured_at
+    alert.resolved_at = None
+    alert.simulation_only = True
+    alert.safe_metadata = {"simulation_only": True, "gateway_status": payload.gateway_status}
+    return alert
+
+
+def _resolve_missing_alerts(db: Session, *, lab_id: int, payload: GatewayMetricIngestRequest, active_keys: set[str], captured_at: datetime) -> None:
+    active_alerts = (
+        db.query(DeviceGatewayAlert)
+        .filter(
+            DeviceGatewayAlert.lab_id == lab_id,
+            DeviceGatewayAlert.gateway_ref == payload.gateway_ref,
+            DeviceGatewayAlert.status.in_(["open", "acknowledged"]),
+        )
+        .all()
+    )
+    for alert in active_alerts:
+        if alert.alert_key not in active_keys:
+            alert.status = "resolved"
+            alert.resolved_at = captured_at
+            alert.last_seen_at = captured_at
+
+
+def ingest_gateway_metrics(db: Session, lab_id: int, payload: GatewayMetricIngestRequest) -> DeviceGatewayMetricSnapshot:
+    if not payload.simulation_only:
+        raise ValueError("gateway metrics ingestion is simulation-only until gateway authentication is deployed")
+    captured_at = payload.captured_at or datetime.now(UTC)
+    snapshot = DeviceGatewayMetricSnapshot(
+        lab_id=lab_id,
+        gateway_ref=payload.gateway_ref,
+        gateway_status=payload.gateway_status,
+        gateway_version=payload.gateway_version,
+        outbox_pending_count=payload.outbox_pending_count,
+        outbox_oldest_age_seconds=payload.outbox_oldest_age_seconds,
+        outbox_retry_count=payload.outbox_retry_count,
+        outbox_dead_letter_count=payload.outbox_dead_letter_count,
+        disk_used_percent=payload.disk_used_percent,
+        disk_free_bytes=payload.disk_free_bytes,
+        worker_last_heartbeat_at=payload.worker_last_heartbeat_at,
+        worker_lag_seconds=payload.worker_lag_seconds,
+        transport_latency_ms=payload.transport_latency_ms,
+        captured_at=captured_at,
+        simulation_only=True,
+        safe_metadata=payload.safe_metadata,
+    )
+    db.add(snapshot)
+    for spec in _alert_specs(payload):
+        _upsert_gateway_alert(db, lab_id=lab_id, payload=payload, spec=spec, captured_at=captured_at)
+    _resolve_missing_alerts(db, lab_id=lab_id, payload=payload, active_keys={spec["key"] for spec in _alert_specs(payload)}, captured_at=captured_at)
+    db.commit()
+    db.refresh(snapshot)
+    return snapshot
+
+
+def _latest_gateway_metrics(db: Session, lab_id: int, limit: int = 100) -> list[DeviceGatewayMetricSnapshot]:
+    rows = (
+        db.query(DeviceGatewayMetricSnapshot)
+        .filter(DeviceGatewayMetricSnapshot.lab_id == lab_id)
+        .order_by(DeviceGatewayMetricSnapshot.captured_at.desc())
+        .limit(max(100, limit * 10))
+        .all()
+    )
+    latest: list[DeviceGatewayMetricSnapshot] = []
+    seen: set[str] = set()
+    for row in rows:
+        if row.gateway_ref in seen:
+            continue
+        seen.add(row.gateway_ref)
+        latest.append(row)
+        if len(latest) >= limit:
+            break
+    return latest
+
+
+def list_gateway_alerts(db: Session, lab_id: int, *, alert_status: str | None = None, limit: int = 100) -> tuple[int, list[DeviceGatewayAlert]]:
+    query = db.query(DeviceGatewayAlert).filter(DeviceGatewayAlert.lab_id == lab_id)
+    if alert_status:
+        query = query.filter(DeviceGatewayAlert.status == alert_status)
+    total = query.count()
+    return total, query.order_by(DeviceGatewayAlert.last_seen_at.desc()).limit(limit).all()
+
+
+def monitoring_snapshot(db: Session, lab_id: int) -> dict:
+    latest = _latest_gateway_metrics(db, lab_id)
+    active_query = db.query(DeviceGatewayAlert).filter(
+        DeviceGatewayAlert.lab_id == lab_id,
+        DeviceGatewayAlert.status.in_(["open", "acknowledged"]),
+    )
+    alerts = active_query.order_by(DeviceGatewayAlert.last_seen_at.desc()).limit(100).all()
+    return {
+        "gateway_count": len(latest),
+        "healthy_gateway_count": sum(row.gateway_status == "healthy" for row in latest),
+        "degraded_gateway_count": sum(row.gateway_status == "degraded" for row in latest),
+        "offline_gateway_count": sum(row.gateway_status in {"offline", "error"} for row in latest),
+        "latest_metric": latest[0] if latest else None,
+        "open_alert_count": len(alerts),
+        "critical_alert_count": sum(alert.severity == "critical" for alert in alerts),
+        "alerts": alerts,
+        "thresholds": MONITORING_THRESHOLDS,
+        "simulation_only": True,
+    }
+
+
+def acknowledge_gateway_alert(db: Session, lab_id: int, alert_id: int, actor_user_id: int, payload: GatewayAlertAcknowledgeRequest) -> DeviceGatewayAlert:
+    alert = (
+        db.query(DeviceGatewayAlert)
+        .filter(DeviceGatewayAlert.id == alert_id, DeviceGatewayAlert.lab_id == lab_id)
+        .first()
+    )
+    if alert is None:
+        raise LookupError("gateway alert not found")
+    if alert.status == "resolved":
+        raise ValueError("resolved gateway alerts cannot be acknowledged")
+    alert.status = "acknowledged"
+    alert.acknowledged_by = actor_user_id
+    alert.acknowledged_at = datetime.now(UTC)
+    alert.safe_metadata = {**(alert.safe_metadata or {}), "ack_note_present": bool(payload.note), "simulation_only": True}
+    db.commit()
+    db.refresh(alert)
+    return alert

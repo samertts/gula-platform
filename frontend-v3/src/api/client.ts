@@ -253,9 +253,9 @@ export class OperationalReadBlockedError extends Error {
 
 const BILLING_READ_PATTERN = /^GET \/billing\/(summary|invoices(?:\/\d+)?|claims|coverages|payments|alerts)$/;
 const FINANCIAL_CONTROL_READ_PATTERN = /^GET \/payments\/controls\/(summary|requests)$/;
-const DEVICE_INTEGRATION_READ_PATTERN = /^GET \/device-integration\/(protocols|summary|devices(?:\/[^/]+)?|connectors|protocol-profiles|simulators|events|printer-jobs)$/;
+const DEVICE_INTEGRATION_READ_PATTERN = /^GET \/device-integration\/(protocols|summary|devices(?:\/[^/]+)?|connectors|protocol-profiles|simulators|events|printer-jobs|monitoring|monitoring\/alerts)$/;
 const BILLING_WRITE_PATTERN = /^POST \/billing\/(invoices|coverages|claims\/\d+\/advance|coverages\/\d+\/verify-local|invoices\/\d+\/simulate-settlement)$/;
-const DEVICE_INTEGRATION_WRITE_PATTERN = /^POST \/device-integration\/(devices|devices\/[^/]+\/(status|probe)|connectors|connectors\/[^/]+\/(status|simulate)|protocol-profiles|printer-jobs)$/;
+const DEVICE_INTEGRATION_WRITE_PATTERN = /^POST \/device-integration\/(devices|devices\/[^/]+\/(status|probe)|connectors|connectors\/[^/]+\/(status|simulate)|protocol-profiles|printer-jobs|monitoring\/metrics|monitoring\/alerts\/\d+\/acknowledge)$/;
 
 function toRequestKey(method?: string, url?: string): string {
   const normalizedMethod = (method ?? "get").toUpperCase();
@@ -267,7 +267,7 @@ function toRequestKey(method?: string, url?: string): string {
  * يمنع العميل نفسه أي كتابة تشغيلية غير مشمولة بعقد مفوض ومراجع. الاستثناءات
  * ضيقة ومحصورة في المصادقة والتحقق وقرارات القراءة؛ ولا تشمل كتابة بيانات سريرية
  * أو إدارية أو أجهزة أو إشعارات ذات أثر خارجي؛ مسارات الأجهزة المسموحة هنا
- * محصورة في كتالوج المحاكاة وprobe ووظائف الطباعة الاصطناعية المعلنة.
+ * محصورة في كتالوج المحاكاة وprobe ووظائف الطباعة والتنبيهات الاصطناعية المعلنة.
  */
 export function assertFrontendWriteIsAllowed(method?: string, url?: string): void {
   const normalizedMethod = (method ?? "get").toLowerCase();

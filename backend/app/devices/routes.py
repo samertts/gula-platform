@@ -14,6 +14,12 @@ from .schemas import (
     ConnectorStatusUpdateRequest,
     DeviceEventListResponse,
     DeviceEventRecord,
+    GatewayAlertAcknowledgeRequest,
+    GatewayAlertRecord,
+    GatewayMetricIngestRequest,
+    GatewayMetricRecord,
+    GatewayMonitoringAlertListResponse,
+    GatewayMonitoringSnapshot,
     DeviceListResponse,
     DeviceRecord,
     DeviceRegisterRequest,
@@ -372,6 +378,53 @@ def create_printer_job(
             created_at=job.created_at,
             completed_at=job.completed_at,
         )
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
+
+
+@router.post("/monitoring/metrics", response_model=GatewayMetricRecord, status_code=status.HTTP_201_CREATED)
+def ingest_monitoring_metrics(
+    payload: GatewayMetricIngestRequest,
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+):
+    try:
+        return GatewayMetricRecord.model_validate(service.ingest_gateway_metrics(db, actor.lab_id, payload))
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
+
+
+@router.get("/monitoring", response_model=GatewayMonitoringSnapshot)
+def get_monitoring_snapshot(
+    actor: LabUser = _read_actor(),
+    db: Session = Depends(get_db),
+):
+    return GatewayMonitoringSnapshot.model_validate(service.monitoring_snapshot(db, actor.lab_id))
+
+
+@router.get("/monitoring/alerts", response_model=GatewayMonitoringAlertListResponse)
+def list_monitoring_alerts(
+    alert_status: str | None = Query(None, alias="status"),
+    limit: int = Query(100, ge=1, le=200),
+    actor: LabUser = _read_actor(),
+    db: Session = Depends(get_db),
+):
+    total, alerts = service.list_gateway_alerts(db, actor.lab_id, alert_status=alert_status, limit=limit)
+    return GatewayMonitoringAlertListResponse(total=total, alerts=[GatewayAlertRecord.model_validate(alert) for alert in alerts])
+
+
+@router.post("/monitoring/alerts/{alert_id}/acknowledge", response_model=GatewayAlertRecord)
+def acknowledge_monitoring_alert(
+    alert_id: int,
+    payload: GatewayAlertAcknowledgeRequest,
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+):
+    try:
+        alert = service.acknowledge_gateway_alert(db, actor.lab_id, alert_id, actor.id, payload)
+        return GatewayAlertRecord.model_validate(alert)
     except Exception as exc:
         _handle_service_error(exc)
         raise AssertionError("unreachable")

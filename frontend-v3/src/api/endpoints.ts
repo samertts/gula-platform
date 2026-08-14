@@ -45,6 +45,9 @@ import type {
   DeviceIntegrationSimulatorDescriptor,
   DeviceIntegrationSummary,
   DeviceIntegrationPrinterJob,
+  DeviceGatewayAlertRecord,
+  DeviceGatewayMetricRecord,
+  DeviceGatewayMonitoringSnapshot,
 } from "@/types";
 
 // ── Auth ──
@@ -363,6 +366,14 @@ export const deviceIntegrationApi = {
     api.get<{ total: number; jobs: DeviceIntegrationPrinterJob[] }>("/device-integration/printer-jobs", { params }).then((r) => r.data),
   createPrinterJob: (data: Record<string, unknown>) =>
     api.post<DeviceIntegrationPrinterJob>("/device-integration/printer-jobs", data).then((r) => r.data),
+  monitoring: () =>
+    api.get<DeviceGatewayMonitoringSnapshot>("/device-integration/monitoring").then((r) => r.data),
+  monitoringAlerts: (params?: { status?: string; limit?: number }) =>
+    api.get<{ total: number; alerts: DeviceGatewayAlertRecord[] }>("/device-integration/monitoring/alerts", { params }).then((r) => r.data),
+  ingestMonitoringMetrics: (data: Record<string, unknown>) =>
+    api.post<DeviceGatewayMetricRecord>("/device-integration/monitoring/metrics", data).then((r) => r.data),
+  acknowledgeMonitoringAlert: (alertId: number, data?: { note?: string }) =>
+    api.post<DeviceGatewayAlertRecord>(`/device-integration/monitoring/alerts/${alertId}/acknowledge`, data ?? {}).then((r) => r.data),
 };
 
 // ── Identity ──

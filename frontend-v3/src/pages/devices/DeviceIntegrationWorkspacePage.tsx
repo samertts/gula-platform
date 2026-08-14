@@ -43,6 +43,8 @@ import type {
   DeviceIntegrationSimulatorDescriptor,
   DeviceIntegrationStatus,
   DeviceIntegrationSummary,
+  DeviceGatewayAlertRecord,
+  DeviceGatewayMonitoringSnapshot,
 } from "@/types";
 
 const SYNTHETIC_DEVICES: DeviceIntegrationRecord[] = [
@@ -261,6 +263,24 @@ const SYNTHETIC_CONNECTORS: DeviceIntegrationConnectorRecord[] = [
   { id: 4, connector_uid: "CONN-ZPL-004", display_name: "ZPL Label Gateway", device_uid: "ZEBRA-ZPL-006", protocol: "ZPL", transport: "TCP", mode: "simulated", status: "healthy", contract_version: "v1", gateway_ref: "sim://connector/zpl-004", config_safe: { template_allowlist: ["specimen-default"] }, capability_manifest: { preview: true, label_languages: ["ZPL"] }, last_heartbeat_at: "2026-08-15T08:40:00Z", enabled: true, simulation_only: true, created_at: "2026-08-01T09:25:00Z", updated_at: "2026-08-15T08:40:00Z" },
 ];
 
+const SYNTHETIC_ALERTS: DeviceGatewayAlertRecord[] = [
+  { id: 1, gateway_ref: "gateway-lab-sim-01", alert_key: "outbox_oldest_age", severity: "warning", status: "open", title: "تأخير Outbox مرتفع", summary: "أقدم رسالة في Outbox تجاوزت حد التنبيه.", metric_key: "outbox_oldest_age_seconds", current_value: 412, threshold_value: 300, first_seen_at: "2026-08-15T08:20:00Z", last_seen_at: "2026-08-15T08:42:00Z", correlation_id: "sim-alert-001", simulation_only: true, safe_metadata: { simulation_only: true } },
+  { id: 2, gateway_ref: "gateway-lab-sim-02", alert_key: "disk_usage", severity: "critical", status: "acknowledged", title: "استهلاك القرص حرج", summary: "استهلاك قرص Gateway تجاوز الحد الحرج.", metric_key: "disk_used_percent", current_value: 96.4, threshold_value: 95, first_seen_at: "2026-08-15T07:55:00Z", last_seen_at: "2026-08-15T08:41:00Z", acknowledged_at: "2026-08-15T08:42:00Z", acknowledged_by: 1, correlation_id: "sim-alert-002", simulation_only: true, safe_metadata: { simulation_only: true } },
+];
+
+const SYNTHETIC_MONITORING: DeviceGatewayMonitoringSnapshot = {
+  gateway_count: 2,
+  healthy_gateway_count: 1,
+  degraded_gateway_count: 1,
+  offline_gateway_count: 0,
+  latest_metric: { id: 2, gateway_ref: "gateway-lab-sim-02", gateway_status: "degraded", gateway_version: "sim-gateway-0.4.0", outbox_pending_count: 18, outbox_oldest_age_seconds: 412, outbox_retry_count: 4, outbox_dead_letter_count: 1, disk_used_percent: 96.4, disk_free_bytes: 4294967296, worker_last_heartbeat_at: "2026-08-15T08:42:00Z", worker_lag_seconds: 138, transport_latency_ms: 2640, captured_at: "2026-08-15T08:42:00Z", simulation_only: true, safe_metadata: { simulation_only: true } },
+  open_alert_count: 2,
+  critical_alert_count: 1,
+  alerts: SYNTHETIC_ALERTS,
+  thresholds: { outbox_oldest_age_warning_seconds: 300, outbox_oldest_age_critical_seconds: 900, disk_used_warning_percent: 85, disk_used_critical_percent: 95, dead_letter_warning_count: 1, worker_lag_warning_seconds: 120, transport_latency_warning_ms: 2000 },
+  simulation_only: true,
+};
+
 const SYNTHETIC_PROFILES: DeviceIntegrationProtocolProfileRecord[] = [
   { id: 1, profile_key: "hl7.oru.r01.v1", protocol: "HL7v2_MLLP", version: "v1", message_type: "ORU^R01", framing: "MLLP", ack_strategy: "ACK/NAK", encoding: "UTF-8", mapping_schema: { result_id: "OBR-3", value: "OBX-5" }, validation_rules: { required_segments: ["MSH", "PID", "OBR", "OBX"] }, simulator_key: "hl7v2.oru.r01", status: "validated", simulation_only: true, created_by: 1, created_at: "2026-08-01T09:10:00Z", updated_at: "2026-08-15T08:36:00Z" },
   { id: 2, profile_key: "astm.result.v1", protocol: "ASTM", version: "v1", message_type: "RESULT", framing: "ENQ/ACK", ack_strategy: "frame_ack", encoding: "ASCII", mapping_schema: { test_code: "R-3", result: "R-4" }, validation_rules: { required_records: ["H", "P", "O", "R", "L"] }, simulator_key: "astm.result", status: "draft", simulation_only: true, created_by: 1, created_at: "2026-08-01T09:15:00Z", updated_at: "2026-08-15T07:54:00Z" },
@@ -345,7 +365,7 @@ function deviceIcon(category: DeviceIntegrationCategory) {
 
 export function DeviceIntegrationWorkspacePage() {
   const { demoMode } = useAuth();
-  const [activeTab, setActiveTab] = useState<"overview" | "devices" | "connectors" | "protocols" | "profiles" | "simulators" | "events" | "printing">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "devices" | "connectors" | "protocols" | "profiles" | "simulators" | "events" | "printing" | "monitoring">("overview");
   const [devices, setDevices] = useState<DeviceIntegrationRecord[]>(SYNTHETIC_DEVICES);
   const [summary, setSummary] = useState<DeviceIntegrationSummary>(syntheticSummary());
   const [protocols, setProtocols] = useState<DeviceIntegrationProtocolDescriptor[]>(SYNTHETIC_PROTOCOLS);
@@ -354,6 +374,8 @@ export function DeviceIntegrationWorkspacePage() {
   const [connectors, setConnectors] = useState<DeviceIntegrationConnectorRecord[]>(SYNTHETIC_CONNECTORS);
   const [profiles, setProfiles] = useState<DeviceIntegrationProtocolProfileRecord[]>(SYNTHETIC_PROFILES);
   const [simulators, setSimulators] = useState<DeviceIntegrationSimulatorDescriptor[]>(SYNTHETIC_SIMULATORS);
+  const [monitoring, setMonitoring] = useState<DeviceGatewayMonitoringSnapshot>(SYNTHETIC_MONITORING);
+  const [alertActionId, setAlertActionId] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<"all" | DeviceIntegrationCategory>("all");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
@@ -365,7 +387,7 @@ export function DeviceIntegrationWorkspacePage() {
     setLoading(true);
     setError("");
     try {
-      const [summaryResponse, devicesResponse, protocolsResponse, eventsResponse, jobsResponse, connectorsResponse, profilesResponse, simulatorsResponse] = await Promise.all([
+      const [summaryResponse, devicesResponse, protocolsResponse, eventsResponse, jobsResponse, connectorsResponse, profilesResponse, simulatorsResponse, monitoringResponse] = await Promise.all([
         deviceIntegrationApi.summary(),
         deviceIntegrationApi.list({ limit: 200 }),
         deviceIntegrationApi.protocols(),
@@ -374,6 +396,7 @@ export function DeviceIntegrationWorkspacePage() {
         deviceIntegrationApi.connectors({ limit: 200 }),
         deviceIntegrationApi.protocolProfiles({ limit: 200 }),
         deviceIntegrationApi.simulators(),
+        deviceIntegrationApi.monitoring(),
       ]);
       setSummary(summaryResponse);
       setDevices(devicesResponse.devices);
@@ -383,6 +406,7 @@ export function DeviceIntegrationWorkspacePage() {
       setConnectors(connectorsResponse.connectors);
       setProfiles(profilesResponse.profiles);
       setSimulators(simulatorsResponse);
+      setMonitoring(monitoringResponse);
     } catch {
       setError("تعذر تحميل بيانات الأجهزة من backend؛ لم يتم استبدال وضع live ببيانات اصطناعية.");
     } finally {
@@ -476,6 +500,23 @@ export function DeviceIntegrationWorkspacePage() {
     }
   };
 
+  const acknowledgeAlert = async (alert: DeviceGatewayAlertRecord) => {
+    if (alert.status === "resolved") return;
+    setAlertActionId(alert.id);
+    setError("");
+    try {
+      const now = new Date().toISOString();
+      const updated = demoMode
+        ? { ...alert, status: "acknowledged" as const, acknowledged_at: now, acknowledged_by: 1 }
+        : await deviceIntegrationApi.acknowledgeMonitoringAlert(alert.id, { note: "تمت المراجعة من مركز المراقبة" });
+      setMonitoring((current) => ({ ...current, alerts: current.alerts.map((item) => item.id === alert.id ? updated : item) }));
+    } catch {
+      setError(`تعذر تأكيد التنبيه ${alert.title}.`);
+    } finally {
+      setAlertActionId(null);
+    }
+  };
+
   const tabs = [
     { key: "overview" as const, label: "النظرة العامة", icon: Activity },
     { key: "devices" as const, label: "كتالوج الأجهزة", icon: Server },
@@ -485,6 +526,7 @@ export function DeviceIntegrationWorkspacePage() {
     { key: "simulators" as const, label: "المحاكيات", icon: FlaskConical },
     { key: "events" as const, label: "سجل الأحداث", icon: FileOutput },
     { key: "printing" as const, label: "الطباعة", icon: Printer },
+    { key: "monitoring" as const, label: "المراقبة والتنبيهات", icon: AlertTriangle },
   ];
 
   return (
@@ -535,6 +577,7 @@ export function DeviceIntegrationWorkspacePage() {
       {activeTab === "simulators" && <SimulatorsTab simulators={simulators} connectors={connectors} onSimulate={simulate} actionUid={actionUid} />}
       {activeTab === "events" && <EventsTab events={events} />}
       {activeTab === "printing" && <PrintingTab jobs={jobs} printers={printerDevices} onCreate={createPrintJob} actionUid={actionUid} />}
+      {activeTab === "monitoring" && <MonitoringTab monitoring={monitoring} onAcknowledge={acknowledgeAlert} alertActionId={alertActionId} />}
     </div>
   );
 }
@@ -611,4 +654,89 @@ function SeverityBadge({ severity }: { severity: DeviceIntegrationEventRecord["s
 function MetricCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: typeof Activity; tone: "slate" | "emerald" | "amber" | "rose" | "violet" | "cyan" }) {
   const tones = { slate: "bg-slate-500/10 text-slate-700 dark:text-slate-300", emerald: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300", amber: "bg-amber-500/10 text-amber-700 dark:text-amber-300", rose: "bg-rose-500/10 text-rose-700 dark:text-rose-300", violet: "bg-violet-500/10 text-violet-700 dark:text-violet-300", cyan: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300" };
   return <Card><CardContent className="flex items-center gap-3 p-4"><span className={`rounded-xl p-2.5 ${tones[tone]}`}><Icon className="h-5 w-5" /></span><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold">{value}</p></div></CardContent></Card>;
+}
+
+
+function MonitoringTab({ monitoring, onAcknowledge, alertActionId }: { monitoring: DeviceGatewayMonitoringSnapshot; onAcknowledge: (alert: DeviceGatewayAlertRecord) => void; alertActionId: number | null }) {
+  const metric = monitoring.latest_metric;
+  const diskTone = (metric?.disk_used_percent ?? 0) >= (monitoring.thresholds.disk_used_critical_percent ?? 95) ? "rose" : (metric?.disk_used_percent ?? 0) >= (monitoring.thresholds.disk_used_warning_percent ?? 85) ? "amber" : "emerald";
+  const queueTone = (metric?.outbox_oldest_age_seconds ?? 0) >= (monitoring.thresholds.outbox_oldest_age_critical_seconds ?? 900) ? "rose" : (metric?.outbox_oldest_age_seconds ?? 0) >= (monitoring.thresholds.outbox_oldest_age_warning_seconds ?? 300) ? "amber" : "cyan";
+
+  return <div className="space-y-6">
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <MetricCard label="Gateway سليمة" value={monitoring.healthy_gateway_count} icon={CheckCircle2} tone="emerald" />
+      <MetricCard label="Gateway متدهورة" value={monitoring.degraded_gateway_count} icon={AlertTriangle} tone="amber" />
+      <MetricCard label="غير متاحة" value={monitoring.offline_gateway_count} icon={CircleOff} tone="slate" />
+      <MetricCard label="أقدم Outbox (ثانية)" value={Math.round(metric?.outbox_oldest_age_seconds ?? 0)} icon={Clock3} tone={queueTone} />
+      <MetricCard label="استهلاك القرص %" value={Number((metric?.disk_used_percent ?? 0).toFixed(1))} icon={Gauge} tone={diskTone} />
+      <MetricCard label="تنبيهات مفتوحة" value={monitoring.open_alert_count} icon={AlertTriangle} tone={monitoring.critical_alert_count > 0 ? "rose" : "cyan"} />
+    </div>
+
+    <Card className="overflow-hidden border-slate-800 bg-gradient-to-l from-slate-950 via-slate-900 to-indigo-950 text-white">
+      <CardContent className="p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex items-center gap-2 text-indigo-300"><Activity className="h-5 w-5" /><span className="text-sm font-semibold tracking-wide">GATEWAY OBSERVABILITY</span></div>
+            <h3 className="mt-2 text-xl font-bold">مراقبة الطابور والقرص وصحة العامل</h3>
+            <p className="mt-2 max-w-3xl text-sm leading-7 text-slate-300">تُقاس مؤشرات Outbox محليًا ثم تُرسل كـmetadata تشغيلية فقط. لا تعرض هذه اللوحة payloads خامًا أو أسماء مرضى، ولا تعني أن Gateway فعلية متصلة في هذه الدفعة.</p>
+          </div>
+          <Badge variant="outline" className="w-fit border-indigo-400/40 text-indigo-100"><ShieldCheck className="ml-1 h-4 w-4" />محاكاة آمنة فقط</Badge>
+        </div>
+      </CardContent>
+    </Card>
+
+    <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Server className="h-5 w-5 text-indigo-600" />آخر لقطة Gateway</CardTitle></CardHeader>
+        <CardContent>
+          {metric ? <div className="grid gap-3 sm:grid-cols-2">
+            <MonitoringValue label="المعرف" value={metric.gateway_ref} />
+            <MonitoringValue label="الحالة" value={metric.gateway_status === "healthy" ? "سليمة" : metric.gateway_status === "degraded" ? "متدهورة" : metric.gateway_status} />
+            <MonitoringValue label="Pending Outbox" value={String(metric.outbox_pending_count)} />
+            <MonitoringValue label="Retry" value={String(metric.outbox_retry_count)} />
+            <MonitoringValue label="Dead Letter" value={String(metric.outbox_dead_letter_count)} />
+            <MonitoringValue label="تأخر العامل" value={`${Math.round(metric.worker_lag_seconds)} ثانية`} />
+            <MonitoringValue label="زمن النقل" value={metric.transport_latency_ms == null ? "غير متاح" : `${Math.round(metric.transport_latency_ms)} ms`} />
+            <MonitoringValue label="آخر التقاط" value={formatTime(metric.captured_at)} />
+          </div> : <p className="text-sm text-muted-foreground">لم تصل لقطة metrics بعد.</p>}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Gauge className="h-5 w-5 text-amber-600" />عتبات التنبيه</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <ThresholdRow label="Outbox warning" value={`${monitoring.thresholds.outbox_oldest_age_warning_seconds ?? 300} ثانية`} />
+          <ThresholdRow label="Outbox critical" value={`${monitoring.thresholds.outbox_oldest_age_critical_seconds ?? 900} ثانية`} />
+          <ThresholdRow label="Disk warning" value={`${monitoring.thresholds.disk_used_warning_percent ?? 85}%`} />
+          <ThresholdRow label="Disk critical" value={`${monitoring.thresholds.disk_used_critical_percent ?? 95}%`} />
+          <ThresholdRow label="Worker lag warning" value={`${monitoring.thresholds.worker_lag_warning_seconds ?? 120} ثانية`} />
+        </CardContent>
+      </Card>
+    </div>
+
+    <Card>
+      <CardHeader><div className="flex items-center justify-between gap-3"><CardTitle className="flex items-center gap-2 text-base"><AlertTriangle className="h-5 w-5 text-rose-600" />التنبيهات النشطة</CardTitle><Badge variant={monitoring.critical_alert_count > 0 ? "destructive" : "outline"}>{monitoring.critical_alert_count} حرج</Badge></div></CardHeader>
+      <CardContent className="space-y-3">
+        {monitoring.alerts.length === 0 && <p className="text-sm text-muted-foreground">لا توجد تنبيهات نشطة.</p>}
+        {monitoring.alerts.map((alert) => <div key={alert.id} className="flex flex-col gap-3 rounded-2xl border p-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><AlertSeverityBadge severity={alert.severity} /><Badge variant={alert.status === "acknowledged" ? "success" : "outline"}>{alert.status === "acknowledged" ? "تمت المراجعة" : "مفتوح"}</Badge><span className="text-xs text-muted-foreground">{alert.gateway_ref}</span></div><p className="mt-2 font-semibold">{alert.title}</p><p className="mt-1 text-sm leading-6 text-muted-foreground">{alert.summary}</p><p className="mt-1 text-xs text-muted-foreground">القيمة: {alert.current_value == null ? "حالة" : alert.current_value} · الحد: {alert.threshold_value == null ? "—" : alert.threshold_value} · {formatTime(alert.last_seen_at)}</p></div>
+          <Button variant="outline" size="sm" onClick={() => onAcknowledge(alert)} disabled={alert.status === "acknowledged" || alertActionId === alert.id}>{alertActionId === alert.id ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : <CheckCircle2 className="ml-1 h-4 w-4" />}{alert.status === "acknowledged" ? "تمت المراجعة" : "تأكيد التنبيه"}</Button>
+        </div>)}
+      </CardContent>
+    </Card>
+
+    <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-7 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"><strong>حدود التشغيل:</strong> هذه اللقطة اصطناعية في وضع Demo. الاتصال الفعلي يحتاج Gateway محلية موثقة بـmTLS، queue worker، heartbeat، وتدوير شهادات؛ لا تُعتبر التنبيهات بديلاً عن runbook أو مراقبة بنية المنشأة.</div>
+  </div>;
+}
+
+function MonitoringValue({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl bg-muted/50 px-3 py-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-sm font-semibold break-words">{value}</p></div>;
+}
+
+function ThresholdRow({ label, value }: { label: string; value: string }) {
+  return <div className="flex items-center justify-between rounded-xl border px-3 py-2.5 text-sm"><span className="text-muted-foreground">{label}</span><strong>{value}</strong></div>;
+}
+
+function AlertSeverityBadge({ severity }: { severity: DeviceGatewayAlertRecord["severity"] }) {
+  return <Badge variant={severity === "critical" ? "destructive" : severity === "warning" ? "warning" : "outline"}>{severity === "critical" ? "حرج" : severity === "warning" ? "تحذير" : "معلومة"}</Badge>;
 }

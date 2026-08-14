@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint
 
 from app._compat import UTC
 from ..database import Base
@@ -187,3 +187,63 @@ class DevicePrintJob(Base):
     error_message = Column(String(500), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
     completed_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class DeviceGatewayMetricSnapshot(Base):
+    """Safe operational metrics reported by a local gateway or simulator."""
+
+    __tablename__ = "device_gateway_metric_snapshots"
+    __table_args__ = (
+        Index("ix_device_gateway_metrics_lab_captured", "lab_id", "captured_at"),
+        Index("ix_device_gateway_metrics_gateway_captured", "gateway_ref", "captured_at"),
+        Index("ix_device_gateway_metrics_outbox_age", "lab_id", "outbox_oldest_age_seconds"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
+    gateway_ref = Column(String(160), nullable=False)
+    gateway_status = Column(String(24), nullable=False, default="healthy")
+    gateway_version = Column(String(48), nullable=True)
+    outbox_pending_count = Column(Integer, nullable=False, default=0)
+    outbox_oldest_age_seconds = Column(Float, nullable=False, default=0)
+    outbox_retry_count = Column(Integer, nullable=False, default=0)
+    outbox_dead_letter_count = Column(Integer, nullable=False, default=0)
+    disk_used_percent = Column(Float, nullable=False, default=0)
+    disk_free_bytes = Column(Integer, nullable=False, default=0)
+    worker_last_heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    worker_lag_seconds = Column(Float, nullable=False, default=0)
+    transport_latency_ms = Column(Float, nullable=True)
+    captured_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    simulation_only = Column(Boolean, nullable=False, default=True)
+    safe_metadata = Column(JSON, nullable=True)
+
+
+class DeviceGatewayAlert(Base):
+    """Tenant-scoped alert state derived from safe gateway metrics."""
+
+    __tablename__ = "device_gateway_alerts"
+    __table_args__ = (
+        Index("ix_device_gateway_alerts_lab_status", "lab_id", "status", "last_seen_at"),
+        Index("ix_device_gateway_alerts_gateway", "gateway_ref", "last_seen_at"),
+        Index("ix_device_gateway_alerts_severity", "lab_id", "severity", "status"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
+    gateway_ref = Column(String(160), nullable=False)
+    alert_key = Column(String(96), nullable=False)
+    severity = Column(String(16), nullable=False, default="warning")
+    status = Column(String(24), nullable=False, default="open")
+    title = Column(String(200), nullable=False)
+    summary = Column(String(500), nullable=False)
+    metric_key = Column(String(80), nullable=False)
+    current_value = Column(Float, nullable=True)
+    threshold_value = Column(Float, nullable=True)
+    first_seen_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    last_seen_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    acknowledged_at = Column(DateTime(timezone=True), nullable=True)
+    acknowledged_by = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+    correlation_id = Column(String(96), nullable=False, index=True)
+    simulation_only = Column(Boolean, nullable=False, default=True)
+    safe_metadata = Column(JSON, nullable=True)

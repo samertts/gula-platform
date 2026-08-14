@@ -34,12 +34,16 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
     expect(() => assertFrontendReadIsAllowed("get", "/device-integration/connectors?limit=20")).not.toThrow();
     expect(() => assertFrontendReadIsAllowed("get", "/device-integration/protocol-profiles")).not.toThrow();
     expect(() => assertFrontendReadIsAllowed("get", "/device-integration/simulators")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/device-integration/monitoring")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/device-integration/monitoring/alerts?status=open")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices/VITAL-001/probe")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/connectors")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/connectors/CONN-HL7-001/status")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/connectors/CONN-HL7-001/simulate")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/protocol-profiles")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/monitoring/metrics")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/monitoring/alerts/42/acknowledge")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices/VITAL-001/raw-command")).toThrow(OperationalWriteBlockedError);
   });
 

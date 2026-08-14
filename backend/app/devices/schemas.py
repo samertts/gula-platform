@@ -303,3 +303,97 @@ class DeviceEventListResponse(BaseModel):
 class PrinterJobListResponse(BaseModel):
     total: int
     jobs: list[PrinterJobRecord]
+
+
+GatewayStatus = Literal["healthy", "degraded", "offline", "error", "maintenance", "pending"]
+GatewayAlertSeverity = Literal["info", "warning", "critical"]
+GatewayAlertStatus = Literal["open", "acknowledged", "resolved"]
+
+
+class GatewayMetricIngestRequest(BaseModel):
+    gateway_ref: str = Field(..., min_length=3, max_length=160, pattern=r"^[A-Za-z0-9._:/-]+$")
+    gateway_status: GatewayStatus = "healthy"
+    gateway_version: str | None = Field(None, max_length=48)
+    outbox_pending_count: int = Field(0, ge=0, le=10_000_000)
+    outbox_oldest_age_seconds: float = Field(0, ge=0, le=31_536_000)
+    outbox_retry_count: int = Field(0, ge=0, le=10_000_000)
+    outbox_dead_letter_count: int = Field(0, ge=0, le=10_000_000)
+    disk_used_percent: float = Field(0, ge=0, le=100)
+    disk_free_bytes: int = Field(0, ge=0)
+    worker_last_heartbeat_at: datetime | None = None
+    worker_lag_seconds: float = Field(0, ge=0, le=31_536_000)
+    transport_latency_ms: float | None = Field(None, ge=0, le=86_400_000)
+    captured_at: datetime | None = None
+    simulation_only: bool = True
+    safe_metadata: dict[str, Any] | None = None
+
+    @field_validator("safe_metadata")
+    @classmethod
+    def validate_metrics_secret_free(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _ensure_secret_free(value)
+
+
+class GatewayMetricRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    gateway_ref: str
+    gateway_status: str
+    gateway_version: str | None
+    outbox_pending_count: int
+    outbox_oldest_age_seconds: float
+    outbox_retry_count: int
+    outbox_dead_letter_count: int
+    disk_used_percent: float
+    disk_free_bytes: int
+    worker_last_heartbeat_at: datetime | None
+    worker_lag_seconds: float
+    transport_latency_ms: float | None
+    captured_at: datetime
+    simulation_only: bool
+    safe_metadata: dict[str, Any] | None
+
+
+class GatewayAlertRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    gateway_ref: str
+    alert_key: str
+    severity: str
+    status: str
+    title: str
+    summary: str
+    metric_key: str
+    current_value: float | None
+    threshold_value: float | None
+    first_seen_at: datetime
+    last_seen_at: datetime
+    acknowledged_at: datetime | None
+    acknowledged_by: int | None
+    resolved_at: datetime | None
+    correlation_id: str
+    simulation_only: bool
+    safe_metadata: dict[str, Any] | None
+
+
+class GatewayAlertAcknowledgeRequest(BaseModel):
+    note: str | None = Field(None, max_length=500)
+
+
+class GatewayMonitoringSnapshot(BaseModel):
+    gateway_count: int
+    healthy_gateway_count: int
+    degraded_gateway_count: int
+    offline_gateway_count: int
+    latest_metric: GatewayMetricRecord | None
+    open_alert_count: int
+    critical_alert_count: int
+    alerts: list[GatewayAlertRecord]
+    thresholds: dict[str, float]
+    simulation_only: bool
+
+
+class GatewayMonitoringAlertListResponse(BaseModel):
+    total: int
+    alerts: list[GatewayAlertRecord]

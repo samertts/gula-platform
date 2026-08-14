@@ -299,6 +299,63 @@ export interface DeviceIntegrationSummary {
   recent_events: number;
 }
 
+export type DeviceGatewayStatus = 'healthy' | 'degraded' | 'offline' | 'error' | 'maintenance' | 'pending';
+export type DeviceGatewayAlertSeverity = 'info' | 'warning' | 'critical';
+export type DeviceGatewayAlertStatus = 'open' | 'acknowledged' | 'resolved';
+
+export interface DeviceGatewayMetricRecord {
+  id: number;
+  gateway_ref: string;
+  gateway_status: DeviceGatewayStatus;
+  gateway_version?: string;
+  outbox_pending_count: number;
+  outbox_oldest_age_seconds: number;
+  outbox_retry_count: number;
+  outbox_dead_letter_count: number;
+  disk_used_percent: number;
+  disk_free_bytes: number;
+  worker_last_heartbeat_at?: string;
+  worker_lag_seconds: number;
+  transport_latency_ms?: number;
+  captured_at: string;
+  simulation_only: boolean;
+  safe_metadata?: Record<string, unknown>;
+}
+
+export interface DeviceGatewayAlertRecord {
+  id: number;
+  gateway_ref: string;
+  alert_key: string;
+  severity: DeviceGatewayAlertSeverity;
+  status: DeviceGatewayAlertStatus;
+  title: string;
+  summary: string;
+  metric_key: string;
+  current_value?: number;
+  threshold_value?: number;
+  first_seen_at: string;
+  last_seen_at: string;
+  acknowledged_at?: string;
+  acknowledged_by?: number;
+  resolved_at?: string;
+  correlation_id: string;
+  simulation_only: boolean;
+  safe_metadata?: Record<string, unknown>;
+}
+
+export interface DeviceGatewayMonitoringSnapshot {
+  gateway_count: number;
+  healthy_gateway_count: number;
+  degraded_gateway_count: number;
+  offline_gateway_count: number;
+  latest_metric?: DeviceGatewayMetricRecord;
+  open_alert_count: number;
+  critical_alert_count: number;
+  alerts: DeviceGatewayAlertRecord[];
+  thresholds: Record<string, number>;
+  simulation_only: boolean;
+}
+
 export interface DeviceIntegrationPrinterJob {
   id: number;
   device_uid: string;

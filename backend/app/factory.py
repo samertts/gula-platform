@@ -232,6 +232,8 @@ def import_all_models() -> None:
     from .devices.models import (  # noqa: F401
         DeviceConnector,
         DeviceEvent,
+        DeviceGatewayAlert,
+        DeviceGatewayMetricSnapshot,
         DevicePrintJob,
         DeviceProtocolProfile,
         IntegratedDevice,
