@@ -357,7 +357,7 @@ def _score_documentation() -> AxisResult:
     ax.add_check("Root README", len(readme_root) > 0, f"{len(readme_root)} root README file(s)")
 
     # 3b. README per major module
-    module_dirs = ["backend/app", "services", "frontend-v2", "client", "docs", "scripts", "nhop-platform", "edge_agent", "ai"]
+    module_dirs = ["backend/app", "services", "frontend-v3", "client", "docs", "scripts", "nhop-platform", "edge_agent", "ai"]
     modules_with_readme = 0
     for mod in module_dirs:
         d = REPO_ROOT / mod
@@ -410,7 +410,7 @@ def _score_documentation() -> AxisResult:
         if len(readme_root) == 0:
             ax.add_recommendation("Create a root README.md describing the project, setup, and architecture")
         if modules_with_readme < 3:
-            ax.add_recommendation("Add README files to major modules (backend/app, services, frontend-v2)")
+            ax.add_recommendation("Add README files to major modules (backend/app, services, frontend-v3)")
         if doc_pct < 60:
             ax.add_recommendation(f"Add module-level docstrings to {len(py_files) - with_docstring} Python files")
         if found_essential < 3:
@@ -635,7 +635,7 @@ def _score_dependencies() -> AxisResult:
     }
     pkg_json = {
         "root": REPO_ROOT / "package.json",
-        "frontend-v2": REPO_ROOT / "frontend-v2" / "package.json",
+        "frontend-v3": REPO_ROOT / "frontend-v3" / "package.json",
     }
 
     # 6a. Requirements files exist

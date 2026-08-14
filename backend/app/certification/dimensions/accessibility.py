@@ -152,19 +152,19 @@ class AccessibilityEvaluator(DimensionEvaluator):
         return self._result(score)
 
     def _find_frontend(self, target: Path) -> Path | None:
+        """Locate the single production frontend source tree.
+
+        The repository is unified on frontend-v3.  Do not silently fall back to
+        legacy trees: auditing a different frontend would produce misleading
+        certification results and could hide regressions in the deployed UI.
+        """
         candidates = [
-            target / "frontend-v2" / "src",
-            target / "frontend" / "src",
-            target.parent / "frontend-v2" / "src",
-            target.parent / "frontend" / "src",
+            target / "frontend-v3" / "src",
+            target.parent / "frontend-v3" / "src",
         ]
-        for c in candidates:
-            if c.exists():
-                return c
-        if (target / "src").exists():
-            return target / "src"
-        if (target / "app" / "templates").exists():
-            return target / "app" / "templates"
+        for candidate in candidates:
+            if candidate.is_dir():
+                return candidate
         return None
 
     def _check_rtl_support(self, target: Path) -> bool:

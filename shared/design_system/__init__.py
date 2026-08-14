@@ -1,7 +1,7 @@
 """GULA Design System — canonical UI tokens and component definitions.
 
 This module defines the unified design language used across all GULA
-frontend applications (frontend-v2, client, frontend).  It provides
+the frontend-v3 application.  It provides
 design tokens, component blueprints, and accessibility guidelines.
 """
 

@@ -7,7 +7,7 @@ outdated packages, and cross-manifest conflicts.
 
 Checks performed:
   1. Python vulnerability scan  — pip-audit on all requirements files
-  2. npm vulnerability scan     — npm audit on frontend-v2
+  2. npm vulnerability scan     — npm audit on frontend-v3
   3. Outdated Python packages   — pip list --outdated parsing
   4. Cross-manifest conflicts   — version mismatches between requirements.txt
      and pyproject.toml / requirements-dev.txt etc.
@@ -59,7 +59,8 @@ PYTHON_REQUIREMENT_FILES: list[Path] = [
 ]
 
 PYPROJECT = REPO_ROOT / "pyproject.toml"
-FRONTEND_DIR = REPO_ROOT / "frontend-v2"
+# The active production frontend is frontend-v3.
+FRONTEND_DIR = REPO_ROOT / "frontend-v3"
 PACKAGE_JSON = FRONTEND_DIR / "package.json"
 
 _SHORT_NAMES = {

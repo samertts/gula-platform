@@ -109,7 +109,7 @@ def build_gula_knowledge_graph() -> KnowledgeGraph:
     for nid, ntype, name, desc in [
         ("gula-platform", "repository", "GULA Platform", "Main monorepo"),
         ("device-bridge", "repository", "Device Bridge", "ASTM/HL7 device integration"),
-        ("frontend-v2", "repository", "Frontend V2", "React + Firebase UI"),
+        ("frontend-v3", "repository", "Frontend V3", "React + Vite production UI"),
         ("backend", "capability", "Backend API", "FastAPI monolith"),
         ("auth", "capability", "Authentication", "JWT + OAuth2"),
         ("patients", "capability", "Patient Management", "CRUD + MPI"),

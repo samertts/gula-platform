@@ -734,17 +734,31 @@ services:
     networks:
       - gula-net
 
+  # ---------------------------------------------------------------------------
+  # FRONTEND-V3 (React/Vite static build served by nginx)
+  # ---------------------------------------------------------------------------
+
   frontend:
-    image: nginx:1.28-alpine
+    build:
+      context: ./frontend-v3
+      dockerfile: Dockerfile
+    image: "${GULA_IMAGE_PREFIX:-local}/frontend-v3:${GULA_IMAGE_TAG:-local}"
     container_name: gula-frontend
     restart: always
+    security_opt:
+      - no-new-privileges:true
     expose:
       - "80"
     volumes:
-      - ./frontend:/usr/share/nginx/html
-      - ./config/nginx/frontend.conf:/etc/nginx/conf.d/default.conf
+      - ./config/nginx/frontend.conf:/etc/nginx/conf.d/default.conf:ro
     networks:
       - gula-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   # ===========================================================================
   # AUTOMATED BACKUP (cron-based pg_dump)

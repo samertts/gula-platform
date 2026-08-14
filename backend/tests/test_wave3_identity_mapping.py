@@ -88,25 +88,26 @@ async def test_service_rejects_invalid_rollback_token(pending_link: LegacyAccoun
 
 
 def test_frontend_cookie_only_auth_regression():
+    """The production frontend must use HttpOnly cookies for live sessions.
+
+    Demo state is intentionally limited to sessionStorage markers and synthetic
+    persona selection; it must not introduce bearer-token persistence.
+    """
     from pathlib import Path
 
     root = Path(__file__).parents[2]
-    client = (root / "frontend-v2/src/api/client.ts").read_text()
-    auth_context = (root / "frontend-v2/src/contexts/AuthContext.tsx").read_text()
-    legacy_index = (root / "frontend/index.html").read_text()
-    tiers = (root / "frontend/tiers.html").read_text()
+    client = (root / "frontend-v3/src/api/client.ts").read_text()
+    auth_context = (root / "frontend-v3/src/contexts/AuthContext.tsx").read_text()
 
+    assert "withCredentials: true" in client
     assert "localStorage.setItem('gula_access_token'" not in client
     assert "localStorage.setItem('gula_refresh_token'" not in client
     assert "Authorization: `Bearer ${token}`" not in client
     assert "localStorage.setItem(USER_KEY" not in auth_context
     assert "localStorage.getItem(USER_KEY" not in auth_context
-    assert "gula_auth" not in legacy_index
-    assert "localStorage.getItem('token')" not in tiers
-    assert "localStorage.getItem('user')" not in tiers
-    assert "credentials: 'include'" in client
-    assert "credentials: 'include'" in legacy_index
-    assert "credentials: 'include'" in tiers
+    assert "sessionStorage.setItem(DEMO_SESSION_KEY" in auth_context
+    assert "sessionStorage.setItem(DEMO_PERSONA_KEY" in auth_context
+    assert "DEMO_API_BASE_URL = \"/demo-api\"" in client
 
 
 def test_wave3_migration_is_additive_and_has_rollback_metadata():

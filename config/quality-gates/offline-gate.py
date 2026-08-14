@@ -8,7 +8,8 @@ import sys
 PASS = 0
 FAIL = 1
 
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'frontend-v2')
+# The production frontend is unified on frontend-v3; do not audit legacy trees.
+FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', '..', 'frontend-v3')
 
 
 def main() -> int:

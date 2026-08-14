@@ -166,7 +166,7 @@ class GovernanceCertification:
 
         # Check TS compilation
         r = subprocess.run(["npx", "tsc", "--noEmit"], capture_output=True, text=True,
-                          timeout=120, cwd=REPO_ROOT / "frontend-v2")
+                          timeout=120, cwd=REPO_ROOT / "frontend-v3")
         ts_errors = len([l for l in r.stdout.splitlines() if "error" in l.lower()])
         self._result("TypeScript Compilation", PASS if ts_errors == 0 else FAIL,
                      f"{ts_errors} errors" if ts_errors else "Clean")

@@ -5,7 +5,7 @@ import json, os, re, ast, hashlib
 from pathlib import Path
 from collections import defaultdict
 
-REPO = Path("/home/samertts/workspace/projects/gula-platform")
+REPO = Path(__file__).resolve().parent.parent
 SKIP_DIRS = {".git", "__pycache__", ".venv", "node_modules", ".mypy_cache",
              ".ruff_cache", ".pytest_cache", "__pycache__", "archive"}
 
@@ -183,7 +183,7 @@ class KnowledgeGraph:
                     break
             if skip:
                 continue
-            # Skip archive, test_library, nhop-platform/frontend etc.
+            # Skip archived or legacy frontend trees; frontend-v3 is the active UI.
             if any(p in str(f) for p in ["/archive/", "/test_library/", "/nhop-platform/", "/frontend-v2/", "/frontend/",
                                           "/node_modules/", "/.venv/", "/mutants/", "/coverage_html/"]):
                 continue
@@ -250,7 +250,7 @@ def generate_mermaid_architecture(knowledge):
              "        AI_OUT[Outbreak Detection]",
              "    end", "",
              "    subgraph Frontend[Frontends]",
-             "        FEV2[React + Firebase]", "        FE[Static PWA]",
+             "        FEV3[React + Vite]", "        FE[Static PWA]",
              "        CL[tRPC Client]",
              "    end", "",
              "    subgraph Security[Security Layer]",
@@ -269,7 +269,7 @@ def generate_mermaid_architecture(knowledge):
              "    RTK --> PL", "    RTK --> MDK",
              "    EB --> PG", "    BG --> RD",
              "    FA --> AI_CL", "    FA --> EN",
-             "    FEV2 -->|API| FA", "    FE -->|API| FA",
+             "    FEV3 -->|API| FA", "    FE -->|API| FA",
              "    CL -->|tRPC| FA",
              "    DB -->|ASTM/HL7| FA",
              "    AI_SVC --> FA", "    NHOP --> PG",

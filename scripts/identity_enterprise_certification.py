@@ -821,14 +821,13 @@ class IdentityCertification:
 
     def _check_frontend_identity(self) -> None:
         """Frontend identity integration."""
-        fe_src = "frontend-v2/src"
+        fe_src = "frontend-v3/src"
 
-        # Auth context/API client
+        # Auth context/API client in the production frontend.
         fe_files = [
             "api/client.ts",
-            "api/auth.ts",
+            "api/endpoints.ts",
             "contexts/AuthContext.tsx",
-            "context/AuthContext.tsx",
         ]
         found_auth = False
         for f in fe_files:
@@ -839,12 +838,12 @@ class IdentityCertification:
             self._warn("Frontend: Auth context", "No auth context file found (check alternative paths)")
 
         # Login/logout views
-        login_views = _grep(r"login|Login|LOGIN", f"{fe_src}/views")
-        auth_view_path = f"{fe_src}/views/LandingAuthView.tsx"
+        login_views = _grep(r"login|Login|LOGIN", f"{fe_src}/pages/auth")
+        auth_view_path = f"{fe_src}/pages/auth/LoginPage.tsx"
         has_auth_view = _exists(auth_view_path)
         if login_views or has_auth_view:
             total = len(login_views) + (1 if has_auth_view else 0)
-            self._pass("Frontend: Login views", f"{total} references (LandingAuthView.tsx)")
+            self._pass("Frontend: Login views", f"{total} references (LoginPage.tsx)")
         else:
             self._warn("Frontend: Login views", "No login views found")
 
