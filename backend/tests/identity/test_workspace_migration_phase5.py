@@ -11,9 +11,9 @@ pytestmark = pytest.mark.integration
 
 
 def _database_url() -> str:
-    url = os.getenv("DATABASE_URL")
+    url = os.getenv("MIGRATION_DATABASE_URL") or os.getenv("DATABASE_URL")
     if not url:
-        pytest.skip("DATABASE_URL is required for migration integration tests")
+        pytest.skip("MIGRATION_DATABASE_URL or DATABASE_URL is required for migration integration tests")
     return url
 
 
