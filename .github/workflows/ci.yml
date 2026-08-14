@@ -252,6 +252,14 @@ jobs:
           echo "nid_hmac_key=$(openssl rand -hex 32)" >> "$GITHUB_OUTPUT"
           echo "refresh_token_secret=$(openssl rand -hex 32)" >> "$GITHUB_OUTPUT"
           echo "device_hmac_key=$(openssl rand -hex 32)" >> "$GITHUB_OUTPUT"
+      - name: Apply migrations to test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gula_test
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/backend
+        run: |
+          cd backend
+          alembic upgrade head
+
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gula_test
