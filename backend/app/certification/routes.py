@@ -21,6 +21,13 @@ metrics_collector = MetricsCollector()
 gate_checker = ReleaseGateChecker()
 
 
+def _safe_target(module_path: str | None) -> Path:
+    try:
+        return engine._safe_path(module_path)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="Invalid certification module path") from exc
+
+
 class ReleaseCheckRequest(BaseModel):
     gates: list[ReleaseGate] | None = Field(default=None, description="Specific gates to check")
 
@@ -44,14 +51,14 @@ class DimensionCheck(BaseModel):
 
 @router.post("/evaluate/{module_path:path}")
 async def evaluate_module(module_path: str | None = None):
-    target = Path(module_path) if module_path else Path.cwd()
+    target = _safe_target(module_path)
     report = engine.evaluate_module(str(target))
     return report.to_dict()
 
 
 @router.get("/level/{module_path:path}")
 async def get_certification_level(module_path: str | None = None):
-    target = Path(module_path) if module_path else Path.cwd()
+    target = _safe_target(module_path)
     level = engine.get_certification_level(str(target))
     return {
         "module_path": str(target),
@@ -64,7 +71,7 @@ async def get_report(
     module_path: str | None = None,
     format: str = Query("json", pattern="^(json|markdown|html|pdf)$"),
 ):
-    target = Path(module_path) if module_path else Path.cwd()
+    target = _safe_target(module_path)
     report = engine.evaluate_module(str(target))
 
     if format == "json":

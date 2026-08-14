@@ -352,9 +352,8 @@ class ContractGenerator:
         # Ensure output stays within a safe temporary or configured directory
         safe_root = Path(os.environ.get("GULA_EXPORT_ROOT", tempfile.gettempdir())).resolve()
         target = Path(path).resolve()
-        if not str(target).startswith(str(safe_root)):
-            # If traversal attempted, force into safe root
-            return str(safe_root / target.name)
+        if not target.is_relative_to(safe_root):
+            raise ValueError("Contract output path must remain inside GULA_EXPORT_ROOT")
         return str(target)
 
     def export_all(self, output_dir: str) -> list[str]:

@@ -1286,10 +1286,16 @@ def _rule_label(rule: RuleResult) -> str:
         return f"[{_red('FAIL')}]"
 
 
-def _redact(text: str) -> str:
-    import re
-    text = re.sub(r"(?i)(key|secret|token|password|auth|bearer)\s*[:=]\s*['\"]?[a-zA-Z0-9_\-\.]{8,}['\"]?", r"\1=***REDACTED***", text)
-    return text
+def _safe_rule_summary(results: list[RuleResult]) -> list[dict[str, object]]:
+    """Return only non-sensitive rule metadata for console and CI output."""
+    return [
+        {
+            "rule": rule["rule"],
+            "status": rule["status"],
+            "detail_count": len(rule.get("details", [])),
+        }
+        for rule in results
+    ]
 
 
 def print_report(results: list[RuleResult], score: float, json_output: bool) -> None:
@@ -1299,9 +1305,9 @@ def print_report(results: list[RuleResult], score: float, json_output: bool) -> 
             "repository": str(REPO_ROOT),
             "compliance_score": round(score, 1),
             "passed": score >= 100.0,
-            "rules": results,
+            "rules": _safe_rule_summary(results),
         }
-        print(_redact(json.dumps(report, indent=2, ensure_ascii=False)))
+        print(json.dumps(report, indent=2, ensure_ascii=False))
         return
 
     print()
@@ -1316,8 +1322,7 @@ def print_report(results: list[RuleResult], score: float, json_output: bool) -> 
     for rule in results:
         label = _rule_label(rule)
         print(f"  {label}  {_bold(rule['rule'])}: {rule['title']}")
-        for detail in rule["details"]:
-            print(f"    {_redact(detail)}")
+        print(f"    Details recorded: {len(rule.get('details', []))}")
         print()
 
     print(_bold("─" * 72))

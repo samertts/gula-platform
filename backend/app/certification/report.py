@@ -151,8 +151,8 @@ th {{ text-align: left; padding: 10px 8px; background: #f9fafb; border-bottom: 2
 def _safe_output_path(path: str | Path) -> Path:
     safe_root = Path(os.environ.get("GULA_TEMP_DIR", tempfile.gettempdir())).resolve()
     target = Path(path).resolve()
-    if not str(target).startswith(str(safe_root)):
-        return safe_root / target.name
+    if not target.is_relative_to(safe_root):
+        raise ValueError("Report output path must remain inside the configured temporary directory")
     return target
 
 def generate_pdf_report(report: CertificationReport, output_path: str | Path) -> Path:

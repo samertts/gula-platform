@@ -346,14 +346,20 @@ class ChaosTester:
         start = time.monotonic()
         errors: list[str] = []
         details: list[dict[str, Any]] = []
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        try:
+            validated_target = _validate_target(target_url)
+        except ValueError as exc:
+            return TestResult(name=f"chaos_{name}", passed=False, errors=[str(exc)])
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
             for i, action in enumerate(actions):
                 action_type = action.get("type", "http")
-                method = action.get("method", "GET")
-                path = action.get("path", "/")
-                url = f"{target_url.rstrip('/')}/{path.lstrip('/')}"
+                method = str(action.get("method", "GET")).upper()
+                path = str(action.get("path", "/"))
                 try:
                     if action_type == "http":
+                        if method not in _ALLOWED_METHODS:
+                            raise ValueError(f"Unsupported HTTP method: {method}")
+                        url = _join_target(validated_target, path)
                         resp = await client.request(method, url)
                         details.append({"step": i, "type": action_type, "status_code": resp.status_code})
                         if resp.is_error:
@@ -388,8 +394,9 @@ class SecurityTester:
         start = time.monotonic()
         errors: list[str] = []
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                resp = await client.get(f"{url.rstrip('/')}/{protected_path.lstrip('/')}")
+            target = _join_target(_validate_target(url), protected_path)
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
+                resp = await client.get(target)
                 if resp.status_code in (401, 403):
                     return TestResult(
                         name="auth_bypass",
@@ -421,10 +428,10 @@ class SecurityTester:
             {"key": "../../etc/passwd"},
         ]
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            target = _join_target(_validate_target(url), endpoint)
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
                 for payload in payloads:
-                    full_url = f"{url.rstrip('/')}/{endpoint.lstrip('/')}"
-                    resp = await client.post(full_url, json=payload)
+                    resp = await client.post(target, json=payload)
                     if resp.status_code < 500:
                         pass
                 return TestResult(

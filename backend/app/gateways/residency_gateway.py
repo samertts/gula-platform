@@ -114,19 +114,21 @@ class ResidencyGateway(ExternalGateway):
             stub = self._stub_response(passport_no, nationality)
             try:
                 live = self._live_response(passport_no, nationality)
+                stub_valid = bool(stub.get("valid")) if isinstance(stub, dict) else False
+                live_valid = bool(live.get("valid")) if isinstance(live, dict) else False
                 logger.info(
-                    "[SHADOW] gateway=%s action=%s stub=%r live=%r",
+                    "[SHADOW] gateway=%s action=%s stub_valid=%s live_valid=%s",
                     self.name,
                     action,
-                    self._mask_sensitive(stub),
-                    self._mask_sensitive(live),
+                    stub_valid,
+                    live_valid,
                 )
             except Exception as exc:
                 logger.warning(
-                    "[SHADOW] gateway=%s action=%s live_error=%s",
+                    "[SHADOW] gateway=%s action=%s live_error_type=%s",
                     self.name,
                     action,
-                    exc,
+                    type(exc).__name__,
                 )
             return stub
 

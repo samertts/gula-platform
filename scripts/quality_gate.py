@@ -336,11 +336,16 @@ def _check_enterprise_metrics(quality_thresh: int = 500, bypass: bool = False) -
 CheckResult = tuple[str, list[str]]
 
 
-def _redact(text: str) -> str:
-    # Basic redaction for common secret patterns in log output
-    import re
-    text = re.sub(r"(?i)(key|secret|token|password|auth|bearer)\s*[:=]\s*['\"]?[a-zA-Z0-9_\-\.]{8,}['\"]?", r"\1=***REDACTED***", text)
-    return text
+def _safe_result_summary(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Expose only fixed check metadata; never write check details to CI logs."""
+    return [
+        {
+            "name": str(result.get("name", "unknown")),
+            "status": str(result.get("status", WARNING)),
+            "detail_count": len(result.get("details", [])),
+        }
+        for result in results
+    ]
 
 
 def run_checks(
@@ -389,7 +394,7 @@ def format_results(
 
         return json.dumps({
             "overall": overall,
-            "checks": results,
+            "checks": _safe_result_summary(results),
         }, indent=2)
 
     lines: list[str] = []
@@ -411,8 +416,7 @@ def format_results(
             badge = _c("red", "  FAIL  ")
 
         lines.append(f"  {badge}  {r['name']:{max_name_len}}")
-        for d in r["details"]:
-            lines.append(f"         {d}")
+        lines.append(f"         details recorded: {len(r.get('details', []))}")
         lines.append("")
 
     lines.append(f"  {_c('bold', '─' * 56)}")
@@ -503,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
 
     results = run_checks(checks, strict=args.strict, ci=args.ci)
     output = format_results(results, ci=args.ci)
-    print(_redact(output))
+    print(output)
 
     return determine_exit_code(results, args.strict)
 

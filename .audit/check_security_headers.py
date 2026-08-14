@@ -1,6 +1,6 @@
 import requests
-import ssl
 import socket
+import ssl
 from urllib.parse import urlparse
 
 url = "https://www.gula-platform.org/"
@@ -17,6 +17,8 @@ except Exception as e:
 print("\n--- SSL/TLS Certificate Audit ---")
 try:
     context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+    context.check_hostname = True
     with socket.create_connection((parsed.hostname, 443), timeout=10) as sock:
         with context.wrap_socket(sock, server_hostname=parsed.hostname) as ssock:
             cert = ssock.getpeercert()

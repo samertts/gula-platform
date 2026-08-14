@@ -23,9 +23,8 @@ class CertificationEngine:
         if not module_path:
             return self.project_root
         target = Path(module_path).resolve()
-        if not str(target).startswith(str(self.project_root)):
-            # Fallback to project root if traversal attempted
-            return self.project_root
+        if not target.is_relative_to(self.project_root):
+            raise ValueError("Certification module path must remain inside the project root")
         return target
 
     @property

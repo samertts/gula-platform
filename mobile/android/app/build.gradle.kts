@@ -12,14 +12,14 @@ plugins {
 
 configurations.all {
     resolutionStrategy {
-        force("io.netty:netty-codec-http2:4.1.118.Final")
-        force("io.netty:netty-handler:4.1.118.Final")
-        force("io.netty:netty-codec-http:4.1.118.Final")
-        force("io.netty:netty-codec:4.1.118.Final")
+        force("io.netty:netty-codec-http2:4.1.132.Final")
+        force("io.netty:netty-handler:4.1.132.Final")
+        force("io.netty:netty-codec-http:4.1.132.Final")
+        force("io.netty:netty-codec:4.1.132.Final")
         force("com.google.protobuf:protobuf-java:3.25.5")
         force("com.google.protobuf:protobuf-kotlin:3.25.5")
         force("org.jdom:jdom2:2.0.6.1")
-        force("org.bouncycastle:bcprov-jdk18on:1.80")
+        force("org.bouncycastle:bcprov-jdk18on:1.80.2")
         force("org.bitbucket.b_c:jose4j:0.9.6")
         force("org.apache.commons:commons-compress:1.26.0")
     }
