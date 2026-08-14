@@ -1,53 +1,23 @@
-import { Card, CardContent, CardHeader, CardTitle, Input, Button, Badge } from "@/components/ui";
-import { PageHeader } from "@/components/shared/PageComponents";
+import { Card, CardContent, CardHeader, CardTitle, Badge } from "@/components/ui";
 import { useAuth } from "@/contexts/AuthContext";
-import { User, Mail, Shield, Building2 } from "lucide-react";
+import { Building2, Mail, Shield, ShieldCheck, User, UserRound } from "lucide-react";
 
 export function ProfilePage() {
   const { user } = useAuth();
+  const displayName = user?.name || "مستخدم GULA";
+  const initial = displayName.charAt(0).toUpperCase() || "U";
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="الملف الشخصي" description="معلومات حسابك الشخصي" />
+    <div className="mx-auto max-w-5xl space-y-6">
+      <header className="rounded-[1.5rem] border border-teal-100 bg-white p-5 shadow-[0_18px_44px_-36px_rgba(15,23,42,0.48)] dark:border-teal-900/40 dark:bg-slate-900/70 sm:p-6">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-xs font-bold text-[#0D9488] dark:border-teal-900/60 dark:bg-teal-950/35 dark:text-teal-200"><UserRound className="h-3.5 w-3.5" /> هوية الحساب</div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><h1 className="text-2xl font-bold tracking-tight text-[#0F172A] dark:text-white sm:text-3xl">الملف الشخصي</h1><p className="mt-2 text-sm leading-6 text-muted-foreground">معلومات الحساب ونطاق الوصول الظاهرين في الجلسة الحالية.</p></div><div className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-xs text-slate-700 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-200"><ShieldCheck className="h-4 w-4 text-[#0D9488]" /> هوية موثقة في الجلسة</div></div>
+      </header>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <CardContent className="flex flex-col items-center p-6 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-3xl font-bold text-primary">
-              {user?.name?.charAt(0) || "U"}
-            </div>
-            <h2 className="mt-4 text-xl font-bold">{user?.name}</h2>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
-            <Badge className="mt-2">{user?.role}</Badge>
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 lg:grid-cols-[.72fr_1.28fr]">
+        <Card className="overflow-hidden border-teal-100 dark:border-teal-900/40"><div className="h-20 bg-gradient-to-br from-[#0D9488] via-teal-600 to-[#0F172A]" /><CardContent className="relative p-5 pt-0 text-center"><div className="mx-auto -mt-10 flex h-20 w-20 items-center justify-center rounded-3xl border-4 border-white bg-gradient-to-br from-teal-500 to-slate-800 text-2xl font-bold text-white shadow-lg dark:border-slate-900">{initial}</div><h2 className="mt-4 text-xl font-bold text-[#0F172A] dark:text-white">{displayName}</h2><p className="mt-1 break-all text-sm text-muted-foreground">{user?.email || "—"}</p><Badge className="mt-3 rounded-full bg-teal-50 px-3 py-1 text-teal-700 hover:bg-teal-50 dark:bg-teal-950/40 dark:text-teal-200">{user?.role || "عضو"}</Badge><div className="mt-5 flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-300"><Shield className="h-3.5 w-3.5 text-[#0D9488]" /> الصلاحيات تُحكم من الخادم</div></CardContent></Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader><CardTitle>معلومات الحساب</CardTitle></CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2"><User className="h-4 w-4" /> الاسم</label>
-              <Input value={user?.name || ""} readOnly />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2"><Mail className="h-4 w-4" /> البريد الإلكتروني</label>
-              <Input value={user?.email || ""} readOnly />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium flex items-center gap-2"><Shield className="h-4 w-4" /> الدور</label>
-              <Input value={user?.role || ""} readOnly />
-            </div>
-            {user?.lab_name && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2"><Building2 className="h-4 w-4" /> المختبر</label>
-                <Input value={user.lab_name} readOnly />
-              </div>
-            )}
-            <div className="pt-4">
-              <Button variant="outline">تعديل المعلومات</Button>
-            </div>
-          </CardContent>
-        </Card>
+        <Card className="border-slate-200/80 dark:border-slate-800"><CardHeader className="border-b border-slate-100 p-5 dark:border-white/10 sm:p-6"><CardTitle className="flex items-center gap-2 text-base"><User className="h-5 w-5 text-[#0D9488]" /> معلومات الحساب</CardTitle><p className="mt-1 text-xs font-normal text-muted-foreground">هذه الحقول للعرض فقط في المسار الحالي.</p></CardHeader><CardContent className="grid gap-4 p-5 sm:grid-cols-2 sm:p-6"><div className="space-y-2"><label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><User className="h-3.5 w-3.5" /> الاسم</label><p className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm dark:border-white/10 dark:bg-white/[0.04]">{displayName}</p></div><div className="space-y-2"><label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><Mail className="h-3.5 w-3.5" /> البريد الإلكتروني</label><p dir="ltr" className="break-all rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-start text-sm dark:border-white/10 dark:bg-white/[0.04]">{user?.email || "—"}</p></div><div className="space-y-2"><label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><Shield className="h-3.5 w-3.5" /> الدور</label><p className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm dark:border-white/10 dark:bg-white/[0.04]">{user?.role || "—"}</p></div>{user?.lab_name && <div className="space-y-2"><label className="flex items-center gap-2 text-xs font-semibold text-muted-foreground"><Building2 className="h-3.5 w-3.5" /> المختبر</label><p className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm dark:border-white/10 dark:bg-white/[0.04]">{user.lab_name}</p></div>}<div className="sm:col-span-2"><div className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/[0.03]"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#0D9488]" /><div><p className="text-sm font-semibold">تحتاج إلى تغيير بياناتك؟</p><p className="mt-1 text-xs leading-5 text-muted-foreground">استخدم مسار إدارة الهوية المعتمد في مؤسستك؛ لا يتم تنفيذ تعديل مباشر من هذه الصفحة.</p></div></div></div></CardContent></Card>
       </div>
     </div>
   );
