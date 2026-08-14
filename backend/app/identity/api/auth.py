@@ -1,10 +1,11 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.identity.services.authentication_service import AuthenticationService
+from app.security.rate_limit import rate_limit_auth
 
 router = APIRouter(prefix="/auth", tags=["NIAM Auth"])
 
@@ -26,10 +27,12 @@ class LoginResponse(BaseModel):
 @router.post("/login")
 async def login(
     body: LoginRequest,
+    request: Request,
     ip_address: str | None = None,
     user_agent: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
+    rate_limit_auth(request)
     service = AuthenticationService(db)
     result = await service.login(
         login=body.login,
@@ -45,8 +48,10 @@ async def login(
 @router.post("/refresh")
 async def refresh(
     refresh_token: str,
+    request: Request,
     db: AsyncSession = Depends(get_db),
 ):
+    rate_limit_auth(request, max_per_minute=20)
     service = AuthenticationService(db)
     result = await service.refresh_session(refresh_token)
     if not result:
