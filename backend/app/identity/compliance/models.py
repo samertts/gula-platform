@@ -27,6 +27,7 @@ class ComplianceCheck(IdentityBaseEntity):
     uuid = Column(String(36), unique=True, nullable=False, index=True)
     check_id = Column(String(100), unique=True, nullable=False, index=True)
     framework_id = Column(String(26), ForeignKey("niam_comp_frameworks.id", ondelete="CASCADE"), nullable=False, index=True)
+    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=True, index=True)
     requirement_id = Column(String(100), nullable=False)
     target_type = Column(String(50), nullable=False)
     target_id = Column(String(100), nullable=False)
