@@ -31,6 +31,7 @@ class AuthManager {
   String? _userName;
   String? _userEmail;
   Map<String, dynamic>? _userProfile;
+  List<Map<String, dynamic>> _memberships = const [];
 
   AuthStatus get status => _status;
   String? get token => _token;
@@ -41,6 +42,7 @@ class AuthManager {
   String? get userName => _userName;
   String? get userEmail => _userEmail;
   Map<String, dynamic>? get userProfile => _userProfile;
+  List<Map<String, dynamic>> get memberships => List.unmodifiable(_memberships);
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   bool get isMfaRequired => _status == AuthStatus.mfaRequired;
   BiometricAuth get biometricAuth => _biometricAuth;
@@ -154,6 +156,20 @@ class AuthManager {
     }
   }
 
+  Future<List<Map<String, dynamic>>> refreshMemberships() async {
+    final response = await _apiClient.get(ApiEndpoints.myMemberships);
+    final body = response.data;
+    final rawMemberships = body is Map<String, dynamic> ? body['memberships'] : null;
+    final parsed = rawMemberships is List
+        ? rawMemberships
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(growable: false)
+        : const <Map<String, dynamic>>[];
+    _memberships = parsed;
+    return memberships;
+  }
+
   Future<void> _processLoginResponse(Map<String, dynamic> data) async {
     final user = (data['user'] is Map<String, dynamic>)
         ? data['user'] as Map<String, dynamic>
@@ -178,6 +194,12 @@ class AuthManager {
     if (_labId != null) await _storage.saveLabId(_labId!);
     if (_userRole != null) await _storage.saveUserRole(_userRole!);
 
+    // Memberships are server-reflected context, never an offline authorization cache.
+    try {
+      await refreshMemberships();
+    } catch (_) {
+      _memberships = const [];
+    }
     _setStatus(AuthStatus.authenticated);
   }
 
@@ -233,6 +255,7 @@ class AuthManager {
     _userName = null;
     _userEmail = null;
     _userProfile = null;
+    _memberships = const [];
     await _storage.clear();
     _setStatus(AuthStatus.unauthenticated);
   }

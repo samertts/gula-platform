@@ -8,6 +8,7 @@ class ApiEndpoints {
   static const String register = '/register';
   static const String logout = '/logout';
   static const String session = '/session';
+  static const String myMemberships = '/niam/memberships/me';
   static const String demoAccess = '/demo/access';
   static const String refreshToken = '/auth/refresh';
   static const String verifyMfa = '/auth/mfa/verify';
