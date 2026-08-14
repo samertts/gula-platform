@@ -40,7 +40,8 @@ def _membership_routes() -> dict[tuple[str, str], APIRoute]:
 
     routes: dict[tuple[str, str], APIRoute] = {}
     for route, path in _iter_api_routes(router.routes):
-        if path.startswith("/niam/memberships"):
+        if path.startswith(("/niam/memberships", "/memberships")):
+            path = path if path.startswith("/niam/") else f"/niam{path}"
             for method in route.methods or set():
                 routes[(method, path)] = route
     return routes

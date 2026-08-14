@@ -179,29 +179,29 @@ def upgrade() -> None:
         sa.column("updated_at", sa.DateTime),
     )
     role_rows = [
-        {"id": "R7ORGVWR000000000000000001", "uuid": "r7-org-viewer-0000000000000001", "role_key": "organization_viewer", "name": "Organization Viewer", "name_ar": "قارئ المنظمة", "description": "Read-only organization membership context.", "scope_type": "organization", "status": "active", "is_system": True, "version": 1, "created_at": now, "updated_at": now},
-        {"id": "R7ORGMGR000000000000000001", "uuid": "r7-org-manager-000000000000001", "role_key": "organization_manager", "name": "Organization Manager", "name_ar": "مدير المنظمة", "description": "Manage scoped memberships and roles within an organization.", "scope_type": "organization", "status": "active", "is_system": True, "version": 1, "created_at": now, "updated_at": now},
+        {"id": "R7ORGVIEWER000000000001", "uuid": "r7-org-viewer-0000000000000001", "role_key": "organization_viewer", "name": "Organization Viewer", "name_ar": "قارئ المنظمة", "description": "Read-only organization membership context.", "scope_type": "organization", "status": "active", "is_system": True, "version": 1, "created_at": now, "updated_at": now},
+        {"id": "R7ORGMANAGER00000000001", "uuid": "r7-org-manager-000000000000001", "role_key": "organization_manager", "name": "Organization Manager", "name_ar": "مدير المنظمة", "description": "Manage scoped memberships and roles within an organization.", "scope_type": "organization", "status": "active", "is_system": True, "version": 1, "created_at": now, "updated_at": now},
     ]
     permission_rows = [
-        {"id": "P7MEMR00000000000000000001", "uuid": "p7-membership-read-00000001", "permission_key": "membership.read", "name": "Read Membership", "name_ar": "قراءة العضوية", "description": "Read effective memberships in context.", "resource": "membership", "action": "read", "sensitivity": "medium", "status": "active", "version": 1, "created_at": now, "updated_at": now},
-        {"id": "P7MEMI00000000000000000001", "uuid": "p7-membership-invite-0000001", "permission_key": "membership.invite", "name": "Invite Membership", "name_ar": "دعوة عضو", "description": "Create scoped membership invitations.", "resource": "membership", "action": "invite", "sensitivity": "high", "status": "active", "version": 1, "created_at": now, "updated_at": now},
-        {"id": "P7MEMV00000000000000000001", "uuid": "p7-membership-revoke-00000001", "permission_key": "membership.revoke", "name": "Revoke Membership", "name_ar": "إلغاء العضوية", "description": "Revoke scoped memberships.", "resource": "membership", "action": "revoke", "sensitivity": "high", "status": "active", "version": 1, "created_at": now, "updated_at": now},
-        {"id": "P7ROLE00000000000000000001", "uuid": "p7-role-assign-00000000000001", "permission_key": "role.assign", "name": "Assign Role", "name_ar": "إسناد دور", "description": "Assign a catalog role within an authorized scope.", "resource": "role", "action": "assign", "sensitivity": "critical", "status": "active", "version": 1, "created_at": now, "updated_at": now},
-        {"id": "P7WSPC00000000000000000001", "uuid": "p7-workspace-read-00000001", "permission_key": "workspace.read", "name": "Read Workspace", "name_ar": "قراءة مساحة العمل", "description": "Read server-reflected workspace context.", "resource": "workspace", "action": "read", "sensitivity": "medium", "status": "active", "version": 1, "created_at": now, "updated_at": now},
-        {"id": "P7AUDT00000000000000000001", "uuid": "p7-audit-read-00000001", "permission_key": "audit.read", "name": "Read Audit", "name_ar": "قراءة التدقيق", "description": "Read authorized organization audit records.", "resource": "audit", "action": "read", "sensitivity": "critical", "status": "active", "version": 1, "created_at": now, "updated_at": now},
+        {"id": "P7MEMBERREAD000000000001", "uuid": "p7-membership-read-00000001", "permission_key": "membership.read", "name": "Read Membership", "name_ar": "قراءة العضوية", "description": "Read effective memberships in context.", "resource": "membership", "action": "read", "sensitivity": "medium", "status": "active", "version": 1, "created_at": now, "updated_at": now},
+        {"id": "P7MEMBERINVITE00000000001", "uuid": "p7-membership-invite-0000001", "permission_key": "membership.invite", "name": "Invite Membership", "name_ar": "دعوة عضو", "description": "Create scoped membership invitations.", "resource": "membership", "action": "invite", "sensitivity": "high", "status": "active", "version": 1, "created_at": now, "updated_at": now},
+        {"id": "P7MEMBERREVOKE00000000001", "uuid": "p7-membership-revoke-00000001", "permission_key": "membership.revoke", "name": "Revoke Membership", "name_ar": "إلغاء العضوية", "description": "Revoke scoped memberships.", "resource": "membership", "action": "revoke", "sensitivity": "high", "status": "active", "version": 1, "created_at": now, "updated_at": now},
+        {"id": "P7ROLEASSIGN000000000001", "uuid": "p7-role-assign-00000000000001", "permission_key": "role.assign", "name": "Assign Role", "name_ar": "إسناد دور", "description": "Assign a catalog role within an authorized scope.", "resource": "role", "action": "assign", "sensitivity": "critical", "status": "active", "version": 1, "created_at": now, "updated_at": now},
+        {"id": "P7WSREAD00000000000001", "uuid": "p7-workspace-read-00000001", "permission_key": "workspace.read", "name": "Read Workspace", "name_ar": "قراءة مساحة العمل", "description": "Read server-reflected workspace context.", "resource": "workspace", "action": "read", "sensitivity": "medium", "status": "active", "version": 1, "created_at": now, "updated_at": now},
+        {"id": "P7AUDITREAD000000000001", "uuid": "p7-audit-read-00000001", "permission_key": "audit.read", "name": "Read Audit", "name_ar": "قراءة التدقيق", "description": "Read authorized organization audit records.", "resource": "audit", "action": "read", "sensitivity": "critical", "status": "active", "version": 1, "created_at": now, "updated_at": now},
     ]
     op.bulk_insert(roles, role_rows)
     op.bulk_insert(permissions, permission_rows)
     op.bulk_insert(
         role_permissions,
         [
-            {"id": "X7VWR000000000000000000001", "role_id": role_rows[0]["id"], "permission_id": permission_rows[0]["id"], "status": "active", "created_at": now, "updated_at": now},
-            {"id": "X7VWS000000000000000000001", "role_id": role_rows[0]["id"], "permission_id": permission_rows[4]["id"], "status": "active", "created_at": now, "updated_at": now},
-            {"id": "X7MNR000000000000000000001", "role_id": role_rows[1]["id"], "permission_id": permission_rows[0]["id"], "status": "active", "created_at": now, "updated_at": now},
-            {"id": "X7MNI000000000000000000001", "role_id": role_rows[1]["id"], "permission_id": permission_rows[1]["id"], "status": "active", "created_at": now, "updated_at": now},
-            {"id": "X7MNV000000000000000000001", "role_id": role_rows[1]["id"], "permission_id": permission_rows[2]["id"], "status": "active", "created_at": now, "updated_at": now},
-            {"id": "X7MNA000000000000000000001", "role_id": role_rows[1]["id"], "permission_id": permission_rows[3]["id"], "status": "active", "created_at": now, "updated_at": now},
-            {"id": "X7MNT000000000000000000001", "role_id": role_rows[1]["id"], "permission_id": permission_rows[5]["id"], "status": "active", "created_at": now, "updated_at": now},
+            {"id": "RP7VREAD00000000000001", "role_id": role_rows[0]["id"], "permission_id": permission_rows[0]["id"], "status": "active", "created_at": now, "updated_at": now},
+            {"id": "RP7VWORKSPACE000000000001", "role_id": role_rows[0]["id"], "permission_id": permission_rows[4]["id"], "status": "active", "created_at": now, "updated_at": now},
+            {"id": "RP7MREAD00000000000001", "role_id": role_rows[1]["id"], "permission_id": permission_rows[0]["id"], "status": "active", "created_at": now, "updated_at": now},
+            {"id": "RP7MINVITE0000000000001", "role_id": role_rows[1]["id"], "permission_id": permission_rows[1]["id"], "status": "active", "created_at": now, "updated_at": now},
+            {"id": "RP7MREVOKE0000000000001", "role_id": role_rows[1]["id"], "permission_id": permission_rows[2]["id"], "status": "active", "created_at": now, "updated_at": now},
+            {"id": "RP7MASSIGN0000000000001", "role_id": role_rows[1]["id"], "permission_id": permission_rows[3]["id"], "status": "active", "created_at": now, "updated_at": now},
+            {"id": "RP7MAUDIT0000000000001", "role_id": role_rows[1]["id"], "permission_id": permission_rows[5]["id"], "status": "active", "created_at": now, "updated_at": now},
         ],
     )
 
