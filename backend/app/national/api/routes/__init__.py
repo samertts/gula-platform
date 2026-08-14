@@ -9,6 +9,7 @@ from .family import router as family_router
 from .fhir import router as fhir_router
 from .health_card import router as health_card_router
 from .identity import router as identity_router
+from .interop import router as interop_router
 from .medication_catalog import router as medication_catalog_router
 from .observation import router as observation_router
 from .reference import router as reference_router
@@ -26,6 +27,7 @@ national_router.include_router(family_router)
 national_router.include_router(fhir_router)
 national_router.include_router(health_card_router)
 national_router.include_router(identity_router)
+national_router.include_router(interop_router)
 national_router.include_router(medication_catalog_router)
 national_router.include_router(observation_router)
 national_router.include_router(reference_router)

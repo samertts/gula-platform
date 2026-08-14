@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+from ..models.lab import Lab
 from ..security.dependencies import get_current_user
 from ..security.service_accounts import (
     create_service_account,
@@ -25,6 +26,8 @@ class CreateServiceAccountRequest(BaseModel):
     description: str | None = None
     roles: list[str] = ["staff"]
     scopes: list[str] = []
+    # Required for PIXm/MHD machine identities; nullable for legacy admin keys.
+    lab_id: int | None = None
 
 
 class ServiceAccountResponse(BaseModel):
@@ -49,6 +52,10 @@ def create(
     if current_user.role not in ("master_admin", "admin"):
         raise HTTPException(status_code=403, detail="Only admins can create service accounts")
 
+    if data.lab_id is not None:
+        lab = db.query(Lab).filter(Lab.id == data.lab_id, Lab.is_active).first()
+        if lab is None:
+            raise HTTPException(status_code=404, detail="Active laboratory not found")
 
     account, api_key = create_service_account(
         db=db,
@@ -57,13 +64,15 @@ def create(
         roles=data.roles,
         scopes=data.scopes,
         created_by=current_user.id,
+        lab_id=data.lab_id,
     )
     return {
         "id": account.id,
         "name": account.name,
-        "api_key": api_key,
-        "roles": data.roles,
-        "scopes": data.scopes,
+            "api_key": api_key,
+            "roles": data.roles,
+            "scopes": data.scopes,
+            "lab_id": account.lab_id,
     }
 
 
@@ -83,6 +92,7 @@ def list_all(
             "name": a.name,
             "description": a.description,
             "is_active": bool(a.is_active),
+            "lab_id": a.lab_id,
             "last_used_at": a.last_used_at.isoformat() if a.last_used_at else None,
             "created_by": a.created_by,
             "created_at": a.created_at.isoformat() if a.created_at else None,

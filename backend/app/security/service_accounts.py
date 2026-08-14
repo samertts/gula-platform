@@ -29,11 +29,13 @@ def create_service_account(
     roles: list[str] | None = None,
     scopes: list[str] | None = None,
     created_by: int | None = None,
+    lab_id: int | None = None,
     expires_at: datetime | None = None,
 ) -> tuple[ServiceAccount, str]:
     api_key = _generate_api_key()
     api_key_hash = hash_password(api_key)
     account = ServiceAccount(
+        lab_id=lab_id,
         name=name,
         description=description or "",
         api_key_hash=api_key_hash,
