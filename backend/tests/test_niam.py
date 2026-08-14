@@ -409,10 +409,10 @@ class TestServices:
 
 
 class TestPolicyEngine:
-    """Verify policy engine stub."""
+    """Verify fail-closed compatibility behavior."""
 
     @pytest.mark.asyncio
-    async def test_policy_evaluate_default(self):
+    async def test_policy_evaluate_without_trusted_actor_denies_by_default(self):
         engine = PolicyEngine()
         ctx = PolicyContext(
             subject_id="u1",
@@ -421,7 +421,7 @@ class TestPolicyEngine:
             resource_type="lab_result",
         )
         result = await engine.evaluate(ctx)
-        assert result is True
+        assert result is False
 
     def test_policy_context_defaults(self):
         ctx = PolicyContext(
