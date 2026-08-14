@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 from datetime import datetime, timedelta
 
 import psycopg2
@@ -253,7 +254,8 @@ def generate_report(result_id: int):
 
     first, last, test, value = row
 
-    filename = f"/tmp/report_{result_id}.pdf"
+    with tempfile.NamedTemporaryFile(prefix="gula_report_", suffix=".pdf", dir="/tmp", delete=False) as report_file:
+        filename = report_file.name
 
     c = canvas.Canvas(filename, pagesize=letter)
 

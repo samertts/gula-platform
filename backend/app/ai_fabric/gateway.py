@@ -113,7 +113,7 @@ class ProviderRouter:
         if not config.enabled:
             return
         if config.api_key_env and not os.getenv(config.api_key_env):
-            logger.info("Provider %s skipped (no %s)", config.name.value, config.api_key_env)
+            logger.info("Provider %s unavailable: credentials not configured", config.name.value)
             return
         self._providers[config.name.value] = config
 

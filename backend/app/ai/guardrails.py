@@ -144,11 +144,10 @@ def ai_suggest(
     """
     if operation in _ABSOLUTELY_BLOCKED:
         logger.error(
-            "[AI_GUARDRAIL] BLOCKED operation=%s model=%s entity=%s/%s",
+            "[AI_GUARDRAIL] BLOCKED operation=%s model=%s entity_type=%s",
             operation,
             ai_model,
             entity_type,
-            entity_id,
         )
         raise AIGuardrailViolation(f"Operation '{operation}' is permanently blocked for AI.")
 
