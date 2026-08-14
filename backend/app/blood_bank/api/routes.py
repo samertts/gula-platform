@@ -15,8 +15,13 @@ from app.blood_bank.exceptions import (
     TransfusionNotFoundError,
 )
 from app.database import get_db
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/blood-bank", tags=["National Blood Bank Platform"])
+router = APIRouter(
+    prefix="/blood-bank",
+    tags=["National Blood Bank Platform"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> BloodBankService:

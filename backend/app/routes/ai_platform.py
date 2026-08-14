@@ -17,6 +17,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app._compat import UTC
 from app.ai.agent_runtime import agent_runtime, list_tools
 from app.ai.embeddings import embedding_model_info
 from app.ai.governance import evaluator, model_registry, prompt_manager
@@ -30,8 +31,7 @@ from app.ai.security import scan_input
 from app.ai.vector_store import vector_store
 from app.database import get_db
 from app.models.patient import Patient
-from app.security.dependencies import get_current_user
-from app._compat import UTC
+from app.security.dependencies import get_current_user, require_permission
 
 logger = logging.getLogger("gula.ai.platform")
 
@@ -43,6 +43,16 @@ _DOCTOR_ROLES = {"doctor", "admin", "lab_admin", "province_admin", "ministry_adm
 def _require_doctor(user) -> None:
     if user.role not in _DOCTOR_ROLES:
         raise HTTPException(status_code=403, detail="Only doctors and administrators may access this.")
+
+
+def _assert_session_owner(conversation, current_user) -> None:
+    """Prevent cross-user and cross-lab access to AI conversation history."""
+    if (
+        conversation is None
+        or conversation.user_id != current_user.id
+        or conversation.lab_id != current_user.lab_id
+    ):
+        raise HTTPException(status_code=404, detail="Session not found")
 
 
 # ─── Schemas ──────────────────────────────────────────────────────────────────
@@ -185,7 +195,7 @@ async def rag_query(
 
 
 @router.get("/knowledge-graph/info", summary="Knowledge graph statistics")
-def kg_info(current_user=Depends(get_current_user)):
+def kg_info(current_user=Depends(require_permission("system:admin"))):
     knowledge_graph.initialize()
     return {
         "node_count": len(knowledge_graph.nodes),
@@ -196,7 +206,7 @@ def kg_info(current_user=Depends(get_current_user)):
 
 
 @router.post("/knowledge-graph/search", summary="Search knowledge graph")
-def kg_search(body: KGSearchRequest, current_user=Depends(get_current_user)):
+def kg_search(body: KGSearchRequest, current_user=Depends(require_permission("system:admin"))):
     knowledge_graph.initialize()
     nodes = knowledge_graph.search_nodes(query=body.query, node_type=body.node_type, limit=body.limit)
     return {
@@ -209,7 +219,7 @@ def kg_search(body: KGSearchRequest, current_user=Depends(get_current_user)):
 
 
 @router.get("/knowledge-graph/node/{node_id}", summary="Get knowledge graph node details")
-def kg_node(node_id: int, current_user=Depends(get_current_user)):
+def kg_node(node_id: int, current_user=Depends(require_permission("system:admin"))):
     knowledge_graph.initialize()
     node = knowledge_graph.get_node(node_id)
     if not node:
@@ -222,7 +232,7 @@ def kg_node(node_id: int, current_user=Depends(get_current_user)):
 
 
 @router.get("/knowledge-graph/path", summary="Shortest path between two nodes")
-def kg_path(source: int = Query(...), target: int = Query(...), current_user=Depends(get_current_user)):
+def kg_path(source: int = Query(...), target: int = Query(...), current_user=Depends(require_permission("system:admin"))):
     knowledge_graph.initialize()
     path = knowledge_graph.shortest_path(source, target)
     if path is None:
@@ -234,7 +244,7 @@ def kg_path(source: int = Query(...), target: int = Query(...), current_user=Dep
 
 
 @router.get("/agents/tools", summary="List available agent tools")
-def list_agent_tools(current_user=Depends(get_current_user)):
+def list_agent_tools(current_user=Depends(require_permission("system:admin"))):
     return {"tools": list_tools()}
 
 
@@ -346,7 +356,7 @@ async def orchestrate_query(
 
 
 @router.get("/orchestrate/tasks", summary="List orchestration tasks")
-def list_tasks(status: str | None = None, limit: int = 20, current_user=Depends(get_current_user)):
+def list_tasks(status: str | None = None, limit: int = 20, current_user=Depends(require_permission("system:admin"))):
     return {"tasks": orchestrator.list_tasks(status=status, limit=limit)}
 
 
@@ -367,6 +377,8 @@ async def add_message(
     body: SessionMessageRequest,
     current_user=Depends(get_current_user),
 ):
+    conversation = await memory_store.get_session(body.session_id)
+    _assert_session_owner(conversation, current_user)
     msg = await memory_store.add_message(body.session_id, "user", body.message)
     return {"role": msg.role, "content_length": len(msg.content), "created_at": msg.created_at}
 
@@ -377,8 +389,7 @@ async def get_session(
     current_user=Depends(get_current_user),
 ):
     conv = await memory_store.get_session(session_id)
-    if not conv:
-        raise HTTPException(status_code=404, detail="Session not found")
+    _assert_session_owner(conv, current_user)
     return {
         "session_id": conv.session_id,
         "message_count": len(conv.messages),
@@ -421,17 +432,17 @@ async def evaluate_order(
 
 
 @router.get("/governance/models", summary="List AI models in registry")
-def list_models(model_type: str | None = None, current_user=Depends(get_current_user)):
+def list_models(model_type: str | None = None, current_user=Depends(require_permission("system:admin"))):
     return {"models": model_registry.list_models(model_type=model_type)}
 
 
 @router.get("/governance/prompts", summary="List managed prompts")
-def list_prompts(current_user=Depends(get_current_user)):
+def list_prompts(current_user=Depends(require_permission("system:admin"))):
     return {"prompts": prompt_manager.list_prompts()}
 
 
 @router.get("/governance/evaluations", summary="Evaluation statistics")
-def get_evaluation_stats(current_user=Depends(get_current_user)):
+def get_evaluation_stats(current_user=Depends(require_permission("system:admin"))):
     return evaluator.get_stats()
 
 
@@ -441,7 +452,7 @@ def get_evaluation_stats(current_user=Depends(get_current_user)):
 @router.post("/security/scan", summary="Scan input for PII and prompt injection")
 async def scan_security(
     text: str,
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("system:admin")),
 ):
     result = await scan_input(text)
     return {
@@ -457,12 +468,12 @@ async def scan_security(
 
 
 @router.get("/metrics", summary="AI platform metrics")
-def get_ai_metrics(current_user=Depends(get_current_user)):
+def get_ai_metrics(current_user=Depends(require_permission("system:admin"))):
     return get_metrics()
 
 
 @router.get("/metrics/prometheus", summary="Prometheus-formatted metrics")
-def get_prometheus_metrics(current_user=Depends(get_current_user)):
+def get_prometheus_metrics(current_user=Depends(require_permission("system:admin"))):
     from fastapi.responses import PlainTextResponse
 
     from app.ai.observability import format_for_prometheus

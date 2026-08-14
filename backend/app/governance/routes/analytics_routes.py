@@ -3,10 +3,15 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.security.dependencies import require_permission
 
 from ..services.analytics_service import NationalAnalyticsService
 
-router = APIRouter(prefix="/governance/analytics", tags=["governance_analytics"])
+router = APIRouter(
+    prefix="/governance/analytics",
+    tags=["governance_analytics"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 @router.get("/national")

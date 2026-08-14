@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import logging
 from datetime import datetime, timedelta
 
-from defusedxml import ElementTree as ET
+from defusedxml import ElementTree as ET  # noqa: N817
+from signxml import InvalidInput, InvalidSignature, SignatureConfiguration, XMLVerifier
+from signxml.algorithms import DigestAlgorithm, SignatureMethod
 
 from app._compat import UTC
 
@@ -19,15 +22,52 @@ SAML_NS = {
 
 def parse_saml_response(raw_base64: str) -> ET.Element | None:
     try:
-        decoded = base64.b64decode(raw_base64)
+        decoded = base64.b64decode(raw_base64, validate=True)
         return ET.fromstring(decoded)
-    except (ValueError, ET.ParseError) as exc:
+    except (binascii.Error, ValueError, ET.ParseError) as exc:
         logger.error("SAML response parse failed: %s", exc)
         return None
 
 
 def extract_assertion(saml_response: ET.Element) -> ET.Element | None:
     return saml_response.find(".//saml:Assertion", SAML_NS)
+
+
+_SAFE_SIGNATURE_METHODS = frozenset({
+    SignatureMethod.RSA_SHA256,
+    SignatureMethod.RSA_SHA384,
+    SignatureMethod.RSA_SHA512,
+    SignatureMethod.ECDSA_SHA256,
+    SignatureMethod.ECDSA_SHA384,
+    SignatureMethod.ECDSA_SHA512,
+})
+_SAFE_DIGEST_ALGORITHMS = frozenset({
+    DigestAlgorithm.SHA256,
+    DigestAlgorithm.SHA384,
+    DigestAlgorithm.SHA512,
+})
+
+
+def verify_saml_signature(saml_response: ET.Element, signing_cert_pem: str) -> bool:
+    """Verify the SAML XML signature against the pinned IdP certificate."""
+    if not signing_cert_pem.strip():
+        logger.error("SAML signing certificate is not configured")
+        return False
+    try:
+        XMLVerifier().verify(
+            ET.tostring(saml_response, encoding="utf-8"),
+            x509_cert=signing_cert_pem,
+            expect_config=SignatureConfiguration(
+                require_x509=True,
+                expect_references=1,
+                signature_methods=_SAFE_SIGNATURE_METHODS,
+                digest_algorithms=_SAFE_DIGEST_ALGORITHMS,
+            ),
+        )
+        return True
+    except (InvalidInput, InvalidSignature, ValueError, TypeError) as exc:
+        logger.warning("SAML signature verification failed: %s", type(exc).__name__)
+        return False
 
 
 def validate_assertion(

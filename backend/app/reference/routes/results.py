@@ -14,8 +14,13 @@ from app.reference.services import (
     ResultNotFoundError,
 )
 from app.reference.services.result_service import ResultService
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/reference/results", tags=["reference-results"])
+router = APIRouter(
+    prefix="/reference/results",
+    tags=["reference-results"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 @router.post("")

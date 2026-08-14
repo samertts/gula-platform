@@ -30,8 +30,13 @@ from app.national.document_platform.infrastructure.repository import (
     SQLAlchemyElectronicSignatureRepository,
     SQLAlchemyRetentionRuleRepository,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/national/documents", tags=["National Document Platform"])
+router = APIRouter(
+    prefix="/national/documents",
+    tags=["National Document Platform"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> DocumentPlatformService:

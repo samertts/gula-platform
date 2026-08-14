@@ -1,8 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-router = APIRouter(prefix="/reference", tags=["Reference Data"])
+from app.security.dependencies import require_permission
+
+router = APIRouter(
+    prefix="/reference",
+    tags=["Reference Data"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 @router.get("/{ref_type}")

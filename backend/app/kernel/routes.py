@@ -8,18 +8,22 @@ from app.kernel.integration import (
     is_kernel_ready,
     kernel_kill_switch_active,
 )
-from app.security.dependencies import get_current_user
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/kernel", tags=["kernel"])
+router = APIRouter(
+    prefix="/kernel",
+    tags=["kernel"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 @router.get("/status")
-async def kernel_status(_user=Depends(get_current_user)):
+async def kernel_status(_user=Depends(require_permission("system:admin"))):
     return await get_kernel_health()
 
 
 @router.get("/services")
-async def kernel_services(_user=Depends(get_current_user)):
+async def kernel_services(_user=Depends(require_permission("system:admin"))):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -33,7 +37,7 @@ async def kernel_services(_user=Depends(get_current_user)):
 
 
 @router.get("/capabilities")
-async def kernel_capabilities(_user=Depends(get_current_user)):
+async def kernel_capabilities(_user=Depends(require_permission("system:admin"))):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -54,7 +58,7 @@ async def kernel_capabilities(_user=Depends(get_current_user)):
 
 
 @router.get("/plugins")
-async def kernel_plugins(_user=Depends(get_current_user)):
+async def kernel_plugins(_user=Depends(require_permission("system:admin"))):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -68,7 +72,7 @@ async def kernel_plugins(_user=Depends(get_current_user)):
 
 
 @router.get("/modules")
-async def kernel_modules(_user=Depends(get_current_user)):
+async def kernel_modules(_user=Depends(require_permission("system:admin"))):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -82,7 +86,7 @@ async def kernel_modules(_user=Depends(get_current_user)):
 
 
 @router.get("/config")
-async def kernel_config(_user=Depends(get_current_user)):
+async def kernel_config(_user=Depends(require_permission("system:admin"))):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -106,7 +110,7 @@ async def kernel_config(_user=Depends(get_current_user)):
 
 
 @router.get("/events/outbox")
-async def kernel_outbox(_user=Depends(get_current_user)):
+async def kernel_outbox(_user=Depends(require_permission("system:admin"))):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -118,7 +122,7 @@ async def kernel_outbox(_user=Depends(get_current_user)):
 
 
 @router.get("/events/dlq")
-async def kernel_dead_letter_queue(_user=Depends(get_current_user)):
+async def kernel_dead_letter_queue(_user=Depends(require_permission("system:admin"))):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -134,7 +138,7 @@ async def kernel_dead_letter_queue(_user=Depends(get_current_user)):
 
 
 @router.get("/tenants")
-async def kernel_tenants(_user=Depends(get_current_user)):
+async def kernel_tenants(_user=Depends(require_permission("system:admin"))):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -150,7 +154,7 @@ async def kernel_tenants(_user=Depends(get_current_user)):
 
 
 @router.get("/locks")
-async def kernel_locks(_user=Depends(get_current_user)):
+async def kernel_locks(_user=Depends(require_permission("system:admin"))):
     if not is_kernel_ready():
         raise HTTPException(status_code=503, detail="Kernel not ready")
     kernel = get_kernel()
@@ -161,5 +165,5 @@ async def kernel_locks(_user=Depends(get_current_user)):
 
 
 @router.get("/kill-switch")
-async def kernel_kill_switch(_user=Depends(get_current_user)):
+async def kernel_kill_switch(_user=Depends(require_permission("system:admin"))):
     return {"active": kernel_kill_switch_active()}

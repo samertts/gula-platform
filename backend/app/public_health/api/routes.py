@@ -18,8 +18,13 @@ from app.public_health.exceptions import (
     DiseaseCaseNotFoundError,
     OutbreakNotFoundError,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/public-health", tags=["National Public Health Surveillance"])
+router = APIRouter(
+    prefix="/public-health",
+    tags=["National Public Health Surveillance"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> PublicHealthService:

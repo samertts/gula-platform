@@ -17,8 +17,13 @@ from app.national.search_platform.infrastructure.repository import (
     SQLAlchemySavedSearchRepository,
     SQLAlchemySearchResultRepository,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/national/search", tags=["National Search Platform"])
+router = APIRouter(
+    prefix="/national/search",
+    tags=["National Search Platform"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> SearchPlatformService:

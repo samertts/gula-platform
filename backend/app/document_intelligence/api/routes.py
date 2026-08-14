@@ -6,6 +6,8 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 
+from app.security.dependencies import require_permission
+
 from ..application.service import DocumentIntelligenceOrchestrator
 from ..domain.entities import (
     DocumentAnnotation,
@@ -37,7 +39,11 @@ logger = logging.getLogger("gula.document_intelligence.routes")
 router = APIRouter(
     prefix="/document-intelligence",
     tags=["Document Intelligence"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
+
+def _safe_processing_error(error: object) -> str | None:
+    return "processing_failed" if error else None
 
 
 def _get_orchestrator() -> DocumentIntelligenceOrchestrator:
@@ -88,7 +94,7 @@ async def ingest_document(
             status_code=422,
             detail={
                 "message": "Document processing completed with errors",
-                "error": result.error,
+                "error": _safe_processing_error(result.error),
                 "processing_summary": result.processing_summary,
             },
         )
@@ -121,7 +127,7 @@ async def ingest_batch(
             "filename": r.document.filename if r.document and r.success else "unknown",
             "document_id": str(r.document.id) if r.document else None,
             "success": r.success,
-            "error": r.error if not r.success else None,
+            "error": _safe_processing_error(r.error) if not r.success else None,
             "classification": str(r.classification) if r.classification else None,
             "entity_count": len(r.entities),
         }
@@ -152,7 +158,7 @@ async def get_document(
         },
         "processing": {
             "success": result.success,
-            "error": result.error,
+            "error": _safe_processing_error(result.error),
             "phases_completed": [str(p) for p in (result.pipeline.phases_completed if result.pipeline else [])],
             "total_time_ms": result.pipeline.total_processing_time_ms if result.pipeline else 0,
         },
@@ -301,8 +307,9 @@ async def platform_status():
         try:
             status = await provider.check_health()
             provider_status[str(engine)] = str(status)
-        except Exception as e:
-            provider_status[str(engine)] = f"error: {e}"
+        except Exception:
+            logger.exception("Document Intelligence provider health check failed: %s", engine)
+            provider_status[str(engine)] = "unavailable"
 
     return {
         "platform": "Document Intelligence Platform",
@@ -327,6 +334,7 @@ async def platform_status():
 gov_router = APIRouter(
     prefix="/document-intelligence/government",
     tags=["Government Records"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
 
 
@@ -393,6 +401,7 @@ router.include_router(gov_router)
 collab_router = APIRouter(
     prefix="/document-intelligence/collaboration",
     tags=["Collaboration"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
 
 
@@ -468,6 +477,7 @@ router.include_router(collab_router)
 gov_router2 = APIRouter(
     prefix="/document-intelligence/governance",
     tags=["Governance"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
 
 
@@ -538,6 +548,7 @@ router.include_router(gov_router2)
 archive_router = APIRouter(
     prefix="/document-intelligence/archive",
     tags=["Digital Archive"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
 
 
@@ -603,6 +614,7 @@ router.include_router(archive_router)
 kg_router = APIRouter(
     prefix="/document-intelligence/knowledge-graph",
     tags=["Knowledge Graph"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
 
 
@@ -648,6 +660,7 @@ router.include_router(kg_router)
 webhook_router = APIRouter(
     prefix="/document-intelligence/webhooks",
     tags=["Webhooks"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
 
 

@@ -11,10 +11,15 @@ from app.database import get_db
 from app.health_data.warehouse.service import WarehouseQuery
 from app.research_platform.kpi_engine import KPIDefinition as KpiDefinition
 from app.research_platform.sdk import AnalyticsSDK, ResearchSDK
+from app.security.dependencies import require_permission
 
 logger = logging.getLogger("gula.research_platform.routes")
 
-router = APIRouter(prefix="/research", tags=["Research Platform"])
+router = APIRouter(
+    prefix="/research",
+    tags=["Research Platform"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 _sdk: ResearchSDK | None = None
 

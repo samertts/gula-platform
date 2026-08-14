@@ -3,28 +3,28 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from app.models.lab_user import LabUser
-from app.security.dependencies import get_current_user
+from app.config import IS_PRODUCTION
+from app.security.dependencies import require_permission
 
 router = APIRouter(prefix="/admin/log-level", tags=["admin"])
 
 
 class LogLevelRequest(BaseModel):
-    logger_name: str = "gula"
-    level: str = "INFO"
+    logger_name: str = Field(default="gula", min_length=4, max_length=120)
+    level: str = Field(default="INFO", min_length=4, max_length=10)
 
 
 VALID_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+_PRODUCTION_LEVELS = VALID_LEVELS - {"DEBUG"}
+_ALLOWED_LOGGER_PREFIX = "gula"
 
 
 @router.get("")
 async def get_log_level(
-    current_user: LabUser = Depends(get_current_user),
+    _current_user=Depends(require_permission("system:admin")),
 ):
-    if current_user.role not in ("master_admin", "admin"):
-        raise HTTPException(status_code=403, detail="Admin access required")
     logger = logging.getLogger("gula")
     return {
         "root_level": logging.getLevelName(logger.level),
@@ -35,20 +35,28 @@ async def get_log_level(
 @router.post("")
 async def set_log_level(
     req: LogLevelRequest,
-    current_user: LabUser = Depends(get_current_user),
+    current_user=Depends(require_permission("system:admin")),
 ):
-    if current_user.role not in ("master_admin", "admin"):
-        raise HTTPException(status_code=403, detail="Admin access required")
     level_upper = req.level.upper()
-    if level_upper not in VALID_LEVELS:
+    valid_levels = _PRODUCTION_LEVELS if IS_PRODUCTION else VALID_LEVELS
+    if level_upper not in valid_levels:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid level. Choose from: {', '.join(sorted(VALID_LEVELS))}",
+            detail=f"Invalid level. Choose from: {', '.join(sorted(valid_levels))}",
         )
+    if req.logger_name != _ALLOWED_LOGGER_PREFIX and not req.logger_name.startswith(f"{_ALLOWED_LOGGER_PREFIX}."):
+        raise HTTPException(status_code=400, detail="Only GULA logger namespaces may be changed")
     target = logging.getLogger(req.logger_name)
+    previous_level = logging.getLevelName(target.level)
     target.setLevel(level_upper)
+    logging.getLogger("gula.security").warning(
+        "Runtime log level changed actor_id=%s logger=%s level=%s",
+        getattr(current_user, "id", "unknown"),
+        req.logger_name,
+        level_upper,
+    )
     return {
         "logger": req.logger_name,
-        "previous_level": logging.getLevelName(target.level),
+        "previous_level": previous_level,
         "new_level": level_upper,
     }

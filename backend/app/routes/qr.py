@@ -1,17 +1,18 @@
 import io
 import json
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 
 from shared.qr import generate_qr, generate_qr_image
 
+from .._compat import UTC
 from ..config import BASE_URL
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult, hash_token
-from ..models.patient import Patient
 from ..security.rate_limit import rate_limit_public
 
 router = APIRouter(tags=["qr"])
@@ -38,10 +39,14 @@ def generate_medical_qr(token: str, request: Request, db: Session = Depends(get_
     token_h = hash_token(token)
     result = db.query(LabResult).filter(LabResult.token_hash == token_h).first()
     if not result:
-        return Response(content=b"Not found", status_code=404)
+        return Response(content=b"Not found", status_code=404, headers={"Cache-Control": "no-store"})
+    expires_at = result.expires_at
+    if expires_at is not None and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=UTC)
+    if expires_at is not None and expires_at <= datetime.now(UTC):
+        return Response(content=b"Not found", status_code=404, headers={"Cache-Control": "no-store"})
 
     order = db.query(LabOrder).filter(LabOrder.id == result.order_id).first()
-    patient = db.query(Patient).filter(Patient.id == order.patient_id).first() if order else None
     lab = db.query(Lab).filter(Lab.id == order.lab_id).first() if order else None
 
     all_results = db.query(LabResult).filter(LabResult.order_id == result.order_id).all()
@@ -50,7 +55,6 @@ def generate_medical_qr(token: str, request: Request, db: Session = Depends(get_
         "v": 1,
         "sys": "GULA",
         "lab": lab.name if lab else None,
-        "pid": patient.health_id if patient else None,
         "dt": order.created_at.strftime("%Y-%m-%d") if order and order.created_at else None,
         "url": f"{BASE_URL}/r/{token}",
         "tests": [
@@ -76,4 +80,8 @@ def generate_medical_qr(token: str, request: Request, db: Session = Depends(get_
     img.save(buf, format="PNG")
     buf.seek(0)
 
-    return Response(content=buf.getvalue(), media_type="image/png")
+    return Response(
+        content=buf.getvalue(),
+        media_type="image/png",
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )
