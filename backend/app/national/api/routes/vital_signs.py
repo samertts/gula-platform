@@ -152,7 +152,7 @@ async def update_vital_signs_reference(
     return ref
 
 
-@router.delete("/reference/{code}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/reference/{code}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_vital_signs_reference(
     code: str,
     db: Session = Depends(get_db),

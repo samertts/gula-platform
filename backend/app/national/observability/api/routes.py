@@ -242,7 +242,7 @@ async def update_alert_rule(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
-@router.delete("/alerts/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/alerts/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_alert_rule(
     rule_id: str,
     service: ObservabilityService = Depends(_get_service),
@@ -370,7 +370,7 @@ async def update_dashboard(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
-@router.delete("/dashboards/{dashboard_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/dashboards/{dashboard_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_dashboard(
     dashboard_id: str,
     service: ObservabilityService = Depends(_get_service),

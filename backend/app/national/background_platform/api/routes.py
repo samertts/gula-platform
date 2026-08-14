@@ -219,7 +219,7 @@ async def update_job(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
-@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{job_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_job(
     job_id: str,
     service: JobService = Depends(_get_service),
@@ -382,7 +382,7 @@ async def create_schedule(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
-@router.delete("/{job_id}/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{job_id}/schedules/{schedule_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_schedule(
     job_id: str,
     schedule_id: str,

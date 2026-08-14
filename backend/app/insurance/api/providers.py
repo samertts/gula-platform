@@ -236,7 +236,7 @@ def update_provider(
     return provider
 
 
-@router.delete("/{provider_id}", status_code=204)
+@router.delete("/{provider_id}", status_code=204, response_model=None)
 def deactivate_provider(
     provider_id: int,
     current_user: LabUser = Depends(get_current_user),

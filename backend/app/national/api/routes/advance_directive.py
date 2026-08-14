@@ -136,7 +136,7 @@ async def update_advance_directive(
     return directive
 
 
-@router.delete("/{directive_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{directive_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_advance_directive(
     directive_id: str,
     db: Session = Depends(get_db),

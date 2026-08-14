@@ -559,7 +559,7 @@ async def update_drug(
     return drug
 
 
-@router.delete("/drugs/{drug_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/drugs/{drug_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_drug(
     drug_id: str,
     db: Session = Depends(get_db),

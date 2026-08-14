@@ -144,7 +144,7 @@ async def update_appointment(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
-@router.delete("/appointments/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/appointments/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def cancel_appointment(
     appointment_id: str,
     body: dict[str, Any] | None = None,
@@ -290,7 +290,7 @@ async def update_resource(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
-@router.delete("/resources/{resource_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/resources/{resource_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def deactivate_resource(
     resource_id: str,
     service: SchedulingPlatformService = Depends(_get_service),
@@ -387,7 +387,7 @@ async def list_waiting_list(
     return [_waiting_list_to_dict(e) for e in entries]
 
 
-@router.delete("/waiting-list/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/waiting-list/{entry_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def remove_from_waiting_list(
     entry_id: str,
     service: SchedulingPlatformService = Depends(_get_service),

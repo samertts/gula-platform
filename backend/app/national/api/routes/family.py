@@ -104,7 +104,7 @@ async def add_family_member(
     )
 
 
-@router.delete("/{family_id}/members/{member_id}", status_code=204)
+@router.delete("/{family_id}/members/{member_id}", status_code=204, response_model=None)
 async def remove_family_member(
     family_id: str,
     member_id: str,

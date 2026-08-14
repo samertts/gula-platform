@@ -211,7 +211,7 @@ async def update_encounter(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}") from e
 
 
-@router.delete("/{encounter_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{encounter_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_encounter(
     encounter_id: str,
     db: Session = Depends(get_db),

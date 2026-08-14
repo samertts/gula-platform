@@ -355,7 +355,7 @@ async def update_template(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
-@router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/templates/{template_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_template(
     template_id: str,
     service: NotificationPlatformService = Depends(_get_service),

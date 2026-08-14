@@ -253,7 +253,7 @@ def update_policy(
     return policy
 
 
-@router.delete("/{policy_id}", status_code=204)
+@router.delete("/{policy_id}", status_code=204, response_model=None)
 def cancel_policy(
     policy_id: int,
     current_user: LabUser = Depends(get_current_user),

@@ -113,7 +113,7 @@ async def update_{module}({module}_id: int, payload: dict[str, Any]):
 '''
 
     def _delete_endpoint(self, module: str, mod: str) -> str:
-        return f'''@router.delete("/{{{module}_id}}", status_code=204)
+        return f'''@router.delete("/{{{module}_id}}", status_code=204, response_model=None)
 async def delete_{module}({module}_id: int):
     """Delete a {mod}."""
     raise HTTPException(status_code=404, detail="{mod} not found")
