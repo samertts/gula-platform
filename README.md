@@ -11,7 +11,7 @@
 Arabic-first healthcare platform for Iraqi medical laboratories — an open-source
 **Laboratory Information System (LIS)** and national healthcare platform.
 
-**New here?** Begin with the concise [Start Here guide](docs/START_HERE.md) for the supported runtime path, repository map, and contribution checks.
+**New here?** Begin with the concise [Start Here guide](docs/START_HERE.md) for the supported runtime path, repository map, and contribution checks. Release owners should follow the isolated [Staging runbook](docs/STAGING_RUNBOOK.md) before promoting a change to production.
 
 > **Product direction:** GULA LIS is the primary product and operating mission of GULA Platform. The web application, Android application, and iOS application are unified clients of the same account, organization context, laboratory workflow, and audit policy. Other healthcare domains remain extensible workspaces rather than separate products.
 

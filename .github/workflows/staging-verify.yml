@@ -1,0 +1,91 @@
+name: Verify Staging Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      health_url:
+        description: "HTTPS URL for the staging /health endpoint"
+        required: true
+        type: string
+
+concurrency:
+  group: gula-staging-verification
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify-staging:
+    name: Verify staging health and readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment:
+      name: staging
+    steps:
+      - name: Validate and normalize endpoint
+        id: endpoint
+        env:
+          HEALTH_URL: ${{ inputs.health_url }}
+        run: |
+          set -euo pipefail
+          case "$HEALTH_URL" in
+            https://*/health) ;;
+            *) echo "Provide an HTTPS /health endpoint." >&2; exit 1 ;;
+          esac
+          case "$HEALTH_URL" in
+            *"?"*|*"#"*|https://*@*)
+              echo "Staging health URL must not contain credentials, a query, or a fragment." >&2
+              exit 1
+              ;;
+          esac
+          base_url="${HEALTH_URL%/health}"
+          echo "base_url=$base_url" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for health and readiness
+        env:
+          HEALTH_URL: ${{ inputs.health_url }}
+          READY_URL: ${{ steps.endpoint.outputs.base_url }}/health/ready
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            health_ok=false
+            ready_ok=false
+            if health_body=$(curl --fail --silent --show-error --max-time 10 "$HEALTH_URL"); then
+              printf '%s\n' "$health_body" | grep -q '"status"' && health_ok=true
+            fi
+            if ready_body=$(curl --fail --silent --show-error --max-time 10 "$READY_URL"); then
+              printf '%s\n' "$ready_body" | grep -q '"status"' && ready_ok=true
+            fi
+            if [ "$health_ok" = true ] && [ "$ready_ok" = true ]; then
+              echo "Staging health and readiness checks passed on attempt $attempt."
+              exit 0
+            fi
+            echo "Attempt $attempt/24: health=$health_ok readiness=$ready_ok; retrying in 15 seconds."
+            sleep 15
+          done
+          echo "Staging did not pass health and readiness checks within six minutes." >&2
+          exit 1
+
+      - name: Verify deep-health endpoint
+        env:
+          DEEP_HEALTH_URL: ${{ steps.endpoint.outputs.base_url }}/health/deep
+        run: |
+          set -euo pipefail
+          body=$(curl --fail --silent --show-error --max-time 15 "$DEEP_HEALTH_URL")
+          printf '%s\n' "$body" | grep -Eq '"grade"[[:space:]]*:[[:space:]]*"(GREEN|YELLOW)"'
+
+      - name: Write deployment summary
+        if: always()
+        env:
+          HEALTH_URL: ${{ inputs.health_url }}
+        run: |
+          {
+            echo "## Staging deployment verification"
+            echo
+            echo "| Item | Value |"
+            echo "| --- | --- |"
+            echo "| Commit | \`${{ github.sha }}\` |"
+            echo "| Health endpoint | $HEALTH_URL |"
+            echo "| Required checks | /health, /health/ready, /health/deep |"
+          } >> "$GITHUB_STEP_SUMMARY"
