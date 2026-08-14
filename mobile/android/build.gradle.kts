@@ -1,3 +1,14 @@
+buildscript {
+    configurations.classpath {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.bouncycastle") {
+                useVersion("1.84")
+                because("CVE-2025-14813 and related Bouncy Castle advisories")
+            }
+        }
+    }
+}
+
 plugins {
     id("com.android.application") version "8.13.2" apply false
     id("com.android.library") version "8.13.2" apply false
@@ -27,4 +38,18 @@ allprojects {
 
 tasks.register("clean", Delete::class) {
     delete(rootProject.layout.buildDirectory)
+}
+
+// Security baseline: AGP 8.13.2 currently brings Bouncy Castle 1.79 transitively.
+// Keep the cryptographic family aligned on the patched 1.84 release across all
+// project configurations, including bcpkix and bcutil consumers.
+allprojects {
+    configurations.configureEach {
+        resolutionStrategy.eachDependency {
+            if (requested.group == "org.bouncycastle") {
+                useVersion("1.84")
+                because("CVE-2025-14813 and related Bouncy Castle advisories")
+            }
+        }
+    }
 }
