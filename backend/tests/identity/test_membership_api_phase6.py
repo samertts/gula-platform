@@ -13,9 +13,10 @@ from fastapi.routing import APIRoute
 def _membership_routes() -> dict[tuple[str, str], APIRoute]:
     routes: dict[tuple[str, str], APIRoute] = {}
     for route in router.routes:
-        if isinstance(route, APIRoute) and route.path.startswith("/niam/memberships"):
+        if isinstance(route, APIRoute) and route.path.startswith(("/niam/memberships", "/memberships")):
+            path = route.path if route.path.startswith("/niam/") else f"/niam{route.path}"
             for method in route.methods or set():
-                routes[(method, route.path)] = route
+                routes[(method, path)] = route
     return routes
 
 

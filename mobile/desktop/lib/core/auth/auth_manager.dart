@@ -159,7 +159,8 @@ class AuthManager {
   Future<List<Map<String, dynamic>>> refreshMemberships() async {
     final response = await _apiClient.get(ApiEndpoints.myMemberships);
     final body = response.data;
-    final rawMemberships = body is Map<String, dynamic> ? body['memberships'] : null;
+    final rawMemberships =
+        body is Map<String, dynamic> ? body['memberships'] : null;
     final parsed = rawMemberships is List
         ? rawMemberships
             .whereType<Map>()
