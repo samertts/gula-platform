@@ -4,7 +4,7 @@ import base64
 import logging
 from datetime import datetime, timedelta
 
-from defusedxml import ElementTree as ET
+from defusedxml import ElementTree
 
 from app._compat import UTC
 
@@ -17,28 +17,30 @@ SAML_NS = {
 }
 
 
-def parse_saml_response(raw_base64: str) -> ET.Element | None:
+def parse_saml_response(raw_base64: str) -> ElementTree.Element | None:
     try:
         decoded = base64.b64decode(raw_base64)
-        return ET.fromstring(decoded)
-    except (ValueError, ET.ParseError) as exc:
+        return ElementTree.fromstring(decoded)
+    except (ValueError, ElementTree.ParseError) as exc:
         logger.error("SAML response parse failed: %s", exc)
         return None
 
 
-def extract_assertion(saml_response: ET.Element) -> ET.Element | None:
+def extract_assertion(saml_response: ElementTree.Element) -> ElementTree.Element | None:
     return saml_response.find(".//saml:Assertion", SAML_NS)
 
 
 def validate_assertion(
-    assertion: ET.Element,
+    assertion: ElementTree.Element,
     expected_issuer: str,
     expected_audience: str,
     allowed_clock_skew_s: int = 300,
 ) -> bool:
     issuer_el = assertion.find("./saml:Issuer", SAML_NS)
     if issuer_el is None or issuer_el.text != expected_issuer:
-        logger.warning("SAML issuer mismatch: %s", issuer_el.text if issuer_el is not None else None)
+        logger.warning(
+            "SAML issuer mismatch: %s", issuer_el.text if issuer_el is not None else None
+        )
         return False
 
     conditions = assertion.find("./saml:Conditions", SAML_NS)
@@ -70,7 +72,7 @@ def validate_assertion(
     return True
 
 
-def extract_attributes(assertion: ET.Element) -> dict[str, str]:
+def extract_attributes(assertion: ElementTree.Element) -> dict[str, str]:
     result: dict[str, str] = {}
 
     subject_el = assertion.find("./saml:Subject/saml:NameID", SAML_NS)
