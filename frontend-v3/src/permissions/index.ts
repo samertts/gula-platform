@@ -177,6 +177,7 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
     { label: "الطوارئ", path: "/ems", icon: "Ambulance", permissions: ["system:admin"] },
     { label: "البيانات الصحية", path: "/health-data", icon: "Database", permissions: ["system:admin"] },
     { label: "التكامل", path: "/integration", icon: "Cable", permissions: ["system:admin"] },
+    { label: "منظومة القدرات الصحية", path: "/health-ecosystem", icon: "HeartPulse", permissions: ["dashboard:read"] },
     { label: "النواة", path: "/kernel", icon: "Cpu", permissions: ["system:admin"] },
     { label: "دورة حياة المنصة", path: "/lifecycle-platform", icon: "RefreshCw", permissions: ["system:admin"] },
     { label: "الصيدلة", path: "/pharmacy", icon: "Pill", permissions: ["system:admin"] },

@@ -68,6 +68,7 @@ const EmsApiPageLazy = lazy(() => import("@/pages/ems/EmsApiPage"));
 const HealthDataPageLazy = lazy(() => import("@/pages/health-data/HealthDataPage"));
 const IntegrationPageLazy = lazy(() => import("@/pages/integration/IntegrationPage"));
 const IntegrationConnectorsPageLazy = lazy(() => import("@/pages/integration/connectors/IntegrationConnectorsPage"));
+const HealthEcosystemPageLazy = lazy(() => import("@/pages/integration/HealthEcosystemPage"));
 const KernelPageLazy = lazy(() => import("@/pages/kernel/KernelPage"));
 const LifecyclePlatformApiPageLazy = lazy(() => import("@/pages/lifecycle-platform/LifecyclePlatformApiPage"));
 const NationalBackgroundPlatformApiPageLazy = lazy(() => import("@/pages/national/background-platform/NationalBackgroundPlatformApiPage"));
@@ -180,6 +181,7 @@ export const router = createBrowserRouter([
       { path: "health-data", element: <RoleGuard roles={adminRoles}><LazyPage><HealthDataPageLazy /></LazyPage></RoleGuard> },
       { path: "integration", element: <RoleGuard roles={adminRoles}><LazyPage><IntegrationPageLazy /></LazyPage></RoleGuard> },
       { path: "integration/connectors", element: <RoleGuard roles={adminRoles}><LazyPage><IntegrationConnectorsPageLazy /></LazyPage></RoleGuard> },
+      { path: "health-ecosystem", element: <RoleGuard roles={readonlyRoles}><LazyPage><HealthEcosystemPageLazy /></LazyPage></RoleGuard> },
       { path: "kernel", element: <RoleGuard roles={adminRoles}><LazyPage><KernelPageLazy /></LazyPage></RoleGuard> },
       { path: "lifecycle-platform", element: <RoleGuard roles={adminRoles}><LazyPage><LifecyclePlatformApiPageLazy /></LazyPage></RoleGuard> },
       { path: "national/background-platform", element: <RoleGuard roles={adminRoles}><LazyPage><NationalBackgroundPlatformApiPageLazy /></LazyPage></RoleGuard> },
