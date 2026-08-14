@@ -12,6 +12,7 @@ from app.identity.trust import routes as trust_routes
 from app.identity.workflows import routes as workflows_routes
 
 from . import (
+    account_requests,
     accounts,
     audit,
     auth,
@@ -29,6 +30,7 @@ from .workspaces import get_current_niam_actor
 router = APIRouter(prefix="/niam", tags=["NIAM"])
 
 router.include_router(persons.router)
+router.include_router(account_requests.router)
 router.include_router(accounts.router)
 router.include_router(auth.router)
 router.include_router(sessions.router)

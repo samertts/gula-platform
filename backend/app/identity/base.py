@@ -16,6 +16,25 @@ def _ulid() -> str:
     return str(uuid.uuid4()).replace("-", "").upper()[:26]
 
 
+_SENSITIVE_SERIALIZATION_TERMS = frozenset(
+    {
+        "password",
+        "token",
+        "secret",
+        "credential",
+        "private_key",
+        "encrypted",
+        "lookup",
+        "fingerprint",
+    },
+)
+
+
+def _is_sensitive_column(name: str) -> bool:
+    normalized = name.lower()
+    return any(term in normalized for term in _SENSITIVE_SERIALIZATION_TERMS)
+
+
 class IdentityBaseEntity(IdentityBase):
     __abstract__ = True
 
@@ -32,6 +51,9 @@ class IdentityBaseEntity(IdentityBase):
         result: dict[str, Any] = {}
         for col in self.__table__.columns:
             val = getattr(self, col.name)
+            if _is_sensitive_column(col.name):
+                result[col.name] = "[REDACTED]"
+                continue
             if isinstance(val, datetime):
                 val = val.isoformat()
             result[col.name] = val
