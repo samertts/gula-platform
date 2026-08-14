@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
@@ -74,6 +77,7 @@ class _AppEntry extends ConsumerStatefulWidget {
 
 class _AppEntryState extends ConsumerState<_AppEntry> {
   final AutoUpdater _autoUpdater = AutoUpdater();
+  UpdatePolicy? _updatePolicy;
   bool _initialized = false;
 
   @override
@@ -112,9 +116,20 @@ class _AppEntryState extends ConsumerState<_AppEntry> {
 
     try {
       await _autoUpdater.initialize();
+      _updatePolicy = await _autoUpdater.checkForUpdates(
+        apiClient: authProvider.manager.apiClient,
+        platform: _desktopPlatform(),
+        currentVersion: AppConstants.appVersion,
+      );
     } catch (_) {}
 
-    setState(() => _initialized = true);
+    if (mounted) setState(() => _initialized = true);
+  }
+
+  String _desktopPlatform() {
+    if (Platform.isWindows) return 'windows';
+    if (Platform.isMacOS) return 'macos';
+    return 'linux';
   }
 
   Future<void> _quitApp() async {
@@ -138,6 +153,10 @@ class _AppEntryState extends ConsumerState<_AppEntry> {
 
     final appRouter = AppRouter(authProvider: authProvider);
 
-    return GulaApp(appRouter: appRouter);
+    return GulaApp(
+      appRouter: appRouter,
+      updatePolicy: _updatePolicy,
+      onUpdate: _autoUpdater.openUpdate,
+    );
   }
 }

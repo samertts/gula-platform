@@ -2,7 +2,7 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'GULA Platform';
-  static const String appVersion = '2.1.0';
+  static const String appVersion = '2.5.0';
   static const String appBuildNumber = '1';
   static const String packageName = 'com.gula.platform.desktop';
   static const String companyName = 'GULA Platform';
@@ -41,7 +41,7 @@ class AppConstants {
   static const String appStoreUrl =
       'https://apps.apple.com/app/gula-platform/id0000000000';
   static const String playStoreUrl =
-      'https://play.google.com/store/apps/details?id=com.gula.platform.desktop';
+      'https://github.com/samertts/gula-platform/releases';
   static const String githubReleaseUrl =
       'https://github.com/samertts/gula-platform/releases';
   static const String supportEmail = 'support@gula-platform.com';

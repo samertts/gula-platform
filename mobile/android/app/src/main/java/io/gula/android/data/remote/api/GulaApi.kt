@@ -254,6 +254,13 @@ interface GulaApi {
     @POST("device/results")
     suspend fun submitDeviceResult(@Body request: DeviceSubmissionDto): Response<DeviceSubmissionResponseDto>
 
+    // ── Public app updates ────────────────────────────────────
+    @GET("https://api.gula-platform.org/app-updates")
+    suspend fun getUpdateManifest(
+        @Query("platform") platform: String = "android",
+        @Query("version") version: String,
+    ): Response<UpdateManifestDto>
+
     // ── Health ─────────────────────────────────────────────────
     @GET("health")
     suspend fun healthCheck(): Response<Map<String, Any>>
@@ -439,4 +446,25 @@ data class DeviceSubmissionResponseDto(
     @Json(name = "matched_order_id") val matchedOrderId: Int,
     @Json(name = "results_created") val resultsCreated: Int,
     @Json(name = "errors") val errors: List<String>? = null,
+)
+
+
+@JsonClass(generateAdapter = true)
+data class UpdateManifestDto(
+    @Json(name = "schema_version") val schemaVersion: Int,
+    @Json(name = "policies") val policies: Map<String, UpdatePolicyDto>,
+)
+
+@JsonClass(generateAdapter = true)
+data class UpdatePolicyDto(
+    @Json(name = "platform") val platform: String,
+    @Json(name = "current_version") val currentVersion: String,
+    @Json(name = "latest_version") val latestVersion: String,
+    @Json(name = "minimum_supported_version") val minimumSupportedVersion: String,
+    @Json(name = "update_available") val updateAvailable: Boolean,
+    @Json(name = "force_update") val forceUpdate: Boolean,
+    @Json(name = "store_url") val storeUrl: String,
+    @Json(name = "release_notes_url") val releaseNotesUrl: String,
+    @Json(name = "message") val message: String,
+    @Json(name = "message_ar") val messageAr: String,
 )

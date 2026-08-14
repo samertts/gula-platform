@@ -1,6 +1,6 @@
 name: gula_desktop
 description: GULA Platform Desktop Application — Medical Laboratory LIMS for Windows, Linux, macOS.
-version: 2.1.0
+version: 2.5.0
 homepage: https://github.com/samertts/gula-platform
 repository: https://github.com/samertts/gula-platform
 publish_to: 'none'
@@ -110,6 +110,6 @@ msix_config:
   publisher_display_name: GULA Platform
   publisher: CN=GULA Platform
   identity_name: com.gulaplatform.desktop
-  msix_version: 2.1.0.0
+  msix_version: 2.5.0.0
   logo_path: packaging/linux/gula_desktop.png
   capabilities: internetClient
