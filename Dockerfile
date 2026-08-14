@@ -2,7 +2,7 @@
 # GULA Platform — Backend Production Dockerfile (Root Context)
 # =============================================================================
 
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 WORKDIR /deps
 
@@ -10,7 +10,7 @@ COPY backend/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir --compile --prefix=/install -r requirements.txt
 
 
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app
 
