@@ -173,6 +173,12 @@ export default function BillingInsuranceWorkspacePage() {
   const filteredClaims = useMemo(() => !term ? claims : claims.filter((item) => `${item.number} ${item.invoiceNumber} ${item.patient} ${item.payer} ${item.memberId} ${item.state}`.toLocaleLowerCase("ar").includes(term)), [claims, term]);
   const filteredPolicies = useMemo(() => !term ? policies : policies.filter((item) => `${item.patient} ${item.payer} ${item.plan} ${item.memberId} ${item.state}`.toLocaleLowerCase("ar").includes(term)), [policies, term]);
 
+  const selectTab = (tab: BillingTab) => {
+    setActiveTab(tab);
+    setSearch("");
+    setNotice("");
+  };
+
   const openInvoices = invoices.filter((invoice) => invoice.state !== "مدفوعة").length;
   const outstanding = invoices.filter((invoice) => invoice.state !== "مدفوعة").reduce((total, invoice) => total + invoice.patientDue, 0);
   const rejectedClaims = claims.filter((claim) => claim.state === "مرفوضة").length;
@@ -182,7 +188,7 @@ export default function BillingInsuranceWorkspacePage() {
     const nextId = invoices.length + 1;
     setInvoices((current) => [{ id: nextId, number: `INV-260814-${String(11 + nextId).padStart(3, "0")}`, patient: "مريض اصطناعي جديد", encounter: `ENC-SYN-${String(200 + nextId)}`, serviceCount: 1, grossAmount: 180, coveredAmount: 0, patientDue: 180, state: "مسودة", issuedAt: "14 أغسطس 2026" }, ...current]);
     setNotice("تم إنشاء فاتورة اصطناعية محليًا؛ لم يتم ربطها بزيارة حقيقية أو إنشاء مطالبة خارجية.");
-    setActiveTab("invoices");
+    selectTab("invoices");
   };
 
   const advanceClaim = (claimId: number) => {
@@ -213,10 +219,10 @@ export default function BillingInsuranceWorkspacePage() {
 
     <div className="flex flex-col gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm leading-7 text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100"><div className="flex items-start gap-3"><Info className="mt-1 h-5 w-5 shrink-0" /><p><strong>نطاق الدفعة:</strong> لا توجد بوابة دفع، ولا إرسال EDI، ولا تحقق من شركة تأمين حقيقية. الحالات والأرقام محاكاة محلية، ويجب ربطها لاحقًا بعقود قانونية وفنية معتمدة وسجل تدقيق خادمي.</p></div><div className="flex flex-wrap gap-3"><Link to="/patient-management" className="inline-flex items-center gap-1 font-medium underline underline-offset-4">فتح دليل المرضى <ArrowLeft className="h-4 w-4" /></Link><Link to="/lab-operations" className="inline-flex items-center gap-1 font-medium underline underline-offset-4">فتح عمليات المختبر <ArrowLeft className="h-4 w-4" /></Link></div></div>
 
-    <Card><CardContent className="p-0"><div className="flex flex-wrap border-b">{tabs.map((tab) => { const Icon = tab.icon; return <button key={tab.id} type="button" onClick={() => { setActiveTab(tab.id); setNotice(""); }} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id ? "border-b-2 border-emerald-600 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground hover:text-foreground"}`}><Icon className="h-4 w-4" />{tab.label}</button>; })}</div></CardContent></Card>
+    <Card><CardContent className="p-0"><div className="flex flex-wrap border-b">{tabs.map((tab) => { const Icon = tab.icon; return <button key={tab.id} type="button" onClick={() => selectTab(tab.id)} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id ? "border-b-2 border-emerald-600 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground hover:text-foreground"}`}><Icon className="h-4 w-4" />{tab.label}</button>; })}</div></CardContent></Card>
     {notice && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300" role="status"><CheckCircle2 className="ml-2 inline h-4 w-4" />{notice}</div>}
 
-    {activeTab === "overview" && <Overview invoices={invoices} claims={claims} policies={policies} onTab={setActiveTab} onCreateInvoice={createInvoice} />}
+    {activeTab === "overview" && <Overview invoices={invoices} claims={claims} policies={policies} onTab={selectTab} onCreateInvoice={createInvoice} />}
     {activeTab === "services" && <Services services={filteredServices} search={search} onSearch={setSearch} />}
     {activeTab === "invoices" && <Invoices invoices={filteredInvoices} search={search} onSearch={setSearch} onCreateInvoice={createInvoice} onPayment={simulatePayment} />}
     {activeTab === "claims" && <Claims claims={filteredClaims} search={search} onSearch={setSearch} onAdvance={advanceClaim} />}
