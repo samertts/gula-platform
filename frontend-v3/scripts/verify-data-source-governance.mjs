@@ -55,8 +55,8 @@ for (const required of [
   }
 }
 
-if (decisions.visibleOperationalWrites.length !== 12) {
-  failures.push("data-source-decisions.json: visible operational write inventory must contain 12 decisions");
+if (decisions.visibleOperationalWrites.length !== 11) {
+  failures.push("data-source-decisions.json: visible operational write inventory must contain 11 decisions");
 }
 
 for (const item of decisions.visibleOperationalWrites) {

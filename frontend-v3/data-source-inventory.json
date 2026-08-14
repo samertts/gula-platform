@@ -658,16 +658,6 @@
       "status": "non-operational"
     },
     {
-      "source": "src/pages/notifications/NotificationsPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-mutation",
-        "react-query-read"
-      ],
-      "classification": "unbound",
-      "status": "non-operational"
-    },
-    {
       "source": "src/pages/orders/OrdersPage.tsx",
       "kinds": [
         "react-query-read",

@@ -6,6 +6,7 @@ from app.identity.api.memberships import (
     MembershipInvitationRequest,
     serialize_invitation,
 )
+from app.identity.api.router import router
 from app.identity.models.membership import MembershipInvitation
 from fastapi.routing import APIRoute
 

@@ -53,7 +53,6 @@
     { "source": "src/pages/niam/FederationPage.tsx", "operation": "POST /niam/federation/providers", "decision": "blocked-pending-niam-administration-contract" },
     { "source": "src/pages/niam/GovernancePage.tsx", "operation": "POST /niam/governance/authorities", "decision": "blocked-pending-niam-administration-contract" },
     { "source": "src/pages/niam/TrustPage.tsx", "operation": "POST /niam/trust/frameworks", "decision": "blocked-pending-niam-administration-contract" },
-    { "source": "src/pages/niam/WorkflowsPage.tsx", "operation": "POST /niam/workflows/definitions", "decision": "blocked-pending-niam-administration-contract" },
-    { "source": "src/pages/notifications/NotificationsPage.tsx", "operation": "notificationsApi.send", "decision": "blocked-pending-external-effect-policy" }
+    { "source": "src/pages/niam/WorkflowsPage.tsx", "operation": "POST /niam/workflows/definitions", "decision": "blocked-pending-niam-administration-contract" }
   ]
 }

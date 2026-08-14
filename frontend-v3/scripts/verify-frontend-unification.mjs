@@ -102,6 +102,7 @@ if (existsSync(decisionsPath)) {
       for (const sourceFile of entry.sourceFiles ?? []) {
         const sourcePath = resolve(root, "..", sourceFile);
         if (!existsSync(sourcePath)) {
+          if (entry.decision === "decommissioned") continue;
           failures.push(`سجل قرار المسارات: ملف المصدر مفقود (${sourceFile}).`);
           continue;
         }
