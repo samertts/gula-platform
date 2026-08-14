@@ -227,6 +227,8 @@ const INITIALIZATION_READ_ALLOWLIST = new Set([
   "GET /niam/roles",
   "GET /niam/roles/permissions",
   "GET /niam/roles/effective",
+  "GET /api/v1/clinical/patients",
+  "GET /api/v1/clinical/orders",
 ]);
 
 export class OperationalWriteBlockedError extends Error {

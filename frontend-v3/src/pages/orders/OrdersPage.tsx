@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, Badge, DataTable, Input } from "@/components/ui";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { WorkspaceReadBlockedError, workspaceScopedReads } from "@/api/workspaceScopedReads";
+import type { ClinicalOrderRead } from "@/api/workspaceScopedReads";
 import { Search, ShieldAlert } from "lucide-react";
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { LabOrder } from "@/types";
 import { formatDate } from "@/lib/utils";
 
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
@@ -25,10 +25,10 @@ export function OrdersPage() {
   });
   const blockedMessage = query.error instanceof WorkspaceReadBlockedError ? query.error.message : null;
 
-  const columns: ColumnDef<LabOrder>[] = [
-    { accessorKey: "order_id", header: "رقم الطلب" },
-    { accessorKey: "patient_name", header: "اسم المريض" },
-    { accessorKey: "doctor_name", header: "اسم الطبيب" },
+  const columns: ColumnDef<ClinicalOrderRead>[] = [
+    { accessorKey: "id", header: "رقم الطلب" },
+    { accessorKey: "patient_display_name", header: "اسم المريض" },
+    { accessorKey: "practitioner_display_name", header: "اسم الطبيب" },
     {
       accessorKey: "status",
       header: "الحالة",
@@ -39,9 +39,9 @@ export function OrdersPage() {
       ),
     },
     {
-      accessorKey: "results_count",
+      accessorKey: "test_count",
       header: "عدد الفحوصات",
-      cell: ({ row }) => row.original.results_count ?? "-",
+      cell: ({ row }) => row.original.test_count ?? "-",
     },
     {
       accessorKey: "created_at",
@@ -54,7 +54,7 @@ export function OrdersPage() {
     <div
       className="space-y-6"
       data-contract-id="orders.read"
-      data-permission="orders:read"
+      data-permission="orders.read"
       data-workspace-context="required"
     >
       <div>
