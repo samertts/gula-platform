@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import pytest
-
 from app.services.governance.identity_governance import (
-    IdentityGovernanceService,
-    IdentityDocumentType,
     DocumentVerificationStatus,
+    IdentityDocumentType,
+    IdentityGovernanceService,
 )
 
 

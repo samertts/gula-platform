@@ -35,6 +35,6 @@ __all__ = [
     "LegacyMappingRollbackDenied",
     "LegacyMappingService",
     "PersonService",
-    "make_source_fingerprint",
     "SessionService",
+    "make_source_fingerprint",
 ]

@@ -100,7 +100,7 @@ class EnterpriseRegistrationService:
     def get_registration_status(self, db: Session, org_id: str) -> EnterpriseRegistration | None:
         return db.query(EnterpriseRegistration).filter(
             EnterpriseRegistration.organization_id == org_id,
-            EnterpriseRegistration.is_active == True,
+            EnterpriseRegistration.is_active,
         ).order_by(EnterpriseRegistration.created_at.desc()).first()
 
     def _get_registration(self, db: Session, reg_id: str) -> EnterpriseRegistration:
@@ -550,13 +550,13 @@ class GuardianService:
     def get_dependents(self, db: Session, guardian_person_id: str) -> list[GuardianAccount]:
         return db.query(GuardianAccount).filter(
             GuardianAccount.guardian_person_id == guardian_person_id,
-            GuardianAccount.is_active == True,
+            GuardianAccount.is_active,
         ).all()
 
     def get_guardians(self, db: Session, dependent_person_id: str) -> list[GuardianAccount]:
         return db.query(GuardianAccount).filter(
             GuardianAccount.dependent_person_id == dependent_person_id,
-            GuardianAccount.is_active == True,
+            GuardianAccount.is_active,
         ).all()
 
     def delegate_access(

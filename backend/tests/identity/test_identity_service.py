@@ -33,7 +33,7 @@ class TestArabicNormalization:
     def test_normalizes_ta_marbuta(self):
         result = normalize_arabic_name("فاطمة")
         assert "ة" not in result
-        assert "ه" in result
+        assert "ه" in result  # noqa: RUF001 — Arabic character is intentional
 
     def test_normalizes_alef_maksura(self):
         result = normalize_arabic_name("مستشفى")
