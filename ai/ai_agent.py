@@ -6,6 +6,7 @@ from fastapi import FastAPI
 app = FastAPI()
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+REQUEST_TIMEOUT_SECONDS = 15
 
 
 @app.get("/generate-api")
@@ -23,6 +24,7 @@ def generate_api(task: str):
             "model": "gpt-4.1-mini",
             "messages": [{"role": "user", "content": prompt}],
         },
+        timeout=REQUEST_TIMEOUT_SECONDS,
     )
 
     return r.json()

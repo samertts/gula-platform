@@ -192,7 +192,8 @@ db-shell:
 	docker exec -it gula-postgres psql -U postgres labdb
 
 redis-cli:
-	docker exec -it gula-redis redis-cli -a "$$(grep REDIS_PASSWORD .env | cut -d= -f2)"
+	@REDISCLI_AUTH="$$(sed -n 's/^REDIS_PASSWORD=//p' .env | head -n 1)" \
+		docker exec -it -e REDISCLI_AUTH gula-redis redis-cli
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Development
@@ -204,7 +205,7 @@ lint:
 	cd backend && flake8 app --select=E9,F821 --statistics
 
 test:
-	cd backend && python -m pytest tests/ -v 2>&1 || echo "No tests yet — add tests/test_*.py"
+	cd backend && python -m pytest tests/ -v
 
 chaos:
 	@bash tests/chaos/chaos_test.sh all

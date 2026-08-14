@@ -12,8 +12,26 @@ import { healthChecker as healthCheck } from './utils/healthCheck';
 const app: Express = express();
 const port = process.env.PORT || 3000;
 const nodeEnv = process.env.NODE_ENV || 'development';
+const isProduction = nodeEnv === 'production';
 const demoSessionSecret = process.env.DEMO_SESSION_SECRET || 'development-only-demo-secret-change-before-production';
 const demoSessionLifetimeSeconds = 20 * 60;
+
+const configuredCorsOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+const allowedCorsOrigins = configuredCorsOrigins.length > 0
+  ? configuredCorsOrigins
+  : isProduction
+    ? ['https://gula-platform.org', 'https://www.gula-platform.org']
+    : ['http://localhost:3000', 'http://localhost:4173', 'http://localhost:5173'];
+
+if (allowedCorsOrigins.includes('*')) {
+  throw new Error('CORS_ORIGINS must not contain "*" when credentialed cookies are enabled.');
+}
+if (isProduction && (!process.env.DEMO_SESSION_SECRET || demoSessionSecret.length < 32)) {
+  throw new Error('DEMO_SESSION_SECRET must be set to a random value of at least 32 characters in production.');
+}
 const demoAttempts = new Map<string, { count: number; resetAt: number }>();
 const revokedDemoSessions = new Map<string, number>();
 
@@ -163,7 +181,7 @@ app.use(compression());
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGINS?.split(',') || '*',
+  origin: allowedCorsOrigins,
   credentials: true,
   maxAge: 3600,
 }));

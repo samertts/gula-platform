@@ -7,7 +7,7 @@ name = "gula-backend"
 version = "2.5.0"
 description = "GULA Platform Backend — FastAPI monolith for laboratory management"
 requires-python = ">=3.12"
-license = { text = "Proprietary" }
+license = { text = "Apache-2.0" }
 dependencies = [
     "fastapi>=0.139.2",
     "uvicorn[standard]>=0.51.0",

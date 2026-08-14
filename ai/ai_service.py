@@ -8,6 +8,7 @@ app = FastAPI(title="Lab Platform AI Gateway")
 DEEPSEEK_KEY = os.getenv("DEEPSEEK_API_KEY")
 GEMINI_KEY = os.getenv("GEMINI_API_KEY")
 HF_KEY = os.getenv("HUGGINGFACE_API_KEY")
+REQUEST_TIMEOUT_SECONDS = 15
 
 
 @app.get("/")
@@ -37,7 +38,7 @@ def ask_deepseek(text):
         ],
     }
 
-    r = requests.post(url, headers=headers, json=data)
+    r = requests.post(url, headers=headers, json=data, timeout=REQUEST_TIMEOUT_SECONDS)
 
     return r.json()
 
@@ -53,7 +54,7 @@ def ask_gemini(text):
 
     data = {"contents": [{"parts": [{"text": text}]}]}
 
-    r = requests.post(url, json=data)
+    r = requests.post(url, json=data, timeout=REQUEST_TIMEOUT_SECONDS)
 
     return r.json()
 
@@ -69,7 +70,7 @@ def ask_huggingface(text):
 
     headers = {"Authorization": f"Bearer {HF_KEY}"}
 
-    r = requests.post(url, headers=headers, json={"inputs": text})
+    r = requests.post(url, headers=headers, json={"inputs": text}, timeout=REQUEST_TIMEOUT_SECONDS)
 
     return r.json()
 

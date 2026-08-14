@@ -11,9 +11,10 @@ pytestmark = pytest.mark.integration
 
 
 def _database_url() -> str:
-    url = os.getenv("MIGRATION_DATABASE_URL") or os.getenv("DATABASE_URL")
+    """Return the explicitly provisioned database whose schema was migrated."""
+    url = os.getenv("MIGRATION_DATABASE_URL")
     if not url:
-        pytest.skip("MIGRATION_DATABASE_URL or DATABASE_URL is required for migration integration tests")
+        pytest.skip("MIGRATION_DATABASE_URL is required for live migration schema checks")
     return url
 
 

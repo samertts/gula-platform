@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-
 from app._compat import UTC
 from app.identity.services.account_service import AccountService
 from app.identity.services.authentication_service import AuthenticationService
@@ -24,7 +23,7 @@ async def test_authenticate_verifies_dummy_hash_for_unknown_login(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_refresh_session_uses_refresh_token_identifier():
+async def test_refresh_session_uses_refresh_token_identifier(monkeypatch):
     service = AuthenticationService(AsyncMock())
     service.session_repo = AsyncMock()
     service.account_repo = AsyncMock()
@@ -41,10 +40,14 @@ async def test_refresh_session_uses_refresh_token_identifier():
     account = SimpleNamespace(is_active=True)
     service.session_repo.find_by_refresh_token_jti.return_value = session
     service.account_repo.get_by_id.return_value = account
+    blacklist = Mock()
+    monkeypatch.setattr("app.security.auth.decode_refresh_token", lambda _token: {"jti": "refresh-jti"})
+    monkeypatch.setattr("app.security.auth.blacklist_token", blacklist)
 
-    result = await service.refresh_session("refresh-jti")
+    result = await service.refresh_session("signed-refresh-token")
 
     assert result == {"access_token": "rotated"}
     service.session_repo.find_by_refresh_token_jti.assert_awaited_once_with("refresh-jti")
     service.session_repo.find_by_token_jti.assert_not_called()
     service.session_repo.soft_delete.assert_awaited_once_with("session-1")
+    blacklist.assert_called_once()

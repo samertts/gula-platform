@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.identity.api import memberships
 from app.identity.api.memberships import (
     MembershipApplicationRequest,
     MembershipInvitationRequest,
@@ -26,6 +27,17 @@ def _iter_api_routes(router_routes, prefix: str = ""):
 
 
 def _membership_routes() -> dict[tuple[str, str], APIRoute]:
+    """Return membership routes after verifying they are included by the NIAM router.
+
+    FastAPI 0.139 keeps nested routers as lazy ``_IncludedRouter`` objects until
+    the application is assembled, so the API router's direct route list no longer
+    contains the endpoint objects themselves.
+    """
+    assert any(
+        getattr(route, "original_router", None) is memberships.router
+        for route in router.routes
+    )
+
     routes: dict[tuple[str, str], APIRoute] = {}
     for route, path in _iter_api_routes(router.routes):
         if path.startswith("/niam/memberships"):

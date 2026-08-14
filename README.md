@@ -11,6 +11,8 @@
 Arabic-first healthcare platform for Iraqi medical laboratories — an open-source
 **Laboratory Information System (LIS)** and national healthcare platform.
 
+**New here?** Begin with the concise [Start Here guide](docs/START_HERE.md) for the supported runtime path, repository map, and contribution checks.
+
 > **Product direction:** GULA LIS is the primary product and operating mission of GULA Platform. The web application, Android application, and iOS application are unified clients of the same account, organization context, laboratory workflow, and audit policy. Other healthcare domains remain extensible workspaces rather than separate products.
 
 The primary workflow covers patient registration, laboratory orders, specimen receipt and barcode chain of custody, result entry, physician review, controlled release, critical alerts, reporting, and auditable administration. Arabic and English are first-class interface languages, including full RTL support for Arabic.
@@ -143,7 +145,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for a detailed architecture description.
 | Cache | Redis 7 |
 | Gateway | nginx (api-gateway) |
 | Auth | JWT (HS256) + RBAC (9 roles x 13 permissions) |
-| Frontend | React + TypeScript (frontend-v2/, frontend-v3/) |
+| Frontend | React + TypeScript (`frontend-v3/`) |
 | Device Bridge | LabLink-Core (ASTM/HL7 instrument integration) |
 | Monitoring | Prometheus, Grafana, Loki |
 | Container | Docker Compose, Kubernetes, Helm |
@@ -196,8 +198,8 @@ cp .env.example .env
 cd backend && uvicorn app.main:app --reload --port 8000
 
 # Frontend
-cd frontend-v2
-npm install
+cd frontend-v3
+npm ci
 npm run dev
 ```
 
@@ -211,7 +213,7 @@ ruff check backend/app/   # lint Python
 mypy backend/app/         # type check
 
 # Frontend
-cd frontend-v2 && npm run dev
+cd frontend-v3 && npm run dev
 
 # Pre-commit hooks
 pip install pre-commit && pre-commit install
@@ -233,7 +235,7 @@ pytest tests/ -m security      # security tests
 pytest tests/ -m kernel        # kernel subsystem tests
 
 # Frontend tests
-cd frontend-v2 && npm test
+cd frontend-v3 && npm test
 
 # Load testing
 make load-test
@@ -280,9 +282,9 @@ gula-platform/
 │       ├── security/     # Auth, JWT, RBAC, ABAC
 │       ├── kernel/       # DI, events, plugins
 │       └── audit/        # Audit logging
-├── frontend/             # React SPA (legacy)
-├── frontend-v2/          # React + Firebase (current)
-├── frontend-v3/          # React + TypeScript (next-gen)
+├── frontend-v3/          # React + TypeScript primary web client
+├── apps/                 # Additional product surfaces and UI experiments
+├── client/               # Shared client assets and entry resources
 ├── services/             # Microservices (future)
 ├── mobile/               # Android, iOS, Flutter Desktop
 ├── docs/                 # ADRs, specs, reference
