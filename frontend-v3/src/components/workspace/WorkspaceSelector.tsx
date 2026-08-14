@@ -69,11 +69,11 @@ export function WorkspaceSelector({ onActiveWorkspace }: WorkspaceSelectorProps)
   }
 
   return (
-    <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs dark:border-white/10 dark:bg-white/[0.04]">
+    <label className="flex items-center gap-2 rounded-xl border border-teal-100 bg-teal-50/60 px-2.5 py-1.5 text-xs shadow-sm dark:border-teal-900/50 dark:bg-teal-950/20">
       <span className="sr-only">{t("workspace.selector", "مساحات العمل")}</span>
-      <span className="font-semibold text-muted-foreground" aria-hidden="true">مساحتي</span>
+      <span className="font-semibold text-[#0D9488] dark:text-teal-200" aria-hidden="true">مساحتي</span>
       <select
-        className="max-w-44 bg-transparent font-bold outline-none"
+        className="max-w-44 bg-transparent font-bold outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
         value={activeWorkspaceId}
         onChange={(event) => void handleSwitch(event.target.value)}
         aria-label="اختيار مساحة العمل"
