@@ -79,4 +79,4 @@
 
 آخر تحديث للملاحظات: 2026-08-14
 
-作者: Manus AI
+作者: GULA Platform Team

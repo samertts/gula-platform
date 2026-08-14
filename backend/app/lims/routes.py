@@ -20,7 +20,7 @@ from app._compat import UTC
 from app.database import get_db
 from app.models.lab_order import LabOrder
 from app.models.lab_user import LabUser
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 from app.services.audit_service import log_action
 
 from . import models as lims_models
@@ -47,6 +47,18 @@ from .services import (
 )
 
 router = APIRouter(prefix="/lims", tags=["lims"])
+
+
+class FHIRJSONResponse(JSONResponse):
+    """FHIR JSON response that prevents clinical export caching."""
+
+    media_type = "application/fhir+json"
+
+    def __init__(self, content, **kwargs):
+        headers = dict(kwargs.pop("headers", None) or {})
+        headers.setdefault("Cache-Control", "no-store, no-cache, must-revalidate")
+        headers.setdefault("Pragma", "no-cache")
+        super().__init__(content=content, headers=headers, **kwargs)
 
 
 # ===========================================================================
@@ -183,7 +195,7 @@ def _list_to_dict(qs, exclude: set | None = None) -> list[dict]:
 
 @router.get("/capabilities")
 def get_interoperability_capabilities(
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
 ):
     """Return the supported, tenant-scoped interoperability contract.
 
@@ -789,10 +801,10 @@ def order_fhir(
     return order_to_fhir_service_request(lims_order)
 
 
-@router.get("/orders/{order_id}/fhir-bundle", response_class=JSONResponse)
+@router.get("/orders/{order_id}/fhir-bundle", response_class=FHIRJSONResponse)
 def order_fhir_bundle(
     order_id: int,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_permission("orders:read")),
     db: Session = Depends(get_db),
 ):
     """Export one tenant-scoped order as a FHIR R4 collection Bundle.
@@ -811,7 +823,9 @@ def order_fhir_bundle(
     if not lims_order:
         raise HTTPException(404, detail="LIMS order not found")
 
-    resources = [order_to_fhir_service_request(lims_order)]
+    service_request = order_to_fhir_service_request(lims_order)
+    service_request.pop("subject", None)
+    resources = [service_request]
     specimens = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.order_id == lims_order.order_id,
         lims_models.Specimen.lab_id == lab_id,
@@ -826,7 +840,9 @@ def order_fhir_bundle(
         lims_models.Result.is_deleted.is_(False),
     ).order_by(lims_models.Result.id).all()
     for result in results:
-        resources.append(result_to_fhir(result))
+        observation = result_to_fhir(result)
+        observation.pop("subject", None)
+        resources.append(observation)
 
     log_action(
         db,
@@ -1046,11 +1062,8 @@ def release_result(
     specimen = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.id == result.specimen_id,
     ).first()
-    if specimen:
-        try:
-            SpecimenService.transition(db, specimen, "released", current_user.id)
-        except Exception:
-            pass  # Already in released or later state
+    if specimen and specimen.status not in {"released", "archived", "disposed"}:
+        SpecimenService.transition(db, specimen, "released", current_user.id)
 
     db.commit()
     return release

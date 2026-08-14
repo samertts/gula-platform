@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from fastapi import HTTPException
-
 from app.lims import models as lims_models
 from app.lims.routes import (
     InstrumentCreateRequest,
@@ -17,6 +15,7 @@ from app.lims.routes import (
 from app.models.audit_log import AuditLog
 from app.models.lab_order import LabOrder
 from app.models.patient import Patient
+from fastapi import HTTPException
 
 
 @pytest.fixture()
@@ -154,6 +153,7 @@ def test_order_fhir_bundle_is_tenant_scoped_and_audited(db, lims_fixture):
 
     resources = [entry["resource"] for entry in bundle["entry"]]
     assert bundle["resourceType"] == "Bundle"
+    assert all("subject" not in resource for resource in resources)
     assert bundle["type"] == "collection"
     assert [resource["resourceType"] for resource in resources] == [
         "ServiceRequest",
