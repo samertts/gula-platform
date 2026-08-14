@@ -120,3 +120,7 @@ After the Android dependency-submission workflow succeeded, the authenticated De
 ### Dependabot alert #469 detail
 
 The authenticated alert reports `com.google.guava:guava` **30.1.1-jre** introduced by `com.squareup.moshi:moshi-kotlin-codegen:1.15.2`. The patched floor is `32.0.0-android`; maintainers recommend **32.0.1** because 32.0.0 can break Windows functionality. The alert is CVE-2023-2976 / GHSA-7g45-4rm6-3mm3 (CWE-379/CWE-552). No alert action was performed.
+
+## Guava classifier follow-up — 2026-08-14
+
+The first Guava remediation pinned `32.0.1-android`, which is above the Dependabot patched floor but caused the Android CI `processDebugMainManifest` task to fail because `Suppliers$MemoizingSupplier` did not implement the requested `java.util.function.Supplier` interface. The constraint was corrected to **`com.google.guava:guava:32.0.1-jre`**, which remains above the patched floor and preserves the JRE classifier expected by Android/Gradle tooling. Local `buildEnvironment` resolves all Guava requests to `32.0.1-jre`; local `lintDebug` could not run because the sandbox has no Android SDK, so CI must be rerun for the authoritative lint check.
