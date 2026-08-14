@@ -88,6 +88,8 @@ def _service_with(
         facility_resource_id=31,
         status="active",
         mapping_version=7,
+        niam_organization_id="NIAM-ORG-1",
+        niam_facility_id="NIAM-FAC-1",
     )
     session = _ScriptedSession(
         [
