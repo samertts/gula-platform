@@ -13,3 +13,6 @@ paths = [
   '''^frontend-v3/src/test/fixtures/''',
   '''^mobile/.*/test/fixtures/'''
 ]
+regexes = [
+  '''6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw='''
+]
