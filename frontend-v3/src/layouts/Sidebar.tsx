@@ -132,8 +132,8 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       <aside
         aria-label="التنقل الرئيسي"
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l bg-card shadow-xl transition-transform duration-200 md:static md:z-auto md:shadow-none",
-          mobileOpen ? "translate-x-0" : "translate-x-full md:translate-x-0",
+          "fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l bg-card shadow-xl transition-[transform,visibility] duration-200 md:static md:z-auto md:visible md:pointer-events-auto md:shadow-none",
+          mobileOpen ? "translate-x-0 visible pointer-events-auto" : "translate-x-full invisible pointer-events-none md:translate-x-0",
           collapsed && "md:w-[72px]",
         )}
       >

@@ -45,8 +45,44 @@
   * {
     @apply border-border;
   }
+  :root {
+    color-scheme: light;
+    text-rendering: optimizeLegibility;
+  }
+
+  :root.dark {
+    color-scheme: dark;
+  }
+
+  html {
+    min-width: 320px;
+    overflow-x: clip;
+    background: var(--background);
+  }
+
   body {
     @apply bg-background text-foreground;
+    min-width: 320px;
+    min-height: 100dvh;
+    overflow-x: clip;
     font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a,
+  select,
+  input,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  select:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
   }
 }

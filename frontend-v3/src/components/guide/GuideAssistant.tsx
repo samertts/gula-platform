@@ -34,7 +34,7 @@ export function GuideAssistant() {
   );
 
   return (
-    <aside className="fixed bottom-5 end-5 z-50" dir={isArabic ? "rtl" : "ltr"} aria-live="polite">
+    <aside className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] end-3 z-50 sm:bottom-5 sm:end-5" dir={isArabic ? "rtl" : "ltr"} aria-live="polite">
       {open && (
         <section id="gula-guide-panel" className="mb-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-primary/20 bg-card p-4 shadow-xl" aria-label={isArabic ? "المساعد الإرشادي" : "Guide assistant"}>
           <div className="mb-3 flex items-start justify-between gap-3">
@@ -67,7 +67,7 @@ export function GuideAssistant() {
         </section>
       )}
       <button
-        className="flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+        className="flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-controls="gula-guide-panel"

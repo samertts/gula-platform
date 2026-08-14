@@ -97,7 +97,7 @@ export function LoginPage() {
   return (
     <section className="overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-white shadow-[0_24px_70px_-40px_rgba(15,23,42,0.45)] dark:border-white/10 dark:bg-slate-950">
       <div className="grid lg:grid-cols-[0.92fr_1.08fr]">
-        <aside className="relative overflow-hidden bg-[#10344a] p-7 text-white sm:p-10 lg:min-h-[650px]">
+        <aside className="relative hidden overflow-hidden bg-[#10344a] p-7 text-white sm:p-10 lg:block lg:min-h-[650px]">
           <div className="absolute inset-0 opacity-40" aria-hidden="true" style={{ backgroundImage: "radial-gradient(circle at 12% 10%, rgba(104, 211, 214, 0.28), transparent 28%), radial-gradient(circle at 85% 85%, rgba(38, 132, 180, 0.36), transparent 34%)" }} />
           <div className="absolute -left-24 bottom-4 h-64 w-64 rounded-full border border-white/10" aria-hidden="true" />
           <div className="absolute -right-16 top-28 h-40 w-40 rounded-full border border-cyan-100/20" aria-hidden="true" />
@@ -155,7 +155,7 @@ export function LoginPage() {
           </div>
         </aside>
 
-        <div className="p-6 sm:p-9 lg:p-12">
+        <div className="p-5 sm:p-9 lg:p-12">
           <div className="mx-auto max-w-md">
             <div className="mb-7">
               <p className="text-xs font-bold uppercase tracking-[0.15em] text-primary">GULA · {t("loginPage.secureAccess")}</p>

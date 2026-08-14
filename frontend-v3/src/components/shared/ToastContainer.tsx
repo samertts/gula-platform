@@ -14,14 +14,14 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 end-4 z-[100] flex flex-col gap-2 max-w-sm">
+    <div className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] end-3 z-[100] flex max-w-[calc(100vw-1.5rem)] flex-col gap-2 sm:bottom-4 sm:end-4 sm:max-w-sm">
       {toasts.map((t) => {
         const Icon = iconMap[t.variant === "destructive" ? "destructive" : t.variant === "success" ? "success" : "default"];
         return (
           <div
             key={t.id}
             className={cn(
-              "flex items-start gap-3 rounded-lg border p-4 shadow-lg bg-background text-foreground animate-in slide-in-from-right-full duration-300",
+              "flex items-start gap-3 rounded-lg border bg-background p-4 text-foreground shadow-lg animate-in slide-in-from-right-full duration-300",
               t.variant === "destructive" && "border-destructive/50 text-destructive",
               t.variant === "success" && "border-emerald-500/50 text-emerald-700 dark:text-emerald-400",
             )}
@@ -31,7 +31,7 @@ export function ToastContainer() {
               {t.title && <p className="text-sm font-semibold">{t.title}</p>}
               {t.description && <p className="text-sm opacity-90">{t.description}</p>}
             </div>
-            <button onClick={() => dismiss(t.id)} className="shrink-0 rounded-sm opacity-70 hover:opacity-100">
+              <button type="button" onClick={() => dismiss(t.id)} aria-label="إغلاق الإشعار" className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg opacity-70 hover:bg-muted hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
               <X className="h-4 w-4" />
             </button>
           </div>

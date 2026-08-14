@@ -166,3 +166,53 @@ The remote `ci: add hardened staging verification path` commit introduced high-e
 ### Explicit netty-handler-proxy pin
 
 The last low Dependabot alert remained because the previous Netty constraints covered `netty-handler`, `netty-codec-*`, but not `netty-handler-proxy`. Both `mobile/android/build.gradle.kts` root `buildscript`/`allprojects` resolution strategies and `mobile/android/app/build.gradle.kts` now explicitly force `io.netty:netty-handler-proxy:4.1.136.Final`, above the alert's patched floor of 4.1.133.Final.
+
+## Final Dependabot verification — 2026-08-14
+
+After the explicit `netty-handler-proxy:4.1.136.Final` pin and successful Android dependency-submission workflow, the authenticated GitHub Dependabot dashboard reports **0 open / 380 closed** alerts and explicitly states that there are no open alerts. This closes the final low alert #295 without dismissing it. The UI labels the checked snapshot as `f6cb9df`, which is a GitHub display lag; the current pushed `main` is `21d31e35` and the dependency-submission workflow succeeded on that lineage.
+
+## CodeQL dashboard synchronization issue — 2026-08-14
+
+After successful `CodeQL Advanced` and `CodeQL Analysis` runs on `21d31e35`, the authenticated Code Scanning dashboard still reports **2,020 open / 650 closed** and shows the banner **“CodeQL is reporting errors”**. The visible first page still contains legacy alerts #2634/#2633/#336/#335 (SSRF), #2672/#2671 (weak hashing), and #2667 (quality-gate clear-text logging), plus Scorecard findings. This is inconsistent with the successful workflow conclusions and indicates a CodeQL upload/status or duplicate-analysis synchronization problem; it must not be represented as 100% CodeQL remediation until the source of the dashboard errors is resolved.
+
+## CodeQL status-page diagnosis — 2026-08-14
+
+The CodeQL status page identifies the source of the dashboard inconsistency: the repository has multiple legacy configurations under the `CodeQL` tool. The selected `/language:java-kotlin` configuration reports **3 errors**, including **“CodeQL exited with errors”** and **“No build command found”**, with its last scan at `9d9120bd` (nine days old). Other legacy configurations (`language:c-cpp`, `language:swift`, `language:actions`, `language:ruby`) also show stale scans. The current `CodeQL Advanced` and `CodeQL Analysis` workflows can be green while these orphaned legacy configurations keep their historical alerts open. This is a GitHub configuration cleanup issue, not evidence that the repaired source paths are still vulnerable.
+
+## CodeQL legacy configuration cleanup started — 2026-08-14
+
+With user confirmation, the stale `/language:java-kotlin` CodeQL configuration was deleted from the authenticated repository settings. The configuration had three recorded errors and a stale scan. The status page may require refresh before the sidebar reflects removal; remaining legacy configurations will be reviewed and removed only if they are stale/erroring, while the current Actions workflow configuration remains.
+
+### CodeQL configuration triage correction
+
+During cleanup, `language:c-cpp` was inspected and confirmed as **working as expected** with only a build-mode suggestion; it will be preserved. The authenticated sidebar shows `language:swift` and `language:ruby` as the remaining red/error configurations, while `language:actions` is green. Only the red/error configurations will be deleted.
+
+### Removed stale CodeQL Swift configuration
+
+The confirmed deletion of the stale `/language:swift` configuration completed. It had three errors, including `CodeQL exited with errors` and `No Xcode project or workspace found`. Working `language:c-cpp` and `language:actions` configurations remain untouched.
+
+### CodeQL configuration propagation state
+
+GitHub displayed the notice **“Changes to code scanning configurations saved. This might take a while to propagate.”** after the Swift deletion. During propagation, the summary still showed errors in two configurations and the sidebar still rendered stale entries. This is expected UI lag; the remaining red Ruby configuration will be opened and removed after the list stabilizes. Working C/C++ and Actions configurations remain preserved.
+
+### Removed stale CodeQL Ruby configuration
+
+The confirmed deletion of `/language:ruby` completed. It had three errors, including `CodeQL exited with errors` and `No Ruby code found`, and was the final red legacy configuration. The working `language:c-cpp` and `language:actions` configurations were retained.
+
+## CodeQL propagation after legacy cleanup — 2026-08-14
+
+After deleting the stale Java/Kotlin, Swift, and Ruby configurations, the Code Scanning dashboard changed from **“CodeQL is reporting errors”** to **“CodeQL is reporting warnings.”** The legacy red configurations disappeared from the sidebar; the working C/C++ and Actions configurations remain. Filtering the dashboard to `is:open branch:main tool:CodeQL` currently shows **1,928 open / 374 closed** historical CodeQL findings, including old SSRF/weak-hash/logging alerts. These findings are now separated from configuration failures; the count still requires a later CodeQL alert-by-alert remediation or GitHub stale-alert retirement pass and must not be called zero.
+
+## Mobile/PWA baseline visual audit — 2026-08-14
+
+A local Playwright audit of the real `frontend-v3` dev build checked 320, 360, 375, 390, 412, 430, 768, 1024, 1280, and 1440 pixel viewports. Login had no horizontal overflow on all tested widths. Dashboard had **horizontal overflow at 320–390px** (document width 404px), clearing only at 412px and above. DOM tracing attributes the overflow to the closed mobile sidebar being translated off the right edge while retaining its full 288px descendant layout; header workspace/status text also exceeds constrained phone space. The 320px dashboard capture shows the 404px canvas, crowded header controls, a demo notice, and guide launcher with no safe-area offsets or content reservation. The login capture is readable and functionally complete but unnecessarily long because the decorative brand pane precedes the operational access form on mobile.
+
+P0 findings: (1) closed drawer contributes to unintended horizontal overflow, (2) generated PWA service worker runtime-caches `/api/**` responses for 24 hours, which can cache sensitive patient/clinical responses, (3) manifest references a missing `screenshot-desktop.png`.
+
+P1 findings: (1) no mobile primary navigation/bottom-safe-area content reservation, (2) header can crowd at small widths, (3) Dialog lacks focus trap, focus restore, safe-area spacing, and scroll containment, (4) global guide/toasts lack safe-area offsets and mutual collision handling, (5) shared DataTable provides only a generic horizontal-scroll strategy and undersized pagination/touch targets.
+
+## Mobile/PWA remediation verification — 2026-08-14
+
+After the shell changes, the repeated viewport audit passed with **no horizontal overflow at 320, 360, 375, 390, 412, 430, 768, 1024, 1280, or 1440px**. The 320px dashboard capture now fits the viewport, reserves the bottom safe-area region, and exposes a five-slot mobile navigation bar (`الرئيسية`, `المرضى`, `الطلبات`, `النتائج`, `المزيد`) without covering the main surface. The mobile login capture now hides the duplicated decorative marketing pane below the desktop breakpoint, placing the citizen/institution choice, login form, and isolated demo launcher in a shorter, readable flow.
+
+Automated evidence: frontend typecheck passed; ESLint passed after ignoring only generated `dev-dist`; 34 unit tests passed; the new Playwright mobile regression passed for 320px, 390px, and desktop using Chromium. Generated PWA checks passed with no `api-cache`, `NetworkFirst`, or `/api/` runtime-cache rule and no missing screenshot reference in the generated manifest.
