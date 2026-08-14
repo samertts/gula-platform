@@ -19,6 +19,16 @@ from .administrative_structure import (
 )
 from .assignment import Assignment, AssignmentStatus
 from .audit import IdentityAuditEntry
+from .authorization import (
+    CatalogStatus,
+    Permission,
+    PermissionSensitivity,
+    Role,
+    RoleAssignment,
+    RoleAssignmentStatus,
+    RolePermission,
+    RoleScopeType,
+)
 from .citizen_relationship import (
     CitizenRelationship,
     CitizenRelationshipSource,
@@ -63,6 +73,7 @@ __all__ = [
     "AccountType",
     "Assignment",
     "AssignmentStatus",
+    "CatalogStatus",
     "CertificateAuthority",
     "CertificateRevocationList",
     "CitizenRelationship",
@@ -103,10 +114,17 @@ __all__ = [
     "OrganizationRepresentative",
     "OrganizationStatus",
     "OwnershipStatus",
+    "Permission",
+    "PermissionSensitivity",
     "Person",
     "ProfessionalLicense",
     "ProfessionalType",
     "RepresentativeStatus",
+    "Role",
+    "RoleAssignment",
+    "RoleAssignmentStatus",
+    "RolePermission",
+    "RoleScopeType",
     "UserSession",
     "VerificationRecord",
     "VerificationRecordStatus",
