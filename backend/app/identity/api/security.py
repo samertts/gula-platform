@@ -54,7 +54,9 @@ async def _require_security_permission(
         ),
     )
     if not decision.allowed:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Security authorization denied")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Security authorization denied"
+        )
 
 
 def _serialize(incident: SecurityIncident) -> dict[str, Any]:
@@ -83,10 +85,18 @@ async def list_incidents(
     offset: int = Query(default=0, ge=0),
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
-):
-    await _require_security_permission(actor, db, organization_id=organization_id, permission_key="security.incident.read")
-    incidents = await IncidentService(db).list(organization_id=organization_id, limit=limit, offset=offset)
-    return {"incidents": [_serialize(incident) for incident in incidents], "limit": limit, "offset": offset}
+) -> dict[str, Any]:
+    await _require_security_permission(
+        actor, db, organization_id=organization_id, permission_key="security.incident.read"
+    )
+    incidents = await IncidentService(db).list(
+        organization_id=organization_id, limit=limit, offset=offset
+    )
+    return {
+        "incidents": [_serialize(incident) for incident in incidents],
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.post("/incidents", status_code=status.HTTP_201_CREATED)
@@ -94,8 +104,10 @@ async def create_incident(
     body: IncidentCreateRequest,
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
-):
-    await _require_security_permission(actor, db, organization_id=body.organization_id, permission_key="security.incident.manage")
+) -> dict[str, Any]:
+    await _require_security_permission(
+        actor, db, organization_id=body.organization_id, permission_key="security.incident.manage"
+    )
     try:
         incident = await IncidentService(db).create(
             actor_id=actor.account.id,
@@ -105,7 +117,9 @@ async def create_incident(
             affected_scope=body.affected_scope,
         )
     except IncidentError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
     return _serialize(incident)
 
 
@@ -115,13 +129,20 @@ async def transition_incident(
     body: IncidentTransitionRequest,
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict[str, Any]:
     incident = await db.get(SecurityIncident, incident_id)
     if incident is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Incident not found")
     if incident.organization_id is None:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Incident scope unavailable")
-    await _require_security_permission(actor, db, organization_id=incident.organization_id, permission_key="security.incident.manage")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Incident scope unavailable"
+        )
+    await _require_security_permission(
+        actor,
+        db,
+        organization_id=incident.organization_id,
+        permission_key="security.incident.manage",
+    )
     try:
         updated = await IncidentService(db).transition(
             actor_id=actor.account.id,
@@ -141,8 +162,10 @@ async def security_dashboard(
     organization_id: str = Query(min_length=1, max_length=26),
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
-):
-    await _require_security_permission(actor, db, organization_id=organization_id, permission_key="security.incident.read")
+) -> dict[str, Any]:
+    await _require_security_permission(
+        actor, db, organization_id=organization_id, permission_key="security.incident.read"
+    )
     result = await db.execute(
         select(SecurityIncident.status, SecurityIncident.severity, func.count(SecurityIncident.id))
         .where(SecurityIncident.organization_id == organization_id)

@@ -97,7 +97,10 @@ class ClinicalGatewayContextResolver:
                 Membership.status == MembershipStatus.active.value,
                 Membership.is_active.is_(True),
                 or_(Membership.workspace_id.is_(None), Membership.workspace_id == workspace.id),
-                or_(Membership.facility_id.is_(None), Membership.facility_id == workspace.facility_id),
+                or_(
+                    Membership.facility_id.is_(None),
+                    Membership.facility_id == workspace.facility_id,
+                ),
                 or_(Membership.expires_at.is_(None), Membership.expires_at > now),
             )
             .all()
@@ -164,7 +167,9 @@ class ClinicalGatewayContextResolver:
             legacy_lab_id=legacy_user.lab_id,
             legacy_lab_user_id=legacy_user.id,
             operational_facility_id=binding.facility_resource_id,
-            operational_organization_id=self._operational_organization_id(binding.facility_resource_id),
+            operational_organization_id=self._operational_organization_id(
+                binding.facility_resource_id
+            ),
             tenant_id=self._tenant_id(binding.facility_resource_id),
             niam_organization_id=workspace.organization_id,
             niam_facility_id=workspace.facility_id,
@@ -187,7 +192,7 @@ class ClinicalGatewayContextResolver:
         facility = self.db.get(Facility, facility_resource_id)
         if facility is None or not facility.is_active:
             raise ClinicalGatewayBlocked("facility_mismatch")
-        return facility.organization_id
+        return int(facility.organization_id)
 
     def _tenant_id(self, facility_resource_id: int) -> int:
         from app.models.organization import Organization
@@ -196,4 +201,4 @@ class ClinicalGatewayContextResolver:
         organization = self.db.get(Organization, organization_id)
         if organization is None or not organization.is_active or organization.tenant_id is None:
             raise ClinicalGatewayBlocked("cross_tenant_scope")
-        return organization.tenant_id
+        return int(organization.tenant_id)

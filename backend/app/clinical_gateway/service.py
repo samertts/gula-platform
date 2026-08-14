@@ -5,8 +5,12 @@ import hashlib
 import hmac
 import json
 import os
+from collections.abc import Awaitable
 from dataclasses import dataclass
+from typing import TypeVar
 from uuid import UUID
+
+from sqlalchemy.orm import Session
 
 from app.clinical_gateway.context import (
     ClinicalGatewayBlocked,
@@ -38,6 +42,9 @@ class ClinicalGatewayInvalidCursor(ValueError):
     """Raised when a cursor is invalid, expired by scope, or tampered with."""
 
 
+_ResultT = TypeVar("_ResultT")
+
+
 @dataclass(frozen=True)
 class ClinicalReadResult:
     items: list[PatientRead] | list[OrderRead]
@@ -54,7 +61,12 @@ class ClinicalCursorCodec:
     def encode(self, *, resource: str, workspace_id: str, limit: int, offset: int) -> str:
         if not self._secret:
             raise ClinicalGatewayInvalidCursor("cursor signing key unavailable")
-        payload = {"resource": resource, "workspace_id": workspace_id, "limit": limit, "offset": offset}
+        payload = {
+            "resource": resource,
+            "workspace_id": workspace_id,
+            "limit": limit,
+            "offset": offset,
+        }
         raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
         encoded = base64.urlsafe_b64encode(raw).decode().rstrip("=")
         signature = hmac.new(self._secret.encode(), encoded.encode(), hashlib.sha256).hexdigest()
@@ -72,15 +84,16 @@ class ClinicalCursorCodec:
             payload = json.loads(base64.urlsafe_b64decode(padded.encode()))
         except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise ClinicalGatewayInvalidCursor("invalid cursor") from exc
+        offset = payload.get("offset")
         if (
             payload.get("resource") != resource
             or payload.get("workspace_id") != workspace_id
             or payload.get("limit") != limit
-            or not isinstance(payload.get("offset"), int)
-            or payload["offset"] < 0
+            or not isinstance(offset, int)
+            or offset < 0
         ):
             raise ClinicalGatewayInvalidCursor("cursor scope mismatch")
-        return payload["offset"]
+        return offset
 
 
 class ClinicalGatewayService:
@@ -89,7 +102,7 @@ class ClinicalGatewayService:
     PERMISSIONS = {"patients": "patients.read", "orders": "orders.read"}
     RESOURCE_TYPES = {"patients": "clinical_patient", "orders": "clinical_order"}
 
-    def __init__(self, db) -> None:
+    def __init__(self, db: Session) -> None:
         self.db = db
         self.facade = SyncSessionAsyncFacade(db)
         self.audit = CanonicalAuditService(self.facade)
@@ -202,7 +215,14 @@ class ClinicalGatewayService:
             total=result["total"],
         )
 
-    def _authorize_and_audit(self, *, context: ClinicalGatewayContext, resource: str, request_id: UUID, correlation_id: UUID) -> None:
+    def _authorize_and_audit(
+        self,
+        *,
+        context: ClinicalGatewayContext,
+        resource: str,
+        request_id: UUID,
+        correlation_id: UUID,
+    ) -> None:
         request = AuthorizationRequest(
             subject_account_id=context.actor.account.id,
             action="read",
@@ -281,14 +301,23 @@ class ClinicalGatewayService:
         if params.cursor is None:
             return 0
         try:
-            return self.cursor.decode(cursor=params.cursor, resource=resource, workspace_id=workspace_id, limit=params.limit)
+            return self.cursor.decode(
+                cursor=params.cursor,
+                resource=resource,
+                workspace_id=workspace_id,
+                limit=params.limit,
+            )
         except ClinicalGatewayInvalidCursor as exc:
             raise ClinicalGatewayBlocked("invalid_cursor") from exc
 
-    def _next_cursor(self, *, resource: str, workspace_id: str, limit: int, offset: int, total: int) -> str | None:
+    def _next_cursor(
+        self, *, resource: str, workspace_id: str, limit: int, offset: int, total: int
+    ) -> str | None:
         if offset + limit >= total:
             return None
-        return self.cursor.encode(resource=resource, workspace_id=workspace_id, limit=limit, offset=offset + limit)
+        return self.cursor.encode(
+            resource=resource, workspace_id=workspace_id, limit=limit, offset=offset + limit
+        )
 
     @staticmethod
     def _workspace_context(context: ClinicalGatewayContext) -> dict[str, str | None]:
@@ -300,7 +329,7 @@ class ClinicalGatewayService:
         }
 
     @staticmethod
-    def _run(awaitable):
+    def _run(awaitable: Awaitable[_ResultT]) -> _ResultT:
         import asyncio
 
         return asyncio.run(awaitable)

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
+from sqlalchemy.engine import Result
 from sqlalchemy.orm import Session
 
 
@@ -17,13 +18,13 @@ class SyncSessionAsyncFacade:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    async def execute(self, statement: Any):
-        return self._session.execute(statement)
+    async def execute(self, statement: Any) -> Result[Any]:
+        return cast(Result[Any], self._session.execute(statement))
 
-    async def scalar(self, statement: Any):
+    async def scalar(self, statement: Any) -> Any:
         return self._session.scalar(statement)
 
-    async def get(self, entity: Any, identity: Any):
+    async def get(self, entity: Any, identity: Any) -> Any:
         return self._session.get(entity, identity)
 
     def add(self, instance: Any) -> None:
