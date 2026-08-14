@@ -86,7 +86,7 @@ const navigationGroups = [
 ] as const;
 
 export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
-  const { user, logout, demoMode } = useAuth();
+  const { user, logout, demoMode, effectivePermissions } = useAuth();
   const { isRTL } = useLocale();
   const { t } = useTranslation();
   const location = useLocation();
@@ -95,12 +95,15 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const renderItems = (groupKey: keyof typeof NAV_ITEMS) => {
     const items = NAV_ITEMS[groupKey] ?? [];
     return items
-      .filter(
-        (item) =>
-          !item.permissions ||
-          !demoMode ||
-          item.permissions.some((permission) => hasPermission(user?.role ?? "citizen", permission)),
-      )
+      .filter((item) => {
+        if (!item.permissions) return true;
+        if (demoMode) {
+          return item.permissions.some((permission) => hasPermission(user?.role ?? "citizen", permission));
+        }
+        // Live capabilities are UX hints only. The server remains the authorization boundary.
+        const reflected = Object.values(effectivePermissions).flat();
+        return reflected.length === 0 || item.permissions.some((permission) => reflected.includes(permission));
+      })
       .map((item) => {
         const Icon = iconMap[item.icon] || Activity;
         const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
