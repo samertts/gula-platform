@@ -95,7 +95,15 @@ def test_interoperability_capabilities_are_explicit_and_tenant_scoped(lims_fixtu
         "Observation",
         "ServiceRequest",
         "Specimen",
+        "Patient",
+        "Parameters",
+        "DocumentReference",
+        "Bundle",
     }
+    transactions = {item["id"]: item for item in data["ihe"]["transactions"]}
+    assert set(transactions) == {"ITI-65", "ITI-67", "ITI-68", "ITI-83"}
+    assert data["ihe"]["controls"]["organisation_bound_service_account"] is True
+    assert data["ihe"]["controls"]["tenant_scoped_queries"] is True
     assert data["safety"]["tenant_isolation"] is True
 
 
