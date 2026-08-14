@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, CardContent, CardHeader, CardTitle, DataTable, Input } from "@/components/ui";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { WorkspaceReadBlockedError, workspaceScopedReads } from "@/api/workspaceScopedReads";
+import type { ClinicalOrderRead } from "@/api/workspaceScopedReads";
 import { ClipboardList, Search, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { LabOrder } from "@/types";
 import { formatDate } from "@/lib/utils";
 
 const statusVariant: Record<string, "default" | "secondary" | "destructive" | "outline" | "success" | "warning"> = {
@@ -33,10 +33,10 @@ export function OrdersPage() {
   });
   const blockedMessage = query.error instanceof WorkspaceReadBlockedError ? query.error.message : null;
 
-  const columns: ColumnDef<LabOrder>[] = [
-    { accessorKey: "order_id", header: "رقم الطلب" },
-    { accessorKey: "patient_name", header: "اسم المريض" },
-    { accessorKey: "doctor_name", header: "اسم الطبيب" },
+  const columns: ColumnDef<ClinicalOrderRead>[] = [
+    { accessorKey: "id", header: "رقم الطلب" },
+    { accessorKey: "patient_display_name", header: "اسم المريض" },
+    { accessorKey: "practitioner_display_name", header: "اسم الطبيب" },
     {
       accessorKey: "status",
       header: "الحالة",
@@ -47,9 +47,9 @@ export function OrdersPage() {
       ),
     },
     {
-      accessorKey: "results_count",
+      accessorKey: "test_count",
       header: "عدد الفحوصات",
-      cell: ({ row }) => row.original.results_count ?? "-",
+      cell: ({ row }) => row.original.test_count ?? "-",
     },
     {
       accessorKey: "created_at",
@@ -62,7 +62,7 @@ export function OrdersPage() {
     <div
       className="mx-auto max-w-7xl space-y-6"
       data-contract-id="orders.read"
-      data-permission="orders:read"
+      data-permission="orders.read"
       data-workspace-context="required"
     >
       <section className="flex flex-col gap-4 rounded-[1.5rem] border border-slate-200/80 bg-white p-5 shadow-[0_18px_44px_-36px_rgba(15,23,42,0.48)] dark:border-white/10 dark:bg-slate-900/70 sm:flex-row sm:items-end sm:justify-between sm:p-6">
