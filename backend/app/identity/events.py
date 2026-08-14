@@ -1,12 +1,14 @@
+from collections.abc import Callable
 from typing import Any
+
+IdentityEventHandler = Callable[[dict[str, Any]], None]
 
 
 class IdentityEventBus:
-
     def __init__(self) -> None:
-        self._handlers: dict[str, list[callable]] = {}
+        self._handlers: dict[str, list[IdentityEventHandler]] = {}
 
-    def subscribe(self, event_type: str, handler: callable) -> None:
+    def subscribe(self, event_type: str, handler: IdentityEventHandler) -> None:
         if event_type not in self._handlers:
             self._handlers[event_type] = []
         self._handlers[event_type].append(handler)
@@ -20,16 +22,16 @@ class IdentityEventBus:
 event_bus = IdentityEventBus()
 
 
-def on_person_created(handler: callable) -> callable:
+def on_person_created(handler: IdentityEventHandler) -> IdentityEventHandler:
     event_bus.subscribe("person.created", handler)
     return handler
 
 
-def on_account_created(handler: callable) -> callable:
+def on_account_created(handler: IdentityEventHandler) -> IdentityEventHandler:
     event_bus.subscribe("account.created", handler)
     return handler
 
 
-def on_identity_verified(handler: callable) -> callable:
+def on_identity_verified(handler: IdentityEventHandler) -> IdentityEventHandler:
     event_bus.subscribe("identity.verified", handler)
     return handler
