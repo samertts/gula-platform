@@ -6,7 +6,7 @@
 
 **Base for review:** `feat/iam-all-phases-test-hardening`
 
-**Status:** Implementation complete locally; pending commit, push, Pull Request review, and remote CI.
+**Status:** Implementation committed and pushed in PR #168; IAM hardening gates pass remotely; review and merge remain manual.
 
 ## Executive Summary
 
@@ -54,7 +54,11 @@ The final local gate was run after the Sidebar and AuthContext changes. The comm
 | Frontend typecheck | **PASS** | `npm run typecheck` completed successfully. |
 | Frontend production build | **PASS** | Vite build completed successfully in approximately `506 ms`; PWA artifacts were generated. |
 | Flutter verification | **NOT RUN** | Flutter SDK is unavailable in the sandbox; mobile changes are source-only and must be verified in a Flutter-capable environment. |
-| PostgreSQL migration integration | **NOT RUN LOCALLY** | The integration-marked migration tests remain available for CI execution. |
+| PostgreSQL migration integration | **PASS REMOTELY** | The Phase 6/7 PostgreSQL migration and schema gate passed in PR #168. |
+
+## Remote PR Verification
+
+At the final pushed commit, PR #168 reports all four IAM Hardening Gate jobs as successful: backend identity, PostgreSQL migration/schema, frontend v3, and security/tenant-isolation regression. The Vercel check remains failed because the external preview service reports a deployment rate limit; this is not a source or IAM gate failure and no deployment action was taken.
 
 ## Remaining Review Boundaries
 
