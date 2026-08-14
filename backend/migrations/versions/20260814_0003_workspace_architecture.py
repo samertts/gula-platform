@@ -85,10 +85,22 @@ def downgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if "niam_workspace_contexts" in inspector.get_table_names():
+        unique_constraints = {
+            item["name"]
+            for item in inspector.get_unique_constraints("niam_workspace_contexts")
+            if item.get("name")
+        }
         for index in inspector.get_indexes("niam_workspace_contexts"):
-            op.drop_index(index["name"], table_name="niam_workspace_contexts")
+            if index["name"] not in unique_constraints:
+                op.drop_index(index["name"], table_name="niam_workspace_contexts")
         op.drop_table("niam_workspace_contexts")
     if "niam_workspaces" in inspector.get_table_names():
+        unique_constraints = {
+            item["name"]
+            for item in inspector.get_unique_constraints("niam_workspaces")
+            if item.get("name")
+        }
         for index in inspector.get_indexes("niam_workspaces"):
-            op.drop_index(index["name"], table_name="niam_workspaces")
+            if index["name"] not in unique_constraints:
+                op.drop_index(index["name"], table_name="niam_workspaces")
         op.drop_table("niam_workspaces")
