@@ -33,6 +33,8 @@ COPY --from=builder /install /usr/local
 COPY backend/app ./app
 COPY backend/migrations ./migrations
 COPY backend/alembic.ini .
+COPY backend/start_railway.sh ./start_railway.sh
+COPY backend/railway_startup_probe.py ./railway_startup_probe.py
 COPY shared ./shared
 
 # Shared modules refer to backend.app._compat for the UTC compatibility shim.
@@ -42,7 +44,8 @@ RUN mkdir -p /app/backend/app
 COPY backend/app/_compat.py ./backend/app/_compat.py
 
 # Fail the image build on syntax errors in application or shared code.
-RUN python -m compileall app/ shared/ backend/app/_compat.py
+RUN chmod 755 /app/start_railway.sh && \
+    python -m compileall app/ shared/ backend/app/_compat.py railway_startup_probe.py
 
 # SECURITY: Drop root — run as unprivileged user.
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
@@ -51,13 +54,8 @@ USER appuser
 EXPOSE 10000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
-    CMD python3 -c "import urllib.request; urllib.request.urlopen('http://localhost:10000/health', timeout=3)"
+    CMD-SHELL python3 -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.getenv('PORT', '10000') + '/health', timeout=3)"
 
-# Railway will use its saved custom command when present. This fallback is also
-# production-safe when the custom command is cleared: one worker, port 10000.
-CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "app.main:app", \
-     "--workers", "1", \
-     "--timeout", "30", \
-     "--bind", "0.0.0.0:10000", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-"]
+# Use the same PORT-aware command locally and on Railway. Railway's saved
+# Start Command must also point to /app/start_railway.sh when configured.
+CMD ["/app/start_railway.sh"]
