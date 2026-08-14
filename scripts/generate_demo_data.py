@@ -795,10 +795,9 @@ class DemoDataGenerator:
         with open(os.path.join(self.output_dir, "DEMO_PASSWORDS.md"), "w") as f:
             f.write("# GULA Demo Environment — Credentials\n\n")
             f.write("> Passwords are generated and injected at runtime. They are intentionally not stored in this repository or generated documentation.\n\n")
-            f.write("| Username | Credential source | Role |\n")
-            f.write("|----------|-------------------|------|\n")
-            for p in self.demo_passwords:
-                f.write(f"| `{p['username']}` | `runtime secret store` | {p['role']} |\n")
+            f.write("| Credential material | Storage policy |\n")
+            f.write("|---------------------|----------------|\n")
+            f.write("| Temporary runtime secret | Never written to generated artifacts |\n")
             f.write("\nUse the platform's isolated Demo Mode entry point to obtain a temporary session.\n")
 
         # DEMO_ORGANIZATIONS.md

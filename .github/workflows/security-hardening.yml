@@ -11,7 +11,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 concurrency:
   group: security-hardening-${{ github.ref }}
@@ -20,6 +19,9 @@ concurrency:
 jobs:
   secret-scan:
     name: Secret Scan
+    permissions:
+      contents: read
+      security-events: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

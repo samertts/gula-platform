@@ -1,9 +1,31 @@
 buildscript {
     configurations.classpath {
-        resolutionStrategy.eachDependency {
-            if (requested.group == "org.bouncycastle") {
-                useVersion("1.84")
-                because("CVE-2025-14813 and related Bouncy Castle advisories")
+        resolutionStrategy {
+            force("io.netty:netty-codec-http2:4.1.132.Final")
+            force("io.netty:netty-handler:4.1.132.Final")
+            force("io.netty:netty-codec-http:4.1.132.Final")
+            force("io.netty:netty-codec:4.1.132.Final")
+            force("com.google.protobuf:protobuf-java:3.25.5")
+            force("com.google.protobuf:protobuf-kotlin:3.25.5")
+            force("org.jdom:jdom2:2.0.6.1")
+            force("org.bouncycastle:bcprov-jdk18on:1.84")
+            force("org.bitbucket.b_c:jose4j:0.9.6")
+            force("org.apache.commons:commons-compress:1.26.0")
+            force("org.apache.httpcomponents:httpclient:4.5.14")
+            force("org.apache.commons:commons-lang3:3.18.0")
+            eachDependency {
+                if (requested.group == "org.bouncycastle") {
+                    useVersion("1.84")
+                    because("CVE-2025-14813 and related Bouncy Castle advisories")
+                }
+                if (requested.group == "org.apache.httpcomponents" && requested.name == "httpclient") {
+                    useVersion("4.5.14")
+                    because("CVE-2020-13956: Apache HttpClient request-target XSS")
+                }
+                if (requested.group == "org.apache.commons" && requested.name == "commons-lang3") {
+                    useVersion("3.18.0")
+                    because("CVE-2025-48924: Commons Lang uncontrolled recursion")
+                }
             }
         }
     }
@@ -32,6 +54,8 @@ allprojects {
             force("org.bouncycastle:bcprov-jdk18on:1.80.2")
             force("org.bitbucket.b_c:jose4j:0.9.6")
             force("org.apache.commons:commons-compress:1.26.0")
+            force("org.apache.httpcomponents:httpclient:4.5.14")
+            force("org.apache.commons:commons-lang3:3.18.0")
         }
     }
 }
@@ -49,6 +73,14 @@ allprojects {
             if (requested.group == "org.bouncycastle") {
                 useVersion("1.84")
                 because("CVE-2025-14813 and related Bouncy Castle advisories")
+            }
+            if (requested.group == "org.apache.httpcomponents" && requested.name == "httpclient") {
+                useVersion("4.5.14")
+                because("CVE-2020-13956: Apache HttpClient request-target XSS")
+            }
+            if (requested.group == "org.apache.commons" && requested.name == "commons-lang3") {
+                useVersion("3.18.0")
+                because("CVE-2025-48924: Commons Lang uncontrolled recursion")
             }
         }
     }

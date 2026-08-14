@@ -73,3 +73,38 @@ The Android lint retry on `431890c2` passed AAR metadata but failed during `kapt
 ## Official KSP guidance
 
 Android's official migration guide at https://developer.android.com/build/migrate-to-ksp recommends migrating supported processors from KAPT to KSP and explicitly lists Dagger, Room and Moshi as libraries with KSP support. The Kotlin KSP overview lists Moshi and Room as officially supported and notes Hilt support as in progress. Google KSP release 2.3.10 includes a fix for AGP 9 built-in Kotlin R-class resolution, and release 2.3.11 is the current latest release at the time of verification. The Android lint failure is specifically from Moshi KAPT metadata parsing. The current patch migrates Moshi code generation to KSP 2.3.11 while leaving Hilt and Room on legacy KAPT for an incremental, reversible verification; GitHub CI must confirm the processor graph before any further processor migration.
+
+
+## Final dashboard snapshot after abb5fa0b
+
+The GitHub Code Scanning dashboard on `main` shows **138 open** and **2,530 closed** alerts. CodeQL is reporting an operational error banner even though the latest `CodeQL Advanced` and `CodeQL Analysis` workflow runs completed successfully. The newest visible alerts include weak hashing in `partners/service.py` and `oauth2_provider.py`, clear-text logging in `quality_gate.py` and `constitution_enforcer.py`, clear-text storage in `generate_demo_data.py`, plus multiple existing Scorecard Token-Permissions and Binary-Artifacts findings. The repository navigation reports **33 Dependabot vulnerabilities** and **3 secret-scanning findings**. These counts mean CI gates are green but dashboard remediation is not yet 100% complete and requires another remediation round.
+
+## Continued remediation evidence — 2026-08-14
+
+- CodeQL alert #2667 (`py/clear-text-logging-sensitive-data`) points to `scripts/quality_gate.py:509`, where `sys.stdout.write(output)` received the formatted results object. The remediation removed raw `details` from result dictionaries and retains only an integer `detail_count`; human and CI output now consume the bounded count.
+- CodeQL alert #2666 points to `scripts/constitution_enforcer.py:1325`; the non-JSON report no longer prints per-rule identifiers/status/details and now emits only a static summary plus aggregate counts.
+- CodeQL alert #2665 pointed to generated demo credential documentation. `DEMO_PASSWORDS.md` now writes a fixed policy row and never iterates over usernames, roles, or passwords.
+- CodeQL weak-hashing alerts #2668 and #2669 were remediated from HMAC-SHA512 to HMAC-SHA3-512 while preserving server-keyed fingerprints and constant-time comparison.
+- CodeQL alert #316 pointed to `scripts/enterprise_metrics.py:852`; `render_json()` now emits only bounded aggregate quality index values, grade, timestamp, and history length rather than raw metric payloads.
+- Workflow permission hardening added default `contents: read` to CI, Constitution, Foundation, Frontend E2E, Preview Deploy, Quality Gate, Rollback, and CodeQL workflows. `security-events: write`, `packages: write`, and comment permissions were moved to the jobs that require them.
+- Official Gradle/GitHub documentation confirms the Dependency Submission API requires `contents: write`; the Android dependency-submission job therefore remains narrowly scoped rather than removing the permission, to avoid breaking dependency graph publication.
+- Local smoke tests passed for the new quality-gate JSON shape, constitution JSON shape, and enterprise metrics JSON shape. The constitution smoke run returned its audit failure exit status while still producing a sanitized JSON report; no rule details were printed.
+
+References:
+- [CodeQL alert #2667](https://github.com/samertts/gula-platform/security/code-scanning/2667)
+- [Gradle dependency submission documentation](https://github.com/gradle/actions/blob/main/docs/dependency-submission.md)
+- [GitHub dependency submission API documentation](https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/use-dependency-submission-api)
+
+## Dependabot snapshot — 2026-08-14
+
+The authenticated Dependabot dashboard currently reports **33 open / 347 closed** alerts and says dependency files were checked for commit `f6cb9df`. The visible open set is concentrated in `mobile/android/settings.gradle.kts`: JDOM2 XXE (#287, high), Apache HttpClient XSS (#467, moderate), multiple Netty high/moderate advisories (#296–#320), Commons Lang uncontrolled recursion (#468, moderate), and jose4j compressed-JWE DoS (#289, high). The repository navigation reports Code Scanning **138** and Secret Scanning **3**. No Dependabot alert was dismissed or modified.
+
+### Dependabot alert #467 detail
+
+The authenticated alert detail reports Apache HttpClient versions before **4.5.13** are affected and recommends `org.apache.httpcomponents:httpclient` **4.5.13 or later**. The vulnerable transitive dependency is `httpclient:4.5.6` through `mobile/android/settings.gradle.kts`. No alert action was performed.
+
+### Dependabot alert #468 detail
+
+The authenticated alert detail reports `org.apache.commons:commons-lang3` versions `>=3.0, <3.18.0` are affected by uncontrolled recursion (CVE-2025-48924 / GHSA-j288-q9x7-2f5v). The observed transitive version is **3.16.0** and the patched version is **3.18.0**. The dependency is introduced through Android tooling (`com.android.tools.build:gradle` and related lint/test listener paths). No alert action was performed.
+
+The Dependabot `?page=2` navigation returned the same dynamically loaded first-page list in the authenticated browser; it did not expose additional alert rows. Further inventory should use the dashboard filters or post-refresh counts rather than infer unseen rows from that URL.

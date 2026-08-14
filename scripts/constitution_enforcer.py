@@ -1320,11 +1320,9 @@ def print_report(results: list[RuleResult], score: float, json_output: bool) -> 
     print(f"  Repository: {REPO_ROOT}")
     print()
 
-    for rule in results:
-        label = _rule_label(rule)
-        print(f"  {label}  rule={rule['rule']} status={rule['status']}")
-        print(f"    Details recorded: {len(rule.get('details', []))}")
-        print()
+    print(f"  Rules evaluated: {len(results)}")
+    print("  Individual rule identifiers and evaluator details are omitted from console output.")
+    print()
 
     print(_bold("─" * 72))
     fail_count = sum(1 for r in results if r["status"] == FAIL)

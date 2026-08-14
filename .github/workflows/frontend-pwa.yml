@@ -38,8 +38,6 @@ env:
 
 permissions:
   contents: read
-  deployments: write
-  pull-requests: write
 
 jobs:
   build:
@@ -133,6 +131,9 @@ jobs:
 
   deploy-vercel-preview:
     name: Deploy Preview to Vercel
+    permissions:
+      contents: read
+      issues: write
     needs: [build]
     # Vercel is connected to Git and deploys previews automatically. Enable this
     # optional CLI path only after VERCEL_CI_ENABLED and VERCEL_TOKEN are set.

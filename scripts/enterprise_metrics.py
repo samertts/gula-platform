@@ -766,38 +766,24 @@ def render_report(metrics: dict[str, Any], history: list[dict[str, Any]], show_c
 # ── JSON Output ──────────────────────────────────────────────────────────
 
 def render_json(metrics: dict[str, Any], history: list[dict[str, Any]]) -> str:
-    qi = metrics["quality_index"]
-    debt = metrics["debt_kpis"]
-    test = metrics["test_kpis"]
-    sec = metrics["security_kpis"]
-    arch = metrics["architecture_kpis"]
-    health = metrics["healthcare_kpis"]
-    constit = metrics["constitution_kpis"]
-    vel = metrics["velocity_kpis"]
+    """Render only bounded aggregate metrics; never serialize raw metric payloads."""
+    quality_index = metrics.get("quality_index", {})
+    try:
+        total = max(0, min(1000, int(quality_index.get("total", 0))))
+    except (TypeError, ValueError):
+        total = 0
+    try:
+        maximum = max(1, min(1000, int(quality_index.get("max", 1000))))
+    except (TypeError, ValueError):
+        maximum = 1000
 
     output = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "repository": str(REPO_ROOT),
         "quality_index": {
-            "total": qi["total"],
-            "max": qi["max"],
-            "grade": _grade(qi["total"]),
-            "components": {k: {"score": v[0], "max": v[1]} for k, v in qi["components"].items()},
+            "total": total,
+            "max": maximum,
+            "grade": _grade(total),
         },
-        "technical_debt": debt,
-        "test_health": test,
-        "security": sec,
-        "architecture": arch,
-        "healthcare_compliance": {
-            "audit_trail": health["audit_trail"],
-            "audit_hash_chain": health["audit_hash_chain"],
-            "lab_id_isolation": health["lab_id_isolation"],
-            "patient_encryption": health["patient_encryption"],
-            "consent_tracking": health["consent_tracking"],
-            "data_retention_enforced": health["data_retention"],
-        },
-        "constitution": constit,
-        "velocity": vel,
         "history_length": len(history),
     }
     return json.dumps(output, indent=2, ensure_ascii=False)

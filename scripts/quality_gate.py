@@ -342,7 +342,7 @@ def _safe_result_summary(results: list[dict[str, Any]]) -> list[dict[str, Any]]:
         {
             "name": str(result.get("name", "unknown")),
             "status": str(result.get("status", WARNING)),
-            "detail_count": len(result.get("details", [])),
+            "detail_count": int(result.get("detail_count", 0)),
         }
         for result in results
     ]
@@ -361,7 +361,7 @@ def run_checks(
         results.append({
             "name": name,
             "status": status,
-            "details": details,
+            "detail_count": len(details),
         })
     return results
 
@@ -416,7 +416,7 @@ def format_results(
             badge = _c("red", "  FAIL  ")
 
         lines.append(f"  {badge}  {r['name']:{max_name_len}}")
-        lines.append(f"         details recorded: {len(r.get('details', []))}")
+        lines.append(f"         details recorded: {r.get('detail_count', 0)}")
         lines.append("")
 
     lines.append(f"  {_c('bold', '─' * 56)}")

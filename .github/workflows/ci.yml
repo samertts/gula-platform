@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
   # Keep CI aligned with the Python version used by the Railway backend.
   PYTHON_VERSION: "3.12"

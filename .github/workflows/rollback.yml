@@ -15,6 +15,9 @@ on:
         description: 'Deployment ID or alias to rollback to'
         required: false
 
+permissions:
+  contents: read
+
 jobs:
   rollback-vercel:
     name: Rollback Vercel

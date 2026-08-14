@@ -17,7 +17,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 env:
   NODE_VERSION: '24'
@@ -27,6 +26,9 @@ env:
 jobs:
   publish-typescript:
     name: Publish TypeScript SDK to npm
+    permissions:
+      contents: read
+      packages: write
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && contains(inputs.sdks, 'typescript'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -137,6 +139,9 @@ jobs:
 
   publish-kotlin:
     name: Publish Kotlin SDK
+    permissions:
+      contents: read
+      packages: write
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && contains(inputs.sdks, 'kotlin'))
     runs-on: ubuntu-latest
     timeout-minutes: 25

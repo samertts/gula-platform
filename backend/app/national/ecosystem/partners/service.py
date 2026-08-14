@@ -221,7 +221,7 @@ class CredentialManager:
         return hmac.new(
             SECRET_KEY.encode("utf-8"),
             api_key.encode("utf-8"),
-            hashlib.sha512,
+            hashlib.sha3_512,
         ).hexdigest()
 
 
