@@ -252,6 +252,7 @@ export class OperationalReadBlockedError extends Error {
 }
 
 const BILLING_READ_PATTERN = /^GET \/billing\/(summary|invoices(?:\/\d+)?|claims|coverages|payments|alerts)$/;
+const FINANCIAL_CONTROL_READ_PATTERN = /^GET \/payments\/controls\/(summary|requests)$/;
 const BILLING_WRITE_PATTERN = /^POST \/billing\/(invoices|coverages|claims\/\d+\/advance|coverages\/\d+\/verify-local|invoices\/\d+\/simulate-settlement)$/;
 
 function toRequestKey(method?: string, url?: string): string {
@@ -293,7 +294,7 @@ export function assertFrontendReadIsAllowed(method?: string, url?: string): void
 
   const key = toRequestKey(normalizedMethod, url);
   const workspaceDetail = /^GET \/niam\/workspaces\/[^/]+$/.test(key);
-  if (BILLING_READ_PATTERN.test(key)) return;
+  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key)) return;
   if (!INITIALIZATION_READ_ALLOWLIST.has(key) && !workspaceDetail) {
     throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }

@@ -40,6 +40,7 @@ const FhirPage = lazy(() => import("@/pages/fhir/FhirPage").then(m => ({ default
 const HospitalPage = lazy(() => import("@/pages/hospital/HospitalPage").then(m => ({ default: m.HospitalPage })));
 const EdgePage = lazy(() => import("@/pages/edge/EdgePage").then(m => ({ default: m.EdgePage })));
 const FinancialPage = lazy(() => import("@/pages/financial/FinancialPage").then(m => ({ default: m.FinancialPage })));
+const FinancialGovernancePage = lazy(() => import("@/pages/financial-governance/FinancialGovernancePage").then(m => ({ default: m.FinancialGovernancePage })));
 const NationalDataPage = lazy(() => import("@/pages/national-data/NationalDataPage").then(m => ({ default: m.NationalDataPage })));
 const NiamGovernancePage = lazy(() => import("@/pages/niam/GovernancePage"));
 const NiamTrustPage = lazy(() => import("@/pages/niam/TrustPage"));
@@ -107,6 +108,7 @@ const adminRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'ministry_
 const staffRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'doctor', 'staff', 'lab_staff', 'technician'];
 const readonlyRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'doctor', 'staff', 'lab_staff', 'demo_viewer'];
 const labRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'staff', 'lab_staff'];
+const financialRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'finance_controller', 'refund_reviewer', 'reconciler', 'finance_auditor', 'finance_operator', 'cashier'];
 
 export const router = createBrowserRouter([
   {
@@ -159,6 +161,7 @@ export const router = createBrowserRouter([
       { path: "hospital", element: <RoleGuard roles={adminRoles}><LazyPage><HospitalPage /></LazyPage></RoleGuard> },
       { path: "edge", element: <RoleGuard roles={['master_admin', 'admin']}><LazyPage><EdgePage /></LazyPage></RoleGuard> },
       { path: "financial", element: <RoleGuard roles={adminRoles}><LazyPage><FinancialPage /></LazyPage></RoleGuard> },
+      { path: "financial-governance", element: <RoleGuard roles={financialRoles}><LazyPage><FinancialGovernancePage /></LazyPage></RoleGuard> },
       { path: "national-data", element: <RoleGuard roles={['master_admin', 'ministry_admin', 'province_admin']}><LazyPage><NationalDataPage /></LazyPage></RoleGuard> },
       { path: "niam/governance", element: <RoleGuard roles={adminRoles}><LazyPage><NiamGovernancePage /></LazyPage></RoleGuard> },
       { path: "niam/trust", element: <RoleGuard roles={adminRoles}><LazyPage><NiamTrustPage /></LazyPage></RoleGuard> },

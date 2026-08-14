@@ -1378,6 +1378,48 @@ export type BillingSummaryRecord = {
 
 export type BillingAlertRecord = { type: string; severity: string; reference: string; message: string };
 
+export type FinancialControlSummaryRecord = {
+  institution_id: number;
+  as_of: string;
+  currency: string;
+  billed_amount: string;
+  collected_amount: string;
+  outstanding_amount: string;
+  refunded_amount: string;
+  invoice_count: number;
+  control_requests: Record<string, number>;
+  open_reconciliation_cases: number;
+  cash_variance_cases: number;
+  live_operation_enabled: boolean;
+  external_provider_calls: number;
+  data_basis: string;
+  limitations: string[];
+};
+
+export type FinancialControlRequestRecord = {
+  id: string;
+  institution_id: number;
+  control_type: string;
+  resource_type: string;
+  resource_id: string;
+  requested_action: string;
+  status: "REQUESTED" | "APPROVED" | "REJECTED" | "APPLIED" | "EXPIRED";
+  reason: string;
+  requested_by: number;
+  approved_by?: number | null;
+  applied_by?: number | null;
+  external_operation: boolean;
+  requested_at: string;
+  approved_at?: string | null;
+  applied_at?: string | null;
+  expires_at?: string | null;
+};
+
+export const financialControlApi = {
+  summary: (institutionId: number) => api.get<FinancialControlSummaryRecord>("/payments/controls/summary", { params: { institution_id: institutionId } }).then((r) => r.data),
+  requests: (institutionId: number, status?: string) => api.get<{ items: FinancialControlRequestRecord[]; count: number }>("/payments/controls/requests", { params: { institution_id: institutionId, status_filter: status } }).then((r) => r.data),
+};
+
 export const billingApi = {
   summary: () => api.get<BillingSummaryRecord>("/billing/summary").then((r) => r.data),
   invoices: (search?: string) => api.get<BillingInvoiceRecord[]>("/billing/invoices", { params: search ? { search } : undefined }).then((r) => r.data),

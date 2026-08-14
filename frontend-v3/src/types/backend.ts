@@ -4,6 +4,12 @@ export type UserRole =
   | 'province_admin'
   | 'admin'
   | 'lab_admin'
+  | 'finance_controller'
+  | 'refund_reviewer'
+  | 'reconciler'
+  | 'finance_auditor'
+  | 'finance_operator'
+  | 'cashier'
   | 'doctor'
   | 'staff'
   | 'lab_staff'
@@ -27,7 +33,12 @@ export type Permission =
   | 'platform:manage_users'
   | 'platform:manage_labs'
   | 'platform:view_stats'
-  | 'system:admin';
+  | 'system:admin'
+  | 'payments:control:read'
+  | 'payments:control:request'
+  | 'payments:control:approve'
+  | 'payments:control:apply'
+  | 'payments:control:emergency';
 
 export interface LabUser {
   id: number;

@@ -14,6 +14,8 @@ export async function mockLogin(page: Page) {
     email: TEST_CREDENTIALS.email,
     name: "Admin User",
     role: "master_admin",
+    lab_id: 1,
+    lab_name: "E2E Finance Tenant",
   };
 
   await page.route("**/api/session", async (route) => {

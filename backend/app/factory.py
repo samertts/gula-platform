@@ -546,10 +546,12 @@ def _register_routes(app: FastAPI) -> None:
     from .payments.fx_routes import router as payments_fx_router
     from .payments.orchestration_routes import router as payments_orchestration_router
     from .payments.subscription_routes import router as payments_subscription_router
+    from .payments.control_routes import router as payments_control_router
     app.include_router(payments_router)
     app.include_router(payments_fx_router)
     app.include_router(payments_orchestration_router)
     app.include_router(payments_subscription_router)
+    app.include_router(payments_control_router)
 
     app.include_router(citizen_portal_routes.router)
     app.include_router(citizen_relationship_admin_routes.router)

@@ -8,7 +8,8 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'staff:manage', 'lab:read', 'lab:manage',
     'dashboard:read', 'audit:read',
     'platform:manage_users', 'platform:manage_labs', 'platform:view_stats',
-    'system:admin',
+    'system:admin', 'payments:control:read', 'payments:control:request',
+    'payments:control:approve', 'payments:control:apply', 'payments:control:emergency',
   ],
   ministry_admin: [
     'patients:read', 'orders:read', 'results:read',
@@ -26,7 +27,7 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'results:read', 'results:write',
     'staff:manage', 'lab:read', 'lab:manage',
     'dashboard:read', 'audit:read',
-    'platform:manage_users',
+    'platform:manage_users', 'payments:control:read', 'payments:control:request',
   ],
   lab_admin: [
     'patients:read', 'patients:write', 'patients:delete',
@@ -34,8 +35,14 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'results:read', 'results:write',
     'staff:manage', 'lab:read', 'lab:manage',
     'dashboard:read', 'audit:read',
-    'platform:manage_users',
+    'platform:manage_users', 'payments:control:read', 'payments:control:request',
   ],
+  finance_controller: ['dashboard:read', 'audit:read', 'payments:control:read', 'payments:control:approve', 'payments:control:apply'],
+  refund_reviewer: ['dashboard:read', 'audit:read', 'payments:control:read', 'payments:control:approve'],
+  reconciler: ['dashboard:read', 'audit:read', 'payments:control:read', 'payments:control:apply'],
+  finance_auditor: ['dashboard:read', 'audit:read', 'payments:control:read'],
+  finance_operator: ['dashboard:read', 'payments:control:read', 'payments:control:request'],
+  cashier: ['dashboard:read', 'payments:control:read', 'payments:control:request'],
   doctor: [
     'patients:read', 'orders:read', 'results:read',
     'lab:read', 'dashboard:read',
@@ -77,8 +84,9 @@ export function hasAllPermissions(role: UserRole, permissions: Permission[]): bo
 export function canManageRole(actorRole: UserRole, targetRole: UserRole): boolean {
   const levels: Record<UserRole, number> = {
     master_admin: 100, ministry_admin: 90, province_admin: 80,
-    admin: 50, lab_admin: 50, doctor: 40, staff: 20,
-    lab_staff: 20, technician: 20, citizen: 10, demo_viewer: 0,
+    admin: 50, lab_admin: 50, finance_controller: 70, refund_reviewer: 60,
+    reconciler: 55, finance_auditor: 45, finance_operator: 35, cashier: 25,
+    doctor: 40, staff: 20, lab_staff: 20, technician: 20, citizen: 10, demo_viewer: 0,
   };
   return (levels[actorRole] ?? 0) > (levels[targetRole] ?? 0);
 }

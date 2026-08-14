@@ -273,6 +273,43 @@ class PaymentAuditEvent(FinBase):
     created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
 
 
+class FinancialControlRequest(FinBase):
+    """Maker-checker request for high-impact financial configuration actions."""
+
+    __tablename__ = "pay_financial_control_requests"
+    __table_args__ = (
+        UniqueConstraint("institution_id", "idempotency_key", name="uq_pay_control_institution_idempotency"),
+        CheckConstraint(
+            "status IN ('REQUESTED', 'APPROVED', 'REJECTED', 'APPLIED', 'EXPIRED')",
+            name="ck_pay_control_status",
+        ),
+        Index("ix_pay_control_institution_status", "institution_id", "status"),
+        Index("ix_pay_control_resource", "resource_type", "resource_id"),
+    )
+
+    id = Column(String(36), primary_key=True, default=_uuid)
+    institution_id = Column(Integer, nullable=False, index=True)
+    control_type = Column(String(64), nullable=False)
+    resource_type = Column(String(64), nullable=False)
+    resource_id = Column(String(128), nullable=False)
+    requested_action = Column(String(64), nullable=False)
+    status = Column(String(24), nullable=False, default="REQUESTED", index=True)
+    idempotency_key = Column(String(128), nullable=False)
+    reason = Column(String(1024), nullable=False)
+    rejection_reason = Column(String(1024), nullable=True)
+    requested_by = Column(Integer, nullable=False, index=True)
+    approved_by = Column(Integer, nullable=True)
+    applied_by = Column(Integer, nullable=True)
+    request_id = Column(String(128), nullable=True, index=True)
+    evidence_hash = Column(String(128), nullable=True)
+    safe_metadata = Column(JSON, nullable=True)
+    requested_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    applied_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))
+
+
 # Ledger and audit history are append-only. Financial corrections must be
 # represented by a separately linked reversal/refund record, never an update.
 def _reject_financial_history_mutation(_mapper, _connection, _target) -> None:
