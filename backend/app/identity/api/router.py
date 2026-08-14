@@ -11,7 +11,7 @@ from app.identity.notifications import routes as notifications_routes
 from app.identity.trust import routes as trust_routes
 from app.identity.workflows import routes as workflows_routes
 
-from . import accounts, auth, devices, persons, sessions
+from . import accounts, auth, devices, persons, sessions, workspaces
 
 router = APIRouter(prefix="/niam", tags=["NIAM"])
 
@@ -19,6 +19,7 @@ router.include_router(persons.router)
 router.include_router(accounts.router)
 router.include_router(auth.router)
 router.include_router(sessions.router)
+router.include_router(workspaces.router)
 router.include_router(devices.router)
 router.include_router(governance_routes.router)
 router.include_router(trust_routes.router)

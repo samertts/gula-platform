@@ -91,6 +91,9 @@ class AuthenticationService:
             mfa_used=False,
         )
         await self.session_repo.create(session)
+        from app.identity.services.workspace_service import WorkspaceService
+
+        await WorkspaceService(self.session).ensure_citizen_workspace(account)
 
         return {
             "access_token": access_token,

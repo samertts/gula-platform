@@ -215,8 +215,7 @@ async def test_fhir_connection(
     db: AsyncSession = Depends(get_db),
 ):
     service = EnterprisePortalService(db)
-    result = await service.test_fhir_connection(conn_id)
-    return result
+    return await service.test_fhir_connection(conn_id)
 
 
 @router.get("/audit-log/{org_id}")

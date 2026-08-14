@@ -65,8 +65,7 @@ async def verify_mfa_challenge(
     db: AsyncSession = Depends(get_db),
 ):
     service = AdaptiveAuthService(db)
-    result = await service.verify_mfa(mfa_id=mfa_id, challenge_response=challenge_response)
-    return result
+    return await service.verify_mfa(mfa_id=mfa_id, challenge_response=challenge_response)
 
 
 @router.get("/policies")
@@ -266,11 +265,10 @@ async def enforce_session_policy(
     db: AsyncSession = Depends(get_db),
 ):
     service = SessionGovernanceService(db)
-    result = await service.enforce_session_policy(
+    return await service.enforce_session_policy(
         account_id=account_id,
         account_type=account_type,
     )
-    return result
 
 
 @router.post("/check-session-expiry")

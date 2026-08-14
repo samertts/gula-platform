@@ -12,6 +12,25 @@ const API_MODE_STORAGE_KEY = "gula.api-mode";
 
 export type DemoPersonaId = "doctor" | "technician" | "lab_admin" | "citizen";
 
+export interface WorkspaceSummary {
+  id: string;
+  uuid: string;
+  workspace_type: string;
+  name: string;
+  name_ar?: string | null;
+  status: string;
+  organization_id?: string | null;
+  facility_id?: string | null;
+  department_id?: string | null;
+  professional_type?: string | null;
+  is_personal: boolean;
+}
+
+export interface WorkspaceContextResponse {
+  context: { account_id: string; identity_id: string; workspace_id: string; version: number };
+  workspace: WorkspaceSummary;
+}
+
 export interface DemoPersona {
   id: DemoPersonaId;
   role: string;
@@ -111,6 +130,7 @@ const INITIALIZATION_READ_ALLOWLIST = new Set([
   "GET /session",
   "GET /setup/status",
   "GET /greeting",
+  "GET /niam/workspaces",
 ]);
 
 export class OperationalWriteBlockedError extends Error {
@@ -151,7 +171,8 @@ export function assertFrontendWriteIsAllowed(method?: string, url?: string): voi
   }
 
   const key = toRequestKey(normalizedMethod, url);
-  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key)) {
+  const workspaceSwitch = normalizedMethod === "post" && /^POST \/niam\/workspaces\/[^/]+\/switch$/.test(key);
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch) {
     throw new OperationalWriteBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
 }
@@ -166,7 +187,8 @@ export function assertFrontendReadIsAllowed(method?: string, url?: string): void
   if (normalizedMethod !== "get") return;
 
   const key = toRequestKey(normalizedMethod, url);
-  if (!INITIALIZATION_READ_ALLOWLIST.has(key)) {
+  const workspaceDetail = /^GET \/niam\/workspaces\/[^/]+$/.test(key);
+  if (!INITIALIZATION_READ_ALLOWLIST.has(key) && !workspaceDetail) {
     throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
 }
@@ -228,6 +250,16 @@ class ApiClient {
       demo_persona: persona.id,
       user: syntheticDemoUser(persona),
     } as T;
+  }
+
+  async listWorkspaces() {
+    const response = await this.instance.get<{ workspaces: WorkspaceSummary[] }>("/niam/workspaces");
+    return response.data;
+  }
+
+  async switchWorkspace(workspaceId: string) {
+    const response = await this.instance.post<WorkspaceContextResponse>(`/niam/workspaces/${encodeURIComponent(workspaceId)}/switch`, {});
+    return response.data;
   }
 
   async demoDashboard<T>(personaId: DemoPersonaId = "doctor") {

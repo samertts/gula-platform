@@ -43,6 +43,7 @@ from .verification_record import (
     VerificationRecordStatus,
     VerificationRecordType,
 )
+from .workspace import Workspace, WorkspaceSessionContext, WorkspaceStatus, WorkspaceType
 
 __all__ = [
     "APIKey",
@@ -90,4 +91,8 @@ __all__ = [
     "VerificationRecord",
     "VerificationRecordStatus",
     "VerificationRecordType",
+    "Workspace",
+    "WorkspaceSessionContext",
+    "WorkspaceStatus",
+    "WorkspaceType",
 ]

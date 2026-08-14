@@ -15,7 +15,6 @@ from app.identity.models.legacy_account_link import (
 )
 from app.identity.services.audit_service import AuditService
 
-
 FINGERPRINT_DIGEST: Final[str] = "sha256"
 
 
@@ -45,7 +44,7 @@ def make_source_fingerprint(
         raise ValueError(f"Unsupported legacy source kind: {source_kind}") from exc
     if legacy_account_id <= 0:
         raise ValueError("legacy_account_id must be a positive integer")
-    message = f"gula-wave3:{kind}:{legacy_account_id}".encode("utf-8")
+    message = f"gula-wave3:{kind}:{legacy_account_id}".encode()
     return hmac.new(hmac_key.encode("utf-8"), message, hashlib.sha256).hexdigest()
 
 
