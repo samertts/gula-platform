@@ -55,7 +55,7 @@ on:
 env:
   GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx8g -XX:MaxMetaspaceSize=512m" -Dorg.gradle.parallel=true -Dorg.gradle.caching=true -Dorg.gradle.daemon=false
   GRADLE_BUILD_CACHE_ENABLED: true
-  ANDROID_COMPILE_SDK: 35
+  ANDROID_COMPILE_SDK: 37
   ANDROID_TARGET_SDK: 35
   ANDROID_MIN_SDK: 26
 
