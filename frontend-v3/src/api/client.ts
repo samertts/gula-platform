@@ -31,6 +31,98 @@ export interface WorkspaceContextResponse {
   workspace: WorkspaceSummary;
 }
 
+export interface MembershipSummary {
+  id: string;
+  uuid: string;
+  account_id: string;
+  identity_id?: string | null;
+  organization_id: string;
+  facility_id?: string | null;
+  department_id?: string | null;
+  unit_id?: string | null;
+  workspace_id?: string | null;
+  relationship_type: string;
+  scope_type: string;
+  status: string;
+  source: string;
+  expires_at?: string | null;
+  version: number;
+  is_active: boolean;
+}
+
+export interface MembershipApplicationRequest {
+  organization_id: string;
+  relationship_type: string;
+  scope_type: string;
+  identity_id?: string;
+  facility_id?: string;
+  department_id?: string;
+  unit_id?: string;
+  workspace_id?: string;
+}
+
+export interface MembershipInvitationRequest extends Omit<MembershipApplicationRequest, "identity_id"> {
+  recipient_account_id?: string;
+  ttl_hours?: number;
+}
+
+export interface RoleSummary {
+  id: string;
+  uuid: string;
+  role_key: string;
+  name: string;
+  name_ar?: string | null;
+  scope_type: string;
+  status: string;
+  is_system: boolean;
+  version: number;
+}
+
+export interface PermissionSummary {
+  id: string;
+  uuid: string;
+  permission_key: string;
+  name: string;
+  name_ar?: string | null;
+  resource: string;
+  action: string;
+  sensitivity: string;
+  status: string;
+  version: number;
+}
+
+export interface EffectivePermissionsResponse {
+  organization_id: string;
+  permissions: string[];
+}
+
+export interface RoleAssignmentRequest {
+  account_id: string;
+  membership_id: string;
+  role_id: string;
+  facility_id?: string;
+  department_id?: string;
+  unit_id?: string;
+  workspace_id?: string;
+}
+
+export interface MembershipInvitationResponse {
+  id: string;
+  uuid: string;
+  organization_id: string;
+  facility_id?: string | null;
+  department_id?: string | null;
+  unit_id?: string | null;
+  workspace_id?: string | null;
+  relationship_type: string;
+  scope_type: string;
+  status: string;
+  recipient_account_id?: string | null;
+  expires_at: string;
+  version: number;
+  token?: string;
+}
+
 export interface DemoPersona {
   id: DemoPersonaId;
   role: string;
@@ -131,6 +223,10 @@ const INITIALIZATION_READ_ALLOWLIST = new Set([
   "GET /setup/status",
   "GET /greeting",
   "GET /niam/workspaces",
+  "GET /niam/memberships/me",
+  "GET /niam/roles",
+  "GET /niam/roles/permissions",
+  "GET /niam/roles/effective",
 ]);
 
 export class OperationalWriteBlockedError extends Error {
@@ -172,7 +268,8 @@ export function assertFrontendWriteIsAllowed(method?: string, url?: string): voi
 
   const key = toRequestKey(normalizedMethod, url);
   const workspaceSwitch = normalizedMethod === "post" && /^POST \/niam\/workspaces\/[^/]+\/switch$/.test(key);
-  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch) {
+  const membershipMutation = normalizedMethod === "post" && /^POST \/niam\/memberships\/(?:applications(?:\/[^/]+\/approve)?|invitations(?:\/[^/]+\/(?:accept|revoke))?|[^/]+\/(?:revoke|suspend|reactivate))$/.test(key);
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation) {
     throw new OperationalWriteBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
 }
@@ -259,6 +356,68 @@ class ApiClient {
 
   async switchWorkspace(workspaceId: string) {
     const response = await this.instance.post<WorkspaceContextResponse>(`/niam/workspaces/${encodeURIComponent(workspaceId)}/switch`, {});
+    return response.data;
+  }
+
+  async listMyMemberships() {
+    const response = await this.instance.get<{ memberships: MembershipSummary[] }>("/niam/memberships/me");
+    return response.data;
+  }
+
+  async submitMembershipApplication(body: MembershipApplicationRequest) {
+    const response = await this.instance.post("/niam/memberships/applications", body);
+    return response.data;
+  }
+
+  async approveMembershipApplication(applicationId: string) {
+    const response = await this.instance.post(`/niam/memberships/applications/${encodeURIComponent(applicationId)}/approve`, {});
+    return response.data as MembershipSummary;
+  }
+
+  async createMembershipInvitation(body: MembershipInvitationRequest) {
+    const response = await this.instance.post<MembershipInvitationResponse>("/niam/memberships/invitations", body);
+    return response.data;
+  }
+
+  async acceptMembershipInvitation(invitationId: string, token: string) {
+    const response = await this.instance.post<MembershipSummary>(`/niam/memberships/invitations/${encodeURIComponent(invitationId)}/accept`, { token });
+    return response.data;
+  }
+
+  async revokeMembershipInvitation(invitationId: string) {
+    const response = await this.instance.post(`/niam/memberships/invitations/${encodeURIComponent(invitationId)}/revoke`, {});
+    return response.data;
+  }
+
+  async changeMembershipState(membershipId: string, action: "revoke" | "suspend" | "reactivate", reason?: string) {
+    const response = await this.instance.post<MembershipSummary>(`/niam/memberships/${encodeURIComponent(membershipId)}/${action}`, reason ? { reason } : {});
+    return response.data;
+  }
+
+  async listRoles() {
+    const response = await this.instance.get<{ roles: RoleSummary[] }>("/niam/roles");
+    return response.data;
+  }
+
+  async listPermissions() {
+    const response = await this.instance.get<{ permissions: PermissionSummary[] }>("/niam/roles/permissions");
+    return response.data;
+  }
+
+  async getEffectivePermissions(organizationId: string, context: Omit<RoleAssignmentRequest, "account_id" | "membership_id" | "role_id"> = {}) {
+    const response = await this.instance.get<EffectivePermissionsResponse>("/niam/roles/effective", {
+      params: { organization_id: organizationId, ...context },
+    });
+    return response.data;
+  }
+
+  async assignRole(body: RoleAssignmentRequest) {
+    const response = await this.instance.post("/niam/roles/assignments", body);
+    return response.data;
+  }
+
+  async revokeRoleAssignment(assignmentId: string, reason?: string) {
+    const response = await this.instance.post(`/niam/roles/assignments/${encodeURIComponent(assignmentId)}/revoke`, reason ? { reason } : {});
     return response.data;
   }
 
