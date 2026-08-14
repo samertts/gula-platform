@@ -1,0 +1,49 @@
+"""Bind machine identities to a laboratory for cross-facility interop.
+
+Legacy service accounts remain nullable and continue to work for existing
+administrative APIs. PIXm/MHD endpoints reject unbound accounts explicitly.
+"""
+from __future__ import annotations
+
+from typing import Union
+
+import sqlalchemy as sa
+from alembic import op
+
+revision: str = "20260815_0001"
+down_revision: Union[str, None] = "20260814_0005"
+branch_labels = None
+depends_on = None
+
+
+def _has_column(table: str, column: str) -> bool:
+    bind = op.get_bind()
+    if not sa.inspect(bind).has_table(table):
+        return False
+    return column in {item["name"] for item in sa.inspect(bind).get_columns(table)}
+
+
+def upgrade() -> None:
+    if not _has_column("service_accounts", "lab_id"):
+        op.add_column(
+            "service_accounts",
+            sa.Column(
+                "lab_id",
+                sa.Integer(),
+                sa.ForeignKey("labs.id", ondelete="SET NULL"),
+                nullable=True,
+            ),
+        )
+    bind = op.get_bind()
+    indexes = {item["name"] for item in sa.inspect(bind).get_indexes("service_accounts")}
+    if "ix_service_accounts_lab_id" not in indexes:
+        op.create_index("ix_service_accounts_lab_id", "service_accounts", ["lab_id"])
+
+
+def downgrade() -> None:
+    bind = op.get_bind()
+    indexes = {item["name"] for item in sa.inspect(bind).get_indexes("service_accounts")}
+    if "ix_service_accounts_lab_id" in indexes:
+        op.drop_index("ix_service_accounts_lab_id", table_name="service_accounts")
+    if _has_column("service_accounts", "lab_id"):
+        op.drop_column("service_accounts", "lab_id")

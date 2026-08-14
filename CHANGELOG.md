@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **LIS interoperability pilot slice**
   - Tenant-scoped `GET /lims/orders/{id}/fhir-bundle` FHIR R4 collection Bundle for ServiceRequest, Specimen, and Observation resources
+  - IHE PIXm ITI-83 query and MHD ITI-65/67/68 endpoints under `/national/interop`
+  - Organisation-bound service accounts for interop, tenant-scoped inbox idempotency, final-report-only reads, and human review before inbound clinical processing
   - Metadata-only audit event for Bundle exports to avoid duplicating patient identity and result values in audit details
   - Arabic pilot runbook with rollout gates, privacy controls, rollback steps, and measurable impact indicators
 - Open source community health files (CODE_OF_CONDUCT, SUPPORT, GOVERNANCE, MAINTAINERS)

@@ -205,6 +205,10 @@ def get_interoperability_capabilities(
                 "Observation",
                 "ServiceRequest",
                 "Specimen",
+                "Patient",
+                "Parameters",
+                "DocumentReference",
+                "Bundle",
             ],
             "export_endpoints": {
                 "Device": "/lims/instruments/{instrument_id}/fhir",
@@ -212,6 +216,45 @@ def get_interoperability_capabilities(
                 "Observation": "/lims/results/{result_id}/fhir",
                 "ServiceRequest": "/lims/orders/{order_id}/fhir",
                 "Specimen": "/lims/specimens/{specimen_id}/fhir",
+            },
+        },
+        "ihe": {
+            "profiles": {
+                "PIXm": "IHE ITI TF-3, Mobile Patient Identifier Cross-reference Query (ITI-83)",
+                "MHD": "IHE ITI TF-3, Mobile access to Health Documents (ITI-65/67/68)",
+            },
+            "transactions": [
+                {
+                    "id": "ITI-83",
+                    "method": "GET",
+                    "endpoint": "/national/interop/Patient/$ihe-pix",
+                    "response": "FHIR R4 Parameters",
+                },
+                {
+                    "id": "ITI-67",
+                    "method": "GET",
+                    "endpoint": "/national/interop/DocumentReference",
+                    "response": "FHIR R4 searchset Bundle",
+                },
+                {
+                    "id": "ITI-68",
+                    "method": "GET",
+                    "endpoint": "/national/interop/DocumentReference/{id}",
+                    "response": "FHIR R4 DocumentReference",
+                },
+                {
+                    "id": "ITI-65",
+                    "method": "POST",
+                    "endpoint": "/national/interop/Bundle",
+                    "response": "202 Accepted; review inbox event",
+                },
+            ],
+            "controls": {
+                "organisation_bound_service_account": True,
+                "tenant_scoped_queries": True,
+                "idempotency_scope": "recipient_lab_id + Idempotency-Key",
+                "inbound_processing": "pending_review; no direct clinical write",
+                "national_identifier_policy": "no raw national identifier in PIXm response",
             },
         },
         "messaging": {
