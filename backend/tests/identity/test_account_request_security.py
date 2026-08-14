@@ -6,10 +6,20 @@ from app.identity.api import accounts
 from app.identity.api.account_requests import AccountRequestCreate
 from app.identity.models.account import Account
 from app.identity.models.account_request import AccountRequestStatus
-from app.identity.services.account_request_service import AccountRequestService
+from app.identity.services.account_request_service import (
+    AccountRequestConfigurationError,
+    AccountRequestService,
+)
 from cryptography.fernet import Fernet
 from fastapi import HTTPException
 from pydantic import ValidationError
+
+
+def test_invalid_encryption_configuration_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENCRYPTION_KEY", "invalid-key")
+    monkeypatch.setenv("NID_HMAC_KEY", "blind-index-test-key")
+    with pytest.raises(AccountRequestConfigurationError):
+        AccountRequestService(Mock())
 
 
 def test_account_request_contract_forbids_unknown_fields() -> None:

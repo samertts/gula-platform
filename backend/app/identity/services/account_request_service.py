@@ -8,6 +8,7 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from cryptography.fernet import Fernet
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -39,6 +40,12 @@ class AccountRequestService:
         self._blind_index_key = os.getenv("NID_HMAC_KEY", "")
         if not self._encryption_key or not self._blind_index_key:
             raise AccountRequestConfigurationError("account request protection keys unavailable")
+        try:
+            Fernet(self._encryption_key.encode("utf-8"))
+        except Exception as exc:
+            raise AccountRequestConfigurationError(
+                "account request encryption is unavailable"
+            ) from exc
 
     @staticmethod
     def normalize(
