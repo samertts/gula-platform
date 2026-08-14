@@ -58,3 +58,18 @@ The official Android migration guide confirms AGP 9 has built-in Kotlin, require
 ## Android manual verification
 
 Manual `Mobile - Android CI/CD` dispatch on `5c90d6bb` confirmed the AGP 9/Hilt plugin migration and dependency graph submission, but `lintDebug` initially failed at AAR metadata because `androidx.hilt:hilt-navigation-compose:1.4.0` and lifecycle 2.11.0 required API 37 while CI provisions compileSdk 35. The official AndroidX Hilt release notes confirm that requirement. The app now pins `hilt-navigation-compose` to 1.3.0, whose AAR metadata declares minCompileSdk 35; local Gradle dependencyInsight resolves lifecycle runtime Compose to 2.9.4 for the Android-test runtime classpath with no 2.11.0/API37 indicator. This keeps the current SDK boundary explicit instead of raising compileSdk without provisioning the matching SDK.
+
+
+## Kotlin advisory verification
+
+GitHub Advisory `GHSA-r937-wjx7-w2jp` / CVE-2026-53914 marks `org.jetbrains.kotlin:kotlin-gradle-plugin` versions `< 2.4.20-Beta1` as affected and `2.4.20-Beta1` as patched. The Android project uses Kotlin `2.4.20-RC`, which is above the patched floor. The AndroidX Hilt release notes at https://developer.android.com/jetpack/androidx/releases/hilt state that the 1.4.0 Compose integration requires API 37; artifact metadata inspection showed Hilt navigation Compose 1.3.0 requires minCompileSdk 35, so the app was pinned to 1.3.0 while retaining Dagger Hilt 2.60.1.
+
+
+## Annotation processor follow-up
+
+The Android lint retry on `431890c2` passed AAR metadata but failed during `kaptDebugKotlin` with `java.lang.IllegalStateException: Could not parse metadata! Try bumping kotlinpoet and/or kotlinx-metadata version.` The same log warns that Moshi Kotlin Code Gen KAPT support is deprecated and recommends KSP. Android's official AGP migration guide recommends KSP under built-in Kotlin, while the official Hilt Gradle setup documents Hilt 2.60.1 with KSP. GitHub's Kotlin advisory `https://github.com/advisories/GHSA-r937-wjx7-w2jp` sets the patched floor at Kotlin 2.4.20-Beta1; the project Kotlin plugin is 2.4.20-RC. KSP artifact metadata currently exposes 2.2.x and 2.3.x plugin lines, so the next Android fix must choose a verified KSP/Kotlin pairing rather than guess a non-existent 2.4.20 KSP version.
+
+
+## Official KSP guidance
+
+Android's official migration guide at https://developer.android.com/build/migrate-to-ksp recommends migrating supported processors from KAPT to KSP and explicitly lists Dagger, Room and Moshi as libraries with KSP support. The Kotlin KSP overview lists Moshi and Room as officially supported and notes Hilt support as in progress. Google KSP release 2.3.10 includes a fix for AGP 9 built-in Kotlin R-class resolution, and release 2.3.11 is the current latest release at the time of verification. The Android lint failure is specifically from Moshi KAPT metadata parsing. The current patch migrates Moshi code generation to KSP 2.3.11 while leaving Hilt and Room on legacy KAPT for an incremental, reversible verification; GitHub CI must confirm the processor graph before any further processor migration.

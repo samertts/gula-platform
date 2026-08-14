@@ -7,6 +7,7 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
     id("com.android.legacy-kapt")
+    id("com.google.devtools.ksp")
     id("com.google.dagger.hilt.android")
 }
 
@@ -128,7 +129,7 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-moshi:2.11.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.2")
     implementation("com.squareup.moshi:moshi-adapters:1.15.2")
-    kapt("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
+    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
     implementation("com.squareup.okhttp3:okhttp-tls:4.12.0")
