@@ -14,7 +14,7 @@ repositories {
 
 val ktorVersion = "3.1.2"
 val kotlinxSerializationVersion = "1.8.0"
-val kotlinxCoroutinesVersion = "1.10.0"
+val kotlinxCoroutinesVersion = "1.11.0"
 val logbackVersion = "1.5.18"
 
 dependencies {
