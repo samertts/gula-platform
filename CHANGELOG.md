@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **LIS interoperability pilot slice**
+  - Tenant-scoped `GET /lims/orders/{id}/fhir-bundle` FHIR R4 collection Bundle for ServiceRequest, Specimen, and Observation resources
+  - Metadata-only audit event for Bundle exports to avoid duplicating patient identity and result values in audit details
+  - Arabic pilot runbook with rollout gates, privacy controls, rollback steps, and measurable impact indicators
 - Open source community health files (CODE_OF_CONDUCT, SUPPORT, GOVERNANCE, MAINTAINERS)
 - Apache 2.0 License and NOTICE file
 - GitHub issue templates and pull request template
@@ -15,8 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - FUNDING.yml for GitHub Sponsors
 
 ### Changed
+- LIMS section, workstation, and instrument queries now enforce laboratory tenant isolation
+- FHIR Bundle responses declare `application/fhir+json` and are documented in ADR-011
 - License field in package.json and pyproject.toml updated to Apache-2.0
 - README.md enhanced with badges and expanded documentation links
+
+### Quality
+- Added regression coverage for cross-laboratory LIMS access, workstation attachment, FHIR capabilities, Bundle composition, and export-audit minimization
 
 ## [2.3.2] - 2026-07-16
 
