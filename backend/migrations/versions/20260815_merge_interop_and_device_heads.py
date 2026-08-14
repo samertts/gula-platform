@@ -1,6 +1,6 @@
 """Merge interop and device migration heads.
 
-Revision ID: 20260815_0013
+Revision ID: 20260815_merge_heads
 Revises: 20260815_0002, 20260815_0012
 Create Date: 2026-08-15
 """
@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 # revision identifiers, used by Alembic.
-revision: str = "20260815_0013"
+revision: str = "20260815_merge_heads"
 down_revision: str | Sequence[str] | None = (
     "20260815_0002",
     "20260815_0012",
