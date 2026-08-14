@@ -30,7 +30,7 @@ configurations.all {
 }
 android {
     namespace = "io.gula.android"
-    compileSdk = 35
+    compileSdk = 37
 
     signingConfigs {
         create("release") {
