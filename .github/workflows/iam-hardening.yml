@@ -37,13 +37,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt
-      - name: Run read-only Ruff identity gate
-        run: ruff check --no-fix backend/app/identity backend/tests/identity
+      - name: Run read-only Ruff identity and clinical gateway gate
+        run: ruff check --no-fix backend/app/identity backend/app/clinical_gateway backend/tests/identity backend/tests/test_clinical_gateway_contracts.py backend/tests/test_clinical_gateway_service.py
       - name: Run identity tests
         run: |
           set -o pipefail
           mkdir -p artifacts
-          python -m pytest backend/tests/identity -m "not integration" -q --junitxml=artifacts/pytest-identity.xml 2>&1 | tee artifacts/pytest-identity.log
+          python -m pytest backend/tests/identity backend/tests/test_clinical_gateway_contracts.py backend/tests/test_clinical_gateway_service.py -m "not integration" -q --junitxml=artifacts/pytest-identity.xml 2>&1 | tee artifacts/pytest-identity.log
       - name: Compile backend source
         run: python -m compileall -q backend/app backend/migrations
       - name: Upload backend evidence
@@ -106,7 +106,7 @@ jobs:
         run: |
           set -o pipefail
           cd backend
-          python -m pytest tests/identity/test_workspace_migration_phase5.py tests/identity/test_membership_migration_phase6.py tests/identity/test_security_audit_migration_phase9.py -q --junitxml=../artifacts/pytest-migration.xml 2>&1 | tee ../artifacts/pytest-migration.log
+          python -m pytest tests/identity/test_workspace_migration_phase5.py tests/identity/test_membership_migration_phase6.py tests/identity/test_security_audit_migration_phase9.py tests/identity/test_clinical_gateway_migration_phase10b.py -q --junitxml=../artifacts/pytest-migration.xml 2>&1 | tee ../artifacts/pytest-migration.log
       - name: Verify reversible workspace migration
         run: |
           set -o pipefail
@@ -191,7 +191,7 @@ jobs:
           set -o pipefail
           mkdir -p artifacts
           cd backend
-          python -m pytest tests/test_security_regression.py tests/test_tenant_isolation_matrix.py -q --junitxml=../artifacts/pytest-security-regression.xml 2>&1 | tee ../artifacts/pytest-security-regression.log
+          python -m pytest tests/test_security_regression.py tests/test_tenant_isolation_matrix.py tests/test_clinical_gateway_contracts.py tests/test_clinical_gateway_service.py -q --junitxml=../artifacts/pytest-security-regression.xml 2>&1 | tee ../artifacts/pytest-security-regression.log
       - name: Upload security evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
