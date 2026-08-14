@@ -1,10 +1,10 @@
 buildscript {
     configurations.classpath {
         resolutionStrategy {
-            force("io.netty:netty-codec-http2:4.1.132.Final")
-            force("io.netty:netty-handler:4.1.132.Final")
-            force("io.netty:netty-codec-http:4.1.132.Final")
-            force("io.netty:netty-codec:4.1.132.Final")
+            force("io.netty:netty-codec-http2:4.1.136.Final")
+            force("io.netty:netty-handler:4.1.136.Final")
+            force("io.netty:netty-codec-http:4.1.136.Final")
+            force("io.netty:netty-codec:4.1.136.Final")
             force("com.google.protobuf:protobuf-java:3.25.5")
             force("com.google.protobuf:protobuf-kotlin:3.25.5")
             force("com.google.guava:guava:32.0.1-android")
@@ -45,10 +45,10 @@ plugins {
 allprojects {
     configurations.all {
         resolutionStrategy {
-            force("io.netty:netty-codec-http2:4.1.132.Final")
-            force("io.netty:netty-handler:4.1.132.Final")
-            force("io.netty:netty-codec-http:4.1.132.Final")
-            force("io.netty:netty-codec:4.1.132.Final")
+            force("io.netty:netty-codec-http2:4.1.136.Final")
+            force("io.netty:netty-handler:4.1.136.Final")
+            force("io.netty:netty-codec-http:4.1.136.Final")
+            force("io.netty:netty-codec:4.1.136.Final")
             force("com.google.protobuf:protobuf-java:3.25.5")
             force("com.google.protobuf:protobuf-kotlin:3.25.5")
             force("com.google.guava:guava:32.0.1-android")
