@@ -32,3 +32,6 @@ class SyncSessionAsyncFacade:
 
     async def flush(self) -> None:
         self._session.flush()
+
+    async def commit(self) -> None:
+        self._session.commit()

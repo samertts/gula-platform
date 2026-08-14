@@ -6,6 +6,7 @@ from app.identity.certificates.models import (
 )
 
 from .account import Account, AccountStatus, AccountType
+from .account_request import AccountCreationRequest, AccountRequestStatus
 from .administrative_structure import (
     NIAMAdminBranch,
     NIAMAdminDepartment,
@@ -71,6 +72,8 @@ from .workspace import Workspace, WorkspaceSessionContext, WorkspaceStatus, Work
 __all__ = [
     "APIKey",
     "Account",
+    "AccountCreationRequest",
+    "AccountRequestStatus",
     "AccountStatus",
     "AccountType",
     "Assignment",
