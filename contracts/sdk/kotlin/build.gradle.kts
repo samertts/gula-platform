@@ -36,7 +36,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
 
     // Testing
-    testImplementation("org.jetbrains.kotlin:kotlin-test:2.1.20")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:2.4.10")
     testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:$kotlinxCoroutinesVersion")
 }
