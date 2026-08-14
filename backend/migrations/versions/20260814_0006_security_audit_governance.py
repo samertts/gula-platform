@@ -7,6 +7,7 @@ Revises: 20260814_0005
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from hashlib import sha256
 
 from alembic import op
 import sqlalchemy as sa
@@ -197,7 +198,13 @@ def upgrade() -> None:
                     bind.execute(
                         sa.text("""INSERT INTO niam_role_permissions (id, role_id, permission_id, status, created_at, updated_at)
                         VALUES (:id, :role_id, :permission_id, 'active', :created_at, :updated_at)"""),
-                        {"id": f"RP9{role_key[:8].upper()}{permission_key.split('.')[-1][:8].upper()}", "role_id": role_id, "permission_id": permission_id, "created_at": now, "updated_at": now},
+                        {
+                            "id": f"RP9{sha256(f'{role_key}:{permission_key}'.encode()).hexdigest().upper()[:20]}",
+                            "role_id": role_id,
+                            "permission_id": permission_id,
+                            "created_at": now,
+                            "updated_at": now,
+                        },
                     )
 
 
