@@ -162,3 +162,7 @@ The authenticated alert reports `io.netty:netty-handler-proxy` versions `<=4.1.1
 ## Staging test secret-scan remediation — 2026-08-14
 
 The remote `ci: add hardened staging verification path` commit introduced high-entropy literals for `SECRET_KEY`, `REFRESH_TOKEN_SECRET`, `ENCRYPTION_KEY`, `NID_HMAC_KEY`, and `AUDIT_ANCHOR_KEY` in `backend/tests/test_staging_config_guard.py`. Gitleaks correctly flagged them as `generic-api-key` findings in the Security Hardening workflow. The test now uses deterministic low-entropy expressions (`"x" * 64`, etc.) that satisfy configuration length guards without committing reusable credential material. The targeted staging configuration tests pass locally (3/3). Gitleaks is not installed in the sandbox, so the CI history scan will be the authoritative verification.
+
+### Explicit netty-handler-proxy pin
+
+The last low Dependabot alert remained because the previous Netty constraints covered `netty-handler`, `netty-codec-*`, but not `netty-handler-proxy`. Both `mobile/android/build.gradle.kts` root `buildscript`/`allprojects` resolution strategies and `mobile/android/app/build.gradle.kts` now explicitly force `io.netty:netty-handler-proxy:4.1.136.Final`, above the alert's patched floor of 4.1.133.Final.
