@@ -37,7 +37,7 @@ def get_current_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
-) -> LabUser:
+) -> LabUser | User:
     raw_token = _extract_token(credentials, request)
     if raw_token is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
@@ -110,6 +110,38 @@ def get_current_user(
     _lab_id_var.set(user.lab_id)
 
     return user
+
+
+def require_institutional_user(
+    current_user: LabUser | User = Depends(get_current_user),
+) -> LabUser:
+    """Allow only active institutional accounts backed by ``LabUser``.
+
+    Citizen/individual ``User`` accounts must never reach device-integration
+    endpoints, even if a role or a stale client-side permission suggests access.
+    """
+    if not isinstance(current_user, LabUser) or current_user.lab_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Device integration is available to institutional accounts only",
+        )
+    return current_user
+
+
+def require_institutional_permission(permission: str):
+    """Require an institutional account and a specific lab permission."""
+
+    def checker(
+        current_user: LabUser = Depends(require_institutional_user),
+    ) -> LabUser:
+        if permission not in get_permissions_for_role(current_user.role):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission required: {permission}",
+            )
+        return current_user
+
+    return checker
 
 
 def require_permission(permission: str):

@@ -364,7 +364,8 @@ function deviceIcon(category: DeviceIntegrationCategory) {
 }
 
 export function DeviceIntegrationWorkspacePage() {
-  const { demoMode } = useAuth();
+  const { demoMode, user } = useAuth();
+  const isInstitutional = Boolean(user?.lab_id && user.role !== "citizen");
   const [activeTab, setActiveTab] = useState<"overview" | "devices" | "connectors" | "protocols" | "profiles" | "simulators" | "events" | "printing" | "monitoring">("overview");
   const [devices, setDevices] = useState<DeviceIntegrationRecord[]>(SYNTHETIC_DEVICES);
   const [summary, setSummary] = useState<DeviceIntegrationSummary>(syntheticSummary());
@@ -383,7 +384,7 @@ export function DeviceIntegrationWorkspacePage() {
   const [error, setError] = useState("");
 
   const loadLive = async () => {
-    if (demoMode) return;
+    if (demoMode || !isInstitutional) return;
     setLoading(true);
     setError("");
     try {
@@ -415,8 +416,8 @@ export function DeviceIntegrationWorkspacePage() {
   };
 
   useEffect(() => {
-    void loadLive();
-  }, [demoMode]);
+    if (isInstitutional) void loadLive();
+  }, [demoMode, isInstitutional]);
 
   const filteredDevices = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -428,6 +429,24 @@ export function DeviceIntegrationWorkspacePage() {
   }, [devices, search, selectedCategory]);
 
   const printerDevices = devices.filter((device) => device.category === "printer");
+
+  if (!isInstitutional) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6" dir="rtl">
+        <PageHeader title="مركز ربط الأجهزة" description="وحدة مؤسسية لإدارة الأجهزة والبوابات والمراقبة." />
+        <Card className="border-amber-300 bg-amber-50 dark:border-amber-800/60 dark:bg-amber-950/30">
+          <CardContent className="flex items-start gap-4 p-6 text-amber-950 dark:text-amber-100">
+            <ShieldCheck className="mt-1 h-6 w-6 shrink-0" />
+            <div className="space-y-2">
+              <h2 className="text-lg font-semibold">هذه الوحدة متاحة للحسابات المؤسسية فقط</h2>
+              <p className="text-sm leading-7">مركز ربط الأجهزة والـGateway مخصص لحسابات المؤسسات المرتبطة بمختبر أو منشأة. حسابات الأفراد والمواطنين لا يمكنها الوصول إلى هذه البيانات أو عمليات المراقبة.</p>
+              <p className="text-xs text-amber-800 dark:text-amber-200">إذا كنت تعمل ضمن مؤسسة صحية، اطلب من مسؤول المؤسسة إنشاء أو ربط حساب LabUser مناسب.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const probe = async (device: DeviceIntegrationRecord) => {
     setActionUid(device.device_uid);

@@ -32,4 +32,13 @@ describe("التنقل العربي الأساسي في GULA", () => {
       permissions: ["dashboard:read"],
     });
   });
+
+  it("يقصر مركز ربط الأجهزة على صلاحية المختبر والحسابات المؤسسية", () => {
+    const deviceItem = (NAV_ITEMS.systems ?? []).find((item) => item.path === "/device-integration");
+
+    expect(deviceItem).toMatchObject({
+      permissions: ["lab:read"],
+      institutionalOnly: true,
+    });
+  });
 });

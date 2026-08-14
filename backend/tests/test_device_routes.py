@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from app.models.user import User
+from app.security.auth import hash_password
 from tests.conftest import auth_headers
 
 
@@ -16,6 +18,32 @@ def _device_payload(uid: str, *, category: str = "laboratory_analyzer", protocol
         "endpoint": "sim://local-only",
         "capabilities": {"synthetic": True},
     }
+
+
+def test_citizen_account_cannot_access_device_integration(client, db):
+    """Individual/citizen accounts are rejected before device services execute."""
+    citizen = User(
+        email="citizen-device@test.com",
+        password_hash=hash_password("Testpass1"),
+        full_name="Synthetic Citizen",
+        role="citizen",
+        lab_id=None,
+        is_active=True,
+        is_verified=True,
+    )
+    db.add(citizen)
+    db.flush()
+    headers = auth_headers(citizen.id, None, "citizen")
+
+    for method, path, kwargs in (
+        ("get", "/device-integration/summary", {}),
+        ("get", "/device-integration/monitoring", {}),
+        ("post", "/device-integration/devices", {"json": _device_payload("CITIZEN-DENIED-001")}),
+        ("post", "/device-integration/monitoring/metrics", {"json": _monitoring_payload("citizen-denied-gateway")}),
+    ):
+        response = getattr(client, method)(path, headers=headers, **kwargs)
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Device integration is available to institutional accounts only"
 
 
 def test_device_catalog_is_tenant_scoped_and_registers(client, make_lab, make_lab_user):

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import require_permission
+from ..security.dependencies import require_institutional_permission
 from . import service
 from .schemas import (
     ConnectorListResponse,
@@ -41,11 +41,11 @@ router = APIRouter(prefix="/device-integration", tags=["device-integration"])
 
 
 def _read_actor() -> LabUser:
-    return Depends(require_permission("lab:read"))  # type: ignore[return-value]
+    return Depends(require_institutional_permission("lab:read"))  # type: ignore[return-value]
 
 
 def _write_actor() -> LabUser:
-    return Depends(require_permission("lab:manage"))  # type: ignore[return-value]
+    return Depends(require_institutional_permission("lab:manage"))  # type: ignore[return-value]
 
 
 def _device_or_404(db: Session, actor: LabUser, device_uid: str):

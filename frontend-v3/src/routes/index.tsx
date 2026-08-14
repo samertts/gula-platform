@@ -105,6 +105,13 @@ function LazyPage({ children }: { children: ReactNode }) {
   return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>;
 }
 
+function InstitutionalOnlyRoute({ children }: { children: ReactNode }) {
+  const { user, isLoading } = useAuth();
+  if (isLoading) return <LoadingSpinner />;
+  if (!user?.lab_id || user.role === "citizen") return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
+
 const adminRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'ministry_admin', 'province_admin'];
 const staffRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'doctor', 'staff', 'lab_staff', 'technician'];
 const readonlyRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'doctor', 'staff', 'lab_staff', 'demo_viewer'];
@@ -211,7 +218,7 @@ export const router = createBrowserRouter([
       { path: "pharmacy", element: <RoleGuard roles={adminRoles}><LazyPage><PharmacyPageLazy /></LazyPage></RoleGuard> },
       { path: "pharmacy-operations", element: <RoleGuard roles={readonlyRoles}><LazyPage><PharmacyOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "billing-insurance", element: <RoleGuard roles={readonlyRoles}><LazyPage><BillingInsuranceWorkspacePageLazy /></LazyPage></RoleGuard> },
-      { path: "device-integration", element: <RoleGuard roles={readonlyRoles}><LazyPage><DeviceIntegrationWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "device-integration", element: <InstitutionalOnlyRoute><RoleGuard roles={readonlyRoles}><LazyPage><DeviceIntegrationWorkspacePageLazy /></LazyPage></RoleGuard></InstitutionalOnlyRoute> },
       { path: "pilot-platform", element: <RoleGuard roles={adminRoles}><LazyPage><PilotPlatformApiPageLazy /></LazyPage></RoleGuard> },
       { path: "platform", element: <RoleGuard roles={adminRoles}><LazyPage><PlatformPageLazy /></LazyPage></RoleGuard> },
       { path: "public-health", element: <RoleGuard roles={adminRoles}><LazyPage><PublicHealthApiPageLazy /></LazyPage></RoleGuard> },

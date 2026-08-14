@@ -97,6 +97,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     const items = NAV_ITEMS[groupKey] ?? [];
     return items
       .filter((item) => {
+        if (item.institutionalOnly && (!user?.lab_id || user.role === "citizen")) return false;
         if (!item.permissions) return true;
         if (demoMode) {
           return item.permissions.some((permission) => hasPermission(user?.role ?? "citizen", permission));

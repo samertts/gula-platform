@@ -106,7 +106,7 @@ export function isPlatformRole(role: string): boolean {
   return ["master_admin", "ministry_admin", "province_admin"].includes(role);
 }
 
-export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[] }[]> = {
+export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boolean }[]> = {
   main: [
     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
     { label: "nav.citizenWorkspace", path: "/citizen", icon: "UserCircle", permissions: ["citizen:workspace"] },
@@ -200,7 +200,7 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
     { label: "الصيدلة", path: "/pharmacy", icon: "Pill", permissions: ["system:admin"] },
     { label: "إدارة الصيدلية والأدوية", path: "/pharmacy-operations", icon: "Pill", permissions: ["dashboard:read"] },
     { label: "إدارة الفوترة والتأمين", path: "/billing-insurance", icon: "ReceiptText", permissions: ["dashboard:read"] },
-    { label: "مركز ربط الأجهزة", path: "/device-integration", icon: "Cable", permissions: ["system:admin"] },
+    { label: "مركز ربط الأجهزة", path: "/device-integration", icon: "Cable", permissions: ["lab:read"], institutionalOnly: true },
     { label: "المنصة التجريبية", path: "/pilot-platform", icon: "FlaskConical", permissions: ["system:admin"] },
     { label: "المنصة", path: "/platform", icon: "Layers", permissions: ["system:admin"] },
     { label: "الصحة العامة", path: "/public-health", icon: "Activity", permissions: ["system:admin"] },
