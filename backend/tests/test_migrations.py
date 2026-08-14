@@ -34,17 +34,24 @@ def _read_migration_meta(path: pathlib.Path) -> dict:
     revision = rev_match.group(1) if rev_match else None
 
     down_raw = down_match.group(1).strip() if down_match else "None"
-    # Handle tuple (branch labels) — take first element
+    # Preserve every parent so Alembic merge revisions are validated correctly.
     if down_raw.startswith("("):
         inner = down_raw.strip("() ")
-        parts = [p.strip().strip("\"'") for p in inner.split(",") if p.strip()]
-        down_revision = parts[0] if parts else None
+        down_revisions = [p.strip().strip("\"'") for p in inner.split(",") if p.strip()]
+        down_revision = down_revisions[0] if down_revisions else None
     elif down_raw == "None":
+        down_revisions = []
         down_revision = None
     else:
         down_revision = down_raw.strip("\"'")
+        down_revisions = [down_revision]
 
-    return {"revision": revision, "down_revision": down_revision, "path": str(path)}
+    return {
+        "revision": revision,
+        "down_revision": down_revision,
+        "down_revisions": down_revisions,
+        "path": str(path),
+    }
 
 
 def _load_all_migrations() -> list[dict]:
@@ -131,32 +138,29 @@ def test_chain_has_no_orphans():
     migs = _load_all_migrations()
     all_revisions = {m["revision"] for m in migs}
     for m in migs:
-        if m["down_revision"] is None:
-            continue
-        assert m["down_revision"] in all_revisions, (
-            f"Migration {m['path']} references down_revision='{m['down_revision']}' "
-            f"which does not exist. This would cause 'Can't locate revision' errors."
-        )
+        for parent in m["down_revisions"]:
+            assert parent in all_revisions, (
+                f"Migration {m['path']} references down_revision='{parent}' "
+                f"which does not exist. This would cause 'Can't locate revision' errors."
+            )
 
 
-def test_chain_is_linear_single_head():
-    """The chain must be linear — each revision referenced as down_revision at most once.
+def test_chain_has_single_head_after_merges():
+    """All migration branches must converge to exactly one current head.
 
-    Multiple migrations pointing to the same parent creates a branch, which
-    requires explicit merge migrations. We enforce linear history here.
+    A branch is valid when it is explicitly converged by an Alembic merge
+    revision. Requiring every parent to have at most one child would reject
+    legitimate merge histories and encourage rewriting published migrations.
     """
     migs = _load_all_migrations()
-    parent_count: dict[str, int] = {}
-    for m in migs:
-        if m["down_revision"] is None:
-            continue
-        parent_count[m["down_revision"]] = parent_count.get(m["down_revision"], 0) + 1
-
-    branched = {k: v for k, v in parent_count.items() if v > 1}
-    assert not branched, (
-        "Migration chain has branches (multiple revisions with the same down_revision):\n"
-        + "\n".join(f"  '{k}' referenced by {v} migrations" for k, v in branched.items())
-        + "\nCreate a merge migration: alembic merge -m 'merge_heads' <rev1> <rev2>"
+    all_revisions = {m["revision"] for m in migs}
+    referenced_parents = {
+        parent for migration in migs for parent in migration["down_revisions"]
+    }
+    heads = all_revisions - referenced_parents
+    assert len(heads) == 1, (
+        "Migration graph must converge to exactly one head; found "
+        f"{len(heads)}: {sorted(heads)}"
     )
 
 
@@ -178,7 +182,8 @@ def test_chain_reachable_from_root():
     migs = _load_all_migrations()
     by_down: dict[str | None, list[str]] = {}
     for m in migs:
-        by_down.setdefault(m["down_revision"], []).append(m["revision"])
+        for parent in m["down_revisions"]:
+            by_down.setdefault(parent, []).append(m["revision"])
 
     # Walk the chain from root
     roots = [m["revision"] for m in migs if m["down_revision"] is None]
