@@ -1,20 +1,20 @@
 from __future__ import annotations
 
+from app.identity.api import memberships as memberships_api
 from app.identity.api.memberships import (
     MembershipApplicationRequest,
     MembershipInvitationRequest,
     serialize_invitation,
 )
-from app.identity.api.router import router
 from app.identity.models.membership import MembershipInvitation
 from fastapi.routing import APIRoute
 
 
 def _membership_routes() -> dict[tuple[str, str], APIRoute]:
     routes: dict[tuple[str, str], APIRoute] = {}
-    for route in router.routes:
-        if isinstance(route, APIRoute) and route.path.startswith(("/niam/memberships", "/memberships")):
-            path = route.path if route.path.startswith("/niam/") else f"/niam{route.path}"
+    for route in memberships_api.router.routes:
+        if isinstance(route, APIRoute) and route.path.startswith("/memberships"):
+            path = f"/niam{route.path}"
             for method in route.methods or set():
                 routes[(method, path)] = route
     return routes
