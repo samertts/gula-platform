@@ -14,11 +14,12 @@ class AccountType(StrEnum):
 
 
 class AccountStatus(StrEnum):
-    active = "active"
-    locked = "locked"
-    suspended = "suspended"
-    deactivated = "deactivated"
     pending_verification = "pending_verification"
+    active = "active"
+    suspended = "suspended"
+    locked = "locked"
+    disabled = "disabled"
+    deactivated = "deactivated"
 
 
 class Account(IdentityBaseEntity):
