@@ -27,6 +27,7 @@ Adopt a **dual-model strategy**: internal API uses canonical GULA JSON schemas, 
 - `GET /fhir/DiagnosticReport/{id}` — FHIR DiagnosticReport
 - `GET /fhir/Patient/{id}/$everything` — tenant-scoped FHIR record collection
 - `GET /patients/{id}/fhir` — FHIR export for a patient
+- `GET /lims/orders/{id}/fhir-bundle` — tenant-scoped FHIR R4 collection Bundle containing the ServiceRequest, Specimen, and Observation resources owned by the authenticated laboratory
 - `Content-Type: application/fhir+json` on FHIR endpoints
 
 ## Rationale
@@ -51,3 +52,4 @@ Adopt a **dual-model strategy**: internal API uses canonical GULA JSON schemas, 
 - Internal endpoints are exempt from FHIR content-type requirement
 - FHIR endpoint coverage is tracked in the technical debt registry
 - New clinical exchange integrations default to FHIR R4
+- LIMS Bundle exports omit patient identity expansion by default and write a metadata-only export event to the tamper-evident audit trail

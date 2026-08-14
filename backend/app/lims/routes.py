@@ -12,6 +12,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -19,7 +20,7 @@ from app._compat import UTC
 from app.database import get_db
 from app.models.lab_order import LabOrder
 from app.models.lab_user import LabUser
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 from app.services.audit_service import log_action
 
 from . import models as lims_models
@@ -46,6 +47,18 @@ from .services import (
 )
 
 router = APIRouter(prefix="/lims", tags=["lims"])
+
+
+class FHIRJSONResponse(JSONResponse):
+    """FHIR JSON response that prevents clinical export caching."""
+
+    media_type = "application/fhir+json"
+
+    def __init__(self, content, **kwargs):
+        headers = dict(kwargs.pop("headers", None) or {})
+        headers.setdefault("Cache-Control", "no-store, no-cache, must-revalidate")
+        headers.setdefault("Pragma", "no-cache")
+        super().__init__(content=content, headers=headers, **kwargs)
 
 
 # ===========================================================================
@@ -176,6 +189,62 @@ def _list_to_dict(qs, exclude: set | None = None) -> list[dict]:
 
 
 # ===========================================================================
+# INTEROPERABILITY CAPABILITIES
+# ===========================================================================
+
+
+@router.get("/capabilities")
+def get_interoperability_capabilities(
+    current_user: LabUser = Depends(require_permission("orders:read")),
+):
+    """Return the supported, tenant-scoped interoperability contract.
+
+    This is deliberately descriptive: it advertises implemented read/export
+    surfaces without granting access to another laboratory's resources.
+    """
+    return {
+        "profile": "gula-lims-v1",
+        "tenant_scope": {
+            "required": True,
+            "lab_id": current_user.lab_id,
+            "isolation": "all resource lookups are scoped to the authenticated lab",
+        },
+        "fhir": {
+            "version": "R4",
+            "resources": [
+                "Device",
+                "DiagnosticReport",
+                "Observation",
+                "ServiceRequest",
+                "Specimen",
+            ],
+            "export_endpoints": {
+                "Device": "/lims/instruments/{instrument_id}/fhir",
+                "DiagnosticReport": "/lims/reports/{report_id}/fhir",
+                "Observation": "/lims/results/{result_id}/fhir",
+                "ServiceRequest": "/lims/orders/{order_id}/fhir",
+                "Specimen": "/lims/specimens/{specimen_id}/fhir",
+            },
+        },
+        "messaging": {
+            "hl7_v2": ["ORU^R01"],
+            "astm": ["ASTM E1381/E1394 result messages"],
+        },
+        "safety": {
+            "authentication": "JWT",
+            "tenant_isolation": True,
+            "audit_logging": True,
+            "soft_delete": True,
+            "optimistic_locking": True,
+        },
+        "sync": {
+            "identifier": "sync_id",
+            "offline_capable_entities": ["orders", "specimens", "results"],
+        },
+    }
+
+
+# ===========================================================================
 # DEPARTMENTS, SECTIONS, WORKSTATIONS
 # ===========================================================================
 
@@ -221,10 +290,21 @@ def list_sections(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    q = db.query(lims_models.Section).filter(not lims_models.Section.is_deleted)
+    q = (
+        db.query(lims_models.Section)
+        .join(
+            lims_models.Department,
+            lims_models.Section.department_id == lims_models.Department.id,
+        )
+        .filter(
+            lims_models.Department.lab_id == _lab_id(current_user),
+            lims_models.Department.is_deleted.is_(False),
+            lims_models.Section.is_deleted.is_(False),
+        )
+    )
     if department_id:
         q = q.filter(lims_models.Section.department_id == department_id)
-    return {"sections": _list_to_dict(q.all())}
+    return {"sections": _list_to_dict(q.order_by(lims_models.Section.code).all())}
 
 
 @router.get("/workstations")
@@ -233,10 +313,26 @@ def list_workstations(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    q = db.query(lims_models.Workstation).filter(not lims_models.Workstation.is_deleted)
+    q = (
+        db.query(lims_models.Workstation)
+        .join(
+            lims_models.Section,
+            lims_models.Workstation.section_id == lims_models.Section.id,
+        )
+        .join(
+            lims_models.Department,
+            lims_models.Section.department_id == lims_models.Department.id,
+        )
+        .filter(
+            lims_models.Department.lab_id == _lab_id(current_user),
+            lims_models.Department.is_deleted.is_(False),
+            lims_models.Section.is_deleted.is_(False),
+            lims_models.Workstation.is_deleted.is_(False),
+        )
+    )
     if section_id:
         q = q.filter(lims_models.Workstation.section_id == section_id)
-    return {"workstations": _list_to_dict(q.all())}
+    return {"workstations": _list_to_dict(q.order_by(lims_models.Workstation.code).all())}
 
 
 # ===========================================================================
@@ -281,6 +377,29 @@ def create_instrument(
     ).first()
     if existing:
         raise HTTPException(409, detail="Instrument code already exists")
+
+    if data.workstation_id is not None:
+        workstation = (
+            db.query(lims_models.Workstation)
+            .join(
+                lims_models.Section,
+                lims_models.Workstation.section_id == lims_models.Section.id,
+            )
+            .join(
+                lims_models.Department,
+                lims_models.Section.department_id == lims_models.Department.id,
+            )
+            .filter(
+                lims_models.Workstation.id == data.workstation_id,
+                lims_models.Workstation.is_deleted.is_(False),
+                lims_models.Section.is_deleted.is_(False),
+                lims_models.Department.is_deleted.is_(False),
+                lims_models.Department.lab_id == _lab_id(current_user),
+            )
+            .first()
+        )
+        if workstation is None:
+            raise HTTPException(404, detail="Workstation not found")
 
     inst = lims_models.Instrument(
         lab_id=_lab_id(current_user),
@@ -682,6 +801,70 @@ def order_fhir(
     return order_to_fhir_service_request(lims_order)
 
 
+@router.get("/orders/{order_id}/fhir-bundle", response_class=FHIRJSONResponse)
+def order_fhir_bundle(
+    order_id: int,
+    current_user: LabUser = Depends(require_permission("orders:read")),
+    db: Session = Depends(get_db),
+):
+    """Export one tenant-scoped order as a FHIR R4 collection Bundle.
+
+    The Bundle intentionally contains only resources already owned by the
+    authenticated laboratory. Patient identity is not expanded here; an
+    integration may resolve it through its separately authorised identity
+    service, preventing accidental PHI duplication in laboratory exports.
+    """
+    lab_id = _lab_id(current_user)
+    lims_order = db.query(lims_models.Order).filter(
+        lims_models.Order.id == order_id,
+        lims_models.Order.lab_id == lab_id,
+        lims_models.Order.is_deleted.is_(False),
+    ).first()
+    if not lims_order:
+        raise HTTPException(404, detail="LIMS order not found")
+
+    service_request = order_to_fhir_service_request(lims_order)
+    service_request.pop("subject", None)
+    resources = [service_request]
+    specimens = db.query(lims_models.Specimen).filter(
+        lims_models.Specimen.order_id == lims_order.order_id,
+        lims_models.Specimen.lab_id == lab_id,
+        lims_models.Specimen.is_deleted.is_(False),
+    ).order_by(lims_models.Specimen.id).all()
+    for specimen in specimens:
+        resources.append(specimen_to_fhir(specimen))
+
+    results = db.query(lims_models.Result).filter(
+        lims_models.Result.order_id == lims_order.order_id,
+        lims_models.Result.lab_id == lab_id,
+        lims_models.Result.is_deleted.is_(False),
+    ).order_by(lims_models.Result.id).all()
+    for result in results:
+        observation = result_to_fhir(result)
+        observation.pop("subject", None)
+        resources.append(observation)
+
+    log_action(
+        db,
+        "export",
+        "lims_order_fhir_bundle",
+        lims_order.id,
+        current_user.id,
+        current_user.role,
+        lab_id,
+        {"resource_count": len(resources)},
+    )
+    db.commit()
+
+    return {
+        "resourceType": "Bundle",
+        "type": "collection",
+        "id": f"lims-order-bundle-{lims_order.id}",
+        "meta": {"profile": ["urn:gula:lims:fhir-bundle-v1"]},
+        "entry": [{"resource": resource} for resource in resources],
+    }
+
+
 # ===========================================================================
 # PANELS
 # ===========================================================================
@@ -879,11 +1062,8 @@ def release_result(
     specimen = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.id == result.specimen_id,
     ).first()
-    if specimen:
-        try:
-            SpecimenService.transition(db, specimen, "released", current_user.id)
-        except Exception:
-            pass  # Already in released or later state
+    if specimen and specimen.status not in {"released", "archived", "disposed"}:
+        SpecimenService.transition(db, specimen, "released", current_user.id)
 
     db.commit()
     return release
