@@ -86,6 +86,7 @@ const NationalSearchPlatformApiPageLazy = lazy(() => import("@/pages/national/se
 const NationalTaskEngineApiPageLazy = lazy(() => import("@/pages/national/task-engine/NationalTaskEngineApiPage"));
 const NationalWorkflowRuntimeApiPageLazy = lazy(() => import("@/pages/national/workflow-runtime/NationalWorkflowRuntimeApiPage"));
 const PharmacyPageLazy = lazy(() => import("@/pages/pharmacy/PharmacyPage"));
+const PharmacyOperationsWorkspacePageLazy = lazy(() => import("@/pages/pharmacy/PharmacyOperationsWorkspacePage"));
 const PilotPlatformApiPageLazy = lazy(() => import("@/pages/pilot-platform/PilotPlatformApiPage"));
 const PlatformPageLazy = lazy(() => import("@/pages/platform/PlatformPage"));
 const PublicHealthApiPageLazy = lazy(() => import("@/pages/public-health/PublicHealthApiPage"));
@@ -203,6 +204,7 @@ export const router = createBrowserRouter([
       { path: "national/task-engine", element: <RoleGuard roles={adminRoles}><LazyPage><NationalTaskEngineApiPageLazy /></LazyPage></RoleGuard> },
       { path: "national/workflow-runtime", element: <RoleGuard roles={adminRoles}><LazyPage><NationalWorkflowRuntimeApiPageLazy /></LazyPage></RoleGuard> },
       { path: "pharmacy", element: <RoleGuard roles={adminRoles}><LazyPage><PharmacyPageLazy /></LazyPage></RoleGuard> },
+      { path: "pharmacy-operations", element: <RoleGuard roles={readonlyRoles}><LazyPage><PharmacyOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "pilot-platform", element: <RoleGuard roles={adminRoles}><LazyPage><PilotPlatformApiPageLazy /></LazyPage></RoleGuard> },
       { path: "platform", element: <RoleGuard roles={adminRoles}><LazyPage><PlatformPageLazy /></LazyPage></RoleGuard> },
       { path: "public-health", element: <RoleGuard roles={adminRoles}><LazyPage><PublicHealthApiPageLazy /></LazyPage></RoleGuard> },

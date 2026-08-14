@@ -183,6 +183,7 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
     { label: "النواة", path: "/kernel", icon: "Cpu", permissions: ["system:admin"] },
     { label: "دورة حياة المنصة", path: "/lifecycle-platform", icon: "RefreshCw", permissions: ["system:admin"] },
     { label: "الصيدلة", path: "/pharmacy", icon: "Pill", permissions: ["system:admin"] },
+    { label: "إدارة الصيدلية والأدوية", path: "/pharmacy-operations", icon: "Pill", permissions: ["dashboard:read"] },
     { label: "المنصة التجريبية", path: "/pilot-platform", icon: "FlaskConical", permissions: ["system:admin"] },
     { label: "المنصة", path: "/platform", icon: "Layers", permissions: ["system:admin"] },
     { label: "الصحة العامة", path: "/public-health", icon: "Activity", permissions: ["system:admin"] },
