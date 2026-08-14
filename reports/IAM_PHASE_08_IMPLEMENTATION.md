@@ -2,7 +2,8 @@
 
 **المشروع:** GULA Platform
 **المستودع:** `samertts/gula-platform`
-**الفرع المستهدف:** `feat/iam-phase6-memberships`
+**فرع Phase 8:** `feat/iam-phase8-authorization-engine`
+**خط الأساس السابق:** `feat/iam-phase6-memberships`
 **التاريخ:** 2026-08-14
 **المنفذ:** Manus AI
 
