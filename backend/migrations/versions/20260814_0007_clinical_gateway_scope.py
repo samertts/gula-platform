@@ -35,21 +35,15 @@ def upgrade() -> None:
     now = datetime.now(UTC)
 
     if _has_table(_TABLE):
+        # NIAM is a separate database. These are governed opaque references,
+        # not cross-database relational foreign keys.
         additions = [
-            (
-                "niam_organization_id",
-                sa.String(length=26),
-                sa.ForeignKey("niam_organizations.id", ondelete="RESTRICT"),
-            ),
-            (
-                "niam_facility_id",
-                sa.String(length=26),
-                sa.ForeignKey("niam_admin_facilities.id", ondelete="RESTRICT"),
-            ),
+            ("niam_organization_id", sa.String(length=26)),
+            ("niam_facility_id", sa.String(length=26)),
         ]
-        for name, column_type, foreign_key in additions:
+        for name, column_type in additions:
             if not _has_column(_TABLE, name):
-                op.add_column(_TABLE, sa.Column(name, column_type, foreign_key, nullable=True))
+                op.add_column(_TABLE, sa.Column(name, column_type, nullable=True))
                 op.create_index(f"ix_{_TABLE}_{name}", _TABLE, [name])
 
     if _has_table("niam_permissions"):
