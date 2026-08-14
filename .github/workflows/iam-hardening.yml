@@ -79,7 +79,7 @@ jobs:
       RUNTIME_MODE: migration
       ENV: migration
       SECRET_KEY: ci-migration-secret-key-not-for-production
-      ENCRYPTION_KEY: 6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=
+      ENCRYPTION_KEY: ci-test-encryption-fixture-not-secret
       NID_HMAC_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
       REDIS_URL: ""
     steps:
@@ -171,7 +171,7 @@ jobs:
       DATABASE_URL: "sqlite:///:memory:"
       REDIS_URL: ""
       SECRET_KEY: ci-security-test-secret-key-not-for-production
-      ENCRYPTION_KEY: 6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=
+      ENCRYPTION_KEY: ci-test-encryption-fixture-not-secret
       NID_HMAC_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
