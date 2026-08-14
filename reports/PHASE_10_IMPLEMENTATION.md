@@ -91,6 +91,10 @@
 | `scripts/phase10_fastapi_surface.py` | استخراج mounted FastAPI routes |
 | `scripts/contract-audit/verify-audit-artifacts.mjs` | verifier يسمح بإضافات موثقة ويحمي الحد الأدنى |
 
+## حالة PR وVercel
+
+أُنشئ [PR #174](https://github.com/samertts/gula-platform/pull/174) من `feat/iam-phase10-contract-parity` إلى `feat/iam-phase9-security-audit`. نجحت بوابات Backend identity وPostgreSQL migration وFrontend-v3 contract/type/build وSecurity/Tenant isolation وVercel Preview Comments. فشل deployment preview في Vercel بحالة `Error` بعد نحو 40 ثانية، ولم يعرض تبويب Runtime Logs سببًا مقروءًا؛ لذلك لم يُخترع سبب ولم تُنفذ إعادة نشر أو عملية تغيير. سُجلت النتيجة في `reports/PHASE_10_VERCEL_FINDINGS.md`.
+
 ## قرار هذه الدفعة
 
 هذه الدفعة **جاهزة للمراجعة والرفع** باعتبارها Phase 10 foundation/contract-parity hardening، وليست إغلاقًا نهائيًا لكل فجوات الوظائف. الإصلاحات الفعلية التي تم تنفيذها هي fail-closed live capability UX، legal routes عامة معلّمة بمراجعة قانونية، وتحسين الأدوات والجرد. أما clinical gateway للمرضى والطلبات والنتائج والعينات فهو contract requirement صريح يحتاج قرارًا وتنفيذًا خادميًا منفصلًا، ولا يجوز اختصاره بجسر غير آمن.
