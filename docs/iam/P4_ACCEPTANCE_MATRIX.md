@@ -4,7 +4,7 @@
 
 **Decision gate:** P4 may be marked `COMPLETE` only when every mandatory row has implementation, test, security, governance, human review, merge, deployment, and verification evidence. A passing test alone does not close a criterion.
 
-**Current baseline:** `origin/main` at `36275eef70da7d146fb77ad25d2112fcc90becd7` on remediation branch `remediation/p4-closure-gates`.
+**Current baseline:** `origin/main` at `779a76d04d6bf0a2f0dd42ebd680abb7f29840a5` (verified 2026-08-14). PR #188 was merged; PR #189 is documentation-only and was merged. P4 remains `REMEDIATION_IN_PROGRESS`.
 
 ## Status vocabulary
 
@@ -45,12 +45,12 @@
 | P4-22 | Mobile parity | Web/Android/iOS/Desktop use shared contracts and do not implement platform-specific authorization | Mobile parity not verified in this execution | `UNVERIFIED` | Run mobile gates or record `NOT_BUILT` explicitly |
 | P4-23 | Error and denial behavior | 401/403/404/409/422/429/500/503/timeout handled without leakage or legacy authorization fallback | Some frontend/backend tests exist; full matrix not closed | `PARTIAL` | Add explicit client error-state tests and no-fallback assertions |
 | P4-24 | PostgreSQL integrity | Migrations, FK/unique/index constraints, atomic transitions, concurrency and tenant isolation on real PostgreSQL | CI migration/schema gate passed for earlier PR chain; live database and full P4 matrix are not verified | `PARTIAL` | Run current PostgreSQL integration suite and record migration state |
-| P4-25 | Security scans | SAST, dependency scan, secret scan, endpoint/tenant/privilege tests | CI security workflow exists; full Ruff/MyPy fail; local scanner evidence is not available | `BLOCKED` | Remediate or formally scope Ruff/MyPy, preserve CI scanner, rerun security gates |
+| P4-25 | Security scans | SAST, dependency scan, secret scan, endpoint/tenant/privilege tests | Current CI passed CodeQL, dependency review, Python dependency audit and Gitleaks; local public-secret guard passed. Full Ruff/MyPy still fail on the repository/critical scope. | `BLOCKED` | Continue scoped Ruff/MyPy remediation; preserve CI scanners and rerun critical-path gates |
 | P4-26 | Performance | P50/P95/P99 for login, registration, workspace resolution, membership lookup, authorization and verification lookup; no N+1/unbounded queries | No P4 performance evidence verified | `UNVERIFIED` | Add bounded benchmark suite and evidence; do not optimize by bypassing authorization/audit |
 | P4-27 | Feature flags and safe defaults | Sensitive integrations have default, owner, scope, rollout, rollback and audit; external integrations OFF | Clinical gateway is server-controlled and OFF by default; complete P4 flag inventory is not linked | `PARTIAL` | Produce feature-flag inventory and verify production values |
 | P4-28 | Privacy and legal boundary | Data minimization, purpose limitation, access, retention, privacy and legal-review markers | Repository governance prohibits fabricated legal claims; full P4 data inventory not closed | `PARTIAL` | Mark unresolved legal items `LEGAL_REVIEW_REQUIRED` and complete sensitive-field review |
 | P4-29 | Rollback | Every P4 capability has rollback preserving audit, identity, clinical, membership and account integrity | No complete rollback rehearsal evidence verified | `UNVERIFIED` | Produce rollback runbook and non-production rehearsal evidence |
-| P4-30 | CI/CD | Required jobs pass and production evidence is tied to the merged commit | Vercel PR #180 succeeded; Railway unknown; complete P4 CI evidence absent | `PARTIAL` | Complete required jobs and link deployment/runtime evidence |
+| P4-30 | CI/CD | Required jobs pass and production evidence is tied to the merged commit | PR #189 and PR #192 checks passed; Vercel previews succeeded. Production deployment remains on commit `5265760dcf28ba1c65bafcc9abdfca8a6917e926`, behind current `origin/main` `779a76d04d6bf0a2f0dd42ebd680abb7f29840a5`; Railway remains unknown. | `PARTIAL` | Verify approved release alignment and Railway/database/runtime evidence; do not redeploy blindly |
 | P4-31 | Human review and governance | Required human approvals exist; no inferred approval from check success or `REVIEW_REQUIRED` | Human approval evidence is not sufficient in current record | `BLOCKED` | Obtain explicit reviewer approvals on P4 PRs |
 | P4-32 | Merge and production verification | Correct order, merge commit, deployment from merge commit, runtime/database/flag verification | No independent P4 closure sequence is recorded | `BLOCKED` | Complete after all preceding gates pass; no automatic merge |
 
@@ -59,12 +59,12 @@
 | Blocker | Evidence | Required action |
 |---|---|---|
 | P4 acceptance not closed | Matrix rows remain `PARTIAL`, `UNVERIFIED` or `BLOCKED` | Complete only the rows required by the approved P4 scope |
-| Full Ruff gate fails | 877 findings in the previous full run | Remediate in scoped batches without broad suppression |
+| Full Ruff gate fails | Current local audit: `636` errors in `backend/app` and `2373` errors on the full repository | Remediate in scoped batches without broad suppression |
 | Full MyPy gate fails | Existing backend type failures | Classify and remediate production/security typing first; document bounded exceptions only if approved |
-| Secret scan unavailable | Gitleaks not installed in the execution environment | Add/run an approved secret scanner in CI |
+| Full quality closure incomplete | PR #192 reduced scoped critical Ruff from 2 findings to 0. Current local audit still reports Ruff `636` in `backend/app` and `2373` full, plus MyPy `463` in identity and `7484` in `backend/app` | Continue scoped remediation without global suppressions; PR #192 is reviewable but not an automatic P4 closure |
 | Railway unknown | No authenticated Railway connector | Verify read-only deployment/database evidence or record an explicit governance exception |
 | Human review incomplete | Review evidence is not equivalent to successful checks | Obtain explicit human approvals |
-| Production/database closure incomplete | Live database and post-merge P4 verification not linked | Verify against correct merge commit and record evidence |
+| Production/database closure incomplete | Production is READY but behind current origin/main; live database and post-merge P4 verification are not linked | Verify against the correct approved merge commit and record database/runtime/flag evidence |
 
 ## Closure rule
 
