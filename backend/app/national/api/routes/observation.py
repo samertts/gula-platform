@@ -175,7 +175,7 @@ async def update_observation(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Observation not found: {observation_id}") from e
 
 
-@router.delete("/{observation_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{observation_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_observation(
     observation_id: str,
     db: Session = Depends(get_db),

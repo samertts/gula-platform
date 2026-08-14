@@ -189,7 +189,7 @@ async def get_saved_search(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
-@router.delete("/saved/{search_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/saved/{search_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_saved_search(
     search_id: str,
     service: SearchPlatformService = Depends(_get_service),
@@ -229,7 +229,7 @@ async def index_document(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
 
 
-@router.delete("/index/document/{index_type}/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/index/document/{index_type}/{document_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def remove_from_index(
     index_type: str,
     document_id: str,

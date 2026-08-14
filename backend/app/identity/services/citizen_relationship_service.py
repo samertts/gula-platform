@@ -11,18 +11,17 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.config import AUDIT_ANCHOR_KEY
-from app.models.lab_user import LabUser
-from app.models.user import User
-from app.national.domain.citizen import Citizen
-from app.national.domain.patient import Patient
-from app.services.audit_service import log_action
-
 from app.identity.models.citizen_relationship import (
     CitizenRelationship,
     CitizenRelationshipSource,
     CitizenRelationshipStatus,
     CitizenRelationshipType,
 )
+from app.models.lab_user import LabUser
+from app.models.user import User
+from app.national.domain.citizen import Citizen
+from app.national.domain.patient import Patient
+from app.services.audit_service import log_action
 
 
 class CitizenRelationshipWorkflowError(ValueError):
@@ -308,11 +307,11 @@ class CitizenRelationshipWorkflow:
 
 
 __all__ = [
+    "REVOCATION_REASON_CODES",
+    "CitizenRelationshipConflict",
+    "CitizenRelationshipNotFound",
+    "CitizenRelationshipUnsupported",
     "CitizenRelationshipWorkflow",
     "CitizenRelationshipWorkflowError",
-    "CitizenRelationshipNotFound",
-    "CitizenRelationshipConflict",
-    "CitizenRelationshipUnsupported",
     "_serialize",
-    "REVOCATION_REASON_CODES",
 ]

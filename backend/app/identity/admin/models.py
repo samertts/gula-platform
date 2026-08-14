@@ -1,8 +1,19 @@
-from __future__ import annotations
-
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 
 from app.identity.base import IdentityBaseEntity
+from app.identity.models.administrative_structure import NIAMAdminBranch as PortalBranch
+from app.identity.models.administrative_structure import NIAMAdminDepartment as PortalDepartment
+from app.identity.models.administrative_structure import NIAMAdminFacility as PortalFacility
+
+__all__ = [
+    "EnterprisePortal",
+    "FHIRConnection",
+    "PortalAuditLog",
+    "PortalBranch",
+    "PortalDepartment",
+    "PortalFacility",
+    "PortalSubscription",
+]
 
 
 class EnterprisePortal(IdentityBaseEntity):
@@ -19,55 +30,6 @@ class EnterprisePortal(IdentityBaseEntity):
     activated_at = Column(DateTime(timezone=True), nullable=True)
     last_access_at = Column(DateTime(timezone=True), nullable=True)
     settings = Column(JSON, nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-
-
-class PortalBranch(IdentityBaseEntity):
-    __tablename__ = "niam_admin_branches"
-
-    uuid = Column(String(36), unique=True, nullable=False, index=True)
-    branch_id = Column(String(100), unique=True, nullable=False, index=True)
-    portal_id = Column(String(26), ForeignKey("niam_admin_portals.id", ondelete="CASCADE"), nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
-    name_en = Column(String(300), nullable=False)
-    name_ar = Column(String(300), nullable=False)
-    address = Column(Text, nullable=True)
-    phone = Column(String(30), nullable=True)
-    email = Column(String(200), nullable=True)
-    manager_person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True)
-    status = Column(String(20), default="active", nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
-
-
-class PortalFacility(IdentityBaseEntity):
-    __tablename__ = "niam_admin_facilities"
-
-    uuid = Column(String(36), unique=True, nullable=False, index=True)
-    facility_id = Column(String(100), unique=True, nullable=False, index=True)
-    branch_id = Column(String(26), ForeignKey("niam_admin_branches.id", ondelete="CASCADE"), nullable=False, index=True)
-    organization_id = Column(String(26), ForeignKey("niam_organizations.id", ondelete="CASCADE"), nullable=False, index=True)
-    name_en = Column(String(300), nullable=False)
-    name_ar = Column(String(300), nullable=False)
-    facility_type = Column(String(50), nullable=False)
-    license_number = Column(String(100), nullable=True)
-    accreditation = Column(String(200), nullable=True)
-    status = Column(String(20), default="active", nullable=False)
-    contact = Column(JSON, nullable=True)
-    address = Column(Text, nullable=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-
-
-class PortalDepartment(IdentityBaseEntity):
-    __tablename__ = "niam_admin_departments"
-
-    uuid = Column(String(36), unique=True, nullable=False, index=True)
-    dept_id = Column(String(100), unique=True, nullable=False, index=True)
-    facility_id = Column(String(26), ForeignKey("niam_admin_facilities.id", ondelete="CASCADE"), nullable=False, index=True)
-    name_en = Column(String(300), nullable=False)
-    name_ar = Column(String(300), nullable=False)
-    dept_type = Column(String(50), nullable=True)
-    head_person_id = Column(String(26), ForeignKey("niam_persons.id", ondelete="SET NULL"), nullable=True)
-    status = Column(String(20), default="active", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
 
 

@@ -368,7 +368,7 @@ def revoke_delegation(
     success = svc.revoke_delegation(delegation_id, revoked_by=current_user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Delegation not found or already revoked")
-    return Response(status_code=204)
+    return Response(status_code=204, response_model=None)
 
 
 @router.get("/delegations")
@@ -594,7 +594,7 @@ def revoke_role_assignment(
     success = svc.revoke_role(user_id, role_id)
     if not success:
         raise HTTPException(status_code=404, detail="Role assignment not found")
-    return Response(status_code=204)
+    return Response(status_code=204, response_model=None)
 
 
 # ── Routes Endpoint ────────────────────────────────────────────────────────────

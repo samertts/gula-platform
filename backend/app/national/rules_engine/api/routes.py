@@ -218,7 +218,7 @@ async def update_rule(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
 
-@router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{rule_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_rule(
     rule_id: str,
     service: RulesEngineService = Depends(_get_service),

@@ -203,7 +203,7 @@ def update_coverage(
     return coverage
 
 
-@router.delete("/{coverage_id}", status_code=204)
+@router.delete("/{coverage_id}", status_code=204, response_model=None)
 def terminate_coverage(
     coverage_id: int,
     current_user: LabUser = Depends(get_current_user),

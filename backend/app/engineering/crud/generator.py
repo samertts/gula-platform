@@ -255,7 +255,7 @@ def update_{module}(entity_id: int, data: {spec.name}Update):
     return entity
 
 
-@router.delete("/{{entity_id}}", status_code=204)
+@router.delete("/{{entity_id}}", status_code=204, response_model=None)
 def delete_{module}(entity_id: int):
     service = get_service()
     if not service.delete(entity_id):

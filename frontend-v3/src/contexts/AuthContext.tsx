@@ -1,13 +1,15 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { UserInfo, LoginRequest } from "@/types";
 import { authApi } from "@/api/endpoints";
-import { setApiMode, type DemoPersonaId } from "@/api/client";
+import { apiClient, setApiMode, type DemoPersonaId, type MembershipSummary } from "@/api/client";
 
 interface AuthContextType {
   user: UserInfo | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   demoMode: boolean;
+  memberships: MembershipSummary[];
+  refreshMemberships: (forceLive?: boolean) => Promise<void>;
   login: (data: LoginRequest) => Promise<void>;
   startDemo: (persona?: DemoPersonaId) => Promise<void>;
   logout: () => Promise<void>;
@@ -22,6 +24,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [demoMode, setDemoMode] = useState(false);
+  const [memberships, setMemberships] = useState<MembershipSummary[]>([]);
+
+  const refreshMemberships = async (forceLive = false) => {
+    if (demoMode && !forceLive) {
+      setMemberships([]);
+      return;
+    }
+    try {
+      const response = await apiClient.listMyMemberships();
+      setMemberships(response.memberships);
+    } catch {
+      // Memberships are server-reflected UX context, never a local authorization fallback.
+      setMemberships([]);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -36,6 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           setUser(session.user);
           setDemoMode(Boolean(session.demo_mode));
+          if (!session.demo_mode) void refreshMemberships(true);
           if (hasDemoMarker) window.sessionStorage.setItem(DEMO_SESSION_KEY, "true");
         }
       } catch {
@@ -73,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.sessionStorage.removeItem(DEMO_SESSION_KEY);
     setUser(res.user);
     setDemoMode(Boolean(res.demo_mode));
+    if (!res.demo_mode) await refreshMemberships(true);
   };
 
   const startDemo = async (persona: DemoPersonaId = DEFAULT_DEMO_PERSONA) => {
@@ -81,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.sessionStorage.setItem(DEMO_PERSONA_KEY, persona);
     setUser(res.user);
     setDemoMode(true);
+    setMemberships([]);
   };
 
   const logout = async () => {
@@ -96,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setApiMode("live");
       setUser(null);
       setDemoMode(false);
+      setMemberships([]);
     }
   };
 
@@ -106,6 +127,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isLoading,
         demoMode,
+        memberships,
+        refreshMemberships,
         login,
         startDemo,
         logout,

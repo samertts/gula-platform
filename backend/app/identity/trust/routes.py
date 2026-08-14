@@ -279,8 +279,7 @@ async def validate_anchor_chain(
     db: AsyncSession = Depends(get_db),
 ):
     service = TrustAnchorService(db)
-    result = await service.validate_chain(anchor_id)
-    return result
+    return await service.validate_chain(anchor_id)
 
 
 @router.post("/anchors/{anchor_id}/revoke")

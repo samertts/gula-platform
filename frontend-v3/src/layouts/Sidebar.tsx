@@ -95,7 +95,12 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const renderItems = (groupKey: keyof typeof NAV_ITEMS) => {
     const items = NAV_ITEMS[groupKey] ?? [];
     return items
-      .filter((item) => !item.permissions || item.permissions.some((permission) => hasPermission(user?.role ?? "citizen", permission)))
+      .filter(
+        (item) =>
+          !item.permissions ||
+          !demoMode ||
+          item.permissions.some((permission) => hasPermission(user?.role ?? "citizen", permission)),
+      )
       .map((item) => {
         const Icon = iconMap[item.icon] || Activity;
         const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);

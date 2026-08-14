@@ -223,7 +223,7 @@ def update_network_provider(
     return net_provider
 
 
-@router.delete("/providers/{network_provider_id}", status_code=204)
+@router.delete("/providers/{network_provider_id}", status_code=204, response_model=None)
 def remove_from_network(
     network_provider_id: int,
     current_user: LabUser = Depends(get_current_user),
