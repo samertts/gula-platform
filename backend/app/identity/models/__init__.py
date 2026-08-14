@@ -6,6 +6,17 @@ from app.identity.certificates.models import (
 )
 
 from .account import Account, AccountStatus, AccountType
+from .administrative_structure import (
+    NIAMAdminBranch,
+    NIAMAdminDepartment,
+    NIAMAdminFacility,
+    NIAMAdminUnit,
+    OrganizationOwnership,
+    OrganizationRepresentative,
+    OrganizationStatus,
+    OwnershipStatus,
+    RepresentativeStatus,
+)
 from .assignment import Assignment, AssignmentStatus
 from .audit import IdentityAuditEntry
 from .citizen_relationship import (
@@ -62,10 +73,19 @@ __all__ = [
     "LegacyAccountLinkStatus",
     "LicenseStatus",
     "MachineIdentity",
+    "NIAMAdminBranch",
+    "NIAMAdminDepartment",
+    "NIAMAdminFacility",
+    "NIAMAdminUnit",
     "NIAMOrganization",
+    "OrganizationOwnership",
+    "OrganizationRepresentative",
+    "OrganizationStatus",
+    "OwnershipStatus",
     "Person",
     "ProfessionalLicense",
     "ProfessionalType",
+    "RepresentativeStatus",
     "UserSession",
     "VerificationRecord",
     "VerificationRecordStatus",
