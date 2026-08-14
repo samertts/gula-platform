@@ -4,7 +4,13 @@ import io.gula.sdk.GulaClient
 import io.gula.sdk.GulaNetworkException
 import io.gula.sdk.models.*
 import kotlinx.coroutines.*
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
@@ -244,12 +250,21 @@ enum class OperationType {
     SUBMIT_DEVICE_RESULT,
 }
 
+private object InstantIsoSerializer : KSerializer<Instant> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Instant", PrimitiveKind.STRING)
+
+    override fun serialize(encoder: Encoder, value: Instant) = encoder.encodeString(value.toString())
+
+    override fun deserialize(decoder: Decoder): Instant = Instant.parse(decoder.decodeString())
+}
+
 @Serializable
 data class QueuedOperation(
     val id: String,
     val type: OperationType,
     val resourceId: String? = null,
     val payload: String,
+    @Serializable(with = InstantIsoSerializer::class)
     val createdAt: Instant,
     val retryCount: Int = 0,
 )

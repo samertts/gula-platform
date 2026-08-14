@@ -36,12 +36,8 @@ class GulaClient private constructor(
 
         install(Logging) {
             logger = object : Logger {
-                override fun log(message: String) = log.debug(message)
-                override fun log(level: LogLevel, message: String) = when (level) {
-                    LogLevel.INFO -> log.info(message)
-                    LogLevel.WARNING -> log.warn(message)
-                    LogLevel.ERROR -> log.error(message)
-                    else -> log.trace(message)
+                override fun log(message: String) {
+                    log.debug(message)
                 }
             }
             level = LogLevel.HEADERS
@@ -67,9 +63,7 @@ class GulaClient private constructor(
                     cause is java.net.ConnectException ||
                     cause is java.net.SocketTimeoutException
             }
-            exponentialDelay().let { delayFunc ->
-                retryDelayMillis = delayFunc.invoke(1)
-            }
+            exponentialDelay()
             modifyRequest { request ->
                 log.warn("Retrying request to ${request.url.build()}")
             }
@@ -200,7 +194,7 @@ class GulaClient private constructor(
                 }
                 attempt++
                 val backoffMs = (100L shl attempt.coerceAtMost(6)) +
-                    Random.nextLong(0, 100)
+                    kotlin.random.Random.nextLong(0, 100)
                 delay(backoffMs)
             }
         }

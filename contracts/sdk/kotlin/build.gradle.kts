@@ -1,7 +1,7 @@
 plugins {
     kotlin("jvm") version "2.1.20"
     kotlin("plugin.serialization") version "2.1.20"
-    id("io.gitlab.arturbosch.detekt") version "1.23.7"
+    id("io.gitlab.arturbosch.detekt") version "1.23.8"
     `maven-publish`
 }
 
@@ -14,8 +14,8 @@ repositories {
 
 val ktorVersion = "3.1.2"
 val kotlinxSerializationVersion = "1.8.0"
-val kotlinxCoroutinesVersion = "1.10.0"
-val logbackVersion = "1.5.18"
+val kotlinxCoroutinesVersion = "1.11.0"
+val logbackVersion = "1.6.1"
 
 dependencies {
     // Ktor Client

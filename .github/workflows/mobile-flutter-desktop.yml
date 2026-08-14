@@ -69,7 +69,7 @@ jobs:
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('mobile/desktop/pubspec.yaml') }}
@@ -114,7 +114,7 @@ jobs:
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: |
             mobile/desktop/.dart_tool/
@@ -136,7 +136,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: flutter-test-results-${{ matrix.os }}
           path: mobile/desktop/test-results.json
@@ -145,7 +145,7 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: flutter-coverage-${{ matrix.os }}
           path: mobile/desktop/coverage/
@@ -172,7 +172,7 @@ jobs:
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: |
             mobile/desktop/.dart_tool/
@@ -195,7 +195,7 @@ jobs:
           dart run msix:create --store
 
       - name: Upload Windows MSIX
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: gula-desktop-windows-msix
           path: mobile/desktop/build/windows/x64/runner/Release/*.msix
@@ -203,7 +203,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Windows executable
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: gula-desktop-windows-exe
           path: mobile/desktop/build/windows/runner/Release/
@@ -237,7 +237,7 @@ jobs:
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: |
             mobile/desktop/.dart_tool/
@@ -304,7 +304,7 @@ jobs:
           cp ~/rpmbuild/RPMS/x86_64/*.rpm .
 
       - name: Upload Linux AppImage
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: gula-desktop-linux-appimage
           path: mobile/desktop/build/appimage/*.AppImage
@@ -312,7 +312,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Linux deb
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: gula-desktop-linux-deb
           path: mobile/desktop/*.deb
@@ -320,7 +320,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Linux rpm
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: gula-desktop-linux-rpm
           path: mobile/desktop/*.rpm
@@ -347,7 +347,7 @@ jobs:
           cache: true
 
       - name: Cache pub dependencies
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.pub-cache
           key: pub-macos-${{ hashFiles('mobile/desktop/pubspec.yaml') }}
@@ -385,7 +385,10 @@ jobs:
             build/macos/Build/Products/Release/gula_desktop.app
 
       - name: Build DMG
+        env:
+          RELEASE_REF: ${{ github.ref_name }}
         run: |
+          SAFE_REF=$(printf '%s' "$RELEASE_REF" | tr -c 'A-Za-z0-9._-' '-')
           brew install create-dmg
           create-dmg \
             --volname "GULA Platform" \
@@ -396,25 +399,27 @@ jobs:
             --hide-extension "gula_desktop.app" \
             --app-drop-link 450 200 \
             --no-internet-enable \
-            "GULA_Platform-${{ github.ref_name }}.dmg" \
+            "GULA_Platform-${SAFE_REF}.dmg" \
             "build/macos/Build/Products/Release/"
 
       - name: Notarize DMG
         if: ${{ github.ref == 'refs/heads/main' && env.MACOS_CERTIFICATE != '' && env.MACOS_APP_PASSWORD != '' && env.MACOS_TEAM_ID != '' }}
         env:
+          RELEASE_REF: ${{ github.ref_name }}
           MACOS_APP_PASSWORD: ${{ secrets.MACOS_APP_PASSWORD }}
           MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
         run: |
+          SAFE_REF=$(printf '%s' "$RELEASE_REF" | tr -c 'A-Za-z0-9._-' '-')
           xcrun notarytool submit \
-            "GULA_Platform-${{ github.ref_name }}.dmg" \
+            "GULA_Platform-${SAFE_REF}.dmg" \
             --apple-id "apps@gulaplatform.com" \
             --team-id "$MACOS_TEAM_ID" \
             --password "$MACOS_APP_PASSWORD" \
             --wait
-          xcrun stapler staple "GULA_Platform-${{ github.ref_name }}.dmg"
+          xcrun stapler staple "GULA_Platform-${SAFE_REF}.dmg"
 
       - name: Upload macOS DMG
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: gula-desktop-macos-dmg
           path: mobile/desktop/GULA_Platform-*.dmg

@@ -1,11 +1,11 @@
 package io.gula.sdk
 
-class GulaException(
+open class GulaException(
     message: String,
     cause: Throwable? = null,
 ) : Exception(message, cause)
 
-class GulaAuthException(
+open class GulaAuthException(
     message: String = "Authentication failed",
     cause: Throwable? = null,
 ) : GulaException(message, cause)
@@ -30,7 +30,7 @@ class GulaNotFoundException(
     cause,
 )
 
-class GulaConflictException(
+open class GulaConflictException(
     val resourceType: String,
     val resourceId: Any? = null,
     message: String? = null,
