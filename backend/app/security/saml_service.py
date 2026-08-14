@@ -6,8 +6,9 @@ import logging
 from datetime import datetime, timedelta
 
 from defusedxml import ElementTree as ET  # noqa: N817
-from signxml import InvalidInput, InvalidSignature, SignatureConfiguration, XMLVerifier
 from signxml.algorithms import DigestAlgorithm, SignatureMethod
+from signxml.exceptions import InvalidInput, InvalidSignature
+from signxml.verifier import SignatureConfiguration, XMLVerifier
 
 from app._compat import UTC
 
