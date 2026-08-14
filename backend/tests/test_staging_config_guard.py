@@ -14,11 +14,13 @@ STAGING_ENVIRONMENT = {
     "TRUSTED_HOSTS": "api.staging.gula-platform.example",
     "GULA_DATABASE_URL": "postgresql://staging:isolated@db.example/staging",
     "REDIS_URL": "redis://cache.example:6379/0",
-    "SECRET_KEY": "Q9wL2vR7mK4xH8zC1nF6pT3yB5dJ0sA9qE2uI7oG4lV8",
-    "REFRESH_TOKEN_SECRET": "R4mX8zL2qH7vC1kN6pD3yB9wF5jA0sE4uI7oG2lV8tQ9",
-    "ENCRYPTION_KEY": "M6rK1vH9qT4zC8nL2pF7yB3wD0jA5sE1uI9oG4lV8xQ2",
-    "NID_HMAC_KEY": "N8qL3vR7mK1xH5zC9pF2yB6wD0jA4sE8uI7oG1lV9tQ3",
-    "AUDIT_ANCHOR_KEY": "A5mX9zL3qH7vC1kN6pD2yB8wF4jR0sE6uI1oG5lV9tQ7",
+    # Deterministic low-entropy placeholders: config validates length/policy, and
+    # no reusable credential material is committed to the repository.
+    "SECRET_KEY": "x" * 64,
+    "REFRESH_TOKEN_SECRET": "y" * 64,
+    "ENCRYPTION_KEY": "z" * 64,
+    "NID_HMAC_KEY": "w" * 64,
+    "AUDIT_ANCHOR_KEY": "v" * 64,
 }
 
 
