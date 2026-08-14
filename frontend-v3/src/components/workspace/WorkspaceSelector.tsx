@@ -56,7 +56,11 @@ export function WorkspaceSelector({ onActiveWorkspace }: WorkspaceSelectorProps)
   }
 
   if (demoMode) {
-    return <span className="text-xs text-muted-foreground" role="status">مساحات العمل غير متاحة في وضع المعاينة الاصطناعي.</span>;
+    return (
+      <span className="hidden max-w-40 truncate text-xs text-muted-foreground sm:inline" role="status">
+        مساحات العمل غير متاحة في وضع المعاينة الاصطناعي.
+      </span>
+    );
   }
   if (loading) {
     return <span className="text-xs text-muted-foreground" role="status" aria-live="polite">جارٍ تحميل المساحات…</span>;

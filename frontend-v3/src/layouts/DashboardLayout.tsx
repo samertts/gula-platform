@@ -31,9 +31,9 @@ export function DashboardLayout() {
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
       <main id="main-content" className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex min-h-[4.5rem] items-center gap-3 border-b border-slate-200/80 bg-white/90 px-4 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.58)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/85 md:px-7">
-          <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl md:hidden" onClick={() => setMobileOpen(true)} aria-label="فتح القائمة"><Menu className="h-5 w-5" /></Button>
-          <div className="min-w-0 shrink-0 md:hidden"><GulaBrand /></div>
-          <div className="hidden min-w-0 md:block">
+          <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl lg:hidden" onClick={() => setMobileOpen(true)} aria-label="فتح القائمة"><Menu className="h-5 w-5" /></Button>
+          <div className="min-w-0 shrink-0 lg:hidden"><GulaBrand /></div>
+          <div className="hidden min-w-0 lg:block">
             <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#0D9488]">GULA · مركز العمليات</p>
             <h1 className="truncate text-base font-bold">{currentLabel}</h1>
           </div>
@@ -43,8 +43,8 @@ export function DashboardLayout() {
             <button type="button" className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-muted-foreground transition hover:border-primary/30 hover:bg-primary/5 lg:flex dark:border-white/10 dark:bg-white/[0.04]" aria-label="بحث داخل المنصة">
               <Search className="h-4 w-4" /><span>بحث داخل المنصة</span><kbd className="rounded-md border bg-white px-1.5 py-0.5 font-mono text-[10px] dark:bg-white/10">⌘K</kbd>
             </button>
-            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl" aria-label="التنبيهات" title={t("nav.notifications")}><Bell className="h-4 w-4" /></Button>
-            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl" onClick={() => setLocale(locale === "ar" ? "en" : "ar")} title={locale === "ar" ? "English" : "العربية"} aria-label={locale === "ar" ? "التبديل إلى الإنجليزية" : "التبديل إلى العربية"}><span className="text-[11px] font-bold">{locale === "ar" ? "EN" : "AR"}</span></Button>
+            <Button variant="ghost" size="icon" className="hidden h-11 w-11 rounded-xl sm:inline-flex" aria-label="التنبيهات" title={t("nav.notifications")}><Bell className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl" onClick={() => setLocale(locale === "ar" ? "en" : "ar")} title={locale === "ar" ? "English" : "العربية"} aria-label={locale === "ar" ? "التبديل إلى الإنجليزية" : "العربية"}><span className="text-[11px] font-bold">{locale === "ar" ? "EN" : "AR"}</span></Button>
             <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl" onClick={() => setTheme(theme === "dark" ? "light" : theme === "light" ? "system" : "dark")} title={theme === "dark" ? "الوضع الفاتح" : "الوضع الداكن"} aria-label="تغيير المظهر"><span className="text-sm">{theme === "dark" ? "☼" : "◐"}</span></Button>
             <div className="hidden items-center gap-2 border-r border-slate-200 pr-3 dark:border-white/10 sm:flex">
               <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0D9488] to-[#0F172A] text-sm font-bold text-white shadow-[0_10px_24px_-14px_rgba(15,23,42,0.8)]">{user?.name?.charAt(0) || "م"}</span>

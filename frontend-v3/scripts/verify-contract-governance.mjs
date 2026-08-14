@@ -8,8 +8,8 @@ const repositoryRoot = resolve(frontendRoot, "..");
 const refreshedAppRoot = join(repositoryRoot, "apps", "gula-platform-ui-refresh");
 
 const requiredContracts = [
-  { id: "patients.read", permission: "patients:read", workspace: true },
-  { id: "orders.read", permission: "orders:read", workspace: true },
+  { id: "patients.read", permission: "patients.read", workspace: true },
+  { id: "orders.read", permission: "orders.read", workspace: true },
 ];
 
 async function readRequired(path, label) {
@@ -47,11 +47,11 @@ for (const expected of requiredContracts) {
 }
 
 for (const requiredFragment of [
-  'api.get<unknown>("/authz/me")',
-  'api.post<unknown>("/authz/check"',
-  'resource_attrs: { lab_id: scope.labId }',
-  'await requireVerifiedWorkspacePermission(SCOPED_READ_CONTRACTS.patients.permission)',
-  'await requireVerifiedWorkspacePermission(SCOPED_READ_CONTRACTS.orders.permission)',
+  '"/api/v1/clinical/patients"',
+  '"/api/v1/clinical/orders"',
+  'contract_version: "1.0"',
+  'DIRECT_REST_SCOPED_READS_BLOCKED',
+  'WorkspaceReadBlockedError',
 ]) {
   if (!scopedReads.includes(requiredFragment)) {
     violations.push(`بوابة القراءات النطاقية تفتقد الفرض المطلوب: ${requiredFragment}`);
@@ -59,8 +59,8 @@ for (const requiredFragment of [
 }
 
 for (const [label, source, contractId, permission] of [
-  ["صفحة المرضى", patientPage, "patients.read", "patients:read"],
-  ["صفحة الطلبات", ordersPage, "orders.read", "orders:read"],
+  ["صفحة المرضى", patientPage, "patients.read", "patients.read"],
+  ["صفحة الطلبات", ordersPage, "orders.read", "orders.read"],
 ]) {
   if (!source.includes('data-workspace-context="required"') || !source.includes(contractId) || !source.includes(permission)) {
     violations.push(`${label} لا تعلن العقد أو الصلاحية أو سياق المنشأة صراحة.`);

@@ -256,6 +256,24 @@ function mapGatewayError(error: unknown, contractId: string): WorkspaceReadBlock
       `بوابة القراءة ${contractId} غير مفعلة لهذا السياق أو غير متاحة حاليًا.`,
     );
   }
+  if (status === 429) {
+    return new WorkspaceReadBlockedError(
+      "service_unavailable",
+      `تم تقييد طلبات القراءة ${contractId} مؤقتًا. حاول لاحقًا.`,
+    );
+  }
+  if (status !== undefined && status >= 400) {
+    return new WorkspaceReadBlockedError(
+      "service_unavailable",
+      `تعذر إكمال القراءة ${contractId} بأمان حاليًا.`,
+    );
+  }
+  if (!error.response) {
+    return new WorkspaceReadBlockedError(
+      "service_unavailable",
+      `بوابة القراءة ${contractId} غير متاحة حاليًا.`,
+    );
+  }
   return null;
 }
 

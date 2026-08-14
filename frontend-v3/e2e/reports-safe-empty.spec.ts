@@ -7,9 +7,15 @@ test.use({
 });
 
 const viewports = [
-  { name: "الهاتف", width: 390, height: 844 },
-  { name: "اللوحي", width: 768, height: 1024 },
-  { name: "سطح المكتب", width: 1440, height: 900 },
+  { name: "الهاتف 320", width: 320, height: 700 },
+  { name: "الهاتف 360", width: 360, height: 780 },
+  { name: "الهاتف 375", width: 375, height: 812 },
+  { name: "الهاتف 390", width: 390, height: 844 },
+  { name: "الهاتف 412", width: 412, height: 915 },
+  { name: "اللوحي 768", width: 768, height: 1024 },
+  { name: "اللوحي 1024", width: 1024, height: 768 },
+  { name: "سطح المكتب 1280", width: 1280, height: 800 },
+  { name: "سطح المكتب 1440", width: 1440, height: 900 },
 ] as const;
 
 test.describe("سطح التقارير الآمن", () => {

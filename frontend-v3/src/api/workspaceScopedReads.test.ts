@@ -1,3 +1,4 @@
+import axios from "axios";
 import { apiClient } from "./client";
 import {
   DIRECT_REST_SCOPED_READS_BLOCKED,
@@ -92,5 +93,15 @@ describe("بوابة القراءة السريرية الموحدة", () => {
         items: [{ id: "order-7", status: "pending", test_count: 1 }],
       }),
     ).toThrowError(WorkspaceReadBlockedError);
+  });
+
+  it("تحول فشل الاتصال إلى حالة blocked آمنة بدل تسريب transport error", async () => {
+    const getSpy = vi.spyOn(apiClient.api, "get").mockRejectedValueOnce(new axios.AxiosError("Network Error"));
+
+    await expect(workspaceScopedReads.listPatients()).rejects.toMatchObject({
+      name: "WorkspaceReadBlockedError",
+      reason: "service_unavailable",
+    });
+    getSpy.mockRestore();
   });
 });

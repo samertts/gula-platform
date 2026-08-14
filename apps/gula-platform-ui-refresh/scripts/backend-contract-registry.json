@@ -50,13 +50,13 @@
     {
       "id": "patients.read",
       "method": "GET",
-      "path": "/patients",
-      "permission": "patients:read",
+      "path": "/api/v1/clinical/patients",
+      "permission": "patients.read",
       "requiresWorkspaceContext": true,
-      "aliases": ["patientsApi", "patientApi"],
+      "aliases": ["clinicalGateway", "workspaceScopedReads"],
       "operationKinds": ["read"],
-      "clientMethods": ["list", "get", "search", "find", "detail"],
-      "source": "backend/app/routes/patients.py"
+      "clientMethods": ["list"],
+      "source": "backend/app/clinical_gateway/routes.py"
     },
     {
       "id": "patients.write",
@@ -72,13 +72,13 @@
     {
       "id": "orders.read",
       "method": "GET",
-      "path": "/lims/orders",
-      "permission": "orders:read",
+      "path": "/api/v1/clinical/orders",
+      "permission": "orders.read",
       "requiresWorkspaceContext": true,
-      "aliases": ["ordersApi", "orderApi"],
+      "aliases": ["clinicalGateway", "workspaceScopedReads"],
       "operationKinds": ["read"],
-      "clientMethods": ["list", "get", "search", "find", "detail"],
-      "source": "backend/app/lims/routes.py"
+      "clientMethods": ["list"],
+      "source": "backend/app/clinical_gateway/routes.py"
     },
     {
       "id": "orders.write",
