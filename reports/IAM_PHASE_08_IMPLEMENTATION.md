@@ -73,4 +73,6 @@ Break-glass وdelegation وimpersonation تم تمثيل حدودها ورفض b
 
 ## القرار النهائي
 
-Phase 8 **مكتمل على مستوى المصدر والاختبارات المحلية المذكورة أعلاه** وجاهز للمراجعة في Pull Request. لا يوجد merge أو deployment تلقائي ضمن هذا التنفيذ، ولا ينبغي وضع completion tag قبل انتهاء CI البعيد ومراجعة بشرية صريحة.
+Phase 8 **مكتمل على مستوى المصدر والاختبارات المحلية المذكورة أعلاه**، وقد رُفع إلى [PR #171](https://github.com/samertts/gula-platform/pull/171) على الفرع `feat/iam-phase8-authorization-engine` فوق خط أساس Phase 6/7. بوابات IAM Hardening الأربعة البعيدة نجحت: Backend identity/compile، PostgreSQL migration/schema، Frontend contract/type/build، وSecurity/tenant isolation regression. فحص Vercel بقي فاشلًا بسبب deployment rate limit خارجي، وليس بسبب فشل مصدر Phase 8.
+
+لا يوجد merge أو deployment تلقائي ضمن هذا التنفيذ، ولا ينبغي وضع completion tag قبل مراجعة بشرية صريحة. PR #171 مفتوح للمراجعة.
