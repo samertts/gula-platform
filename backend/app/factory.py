@@ -519,6 +519,7 @@ def _register_routes(app: FastAPI) -> None:
         setup,
         test_results,
         verification,
+        app_updates,
     )
     from .billing import routes as billing_routes
     from .routes import ai as ai_routes
@@ -529,7 +530,7 @@ def _register_routes(app: FastAPI) -> None:
 
     core_routes = [
         login, register, verification, demo, setup, metrics, patients, results,
-        test_results, dashboard, labs, samples,
+        test_results, dashboard, labs, samples, app_updates,
     ]
     feature_routes = [
         qr, id_scan, identity, notifications, ehr, ehr_fhir, cds_hooks,

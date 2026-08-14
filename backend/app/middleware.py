@@ -28,7 +28,8 @@ _ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset(
         "/health/status",
         "/health/deep",
         "/health/kernel",
-    },
+        "/app-updates",
+    }
 )
 
 
