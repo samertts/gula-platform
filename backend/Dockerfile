@@ -54,7 +54,7 @@ USER appuser
 EXPOSE 10000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
-    CMD-SHELL python3 -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.getenv('PORT', '10000') + '/health', timeout=3)"
+    CMD python3 -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.getenv('PORT', '10000') + '/health', timeout=3)"
 
 # Use the same PORT-aware command locally and on Railway. Railway's saved
 # Start Command must also point to /app/start_railway.sh when configured.
