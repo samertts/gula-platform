@@ -1,11 +1,19 @@
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 
 from app.identity.base import IdentityBaseEntity
-from app.identity.models.administrative_structure import (
-    NIAMAdminBranch as PortalBranch,
-    NIAMAdminDepartment as PortalDepartment,
-    NIAMAdminFacility as PortalFacility,
-)
+from app.identity.models.administrative_structure import NIAMAdminBranch as PortalBranch
+from app.identity.models.administrative_structure import NIAMAdminDepartment as PortalDepartment
+from app.identity.models.administrative_structure import NIAMAdminFacility as PortalFacility
+
+__all__ = [
+    "EnterprisePortal",
+    "FHIRConnection",
+    "PortalAuditLog",
+    "PortalBranch",
+    "PortalDepartment",
+    "PortalFacility",
+    "PortalSubscription",
+]
 
 
 class EnterprisePortal(IdentityBaseEntity):

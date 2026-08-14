@@ -17,6 +17,7 @@ concurrency:
 env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "22"
+  PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/backend
 
 jobs:
   backend-identity:
