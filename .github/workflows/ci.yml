@@ -263,6 +263,7 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gula_test
+          MIGRATION_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gula_test
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: ${{ steps.test_secrets.outputs.secret_key }}
           ENCRYPTION_KEY: ${{ steps.test_secrets.outputs.encryption_key }}
