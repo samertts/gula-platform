@@ -3,6 +3,9 @@
 Revision ID: 20260815_merge_heads
 Revises: 20260815_0002, 20260815_0012
 Create Date: 2026-08-15
+
+The revision identifier is intentionally unique because the repository already
+contains date-based revisions from parallel development lines.
 """
 
 from __future__ import annotations
