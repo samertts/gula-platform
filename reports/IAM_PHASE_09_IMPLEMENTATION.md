@@ -61,7 +61,7 @@
 | Python `compileall` على identity | **PASS** |
 | Backend identity regression غير التكاملية | **162 passed, 3 deselected** من أصل 165 collected |
 | Phase 9 unit tests | **10 passed** ضمن regression |
-| PostgreSQL migration test | موجود ومربوط في CI، وموسوم integration؛ لم يُشغّل محليًا لعدم توفر PostgreSQL integration fixture |
+| PostgreSQL migration test | **PASS عن بُعد** بعد إصلاح collision في role-permission seed وdowngrade الخاص بـPostgreSQL؛ لم يُشغّل محليًا لعدم توفر fixture |
 | NIAM route import/discovery | **PASS — 205 routes**، مع `/niam/health` و`/niam/audit` و`/niam/security/incidents` |
 | Frontend tests | **PASS** — `npm run test -- --run` خرج بنجاح |
 | Frontend typecheck | **PASS** |
@@ -100,7 +100,9 @@
 
 ## القرار والحالة التالية
 
-Phase 9 **ناجح محليًا على مستوى المصدر والاختبارات المذكورة أعلاه**، مع اختبار migration PostgreSQL محفوظ لبوابة CI. الخطوة التالية التشغيلية هي staging commits صريحة، push للفرع، ثم إنشاء PR مستقل فوق `feat/iam-phase8-authorization-engine` ومراقبة بوابات GitHub Actions. لا يوجد merge أو deployment تلقائي، ولا ينبغي وضع completion tag قبل نجاح البوابات البعيدة ومراجعة بشرية صريحة.
+Phase 9 **ناجح محليًا وعن بُعد على مستوى بوابات IAM**. نجحت بوابات Backend identity/compile، PostgreSQL migration/schema، Frontend contract/type/build، وSecurity/tenant isolation في [PR #173](https://github.com/samertts/gula-platform/pull/173). أُصلح أثناء CI collision في IDs الخاصة بعلاقات role-permission، كما أُصلح downgrade ليكون آمنًا مع PostgreSQL عند حذف فهارس UNIQUE المملوكة للجدول.
 
-**حالة PR:** ستُملأ بعد push وإنشاء Pull Request.
-**حالة CI البعيدة:** ستُسجل بعد إنشاء PR؛ أي فشل Vercel بسبب rate limit خارجي سيُفصل عن نتائج كود Phase 9.
+حالة Vercel بقيت فاشلة بسبب deployment rate limit خارجي مع رسالة retry خلال 24 ساعة، وليست فشلًا في source أو في IAM gates. لا يوجد merge أو deployment تلقائي، ولا ينبغي وضع completion tag قبل المراجعة البشرية الصريحة.
+
+**حالة PR:** [PR #173](https://github.com/samertts/gula-platform/pull/173) مفتوح للمراجعة فوق `feat/iam-phase8-authorization-engine`.
+**حالة CI البعيدة:** 4/4 IAM Hardening gates ناجحة؛ Vercel فقط متعذر بسبب rate limit خارجي.
