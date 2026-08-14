@@ -13,6 +13,7 @@ const CONTROLLED_SURFACES = {
   "src/pages/ehr/EhrPage.tsx": "safe_bridge",
   "src/pages/results/ResultsPage.tsx": "safe_bridge",
   "src/pages/samples/SamplesPage.tsx": "safe_bridge",
+  "src/pages/legal/LegalPage.tsx": "contract-bound",
 };
 
 const DEMO_SURFACES = new Set([

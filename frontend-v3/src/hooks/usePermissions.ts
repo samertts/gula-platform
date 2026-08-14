@@ -1,14 +1,14 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { hasPermission } from "@/permissions";
+import { hasReflectedPermission } from "@/permissions/liveCapabilities";
 
 export function usePermissions() {
   const { user, demoMode, effectivePermissions } = useAuth();
   const role = user?.role ?? "citizen";
-  const reflected = Object.values(effectivePermissions).flat();
   const can = (permission: string) => {
     if (demoMode) return hasPermission(role, permission);
     // Live capabilities are UX hints only; protected APIs enforce on the server.
-    return reflected.length === 0 || reflected.includes(permission);
+    return hasReflectedPermission(effectivePermissions, [permission]);
   };
 
   return {
