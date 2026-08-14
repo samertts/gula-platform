@@ -115,8 +115,8 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             className={cn(
               "group flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm transition-colors",
               active
-                ? "bg-primary/10 font-semibold text-primary shadow-sm"
-                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                ? "bg-teal-50 font-semibold text-[#0D9488] shadow-sm ring-1 ring-teal-100 dark:bg-teal-950/35 dark:text-teal-200 dark:ring-teal-900/60"
+                : "text-muted-foreground hover:bg-slate-100 hover:text-[#0F172A] dark:hover:bg-white/[0.06] dark:hover:text-white",
               collapsed && "justify-center px-0",
             )}
           >
@@ -132,7 +132,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       <aside
         aria-label="التنقل الرئيسي"
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l bg-card shadow-xl transition-[transform,visibility] duration-200 md:static md:z-auto md:visible md:pointer-events-auto md:shadow-none",
+          "fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-slate-200/80 bg-white/95 shadow-[0_24px_70px_-36px_rgba(15,23,42,0.72)] backdrop-blur-xl transition-[transform,visibility] duration-200 dark:border-white/10 dark:bg-slate-950/95 md:static md:z-auto md:visible md:pointer-events-auto md:shadow-none",
           mobileOpen ? "translate-x-0 visible pointer-events-auto" : "translate-x-full invisible pointer-events-none md:translate-x-0",
           collapsed && "md:w-[72px]",
         )}
@@ -156,7 +156,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         <div className={cn("flex shrink-0 flex-col gap-2 border-b p-3", collapsed && "items-center px-2")}>
           {demoMode && !collapsed && <DemoEnvironmentBadge />}
           <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-xs font-bold text-[#0D9488] dark:bg-teal-950/40 dark:text-teal-200">
               {user?.name?.charAt(0) || "م"}
             </span>
             {!collapsed && (
@@ -166,7 +166,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
               </div>
             )}
           </div>
-          {demoMode && !collapsed && <p className="rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-[10px] leading-5 text-amber-700 dark:text-amber-200">الجلسة اصطناعية؛ عمليات الكتابة والتكاملات الخارجية محظورة.</p>}
+          {demoMode && !collapsed && <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-[10px] leading-5 text-amber-800 dark:text-amber-200">الجلسة اصطناعية وقراءة فقط؛ عمليات الكتابة والتكاملات الخارجية محظورة.</p>}
         </div>
 
         <nav className="flex-1 space-y-4 overflow-y-auto p-3" aria-label="أقسام المنصة">

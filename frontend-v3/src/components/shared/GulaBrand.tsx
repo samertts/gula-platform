@@ -10,7 +10,7 @@ interface GulaBrandProps {
 export function GulaBrand({ compact = false, dark = false, className }: GulaBrandProps) {
   return (
     <span className={cn("inline-flex items-center gap-2", dark ? "text-white" : "text-foreground", className)}>
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-teal-400 to-blue-600 text-white shadow-sm">
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0D9488] to-[#0F172A] text-white shadow-[0_10px_24px_-14px_rgba(15,23,42,0.9)]">
         <Activity className="h-5 w-5" strokeWidth={2.5} />
       </span>
       {!compact && (
@@ -27,9 +27,9 @@ export function GulaBrand({ compact = false, dark = false, className }: GulaBran
 
 export function DemoEnvironmentBadge() {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-300">
-      <span className="h-2 w-2 rounded-full bg-amber-500" />
-      بيئة عرض تجريبية
+    <span className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
+      <span className="h-2 w-2 rounded-full bg-amber-500 shadow-[0_0_0_4px_rgba(245,158,11,0.12)]" />
+      عرض تجريبي · قراءة فقط
     </span>
   );
 }

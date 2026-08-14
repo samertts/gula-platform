@@ -3,13 +3,29 @@ import { Link } from "react-router-dom";
 import { dashboardApi } from "@/api/endpoints";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
-import { Activity, AlertTriangle, ArrowLeft, ClipboardList, FlaskConical, HeartPulse, ShieldCheck, Users } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  AlertTriangle,
+  ArrowUpLeft,
+  CheckCircle2,
+  ClipboardCheck,
+  ClipboardList,
+  Clock3,
+  Database,
+  FlaskConical,
+  HeartPulse,
+  LockKeyhole,
+  Plus,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 
 const statCards = [
-  { label: "إجمالي المرضى", key: "total_patients", icon: Users, color: "from-blue-500 to-cyan-500", surface: "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200" },
-  { label: "الطلبات اليوم", key: "today_orders", icon: ClipboardList, color: "from-emerald-500 to-teal-500", surface: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200" },
-  { label: "النتائج اليوم", key: "today_results", icon: FlaskConical, color: "from-violet-500 to-fuchsia-500", surface: "bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200" },
-  { label: "التنبيهات الحرجة", key: "critical_alerts", icon: AlertTriangle, color: "from-rose-500 to-orange-500", surface: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200" },
+  { label: "إجمالي المرضى", key: "total_patients", icon: Users, accent: "border-teal-200 bg-teal-50/70 text-teal-700 dark:border-teal-900/60 dark:bg-teal-950/30 dark:text-teal-200" },
+  { label: "الطلبات اليوم", key: "today_orders", icon: ClipboardList, accent: "border-sky-200 bg-sky-50/70 text-sky-700 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-200" },
+  { label: "النتائج اليوم", key: "today_results", icon: FlaskConical, accent: "border-indigo-200 bg-indigo-50/70 text-indigo-700 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-200" },
+  { label: "التنبيهات الحرجة", key: "critical_alerts", icon: AlertTriangle, accent: "border-rose-200 bg-rose-50/80 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/30 dark:text-rose-200" },
 ] as const;
 
 const DEMO_ROLE_SUMMARIES: Record<string, { label: string; summary: string }> = {
@@ -20,18 +36,23 @@ const DEMO_ROLE_SUMMARIES: Record<string, { label: string; summary: string }> = 
 };
 
 const quickLinks = [
-  { label: "المرضى", description: "الوصول إلى السجلات المصرح بها", path: "/patients", icon: Users },
-  { label: "الطلبات", description: "متابعة مسار الطلبات والعينات", path: "/orders", icon: ClipboardList },
-  { label: "النتائج", description: "مراجعة النتائج والتحقق منها", path: "/results", icon: FlaskConical },
-  { label: "التنبيهات", description: "مراقبة الحالات ذات الأولوية", path: "/alerts", icon: AlertTriangle },
+  { label: "إضافة مريض", description: "استعرض مساحة المرضى المصرح بها", path: "/patients", icon: Users, tone: "bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-200" },
+  { label: "طلب جديد", description: "تابع مسار الطلبات والعينات", path: "/orders", icon: Plus, tone: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200" },
+  { label: "مراجعة النتائج", description: "تحقق من النتائج حسب صلاحيتك", path: "/results", icon: ClipboardCheck, tone: "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-200" },
+  { label: "التنبيهات الحرجة", description: "راقب الحالات ذات الأولوية", path: "/alerts", icon: AlertTriangle, tone: "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-200" },
+];
+
+const demoActivity = [
+  { title: "تمت مزامنة قائمة العينات", detail: "مساحة العرض التجريبي · منذ 8 دقائق", icon: Database, tone: "text-teal-600" },
+  { title: "تمت مراجعة نتيجة اصطناعية", detail: "سجل قراءة فقط · منذ 21 دقيقة", icon: CheckCircle2, tone: "text-emerald-600" },
+  { title: "تحديث حالة التشغيل", detail: "الفحوصات الأساسية تعمل · منذ 34 دقيقة", icon: Activity, tone: "text-sky-600" },
 ];
 
 export function DashboardPage() {
   const { demoMode, user } = useAuth();
   const demoRole = DEMO_ROLE_SUMMARIES[user?.role ?? ""] ?? DEMO_ROLE_SUMMARIES.doctor!;
   const { data, isLoading, isError } = useQuery<Record<string, unknown>>({
-          queryKey: ["dashboard", demoMode ? "demo" : "institution", user?.role],
-
+    queryKey: ["dashboard", demoMode ? "demo" : "institution", user?.role],
     queryFn: async () => {
       if (demoMode) return dashboardApi.demo(user?.role as "doctor" | "technician" | "lab_admin" | "citizen") as unknown as Record<string, unknown>;
       return {};
@@ -39,39 +60,90 @@ export function DashboardPage() {
     enabled: demoMode,
   });
 
+  const readValue = (key: string) => demoMode ? (isLoading ? "…" : isError ? "—" : String(data?.[key] ?? 0)) : "—";
+
   return (
-    <div className="mx-auto max-w-7xl space-y-7">
-      <section className="relative overflow-hidden rounded-[1.75rem] bg-slate-950 p-6 text-white shadow-[0_24px_70px_-35px_rgba(15,23,42,0.75)] md:p-8">
-        <div className="absolute -left-10 -top-24 h-64 w-64 rounded-full bg-cyan-400/20 blur-3xl" />
-        <div className="absolute -bottom-28 right-10 h-72 w-72 rounded-full bg-indigo-500/25 blur-3xl" />
-        <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
+    <div className="mx-auto max-w-7xl space-y-6 pb-2">
+      <section className="relative overflow-hidden rounded-[1.75rem] border border-slate-200/80 bg-[#0F172A] p-5 text-white shadow-[0_24px_70px_-35px_rgba(15,23,42,0.75)] dark:border-white/10 sm:p-7">
+        <div className="absolute -left-12 -top-24 h-64 w-64 rounded-full bg-[#0D9488]/25 blur-3xl" />
+        <div className="absolute -bottom-32 right-8 h-72 w-72 rounded-full bg-sky-500/20 blur-3xl" />
+        <div className="relative grid gap-7 lg:grid-cols-[1fr_auto] lg:items-end">
+          <div className="max-w-3xl">
             <div className="mb-4 flex flex-wrap items-center gap-2 text-xs font-semibold">
-              {demoMode ? (
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-amber-100"><ShieldCheck className="h-3.5 w-3.5" /> عرض تجريبي معزول</span>
-              ) : (
-                <span className="inline-flex items-center gap-2 rounded-full border border-slate-300/20 bg-white/10 px-3 py-1.5 text-slate-200"><span className="h-2 w-2 rounded-full bg-amber-300" /> انتظار عقد قراءة مؤسسي موثق</span>
-              )}
+              <span className="inline-flex items-center gap-2 rounded-full border border-teal-200/20 bg-teal-200/10 px-3 py-1.5 text-teal-100">
+                <span className="h-2 w-2 rounded-full bg-teal-300 shadow-[0_0_0_4px_rgba(45,212,191,0.12)]" />
+                حالة التشغيل مستقرة
+              </span>
+              {demoMode && <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1.5 text-amber-100"><ShieldCheck className="h-3.5 w-3.5" /> عرض تجريبي معزول</span>}
             </div>
-            <p className="text-sm text-cyan-200">صباح الخير{user?.name ? `، ${user.name}` : ""}</p>
-            {demoMode && <div className="mt-3 inline-flex max-w-xl flex-wrap items-center gap-2 rounded-xl border border-amber-200/20 bg-amber-200/10 px-3 py-2 text-xs text-amber-100"><ShieldCheck className="h-3.5 w-3.5" /><strong>{demoRole.label}</strong><span className="text-amber-100/70">— {demoRole.summary}</span></div>}
-            <h1 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">مركز العمليات الصحية</h1>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-slate-300">نظرة موحّدة على سير العمل، مؤشرات الأداء، والتنبيهات ذات الأولوية ضمن مساحة العمل الحالية.</p>
+            <p className="text-sm text-teal-200">صباح الخير{user?.name ? `، ${user.name}` : ""}</p>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">مركز عمليات المختبر</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">نظرة عملية وهادئة على سير العمل، مؤشرات الأداء، والتنبيهات ذات الأولوية ضمن مساحة العمل الحالية.</p>
+            {demoMode && <div className="mt-5 inline-flex max-w-2xl flex-wrap items-center gap-2 rounded-2xl border border-amber-200/20 bg-amber-200/10 px-3.5 py-2.5 text-xs text-amber-100"><LockKeyhole className="h-3.5 w-3.5" /><strong>{demoRole.label}</strong><span className="text-amber-100/70">— {demoRole.summary}</span></div>}
           </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] p-4 text-sm text-slate-200"><HeartPulse className="h-7 w-7 text-cyan-300" /><div><p className="font-bold">مساحة عمل آمنة</p><p className="mt-1 text-xs text-slate-400">RBAC · Tenant isolation · Audit</p></div></div>
+          <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] p-4 text-sm text-slate-200 backdrop-blur-sm">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-teal-400/15 text-teal-200"><HeartPulse className="h-6 w-6" /></span>
+            <div><p className="font-bold">مساحة آمنة</p><p className="mt-1 text-xs text-slate-400">RBAC · عزل المؤسسة · سجل التدقيق</p></div>
+          </div>
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {statCards.map(({ label, key, icon: Icon, color, surface }) => {
-          const value = data?.[key];
-          return <Card key={key} className="group overflow-hidden rounded-2xl border-slate-200/80 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10"><CardContent className="relative p-5"><div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-l ${color}`} /><div className="flex items-start justify-between gap-3"><span className={`flex h-11 w-11 items-center justify-center rounded-2xl ${surface}`}><Icon className="h-5 w-5" /></span><span className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">{demoMode ? "تجريبي" : "غير مهيأ"}</span></div><p className="mt-5 text-sm text-muted-foreground">{label}</p><p className="mt-1 text-3xl font-bold tracking-tight">{demoMode ? (isLoading ? "…" : isError ? "—" : String(value ?? 0)) : "—"}</p></CardContent></Card>;
-        })}
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات المختبر">
+        {statCards.map(({ label, key, icon: Icon, accent }) => (
+          <Card key={key} className="group overflow-hidden rounded-2xl border-slate-200/80 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-white/10 dark:bg-slate-900/70">
+            <CardContent className="relative p-5">
+              <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-l from-[#0D9488] to-sky-400 opacity-80" />
+              <div className="flex items-start justify-between gap-3">
+                <span className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${accent}`}><Icon className="h-5 w-5" /></span>
+                <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-500 dark:bg-white/10 dark:text-slate-300">{demoMode ? "تجريبي" : "غير مهيأ"}</span>
+              </div>
+              <p className="mt-5 text-sm text-muted-foreground">{label}</p>
+              <p className="mt-1 text-3xl font-bold tracking-tight text-[#0F172A] dark:text-white">{readValue(key)}</p>
+              <div className="mt-4 flex items-center gap-1.5 text-[11px] text-muted-foreground"><Clock3 className="h-3.5 w-3.5" /> تحديث آمن للقراءة</div>
+            </CardContent>
+          </Card>
+        ))}
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <Card className="rounded-2xl border-slate-200/80 shadow-sm dark:border-white/10"><CardHeader className="flex flex-row items-center justify-between space-y-0"><div><CardTitle className="flex items-center gap-2 text-base"><Activity className="h-5 w-5 text-primary" /> مسارات العمل السريعة</CardTitle><p className="mt-1 text-xs text-muted-foreground">انتقل مباشرة إلى الجزء الذي تريد متابعته.</p></div><span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">وصول سريع</span></CardHeader><CardContent className="grid gap-3 sm:grid-cols-2">{quickLinks.map(({ label, description, path, icon: Icon }) => <Link key={path} to={path} className="group flex items-center gap-3 rounded-2xl border border-slate-200/80 p-3.5 transition hover:-translate-y-0.5 hover:border-primary/30 hover:bg-primary/[0.03] dark:border-white/10"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-primary transition group-hover:bg-primary group-hover:text-white dark:bg-white/10"><Icon className="h-[18px] w-[18px]" /></span><span className="min-w-0 flex-1"><span className="block text-sm font-bold">{label}</span><span className="mt-1 block truncate text-xs text-muted-foreground">{description}</span></span><ArrowLeft className="h-4 w-4 text-muted-foreground transition group-hover:-translate-x-1 group-hover:text-primary" /></Link>)}</CardContent></Card>
-        <Card className="rounded-2xl border-slate-200/80 shadow-sm dark:border-white/10"><CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-5 w-5 text-emerald-500" /> حالة التشغيل</CardTitle></CardHeader><CardContent className="space-y-4"><div className={`flex items-center justify-between rounded-2xl p-4 ${demoMode ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-amber-50 dark:bg-amber-950/30"}`}><div><p className={`text-sm font-bold ${demoMode ? "text-emerald-800 dark:text-emerald-200" : "text-amber-800 dark:text-amber-200"}`}>{demoMode ? "العرض التجريبي" : "التكامل المؤسسي غير مهيأ"}</p><p className={`mt-1 text-xs ${demoMode ? "text-emerald-700/70 dark:text-emerald-300/70" : "text-amber-700/70 dark:text-amber-300/70"}`}>{demoMode ? "بيانات اصطناعية معزولة للعرض" : "لن تُعرض مؤشرات أو بيانات حتى اعتماد عقد القراءة والسياق."}</p></div><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold text-white ${demoMode ? "bg-emerald-500" : "bg-amber-600"}`}>{demoMode ? "معزول" : "محمي"}</span></div><div className="space-y-3"><div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">حماية الجلسة</span><span className="font-bold text-emerald-600">مفعلة</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full w-full rounded-full bg-gradient-to-l from-emerald-400 to-teal-500" /></div><div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">قراءة مؤسسية</span><span className={`font-bold ${demoMode ? "text-emerald-600" : "text-amber-700"}`}>{demoMode ? "معزولة" : "معلقة حتى التوثيق"}</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className={`h-full rounded-full bg-gradient-to-l ${demoMode ? "w-full from-cyan-400 to-blue-500" : "w-1/4 from-amber-300 to-amber-500"}`} /></div></div></CardContent></Card>
+        <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <div><CardTitle className="flex items-center gap-2 text-base"><Activity className="h-5 w-5 text-[#0D9488]" /> مسارات العمل السريعة</CardTitle><p className="mt-1 text-xs text-muted-foreground">اختر نقطة البداية المناسبة دون تجاوز الصلاحيات أو مسار التحقق.</p></div>
+            <span className="rounded-full bg-teal-50 px-2.5 py-1 text-[10px] font-bold text-teal-700 dark:bg-teal-950/40 dark:text-teal-200">وصول سريع</span>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {quickLinks.map(({ label, description, path, icon: Icon, tone }) => (
+              <Link key={path} to={path} className="group flex items-center gap-3 rounded-2xl border border-slate-200/80 p-3.5 transition hover:-translate-y-0.5 hover:border-teal-300 hover:bg-teal-50/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 dark:border-white/10 dark:hover:border-teal-800 dark:hover:bg-teal-950/20">
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${tone}`}><Icon className="h-[18px] w-[18px]" /></span>
+                <span className="min-w-0 flex-1"><span className="block text-sm font-bold">{label}</span><span className="mt-1 block truncate text-xs text-muted-foreground">{description}</span></span>
+                <ArrowUpLeft className="h-4 w-4 text-muted-foreground transition group-hover:-translate-y-0.5 group-hover:text-teal-600" />
+              </Link>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+          <CardHeader><CardTitle className="flex items-center gap-2 text-base"><ShieldCheck className="h-5 w-5 text-emerald-600" /> حالة التشغيل</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className={`flex items-center justify-between rounded-2xl p-4 ${demoMode ? "bg-emerald-50 dark:bg-emerald-950/30" : "bg-amber-50 dark:bg-amber-950/30"}`}>
+              <div><p className={`text-sm font-bold ${demoMode ? "text-emerald-800 dark:text-emerald-200" : "text-amber-800 dark:text-amber-200"}`}>{demoMode ? "العرض التجريبي" : "التكامل المؤسسي غير مهيأ"}</p><p className={`mt-1 text-xs ${demoMode ? "text-emerald-700/70 dark:text-emerald-300/70" : "text-amber-700/70 dark:text-amber-300/70"}`}>{demoMode ? "بيانات اصطناعية معزولة للعرض" : "لن تُعرض مؤشرات أو بيانات حتى اعتماد عقد القراءة والسياق."}</p></div>
+              <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold text-white ${demoMode ? "bg-emerald-500" : "bg-amber-600"}`}>{demoMode ? "معزول" : "محمي"}</span>
+            </div>
+            <div className="space-y-3"><div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">حماية الجلسة</span><span className="font-bold text-emerald-600">مفعلة</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className="h-full w-full rounded-full bg-gradient-to-l from-emerald-400 to-teal-500" /></div><div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">قراءة مؤسسية</span><span className={`font-bold ${demoMode ? "text-emerald-600" : "text-amber-700"}`}>{demoMode ? "معزولة" : "معلقة حتى التوثيق"}</span></div><div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-white/10"><div className={`h-full rounded-full bg-gradient-to-l ${demoMode ? "w-full from-cyan-400 to-blue-500" : "w-1/4 from-amber-300 to-amber-500"}`} /></div></div>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <Card className="rounded-2xl border-rose-200/80 bg-white shadow-sm dark:border-rose-900/50 dark:bg-slate-900/70">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0"><div><CardTitle className="flex items-center gap-2 text-base"><AlertCircle className="h-5 w-5 text-rose-600" /> التنبيهات ذات الأولوية</CardTitle><p className="mt-1 text-xs text-muted-foreground">تنبيهات اصطناعية للعرض، لا تمثل مرضى حقيقيين.</p></div><Link to="/alerts" className="text-xs font-bold text-rose-700 hover:underline dark:text-rose-300">عرض الكل</Link></CardHeader>
+          <CardContent className="space-y-3"><div className="flex items-start gap-3 rounded-xl border border-rose-100 bg-rose-50/70 p-3 text-sm dark:border-rose-900/50 dark:bg-rose-950/20"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" /><div><p className="font-bold text-rose-900 dark:text-rose-200">يتطلب مراجعة المشرف</p><p className="mt-1 text-xs text-rose-800/70 dark:text-rose-200/70">تنبيه اصطناعي ضمن بيئة القراءة فقط.</p></div></div><div className="flex items-center justify-between rounded-xl border border-slate-200/80 p-3 text-xs dark:border-white/10"><span className="text-muted-foreground">حالة التنبيهات</span><span className="inline-flex items-center gap-1.5 font-bold text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /> لا توجد كتابة تلقائية</span></div></CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0"><div><CardTitle className="flex items-center gap-2 text-base"><Clock3 className="h-5 w-5 text-[#0D9488]" /> النشاط الأخير</CardTitle><p className="mt-1 text-xs text-muted-foreground">سجل عرض اصطناعي للمتابعة دون أي أثر تشغيلي.</p></div><span className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600 dark:bg-white/10 dark:text-slate-300">قراءة فقط</span></CardHeader>
+          <CardContent className="space-y-1">{demoActivity.map(({ title, detail, icon: Icon, tone }) => <div key={title} className="flex items-start gap-3 rounded-xl p-3 transition hover:bg-slate-50 dark:hover:bg-white/[0.04]"><span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 dark:bg-white/10"><Icon className={`h-4 w-4 ${tone}`} /></span><div className="min-w-0"><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-xs text-muted-foreground">{detail}</p></div></div>)}</CardContent>
+        </Card>
       </section>
     </div>
   );
