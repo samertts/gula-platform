@@ -94,7 +94,11 @@ class GraphQLSchema(BaseModel):
 
 
 class ContractExport(BaseModel):
-    output_dir: str = Field(default="contracts/", description="Directory to export contracts to")
+    output_dir: str = Field(
+        default="contracts",
+        pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+        description="Safe directory name under the configured contract export root",
+    )
     formats: list[ContractFormat] = Field(
         default_factory=lambda: list(ContractFormat),
         description="Formats to export",

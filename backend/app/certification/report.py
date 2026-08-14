@@ -148,15 +148,21 @@ th {{ text-align: left; padding: 10px 8px; background: #f9fafb; border-bottom: 2
 </html>"""
 
 
-def _safe_output_path(path: str | Path) -> Path:
+def _new_report_path(suffix: str) -> Path:
+    """Create a server-owned report path; callers cannot choose filesystem paths."""
     safe_root = Path(os.environ.get("GULA_TEMP_DIR", tempfile.gettempdir())).resolve()
-    target = Path(path).resolve()
-    if not target.is_relative_to(safe_root):
-        raise ValueError("Report output path must remain inside the configured temporary directory")
-    return target
+    safe_root.mkdir(parents=True, exist_ok=True)
+    file_descriptor, raw_path = tempfile.mkstemp(
+        prefix="gula_certification_",
+        suffix=suffix,
+        dir=safe_root,
+    )
+    os.close(file_descriptor)
+    return Path(raw_path)
 
-def generate_pdf_report(report: CertificationReport, output_path: str | Path) -> Path:
-    output = _safe_output_path(output_path)
+
+def generate_pdf_report(report: CertificationReport) -> Path:
+    output = _new_report_path(".pdf")
     output.parent.mkdir(parents=True, exist_ok=True)
     html = report.to_html()
     try:
@@ -168,15 +174,15 @@ def generate_pdf_report(report: CertificationReport, output_path: str | Path) ->
         return output
 
 
-def generate_json_report(report: CertificationReport, output_path: str | Path) -> Path:
-    output = _safe_output_path(output_path)
+def generate_json_report(report: CertificationReport) -> Path:
+    output = _new_report_path(".json")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(report.to_json(), encoding="utf-8")
     return output
 
 
-def generate_markdown_report(report: CertificationReport, output_path: str | Path) -> Path:
-    output = _safe_output_path(output_path)
+def generate_markdown_report(report: CertificationReport) -> Path:
+    output = _new_report_path(".md")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(report.to_markdown(), encoding="utf-8")
     return output

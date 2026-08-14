@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+import re
 from pathlib import Path
 
 from .enums import CertificationDimension, CertificationLevel
@@ -22,7 +24,18 @@ class CertificationEngine:
     def _safe_path(self, module_path: str | None) -> Path:
         if not module_path:
             return self.project_root
-        target = Path(module_path).resolve()
+        raw_path = os.fspath(module_path)
+        if os.path.isabs(raw_path):
+            raise ValueError("Certification module path must be relative")
+        parts = Path(raw_path).parts
+        if not parts or any(
+            part in {"", ".", ".."} or re.fullmatch(r"[A-Za-z0-9_.-]+", part) is None
+            for part in parts
+        ):
+            raise ValueError("Certification module path contains an unsafe segment")
+        target = self.project_root
+        for part in parts:
+            target = target / part
         if not target.is_relative_to(self.project_root):
             raise ValueError("Certification module path must remain inside the project root")
         return target

@@ -157,17 +157,13 @@ async def get_contract_catalog():
 
 @router.post("/export", summary="Export all contracts to filesystem")
 async def export_contracts(export: ContractExport):
-    output_dir = export.output_dir
-    if not output_dir.startswith("/"):
-        output_dir = str(Path.cwd() / output_dir)
-
     try:
-        exported_files = _generator.export_all(output_dir)
+        exported_files = _generator.export_all(export.output_dir)
         return JSONResponse(
             content={
                 "success": True,
-                "output_dir": output_dir,
-                "files": exported_files,
+                "output_dir": export.output_dir,
+                "files": [Path(path).name for path in exported_files],
                 "count": len(exported_files),
                 "generated_at": _generator._generated_at,
             },

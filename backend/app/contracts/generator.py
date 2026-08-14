@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -348,81 +349,91 @@ class ContractGenerator:
 
         return "\n".join(scalar_types + type_defs + model_types)
 
-    def _safe_path(self, path: str | Path) -> str:
-        # Ensure output stays within a safe temporary or configured directory
+    def _new_export_directory(self, requested_name: str) -> Path:
+        """Create a server-owned export directory; the request value is only a label."""
+        if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", requested_name) is None:
+            raise ValueError("Contract export directory name is invalid")
         safe_root = Path(os.environ.get("GULA_EXPORT_ROOT", tempfile.gettempdir())).resolve()
-        target = Path(path).resolve()
-        if not target.is_relative_to(safe_root):
-            raise ValueError("Contract output path must remain inside GULA_EXPORT_ROOT")
-        return str(target)
+        safe_root.mkdir(parents=True, exist_ok=True)
+        return Path(tempfile.mkdtemp(prefix="gula_contract_export_", dir=safe_root))
+
+    def _new_export_file(self, suffix: str) -> Path:
+        safe_root = Path(os.environ.get("GULA_EXPORT_ROOT", tempfile.gettempdir())).resolve()
+        safe_root.mkdir(parents=True, exist_ok=True)
+        descriptor, raw_path = tempfile.mkstemp(
+            prefix="gula_contract_",
+            suffix=suffix,
+            dir=safe_root,
+        )
+        os.close(descriptor)
+        return Path(raw_path)
 
     def export_all(self, output_dir: str) -> list[str]:
-        exported = []
-        output_dir = self._safe_path(output_dir)
-        os.makedirs(output_dir, exist_ok=True)
+        destination = self._new_export_directory(output_dir)
+        exported: list[str] = []
 
-        openapi_path = os.path.join(output_dir, "openapi.json")
-        self.export_openapi(openapi_path)
-        exported.append(openapi_path)
+        openapi_path = destination / "openapi.json"
+        self._write_json(self.generate_openapi(), openapi_path)
+        exported.append(str(openapi_path))
 
-        asyncapi_path = os.path.join(output_dir, "asyncapi.json")
-        self.export_asyncapi(asyncapi_path)
-        exported.append(asyncapi_path)
+        asyncapi_path = destination / "asyncapi.json"
+        self._write_json(self.generate_asyncapi(), asyncapi_path)
+        exported.append(str(asyncapi_path))
 
-        jsonschema_path = os.path.join(output_dir, "json-schema.json")
+        jsonschema_path = destination / "json-schema.json"
         self._write_json(self.generate_json_schema(), jsonschema_path)
-        exported.append(jsonschema_path)
+        exported.append(str(jsonschema_path))
 
-        fhir_path = os.path.join(output_dir, "fhir-profiles.json")
+        fhir_path = destination / "fhir-profiles.json"
         self._write_json(self.generate_fhir_profiles(), fhir_path)
-        exported.append(fhir_path)
+        exported.append(str(fhir_path))
 
-        graphql_path = os.path.join(output_dir, "graphql-schema.graphql")
+        graphql_path = destination / "graphql-schema.graphql"
         self._write_text(self.generate_graphql_schema(), graphql_path)
-        exported.append(graphql_path)
+        exported.append(str(graphql_path))
 
-        event_catalog_path = os.path.join(output_dir, "event-catalog.json")
+        event_catalog_path = destination / "event-catalog.json"
         from .events import get_event_catalog
         self._write_json(get_event_catalog(), event_catalog_path)
-        exported.append(event_catalog_path)
+        exported.append(str(event_catalog_path))
 
+        manifest_path = destination / "manifest.json"
         manifest = {
             "generated_at": self._generated_at,
             "app_name": self._app_name,
             "app_version": self._app_version,
             "contracts": exported,
         }
-        self._write_json(manifest, os.path.join(output_dir, "manifest.json"))
-        exported.append(os.path.join(output_dir, "manifest.json"))
+        self._write_json(manifest, manifest_path)
+        exported.append(str(manifest_path))
 
-        logger.info("Exported %d contract files to %s", len(exported), output_dir)
+        logger.info("Exported %d contract files", len(exported))
         return exported
 
-    def export_openapi(self, output_path: str) -> str:
-        spec = self.generate_openapi()
-        self._write_json(spec, output_path)
-        logger.info("OpenAPI spec written to %s", output_path)
-        return output_path
+    def export_openapi(self) -> str:
+        output_path = self._new_export_file(".json")
+        self._write_json(self.generate_openapi(), output_path)
+        logger.info("OpenAPI spec generated")
+        return str(output_path)
 
-    def export_asyncapi(self, output_path: str) -> str:
-        spec = self.generate_asyncapi()
-        self._write_json(spec, output_path)
-        logger.info("AsyncAPI spec written to %s", output_path)
-        return output_path
+    def export_asyncapi(self) -> str:
+        output_path = self._new_export_file(".json")
+        self._write_json(self.generate_asyncapi(), output_path)
+        logger.info("AsyncAPI spec generated")
+        return str(output_path)
 
-    def _write_json(self, data: dict, path: str) -> None:
-        path = self._safe_path(path)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, default=str, ensure_ascii=False)
-        logger.debug("Written: %s (%d bytes)", path, os.path.getsize(path))
+    def _write_json(self, data: dict, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps(data, indent=2, default=str, ensure_ascii=False),
+            encoding="utf-8",
+        )
+        logger.debug("Contract artifact written (%d bytes)", path.stat().st_size)
 
-    def _write_text(self, text: str, path: str) -> None:
-        path = self._safe_path(path)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(text)
-        logger.debug("Written: %s (%d bytes)", path, os.path.getsize(path))
+    def _write_text(self, text: str, path: Path) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        logger.debug("Contract artifact written (%d bytes)", path.stat().st_size)
 
     def _default_responses(self) -> dict:
         return {
