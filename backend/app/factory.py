@@ -229,6 +229,7 @@ def import_all_models() -> None:
         EdgeTask,
         EdgeTelemetry,
     )
+    from .devices.models import DeviceEvent, DevicePrintJob, IntegratedDevice  # noqa: F401
     from .models.outbox import OutboxEvent  # noqa: F401
     from .payments import models as payment_models  # noqa: F401
     from .models.subscription import (  # noqa: F401
@@ -600,6 +601,9 @@ def _register_routes(app: FastAPI) -> None:
 
     from .routes import edge as edge_routes
     app.include_router(edge_routes.router)
+
+    from .devices.routes import router as device_integration_router
+    app.include_router(device_integration_router)
 
     from .routes import patient_card as patient_card_routes
     app.include_router(patient_card_routes.router)

@@ -36,6 +36,11 @@ import type {
   ClinicalOrder,
   FHIRResource,
   UserInfo,
+  DeviceIntegrationRecord,
+  DeviceIntegrationEventRecord,
+  DeviceIntegrationProtocolDescriptor,
+  DeviceIntegrationSummary,
+  DeviceIntegrationPrinterJob,
 } from "@/types";
 
 // ── Auth ──
@@ -316,6 +321,30 @@ export const idScanApi = {
 export const deviceApi = {
   submitResults: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/device/results", data).then((r) => r.data),
+};
+
+// ── Device Integration Hub ──
+export const deviceIntegrationApi = {
+  protocols: () =>
+    api.get<DeviceIntegrationProtocolDescriptor[]>("/device-integration/protocols").then((r) => r.data),
+  summary: () =>
+    api.get<DeviceIntegrationSummary>("/device-integration/summary").then((r) => r.data),
+  list: (params?: { category?: string; status?: string; limit?: number }) =>
+    api.get<{ total: number; devices: DeviceIntegrationRecord[] }>("/device-integration/devices", { params }).then((r) => r.data),
+  get: (deviceUid: string) =>
+    api.get<DeviceIntegrationRecord>(`/device-integration/devices/${deviceUid}`).then((r) => r.data),
+  register: (data: Record<string, unknown>) =>
+    api.post<DeviceIntegrationRecord>("/device-integration/devices", data).then((r) => r.data),
+  updateStatus: (deviceUid: string, data: { status: string; reason?: string }) =>
+    api.post<DeviceIntegrationRecord>(`/device-integration/devices/${deviceUid}/status`, data).then((r) => r.data),
+  probe: (deviceUid: string) =>
+    api.post<DeviceIntegrationRecord>(`/device-integration/devices/${deviceUid}/probe`).then((r) => r.data),
+  events: (params?: { device_uid?: string; severity?: string; limit?: number }) =>
+    api.get<{ total: number; events: DeviceIntegrationEventRecord[] }>("/device-integration/events", { params }).then((r) => r.data),
+  printerJobs: (params?: { device_uid?: string; limit?: number }) =>
+    api.get<{ total: number; jobs: DeviceIntegrationPrinterJob[] }>("/device-integration/printer-jobs", { params }).then((r) => r.data),
+  createPrinterJob: (data: Record<string, unknown>) =>
+    api.post<DeviceIntegrationPrinterJob>("/device-integration/printer-jobs", data).then((r) => r.data),
 };
 
 // ── Identity ──

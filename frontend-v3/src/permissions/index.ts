@@ -200,6 +200,7 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
     { label: "الصيدلة", path: "/pharmacy", icon: "Pill", permissions: ["system:admin"] },
     { label: "إدارة الصيدلية والأدوية", path: "/pharmacy-operations", icon: "Pill", permissions: ["dashboard:read"] },
     { label: "إدارة الفوترة والتأمين", path: "/billing-insurance", icon: "ReceiptText", permissions: ["dashboard:read"] },
+    { label: "مركز ربط الأجهزة", path: "/device-integration", icon: "Cable", permissions: ["system:admin"] },
     { label: "المنصة التجريبية", path: "/pilot-platform", icon: "FlaskConical", permissions: ["system:admin"] },
     { label: "المنصة", path: "/platform", icon: "Layers", permissions: ["system:admin"] },
     { label: "الصحة العامة", path: "/public-health", icon: "Activity", permissions: ["system:admin"] },

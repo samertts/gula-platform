@@ -146,6 +146,105 @@ export interface EdgeTask {
   created_at: string;
 }
 
+export type DeviceIntegrationCategory =
+  | 'medical_measurement'
+  | 'patient_monitor'
+  | 'laboratory_analyzer'
+  | 'imaging'
+  | 'printer'
+  | 'workstation'
+  | 'network'
+  | 'barcode_scanner'
+  | 'other';
+
+export type DeviceIntegrationStatus = 'connected' | 'disconnected' | 'error' | 'maintenance' | 'pending';
+export type DeviceIntegrationProtocol =
+  | 'HL7v2_MLLP'
+  | 'ASTM'
+  | 'DICOM'
+  | 'FHIR_Device'
+  | 'TCP_IP'
+  | 'USB_Serial'
+  | 'Bluetooth'
+  | 'WiFi'
+  | 'IPP'
+  | 'ZPL'
+  | 'IPL'
+  | 'PDF'
+  | 'None';
+export type DeviceIntegrationTransport = 'MLLP' | 'TCP' | 'Serial' | 'USB' | 'Bluetooth' | 'WiFi' | 'HTTP' | 'File' | 'None';
+
+export interface DeviceIntegrationRecord {
+  id: number;
+  device_uid: string;
+  display_name: string;
+  category: DeviceIntegrationCategory;
+  vendor?: string;
+  model?: string;
+  serial_number?: string;
+  protocol: DeviceIntegrationProtocol;
+  transport: DeviceIntegrationTransport;
+  endpoint?: string;
+  status: DeviceIntegrationStatus;
+  simulation_only: boolean;
+  last_seen_at?: string;
+  maintenance_due_at?: string;
+  capabilities?: Record<string, unknown>;
+  printer_profile?: Record<string, unknown>;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeviceIntegrationEventRecord {
+  id: number;
+  device_uid: string;
+  event_type: string;
+  direction: 'inbound' | 'outbound' | 'system';
+  severity: 'info' | 'warning' | 'error';
+  message_type?: string;
+  summary: string;
+  correlation_id?: string;
+  safe_metadata?: Record<string, unknown>;
+  occurred_at: string;
+}
+
+export interface DeviceIntegrationProtocolDescriptor {
+  key: DeviceIntegrationProtocol;
+  label: string;
+  family: string;
+  transports: DeviceIntegrationTransport[];
+  intended_categories: DeviceIntegrationCategory[];
+  production_requirement: string;
+  simulation_supported: boolean;
+}
+
+export interface DeviceIntegrationSummary {
+  total: number;
+  connected: number;
+  disconnected: number;
+  error: number;
+  maintenance: number;
+  pending: number;
+  simulation_only: number;
+  by_category: Record<string, number>;
+  recent_events: number;
+}
+
+export interface DeviceIntegrationPrinterJob {
+  id: number;
+  device_uid: string;
+  document_type: 'report' | 'barcode_label' | 'specimen_label' | 'workstation_document';
+  printer_language: 'PDF' | 'ZPL' | 'IPL';
+  label_count: number;
+  status: 'queued' | 'simulated_success' | 'failed';
+  simulation_only: boolean;
+  safe_metadata?: Record<string, unknown>;
+  error_message?: string;
+  created_at: string;
+  completed_at?: string;
+}
+
 export interface Claim {
   id: number;
   lab_id: number;

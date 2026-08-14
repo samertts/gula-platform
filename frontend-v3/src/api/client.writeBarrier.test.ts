@@ -28,6 +28,14 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
     expect(() => assertFrontendWriteIsAllowed("get", "/patients")).not.toThrow();
   });
 
+  it("يسمح بعقود device-integration المحاكية فقط ويرفض مسارًا غير مصنف", () => {
+    expect(() => assertFrontendReadIsAllowed("get", "/device-integration/summary")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/device-integration/devices/VITAL-001?limit=20")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices/VITAL-001/probe")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices/VITAL-001/raw-command")).toThrow(OperationalWriteBlockedError);
+  });
+
   it("يرفض قراءة REST غير مصنفة ويحصر الاستثناء في تهيئة الجلسة العامة", () => {
     expect(() => assertFrontendReadIsAllowed("get", "/patients")).toThrow(OperationalReadBlockedError);
     expect(() => assertFrontendReadIsAllowed("get", "/r/public-token")).toThrow(OperationalReadBlockedError);

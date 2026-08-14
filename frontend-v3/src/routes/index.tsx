@@ -89,6 +89,7 @@ const NationalWorkflowRuntimeApiPageLazy = lazy(() => import("@/pages/national/w
 const PharmacyPageLazy = lazy(() => import("@/pages/pharmacy/PharmacyPage"));
 const PharmacyOperationsWorkspacePageLazy = lazy(() => import("@/pages/pharmacy/PharmacyOperationsWorkspacePage"));
 const BillingInsuranceWorkspacePageLazy = lazy(() => import("@/pages/billing/BillingInsuranceWorkspacePage"));
+const DeviceIntegrationWorkspacePageLazy = lazy(() => import("@/pages/devices/DeviceIntegrationWorkspacePage").then(m => ({ default: m.DeviceIntegrationWorkspacePage })));
 const PilotPlatformApiPageLazy = lazy(() => import("@/pages/pilot-platform/PilotPlatformApiPage"));
 const PlatformPageLazy = lazy(() => import("@/pages/platform/PlatformPage"));
 const PublicHealthApiPageLazy = lazy(() => import("@/pages/public-health/PublicHealthApiPage"));
@@ -210,6 +211,7 @@ export const router = createBrowserRouter([
       { path: "pharmacy", element: <RoleGuard roles={adminRoles}><LazyPage><PharmacyPageLazy /></LazyPage></RoleGuard> },
       { path: "pharmacy-operations", element: <RoleGuard roles={readonlyRoles}><LazyPage><PharmacyOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "billing-insurance", element: <RoleGuard roles={readonlyRoles}><LazyPage><BillingInsuranceWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "device-integration", element: <RoleGuard roles={readonlyRoles}><LazyPage><DeviceIntegrationWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "pilot-platform", element: <RoleGuard roles={adminRoles}><LazyPage><PilotPlatformApiPageLazy /></LazyPage></RoleGuard> },
       { path: "platform", element: <RoleGuard roles={adminRoles}><LazyPage><PlatformPageLazy /></LazyPage></RoleGuard> },
       { path: "public-health", element: <RoleGuard roles={adminRoles}><LazyPage><PublicHealthApiPageLazy /></LazyPage></RoleGuard> },

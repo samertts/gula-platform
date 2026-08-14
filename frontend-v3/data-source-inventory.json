@@ -157,6 +157,15 @@
       "status": "non-operational"
     },
     {
+      "source": "src/pages/billing/BillingInsuranceWorkspacePage.tsx",
+      "kinds": [
+        "demo-surface",
+        "endpoint-import"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
       "source": "src/pages/biomedical/BiomedicalApiPage.tsx",
       "kinds": [
         "direct-api-client",
@@ -337,6 +346,15 @@
       "status": "non-operational"
     },
     {
+      "source": "src/pages/devices/DeviceIntegrationWorkspacePage.tsx",
+      "kinds": [
+        "demo-surface",
+        "endpoint-import"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
       "source": "src/pages/edge/EdgePage.tsx",
       "kinds": [
         "endpoint-import",
@@ -397,6 +415,15 @@
         "react-query-read"
       ],
       "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/financial-governance/FinancialGovernancePage.tsx",
+      "kinds": [
+        "demo-surface",
+        "endpoint-import"
+      ],
+      "classification": "demo-only",
       "status": "non-operational"
     },
     {
