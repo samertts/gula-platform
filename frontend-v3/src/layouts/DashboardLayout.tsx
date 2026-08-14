@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui";
 import { GuideAssistant } from "@/components/guide/GuideAssistant";
 import { DemoEnvironmentBadge, GulaBrand } from "@/components/shared/GulaBrand";
+import { WorkspaceSelector } from "@/components/workspace/WorkspaceSelector";
 
 export function DashboardLayout() {
   const { theme, setTheme } = useTheme();
@@ -37,6 +38,7 @@ export function DashboardLayout() {
           </div>
           <div className="mr-auto flex items-center gap-2">
             {demoMode && <DemoEnvironmentBadge />}
+            <WorkspaceSelector />
             <button type="button" className="hidden items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-muted-foreground transition hover:border-primary/30 hover:bg-primary/5 lg:flex dark:border-white/10 dark:bg-white/[0.04]" aria-label="بحث داخل المنصة">
               <Search className="h-4 w-4" /><span>بحث داخل المنصة</span><kbd className="rounded-md border bg-white px-1.5 py-0.5 font-mono text-[10px] dark:bg-white/10">⌘K</kbd>
             </button>
