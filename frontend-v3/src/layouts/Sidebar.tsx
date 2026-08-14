@@ -5,6 +5,7 @@ import { cn, getRoleLabel } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { NAV_ITEMS, hasPermission } from "@/permissions";
+import { hasReflectedPermission } from "@/permissions/liveCapabilities";
 import {
   Activity,
   BarChart3,
@@ -101,8 +102,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           return item.permissions.some((permission) => hasPermission(user?.role ?? "citizen", permission));
         }
         // Live capabilities are UX hints only. The server remains the authorization boundary.
-        const reflected = Object.values(effectivePermissions).flat();
-        return reflected.length === 0 || item.permissions.some((permission) => reflected.includes(permission));
+        return hasReflectedPermission(effectivePermissions, item.permissions);
       })
       .map((item) => {
         const Icon = iconMap[item.icon] || Activity;

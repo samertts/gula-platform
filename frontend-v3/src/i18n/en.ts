@@ -213,6 +213,27 @@ const en = {
     lightMode: "Light Mode",
     language: "Language",
   },
+  legal: {
+    privacyTitle: "Privacy notice",
+    termsTitle: "Terms of service",
+    privacySummary: "This page records the current product-level privacy notice boundary for GULA Platform.",
+    termsSummary: "This page records the current product-level terms boundary for GULA Platform.",
+    reviewNotice: "Draft operational notice — legal review is required before this document is treated as a final legal policy or jurisdiction-specific compliance statement.",
+    backToLogin: "Back to access",
+    otherDocument: "Open the other document",
+    privacy: {
+      collection: { title: "Information handled", body: "GULA may handle account, session, workspace, organization, and service information required to provide an authenticated platform. Clinical data remains subject to the approved GULA clinical system-of-record controls." },
+      use: { title: "Purpose of use", body: "Information is used to authenticate users, enforce server-side authorization, provide requested services, maintain auditability, and protect platform security. This page does not define a legal retention period." },
+      sharing: { title: "Disclosure boundary", body: "No government, provider, or external disclosure integration is claimed by this page. Any future disclosure requires a documented contract, authorization, security review, and legal review." },
+      rights: { title: "Requests and review", body: "Requests concerning access, correction, consent, or deletion must follow the approved support and governance process once the responsible policy owner has published it." },
+    },
+    terms: {
+      access: { title: "Authorized access", body: "Access is granted through the canonical identity and session system and remains subject to verified membership, workspace context, effective capabilities, and backend authorization." },
+      acceptableUse: { title: "Acceptable use", body: "Users must not bypass authorization, enumerate tenant data, submit credentials or secrets through unsupported channels, or use demonstration data as real clinical data." },
+      clinicalBoundary: { title: "Clinical boundary", body: "GULA remains the clinical system of record and policy enforcement point. This page does not authorize any specialized service to approve clinical results." },
+      changes: { title: "Changes and approval", body: "Operational changes must be reviewed and approved by the responsible product, security, and legal owners before they are represented as final terms." },
+    },
+  },
   validation: {
     required: "This field is required",
     email: "Invalid email address",

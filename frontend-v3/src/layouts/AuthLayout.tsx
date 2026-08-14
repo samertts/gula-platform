@@ -1,5 +1,6 @@
 import { Outlet } from "react-router-dom";
 import { Activity, ChevronDown, Globe2, LockKeyhole } from "lucide-react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLocale } from "@/contexts/LocaleContext";
@@ -39,7 +40,7 @@ export function AuthLayout() {
         <div className="w-full max-w-5xl"><Outlet /></div>
       </main>
       <footer className="relative z-10 flex flex-col items-center justify-center gap-2 px-4 pb-7 text-center text-[11px] text-muted-foreground sm:flex-row">
-        <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5" /> {t("loginPage.secureAccess")}</span><span className="hidden sm:inline">•</span><span className="inline-flex items-center gap-1.5"><Activity className="h-3.5 w-3.5" /> © {new Date().getFullYear()} GULA</span>
+        <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5" /> {t("loginPage.secureAccess")}</span><span className="hidden sm:inline">•</span><Link to="/privacy-policy" className="underline-offset-2 hover:underline">{t("legal.privacyTitle")}</Link><span className="hidden sm:inline">•</span><Link to="/terms-of-service" className="underline-offset-2 hover:underline">{t("legal.termsTitle")}</Link><span className="hidden sm:inline">•</span><span className="inline-flex items-center gap-1.5"><Activity className="h-3.5 w-3.5" /> © {new Date().getFullYear()} GULA</span>
       </footer>
     </div>
   );
