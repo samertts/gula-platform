@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 DeviceCategory = Literal[
@@ -34,6 +34,24 @@ DeviceProtocol = Literal[
     "None",
 ]
 DeviceTransport = Literal["MLLP", "TCP", "Serial", "USB", "Bluetooth", "WiFi", "HTTP", "File", "None"]
+ConnectorMode = Literal["simulated", "gateway_pending", "active", "disabled"]
+ConnectorStatus = Literal["healthy", "degraded", "offline", "error", "maintenance", "pending"]
+ProfileStatus = Literal["draft", "validated", "retired"]
+
+_SECRET_TERMS = ("password", "secret", "token", "private_key", "privatekey", "credential", "authorization")
+
+
+def _ensure_secret_free(value: Any) -> Any:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            normalized = str(key).lower().replace("-", "_")
+            if any(term in normalized for term in _SECRET_TERMS):
+                raise ValueError("secret-bearing configuration is not accepted by the device control plane")
+            _ensure_secret_free(child)
+    elif isinstance(value, list):
+        for child in value:
+            _ensure_secret_free(child)
+    return value
 
 
 class DeviceRegisterRequest(BaseModel):
@@ -79,6 +97,126 @@ class DeviceRecord(BaseModel):
     notes: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class ConnectorRegisterRequest(BaseModel):
+    connector_uid: str = Field(..., min_length=3, max_length=96, pattern=r"^[A-Za-z0-9._:-]+$")
+    display_name: str = Field(..., min_length=2, max_length=200)
+    device_uid: str | None = Field(None, min_length=3, max_length=96)
+    protocol: DeviceProtocol
+    transport: DeviceTransport
+    mode: ConnectorMode = "simulated"
+    contract_version: str = Field("v1", min_length=1, max_length=24, pattern=r"^[A-Za-z0-9._-]+$")
+    gateway_ref: str | None = Field(None, max_length=160)
+    config_safe: dict[str, Any] | None = None
+    capability_manifest: dict[str, Any] | None = None
+    maintenance_due_at: datetime | None = None
+    enabled: bool = True
+
+    @field_validator("config_safe", "capability_manifest")
+    @classmethod
+    def validate_secret_free(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _ensure_secret_free(value)
+
+
+class ConnectorStatusUpdateRequest(BaseModel):
+    status: ConnectorStatus
+    reason: str | None = Field(None, max_length=500)
+    last_error: str | None = Field(None, max_length=500)
+
+
+class ConnectorRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    connector_uid: str
+    display_name: str
+    device_uid: str | None
+    protocol: str
+    transport: str
+    mode: str
+    status: str
+    contract_version: str
+    gateway_ref: str | None
+    config_safe: dict[str, Any] | None
+    capability_manifest: dict[str, Any] | None
+    last_heartbeat_at: datetime | None
+    last_error: str | None
+    enabled: bool
+    simulation_only: bool
+    maintenance_due_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class ProtocolProfileRequest(BaseModel):
+    profile_key: str = Field(..., min_length=3, max_length=120, pattern=r"^[A-Za-z0-9._:-]+$")
+    protocol: DeviceProtocol
+    version: str = Field("v1", min_length=1, max_length=24, pattern=r"^[A-Za-z0-9._-]+$")
+    message_type: str | None = Field(None, max_length=64)
+    framing: str | None = Field(None, max_length=120)
+    ack_strategy: str | None = Field(None, max_length=80)
+    encoding: str | None = Field("UTF-8", max_length=40)
+    mapping_schema: dict[str, Any] | None = None
+    validation_rules: dict[str, Any] | None = None
+    simulator_key: str | None = Field(None, max_length=80)
+    status: ProfileStatus = "draft"
+
+    @field_validator("mapping_schema", "validation_rules")
+    @classmethod
+    def validate_profile_secret_free(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _ensure_secret_free(value)
+
+
+class ProtocolProfileRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    profile_key: str
+    protocol: str
+    version: str
+    message_type: str | None
+    framing: str | None
+    ack_strategy: str | None
+    encoding: str | None
+    mapping_schema: dict[str, Any] | None
+    validation_rules: dict[str, Any] | None
+    simulator_key: str | None
+    status: str
+    simulation_only: bool
+    created_by: int | None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SimulatorRequest(BaseModel):
+    simulator_key: str = Field(..., min_length=3, max_length=80, pattern=r"^[A-Za-z0-9._:-]+$")
+    scenario: Literal["success", "degraded", "failure", "malformed"] = "success"
+    message_type: str | None = Field(None, max_length=64)
+    item_count: int = Field(1, ge=1, le=100)
+
+
+class SimulatorDescriptor(BaseModel):
+    key: str
+    label: str
+    protocol: str
+    family: str
+    contract_summary: str
+    output: str
+    simulation_only: bool = True
+
+
+class SimulationResult(BaseModel):
+    connector_uid: str
+    simulator_key: str
+    scenario: str
+    outcome: Literal["accepted", "degraded", "rejected"]
+    connector_status: str
+    device_status: str | None
+    event_id: int | None
+    correlation_id: str
+    simulation_only: bool = True
+    safe_summary: str
 
 
 class DeviceEventRecord(BaseModel):
@@ -145,6 +283,16 @@ class DeviceSummary(BaseModel):
 class DeviceListResponse(BaseModel):
     total: int
     devices: list[DeviceRecord]
+
+
+class ConnectorListResponse(BaseModel):
+    total: int
+    connectors: list[ConnectorRecord]
+
+
+class ProtocolProfileListResponse(BaseModel):
+    total: int
+    profiles: list[ProtocolProfileRecord]
 
 
 class DeviceEventListResponse(BaseModel):

@@ -229,7 +229,13 @@ def import_all_models() -> None:
         EdgeTask,
         EdgeTelemetry,
     )
-    from .devices.models import DeviceEvent, DevicePrintJob, IntegratedDevice  # noqa: F401
+    from .devices.models import (  # noqa: F401
+        DeviceConnector,
+        DeviceEvent,
+        DevicePrintJob,
+        DeviceProtocolProfile,
+        IntegratedDevice,
+    )
     from .models.outbox import OutboxEvent  # noqa: F401
     from .payments import models as payment_models  # noqa: F401
     from .models.subscription import (  # noqa: F401

@@ -31,8 +31,15 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
   it("يسمح بعقود device-integration المحاكية فقط ويرفض مسارًا غير مصنف", () => {
     expect(() => assertFrontendReadIsAllowed("get", "/device-integration/summary")).not.toThrow();
     expect(() => assertFrontendReadIsAllowed("get", "/device-integration/devices/VITAL-001?limit=20")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/device-integration/connectors?limit=20")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/device-integration/protocol-profiles")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/device-integration/simulators")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices/VITAL-001/probe")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/connectors")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/connectors/CONN-HL7-001/status")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/connectors/CONN-HL7-001/simulate")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/protocol-profiles")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices/VITAL-001/raw-command")).toThrow(OperationalWriteBlockedError);
   });
 

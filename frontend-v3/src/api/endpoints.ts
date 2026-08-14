@@ -37,8 +37,12 @@ import type {
   FHIRResource,
   UserInfo,
   DeviceIntegrationRecord,
+  DeviceIntegrationConnectorRecord,
   DeviceIntegrationEventRecord,
   DeviceIntegrationProtocolDescriptor,
+  DeviceIntegrationProtocolProfileRecord,
+  DeviceIntegrationSimulationResult,
+  DeviceIntegrationSimulatorDescriptor,
   DeviceIntegrationSummary,
   DeviceIntegrationPrinterJob,
 } from "@/types";
@@ -339,6 +343,20 @@ export const deviceIntegrationApi = {
     api.post<DeviceIntegrationRecord>(`/device-integration/devices/${deviceUid}/status`, data).then((r) => r.data),
   probe: (deviceUid: string) =>
     api.post<DeviceIntegrationRecord>(`/device-integration/devices/${deviceUid}/probe`).then((r) => r.data),
+  connectors: (params?: { status?: string; limit?: number }) =>
+    api.get<{ total: number; connectors: DeviceIntegrationConnectorRecord[] }>("/device-integration/connectors", { params }).then((r) => r.data),
+  registerConnector: (data: Record<string, unknown>) =>
+    api.post<DeviceIntegrationConnectorRecord>("/device-integration/connectors", data).then((r) => r.data),
+  updateConnectorStatus: (connectorUid: string, data: { status: string; reason?: string; last_error?: string }) =>
+    api.post<DeviceIntegrationConnectorRecord>(`/device-integration/connectors/${connectorUid}/status`, data).then((r) => r.data),
+  protocolProfiles: (params?: { status?: string; limit?: number }) =>
+    api.get<{ total: number; profiles: DeviceIntegrationProtocolProfileRecord[] }>("/device-integration/protocol-profiles", { params }).then((r) => r.data),
+  registerProtocolProfile: (data: Record<string, unknown>) =>
+    api.post<DeviceIntegrationProtocolProfileRecord>("/device-integration/protocol-profiles", data).then((r) => r.data),
+  simulators: () =>
+    api.get<DeviceIntegrationSimulatorDescriptor[]>("/device-integration/simulators").then((r) => r.data),
+  simulate: (connectorUid: string, data: { simulator_key: string; scenario?: string; message_type?: string; item_count?: number }) =>
+    api.post<DeviceIntegrationSimulationResult>(`/device-integration/connectors/${connectorUid}/simulate`, data).then((r) => r.data),
   events: (params?: { device_uid?: string; severity?: string; limit?: number }) =>
     api.get<{ total: number; events: DeviceIntegrationEventRecord[] }>("/device-integration/events", { params }).then((r) => r.data),
   printerJobs: (params?: { device_uid?: string; limit?: number }) =>

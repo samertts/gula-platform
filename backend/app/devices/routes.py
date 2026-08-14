@@ -8,6 +8,10 @@ from ..models.lab_user import LabUser
 from ..security.dependencies import require_permission
 from . import service
 from .schemas import (
+    ConnectorListResponse,
+    ConnectorRecord,
+    ConnectorRegisterRequest,
+    ConnectorStatusUpdateRequest,
     DeviceEventListResponse,
     DeviceEventRecord,
     DeviceListResponse,
@@ -19,6 +23,12 @@ from .schemas import (
     PrinterJobRecord,
     PrinterJobRequest,
     ProtocolDescriptor,
+    ProtocolProfileListResponse,
+    SimulationResult,
+    SimulatorDescriptor,
+    SimulatorRequest,
+    ProtocolProfileRecord,
+    ProtocolProfileRequest,
 )
 
 router = APIRouter(prefix="/device-integration", tags=["device-integration"])
@@ -58,6 +68,172 @@ def device_summary(
     db: Session = Depends(get_db),
 ):
     return service.summary(db, actor.lab_id)
+
+
+@router.get("/connectors", response_model=ConnectorListResponse)
+def list_connectors(
+    connector_status: str | None = Query(None, alias="status"),
+    limit: int = Query(100, ge=1, le=200),
+    actor: LabUser = _read_actor(),
+    db: Session = Depends(get_db),
+):
+    total, rows = service.list_connectors(db, actor.lab_id, status=connector_status, limit=limit)
+    connectors = [
+        ConnectorRecord(
+            id=connector.id,
+            connector_uid=connector.connector_uid,
+            display_name=connector.display_name,
+            device_uid=device_uid,
+            protocol=connector.protocol,
+            transport=connector.transport,
+            mode=connector.mode,
+            status=connector.status,
+            contract_version=connector.contract_version,
+            gateway_ref=connector.gateway_ref,
+            config_safe=connector.config_safe,
+            capability_manifest=connector.capability_manifest,
+            last_heartbeat_at=connector.last_heartbeat_at,
+            last_error=connector.last_error,
+            enabled=connector.enabled,
+            simulation_only=connector.simulation_only,
+            maintenance_due_at=connector.maintenance_due_at,
+            created_at=connector.created_at,
+            updated_at=connector.updated_at,
+        )
+        for connector, device_uid in rows
+    ]
+    return ConnectorListResponse(total=total, connectors=connectors)
+
+
+@router.post("/connectors", response_model=ConnectorRecord, status_code=status.HTTP_201_CREATED)
+def register_connector(
+    payload: ConnectorRegisterRequest,
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+):
+    try:
+        connector = service.register_connector(db, actor.lab_id, payload)
+        device_uid = None
+        if connector.device_id:
+            device = db.query(service.IntegratedDevice).filter(
+                service.IntegratedDevice.id == connector.device_id,
+                service.IntegratedDevice.lab_id == actor.lab_id,
+            ).first()
+            device_uid = device.device_uid if device else None
+        return ConnectorRecord(
+            id=connector.id,
+            connector_uid=connector.connector_uid,
+            display_name=connector.display_name,
+            device_uid=device_uid,
+            protocol=connector.protocol,
+            transport=connector.transport,
+            mode=connector.mode,
+            status=connector.status,
+            contract_version=connector.contract_version,
+            gateway_ref=connector.gateway_ref,
+            config_safe=connector.config_safe,
+            capability_manifest=connector.capability_manifest,
+            last_heartbeat_at=connector.last_heartbeat_at,
+            last_error=connector.last_error,
+            enabled=connector.enabled,
+            simulation_only=connector.simulation_only,
+            maintenance_due_at=connector.maintenance_due_at,
+            created_at=connector.created_at,
+            updated_at=connector.updated_at,
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
+
+
+@router.post("/connectors/{connector_uid}/status", response_model=ConnectorRecord)
+def update_connector_status(
+    connector_uid: str,
+    payload: ConnectorStatusUpdateRequest,
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+):
+    try:
+        connector = service.update_connector_status(db, actor.lab_id, connector_uid, payload)
+        device_uid = None
+        if connector.device_id:
+            device = db.query(service.IntegratedDevice).filter(
+                service.IntegratedDevice.id == connector.device_id,
+                service.IntegratedDevice.lab_id == actor.lab_id,
+            ).first()
+            device_uid = device.device_uid if device else None
+        return ConnectorRecord(
+            id=connector.id,
+            connector_uid=connector.connector_uid,
+            display_name=connector.display_name,
+            device_uid=device_uid,
+            protocol=connector.protocol,
+            transport=connector.transport,
+            mode=connector.mode,
+            status=connector.status,
+            contract_version=connector.contract_version,
+            gateway_ref=connector.gateway_ref,
+            config_safe=connector.config_safe,
+            capability_manifest=connector.capability_manifest,
+            last_heartbeat_at=connector.last_heartbeat_at,
+            last_error=connector.last_error,
+            enabled=connector.enabled,
+            simulation_only=connector.simulation_only,
+            maintenance_due_at=connector.maintenance_due_at,
+            created_at=connector.created_at,
+            updated_at=connector.updated_at,
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
+
+
+@router.get("/protocol-profiles", response_model=ProtocolProfileListResponse)
+def list_protocol_profiles(
+    profile_status: str | None = Query(None, alias="status"),
+    limit: int = Query(100, ge=1, le=200),
+    actor: LabUser = _read_actor(),
+    db: Session = Depends(get_db),
+):
+    total, profiles = service.list_protocol_profiles(db, actor.lab_id, status=profile_status, limit=limit)
+    return ProtocolProfileListResponse(
+        total=total,
+        profiles=[ProtocolProfileRecord.model_validate(profile) for profile in profiles],
+    )
+
+
+@router.post("/protocol-profiles", response_model=ProtocolProfileRecord, status_code=status.HTTP_201_CREATED)
+def register_protocol_profile(
+    payload: ProtocolProfileRequest,
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+):
+    try:
+        return ProtocolProfileRecord.model_validate(
+            service.register_protocol_profile(db, actor.lab_id, actor.id, payload)
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
+
+
+@router.get("/simulators", response_model=list[SimulatorDescriptor])
+def list_simulators(_: LabUser = _read_actor()):
+    return [SimulatorDescriptor(**descriptor) for descriptor in service.list_simulators()]
+
+
+@router.post("/connectors/{connector_uid}/simulate", response_model=SimulationResult)
+def simulate_connector(
+    connector_uid: str,
+    payload: SimulatorRequest,
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+):
+    try:
+        return SimulationResult(**service.simulate_connector(db, actor.lab_id, connector_uid, payload))
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
 
 
 @router.get("/devices", response_model=DeviceListResponse)

@@ -17,11 +17,20 @@ from .models import (
     EVENT_DIRECTIONS,
     EVENT_SEVERITIES,
     PRINT_STATUSES,
+    DeviceConnector,
     DeviceEvent,
     DevicePrintJob,
+    DeviceProtocolProfile,
     IntegratedDevice,
 )
-from .schemas import DeviceRegisterRequest, DeviceStatusUpdateRequest, PrinterJobRequest
+from .schemas import (
+    ConnectorRegisterRequest,
+    ConnectorStatusUpdateRequest,
+    DeviceRegisterRequest,
+    DeviceStatusUpdateRequest,
+    PrinterJobRequest,
+    ProtocolProfileRequest,
+)
 
 
 PROTOCOL_CATALOG = [
@@ -327,3 +336,293 @@ def list_print_jobs(db: Session, lab_id: int, *, device_uid: str | None = None, 
         query = query.filter(IntegratedDevice.device_uid == device_uid)
     total = query.count()
     return total, query.order_by(DevicePrintJob.created_at.desc()).limit(limit).all()
+
+
+def get_connector(db: Session, lab_id: int, connector_uid: str) -> DeviceConnector | None:
+    return (
+        db.query(DeviceConnector)
+        .filter(DeviceConnector.lab_id == lab_id, DeviceConnector.connector_uid == connector_uid)
+        .first()
+    )
+
+
+def list_connectors(
+    db: Session, lab_id: int, *, status: str | None = None, limit: int = 100
+) -> tuple[int, list[tuple[DeviceConnector, str | None]]]:
+    query = (
+        db.query(DeviceConnector, IntegratedDevice.device_uid)
+        .outerjoin(IntegratedDevice, IntegratedDevice.id == DeviceConnector.device_id)
+        .filter(DeviceConnector.lab_id == lab_id)
+    )
+    if status:
+        query = query.filter(DeviceConnector.status == status)
+    total = query.count()
+    return total, query.order_by(DeviceConnector.updated_at.desc()).limit(limit).all()
+
+
+def register_connector(db: Session, lab_id: int, payload: ConnectorRegisterRequest) -> DeviceConnector:
+    if payload.protocol not in DEVICE_PROTOCOLS or payload.transport not in DEVICE_TRANSPORTS:
+        raise ValueError("Unsupported connector protocol or transport")
+    if payload.mode == "active":
+        raise ValueError("active connectors require a separately governed gateway")
+    if (
+        db.query(DeviceConnector)
+        .filter(DeviceConnector.lab_id == lab_id, DeviceConnector.connector_uid == payload.connector_uid)
+        .first()
+    ):
+        raise ValueError("connector_uid already exists in this laboratory")
+
+    device = None
+    if payload.device_uid:
+        device = get_device(db, lab_id, payload.device_uid)
+        if device is None:
+            raise LookupError("linked device not found")
+
+    connector = DeviceConnector(
+        lab_id=lab_id,
+        connector_uid=payload.connector_uid,
+        display_name=payload.display_name,
+        device_id=device.id if device else None,
+        protocol=payload.protocol,
+        transport=payload.transport,
+        mode=payload.mode,
+        status="pending",
+        contract_version=payload.contract_version,
+        gateway_ref=payload.gateway_ref or (f"gateway://pending/{payload.connector_uid}" if payload.mode == "gateway_pending" else None),
+        config_safe=payload.config_safe,
+        capability_manifest=payload.capability_manifest,
+        enabled=payload.enabled,
+        simulation_only=True,
+        maintenance_due_at=payload.maintenance_due_at,
+    )
+    db.add(connector)
+    db.flush()
+    if device:
+        _event(
+            db,
+            device=device,
+            event_type="connector_registered",
+            summary="Connector registered in simulation or gateway-pending mode",
+            safe_metadata={
+                "simulation_only": True,
+                "connector_uid": connector.connector_uid,
+                "protocol": connector.protocol,
+                "transport": connector.transport,
+                "mode": connector.mode,
+            },
+        )
+    db.commit()
+    db.refresh(connector)
+    return connector
+
+
+def update_connector_status(
+    db: Session, lab_id: int, connector_uid: str, payload: ConnectorStatusUpdateRequest
+) -> DeviceConnector:
+    connector = get_connector(db, lab_id, connector_uid)
+    if connector is None:
+        raise LookupError("connector not found")
+    old_status = connector.status
+    connector.status = payload.status
+    connector.last_error = payload.last_error or (payload.reason if payload.status == "error" else None)
+    if payload.status in {"healthy", "degraded"}:
+        connector.last_heartbeat_at = datetime.now(UTC)
+    device = db.query(IntegratedDevice).filter(IntegratedDevice.id == connector.device_id, IntegratedDevice.lab_id == lab_id).first()
+    if device:
+        _event(
+            db,
+            device=device,
+            event_type="connector_status_changed",
+            summary=f"Connector status changed from {old_status} to {payload.status}",
+            severity="error" if payload.status == "error" else ("warning" if payload.status in {"degraded", "offline", "maintenance"} else "info"),
+            safe_metadata={
+                "simulation_only": True,
+                "connector_uid": connector.connector_uid,
+                "previous_status": old_status,
+                "reason": payload.reason,
+            },
+        )
+    db.commit()
+    db.refresh(connector)
+    return connector
+
+
+def list_protocol_profiles(db: Session, lab_id: int, *, status: str | None = None, limit: int = 100) -> tuple[int, list[DeviceProtocolProfile]]:
+    query = db.query(DeviceProtocolProfile).filter(DeviceProtocolProfile.lab_id == lab_id)
+    if status:
+        query = query.filter(DeviceProtocolProfile.status == status)
+    total = query.count()
+    return total, query.order_by(DeviceProtocolProfile.updated_at.desc()).limit(limit).all()
+
+
+def register_protocol_profile(db: Session, lab_id: int, actor_user_id: int, payload: ProtocolProfileRequest) -> DeviceProtocolProfile:
+    if payload.protocol not in DEVICE_PROTOCOLS:
+        raise ValueError("Unsupported protocol profile")
+    if (
+        db.query(DeviceProtocolProfile)
+        .filter(DeviceProtocolProfile.lab_id == lab_id, DeviceProtocolProfile.profile_key == payload.profile_key)
+        .first()
+    ):
+        raise ValueError("profile_key already exists in this laboratory")
+    if payload.status == "validated" and not payload.simulator_key:
+        raise ValueError("validated profiles require a simulator_key in this phase")
+    profile = DeviceProtocolProfile(
+        lab_id=lab_id,
+        profile_key=payload.profile_key,
+        protocol=payload.protocol,
+        version=payload.version,
+        message_type=payload.message_type,
+        framing=payload.framing,
+        ack_strategy=payload.ack_strategy,
+        encoding=payload.encoding,
+        mapping_schema=payload.mapping_schema,
+        validation_rules=payload.validation_rules,
+        simulator_key=payload.simulator_key,
+        status=payload.status,
+        simulation_only=True,
+        created_by=actor_user_id,
+    )
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
+
+
+SIMULATOR_CATALOG = [
+    {
+        "key": "hl7v2.oru.r01",
+        "label": "HL7 v2 ORU^R01 result",
+        "protocol": "HL7v2_MLLP",
+        "family": "clinical_messaging",
+        "contract_summary": "MSH/ORU^R01 contract with ACK/NAK expectation",
+        "output": "safe result envelope metadata only",
+    },
+    {
+        "key": "astm.result",
+        "label": "ASTM analyzer result",
+        "protocol": "ASTM",
+        "family": "laboratory_messaging",
+        "contract_summary": "ENQ/ACK frame sequence with result record",
+        "output": "safe analyzer result metadata only",
+    },
+    {
+        "key": "dicom.worklist",
+        "label": "DICOM Modality Worklist",
+        "protocol": "DICOM",
+        "family": "imaging",
+        "contract_summary": "C-FIND worklist exchange without DICOM objects",
+        "output": "safe worklist transaction metadata only",
+    },
+    {
+        "key": "fhir.device-observation",
+        "label": "FHIR Device and Observation envelope",
+        "protocol": "FHIR_Device",
+        "family": "health_data",
+        "contract_summary": "Device/Observation profile validation envelope",
+        "output": "resource type and profile metadata only",
+    },
+    {
+        "key": "zpl.specimen-label",
+        "label": "ZPL specimen label",
+        "protocol": "ZPL",
+        "family": "printing",
+        "contract_summary": "allowlisted specimen label template",
+        "output": "label count and template metadata only",
+    },
+    {
+        "key": "pdf.report",
+        "label": "PDF laboratory report",
+        "protocol": "PDF",
+        "family": "printing",
+        "contract_summary": "report render and queue contract",
+        "output": "document type and page metadata only",
+    },
+]
+
+_SIMULATOR_BY_KEY = {item["key"]: item for item in SIMULATOR_CATALOG}
+
+
+def list_simulators() -> list[dict]:
+    return list(SIMULATOR_CATALOG)
+
+
+def simulate_connector(db: Session, lab_id: int, connector_uid: str, payload) -> dict:
+    connector = get_connector(db, lab_id, connector_uid)
+    if connector is None:
+        raise LookupError("connector not found")
+    descriptor = _SIMULATOR_BY_KEY.get(payload.simulator_key)
+    if descriptor is None:
+        raise ValueError("unsupported simulator")
+    if descriptor["protocol"] != connector.protocol:
+        raise ValueError("simulator protocol does not match connector protocol")
+    if not connector.simulation_only or connector.mode == "active":
+        raise ValueError("simulation is disabled for active gateway connectors")
+
+    device = db.query(IntegratedDevice).filter(
+        IntegratedDevice.id == connector.device_id,
+        IntegratedDevice.lab_id == lab_id,
+    ).first()
+    scenario = payload.scenario
+    if scenario == "success":
+        connector_status = "healthy"
+        outcome = "accepted"
+        event_severity = "info"
+        device_status = "connected"
+        summary = f"Simulated {descriptor['label']} accepted for {payload.item_count} item(s)"
+        connector.last_heartbeat_at = datetime.now(UTC)
+        connector.last_error = None
+    elif scenario == "degraded":
+        connector_status = "degraded"
+        outcome = "degraded"
+        event_severity = "warning"
+        device_status = "connected"
+        summary = f"Simulated {descriptor['label']} completed with degraded transport"
+        connector.last_error = "simulated degraded transport"
+    else:
+        connector_status = "error"
+        outcome = "rejected"
+        event_severity = "error"
+        device_status = "error"
+        reason = "malformed contract" if scenario == "malformed" else "simulated adapter failure"
+        summary = f"Simulated {descriptor['label']} rejected: {reason}"
+        connector.last_error = reason
+
+    connector.status = connector_status
+    event = None
+    if device:
+        device.status = device_status
+        if device_status == "connected":
+            device.last_seen_at = datetime.now(UTC)
+        event = _event(
+            db,
+            device=device,
+            event_type="simulated_protocol_exchange",
+            direction="outbound" if descriptor["family"] == "printing" else "inbound",
+            severity=event_severity,
+            message_type=payload.message_type or descriptor["key"],
+            summary=summary,
+            safe_metadata={
+                "simulation_only": True,
+                "connector_uid": connector.connector_uid,
+                "simulator_key": descriptor["key"],
+                "scenario": scenario,
+                "item_count": payload.item_count,
+                "contract_summary": descriptor["contract_summary"],
+                "raw_payload_stored": False,
+            },
+        )
+        db.flush()
+    db.commit()
+    correlation_id = event.correlation_id if event else str(uuid4())
+    return {
+        "connector_uid": connector.connector_uid,
+        "simulator_key": descriptor["key"],
+        "scenario": scenario,
+        "outcome": outcome,
+        "connector_status": connector.status,
+        "device_status": device.status if device else None,
+        "event_id": event.id if event else None,
+        "correlation_id": correlation_id,
+        "simulation_only": True,
+        "safe_summary": summary,
+    }

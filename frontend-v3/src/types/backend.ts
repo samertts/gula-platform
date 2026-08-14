@@ -173,6 +173,10 @@ export type DeviceIntegrationProtocol =
   | 'PDF'
   | 'None';
 export type DeviceIntegrationTransport = 'MLLP' | 'TCP' | 'Serial' | 'USB' | 'Bluetooth' | 'WiFi' | 'HTTP' | 'File' | 'None';
+export type DeviceIntegrationConnectorMode = 'simulated' | 'gateway_pending' | 'active' | 'disabled';
+export type DeviceIntegrationConnectorStatus = 'healthy' | 'degraded' | 'offline' | 'error' | 'maintenance' | 'pending';
+export type DeviceIntegrationProfileStatus = 'draft' | 'validated' | 'retired';
+export type DeviceIntegrationSimulatorScenario = 'success' | 'degraded' | 'failure' | 'malformed';
 
 export interface DeviceIntegrationRecord {
   id: number;
@@ -194,6 +198,70 @@ export interface DeviceIntegrationRecord {
   notes?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface DeviceIntegrationConnectorRecord {
+  id: number;
+  connector_uid: string;
+  display_name: string;
+  device_uid?: string;
+  protocol: DeviceIntegrationProtocol;
+  transport: DeviceIntegrationTransport;
+  mode: DeviceIntegrationConnectorMode;
+  status: DeviceIntegrationConnectorStatus;
+  contract_version: string;
+  gateway_ref?: string;
+  config_safe?: Record<string, unknown>;
+  capability_manifest?: Record<string, unknown>;
+  last_heartbeat_at?: string;
+  last_error?: string;
+  enabled: boolean;
+  simulation_only: boolean;
+  maintenance_due_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeviceIntegrationProtocolProfileRecord {
+  id: number;
+  profile_key: string;
+  protocol: DeviceIntegrationProtocol;
+  version: string;
+  message_type?: string;
+  framing?: string;
+  ack_strategy?: string;
+  encoding?: string;
+  mapping_schema?: Record<string, unknown>;
+  validation_rules?: Record<string, unknown>;
+  simulator_key?: string;
+  status: DeviceIntegrationProfileStatus;
+  simulation_only: boolean;
+  created_by?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DeviceIntegrationSimulatorDescriptor {
+  key: string;
+  label: string;
+  protocol: DeviceIntegrationProtocol;
+  family: string;
+  contract_summary: string;
+  output: string;
+  simulation_only: boolean;
+}
+
+export interface DeviceIntegrationSimulationResult {
+  connector_uid: string;
+  simulator_key: string;
+  scenario: DeviceIntegrationSimulatorScenario;
+  outcome: 'accepted' | 'degraded' | 'rejected';
+  connector_status: DeviceIntegrationConnectorStatus;
+  device_status?: DeviceIntegrationStatus;
+  event_id?: number;
+  correlation_id: string;
+  simulation_only: boolean;
+  safe_summary: string;
 }
 
 export interface DeviceIntegrationEventRecord {
