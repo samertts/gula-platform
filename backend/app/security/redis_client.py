@@ -24,11 +24,11 @@ logger = logging.getLogger("gula.redis")
 class _MemoryStore:
     """Thread-safe in-memory key-value store with TTL support."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._data: dict[str, tuple[str, float | None]] = {}  # key → (value, expire_at)
         self._lock = threading.Lock()
 
-    def set(self, key: str, value, ex: int | None = None) -> None:
+    def set(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> None:
         expire_at = time.monotonic() + ex if ex else None
         with self._lock:
             self._data[key] = (str(value), expire_at)
@@ -76,7 +76,7 @@ class _RedisWrapper:
     Constructed lazily so import doesn't fail if redis-py is not installed.
     """
 
-    def __init__(self, url: str):
+    def __init__(self, url: str) -> None:
         import redis as _redis
 
         self._client = _redis.from_url(url, decode_responses=True, socket_timeout=1)
@@ -84,11 +84,12 @@ class _RedisWrapper:
         self._client.ping()
         logger.info("Redis connected: %s", url.rsplit("@", maxsplit=1)[-1])
 
-    def set(self, key: str, value, ex: int | None = None) -> None:
+    def set(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> None:
         self._client.set(key, value, ex=ex)
 
     def get(self, key: str) -> str | None:
-        return self._client.get(key)
+        value = self._client.get(key)
+        return value.decode() if isinstance(value, bytes) else value
 
     def delete(self, key: str) -> None:
         self._client.delete(key)
@@ -108,7 +109,7 @@ class _RedisWrapper:
 # ── Public singleton ──────────────────────────────────────────────────────────
 
 
-def _build_cache():
+def _build_cache() -> _MemoryStore | _RedisWrapper:
     if REDIS_URL:
         try:
             return _RedisWrapper(REDIS_URL)
@@ -133,4 +134,4 @@ def _build_cache():
     return _MemoryStore()
 
 
-cache = _build_cache()
+cache: _MemoryStore | _RedisWrapper = _build_cache()
