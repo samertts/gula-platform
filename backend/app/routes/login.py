@@ -42,10 +42,9 @@ class LoginRequest(BaseModel):
 
 @router.post("/login")
 def login(data: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    rate_limit_auth(request)
-
     client_ip = get_client_ip(request)
     identifier = data.email
+    rate_limit_auth(request, identifier=identifier)
 
     # ── Try lab staff / admin first ────────────────────────────────────────────
     # The UI accepts email or phone; both are normalized before lookup.
