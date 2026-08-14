@@ -9,6 +9,7 @@ Backend keeps:
 
 from __future__ import annotations
 
+from typing import Any, Protocol, cast
 from uuid import uuid4
 
 from shared.auth import JWTError
@@ -36,6 +37,17 @@ from ..config import (
     SECRET_KEY,
 )
 
+
+class _TokenUser(Protocol):
+    id: int
+    lab_id: int | None
+    role: str
+    perm_version: int | None
+
+
+JWTClaims = dict[str, Any]
+
+
 # ── JWT Token Blacklist (revocation) ──────────────────────────────────────────
 
 
@@ -57,14 +69,14 @@ _DUMMY_HASH: str = _shared_hash_password(f"gula-timing-dummy:{uuid4().hex}")
 
 
 def hash_password(password: str) -> str:
-    return _shared_hash_password(password)
+    return cast(str, _shared_hash_password(password))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return _shared_verify_password(plain_password, hashed_password)
+    return cast(bool, _shared_verify_password(plain_password, hashed_password))
 
 
-def build_token_payload(user) -> dict:
+def build_token_payload(user: _TokenUser) -> JWTClaims:
     return {
         "user_id": user.id,
         "lab_id": user.lab_id,
@@ -73,39 +85,39 @@ def build_token_payload(user) -> dict:
     }
 
 
-def create_token(data: dict) -> str:
+def create_token(data: JWTClaims) -> str:
     to_encode = data.copy()
     to_encode.update({"type": "access", "jti": str(uuid4())})
-    return _shared_create_access_token(
+    return cast(str, _shared_create_access_token(
         to_encode,
         secret_key=SECRET_KEY,
         algorithm=JWT_ALGORITHM,
         expire_minutes=JWT_EXPIRE_MINUTES,
-    )
+    ))
 
 
-def decode_token(token: str) -> dict | None:
+def decode_token(token: str) -> JWTClaims | None:
     try:
         payload = _shared_decode_access_token(token, SECRET_KEY, [JWT_ALGORITHM])
         if payload.get("type") != "access":
             return None
-        return payload
+        return cast(JWTClaims, payload)
     except JWTError:
         return None
 
 
-def create_refresh_token(data: dict) -> str:
+def create_refresh_token(data: JWTClaims) -> str:
     to_encode = data.copy()
     to_encode.update({"type": "refresh", "jti": str(uuid4())})
-    return _shared_create_refresh_token(
+    return cast(str, _shared_create_refresh_token(
         to_encode,
         refresh_secret=REFRESH_TOKEN_SECRET,
         algorithm=JWT_ALGORITHM,
         expire_days=REFRESH_TOKEN_EXPIRE_DAYS,
-    )
+    ))
 
 
-def decode_refresh_token(token: str) -> dict | None:
+def decode_refresh_token(token: str) -> JWTClaims | None:
     try:
         payload = _shared_decode_access_token(token, REFRESH_TOKEN_SECRET, [JWT_ALGORITHM])
         if payload.get("type") != "refresh":
@@ -113,6 +125,6 @@ def decode_refresh_token(token: str) -> dict | None:
         jti = payload.get("jti")
         if jti and is_token_blacklisted(jti):
             return None
-        return payload
+        return cast(JWTClaims, payload)
     except JWTError:
         return None

@@ -82,7 +82,7 @@ def _check(
     key: str,
     max_requests: int,
     window_seconds: int,
-    request: Request = None,
+    request: Request | None = None,
 ) -> tuple[bool, int, int]:
     """Fixed-window rate check.
 
@@ -121,13 +121,13 @@ def _check(
             client_ip = get_client_ip(request) if request else key.rsplit(":", maxsplit=1)[-1]
             block_dur = int(os.getenv("RATE_LIMIT_BLOCK_DURATION_SECONDS", "3600"))
             cache.set(f"block:{client_ip}", "1", ex=block_dur)
-            logger.warning("IP %s blocked for %ds (rate limit ×5)", client_ip, block_dur)
+            logger.warning("IP %s blocked for %ds (rate limit 5x)", client_ip, block_dur)
         return False, 0, reset_ts
 
     return True, remaining, reset_ts
 
 
-def _rl_headers(limit: int, remaining: int, reset_ts: int) -> dict:
+def _rl_headers(limit: int, remaining: int, reset_ts: int) -> dict[str, str]:
     return {
         "X-RateLimit-Limit": str(limit),
         "X-RateLimit-Remaining": str(remaining),

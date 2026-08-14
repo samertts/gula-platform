@@ -37,6 +37,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime
 
+from sqlalchemy.orm import Session
+
 from app._compat import UTC
 
 logger = logging.getLogger("gula.features")
@@ -171,7 +173,7 @@ def get_tier_features(
     return features
 
 
-def resolve_lab_features(lab_id: int, db) -> frozenset[str]:
+def resolve_lab_features(lab_id: int, db: Session) -> frozenset[str]:
     """Load a lab's effective feature set from DB, applying:
       1. Tier base features
       2. Deployment / security overrides
@@ -217,7 +219,7 @@ def resolve_lab_features(lab_id: int, db) -> frozenset[str]:
     return frozenset(features)
 
 
-def require_feature(feature: str, lab_id: int, db):
+def require_feature(feature: str, lab_id: int, db: Session) -> None:
     """Raise HTTP 403 if the lab does not have access to `feature`.
     Import this in route handlers for server-side enforcement.
 
@@ -246,12 +248,12 @@ def require_feature(feature: str, lab_id: int, db):
         )
 
 
-def can_lab_access(feature: str, lab_id: int, db) -> bool:
+def can_lab_access(feature: str, lab_id: int, db: Session) -> bool:
     """Non-raising version — returns True/False. Use in conditional logic."""
     return feature in resolve_lab_features(lab_id, db)
 
 
-def get_lab_subscription_info(lab_id: int, db) -> dict:
+def get_lab_subscription_info(lab_id: int, db: Session) -> dict[str, object]:
     """Return subscription summary for a lab — used in dashboard and API responses.
     """
     from ..models.subscription import LabSubscription
@@ -306,7 +308,7 @@ def is_upgrade_valid(current_tier: str, target_tier: str) -> bool:
     )
 
 
-def get_tier_limits(tier: str) -> dict:
+def get_tier_limits(tier: str) -> dict[str, int]:
     """Return the default resource limits for a tier."""
     limits = {
         "starter": {
