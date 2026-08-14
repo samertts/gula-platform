@@ -5,6 +5,11 @@ on:
     branches: [main, develop]
     paths:
       - 'frontend-v3/**'
+      - 'packages/uap/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'vercel.json'
       - '.github/workflows/frontend-pwa.yml'
   pull_request:
     branches: [main]
