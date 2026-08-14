@@ -1,4 +1,4 @@
-import { ApiClientError, createApiClient } from '../../../ui'
+import { ApiClientError, createApiClient } from "@gula/ui-platform/services/apiClient"
 
 const API_BASE = import.meta.env.VITE_API_URL || '/api/v2'
 const backend = createApiClient({

@@ -1,5 +1,5 @@
-import { inspectQueuePayload } from '../../../ui/utils/offlineQueueSecurity'
-import { createQueueEnvelope } from '../../../ui/utils/offlineQueueContract'
+import { inspectQueuePayload } from "@gula/ui-platform/utils/offlineQueueSecurity"
+import { createQueueEnvelope } from "@gula/ui-platform/utils/offlineQueueContract"
 
 const DB_NAME = 'gula-pharmacy-offline'
 const DB_VERSION = 2
