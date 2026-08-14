@@ -8,6 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.models.authorization import Permission, Role, RoleAssignment
+from app.identity.models.membership import Membership
+from app.identity.services.authorization_decision import (
+    AuthorizationActor,
+    AuthorizationDecisionService,
+    AuthorizationRequest,
+)
 from app.identity.services.authorization_service_v2 import (
     AuthorizationCatalogError,
     RoleAssignmentStateError,
@@ -101,6 +107,19 @@ async def list_permissions(
     return {"permissions": [serialize_permission(permission) for permission in permissions]}
 
 
+async def _require_phase8_decision(
+    actor: NiamActor,
+    db: AsyncSession,
+    request: AuthorizationRequest,
+) -> None:
+    decision = await AuthorizationDecisionService(db).authorize(
+        AuthorizationActor(account=actor.account, session=actor.session),
+        request,
+    )
+    if not decision.allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Authorization denied")
+
+
 @router.get("/effective")
 async def effective_permissions(
     organization_id: str = Query(min_length=1, max_length=26),
@@ -111,6 +130,28 @@ async def effective_permissions(
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await _require_phase8_decision(
+        actor,
+        db,
+        AuthorizationRequest(
+            subject_account_id=actor.account.id,
+            action="read",
+            resource_type="membership",
+            permission_key="membership.read",
+            organization_id=organization_id,
+            facility_id=facility_id,
+            department_id=department_id,
+            unit_id=unit_id,
+            workspace_id=workspace_id,
+            resource_context={
+                "organization_id": organization_id,
+                "facility_id": facility_id,
+                "department_id": department_id,
+                "unit_id": unit_id,
+                "workspace_id": workspace_id,
+            },
+        ),
+    )
     permissions = await RolePermissionService(db).effective_permissions(
         actor.account.id,
         organization_id,
@@ -128,6 +169,32 @@ async def assign_role(
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    target_membership = await db.get(Membership, body.membership_id)
+    if target_membership is None or target_membership.account_id != body.account_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role assignment denied")
+    await _require_phase8_decision(
+        actor,
+        db,
+        AuthorizationRequest(
+            subject_account_id=actor.account.id,
+            action="assign",
+            resource_type="role",
+            permission_key="role.assign",
+            organization_id=target_membership.organization_id,
+            facility_id=body.facility_id,
+            department_id=body.department_id,
+            unit_id=body.unit_id,
+            workspace_id=body.workspace_id,
+            sensitivity="critical",
+            resource_context={
+                "organization_id": target_membership.organization_id,
+                "facility_id": body.facility_id,
+                "department_id": body.department_id,
+                "unit_id": body.unit_id,
+                "workspace_id": body.workspace_id,
+            },
+        ),
+    )
     try:
         assignment = await RolePermissionService(db).grant_role(
             actor_id=actor.account.id,
@@ -155,6 +222,25 @@ async def revoke_role(
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    existing_assignment = await db.get(RoleAssignment, assignment_id)
+    if existing_assignment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Role assignment not found")
+    await _require_phase8_decision(
+        actor,
+        db,
+        AuthorizationRequest(
+            subject_account_id=actor.account.id,
+            action="revoke",
+            resource_type="role",
+            resource_id=assignment_id,
+            organization_id=existing_assignment.organization_id,
+            sensitivity="critical",
+            resource_context={
+                "exists": True,
+                "organization_id": existing_assignment.organization_id,
+            },
+        ),
+    )
     try:
         assignment = await RolePermissionService(db).revoke_role(assignment_id, actor.account.id, body.reason if body else None)
     except RoleAuthorizationDenied as exc:
