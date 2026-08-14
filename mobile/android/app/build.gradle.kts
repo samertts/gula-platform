@@ -4,10 +4,9 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
     id("org.jetbrains.kotlin.plugin.serialization")
-    id("org.jetbrains.kotlin.kapt")
+    id("com.android.legacy-kapt")
     id("com.google.dagger.hilt.android")
 }
 
@@ -113,8 +112,8 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.8.8")
 
     // Hilt
-    implementation("com.google.dagger:hilt-android:2.55")
-        kapt("com.google.dagger:hilt-android-compiler:2.55")
+    implementation("com.google.dagger:hilt-android:2.60.1")
+    kapt("com.google.dagger:hilt-android-compiler:2.60.1")
     implementation("androidx.hilt:hilt-navigation-compose:1.4.0")
     implementation("androidx.hilt:hilt-work:1.4.0")
     kapt("androidx.hilt:hilt-compiler:1.4.0")

@@ -46,3 +46,10 @@ The GitHub-reviewed advisory `GHSA-r937-wjx7-w2jp` / `CVE-2026-53914` confirms `
 
 
 Dependabot alert #289 detail confirms `org.bitbucket.b_c:jose4j` is affected before `0.9.6` and patched at `0.9.6`; the Android build already forces `0.9.6`. The alert is transitive through `com.android.tools.build:gradle 8.13.2`, so it should close after GitHub refreshes the dependency snapshot.
+
+
+## CI follow-up after rebasing on remote main
+
+Remote `main` advanced to `6cb9e014` with IAM and Dependabot merges. The security commit was rebased safely and pushed as `88b4958f`. Initial CI exposed three independent regressions: the IAM route test did not unwrap the repository's lazy `_IncludedRouter` wrappers; migration `20260814_0005` seeded IDs longer than the declared `varchar(26)` columns; and Flutter formatting reported one changed Dart file.
+
+The official Android migration guide confirms AGP 9 has built-in Kotlin, requires removing `org.jetbrains.kotlin.android`, and states that `org.jetbrains.kotlin.kapt` is incompatible with built-in Kotlin; it recommends KSP or `com.android.legacy-kapt` when KSP migration is not yet possible. The official Hilt Gradle setup currently documents Hilt `2.60.1` with KSP and the Hilt Gradle plugin. The Android build is therefore being migrated to AGP 9-compatible plugin wiring rather than reintroducing the obsolete Kotlin Android plugin.

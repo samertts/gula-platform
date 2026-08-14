@@ -10,12 +10,27 @@ from app.identity.models.membership import MembershipInvitation
 from fastapi.routing import APIRoute
 
 
+def _iter_api_routes(router_routes, prefix: str = ""):
+    """Flatten FastAPI routes and the platform's lazy included-router wrappers."""
+    for route in router_routes:
+        if isinstance(route, APIRoute):
+            route_path = route.path or "/"
+            full_path = f"{prefix.rstrip('/')}{route_path}"
+            yield route, full_path
+            continue
+        original_router = getattr(route, "original_router", None)
+        if original_router is not None:
+            include_context = getattr(route, "include_context", None)
+            included_prefix = getattr(include_context, "prefix", None) or prefix
+            yield from _iter_api_routes(original_router.routes, included_prefix)
+
+
 def _membership_routes() -> dict[tuple[str, str], APIRoute]:
     routes: dict[tuple[str, str], APIRoute] = {}
-    for route in router.routes:
-        if isinstance(route, APIRoute) and route.path.startswith("/niam/memberships"):
+    for route, path in _iter_api_routes(router.routes):
+        if path.startswith("/niam/memberships"):
             for method in route.methods or set():
-                routes[(method, route.path)] = route
+                routes[(method, path)] = route
     return routes
 
 
