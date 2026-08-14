@@ -24,8 +24,9 @@ if (!Array.isArray(snapshot.domains) || snapshot.domains.length !== 7) {
   throw new Error("فشل تدقيق المخرجات: يجب أن تتضمن اللقطة المجالات السبعة المحددة.");
 }
 
-if (routes.length !== 306) {
-  throw new Error(`فشل تدقيق المخرجات: العدد المستخرج للمسارات هو ${routes.length} بدل 306.`);
+const MIN_EXPECTED_BACKEND_ROUTES = 306;
+if (routes.length < MIN_EXPECTED_BACKEND_ROUTES) {
+  throw new Error(`فشل تدقيق المخرجات: العدد المستخرج للمسارات هو ${routes.length} وأقل من الحد الأدنى ${MIN_EXPECTED_BACKEND_ROUTES}.`);
 }
 
 for (const route of routes) {

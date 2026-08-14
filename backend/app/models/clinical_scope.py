@@ -68,6 +68,13 @@ class ClinicalLabFacilityBinding(Base):
         nullable=False,
         index=True,
     )
+    # Explicit reviewed mapping to canonical NIAM scope. Null means the bridge is
+    # not eligible for the P0 gateway and must remain BLOCKED_SAFE.
+    # NIAM IDs are opaque cross-database references.  No FK is declared here:
+    # the NIAM tables live in a separate database and mapping validity is checked
+    # by the governed resolver, not by a shared relational constraint.
+    niam_organization_id = Column(String(26), nullable=True, index=True)
+    niam_facility_id = Column(String(26), nullable=True, index=True)
     status = Column(
         String(20),
         nullable=False,

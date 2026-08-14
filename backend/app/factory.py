@@ -754,6 +754,9 @@ def _register_routes(app: FastAPI) -> None:
     from .identity import get_router as get_niam_router
     app.include_router(get_niam_router())
 
+    from .clinical_gateway.routes import router as clinical_gateway_router
+    app.include_router(clinical_gateway_router)
+
     from .routes.authorization import router as authorization_router
     app.include_router(authorization_router)
 

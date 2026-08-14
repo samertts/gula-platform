@@ -32,6 +32,7 @@ class AuthManager {
   String? _userEmail;
   Map<String, dynamic>? _userProfile;
   List<Map<String, dynamic>> _memberships = const [];
+  Map<String, List<String>> _effectivePermissions = const {};
 
   AuthStatus get status => _status;
   String? get token => _token;
@@ -43,6 +44,8 @@ class AuthManager {
   String? get userEmail => _userEmail;
   Map<String, dynamic>? get userProfile => _userProfile;
   List<Map<String, dynamic>> get memberships => List.unmodifiable(_memberships);
+  Map<String, List<String>> get effectivePermissions =>
+      Map.unmodifiable(_effectivePermissions);
   bool get isAuthenticated => _status == AuthStatus.authenticated;
   bool get isMfaRequired => _status == AuthStatus.mfaRequired;
   BiometricAuth get biometricAuth => _biometricAuth;
@@ -159,17 +162,42 @@ class AuthManager {
   Future<List<Map<String, dynamic>>> refreshMemberships() async {
     final response = await _apiClient.get(ApiEndpoints.myMemberships);
     final body = response.data;
-    final rawMemberships = body is Map<String, dynamic>
-        ? body['memberships']
-        : null;
+    final rawMemberships =
+        body is Map<String, dynamic> ? body['memberships'] : null;
     final parsed = rawMemberships is List
         ? rawMemberships
-              .whereType<Map>()
-              .map((item) => Map<String, dynamic>.from(item))
-              .toList(growable: false)
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList(growable: false)
         : const <Map<String, dynamic>>[];
     _memberships = parsed;
+    await refreshEffectivePermissions();
     return memberships;
+  }
+
+  Future<Map<String, List<String>>> refreshEffectivePermissions() async {
+    final reflected = <String, List<String>>{};
+    final organizationIds = _memberships
+        .map((membership) => membership['organization_id']?.toString())
+        .whereType<String>()
+        .toSet();
+    for (final organizationId in organizationIds) {
+      try {
+        final response = await _apiClient.get(
+          ApiEndpoints.effectivePermissions,
+          queryParameters: {'organization_id': organizationId},
+        );
+        final body = response.data;
+        final data = body is Map<String, dynamic> ? body['permissions'] : null;
+        reflected[organizationId] = data is List
+            ? data.whereType<String>().toList(growable: false)
+            : const <String>[];
+      } catch (_) {
+        reflected[organizationId] = const <String>[];
+      }
+    }
+    _effectivePermissions = reflected;
+    return effectivePermissions;
   }
 
   Future<void> _processLoginResponse(Map<String, dynamic> data) async {
@@ -196,11 +224,13 @@ class AuthManager {
     if (_labId != null) await _storage.saveLabId(_labId!);
     if (_userRole != null) await _storage.saveUserRole(_userRole!);
 
-    // Memberships are server-reflected context, never an offline authorization cache.
+    // Memberships and capabilities are server-reflected UX context,
+    // never an offline authorization cache or security decision.
     try {
       await refreshMemberships();
     } catch (_) {
       _memberships = const [];
+      _effectivePermissions = const {};
     }
     _setStatus(AuthStatus.authenticated);
   }
@@ -258,6 +288,7 @@ class AuthManager {
     _userEmail = null;
     _userProfile = null;
     _memberships = const [];
+    _effectivePermissions = const {};
     await _storage.clear();
     _setStatus(AuthStatus.unauthenticated);
   }

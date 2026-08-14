@@ -15,8 +15,10 @@ const [client, scopedReads, viteConfig, refreshEntry] = await Promise.all([
 const expectations = [
   [client, /VITE_API_BASE_URL \?\? "\/api"/, "عميل frontend-v3 يجب أن يعرّف قاعدة REST العامة /api."],
   [client, /withCredentials: true/, "عميل frontend-v3 يجب أن يرسل بيانات اعتماد الجلسة مع REST."],
-  [scopedReads, /api\.get<unknown>\("\/authz\/me"\)/, "بوابة القراءة يجب أن تثبت سياق المنشأة عبر REST."],
-  [scopedReads, /api\.post<unknown>\("\/authz\/check"/, "بوابة القراءة يجب أن تطلب قرار التفويض عبر REST."],
+  [scopedReads, /\/api\/v1\/clinical\/patients/, "بوابة القراءة يجب أن تستخدم مسار patients.read canonical."],
+  [scopedReads, /\/api\/v1\/clinical\/orders/, "بوابة القراءة يجب أن تستخدم مسار orders.read canonical."],
+  [scopedReads, /contract_version: "1\.0"/, "بوابة القراءة يجب أن تتحقق من envelope versioned."],
+  [scopedReads, /workspace_context/, "بوابة القراءة يجب أن تتحقق من سياق مساحة العمل الخادمي."],
   [viteConfig, /'\/api':\s*\{\s*target: 'http:\/\/localhost:8000'/s, "وكيل التطوير يجب أن يوجه REST إلى الخلفية المرجعية."],
   [refreshEntry, /url: "\/api\/trpc"/, "تطبيق ui-refresh يجب أن يبقي tRPC على مساره الخادمي المستقل."],
 ];
@@ -33,4 +35,4 @@ for (const [name, content] of [["client", client], ["workspaceScopedReads", scop
   }
 }
 
-console.log("تم التحقق من حدود REST المباشر وجسر tRPC الخادمي دون كشف أسرار.");
+console.log("تم التحقق من حدود REST المباشر والبوابة السريرية canonical وجسر tRPC الخادمي دون كشف أسرار.");

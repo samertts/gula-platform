@@ -76,6 +76,16 @@ class AuditAction(StrEnum):
     role_assignment_denied = "role_assignment_denied"
     permission_enforced = "permission_enforced"
     permission_denied = "permission_denied"
+    authz_allow_sensitive = "AUTHZ_ALLOW_SENSITIVE"
+    authz_deny = "AUTHZ_DENY"
+    authz_policy_failure = "AUTHZ_POLICY_FAILURE"
+    authz_cross_tenant_attempt = "AUTHZ_CROSS_TENANT_ATTEMPT"
+    authz_privilege_escalation_attempt = "AUTHZ_PRIVILEGE_ESCALATION_ATTEMPT"
+    authz_role_manipulation_attempt = "AUTHZ_ROLE_MANIPULATION_ATTEMPT"
+    authz_resource_enumeration_attempt = "AUTHZ_RESOURCE_ENUMERATION_ATTEMPT"
+    break_glass_used = "BREAK_GLASS_USED"
+    step_up_required = "STEP_UP_REQUIRED"
+    step_up_failed = "STEP_UP_FAILED"
     policy_created = "policy_created"
     policy_updated = "policy_updated"
     policy_enforced = "policy_enforced"
@@ -202,6 +212,15 @@ class AuditAction(StrEnum):
     fhir_connection_tested = "fhir_connection_tested"
     audit_chain_verified = "audit_chain_verified"
     audit_tamper_detected = "audit_tamper_detected"
+    audit_event_read = "audit_event_read"
+    audit_export_requested = "audit_export_requested"
+    audit_integrity_verified = "audit_integrity_verified"
+    consent_checked = "consent_checked"
+    consent_withdrawn = "consent_withdrawn"
+    security_incident_created = "security_incident_created"
+    security_incident_status_changed = "security_incident_status_changed"
+    security_alert_detected = "security_alert_detected"
+    data_export_requested = "data_export_requested"
 
 
 class IdentityAuditEntry(IdentityBaseEntity):
@@ -209,12 +228,25 @@ class IdentityAuditEntry(IdentityBaseEntity):
 
     uuid = Column(String(36), unique=True, nullable=False, index=True)
 
-    action = Column(String(50), nullable=False, index=True)
+    action = Column(String(120), nullable=False, index=True)
+    event_type = Column(String(120), nullable=True, index=True)
+    event_version = Column(String(20), nullable=False, default="1")
+    category = Column(String(40), nullable=True, index=True)
     actor_id = Column(String(36), nullable=True, index=True)
+    actor_identity_id = Column(String(26), nullable=True, index=True)
     actor_type = Column(String(30), nullable=True)
 
     target_type = Column(String(50), nullable=True, index=True)
     target_id = Column(String(36), nullable=True, index=True)
+    facility_id = Column(String(26), nullable=True, index=True)
+    department_id = Column(String(26), nullable=True, index=True)
+    workspace_id = Column(String(26), nullable=True, index=True)
+    decision = Column(String(20), nullable=True, index=True)
+    reason_code = Column(String(120), nullable=True, index=True)
+    request_id = Column(String(120), nullable=True, index=True)
+    correlation_id = Column(String(120), nullable=True, index=True)
+    source = Column(String(40), nullable=True, index=True)
+    data_classification = Column(String(30), nullable=True, index=True)
 
     changes = Column(JSON, nullable=True)
     extra_data = Column(JSON, nullable=True)

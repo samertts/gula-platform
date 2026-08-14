@@ -45,7 +45,23 @@
       "status": "non-operational"
     },
     {
+      "source": "src/components/auth/RoleGuard.tsx",
+      "kinds": [
+        "demo-surface"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
       "source": "src/components/guide/GuideAssistant.tsx",
+      "kinds": [
+        "demo-surface"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/components/workspace/WorkspaceSelector.tsx",
       "kinds": [
         "demo-surface"
       ],
@@ -69,6 +85,14 @@
         "react-query-read"
       ],
       "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/hooks/usePermissions.ts",
+      "kinds": [
+        "demo-surface"
+      ],
+      "classification": "demo-only",
       "status": "non-operational"
     },
     {
@@ -627,16 +651,6 @@
       "source": "src/pages/niam/WorkflowsPage.tsx",
       "kinds": [
         "direct-api-client",
-        "react-query-mutation",
-        "react-query-read"
-      ],
-      "classification": "unbound",
-      "status": "non-operational"
-    },
-    {
-      "source": "src/pages/notifications/NotificationsPage.tsx",
-      "kinds": [
-        "endpoint-import",
         "react-query-mutation",
         "react-query-read"
       ],

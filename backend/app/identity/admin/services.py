@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import ipaddress
+import os
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlparse
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,6 +21,7 @@ from app.identity.admin.models import (
 )
 from app.identity.base import _ulid
 from app.identity.repositories.base import IdentityRepositoryBase
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
 
 
 class _AdminRepository(IdentityRepositoryBase[EnterprisePortal]):
@@ -28,6 +32,37 @@ class EnterprisePortalService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
+
+    async def _record_admin_event(
+        self,
+        *,
+        event_type: str,
+        action: str,
+        actor_id: str | None,
+        organization_id: str | None,
+        target_type: str,
+        target_id: str | None,
+        metadata: dict[str, Any] | None = None,
+        outcome: str = "success",
+    ) -> None:
+        await self.audit.record(
+            AuditEventInput(
+                event_type=event_type,
+                category="ADMINISTRATION",
+                action=action,
+                actor_id=actor_id,
+                actor_type="human" if actor_id else "service",
+                organization_id=organization_id,
+                target_type=target_type,
+                target_id=target_id,
+                decision="ALLOW" if outcome == "success" else "DENY",
+                reason_code="ADMIN_MUTATION",
+                outcome=outcome,
+                data_classification="CONFIDENTIAL",
+                metadata=metadata,
+            ),
+        )
 
     # --- Portals ---
 
@@ -53,6 +88,14 @@ class EnterprisePortalService:
         )
         self.session.add(portal)
         await self.session.flush()
+        await self._record_admin_event(
+            event_type="ADMIN_PORTAL_CREATED",
+            action="admin.portal.create",
+            actor_id=created_by,
+            organization_id=org_id,
+            target_type="portal",
+            target_id=portal.id,
+        )
         return portal
 
     async def get_portal(self, portal_id: str) -> EnterprisePortal | None:
@@ -86,6 +129,7 @@ class EnterprisePortalService:
         phone: str | None = None,
         email: str | None = None,
         manager_person_id: str | None = None,
+        actor_id: str | None = None,
     ) -> PortalBranch:
         branch = PortalBranch(
             uuid=_ulid(),
@@ -103,6 +147,14 @@ class EnterprisePortalService:
         )
         self.session.add(branch)
         await self.session.flush()
+        await self._record_admin_event(
+            event_type="ADMIN_BRANCH_CREATED",
+            action="admin.branch.create",
+            actor_id=actor_id,
+            organization_id=org_id,
+            target_type="branch",
+            target_id=branch.id,
+        )
         return branch
 
     # --- Facilities ---
@@ -118,6 +170,7 @@ class EnterprisePortalService:
         accreditation: str | None = None,
         contact: dict[str, Any] | None = None,
         address: str | None = None,
+        actor_id: str | None = None,
     ) -> PortalFacility:
         facility = PortalFacility(
             uuid=_ulid(),
@@ -136,6 +189,14 @@ class EnterprisePortalService:
         )
         self.session.add(facility)
         await self.session.flush()
+        await self._record_admin_event(
+            event_type="ADMIN_FACILITY_CREATED",
+            action="admin.facility.create",
+            actor_id=actor_id,
+            organization_id=org_id,
+            target_type="facility",
+            target_id=facility.id,
+        )
         return facility
 
     # --- Departments ---
@@ -147,6 +208,8 @@ class EnterprisePortalService:
         name_ar: str,
         dept_type: str | None = None,
         head_person_id: str | None = None,
+        organization_id: str | None = None,
+        actor_id: str | None = None,
     ) -> PortalDepartment:
         dept = PortalDepartment(
             uuid=_ulid(),
@@ -161,6 +224,14 @@ class EnterprisePortalService:
         )
         self.session.add(dept)
         await self.session.flush()
+        await self._record_admin_event(
+            event_type="ADMIN_DEPARTMENT_CREATED",
+            action="admin.department.create",
+            actor_id=actor_id,
+            organization_id=organization_id,
+            target_type="department",
+            target_id=dept.id,
+        )
         return dept
 
     # --- Subscriptions ---
@@ -181,6 +252,7 @@ class EnterprisePortalService:
         currency: str = "IQD",
         payment_method: str | None = None,
         auto_renew: bool = False,
+        actor_id: str | None = None,
     ) -> PortalSubscription:
         stmt = (
             select(PortalSubscription)
@@ -208,6 +280,14 @@ class EnterprisePortalService:
             existing.payment_method = payment_method
             existing.auto_renew = auto_renew
             await self.session.flush()
+            await self._record_admin_event(
+                event_type="ADMIN_SUBSCRIPTION_UPDATED",
+                action="admin.subscription.update",
+                actor_id=actor_id,
+                organization_id=org_id,
+                target_type="subscription",
+                target_id=existing.id,
+            )
             return existing
 
         sub = PortalSubscription(
@@ -232,6 +312,14 @@ class EnterprisePortalService:
         )
         self.session.add(sub)
         await self.session.flush()
+        await self._record_admin_event(
+            event_type="ADMIN_SUBSCRIPTION_CREATED",
+            action="admin.subscription.create",
+            actor_id=actor_id,
+            organization_id=org_id,
+            target_type="subscription",
+            target_id=sub.id,
+        )
         return sub
 
     async def get_subscription(self, org_id: str) -> PortalSubscription | None:
@@ -245,7 +333,13 @@ class EnterprisePortalService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def update_subscription(self, sub_id: str, **kwargs: Any) -> PortalSubscription | None:
+    async def update_subscription(
+        self,
+        sub_id: str,
+        *,
+        actor_id: str | None = None,
+        **kwargs: Any,
+    ) -> PortalSubscription | None:
         stmt = select(PortalSubscription).where(
             PortalSubscription.sub_id == sub_id,
             PortalSubscription.is_active.is_(True),
@@ -258,9 +352,36 @@ class EnterprisePortalService:
             if hasattr(sub, key):
                 setattr(sub, key, value)
         await self.session.flush()
+        await self._record_admin_event(
+            event_type="ADMIN_SUBSCRIPTION_UPDATED",
+            action="admin.subscription.update",
+            actor_id=actor_id,
+            organization_id=sub.organization_id,
+            target_type="subscription",
+            target_id=sub.id,
+        )
         return sub
 
     # --- FHIR Connections ---
+
+    @staticmethod
+    def _validate_fhir_base_url(base_url: str) -> str:
+        parsed = urlparse(base_url)
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+            raise ValueError("FHIR base_url must be an HTTPS URL without embedded credentials")
+        host = parsed.hostname.lower().rstrip(".")
+        if host in {"localhost", "metadata.google.internal", "169.254.169.254"}:
+            raise ValueError("FHIR base_url host is not allowed")
+        try:
+            address = ipaddress.ip_address(host)
+        except ValueError:
+            address = None
+        if address is not None and (address.is_private or address.is_loopback or address.is_link_local or address.is_reserved):
+            raise ValueError("FHIR base_url cannot target a private or local address")
+        allowed_hosts = {item.strip().lower() for item in os.getenv("FHIR_ALLOWED_HOSTS", "").split(",") if item.strip()}
+        if host not in allowed_hosts:
+            raise ValueError("FHIR base_url host is not in the configured allowlist")
+        return parsed.geturl().rstrip("/")
 
     async def create_fhir_connection(
         self,
@@ -270,14 +391,16 @@ class EnterprisePortalService:
         base_url: str,
         auth_type: str,
         credentials_encrypted: str | None = None,
+        actor_id: str | None = None,
     ) -> FHIRConnection:
+        validated_base_url = self._validate_fhir_base_url(base_url)
         conn = FHIRConnection(
             uuid=_ulid(),
             conn_id=_ulid(),
             organization_id=org_id,
             name=name,
             fhir_version=fhir_version,
-            base_url=base_url,
+            base_url=validated_base_url,
             auth_type=auth_type,
             credentials_encrypted=credentials_encrypted,
             status="inactive",
@@ -285,6 +408,14 @@ class EnterprisePortalService:
         )
         self.session.add(conn)
         await self.session.flush()
+        await self._record_admin_event(
+            event_type="ADMIN_FHIR_CONNECTION_CREATED",
+            action="admin.fhir_connection.create",
+            actor_id=actor_id,
+            organization_id=org_id,
+            target_type="fhir_connection",
+            target_id=conn.id,
+        )
         return conn
 
     async def get_fhir_connections_for_org(self, org_id: str) -> list[FHIRConnection]:
@@ -298,7 +429,7 @@ class EnterprisePortalService:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def test_fhir_connection(self, conn_id: str) -> dict[str, Any]:
+    async def test_fhir_connection(self, conn_id: str, *, actor_id: str | None = None) -> dict[str, Any]:
         stmt = select(FHIRConnection).where(
             FHIRConnection.conn_id == conn_id,
             FHIRConnection.is_active.is_(True),
@@ -311,16 +442,27 @@ class EnterprisePortalService:
         import httpx
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            validated_base_url = self._validate_fhir_base_url(conn.base_url)
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=False) as client:
                 headers: dict[str, str] = {"Accept": "application/fhir+json"}
                 if conn.auth_type == "bearer" and conn.credentials_encrypted:
                     headers["Authorization"] = f"Bearer {conn.credentials_encrypted}"
-                resp = await client.get(conn.base_url.rstrip("/") + "/metadata", headers=headers)
+                resp = await client.get(validated_base_url + "/metadata", headers=headers)
                 success = resp.is_success
                 conn.last_test_at = datetime.now(UTC)
                 conn.last_test_result = "success" if success else f"HTTP {resp.status_code}"
                 conn.status = "active" if success else "error"
                 await self.session.flush()
+                await self._record_admin_event(
+                    event_type="ADMIN_FHIR_CONNECTION_TESTED",
+                    action="admin.fhir_connection.test",
+                    actor_id=actor_id,
+                    organization_id=conn.organization_id,
+                    target_type="fhir_connection",
+                    target_id=conn.id,
+                    metadata={"success": success, "status_code": resp.status_code},
+                    outcome="success" if success else "denied",
+                )
                 return {
                     "success": success,
                     "status_code": resp.status_code,

@@ -35,6 +35,7 @@ from .citizen_relationship import (
     CitizenRelationshipStatus,
     CitizenRelationshipType,
 )
+from .consent import NiamConsent, NiamConsentSource, NiamConsentStatus
 from .credential import Credential, CredentialType
 from .device import Device
 from .employment import Employment, EmploymentStatus
@@ -57,6 +58,7 @@ from .membership import (
 from .niam_organization import NIAMOrganization
 from .person import Person
 from .policy import IdentityPolicy
+from .security import IncidentSeverity, IncidentStatus, SecurityIncident
 from .session import UserSession
 from .verification_record import (
     ProfessionalType,
@@ -91,6 +93,8 @@ __all__ = [
     "IdentityPolicy",
     "IdentityRecord",
     "IdentityType",
+    "IncidentSeverity",
+    "IncidentStatus",
     "InvitationStatus",
     "LegacyAccountLink",
     "LegacyAccountLinkSource",
@@ -110,6 +114,9 @@ __all__ = [
     "NIAMAdminFacility",
     "NIAMAdminUnit",
     "NIAMOrganization",
+    "NiamConsent",
+    "NiamConsentSource",
+    "NiamConsentStatus",
     "OrganizationOwnership",
     "OrganizationRepresentative",
     "OrganizationStatus",
@@ -125,6 +132,7 @@ __all__ = [
     "RoleAssignmentStatus",
     "RolePermission",
     "RoleScopeType",
+    "SecurityIncident",
     "UserSession",
     "VerificationRecord",
     "VerificationRecordStatus",

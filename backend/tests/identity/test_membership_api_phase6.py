@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from app.identity.api import memberships
+from app.identity.api import memberships as memberships_api
 from app.identity.api.memberships import (
     MembershipApplicationRequest,
     MembershipInvitationRequest,
@@ -34,13 +34,14 @@ def _membership_routes() -> dict[tuple[str, str], APIRoute]:
     contains the endpoint objects themselves.
     """
     assert any(
-        getattr(route, "original_router", None) is memberships.router
+        getattr(route, "original_router", None) is memberships_api.router
         for route in router.routes
     )
 
     routes: dict[tuple[str, str], APIRoute] = {}
     for route, path in _iter_api_routes(router.routes):
-        if path.startswith("/niam/memberships"):
+        if path.startswith(("/niam/memberships", "/memberships")):
+            path = path if path.startswith("/niam/") else f"/niam{path}"
             for method in route.methods or set():
                 routes[(method, path)] = route
     return routes

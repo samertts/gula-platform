@@ -3,15 +3,15 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-
 from app.kernel import Kernel, KernelConfig
 from app.kernel.integration import get_kernel, get_kernel_health, is_kernel_ready
 
 
 class TestObservabilityHealth:
-    def test_kernel_health_returns_expected_keys(self):
+    def test_kernel_health_returns_expected_keys(self, monkeypatch):
         config = KernelConfig(environment="test")
         kernel = Kernel(config=config)
+        monkeypatch.setattr("app.kernel.integration._kernel_instance", kernel)
         asyncio.run(kernel.boot())
         asyncio.run(kernel.start())
         health = asyncio.run(get_kernel_health())

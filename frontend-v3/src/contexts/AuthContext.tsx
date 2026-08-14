@@ -9,6 +9,7 @@ interface AuthContextType {
   isLoading: boolean;
   demoMode: boolean;
   memberships: MembershipSummary[];
+  effectivePermissions: Record<string, string[]>;
   refreshMemberships: (forceLive?: boolean) => Promise<void>;
   login: (data: LoginRequest) => Promise<void>;
   startDemo: (persona?: DemoPersonaId) => Promise<void>;
@@ -25,18 +26,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [demoMode, setDemoMode] = useState(false);
   const [memberships, setMemberships] = useState<MembershipSummary[]>([]);
+  const [effectivePermissions, setEffectivePermissions] = useState<Record<string, string[]>>({});
 
   const refreshMemberships = async (forceLive = false) => {
     if (demoMode && !forceLive) {
       setMemberships([]);
+      setEffectivePermissions({});
       return;
     }
     try {
       const response = await apiClient.listMyMemberships();
       setMemberships(response.memberships);
+      const organizationIds = [...new Set(response.memberships.map((membership) => membership.organization_id))];
+      const reflected = await Promise.all(
+        organizationIds.map(async (organizationId) => {
+          try {
+            const result = await apiClient.getEffectivePermissions(organizationId);
+            return [organizationId, result.permissions] as const;
+          } catch {
+            return [organizationId, []] as const;
+          }
+        }),
+      );
+      setEffectivePermissions(Object.fromEntries(reflected));
     } catch {
-      // Memberships are server-reflected UX context, never a local authorization fallback.
+      // Memberships/capabilities are server-reflected UX context, never a local authorization fallback.
       setMemberships([]);
+      setEffectivePermissions({});
     }
   };
 
@@ -62,6 +78,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) {
           setUser(null);
           setDemoMode(false);
+          setMemberships([]);
+          setEffectivePermissions({});
         }
       } finally {
         if (mounted) setIsLoading(false);
@@ -101,6 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(res.user);
     setDemoMode(true);
     setMemberships([]);
+    setEffectivePermissions({});
   };
 
   const logout = async () => {
@@ -117,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setDemoMode(false);
       setMemberships([]);
+      setEffectivePermissions({});
     }
   };
 
@@ -128,6 +148,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         demoMode,
         memberships,
+        effectivePermissions,
         refreshMemberships,
         login,
         startDemo,

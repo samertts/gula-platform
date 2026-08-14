@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.models.account import Account, AccountStatus
@@ -26,14 +27,47 @@ class NiamActor:
     session: UserSession
 
 
+def _raw_niam_token(request: Request, credentials: HTTPAuthorizationCredentials | None) -> str:
+    raw_token = credentials.credentials if credentials else request.cookies.get("access_token")
+    if not raw_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    return raw_token
+
+
+def get_current_niam_actor_sync(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> NiamActor:
+    """Canonical actor dependency for the sync clinical gateway."""
+    raw_token = _raw_niam_token(request, credentials)
+    payload = decode_token(raw_token)
+    if not payload or not payload.get("account_uuid") or not payload.get("jti"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid NIAM access token")
+    actor = (
+        db.query(Account, UserSession)
+        .join(UserSession, UserSession.account_id == Account.id)
+        .filter(
+            Account.uuid == payload["account_uuid"],
+            Account.status == AccountStatus.active.value,
+            Account.is_active.is_(True),
+            Account.is_locked.is_(False),
+            UserSession.token_jti == payload["jti"],
+            UserSession.is_active.is_(True),
+        )
+        .first()
+    )
+    if actor is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive or invalid NIAM session")
+    return NiamActor(account=actor[0], session=actor[1])
+
+
 async def get_current_niam_actor(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: AsyncSession = Depends(get_db),
 ) -> NiamActor:
-    raw_token = credentials.credentials if credentials else request.cookies.get("access_token")
-    if not raw_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    raw_token = _raw_niam_token(request, credentials)
     payload = decode_token(raw_token)
     if not payload or not payload.get("account_uuid") or not payload.get("jti"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid NIAM access token")

@@ -44,7 +44,7 @@ async def test_refresh_session_uses_refresh_token_identifier(monkeypatch):
     monkeypatch.setattr("app.security.auth.decode_refresh_token", lambda _token: {"jti": "refresh-jti"})
     monkeypatch.setattr("app.security.auth.blacklist_token", blacklist)
 
-    result = await service.refresh_session("signed-refresh-token")
+    result = await service.refresh_session("refresh-token")
 
     assert result == {"access_token": "rotated"}
     service.session_repo.find_by_refresh_token_jti.assert_awaited_once_with("refresh-jti")

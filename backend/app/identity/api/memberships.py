@@ -9,6 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.models.membership import Membership, MembershipApplication, MembershipInvitation
+from app.identity.services.authorization_decision import (
+    AuthorizationActor,
+    AuthorizationDecisionService,
+    AuthorizationRequest,
+)
 from app.identity.services.membership_service import (
     InvitationError,
     MembershipAccessDenied,
@@ -45,6 +50,32 @@ class InvitationTokenRequest(BaseModel):
 
 class MembershipActionRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
+
+
+async def _require_phase8_management(
+    actor: NiamActor,
+    db: AsyncSession,
+    *,
+    action: str,
+    organization_id: str,
+    resource_id: str | None = None,
+    resource_type: str = "membership",
+    resource_exists: bool = False,
+) -> None:
+    decision = await AuthorizationDecisionService(db).authorize(
+        AuthorizationActor(account=actor.account, session=actor.session),
+        AuthorizationRequest(
+            subject_account_id=actor.account.id,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            organization_id=organization_id,
+            sensitivity="critical" if action in {"approve", "revoke", "suspend", "reactivate"} else "high",
+            resource_context={"exists": resource_exists, "organization_id": organization_id},
+        ),
+    )
+    if not decision.allowed:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Membership authorization denied")
 
 
 def serialize_membership(membership: Membership) -> dict[str, object]:
@@ -148,6 +179,18 @@ async def approve_membership_application(
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    application = await db.get(MembershipApplication, application_id)
+    if application is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership application not found")
+    await _require_phase8_management(
+        actor,
+        db,
+        action="approve",
+        organization_id=application.organization_id,
+        resource_id=application_id,
+        resource_type="membership_application",
+        resource_exists=True,
+    )
     try:
         membership = await MembershipService(db).approve_application(application_id, actor.account.id)
     except MembershipAccessDenied as exc:
@@ -165,6 +208,12 @@ async def create_membership_invitation(
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    await _require_phase8_management(
+        actor,
+        db,
+        action="invite",
+        organization_id=body.organization_id,
+    )
     try:
         invitation, raw_token = await MembershipService(db).create_invitation(
             actor_id=actor.account.id,
@@ -211,6 +260,18 @@ async def revoke_membership_invitation(
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    invitation = await db.get(MembershipInvitation, invitation_id)
+    if invitation is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found")
+    await _require_phase8_management(
+        actor,
+        db,
+        action="revoke",
+        organization_id=invitation.organization_id,
+        resource_id=invitation_id,
+        resource_type="membership_invitation",
+        resource_exists=True,
+    )
     try:
         invitation = await MembershipService(db).revoke_invitation(invitation_id, actor.account.id)
     except MembershipAccessDenied as exc:
@@ -227,6 +288,17 @@ async def revoke_membership(
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    membership = await db.get(Membership, membership_id)
+    if membership is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found")
+    await _require_phase8_management(
+        actor,
+        db,
+        action="revoke",
+        organization_id=membership.organization_id,
+        resource_id=membership_id,
+        resource_exists=True,
+    )
     try:
         membership = await MembershipService(db).revoke_membership(membership_id, actor.account.id, body.reason if body else None)
     except MembershipAccessDenied as exc:
@@ -245,6 +317,17 @@ async def suspend_membership(
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    membership = await db.get(Membership, membership_id)
+    if membership is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found")
+    await _require_phase8_management(
+        actor,
+        db,
+        action="suspend",
+        organization_id=membership.organization_id,
+        resource_id=membership_id,
+        resource_exists=True,
+    )
     try:
         membership = await MembershipService(db).suspend_membership(membership_id, actor.account.id, body.reason if body else None)
     except MembershipAccessDenied as exc:
@@ -262,6 +345,17 @@ async def reactivate_membership(
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    membership = await db.get(Membership, membership_id)
+    if membership is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found")
+    await _require_phase8_management(
+        actor,
+        db,
+        action="reactivate",
+        organization_id=membership.organization_id,
+        resource_id=membership_id,
+        resource_exists=True,
+    )
     try:
         membership = await MembershipService(db).reactivate_membership(membership_id, actor.account.id)
     except MembershipAccessDenied as exc:

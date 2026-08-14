@@ -2,29 +2,26 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Card, CardContent, CardHeader, CardTitle, DataTable, Input } from "@/components/ui";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { WorkspaceReadBlockedError, workspaceScopedReads } from "@/api/workspaceScopedReads";
+import type { ClinicalPatientRead } from "@/api/workspaceScopedReads";
 import { Search, ShieldAlert, ShieldCheck, Users } from "lucide-react";
 import { useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { Patient } from "@/types";
 import { formatDate, getGenderLabel } from "@/lib/utils";
 
 export function PatientsPage() {
   const [search, setSearch] = useState("");
-  const columns: ColumnDef<Patient>[] = [
-    { accessorKey: "full_name", header: "الاسم" },
-    { accessorKey: "phone", header: "الهاتف" },
+  const columns: ColumnDef<ClinicalPatientRead>[] = [
+    { accessorKey: "display_name", header: "الاسم" },
     {
       accessorKey: "gender",
       header: "الجنس",
       cell: ({ row }) => <Badge variant="secondary">{getGenderLabel(row.original.gender)}</Badge>,
     },
     {
-      accessorKey: "date_of_birth",
+      accessorKey: "birth_date",
       header: "تاريخ الميلاد",
       cell: ({ row }) => formatDate(row.original.birth_date),
     },
-    { accessorKey: "national_id", header: "الرقم الوطني" },
-    { accessorKey: "lab_id", header: "رقم المختبر" },
   ];
 
   const query = useQuery({
@@ -38,7 +35,7 @@ export function PatientsPage() {
     <div
       className="mx-auto max-w-7xl space-y-6"
       data-contract-id="patients.read"
-      data-permission="patients:read"
+      data-permission="patients.read"
       data-workspace-context="required"
     >
       <section className="flex flex-col gap-4 rounded-[1.5rem] border border-slate-200/80 bg-white p-5 shadow-[0_18px_44px_-36px_rgba(15,23,42,0.48)] dark:border-white/10 dark:bg-slate-900/70 sm:flex-row sm:items-end sm:justify-between sm:p-6">

@@ -5,6 +5,7 @@ import { cn, getRoleLabel } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { NAV_ITEMS, hasPermission } from "@/permissions";
+import { hasReflectedPermission } from "@/permissions/liveCapabilities";
 import {
   Activity,
   BarChart3,
@@ -86,7 +87,7 @@ const navigationGroups = [
 ] as const;
 
 export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
-  const { user, logout, demoMode } = useAuth();
+  const { user, logout, demoMode, effectivePermissions } = useAuth();
   const { isRTL } = useLocale();
   const { t } = useTranslation();
   const location = useLocation();
@@ -95,12 +96,14 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const renderItems = (groupKey: keyof typeof NAV_ITEMS) => {
     const items = NAV_ITEMS[groupKey] ?? [];
     return items
-      .filter(
-        (item) =>
-          !item.permissions ||
-          !demoMode ||
-          item.permissions.some((permission) => hasPermission(user?.role ?? "citizen", permission)),
-      )
+      .filter((item) => {
+        if (!item.permissions) return true;
+        if (demoMode) {
+          return item.permissions.some((permission) => hasPermission(user?.role ?? "citizen", permission));
+        }
+        // Live capabilities are UX hints only. The server remains the authorization boundary.
+        return hasReflectedPermission(effectivePermissions, item.permissions);
+      })
       .map((item) => {
         const Icon = iconMap[item.icon] || Activity;
         const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
@@ -132,9 +135,9 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       <aside
         aria-label="التنقل الرئيسي"
         className={cn(
-          "fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-slate-200/80 bg-white/95 shadow-[0_24px_70px_-36px_rgba(15,23,42,0.72)] backdrop-blur-xl transition-[transform,visibility] duration-200 dark:border-white/10 dark:bg-slate-950/95 md:static md:z-auto md:visible md:pointer-events-auto md:shadow-none",
-          mobileOpen ? "translate-x-0 visible pointer-events-auto" : "translate-x-full invisible pointer-events-none md:translate-x-0",
-          collapsed && "md:w-[72px]",
+          "fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-slate-200/80 bg-white/95 shadow-[0_24px_70px_-36px_rgba(15,23,42,0.72)] backdrop-blur-xl transition-[transform,visibility] duration-200 dark:border-white/10 dark:bg-slate-950/95 lg:static lg:z-auto lg:visible lg:pointer-events-auto lg:shadow-none",
+          mobileOpen ? "translate-x-0 visible pointer-events-auto" : "translate-x-full invisible pointer-events-none lg:translate-x-0",
+          collapsed && "lg:w-[72px]",
         )}
       >
         <div className={cn("flex h-16 shrink-0 items-center border-b px-4", collapsed && "justify-center px-2")}>
@@ -145,7 +148,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className={cn("mr-2 hidden md:inline-flex", collapsed && "mr-0")}
+            className={cn("mr-2 hidden lg:inline-flex", collapsed && "mr-0")}
             onClick={() => setCollapsed((value) => !value)}
             aria-label={collapsed ? "توسيع القائمة" : "طي القائمة"}
           >
@@ -189,7 +192,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
           </Button>
         </div>
       </aside>
-      {mobileOpen && <button type="button" aria-label="إغلاق القائمة" onClick={onClose} className="fixed inset-0 z-40 bg-slate-950/40 md:hidden" />}
+      {mobileOpen && <button type="button" aria-label="إغلاق القائمة" onClick={onClose} className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" />}
     </>
   );
 }

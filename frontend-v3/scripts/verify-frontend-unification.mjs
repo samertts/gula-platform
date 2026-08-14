@@ -6,8 +6,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const checks = [
   {
     file: "src/api/workspaceScopedReads.ts",
-    fragments: ["patients.read", "orders.read", "authz/me"],
-    reason: "بوابة القراءة النطاقية الموحدة غائبة أو لا توثق عقدي المرضى والطلبات.",
+    fragments: [
+      "patients.read",
+      "orders.read",
+      "/api/v1/clinical/patients",
+      "/api/v1/clinical/orders",
+      "DIRECT_REST_SCOPED_READS_BLOCKED",
+    ],
+    reason: "بوابة القراءة canonical أو ضابط منع legacy fallback غائب.",
   },
   {
     file: "src/pages/patients/PatientsPage.tsx",
@@ -96,6 +102,7 @@ if (existsSync(decisionsPath)) {
       for (const sourceFile of entry.sourceFiles ?? []) {
         const sourcePath = resolve(root, "..", sourceFile);
         if (!existsSync(sourcePath)) {
+          if (entry.decision === "decommissioned") continue;
           failures.push(`سجل قرار المسارات: ملف المصدر مفقود (${sourceFile}).`);
           continue;
         }

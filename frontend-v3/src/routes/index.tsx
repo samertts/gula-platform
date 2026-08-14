@@ -10,6 +10,7 @@ import { LegacyRouteBridge } from "@/pages/migration/LegacyRouteBridge";
 
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then(m => ({ default: m.RegisterPage })));
+const LegalPage = lazy(() => import("@/pages/legal/LegalPage").then(m => ({ default: m.LegalPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const PatientsPage = lazy(() => import("@/pages/patients/PatientsPage").then(m => ({ default: m.PatientsPage })));
 const OrdersPage = lazy(() => import("@/pages/orders/OrdersPage").then(m => ({ default: m.OrdersPage })));
@@ -111,6 +112,8 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/login" replace /> },
       { path: "login", element: <LazyPage><LoginPage /></LazyPage> },
       { path: "register", element: <LazyPage><RegisterPage /></LazyPage> },
+      { path: "privacy-policy", element: <LazyPage><LegalPage document="privacy" /></LazyPage> },
+      { path: "terms-of-service", element: <LazyPage><LegalPage document="terms" /></LazyPage> },
     ],
   },
   {

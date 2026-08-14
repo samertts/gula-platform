@@ -13,11 +13,14 @@ from app._compat import UTC
 from ..config import BASE_URL
 from ..core.events import ORDER_CANCELLED, ORDER_CREATED, ORDER_VALIDATED, RESULT_CRITICAL, events
 from ..domain.order_state import enforce_transition
+from ..models.clinical_scope import ClinicalLabFacilityBinding, ClinicalLabFacilityBindingStatus
 from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult, hash_token
+from ..models.organization import Facility
 from ..models.patient import Patient
 from ..security.redis_client import cache as _cache
 from ..services.audit_service import log_action
+from ..services.clinical_legacy_read_scope import ClinicalLegacyReadScope
 from ..services.critical_alerts import check_critical
 from ..services.interpretation import get_flag, interpret_result
 from ..services.pdf_report import generate_result_pdf
@@ -216,6 +219,7 @@ def order_to_dict(o: LabOrder, include_results: bool = True) -> dict:
         "validated_by": getattr(o, "validated_by", None),
         "validated_at": o.validated_at.isoformat() if getattr(o, "validated_at", None) else None,
         "created_at": o.created_at.isoformat() if o.created_at else None,
+        "results_count": len(o.results) if o.results is not None else 0,
     }
     if include_results:
         d["results"] = [result_to_dict(r) for r in o.results]
@@ -463,9 +467,11 @@ def list_orders(
     skip: int = 0,
     limit: int = 50,
     search: str | None = None,
+    scope: ClinicalLegacyReadScope | None = None,
+    include_results: bool = True,
 ) -> dict:
-    """List orders with optional search."""
-    query = _base_order_query(db, user_role, user_id, lab_id)
+    """List orders with optional search and an optional reviewed clinical scope."""
+    query = _base_order_query(db, user_role, user_id, lab_id, scope=scope)
     if search and search.strip():
         import sqlalchemy as sa
 
@@ -481,7 +487,7 @@ def list_orders(
     orders = query.order_by(LabOrder.created_at.desc()).offset(skip).limit(limit).all()
     return {
         "total": total,
-        "orders": [order_to_dict(o) for o in orders],
+        "orders": [order_to_dict(o, include_results=include_results) for o in orders],
     }
 
 
@@ -872,13 +878,44 @@ def get_patient_history_by_phone(db: Session, phone: str, name: str | None = Non
     }
 
 
-def _base_order_query(db: Session, user_role: str, user_id: int, lab_id: int):
-    """Return base LabOrder query scoped to the caller's access level."""
+def _base_order_query(
+    db: Session,
+    user_role: str,
+    user_id: int,
+    lab_id: int,
+    scope: ClinicalLegacyReadScope | None = None,
+):
+    """Return a legacy order query with optional mandatory reviewed scope."""
     import sqlalchemy as sa
 
     base = db.query(LabOrder).options(joinedload(LabOrder.patient), joinedload(LabOrder.results))
+    if scope is None:
+        if user_role == "doctor":
+            return base.filter(LabOrder.doctor_user_id == user_id)
+        if user_role == "citizen":
+            return base.filter(sa.false())
+        return base.filter(LabOrder.lab_id == lab_id)
+
+    base = (
+        base.join(
+            ClinicalLabFacilityBinding,
+            ClinicalLabFacilityBinding.legacy_lab_id == LabOrder.lab_id,
+        )
+        .join(Facility, Facility.id == ClinicalLabFacilityBinding.facility_resource_id)
+        .filter(
+            LabOrder.lab_id == scope.legacy_lab_id,
+            ClinicalLabFacilityBinding.legacy_lab_id == scope.legacy_lab_id,
+            ClinicalLabFacilityBinding.facility_resource_id == scope.operational_facility_id,
+            ClinicalLabFacilityBinding.status == ClinicalLabFacilityBindingStatus.active.value,
+            ClinicalLabFacilityBinding.niam_organization_id == scope.niam_organization_id,
+            ClinicalLabFacilityBinding.niam_facility_id == scope.niam_facility_id,
+            Facility.id == scope.operational_facility_id,
+            Facility.organization_id == scope.operational_organization_id,
+            Facility.is_active.is_(True),
+        )
+    )
     if user_role == "doctor":
-        return base.filter(LabOrder.doctor_user_id == user_id)
-    if user_role == "citizen":
-        return base.filter(sa.false())
-    return base.filter(LabOrder.lab_id == lab_id)
+        base = base.filter(LabOrder.doctor_user_id == user_id)
+    elif user_role == "citizen":
+        base = base.filter(sa.false())
+    return base
