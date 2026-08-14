@@ -99,7 +99,7 @@ The final local gate passed `pytest -q tests/identity`, Python `compileall`, Ruf
 
 ## 24. GitHub verification and review state
 
-At report creation, the Phase 5 branch and PR had not yet been pushed. The required review sequence is to create `feat/iam-workspace-architecture` from the Phase 4 branch, push it, open PR #138 against `feat/iam-organizations-facilities`, verify the remote branch SHA and PR base/head, and leave merging to a human reviewer. This section must be updated with the exact remote SHA and PR URL after those operations.
+The branch was pushed and verified at remote SHA `e7f18f6236817e03c678b9912ed35200fb821a01`. The review request is open as [PR #139](https://github.com/samertts/gula-platform/pull/139), with base `feat/iam-organizations-facilities` at `a043fc78357a43b543583076d9f3895f1728f3f6` and head `feat/iam-workspace-architecture` at the SHA above. The PR is open and not merged; `Vercel Preview Comments` passed and the Vercel deployment context was still pending at verification time. Merge and deployment remain subject to human review.
 
 ## 25. Remaining risks and next steps
 
