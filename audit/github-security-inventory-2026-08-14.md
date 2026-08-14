@@ -154,3 +154,7 @@ The authenticated alert reports `esbuild` versions `<=0.24.2` are affected by GH
 ### esbuild lockfile remediation
 
 The root workspace did not actively consume `esbuild@0.18.20`; it was an orphaned package entry retained in the previous lockfile. `pnpm install --lockfile-only --ignore-scripts --prefer-offline` regenerated the lockfile from the two active workspace importers, removed the orphaned 0.18.20 package and platform packages, and retained `esbuild@0.28.2` (above the 0.25.0 patched floor). A subsequent frozen/offline install completed successfully.
+
+### Dependabot alert #295 detail
+
+The authenticated alert reports `io.netty:netty-handler-proxy` versions `<=4.1.132.Final` are affected by the incomplete HTTP Header Injection fix (CVE-2025-67735). The patched floor is **4.1.133.Final**. The repository already pins the module to **4.1.136.Final**, which is above the patched floor; the remaining alert should close after GitHub processes the current dependency graph.
