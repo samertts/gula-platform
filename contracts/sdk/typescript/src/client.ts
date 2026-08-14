@@ -37,8 +37,12 @@ export class GulaClient {
     this.onTokenRefresh = config.onTokenRefresh;
     this.idempotencyKeyProvider = config.idempotencyKeyProvider;
 
+    let normalizedBaseURL = config.baseURL;
+    while (normalizedBaseURL.endsWith('/')) {
+      normalizedBaseURL = normalizedBaseURL.slice(0, -1);
+    }
     this.http = axios.create({
-      baseURL: config.baseURL.replace(/\/+$/, ''),
+      baseURL: normalizedBaseURL,
       timeout: config.timeout ?? DEFAULT_TIMEOUT,
       headers: {
         'Content-Type': 'application/json',

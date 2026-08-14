@@ -1,10 +1,25 @@
 import express, { type Express } from "express";
+import rateLimit from "express-rate-limit";
 import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import viteConfig from "../../vite.config";
+
+const viteRequestRateLimit = rateLimit({
+  windowMs: 60_000,
+  max: 600,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const staticRequestRateLimit = rateLimit({
+  windowMs: 60_000,
+  max: 1_000,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 export async function setupVite(app: Express, server: Server) {
   const configuredHosts = (process.env.VITE_ALLOWED_HOSTS ?? "")
@@ -27,6 +42,7 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  app.use(viteRequestRateLimit);
   app.use(vite.middlewares);
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
@@ -65,6 +81,7 @@ export function serveStatic(app: Express) {
     );
   }
 
+  app.use(staticRequestRateLimit);
   app.use(express.static(distPath));
 
   // fall through to index.html if the file doesn't exist

@@ -36,11 +36,18 @@ export function validatePhone(phone: string): ValidationResult {
 }
 
 export function validateEmail(email: string): ValidationResult {
-  if (!email) {
-    return { valid: false, error: 'الرجاء إدخال البريد الإلكتروني', errorEn: 'Please enter email' };
-  }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
+  const value = email.trim();
+  const at = value.indexOf('@');
+  const lastAt = value.lastIndexOf('@');
+  const dot = value.lastIndexOf('.');
+  const valid = value.length > 0
+    && value.length <= 254
+    && at > 0
+    && at === lastAt
+    && dot > at + 1
+    && dot < value.length - 1
+    && !Array.from(value).some((character) => character.trim() === '');
+  if (!valid) {
     return { valid: false, error: 'البريد الإلكتروني غير صحيح', errorEn: 'Invalid email address' };
   }
   return { valid: true };

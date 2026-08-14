@@ -155,7 +155,6 @@ class GulaClient:
         idempotency_key: str | None = None,
     ) -> Any:
         url = f"{self.base_url}{path}"
-        safe_path = self._sanitize_path(path)
         headers = self._build_headers(idempotency_key)
         last_exc: Exception | None = None
 
@@ -170,7 +169,7 @@ class GulaClient:
                 )
 
                 if attempt > 1:
-                    logger.info("Retry attempt %d/%d for %s %s", attempt, self._max_retries, method, safe_path)
+                    logger.info("Retry attempt %d/%d for %s", attempt, self._max_retries, method)
 
                 if response.is_success:
                     if response.status_code == 204:
@@ -183,10 +182,9 @@ class GulaClient:
                 if response.status_code in _RETRYABLE and attempt < self._max_retries:
                     backoff = 2 ** attempt
                     logger.warning(
-                        "HTTP %d on %s %s, retrying in %ds (attempt %d/%d)",
+                        "HTTP %d on %s, retrying in %ds (attempt %d/%d)",
                         response.status_code,
                         method,
-                        safe_path,
                         backoff,
                         attempt,
                         self._max_retries,
@@ -203,7 +201,7 @@ class GulaClient:
                 last_exc = e
                 if attempt < self._max_retries:
                     backoff = 2 ** attempt
-                    logger.warning("Timeout on %s %s, retrying in %ds", method, safe_path, backoff)
+                    logger.warning("Timeout on %s, retrying in %ds", method, backoff)
                     await asyncio.sleep(backoff)
                     continue
                 raise
@@ -212,7 +210,7 @@ class GulaClient:
                 last_exc = e
                 if attempt < self._max_retries:
                     backoff = 2 ** attempt
-                    logger.warning("Transport error on %s %s, retrying in %ds", method, safe_path, backoff)
+                    logger.warning("Transport error on %s, retrying in %ds", method, backoff)
                     await asyncio.sleep(backoff)
                     continue
                 raise
@@ -221,11 +219,6 @@ class GulaClient:
             raise last_exc
 
         return None
-
-    def _sanitize_path(self, path: str) -> str:
-        # Redact common sensitive identifiers in URL paths (e.g. NID, passport)
-        import re
-        return re.sub(r"/(?:\d{10,12}|[A-Z0-9]{6,12})(?=/|$)", "/***ID***", path)
 
     @staticmethod
     def _try_decode(response: httpx.Response) -> dict | None:

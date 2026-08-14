@@ -25,3 +25,24 @@ A second remediation patch also hardened `backend/core/api/main.py` by replacing
 Post-CodeQL refresh: the dashboard decreased to **164 open / 2,470 closed**, but CodeQL created new alerts for the sanitizer functions themselves. Alert #2632 flags `Path(path).resolve()` in `_safe_output_path()` because the function still accepts a user-provided path before validation. This requires a stricter API that accepts only an allowlisted report identifier or server-created path, rather than attempting to sanitize arbitrary user paths after construction.
 
 After CodeQL Advanced and CodeQL Analysis both completed successfully for `a02f7957`, the authenticated dashboard currently reports **357 open / 2,277 closed** and still displays the `CodeQL is reporting errors` banner. The new top findings are no longer the path alerts fixed in the latest commit; they are broader legacy findings across scripts, contracts, apps, and platform packages (for example weak hashing, missing rate limiting, clear-text logs, and insecure randomness). This confirms the latest scan completed but the repository still contains a wider security backlog that must be triaged by production reachability rather than claimed as fully remediated.
+
+
+## Latest authenticated browser snapshot after e031281a
+
+The My Browser snapshot of `https://github.com/samertts/gula-platform/security/dependabot` showed **41 open** and **335 closed** Dependabot alerts. The first page listed `mobile/android/settings.gradle.kts` as the Maven manifest for the visible findings. High-severity examples included `org.jdom:jdom2`, multiple `io.netty` modules (`netty-codec-http2`, `netty-handler`, `netty-codec-http` and `netty-codec`), and `org.bitbucket.b_c:jose4j`; a moderate direct alert was visible for `org.jetbrains.kotlin:kotlin-gradle-plugin`. The repository security navigation showed Code Scanning **2,055**, conflicting with the earlier Code Scanning page snapshot of 147 open alerts; this discrepancy must be rechecked after the next CodeQL run and with the active filter state verified.
+
+The GitHub API attempt to list Dependabot alerts returned HTTP 404, and an explicit GET attempt returned HTTP 403 `Resource not accessible by integration`; the authenticated browser dashboard is therefore the current inventory source.
+
+## Current uncommitted remediation changes
+
+The current working tree contains the following security changes that still require local verification, commit, push, and fresh GitHub scans: the Python SDK no longer logs URL paths and its sanitizer was removed; OAuth2 token hashing and partner API-key hashing use HMAC-SHA512 with server secrets and constant-time comparison; constitution and quality-gate output is reduced to allowlisted status/count metadata; demo password documentation no longer persists passwords; Ministry KPI trend parsing no longer uses replacement-based string handling; citizen and UI email validation use bounded linear checks; the TypeScript SDK normalizes base URLs without regex; both OAuth server cores use `express-rate-limit`; both Vite server cores rate-limit Vite and static/fallback requests; and `express-rate-limit@^7.5.0` was added to both app manifests with pnpm metadata updated where available.
+
+
+## Node 24 and Kotlin advisory verification
+
+The official `actions/checkout` page states that its current Node24-compatible line requires Actions Runner v2.327.1 or newer. Public GitHub API release/commit lookups resolved the current Node24-compatible action commits used in this patch: checkout v7.0.1 at `3d3c42e5aac5ba805825da76410c181273ba90b1`, setup-python v7.0.0 at `5fda3b95a4ea91299a34e894583c3862153e4b97`, and setup-node v7.0.0 at `820762786026740c76f36085b0efc47a31fe5020`.
+
+The GitHub-reviewed advisory `GHSA-r937-wjx7-w2jp` / `CVE-2026-53914` confirms `org.jetbrains.kotlin:kotlin-gradle-plugin` is affected before `2.4.20-Beta1` and patched at `2.4.20-Beta1`. The Android project currently uses Kotlin `2.1.20`, so this dependency requires a compatibility decision with KSP before changing the plugin line.
+
+
+Dependabot alert #289 detail confirms `org.bitbucket.b_c:jose4j` is affected before `0.9.6` and patched at `0.9.6`; the Android build already forces `0.9.6`. The alert is transitive through `com.android.tools.build:gradle 8.13.2`, so it should close after GitHub refreshes the dependency snapshot.

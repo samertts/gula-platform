@@ -1,6 +1,7 @@
 import { COOKIE_NAME, ONE_YEAR_MS, OAUTH_STATE_COOKIE, decodeOAuthState } from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
+import rateLimit from "express-rate-limit";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
@@ -10,30 +11,13 @@ function getQueryParam(req: Request, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
-const oauthBuckets = new Map<string, { count: number; resetAt: number }>();
-const OAUTH_WINDOW_MS = 60_000;
-const OAUTH_MAX_ATTEMPTS = 10;
-
-function enforceOAuthRateLimit(req: Request, res: Response, next: () => void) {
-  const now = Date.now();
-  const key = req.ip || req.socket.remoteAddress || "unknown";
-  const current = oauthBuckets.get(key);
-  const bucket = !current || current.resetAt <= now
-    ? { count: 0, resetAt: now + OAUTH_WINDOW_MS }
-    : current;
-  bucket.count += 1;
-  oauthBuckets.set(key, bucket);
-  if (oauthBuckets.size > 10_000) {
-    oauthBuckets.forEach((value, bucketKey) => {
-      if (value.resetAt <= now) oauthBuckets.delete(bucketKey);
-    });
-  }
-  if (bucket.count > OAUTH_MAX_ATTEMPTS) {
-    res.status(429).json({ error: "too many oauth attempts" });
-    return;
-  }
-  next();
-}
+const enforceOAuthRateLimit = rateLimit({
+  windowMs: 60_000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "too many oauth attempts" },
+});
 
 export function registerOAuthRoutes(app: Express) {
   app.get("/api/oauth/callback", enforceOAuthRateLimit, async (req: Request, res: Response) => {

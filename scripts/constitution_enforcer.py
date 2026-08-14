@@ -1302,10 +1302,11 @@ def print_report(results: list[RuleResult], score: float, json_output: bool) -> 
     if json_output:
         report = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "repository": str(REPO_ROOT),
             "compliance_score": round(score, 1),
             "passed": score >= 100.0,
-            "rules": _safe_rule_summary(results),
+            "rule_count": len(results),
+            "fail_count": sum(1 for rule in results if rule["status"] == FAIL),
+            "warning_count": sum(1 for rule in results if rule["status"] == WARNING),
         }
         print(json.dumps(report, indent=2, ensure_ascii=False))
         return
@@ -1321,7 +1322,7 @@ def print_report(results: list[RuleResult], score: float, json_output: bool) -> 
 
     for rule in results:
         label = _rule_label(rule)
-        print(f"  {label}  {_bold(rule['rule'])}: {rule['title']}")
+        print(f"  {label}  rule={rule['rule']} status={rule['status']}")
         print(f"    Details recorded: {len(rule.get('details', []))}")
         print()
 

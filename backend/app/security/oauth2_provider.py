@@ -65,7 +65,7 @@ def hash_token(token: str) -> str:
     return hmac.new(
         SECRET_KEY.encode("utf-8"),
         token.encode("utf-8"),
-        hashlib.sha256,
+        hashlib.sha512,
     ).hexdigest()
 
 

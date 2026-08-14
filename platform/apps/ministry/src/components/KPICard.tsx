@@ -29,7 +29,7 @@ export function KPICard(props: KPICardProps) {
   const displayUnit = metric?.unit || '';
   const trendValue = metric
     ? metric.trend
-    : Number.parseFloat(String('trend' in props ? props.trend : '0').replace('%', '').replace('+', '')) || 0;
+    : Number.parseFloat(String('trend' in props ? props.trend : '0')) || 0;
   const trendUp = metric?.trendUp ?? trendValue >= 0;
 
   return (

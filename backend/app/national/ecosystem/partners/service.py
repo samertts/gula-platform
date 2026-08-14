@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import logging
 import secrets
 import time
@@ -10,6 +11,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.config import SECRET_KEY
 from app.national.base import _ulid
 from app.national.exceptions import NationalDomainError
 
@@ -198,7 +200,7 @@ class CredentialManager:
             return False
         if credential_type == "api_key":
             expected = self._hash_api_key(credential_value)
-            if credential.credential_value != expected:
+            if not hmac.compare_digest(credential.credential_value, expected):
                 return False
         elif credential.credential_value != credential_value:
             return False
@@ -215,7 +217,12 @@ class CredentialManager:
         )
 
     def _hash_api_key(self, api_key: str) -> str:
-        return hashlib.sha256(api_key.encode()).hexdigest()
+        """Return a server-bound, non-reversible API-key fingerprint."""
+        return hmac.new(
+            SECRET_KEY.encode("utf-8"),
+            api_key.encode("utf-8"),
+            hashlib.sha512,
+        ).hexdigest()
 
 
 class CertificateManager:

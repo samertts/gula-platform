@@ -791,15 +791,15 @@ class DemoDataGenerator:
             for i, u in enumerate(self.user_accounts, 1):
                 f.write(f"| {i} | `{u['username']}` | {u['name_en']} | {u['role_en']} | {u['level']} |\n")
 
-        # DEMO_PASSWORDS.md
+        # DEMO_PASSWORDS.md — never persist demo passwords to generated artifacts.
         with open(os.path.join(self.output_dir, "DEMO_PASSWORDS.md"), "w") as f:
-            f.write("# GULA Demo Environment — Passwords\n\n")
-            f.write("> **WARNING**: These are demo credentials. Change all passwords before production.\n\n")
-            f.write("| Username | Password | Role |\n")
-            f.write("|----------|----------|------|\n")
+            f.write("# GULA Demo Environment — Credentials\n\n")
+            f.write("> Passwords are generated and injected at runtime. They are intentionally not stored in this repository or generated documentation.\n\n")
+            f.write("| Username | Credential source | Role |\n")
+            f.write("|----------|-------------------|------|\n")
             for p in self.demo_passwords:
-                f.write(f"| `{p['username']}` | `{p['password']}` | {p['role']} |\n")
-            f.write(f"\nAdmin: `admin@demo.gula.iq` / `Demo@ADMIN!`\n")
+                f.write(f"| `{p['username']}` | `runtime secret store` | {p['role']} |\n")
+            f.write("\nUse the platform's isolated Demo Mode entry point to obtain a temporary session.\n")
 
         # DEMO_ORGANIZATIONS.md
         with open(os.path.join(self.output_dir, "DEMO_ORGANIZATIONS.md"), "w") as f:

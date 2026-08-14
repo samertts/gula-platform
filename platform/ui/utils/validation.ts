@@ -41,15 +41,19 @@ export function validatePhone(phone: string): ValidationResult {
 }
 
 export function validateEmail(email: string): ValidationResult {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!email) {
-    return { valid: false, error: 'Email is required' };
-  }
-  if (!emailRegex.test(email)) {
-    return { valid: false, error: 'Invalid email format' };
-  }
-  if (email.length > 254) {
-    return { valid: false, error: 'Email is too long' };
+  const value = email.trim();
+  const at = value.indexOf('@');
+  const lastAt = value.lastIndexOf('@');
+  const dot = value.lastIndexOf('.');
+  const valid = value.length > 0
+    && value.length <= 254
+    && at > 0
+    && at === lastAt
+    && dot > at + 1
+    && dot < value.length - 1
+    && !Array.from(value).some((character) => character.trim() === '');
+  if (!valid) {
+    return { valid: false, error: value ? 'Invalid email format' : 'Email is required' };
   }
   return { valid: true };
 }

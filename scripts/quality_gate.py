@@ -482,9 +482,8 @@ def main(argv: list[str] | None = None) -> int:
     bypass_set = set(s.strip() for s in args.bypass.split(",") if s.strip())
     invalid = bypass_set - ALL_CHECKS
     if invalid:
-        valid_names = ", ".join(sorted(ALL_CHECKS))
-        print(f"error: unknown checks to bypass: {', '.join(sorted(invalid))}", file=sys.stderr)
-        print(f"valid checks: {valid_names}", file=sys.stderr)
+        print("error: unknown quality-gate checks requested", file=sys.stderr)
+        print("Use only checks defined by the CI configuration.", file=sys.stderr)
         return 2
 
     def b(name: str) -> bool:
@@ -507,7 +506,8 @@ def main(argv: list[str] | None = None) -> int:
 
     results = run_checks(checks, strict=args.strict, ci=args.ci)
     output = format_results(results, ci=args.ci)
-    print(output)
+    sys.stdout.write(output)
+    sys.stdout.write("\n")
 
     return determine_exit_code(results, args.strict)
 

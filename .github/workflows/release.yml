@@ -19,9 +19,9 @@ on:
         type: boolean
 
 permissions:
-  contents: write
-  packages: write
-  pull-requests: write
+  contents: read
+  packages: none
+  pull-requests: none
 
 env:
   REGISTRY: ghcr.io
@@ -35,7 +35,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Validate semantic version
         env:
@@ -67,10 +67,12 @@ jobs:
     name: Bump Version
     needs: [validate-version]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -185,7 +187,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           fetch-depth: 0
 
@@ -213,7 +215,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Download all artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
@@ -253,7 +255,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
       - name: Download Android AAB
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
