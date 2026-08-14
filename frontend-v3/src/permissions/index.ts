@@ -98,6 +98,7 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
     { label: "nav.citizenWorkspace", path: "/citizen", icon: "UserCircle", permissions: ["citizen:workspace"] },
     { label: "nav.patients", path: "/patients", icon: "Users", permissions: ["patients:read"] },
     { label: "إدارة المرضى المتقدمة", path: "/patient-management", icon: "HeartPulse", permissions: ["dashboard:read"] },
+    { label: "إدارة المختبر", path: "/lab-operations", icon: "FlaskConical", permissions: ["dashboard:read"] },
     { label: "nav.orders", path: "/orders", icon: "ClipboardList", permissions: ["orders:read"] },
     { label: "nav.reports", path: "/reports", icon: "FileBarChart2", permissions: ["dashboard:read"] },
     { label: "nav.results", path: "/results", icon: "FlaskConical", permissions: ["results:read"] },
