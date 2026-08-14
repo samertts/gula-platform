@@ -66,9 +66,12 @@ def main() -> int:
         "--path",
         action="append",
         dest="paths",
-        default=["/health", "/health/ready", "/test-types"],
+        default=None,
+        help="مسار قراءة فقط للاختبار؛ يمكن تمريره عدة مرات. الافتراضي: /health و/health/ready و/test-types.",
     )
     args = parser.parse_args()
+    if args.paths is None:
+        args.paths = ["/health", "/health/ready", "/test-types"]
     if args.requests < 1 or args.concurrency < 1 or not args.paths:
         parser.error("requests, concurrency, and at least one path must be positive")
 
