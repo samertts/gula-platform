@@ -33,6 +33,17 @@ from .identity import IdentityRecord, IdentityType
 from .legacy_account_link import LegacyAccountLink, LegacyAccountLinkSource, LegacyAccountLinkStatus
 from .license import LicenseStatus, ProfessionalLicense
 from .machine_identity import MachineIdentity
+from .membership import (
+    InvitationStatus,
+    Membership,
+    MembershipApplication,
+    MembershipApplicationStatus,
+    MembershipInvitation,
+    MembershipRelationshipType,
+    MembershipScopeType,
+    MembershipSource,
+    MembershipStatus,
+)
 from .niam_organization import NIAMOrganization
 from .person import Person
 from .policy import IdentityPolicy
@@ -69,11 +80,20 @@ __all__ = [
     "IdentityPolicy",
     "IdentityRecord",
     "IdentityType",
+    "InvitationStatus",
     "LegacyAccountLink",
     "LegacyAccountLinkSource",
     "LegacyAccountLinkStatus",
     "LicenseStatus",
     "MachineIdentity",
+    "Membership",
+    "MembershipApplication",
+    "MembershipApplicationStatus",
+    "MembershipInvitation",
+    "MembershipRelationshipType",
+    "MembershipScopeType",
+    "MembershipSource",
+    "MembershipStatus",
     "NIAMAdminBranch",
     "NIAMAdminDepartment",
     "NIAMAdminFacility",
