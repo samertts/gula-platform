@@ -12,7 +12,11 @@ class IntegrationInboxEvent(Base):
     __tablename__ = "integration_inbox_events"
     __table_args__ = (
         UniqueConstraint("event_id", name="uq_integration_inbox_event_id"),
-        UniqueConstraint("idempotency_key", name="uq_integration_inbox_idempotency_key"),
+        UniqueConstraint(
+            "tenant_id",
+            "idempotency_key",
+            name="uq_integration_inbox_tenant_idempotency_key",
+        ),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)

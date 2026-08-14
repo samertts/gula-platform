@@ -6,7 +6,7 @@
 |---|---|---|
 | تشغيل المشروع أو المساهمة فيه | [Start Here](START_HERE.md) | [دليل المساهمة](../CONTRIBUTING.md) و[دليل الاختبارات](testing/) |
 | إصدار تغيير بأمان | [دليل Staging](STAGING_RUNBOOK.md) | [إرشادات النشر](deployment/) و[دليل الإنتاج](production/) |
-| تشغيل تجربة LIS والتشغيل البيني | [دليل تجربة LIS](LIMS_PILOT_RUNBOOK_AR.md) | [استراتيجية FHIR](architecture/ADR-011-fhir-strategy.md) ودستور البيانات |
+| تشغيل تجربة LIS والتشغيل البيني | [دليل تجربة LIS](LIMS_PILOT_RUNBOOK_AR.md) | [دليل MHD/PIXm](MHD_PIXM_PRACTICAL_IMPLEMENTATION_AR.md)، [استراتيجية FHIR](FHIR_R4_NATIONAL_EXPANSION_AR.md)، و[ADR-011](architecture/ADR-011-fhir-strategy.md) |
 | فهم البنية التقنية | [العمارة](architecture/) | [قرارات البنية](adr/) و[واجهات API](api/) |
 | مراجعة الضوابط الأمنية | [الأمن](security/) | [سياسة الإبلاغ](../SECURITY.md) و[الهندسة التشغيلية](operations/) |
 | العمل على نطاق صحي أو تشغيلي | [النطاقات](domain/) | [الرعاية الصحية](healthcare/) و[NIAM](niam/) |
@@ -20,10 +20,10 @@
 | **التشغيل والإطلاق** | [deployment](deployment/)، [operations](operations/)، [runbooks](runbooks/)، [production](production/)، [testing](testing/) |
 | **الأمن والامتثال** | [security](security/)، [governance](governance/)، [standards](standards/)، [trust](trust/) |
 | **المنتج والمنصات** | [platform](platform/)، [frontend](frontend/)، [pharmacy-platform](pharmacy-platform/)، [radiology-platform](radiology-platform/)، [nursing-platform](nursing-platform/) |
-| **البيانات والتكامل** | [database](database/)، [events](events/)، [api](api/)، [niam](niam/)، [دليل تجربة LIS](LIMS_PILOT_RUNBOOK_AR.md) |
+| **البيانات والتكامل** | [database](database/)، [events](events/)، [api](api/)، [niam](niam/)، [دليل تجربة LIS](LIMS_PILOT_RUNBOOK_AR.md)، [MHD/PIXm](MHD_PIXM_PRACTICAL_IMPLEMENTATION_AR.md) |
 | **القياس والجودة** | [performance](performance/)، [metrics](metrics/)، [quality](quality/)، [technical-debt](technical-debt/) |
 | **السجل والقرارات** | [adr](adr/)، [decisions](decisions/)، [release](release/)، [reports](reports/) |
-| **البحث والخطط** | [research](research/)، [roadmap](../ROADMAP.md)، [programs](programs/) |
+| **البحث والخطط** | [research](research/)، [دراسة النظام الصحي العراقي](IRAQ_HEALTH_SYSTEM_DIGITAL_TRANSFORMATION_STUDY_AR.md)، [خارطة FHIR الوطنية](FHIR_R4_NATIONAL_EXPANSION_AR.md)، [roadmap](../ROADMAP.md)، [programs](programs/) |
 
 ## وثائق الجذر التاريخية
 
