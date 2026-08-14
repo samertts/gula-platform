@@ -9,12 +9,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app._compat import UTC
 from app.identity.base import _ulid
 from app.identity.compliance.models import ComplianceCheck, ComplianceFramework, ComplianceReport
+from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
 
 
 class ComplianceService:
 
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+        self.audit = CanonicalAuditService(session)
 
     # --- Frameworks ---
 
@@ -37,6 +39,19 @@ class ComplianceService:
         )
         self.session.add(framework)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="COMPLIANCE_FRAMEWORK_REGISTERED",
+                category="COMPLIANCE",
+                action="compliance.framework.register",
+                actor_type="service",
+                target_type="compliance_framework",
+                target_id=framework.id,
+                decision="ALLOW",
+                reason_code="FRAMEWORK_REGISTERED",
+                data_classification="INTERNAL",
+            ),
+        )
         return framework
 
     async def get_framework(self, framework_id: str) -> ComplianceFramework | None:
@@ -64,6 +79,7 @@ class ComplianceService:
         requirement_id: str,
         target_type: str,
         target_id: str,
+        organization_id: str,
         checked_by: str,
         check_type: str = "automated",
     ) -> ComplianceCheck:
@@ -80,6 +96,7 @@ class ComplianceService:
             uuid=_ulid(),
             check_id=_ulid(),
             framework_id=framework_id,
+            organization_id=organization_id,
             requirement_id=requirement_id,
             target_type=target_type,
             target_id=target_id,
@@ -91,15 +108,31 @@ class ComplianceService:
         )
         self.session.add(check)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="COMPLIANCE_CHECK_EXECUTED",
+                category="COMPLIANCE",
+                action="compliance.check.run",
+                actor_id=checked_by,
+                organization_id=organization_id,
+                target_type=target_type,
+                target_id=target_id,
+                decision="ALLOW",
+                reason_code="CHECK_RECORDED",
+                data_classification="INTERNAL",
+                metadata={"check_type": check_type, "requirement_id": requirement_id},
+            ),
+        )
         return check
 
-    async def get_checks(self, target_type: str, target_id: str) -> list[ComplianceCheck]:
+    async def get_checks(self, target_type: str, target_id: str, organization_id: str | None = None) -> list[ComplianceCheck]:
         stmt = (
             select(ComplianceCheck)
             .where(
                 ComplianceCheck.target_type == target_type,
                 ComplianceCheck.target_id == target_id,
                 ComplianceCheck.is_active.is_(True),
+                ComplianceCheck.organization_id == organization_id if organization_id is not None else ComplianceCheck.organization_id.is_(None),
             )
             .order_by(ComplianceCheck.checked_at.desc())
         )
@@ -117,6 +150,7 @@ class ComplianceService:
     ) -> ComplianceReport:
         checks_stmt = select(ComplianceCheck).where(
             ComplianceCheck.framework_id == framework_id,
+            ComplianceCheck.organization_id == org_id if org_id is not None else ComplianceCheck.organization_id.is_(None),
             ComplianceCheck.is_active.is_(True),
         )
         checks_result = await self.session.execute(checks_stmt)
@@ -154,6 +188,21 @@ class ComplianceService:
         )
         self.session.add(report)
         await self.session.flush()
+        await self.audit.record(
+            AuditEventInput(
+                event_type="COMPLIANCE_REPORT_GENERATED",
+                category="COMPLIANCE",
+                action="compliance.report.generate",
+                actor_id=generated_by,
+                organization_id=org_id,
+                target_type="compliance_report",
+                target_id=report.id,
+                decision="ALLOW",
+                reason_code="REPORT_GENERATED",
+                data_classification="CONFIDENTIAL",
+                metadata={"framework_id": framework_id, "report_type": report_type},
+            ),
+        )
         return report
 
     async def get_report(self, report_id: str) -> ComplianceReport | None:
@@ -178,6 +227,7 @@ class ComplianceService:
             .join(ComplianceCheck, ComplianceCheck.framework_id == ComplianceFramework.id)
             .where(
                 ComplianceFramework.is_active.is_(True),
+                ComplianceCheck.organization_id == org_id,
                 ComplianceCheck.is_active.is_(True),
             )
             .group_by(ComplianceFramework.id)
