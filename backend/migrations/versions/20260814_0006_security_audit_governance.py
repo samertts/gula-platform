@@ -212,12 +212,10 @@ def downgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if "niam_security_incidents" in inspector.get_table_names():
-        for index in inspector.get_indexes("niam_security_incidents"):
-            op.drop_index(index["name"], table_name="niam_security_incidents")
+        # DROP TABLE removes its owned indexes and UNIQUE constraints together.
         op.drop_table("niam_security_incidents")
     if "niam_consents" in inspector.get_table_names():
-        for index in inspector.get_indexes("niam_consents"):
-            op.drop_index(index["name"], table_name="niam_consents")
+        # DROP TABLE removes its owned indexes and UNIQUE constraints together.
         op.drop_table("niam_consents")
     if "niam_comp_checks" in inspector.get_table_names() and _has_column("niam_comp_checks", "organization_id"):
         op.drop_index("ix_niam_comp_checks_organization_id", table_name="niam_comp_checks")
