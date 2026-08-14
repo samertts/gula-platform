@@ -137,3 +137,20 @@ References:
 - [Dagger releases — Guava runtime compatibility note](https://github.com/google/dagger/releases)
 - [Maven Central Guava versions](https://repo1.maven.org/maven2/com/google/guava/)
 - [Dependabot alert #469](https://github.com/samertts/gula-platform/security/dependabot/469)
+
+## Final Dependabot snapshot before last two fixes — 2026-08-14
+
+The authenticated dashboard now reports **2 open / 378 closed** Dependabot alerts. Remaining alerts:
+
+1. **#1 — Moderate:** `esbuild` development-server request exposure in `pnpm-lock.yaml`.
+2. **#295 — Low:** `io.netty:netty-handler-proxy` HTTP Header Injection via `HttpProxyHandler` disabled validation in `mobile/android/settings.gradle.kts`.
+
+The dashboard reports its dependency snapshot as checked for `f6cb9df`, despite current `main` being newer; the count nevertheless reflects the latest refresh visible in the authenticated UI. No alert was dismissed.
+
+### Dependabot alert #1 detail
+
+The authenticated alert reports `esbuild` versions `<=0.24.2` are affected by GHSA-67mh-4wv8-2f99 (development-server wildcard CORS exposure). The patched version is **0.25.0**. Dependabot's automated update has timed out, so the lockfile must be refreshed manually through the repository's pnpm workspace tooling.
+
+### esbuild lockfile remediation
+
+The root workspace did not actively consume `esbuild@0.18.20`; it was an orphaned package entry retained in the previous lockfile. `pnpm install --lockfile-only --ignore-scripts --prefer-offline` regenerated the lockfile from the two active workspace importers, removed the orphaned 0.18.20 package and platform packages, and retained `esbuild@0.28.2` (above the 0.25.0 patched floor). A subsequent frozen/offline install completed successfully.
