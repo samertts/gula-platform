@@ -47,6 +47,9 @@ class IntegrationPlatform:
             logger.warning("Integration platform already initialized")
             return
         self.register_routes(app, prefix)
+        # Import the free/self-hosted ntfy connector before exposing connector routes.
+        # Registration is module-based in the current connector architecture.
+        from app.integration.connectors import ntfy as _ntfy  # noqa: F401
         from app.integration.connectors.routes import router as connectors_router
         app.include_router(connectors_router)
         logger.info("Integration platform initialized")

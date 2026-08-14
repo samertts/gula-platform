@@ -56,6 +56,9 @@ class NotificationSender:
         self._whatsapp_api_url = whatsapp_api_url or os.getenv("WHATSAPP_API_URL", "")
         self._whatsapp_token = whatsapp_token or os.getenv("WHATSAPP_TOKEN", "")
         self._whatsapp_phone_id = whatsapp_phone_id or os.getenv("WHATSAPP_PHONE_ID", "")
+        self._ntfy_base_url = os.getenv("NTFY_BASE_URL", "").rstrip("/")
+        self._ntfy_token = os.getenv("NTFY_TOKEN", "")
+        self._ntfy_topic = os.getenv("NTFY_TOPIC", "gula-ops")
         self._http_client: httpx.Client | None = None
 
     @property
@@ -129,6 +132,44 @@ class NotificationSender:
             return False
         except Exception as exc:
             logger.error("[SMS] Delivery failed To=%s: %s", to, exc)
+            return False
+
+    def send_ntfy(
+        self,
+        message: str,
+        title: str = "GULA alert",
+        topic: str = "",
+        priority: str = "default",
+        tags: str = "",
+    ) -> bool:
+        """Publish a non-sensitive operational alert to a local/self-hosted ntfy server."""
+        if not self._ntfy_base_url:
+            logger.warning("ntfy base URL not configured, skipping operational notification")
+            return False
+        if not message or len(message) > 4096:
+            logger.warning("ntfy message is empty or exceeds 4096 characters")
+            return False
+        headers = {
+            "Title": title[:250],
+            "Priority": priority[:20],
+            "Content-Type": "text/plain; charset=utf-8",
+        }
+        if tags:
+            headers["Tags"] = tags[:250]
+        if self._ntfy_token:
+            headers["Authorization"] = f"Bearer {self._ntfy_token}"
+        target_topic = topic or self._ntfy_topic
+        url = f"{self._ntfy_base_url}/{target_topic}"
+        try:
+            resp = self.http.post(url, content=message.encode("utf-8"), headers=headers)
+            resp.raise_for_status()
+            logger.info("[NTFY] Delivered topic=%s", target_topic)
+            return True
+        except httpx.HTTPError as exc:
+            logger.error("[NTFY] Delivery failed topic=%s: %s", target_topic, exc)
+            return False
+        except Exception as exc:
+            logger.error("[NTFY] Delivery failed topic=%s: %s", target_topic, exc)
             return False
 
     def send_whatsapp(self, to: str, body: str) -> bool:
@@ -216,3 +257,13 @@ def send_sms(to: str, body: str) -> bool:
 
 def send_whatsapp(to: str, body: str) -> bool:
     return get_sender().send_whatsapp(to, body)
+
+
+def send_ntfy(
+    message: str,
+    title: str = "GULA alert",
+    topic: str = "",
+    priority: str = "default",
+    tags: str = "",
+) -> bool:
+    return get_sender().send_ntfy(message, title, topic, priority, tags)

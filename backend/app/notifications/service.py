@@ -67,6 +67,15 @@ class NotificationService:
             deliver = lambda: sender.send_whatsapp(to, body)
         elif channel == "push":
             deliver = lambda: sender.send_push(to, subject, body, template_data)
+        elif channel == "ntfy":
+            ntfy_data = template_data or {}
+            deliver = lambda: sender.send_ntfy(
+                body,
+                title=subject or "GULA alert",
+                topic=to,
+                priority=str(ntfy_data.get("priority", priority)),
+                tags=str(ntfy_data.get("tags", "")),
+            )
         else:
             return NotificationResult(
                 success=False,
@@ -99,6 +108,23 @@ class NotificationService:
 
     def send_whatsapp(self, to: str, body: str) -> NotificationResult:
         return self.send("whatsapp", to, body=body)
+
+    def send_ntfy(
+        self,
+        topic: str,
+        title: str,
+        body: str,
+        priority: str = "normal",
+        tags: str = "",
+    ) -> NotificationResult:
+        return self.send(
+            "ntfy",
+            topic,
+            subject=title,
+            body=body,
+            priority=priority,
+            template_data={"priority": priority, "tags": tags},
+        )
 
     def send_telegram(self, bot_token: str, chat_id: str, message: str) -> NotificationResult:
         from .telegram import send_telegram

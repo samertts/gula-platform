@@ -4,6 +4,7 @@ from .sender import (
     send_push,
     send_sms,
     send_whatsapp,
+    send_ntfy,
 )
 from .template import (
     NotificationTemplate,
@@ -22,4 +23,5 @@ __all__ = [
     "send_push",
     "send_sms",
     "send_whatsapp",
+    "send_ntfy",
 ]

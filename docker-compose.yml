@@ -132,6 +132,9 @@ services:
       MAX_REQUEST_BODY_MB: ${MAX_REQUEST_BODY_MB:-10}
       FCM_SERVER_KEY: ${FCM_SERVER_KEY:-}
       APNS_KEY: ${APNS_KEY:-}
+      NTFY_BASE_URL: ${NTFY_BASE_URL:-http://ntfy:80}
+      NTFY_TOPIC: ${NTFY_TOPIC:-gula-ops}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
       DEVICE_HMAC_KEY: ${DEVICE_HMAC_KEY:-}
       ALLOWED_DEVICE_IDS: ${ALLOWED_DEVICE_IDS:-}
       # Concurrency: number of uvicorn workers (each ~120 MB RSS).
@@ -217,6 +220,9 @@ services:
       DEVICE_HMAC_KEY: ${DEVICE_HMAC_KEY:-}
       ALERT_WEBHOOK_URL: ${ALERT_WEBHOOK_URL:-}
       HEALTH_ALERT_INTERVAL_SECONDS: ${HEALTH_ALERT_INTERVAL_SECONDS:-60}
+      NTFY_BASE_URL: ${NTFY_BASE_URL:-http://ntfy:80}
+      NTFY_TOPIC: ${NTFY_TOPIC:-gula-ops}
+      NTFY_TOKEN: ${NTFY_TOKEN:-}
       DB_POOL_SIZE: ${WORKER_DB_POOL_SIZE:-3}
       DB_MAX_OVERFLOW: ${WORKER_DB_MAX_OVERFLOW:-5}
       PYTHONPATH: /app
@@ -326,6 +332,28 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+
+  ntfy:
+    image: binwiederhier/ntfy:v2.27.0
+    container_name: gula-ntfy
+    command: ["serve"]
+    restart: always
+    profiles: ["monitoring"]
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - ntfy-cache:/var/cache/ntfy
+      - ntfy-config:/etc/ntfy
+    expose:
+      - "80"
+    networks:
+      - gula-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/v1/health | grep -q OK"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   prometheus:
     image: prom/prometheus:v2.56.1
@@ -446,6 +474,10 @@ volumes:
   grafana-data:
     driver: local
   alertmanager-data:
+    driver: local
+  ntfy-cache:
+    driver: local
+  ntfy-config:
     driver: local
 
 # =============================================================================
