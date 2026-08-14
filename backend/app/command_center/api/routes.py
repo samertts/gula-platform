@@ -17,8 +17,13 @@ from app.command_center.exceptions import (
     ResourceRequestNotFoundError,
 )
 from app.database import get_db
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/command-center", tags=["National Health Command Center"])
+router = APIRouter(
+    prefix="/command-center",
+    tags=["National Health Command Center"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> CommandCenterService:

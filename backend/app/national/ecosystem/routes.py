@@ -7,6 +7,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.security.dependencies import require_permission
 
 from .connectors import (
     BaseConnector,
@@ -31,7 +32,11 @@ from .transformation import TransformationEngine
 
 logger = logging.getLogger("gula.ecosystem.routes")
 
-router = APIRouter(prefix="/ecosystem", tags=["Ecosystem"])
+router = APIRouter(
+    prefix="/ecosystem",
+    tags=["Ecosystem"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 _transformation_engine = TransformationEngine()
 _schema_registry = _transformation_engine.schema_registry

@@ -4,13 +4,19 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+
+from app.security.dependencies import require_permission
 
 from . import PlatformRegistry
 
 logger = logging.getLogger("gula.platform.routes")
 
-router = APIRouter(prefix="/platform", tags=["platform"])
+router = APIRouter(
+    prefix="/platform",
+    tags=["platform"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 @router.get("/health")

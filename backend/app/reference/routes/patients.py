@@ -14,8 +14,13 @@ from app.reference.services import (
     PatientNotFoundError,
 )
 from app.reference.services.patient_service import PatientService
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/reference/patients", tags=["reference-patients"])
+router = APIRouter(
+    prefix="/reference/patients",
+    tags=["reference-patients"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 @router.get("/{patient_id}")

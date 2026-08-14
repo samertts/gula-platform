@@ -30,8 +30,13 @@ from app.national.scheduling_platform.infrastructure.repository import (
     SQLAlchemyTimeSlotRepository,
     SQLAlchemyWaitingListRepository,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/national/scheduling", tags=["National Scheduling Platform"])
+router = APIRouter(
+    prefix="/national/scheduling",
+    tags=["National Scheduling Platform"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> SchedulingPlatformService:

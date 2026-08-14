@@ -35,8 +35,13 @@ from app.national.notification_platform.infrastructure.repository import (
     SQLAlchemyNotificationRepository,
     SQLAlchemyNotificationTemplateRepository,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/national/notifications", tags=["National Notifications"])
+router = APIRouter(
+    prefix="/national/notifications",
+    tags=["National Notifications"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 class SendRequest(BaseModel):

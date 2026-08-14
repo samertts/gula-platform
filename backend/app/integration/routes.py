@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Body, HTTPException, Path
+from fastapi import APIRouter, Body, Depends, HTTPException, Path
 
 from app.integration.base import IntegrationStatus
 from app.integration.connectors import ConnectorRegistry
@@ -12,10 +12,15 @@ from app.integration.monitoring import IntegrationMonitor
 from app.integration.offline import OfflineSyncEngine
 from app.integration.testing import IntegrationTestSuite
 from app.integration.transformation import DataTransformer, SchemaMapper
+from app.security.dependencies import require_permission
 
 logger = logging.getLogger("gula.integration.routes")
 
-router = APIRouter(prefix="/integration", tags=["integration"])
+router = APIRouter(
+    prefix="/integration",
+    tags=["integration"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 _integration_monitor: IntegrationMonitor | None = None
 _offline_sync: OfflineSyncEngine | None = None

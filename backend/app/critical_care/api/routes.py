@@ -13,8 +13,13 @@ from app.critical_care.exceptions import (
     MonitoringRecordNotFoundError,
 )
 from app.database import get_db
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/critical-care", tags=["National Critical Care Platform"])
+router = APIRouter(
+    prefix="/critical-care",
+    tags=["National Critical Care Platform"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> CriticalCareService:

@@ -12,8 +12,13 @@ from app.reference.services import (
     Priority,
 )
 from app.reference.services.order_service import OrderService
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/reference/orders", tags=["reference-orders"])
+router = APIRouter(
+    prefix="/reference/orders",
+    tags=["reference-orders"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 @router.post("")

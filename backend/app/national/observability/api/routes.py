@@ -23,8 +23,13 @@ from app.national.observability.infrastructure.repository import (
     SQLAlchemyServiceGraphRepository,
     SQLAlchemyTraceSpanRepository,
 )
+from app.security.dependencies import require_permission
 
-router = APIRouter(prefix="/national/observability", tags=["National Observability"])
+router = APIRouter(
+    prefix="/national/observability",
+    tags=["National Observability"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 def _get_service(db: Session = Depends(get_db)) -> ObservabilityService:

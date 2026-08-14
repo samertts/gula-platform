@@ -3,13 +3,18 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.security.dependencies import require_permission
 from backend.app.integration.connectors import BaseConnector, ConnectorRegistry
 
 logger = logging.getLogger("gula.integration.connectors.routes")
 
-router = APIRouter(prefix="/integration/connectors", tags=["integration-connectors"])
+router = APIRouter(
+    prefix="/integration/connectors",
+    tags=["integration-connectors"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 
 async def _get_connector_instance(name: str, config: dict[str, Any] | None = None) -> BaseConnector:

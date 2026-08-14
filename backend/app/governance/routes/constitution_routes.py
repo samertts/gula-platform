@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from app.security.dependencies import require_permission
 from governance.catalogs.dependency_registry import DependencyRegistry
 from governance.catalogs.technology_catalog import TechnologyCatalog
 from governance.compiler.constitution_compiler import ConstitutionCompiler
@@ -14,7 +15,11 @@ from governance.engine.procurement_engine import ProcurementEngine
 from governance.engine.recommendation_engine import AIRecommendationEngine
 from governance.engine.review_engine import AutonomousReviewEngine
 
-router = APIRouter(prefix="/api/v1/governance", tags=["governance"])
+router = APIRouter(
+    prefix="/api/v1/governance",
+    tags=["governance"],
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 
 compiler = ConstitutionCompiler()
 engine = ConstitutionEngine()
@@ -57,14 +62,12 @@ async def get_constitution():
 
 @router.get("/constitution/check")
 async def constitution_check():
-    report = engine.generate_compliance_report()
-    return report
+    return engine.generate_compliance_report()
 
 
 @router.post("/constitution/evaluate")
 async def constitution_evaluate(req: EvaluateRequest):
-    result = engine.explain_decision(req.request_type, req.context)
-    return result
+    return engine.explain_decision(req.request_type, req.context)
 
 
 @router.get("/technology-catalog")
@@ -108,7 +111,7 @@ async def architecture_review(req: ADRRequest):
 
 @router.get("/architecture-review/scan")
 async def architecture_scan():
-    findings = reviewer.review_all()
+    reviewer.review_all()
     return reviewer.get_report()
 
 
