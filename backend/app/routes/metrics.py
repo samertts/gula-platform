@@ -146,13 +146,16 @@ _PROM_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8"
 def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     """Prometheus text-format exposition endpoint.
 
-    Secured by Bearer token when METRICS_BEARER_TOKEN env var is set.
-    Open (no auth) in development so Prometheus can scrape without credentials.
+    Secured by Bearer token in production. Missing production key material
+    fails closed with 503 rather than exposing platform-wide telemetry. Open
+    (no auth) in development so Prometheus can scrape without credentials.
     """
     import os
 
     token = os.getenv("METRICS_BEARER_TOKEN", "")
-    if token and IS_PRODUCTION:
+    if IS_PRODUCTION:
+        if not token:
+            return Response(status_code=503, content="Metrics authentication is not configured")
         auth = request.headers.get("Authorization", "")
         if auth != f"Bearer {token}":
             return Response(status_code=401, content="Unauthorized")

@@ -103,8 +103,8 @@ def health_status():
     db_error = None
     try:
         db_ok = check_db_connection()
-    except Exception as e:
-        db_error = str(e)
+    except Exception:
+        db_error = "database_check_failed"
 
     redis_ok = False
     redis_error = None
@@ -113,8 +113,8 @@ def health_status():
 
         _redis.set("_status_probe", "1", ex=10)
         redis_ok = True
-    except Exception as e:
-        redis_error = str(e)
+    except Exception:
+        redis_error = "redis_check_failed"
 
     ready, reason = is_system_ready()
     pool = get_pool_status()
@@ -173,8 +173,8 @@ def health_deep():
             db_ok = True
         finally:
             _db.close()
-    except Exception as e:
-        db_err = str(e)[:120]
+    except Exception:
+        db_err = "database_check_failed"
 
     # ── 2. Redis latency ─────────────────────────────────────────────────────
     red_ok, red_ms, red_err = False, -1.0, None
@@ -185,8 +185,8 @@ def health_deep():
         _r.ping()
         red_ms = round((_t.perf_counter() - t0) * 1000, 1)
         red_ok = True
-    except Exception as e:
-        red_err = str(e)[:80]
+    except Exception:
+        red_err = "redis_check_failed"
 
     # ── 3. Queue backlog (OutboxEvent undelivered rows) ──────────────────────
     queue_backlog, queue_err = 0, None
@@ -201,8 +201,8 @@ def health_deep():
             )
         finally:
             _db2.close()
-    except Exception as e:
-        queue_err = str(e)[:80]
+    except Exception:
+        queue_err = "queue_check_failed"
 
     # ── 4. Memory RSS ────────────────────────────────────────────────────────
     rss_mb = 0.0

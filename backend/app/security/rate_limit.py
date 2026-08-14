@@ -14,6 +14,8 @@ All public functions raise HTTPException(429) with standardised headers:
   Retry-After           — seconds until next allowed request (on 429)
 """
 
+import hashlib
+import hmac
 import ipaddress
 import logging
 import math
@@ -176,10 +178,31 @@ def rate_limit_user(request: Request, user_id: int, max_per_minute: int = 60) ->
         _raise_429("Too many requests from this network.", ip_max, reset)
 
 
-def rate_limit_auth(request: Request, max_per_minute: int = 10) -> None:
-    """Rate limit for auth endpoints (login/register) — keyed by IP."""
+def rate_limit_auth(
+    request: Request,
+    max_per_minute: int = 10,
+    identifier: str | None = None,
+) -> None:
+    """Rate-limit auth by IP and, when available, by a keyed identifier.
+
+    The identifier key is an HMAC digest, never the submitted email/phone. This
+    prevents attackers from bypassing account-targeted throttling by rotating IPs
+    while keeping sensitive identifiers out of Redis keys and logs.
+    """
     client_ip = get_client_ip(request)
     ok, _, reset = _check(f"auth:{client_ip}", max_per_minute, 60, request)
+    if not ok:
+        _raise_429("Too many login attempts. Please wait a moment.", max_per_minute, reset)
+
+    normalized = identifier.strip().lower()[:320] if identifier else ""
+    if not normalized:
+        return
+
+    from ..config import NID_HMAC_KEY
+
+    key = NID_HMAC_KEY.encode("utf-8") if NID_HMAC_KEY else b"gula-development-auth-rate-limit"
+    identifier_digest = hmac.new(key, normalized.encode("utf-8"), hashlib.sha256).hexdigest()
+    ok, _, reset = _check(f"auth-id:{identifier_digest}", max_per_minute, 60, request)
     if not ok:
         _raise_429("Too many login attempts. Please wait a moment.", max_per_minute, reset)
 

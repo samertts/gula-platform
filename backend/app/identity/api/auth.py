@@ -32,7 +32,7 @@ async def login(
     user_agent: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    rate_limit_auth(request)
+    rate_limit_auth(request, identifier=body.login)
     service = AuthenticationService(db)
     result = await service.login(
         login=body.login,
