@@ -80,6 +80,8 @@ class ClinicalAuthorizationContextService:
         *,
         legacy_lab_user_id: int,
         legacy_lab_id: int,
+        expected_niam_organization_id: str | None = None,
+        expected_niam_facility_id: str | None = None,
     ) -> ClinicalAuthorizationContext:
         if legacy_lab_user_id <= 0 or legacy_lab_id <= 0:
             raise ClinicalLegacyIdentityUnresolved("Legacy account and laboratory identifiers must be positive")
@@ -88,6 +90,12 @@ class ClinicalAuthorizationContextService:
             link = await self._get_migrated_link(legacy_lab_user_id)
             account, identity = await self._get_active_account_identity(link.canonical_account_id)
             binding = await self.scope_bridge.resolve_active_binding(legacy_lab_id)
+            if expected_niam_organization_id is not None and binding.niam_organization_id != expected_niam_organization_id:
+                raise ClinicalFacilityScopeMismatch("The reviewed organization mapping does not match the active NIAM workspace")
+            if expected_niam_facility_id is not None and binding.niam_facility_id != expected_niam_facility_id:
+                raise ClinicalFacilityScopeMismatch("The reviewed facility mapping does not match the active NIAM workspace")
+            if binding.niam_organization_id is None or binding.niam_facility_id is None:
+                raise ClinicalFacilityScopeMismatch("The reviewed bridge has no canonical NIAM scope mapping")
             facility, organization, tenant = await self._get_active_operational_scope(binding)
             assignment = await self._get_matching_assignment(
                 person_id=identity.person_id,

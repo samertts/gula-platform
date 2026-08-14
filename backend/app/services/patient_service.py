@@ -6,9 +6,12 @@ from dataclasses import dataclass
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from ..models.clinical_scope import ClinicalLabFacilityBinding, ClinicalLabFacilityBindingStatus
 from ..models.lab_order import LabOrder
+from ..models.organization import Facility
 from ..models.patient import Patient
 from ..services.audit_service import log_action
+from ..services.clinical_legacy_read_scope import ClinicalLegacyReadScope
 from ..services.identity import hash_family_id, hash_national_id, match_score
 from ..services.mpi import resolver as mpi_resolver
 
@@ -71,11 +74,33 @@ def list_patients(
     search: str | None = None,
     skip: int = 0,
     limit: int = 50,
+    scope: ClinicalLegacyReadScope | None = None,
 ) -> dict:
-    """List patients with optional search."""
+    """List patients with optional search and an optional reviewed clinical scope."""
     import re
 
-    query = db.query(Patient).filter(Patient.lab_id == lab_id)
+    if scope is None:
+        query = db.query(Patient).filter(Patient.lab_id == lab_id)
+    else:
+        query = (
+            db.query(Patient)
+            .join(
+                ClinicalLabFacilityBinding,
+                ClinicalLabFacilityBinding.legacy_lab_id == Patient.lab_id,
+            )
+            .join(Facility, Facility.id == ClinicalLabFacilityBinding.facility_resource_id)
+            .filter(
+                Patient.lab_id == scope.legacy_lab_id,
+                ClinicalLabFacilityBinding.legacy_lab_id == scope.legacy_lab_id,
+                ClinicalLabFacilityBinding.facility_resource_id == scope.operational_facility_id,
+                ClinicalLabFacilityBinding.status == ClinicalLabFacilityBindingStatus.active.value,
+                ClinicalLabFacilityBinding.niam_organization_id == scope.niam_organization_id,
+                ClinicalLabFacilityBinding.niam_facility_id == scope.niam_facility_id,
+                Facility.id == scope.operational_facility_id,
+                Facility.organization_id == scope.operational_organization_id,
+                Facility.is_active.is_(True),
+            )
+        )
 
     if search:
         if re.match(r"^\+?\d+$", search):
