@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from app.identity.api import memberships
+from app.identity.api import memberships as memberships_api
 from app.identity.api.memberships import (
     MembershipApplicationRequest,
     MembershipInvitationRequest,
     serialize_invitation,
 )
-from app.identity.api.router import router
 from app.identity.models.membership import MembershipInvitation
 from fastapi.routing import APIRoute
 
@@ -34,7 +33,7 @@ def _membership_routes() -> dict[tuple[str, str], APIRoute]:
     contains the endpoint objects themselves.
     """
     assert any(
-        getattr(route, "original_router", None) is memberships.router
+        getattr(route, "original_router", None) is memberships_api.router
         for route in router.routes
     )
 
