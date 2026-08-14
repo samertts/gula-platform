@@ -128,3 +128,12 @@ The first Guava remediation pinned `32.0.1-android`, which is above the Dependab
 ### Dependabot alert #313 detail
 
 The authenticated Netty alert reports `io.netty:netty-codec-http:4.1.132.Final` remains affected through Android testing tooling (`com.google.testing.platform:core:0.0.9-alpha04` and `com.android.tools.utp:android-test-plugin-host-emulator-control:32.3.1`). The patched version is **4.1.136.Final** (CVE-2026-56745 / GHSA-jppx-w49h-x2qq). Dependabot says it cannot update automatically because another dependency requires an incompatible version. The existing 4.1.132 pin must therefore be raised to 4.1.136 or later and validated against Android CI.
+
+### Guava compatibility research
+
+The Android CI retry with Guava `32.0.1-jre` failed in Hilt compilation with `NoSuchMethodError: Graphs.reachableNodes(...)`. The official Dagger release notes document the same class of issue and state that Dagger temporarily pinned Guava to **33.0.0** to avoid an incorrect Guava runtime. Maven Central lists Guava `33.4.0-jre` as available, and the pre-pin Android CI run had resolved the tooling graph around Guava `33.4.0-jre`. The next corrective pin will use **33.4.0-jre**, which is above Dependabot's patched floor and preserves the known-working JRE API surface.
+
+References:
+- [Dagger releases — Guava runtime compatibility note](https://github.com/google/dagger/releases)
+- [Maven Central Guava versions](https://repo1.maven.org/maven2/com/google/guava/)
+- [Dependabot alert #469](https://github.com/samertts/gula-platform/security/dependabot/469)
