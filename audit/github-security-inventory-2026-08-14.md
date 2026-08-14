@@ -124,3 +124,7 @@ The authenticated alert reports `com.google.guava:guava` **30.1.1-jre** introduc
 ## Guava classifier follow-up — 2026-08-14
 
 The first Guava remediation pinned `32.0.1-android`, which is above the Dependabot patched floor but caused the Android CI `processDebugMainManifest` task to fail because `Suppliers$MemoizingSupplier` did not implement the requested `java.util.function.Supplier` interface. The constraint was corrected to **`com.google.guava:guava:32.0.1-jre`**, which remains above the patched floor and preserves the JRE classifier expected by Android/Gradle tooling. Local `buildEnvironment` resolves all Guava requests to `32.0.1-jre`; local `lintDebug` could not run because the sandbox has no Android SDK, so CI must be rerun for the authoritative lint check.
+
+### Dependabot alert #313 detail
+
+The authenticated Netty alert reports `io.netty:netty-codec-http:4.1.132.Final` remains affected through Android testing tooling (`com.google.testing.platform:core:0.0.9-alpha04` and `com.android.tools.utp:android-test-plugin-host-emulator-control:32.3.1`). The patched version is **4.1.136.Final** (CVE-2026-56745 / GHSA-jppx-w49h-x2qq). Dependabot says it cannot update automatically because another dependency requires an incompatible version. The existing 4.1.132 pin must therefore be raised to 4.1.136 or later and validated against Android CI.
