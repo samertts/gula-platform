@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.identity.adaptive_auth import routes as adaptive_auth_routes
 from app.identity.admin import routes as admin_routes
@@ -11,7 +11,20 @@ from app.identity.notifications import routes as notifications_routes
 from app.identity.trust import routes as trust_routes
 from app.identity.workflows import routes as workflows_routes
 
-from . import accounts, auth, devices, memberships, persons, roles, sessions, workspaces
+from . import (
+    accounts,
+    audit,
+    auth,
+    consents,
+    devices,
+    memberships,
+    persons,
+    roles,
+    security,
+    sessions,
+    workspaces,
+)
+from .workspaces import get_current_niam_actor
 
 router = APIRouter(prefix="/niam", tags=["NIAM"])
 
@@ -22,17 +35,22 @@ router.include_router(sessions.router)
 router.include_router(workspaces.router)
 router.include_router(memberships.router)
 router.include_router(roles.router)
+router.include_router(audit.router)
+router.include_router(consents.router)
+router.include_router(security.router)
 router.include_router(devices.router)
-router.include_router(governance_routes.router)
-router.include_router(trust_routes.router)
-router.include_router(lifecycle_routes.router)
-router.include_router(federation_routes.router)
-router.include_router(certificates_routes.router)
-router.include_router(workflows_routes.router)
-router.include_router(notifications_routes.router)
-router.include_router(adaptive_auth_routes.router)
-router.include_router(admin_routes.router)
-router.include_router(compliance_routes.router)
+_AUTH_REQUIRED = [Depends(get_current_niam_actor)]
+
+router.include_router(governance_routes.router, dependencies=_AUTH_REQUIRED)
+router.include_router(trust_routes.router, dependencies=_AUTH_REQUIRED)
+router.include_router(lifecycle_routes.router, dependencies=_AUTH_REQUIRED)
+router.include_router(federation_routes.router, dependencies=_AUTH_REQUIRED)
+router.include_router(certificates_routes.router, dependencies=_AUTH_REQUIRED)
+router.include_router(workflows_routes.router, dependencies=_AUTH_REQUIRED)
+router.include_router(notifications_routes.router, dependencies=_AUTH_REQUIRED)
+router.include_router(adaptive_auth_routes.router, dependencies=_AUTH_REQUIRED)
+router.include_router(admin_routes.router, dependencies=_AUTH_REQUIRED)
+router.include_router(compliance_routes.router, dependencies=_AUTH_REQUIRED)
 
 
 @router.get("/health")
