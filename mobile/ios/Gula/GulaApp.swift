@@ -15,18 +15,20 @@ struct GulaApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .environmentObject(themeManager)
-                .environmentObject(networkMonitor)
-                .environmentObject(authManager)
-                .environmentObject(syncEngine)
-                .environment(\.managedObjectContext, coreDataStack.viewContext)
-                .environment(\.layoutDirection, themeManager.layoutDirection)
-                .preferredColorScheme(themeManager.colorScheme)
-                .onAppear {
-                    registerBackgroundTasks()
-                    UNUserNotificationCenter.current().delegate = appDelegate
-                }
+            IOSUpdateGate {
+                ContentView()
+                    .environmentObject(themeManager)
+                    .environmentObject(networkMonitor)
+                    .environmentObject(authManager)
+                    .environmentObject(syncEngine)
+                    .environment(\.managedObjectContext, coreDataStack.viewContext)
+                    .environment(\.layoutDirection, themeManager.layoutDirection)
+                    .preferredColorScheme(themeManager.colorScheme)
+                    .onAppear {
+                        registerBackgroundTasks()
+                        UNUserNotificationCenter.current().delegate = appDelegate
+                    }
+            }
         }
     }
 
