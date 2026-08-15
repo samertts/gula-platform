@@ -19,19 +19,23 @@ from .models import (
     PRINT_STATUSES,
     DeviceConnector,
     DeviceEvent,
+    DeviceGateway,
     DeviceGatewayAlert,
     DeviceGatewayMetricSnapshot,
     DevicePrintJob,
     DeviceProtocolProfile,
     IntegratedDevice,
 )
+from .outbox import enqueue_message, list_messages as list_outbox_messages, summarize as summarize_outbox
 from .schemas import (
     ConnectorRegisterRequest,
     ConnectorStatusUpdateRequest,
     DeviceRegisterRequest,
     DeviceStatusUpdateRequest,
     GatewayAlertAcknowledgeRequest,
+    GatewayHeartbeatRequest,
     GatewayMetricIngestRequest,
+    GatewayRegistrationRequest,
     PrinterJobRequest,
     ProtocolProfileRequest,
 )
@@ -152,6 +156,26 @@ def _event(
         safe_metadata=safe_metadata or {"simulation_only": True},
     )
     db.add(event)
+    db.flush()
+    enqueue_message(
+        db,
+        lab_id=device.lab_id,
+        event_type=f"device.{event_type}",
+        aggregate_type="device_event",
+        aggregate_id=device.id,
+        idempotency_key=f"device-event:{device.lab_id}:{event.correlation_id}",
+        correlation_id=event.correlation_id,
+        payload_safe={
+            "event_type": event.event_type,
+            "direction": event.direction,
+            "severity": event.severity,
+            "message_type": event.message_type,
+            "summary": event.summary,
+            "safe_metadata": event.safe_metadata or {},
+            "simulation_only": True,
+            "raw_payload_stored": False,
+        },
+    )
     return event
 
 
@@ -177,8 +201,15 @@ def get_device(db: Session, lab_id: int, device_uid: str) -> IntegratedDevice | 
 def register_device(db: Session, lab_id: int, payload: DeviceRegisterRequest) -> IntegratedDevice:
     if payload.category not in DEVICE_CATEGORIES or payload.protocol not in DEVICE_PROTOCOLS or payload.transport not in DEVICE_TRANSPORTS:
         raise ValueError("Unsupported device category, protocol, or transport")
-    if db.query(IntegratedDevice).filter(IntegratedDevice.device_uid == payload.device_uid).first():
-        raise ValueError("device_uid already exists")
+    if (
+        db.query(IntegratedDevice)
+        .filter(
+            IntegratedDevice.lab_id == lab_id,
+            IntegratedDevice.device_uid == payload.device_uid,
+        )
+        .first()
+    ):
+        raise ValueError("device_uid already exists in this laboratory")
     device = IntegratedDevice(
         lab_id=lab_id,
         device_uid=payload.device_uid,
@@ -632,7 +663,102 @@ def simulate_connector(db: Session, lab_id: int, connector_uid: str, payload) ->
     }
 
 
+def get_gateway(db: Session, lab_id: int, gateway_ref: str) -> DeviceGateway | None:
+    return (
+        db.query(DeviceGateway)
+        .filter(DeviceGateway.lab_id == lab_id, DeviceGateway.gateway_ref == gateway_ref)
+        .first()
+    )
+
+
+def list_gateways(db: Session, lab_id: int, *, status: str | None = None, limit: int = 100) -> tuple[int, list[DeviceGateway]]:
+    query = db.query(DeviceGateway).filter(DeviceGateway.lab_id == lab_id)
+    if status:
+        query = query.filter(DeviceGateway.status == status)
+    total = query.count()
+    return total, query.order_by(DeviceGateway.updated_at.desc()).limit(limit).all()
+
+
+def register_gateway(db: Session, lab_id: int, payload: GatewayRegistrationRequest) -> DeviceGateway:
+    gateway = get_gateway(db, lab_id, payload.gateway_ref)
+    if gateway is None:
+        gateway = DeviceGateway(
+            lab_id=lab_id,
+            gateway_ref=payload.gateway_ref,
+            display_name=payload.display_name,
+            mode=payload.mode,
+            status="pending",
+            gateway_version=payload.gateway_version,
+            contract_version=payload.contract_version,
+            capabilities_safe=payload.capabilities_safe,
+            enabled=payload.enabled,
+            simulation_only=True,
+        )
+        db.add(gateway)
+    else:
+        if gateway.status == "revoked":
+            raise ValueError("revoked gateway registrations cannot be reused")
+        gateway.display_name = payload.display_name
+        gateway.mode = payload.mode
+        gateway.gateway_version = payload.gateway_version
+        gateway.contract_version = payload.contract_version
+        gateway.capabilities_safe = payload.capabilities_safe
+        gateway.enabled = payload.enabled
+        gateway.simulation_only = True
+    db.commit()
+    db.refresh(gateway)
+    return gateway
+
+
+def _ensure_gateway_from_metrics(db: Session, lab_id: int, payload: GatewayMetricIngestRequest) -> DeviceGateway:
+    gateway = get_gateway(db, lab_id, payload.gateway_ref)
+    if gateway is not None and (gateway.status == "revoked" or not gateway.enabled):
+        raise ValueError("gateway registration is disabled")
+    if gateway is None:
+        gateway = DeviceGateway(
+            lab_id=lab_id,
+            gateway_ref=payload.gateway_ref,
+            display_name=f"Synthetic gateway {payload.gateway_ref}",
+            mode="simulated",
+            status=payload.gateway_status,
+            gateway_version=payload.gateway_version,
+            contract_version="v1",
+            enabled=True,
+            simulation_only=True,
+        )
+        db.add(gateway)
+    gateway.status = payload.gateway_status
+    gateway.gateway_version = payload.gateway_version or gateway.gateway_version
+    gateway.last_heartbeat_at = payload.captured_at or datetime.now(UTC)
+    gateway.last_error = "reported gateway error" if payload.gateway_status in {"offline", "error"} else None
+    gateway.simulation_only = True
+    return gateway
+
+
+def record_gateway_heartbeat(db: Session, lab_id: int, payload: GatewayHeartbeatRequest) -> DeviceGatewayMetricSnapshot:
+    gateway = get_gateway(db, lab_id, payload.gateway_ref)
+    if gateway is None:
+        raise LookupError("gateway is not registered in this laboratory")
+    if not gateway.enabled or gateway.status == "revoked":
+        raise ValueError("gateway registration is disabled")
+    if not payload.simulation_only:
+        raise ValueError("gateway heartbeat is simulation-only until gateway authentication is deployed")
+    return ingest_gateway_metrics(db, lab_id, payload)
+
+
+def list_outbox(db: Session, lab_id: int, *, status: str | None = None, gateway_ref: str | None = None, limit: int = 100):
+    return list_outbox_messages(db, lab_id, status=status, gateway_ref=gateway_ref, limit=limit)
+
+
+def process_outbox(db: Session, lab_id: int, *, limit: int = 50) -> dict:
+    from .outbox import process_batch
+
+    return process_batch(db, lab_id, limit=limit)
+
+
 MONITORING_THRESHOLDS = {
+    "gateway_heartbeat_warning_seconds": 300.0,
+    "gateway_heartbeat_critical_seconds": 900.0,
     "outbox_oldest_age_warning_seconds": 300.0,
     "outbox_oldest_age_critical_seconds": 900.0,
     "disk_used_warning_percent": 85.0,
@@ -742,6 +868,8 @@ def ingest_gateway_metrics(db: Session, lab_id: int, payload: GatewayMetricInges
     if not payload.simulation_only:
         raise ValueError("gateway metrics ingestion is simulation-only until gateway authentication is deployed")
     captured_at = payload.captured_at or datetime.now(UTC)
+    gateway = _ensure_gateway_from_metrics(db, lab_id, payload)
+    gateway.last_heartbeat_at = payload.worker_last_heartbeat_at or captured_at
     snapshot = DeviceGatewayMetricSnapshot(
         lab_id=lab_id,
         gateway_ref=payload.gateway_ref,
@@ -799,6 +927,7 @@ def list_gateway_alerts(db: Session, lab_id: int, *, alert_status: str | None = 
 
 def monitoring_snapshot(db: Session, lab_id: int) -> dict:
     latest = _latest_gateway_metrics(db, lab_id)
+    _, gateways = list_gateways(db, lab_id, limit=100)
     active_query = db.query(DeviceGatewayAlert).filter(
         DeviceGatewayAlert.lab_id == lab_id,
         DeviceGatewayAlert.status.in_(["open", "acknowledged"]),
@@ -815,6 +944,8 @@ def monitoring_snapshot(db: Session, lab_id: int) -> dict:
         "alerts": alerts,
         "thresholds": MONITORING_THRESHOLDS,
         "simulation_only": True,
+        "gateways": gateways,
+        "outbox": summarize_outbox(db, lab_id),
     }
 
 

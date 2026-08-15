@@ -299,7 +299,9 @@ export interface DeviceIntegrationSummary {
   recent_events: number;
 }
 
-export type DeviceGatewayStatus = 'healthy' | 'degraded' | 'offline' | 'error' | 'maintenance' | 'pending';
+export type DeviceGatewayStatus = 'healthy' | 'degraded' | 'offline' | 'error' | 'maintenance' | 'pending' | 'revoked';
+export type DeviceGatewayMode = 'simulated' | 'local_pending';
+export type DeviceOutboxStatus = 'pending' | 'processing' | 'retry' | 'delivered' | 'dead_letter';
 export type DeviceGatewayAlertSeverity = 'info' | 'warning' | 'critical';
 export type DeviceGatewayAlertStatus = 'open' | 'acknowledged' | 'resolved';
 
@@ -343,6 +345,53 @@ export interface DeviceGatewayAlertRecord {
   safe_metadata?: Record<string, unknown>;
 }
 
+export interface DeviceGatewayRecord {
+  id: number;
+  gateway_ref: string;
+  display_name: string;
+  mode: DeviceGatewayMode;
+  status: DeviceGatewayStatus;
+  gateway_version?: string;
+  contract_version: string;
+  capabilities_safe?: Record<string, unknown>;
+  last_heartbeat_at?: string;
+  last_error?: string;
+  enabled: boolean;
+  simulation_only: boolean;
+  registered_at: string;
+  updated_at: string;
+}
+
+export interface DeviceOutboxRecord {
+  id: number;
+  gateway_ref?: string;
+  event_type: string;
+  aggregate_type: string;
+  aggregate_id?: number;
+  idempotency_key: string;
+  correlation_id: string;
+  payload_safe: Record<string, unknown>;
+  status: DeviceOutboxStatus;
+  attempts: number;
+  max_attempts: number;
+  last_error?: string;
+  next_attempt_at: string;
+  locked_at?: string;
+  delivered_at?: string;
+  created_at: string;
+  updated_at: string;
+  simulation_only: boolean;
+}
+
+export interface DeviceOutboxSummary {
+  pending_count: number;
+  processing_count: number;
+  retry_count: number;
+  delivered_count: number;
+  dead_letter_count: number;
+  oldest_age_seconds: number;
+}
+
 export interface DeviceGatewayMonitoringSnapshot {
   gateway_count: number;
   healthy_gateway_count: number;
@@ -354,6 +403,8 @@ export interface DeviceGatewayMonitoringSnapshot {
   alerts: DeviceGatewayAlertRecord[];
   thresholds: Record<string, number>;
   simulation_only: boolean;
+  gateways?: DeviceGatewayRecord[];
+  outbox?: DeviceOutboxSummary;
 }
 
 export interface DeviceIntegrationPrinterJob {

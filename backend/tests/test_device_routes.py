@@ -38,6 +38,8 @@ def test_citizen_account_cannot_access_device_integration(client, db):
     for method, path, kwargs in (
         ("get", "/device-integration/summary", {}),
         ("get", "/device-integration/monitoring", {}),
+        ("get", "/device-integration/gateways", {}),
+        ("get", "/device-integration/outbox", {}),
         ("post", "/device-integration/devices", {"json": _device_payload("CITIZEN-DENIED-001")}),
         ("post", "/device-integration/monitoring/metrics", {"json": _monitoring_payload("citizen-denied-gateway")}),
     ):
@@ -141,6 +143,28 @@ def test_device_uid_duplicate_is_rejected(client, make_lab, make_lab_user):
     duplicate = client.post("/device-integration/devices", json=payload, headers=headers)
     assert duplicate.status_code == 400
     assert "already exists" in duplicate.json()["detail"]
+
+
+def test_same_device_uid_is_scoped_to_each_lab(client, make_lab, make_lab_user):
+    lab_a = make_lab("Shared UID Lab A")
+    lab_b = make_lab("Shared UID Lab B")
+    user_a = make_lab_user(lab_a.id, role="admin")
+    user_b = make_lab_user(lab_b.id, role="admin")
+    headers_a = auth_headers(user_a.id, lab_a.id, "admin")
+    headers_b = auth_headers(user_b.id, lab_b.id, "admin")
+    payload = _device_payload("TENANT-SCOPED-001")
+
+    first = client.post("/device-integration/devices", json=payload, headers=headers_a)
+    second = client.post("/device-integration/devices", json=payload, headers=headers_b)
+    assert first.status_code == 201
+    assert second.status_code == 201
+
+    own = client.get("/device-integration/devices/TENANT-SCOPED-001", headers=headers_a)
+    other = client.get("/device-integration/devices/TENANT-SCOPED-001", headers=headers_b)
+    assert own.status_code == 200
+    assert other.status_code == 200
+    assert client.get("/device-integration/devices", headers=headers_a).json()["total"] == 1
+    assert client.get("/device-integration/devices", headers=headers_b).json()["total"] == 1
 
 
 def _connector_payload(uid: str, *, device_uid: str = "HL7-A-001", protocol: str = "HL7v2_MLLP", transport: str = "MLLP"):
@@ -347,6 +371,71 @@ def test_monitoring_metrics_create_alerts_acknowledge_and_auto_resolve(client, m
     other_snapshot = client.get("/device-integration/monitoring", headers=other_headers)
     assert other_snapshot.status_code == 200
     assert other_snapshot.json()["gateway_count"] == 0
+
+
+def test_gateway_registry_heartbeat_and_outbox_are_lab_scoped(client, make_lab, make_lab_user):
+    lab_a = make_lab("Gateway Registry Lab A")
+    lab_b = make_lab("Gateway Registry Lab B")
+    user_a = make_lab_user(lab_a.id, role="admin")
+    user_b = make_lab_user(lab_b.id, role="admin")
+    headers_a = auth_headers(user_a.id, lab_a.id, "admin")
+    headers_b = auth_headers(user_b.id, lab_b.id, "admin")
+
+    gateway = client.post(
+        "/device-integration/gateways",
+        json={
+            "gateway_ref": "synthetic-gateway-tenant-001",
+            "display_name": "Synthetic Gateway Tenant 001",
+            "mode": "local_pending",
+            "gateway_version": "sim-gateway-1.0.0",
+            "capabilities_safe": {"heartbeat": True, "outbox": True},
+        },
+        headers=headers_a,
+    )
+    assert gateway.status_code == 201
+    assert gateway.json()["simulation_only"] is True
+
+    heartbeat = client.post(
+        "/device-integration/gateways/synthetic-gateway-tenant-001/heartbeat",
+        json=_monitoring_payload(
+            "synthetic-gateway-tenant-001",
+            gateway_status="healthy",
+            outbox_pending_count=0,
+            outbox_oldest_age_seconds=0,
+            outbox_retry_count=0,
+            outbox_dead_letter_count=0,
+            disk_used_percent=40,
+            disk_free_bytes=32000000000,
+            worker_lag_seconds=0,
+            transport_latency_ms=40,
+        ),
+        headers=headers_a,
+    )
+    assert heartbeat.status_code == 201
+
+    assert client.get("/device-integration/gateways", headers=headers_a).json()["total"] == 1
+    assert client.get("/device-integration/gateways", headers=headers_b).json()["total"] == 0
+    assert client.post(
+        "/device-integration/gateways/synthetic-gateway-tenant-001/heartbeat",
+        json=_monitoring_payload("synthetic-gateway-tenant-001"),
+        headers=headers_b,
+    ).status_code == 404
+
+    device = client.post("/device-integration/devices", json=_device_payload("OUTBOX-DEVICE-001"), headers=headers_a)
+    assert device.status_code == 201
+    outbox_a = client.get("/device-integration/outbox", headers=headers_a)
+    outbox_b = client.get("/device-integration/outbox", headers=headers_b)
+    assert outbox_a.status_code == 200
+    assert outbox_a.json()["total"] >= 1
+    assert outbox_b.status_code == 200
+    assert outbox_b.json()["total"] == 0
+
+    processed = client.post("/device-integration/outbox/process?limit=20", headers=headers_a)
+    assert processed.status_code == 200
+    assert processed.json()["delivered"] >= 1
+    delivered = client.get("/device-integration/outbox?status=delivered", headers=headers_a)
+    assert delivered.status_code == 200
+    assert delivered.json()["total"] >= 1
 
 
 def test_monitoring_rejects_secret_metadata_and_staff_cannot_ingest_or_ack(client, make_lab, make_lab_user):

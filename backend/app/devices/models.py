@@ -47,7 +47,11 @@ EVENT_SEVERITIES = ("info", "warning", "error")
 PRINT_STATUSES = ("queued", "simulated_success", "failed")
 CONNECTOR_MODES = ("simulated", "gateway_pending", "active", "disabled")
 CONNECTOR_STATUSES = ("healthy", "degraded", "offline", "error", "maintenance", "pending")
+GATEWAY_MODES = ("simulated", "local_pending", "active", "disabled")
+GATEWAY_STATUSES = ("healthy", "degraded", "offline", "error", "maintenance", "pending", "revoked")
 PROFILE_STATUSES = ("draft", "validated", "retired")
+DEVICE_OUTBOX_STATUSES = ("pending", "processing", "retry", "delivered", "dead_letter")
+DEVICE_OUTBOX_MAX_ATTEMPTS = 5
 
 
 def utc_now() -> datetime:
@@ -58,13 +62,14 @@ class IntegratedDevice(Base):
     __tablename__ = "integrated_devices"
     __table_args__ = (
         Index("ix_integrated_devices_lab_status", "lab_id", "status"),
+        UniqueConstraint("lab_id", "device_uid", name="uq_integrated_devices_lab_uid"),
         Index("ix_integrated_devices_lab_category", "lab_id", "category"),
         Index("ix_integrated_devices_last_seen", "last_seen_at"),
     )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)
-    device_uid = Column(String(96), nullable=False, unique=True, index=True)
+    device_uid = Column(String(96), nullable=False, index=True)
     display_name = Column(String(200), nullable=False)
     category = Column(String(48), nullable=False, default="other")
     vendor = Column(String(120), nullable=True)
@@ -81,6 +86,33 @@ class IntegratedDevice(Base):
     printer_profile = Column(JSON, nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+
+
+class DeviceGateway(Base):
+    """Tenant-scoped registration record for a local or simulated gateway."""
+
+    __tablename__ = "device_gateways"
+    __table_args__ = (
+        UniqueConstraint("lab_id", "gateway_ref", name="uq_device_gateways_lab_ref"),
+        Index("ix_device_gateways_lab_status", "lab_id", "status"),
+        Index("ix_device_gateways_heartbeat", "lab_id", "last_heartbeat_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
+    gateway_ref = Column(String(160), nullable=False)
+    display_name = Column(String(200), nullable=False)
+    mode = Column(String(24), nullable=False, default="simulated")
+    status = Column(String(24), nullable=False, default="pending")
+    gateway_version = Column(String(48), nullable=True)
+    contract_version = Column(String(24), nullable=False, default="v1")
+    capabilities_safe = Column(JSON, nullable=True)
+    last_heartbeat_at = Column(DateTime(timezone=True), nullable=True)
+    last_error = Column(String(500), nullable=True)
+    enabled = Column(Boolean, nullable=False, default=True)
+    simulation_only = Column(Boolean, nullable=False, default=True)
+    registered_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
     updated_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
 
 
@@ -165,6 +197,38 @@ class DeviceEvent(Base):
     correlation_id = Column(String(96), nullable=True, index=True)
     safe_metadata = Column(JSON, nullable=True)
     occurred_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+
+class DeviceOutboxMessage(Base):
+    """Tenant-scoped transactional outbox record for safe gateway envelopes."""
+
+    __tablename__ = "device_outbox_messages"
+    __table_args__ = (
+        UniqueConstraint("lab_id", "idempotency_key", name="uq_device_outbox_lab_idempotency"),
+        Index("ix_device_outbox_lab_status_next", "lab_id", "status", "next_attempt_at"),
+        Index("ix_device_outbox_gateway_status", "gateway_ref", "status", "next_attempt_at"),
+        Index("ix_device_outbox_created", "lab_id", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
+    gateway_ref = Column(String(160), nullable=True)
+    event_type = Column(String(96), nullable=False)
+    aggregate_type = Column(String(64), nullable=False, default="device_event")
+    aggregate_id = Column(Integer, nullable=True)
+    idempotency_key = Column(String(160), nullable=False)
+    correlation_id = Column(String(96), nullable=False)
+    payload_safe = Column(JSON, nullable=False)
+    status = Column(String(24), nullable=False, default="pending")
+    attempts = Column(Integer, nullable=False, default=0)
+    max_attempts = Column(Integer, nullable=False, default=DEVICE_OUTBOX_MAX_ATTEMPTS)
+    last_error = Column(String(500), nullable=True)
+    next_attempt_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    locked_at = Column(DateTime(timezone=True), nullable=True)
+    delivered_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utc_now, onupdate=utc_now)
+    simulation_only = Column(Boolean, nullable=False, default=True)
 
 
 class DevicePrintJob(Base):

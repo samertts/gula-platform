@@ -14,9 +14,16 @@ from .schemas import (
     ConnectorStatusUpdateRequest,
     DeviceEventListResponse,
     DeviceEventRecord,
+    DeviceOutboxListResponse,
+    DeviceOutboxProcessResponse,
+    DeviceOutboxRecord,
     GatewayAlertAcknowledgeRequest,
     GatewayAlertRecord,
+    GatewayHeartbeatRequest,
+    GatewayListResponse,
     GatewayMetricIngestRequest,
+    GatewayRecord,
+    GatewayRegistrationRequest,
     GatewayMetricRecord,
     GatewayMonitoringAlertListResponse,
     GatewayMonitoringSnapshot,
@@ -381,6 +388,79 @@ def create_printer_job(
     except Exception as exc:
         _handle_service_error(exc)
         raise AssertionError("unreachable")
+
+
+@router.get("/gateways", response_model=GatewayListResponse)
+def list_registered_gateways(
+    gateway_status: str | None = Query(None, alias="status"),
+    limit: int = Query(100, ge=1, le=200),
+    actor: LabUser = _read_actor(),
+    db: Session = Depends(get_db),
+):
+    total, gateways = service.list_gateways(db, actor.lab_id, status=gateway_status, limit=limit)
+    return GatewayListResponse(
+        total=total,
+        gateways=[GatewayRecord.model_validate(gateway) for gateway in gateways],
+    )
+
+
+@router.post("/gateways", response_model=GatewayRecord, status_code=status.HTTP_201_CREATED)
+def register_gateway(
+    payload: GatewayRegistrationRequest,
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+):
+    try:
+        return GatewayRecord.model_validate(service.register_gateway(db, actor.lab_id, payload))
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
+
+
+@router.post("/gateways/{gateway_ref}/heartbeat", response_model=GatewayMetricRecord, status_code=status.HTTP_201_CREATED)
+def record_gateway_heartbeat(
+    gateway_ref: str,
+    payload: GatewayHeartbeatRequest,
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+):
+    if payload.gateway_ref != gateway_ref:
+        raise HTTPException(status_code=400, detail="gateway_ref does not match the route")
+    try:
+        return GatewayMetricRecord.model_validate(service.record_gateway_heartbeat(db, actor.lab_id, payload))
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
+
+
+@router.get("/outbox", response_model=DeviceOutboxListResponse)
+def list_device_outbox(
+    outbox_status: str | None = Query(None, alias="status"),
+    gateway_ref: str | None = None,
+    limit: int = Query(100, ge=1, le=200),
+    actor: LabUser = _read_actor(),
+    db: Session = Depends(get_db),
+):
+    total, messages = service.list_outbox(
+        db,
+        actor.lab_id,
+        status=outbox_status,
+        gateway_ref=gateway_ref,
+        limit=limit,
+    )
+    return DeviceOutboxListResponse(
+        total=total,
+        messages=[DeviceOutboxRecord.model_validate(message) for message in messages],
+    )
+
+
+@router.post("/outbox/process", response_model=DeviceOutboxProcessResponse, status_code=status.HTTP_200_OK)
+def process_device_outbox(
+    limit: int = Query(50, ge=1, le=200),
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+):
+    return service.process_outbox(db, actor.lab_id, limit=limit)
 
 
 @router.post("/monitoring/metrics", response_model=GatewayMetricRecord, status_code=status.HTTP_201_CREATED)

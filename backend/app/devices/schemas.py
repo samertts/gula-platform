@@ -305,9 +305,26 @@ class PrinterJobListResponse(BaseModel):
     jobs: list[PrinterJobRecord]
 
 
-GatewayStatus = Literal["healthy", "degraded", "offline", "error", "maintenance", "pending"]
+GatewayStatus = Literal["healthy", "degraded", "offline", "error", "maintenance", "pending", "revoked"]
+GatewayMode = Literal["simulated", "local_pending"]
 GatewayAlertSeverity = Literal["info", "warning", "critical"]
 GatewayAlertStatus = Literal["open", "acknowledged", "resolved"]
+DeviceOutboxStatus = Literal["pending", "processing", "retry", "delivered", "dead_letter"]
+
+
+class GatewayRegistrationRequest(BaseModel):
+    gateway_ref: str = Field(..., min_length=3, max_length=160, pattern=r"^[A-Za-z0-9._:/-]+$")
+    display_name: str = Field(..., min_length=2, max_length=200)
+    mode: GatewayMode = "simulated"
+    gateway_version: str | None = Field(None, max_length=48)
+    contract_version: str = Field("v1", min_length=1, max_length=24, pattern=r"^[A-Za-z0-9._-]+$")
+    capabilities_safe: dict[str, Any] | None = None
+    enabled: bool = True
+
+    @field_validator("capabilities_safe")
+    @classmethod
+    def validate_capabilities_secret_free(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _ensure_secret_free(value)
 
 
 class GatewayMetricIngestRequest(BaseModel):
@@ -331,6 +348,61 @@ class GatewayMetricIngestRequest(BaseModel):
     @classmethod
     def validate_metrics_secret_free(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
         return _ensure_secret_free(value)
+
+
+class GatewayHeartbeatRequest(GatewayMetricIngestRequest):
+    """A signed gateway contract will replace this simulation-only request later."""
+
+
+class GatewayRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    gateway_ref: str
+    display_name: str
+    mode: str
+    status: str
+    gateway_version: str | None
+    contract_version: str
+    capabilities_safe: dict[str, Any] | None
+    last_heartbeat_at: datetime | None
+    last_error: str | None
+    enabled: bool
+    simulation_only: bool
+    registered_at: datetime
+    updated_at: datetime
+
+
+class DeviceOutboxRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    gateway_ref: str | None
+    event_type: str
+    aggregate_type: str
+    aggregate_id: int | None
+    idempotency_key: str
+    correlation_id: str
+    payload_safe: dict[str, Any]
+    status: str
+    attempts: int
+    max_attempts: int
+    last_error: str | None
+    next_attempt_at: datetime
+    locked_at: datetime | None
+    delivered_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    simulation_only: bool
+
+
+class DeviceOutboxSummary(BaseModel):
+    pending_count: int
+    processing_count: int
+    retry_count: int
+    delivered_count: int
+    dead_letter_count: int
+    oldest_age_seconds: float
 
 
 class GatewayMetricRecord(BaseModel):
@@ -377,6 +449,25 @@ class GatewayAlertRecord(BaseModel):
     safe_metadata: dict[str, Any] | None
 
 
+class DeviceOutboxProcessResponse(BaseModel):
+    processed: int
+    recovered: int = 0
+    delivered: int
+    retried: int
+    dead_letter: int
+    simulation_only: bool = True
+
+
+class GatewayListResponse(BaseModel):
+    total: int
+    gateways: list[GatewayRecord]
+
+
+class DeviceOutboxListResponse(BaseModel):
+    total: int
+    messages: list[DeviceOutboxRecord]
+
+
 class GatewayAlertAcknowledgeRequest(BaseModel):
     note: str | None = Field(None, max_length=500)
 
@@ -392,6 +483,8 @@ class GatewayMonitoringSnapshot(BaseModel):
     alerts: list[GatewayAlertRecord]
     thresholds: dict[str, float]
     simulation_only: bool
+    gateways: list[GatewayRecord] = Field(default_factory=list)
+    outbox: DeviceOutboxSummary | None = None
 
 
 class GatewayMonitoringAlertListResponse(BaseModel):

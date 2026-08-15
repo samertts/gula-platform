@@ -691,6 +691,30 @@ function MonitoringTab({ monitoring, onAcknowledge, alertActionId }: { monitorin
       <MetricCard label="تنبيهات مفتوحة" value={monitoring.open_alert_count} icon={AlertTriangle} tone={monitoring.critical_alert_count > 0 ? "rose" : "cyan"} />
     </div>
 
+    <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Clock3 className="h-5 w-5 text-cyan-600" />حالة Outbox الدائمة</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          <MonitoringValue label="Pending" value={String(monitoring.outbox?.pending_count ?? metric?.outbox_pending_count ?? 0)} />
+          <MonitoringValue label="Processing" value={String(monitoring.outbox?.processing_count ?? 0)} />
+          <MonitoringValue label="Retry" value={String(monitoring.outbox?.retry_count ?? metric?.outbox_retry_count ?? 0)} />
+          <MonitoringValue label="Dead Letter" value={String(monitoring.outbox?.dead_letter_count ?? metric?.outbox_dead_letter_count ?? 0)} />
+          <MonitoringValue label="Delivered" value={String(monitoring.outbox?.delivered_count ?? 0)} />
+          <MonitoringValue label="أقدم رسالة" value={`${Math.round(monitoring.outbox?.oldest_age_seconds ?? metric?.outbox_oldest_age_seconds ?? 0)} ثانية`} />
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Router className="h-5 w-5 text-indigo-600" />سجل Gateway المؤسسية</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {(monitoring.gateways ?? []).map((gateway) => <div key={gateway.gateway_ref} className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
+            <div><p className="font-semibold">{gateway.display_name}</p><p className="mt-1 font-mono text-[11px] text-muted-foreground">{gateway.gateway_ref} · {gateway.mode} · {gateway.contract_version}</p></div>
+            <div className="text-right"><Badge variant={gateway.status === "healthy" ? "success" : gateway.status === "degraded" ? "warning" : gateway.status === "revoked" ? "destructive" : "outline"}>{gateway.status}</Badge><p className="mt-1 text-xs text-muted-foreground">Heartbeat: {formatTime(gateway.last_heartbeat_at)}</p></div>
+          </div>)}
+          {!(monitoring.gateways ?? []).length && <p className="text-sm text-muted-foreground">لا يوجد Gateway مسجل لهذا المختبر بعد.</p>}
+        </CardContent>
+      </Card>
+    </div>
+
     <Card className="overflow-hidden border-slate-800 bg-gradient-to-l from-slate-950 via-slate-900 to-indigo-950 text-white">
       <CardContent className="p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

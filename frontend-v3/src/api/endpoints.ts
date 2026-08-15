@@ -48,6 +48,8 @@ import type {
   DeviceGatewayAlertRecord,
   DeviceGatewayMetricRecord,
   DeviceGatewayMonitoringSnapshot,
+  DeviceGatewayRecord,
+  DeviceOutboxRecord,
 } from "@/types";
 
 // ── Auth ──
@@ -368,6 +370,16 @@ export const deviceIntegrationApi = {
     api.post<DeviceIntegrationPrinterJob>("/device-integration/printer-jobs", data).then((r) => r.data),
   monitoring: () =>
     api.get<DeviceGatewayMonitoringSnapshot>("/device-integration/monitoring").then((r) => r.data),
+  gateways: (params?: { status?: string; limit?: number }) =>
+    api.get<{ total: number; gateways: DeviceGatewayRecord[] }>("/device-integration/gateways", { params }).then((r) => r.data),
+  registerGateway: (data: Record<string, unknown>) =>
+    api.post<DeviceGatewayRecord>("/device-integration/gateways", data).then((r) => r.data),
+  heartbeatGateway: (gatewayRef: string, data: Record<string, unknown>) =>
+    api.post<DeviceGatewayMetricRecord>(`/device-integration/gateways/${encodeURIComponent(gatewayRef)}/heartbeat`, data).then((r) => r.data),
+  outbox: (params?: { status?: string; gateway_ref?: string; limit?: number }) =>
+    api.get<{ total: number; messages: DeviceOutboxRecord[] }>("/device-integration/outbox", { params }).then((r) => r.data),
+  processOutbox: (limit = 50) =>
+    api.post<{ processed: number; recovered: number; delivered: number; retried: number; dead_letter: number; simulation_only: boolean }>(`/device-integration/outbox/process?limit=${limit}`).then((r) => r.data),
   monitoringAlerts: (params?: { status?: string; limit?: number }) =>
     api.get<{ total: number; alerts: DeviceGatewayAlertRecord[] }>("/device-integration/monitoring/alerts", { params }).then((r) => r.data),
   ingestMonitoringMetrics: (data: Record<string, unknown>) =>
