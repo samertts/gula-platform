@@ -1211,6 +1211,7 @@ async def get_expiry_alerts(
 class POSSaleLineCreate(BaseModel):
     drug_catalog_id: str | None = None
     barcode: str | None = None
+    substitution_request_id: str | None = None
     batch_id: str | None = None
     prescription_id: str | None = None
     quantity: int
@@ -1343,3 +1344,82 @@ async def get_pos_sale(
     if sale is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
     return POSSaleResponse.model_validate(sale)
+
+
+# ── Drug substitution routes ────────────────────────────────────────────────────
+
+
+class SubstitutionRequestCreate(BaseModel):
+    rule_id: str
+    prescription_id: str | None = None
+    patient_id: str | None = None
+    citizen_id: str | None = None
+    reason: str = "original medication unavailable"
+    patient_consent: bool = False
+    patient_notified: bool = False
+
+
+class SubstitutionRejectRequest(BaseModel):
+    reason: str
+
+
+@router.get("/substitutions/candidates")
+async def list_substitution_candidates(
+    original_drug_id: str = Query(..., min_length=1, max_length=26),
+    quantity: int = Query(1, ge=1, le=10000),
+    db: Session = Depends(get_db),
+    user: Any = Depends(require_institutional_permission("lab:read")),
+) -> list[dict[str, Any]]:
+    try:
+        return _get_pharmacy_service(db, user).list_substitution_candidates(original_drug_id, quantity)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/substitutions/requests", status_code=status.HTTP_201_CREATED)
+async def create_substitution_request(
+    data: SubstitutionRequestCreate,
+    db: Session = Depends(get_db),
+    user: Any = Depends(require_institutional_permission("lab:manage")),
+) -> dict[str, Any]:
+    try:
+        request = _get_pharmacy_service(db, user).create_substitution_request(data.model_dump())
+        db.commit()
+        db.refresh(request)
+        return request.to_dict()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/substitutions/requests/{request_id}/approve")
+async def approve_substitution_request(
+    request_id: str,
+    db: Session = Depends(get_db),
+    user: Any = Depends(require_institutional_permission("lab:manage")),
+) -> dict[str, Any]:
+    try:
+        request = _get_pharmacy_service(db, user).approve_substitution(request_id)
+        db.commit()
+        db.refresh(request)
+        return request.to_dict()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/substitutions/requests/{request_id}/reject")
+async def reject_substitution_request(
+    request_id: str,
+    data: SubstitutionRejectRequest,
+    db: Session = Depends(get_db),
+    user: Any = Depends(require_institutional_permission("lab:manage")),
+) -> dict[str, Any]:
+    try:
+        request = _get_pharmacy_service(db, user).reject_substitution(request_id, data.reason)
+        db.commit()
+        db.refresh(request)
+        return request.to_dict()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { CheckCircle2, Loader2, Plus, Search, ShoppingCart, Trash2 } from "lucide-react";
-import { pharmacyApi, type PharmacyDrugRecord, type PharmacySaleRequest } from "@/api/endpoints";
+import { CheckCircle2, Loader2, Plus, Search, ShoppingCart, Trash2, Syringe } from "lucide-react";
+import { pharmacyApi, type PharmacyDrugRecord, type PharmacySaleRequest, type PharmacySubstitutionCandidate } from "@/api/endpoints";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/Input";
 type CartLine = {
   drug: PharmacyDrugRecord;
   quantity: number;
+  substitution_request_id?: string;
+  substituteName?: string;
 };
 
 function requestKey(): string {
@@ -22,6 +24,8 @@ export default function PharmacyPosPanel() {
   const [citizenId, setCitizenId] = useState("");
   const [billingPatientId, setBillingPatientId] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
+  const [substitutionTargetId, setSubstitutionTargetId] = useState<string | null>(null);
+  const [patientConsent, setPatientConsent] = useState(false);
   const [lastSale, setLastSale] = useState<string | null>(null);
 
   const summary = useQuery({
@@ -35,6 +39,33 @@ export default function PharmacyPosPanel() {
     queryFn: () => pharmacyApi.drugs(search.trim()),
     enabled: search.trim().length >= 2,
     staleTime: 30_000,
+  });
+
+  const substitutionTarget = cart.find((line) => line.drug.id === substitutionTargetId);
+  const candidates = useQuery({
+    queryKey: ["pharmacy", "substitution-candidates", substitutionTargetId, substitutionTarget?.quantity],
+    queryFn: () => pharmacyApi.substitutionCandidates(substitutionTargetId as string, substitutionTarget?.quantity ?? 1),
+    enabled: Boolean(substitutionTargetId && substitutionTarget),
+    staleTime: 15_000,
+  });
+
+  const substitutionMutation = useMutation({
+    mutationFn: async ({ candidate, line }: { candidate: PharmacySubstitutionCandidate; line: CartLine }) => {
+      const request = await pharmacyApi.createSubstitutionRequest({
+        rule_id: candidate.rule_id,
+        patient_id: patientId.trim() || undefined,
+        citizen_id: citizenId.trim() || undefined,
+        reason: "original medication unavailable",
+        patient_consent: patientConsent,
+        patient_notified: patientConsent,
+      });
+      await pharmacyApi.approveSubstitution(request.id);
+      return { line, candidate, requestId: request.id };
+    },
+    onSuccess: ({ line, candidate, requestId }) => {
+      setCart((current) => current.map((item) => item.drug.id === line.drug.id ? { ...item, substitution_request_id: requestId, substituteName: candidate.alternative.name_ar || candidate.alternative.name } : item));
+      setSubstitutionTargetId(null);
+    },
   });
 
   const saleMutation = useMutation({
@@ -66,7 +97,7 @@ export default function PharmacyPosPanel() {
       payment_method: "synthetic_settlement",
       issue_invoice: true,
       idempotency_key: requestKey(),
-      lines: cart.map((line) => ({ drug_catalog_id: line.drug.id, quantity: line.quantity, quantity_unit: "unit" })),
+      lines: cart.map((line) => line.substitution_request_id ? { substitution_request_id: line.substitution_request_id, quantity: line.quantity, quantity_unit: "unit" } : { drug_catalog_id: line.drug.id, quantity: line.quantity, quantity_unit: "unit" }),
     };
     saleMutation.mutate(payload);
   };
@@ -115,15 +146,18 @@ export default function PharmacyPosPanel() {
           <Input value={patientId} onChange={(event) => setPatientId(event.target.value)} placeholder="معرف Patient/FHIR (اختياري)" aria-label="معرف السجل الصحي" />
           <div className="space-y-2">
             {cart.map((line) => (
-              <div key={line.drug.id} className="flex items-center justify-between gap-2 rounded-lg border p-3">
-                <div><p className="font-semibold">{line.drug.name_ar || line.drug.name}</p><p className="text-xs text-muted-foreground">{line.quantity} وحدة</p></div>
-                <div className="flex items-center gap-1"><Button size="sm" variant="outline" type="button" onClick={() => setCart((current) => current.map((item) => item.drug.id === line.drug.id ? { ...item, quantity: item.quantity + 1 } : item))}>+</Button><Button size="sm" variant="ghost" type="button" onClick={() => setCart((current) => current.filter((item) => item.drug.id !== line.drug.id))} aria-label={`حذف ${line.drug.name}`}><Trash2 className="h-4 w-4" /></Button></div>
+              <div key={line.drug.id} className="rounded-lg border p-3">
+                <div className="flex items-center justify-between gap-2"><div><p className="font-semibold">{line.drug.name_ar || line.drug.name}</p><p className="text-xs text-muted-foreground">{line.substituteName ? `البديل المعتمد: ${line.substituteName}` : `${line.quantity} وحدة`}</p></div>
+                <div className="flex items-center gap-1"><Button size="sm" variant="outline" type="button" onClick={() => setCart((current) => current.map((item) => item.drug.id === line.drug.id ? { ...item, quantity: item.quantity + 1 } : item))}>+</Button><Button size="sm" variant="ghost" type="button" onClick={() => setCart((current) => current.filter((item) => item.drug.id !== line.drug.id))} aria-label={`حذف ${line.drug.name}`}><Trash2 className="h-4 w-4" /></Button></div></div>
+                <Button size="sm" variant="outline" type="button" className="mt-2 w-full" onClick={() => setSubstitutionTargetId(line.drug.id)} disabled={Boolean(line.substitution_request_id)}><Syringe className="h-4 w-4" />{line.substitution_request_id ? "تم اعتماد البديل" : "بحث عن بديل معتمد"}</Button>
               </div>
             ))}
             {!cart.length && <p className="rounded-lg border border-dashed p-5 text-center text-sm text-muted-foreground">السلة فارغة.</p>}
           </div>
+          {substitutionTarget && <div className="rounded-lg border border-indigo-200 bg-indigo-50/50 p-3"><p className="mb-2 text-sm font-semibold">بدائل {substitutionTarget.drug.name_ar || substitutionTarget.drug.name}</p>{candidates.isLoading && <p className="text-xs">جارٍ فحص البدائل والمخزون...</p>}{(candidates.data ?? []).filter((candidate) => candidate.eligible).map((candidate) => <div key={candidate.rule_id} className="mb-2 flex items-center justify-between gap-2 rounded border bg-white p-2"><span className="text-xs">{candidate.alternative.name_ar || candidate.alternative.name}<br /><span className="text-muted-foreground">{candidate.equivalence_type} · متاح {candidate.available_quantity}</span></span><Button size="sm" type="button" disabled={substitutionMutation.isPending || (candidate.requires_patient_consent && !patientConsent)} onClick={() => substitutionMutation.mutate({ candidate, line: substitutionTarget })}>{substitutionMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "طلب واعتماد"}</Button></div>)}<label className="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" checked={patientConsent} onChange={(event) => setPatientConsent(event.target.checked)} />تم توثيق موافقة المواطن وإبلاغه عند الحاجة</label></div>}
           <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3 text-sm"><span>إجمالي الوحدات</span><Badge variant="outline">{totalUnits}</Badge></div>
-          <Button type="button" className="w-full" disabled={!cart.length || !billingPatientId.trim() || saleMutation.isPending} onClick={submitSale}>{saleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}إتمام البيع وإصدار الفاتورة</Button>
+          <Button type="button" className="w-full" disabled={!cart.length || !billingPatientId.trim() || cart.some((line) => Boolean(substitutionTargetId === line.drug.id)) || saleMutation.isPending} onClick={submitSale}>{saleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}إتمام البيع وإصدار الفاتورة</Button>
+          {substitutionMutation.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">تعذر اعتماد البديل؛ لم تتغير السلة.</p>}
           {saleMutation.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">تعذر إتمام البيع. لم يتم اعتماد الفاتورة أو خصم المخزون.</p>}
           {lastSale && <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">تم البيع: {lastSale}. سُجلت حركة المخزون، والفاتورة، وسجل الصرف إن تم توفير معرف المواطن.</p>}
         </CardContent>

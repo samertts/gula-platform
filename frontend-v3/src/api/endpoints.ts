@@ -1682,6 +1682,7 @@ export type PharmacySaleRequest = {
   lines: Array<{
     drug_catalog_id?: string;
     barcode?: string;
+    substitution_request_id?: string;
     batch_id?: string;
     prescription_id?: string;
     quantity: number;
@@ -1693,6 +1694,42 @@ export type PharmacySaleRequest = {
     route?: string;
     frequency?: string;
   }>;
+};
+
+export type PharmacySubstitutionCandidate = {
+  rule_id: string;
+  original_drug_catalog_id: string;
+  alternative_drug_catalog_id: string;
+  equivalence_type: string;
+  approval_level: string;
+  requires_patient_consent: boolean;
+  available_quantity: number;
+  eligible: boolean;
+  original: { code: string; name: string; name_ar?: string | null };
+  alternative: { code: string; name: string; name_ar?: string | null; strength_value?: string | null; strength_unit?: string | null; form?: string; route?: string };
+};
+
+export type PharmacySubstitutionRequest = {
+  rule_id: string;
+  prescription_id?: string;
+  patient_id?: string;
+  citizen_id?: string;
+  reason?: string;
+  patient_consent: boolean;
+  patient_notified: boolean;
+};
+
+export type PharmacySubstitutionRecord = {
+  id: string;
+  rule_id: string;
+  original_drug_catalog_id: string;
+  alternative_drug_catalog_id: string;
+  status: string;
+  reason: string;
+  approval_level: string;
+  patient_consent: boolean;
+  approved_by?: string | null;
+  consumed_sale_id?: string | null;
 };
 
 export type PharmacyPosSummary = {
@@ -1715,4 +1752,8 @@ export const pharmacyApi = {
   summary: (days = 30) => api.get<PharmacyPosSummary>("/pharmacy/pos/summary", { params: { days } }).then((r) => r.data),
   sale: (id: string) => api.get<PharmacySaleRecord>(`/pharmacy/pos/sales/${id}`).then((r) => r.data),
   createSale: (data: PharmacySaleRequest, idempotencyKey: string) => api.post<PharmacySaleRecord>("/pharmacy/pos/sales", data, { headers: { "Idempotency-Key": idempotencyKey } }).then((r) => r.data),
+  substitutionCandidates: (originalDrugId: string, quantity = 1) => api.get<PharmacySubstitutionCandidate[]>("/pharmacy/substitutions/candidates", { params: { original_drug_id: originalDrugId, quantity } }).then((r) => r.data),
+  createSubstitutionRequest: (data: PharmacySubstitutionRequest) => api.post<PharmacySubstitutionRecord>("/pharmacy/substitutions/requests", data).then((r) => r.data),
+  approveSubstitution: (requestId: string) => api.post<PharmacySubstitutionRecord>(`/pharmacy/substitutions/requests/${requestId}/approve`).then((r) => r.data),
+  rejectSubstitution: (requestId: string, reason: string) => api.post<PharmacySubstitutionRecord>(`/pharmacy/substitutions/requests/${requestId}/reject`, { reason }).then((r) => r.data),
 };
