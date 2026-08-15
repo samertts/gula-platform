@@ -26,7 +26,7 @@ export function ToastContainer() {
             className={cn(
               "flex items-start gap-3 rounded-lg border bg-background p-4 text-foreground shadow-lg animate-in slide-in-from-right-full duration-300",
               t.variant === "destructive" && "border-destructive/50 text-destructive",
-              t.variant === "success" && "border-emerald-500/50 text-emerald-700 dark:text-emerald-400",
+              t.variant === "success" && "border-emerald-500/50 text-emerald-800 dark:text-emerald-400",
             )}
           >
             <Icon className="h-5 w-5 shrink-0 mt-0.5" />

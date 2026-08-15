@@ -1,5 +1,4 @@
 import os
-import requests
 from sqlalchemy.orm import Session
 from app.services.critical_alerts import alert_statistics, get_critical_alerts
 

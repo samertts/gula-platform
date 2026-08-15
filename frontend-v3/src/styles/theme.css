@@ -17,7 +17,8 @@
   --destructive-foreground: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.205 0.042 265.755);
+  /* WCAG AA: high-contrast keyboard focus indicator on light surfaces */
+  --ring: oklch(0.145 0 0);
   --radius: 0.625rem;
 
   --sidebar-background: oklch(0.145 0 0);

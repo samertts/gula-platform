@@ -15,6 +15,8 @@ class User(Base):
     email = Column(String(100), unique=True, nullable=True, index=True)
     phone = Column(String(20), unique=True, nullable=True, index=True)
     password_hash = Column(String(255), nullable=False)
+    reset_token = Column(String(255), nullable=True, index=True)
+    reset_token_expires = Column(DateTime(timezone=True), nullable=True)
     full_name = Column(String(200), nullable=False)
     role = Column(String(50), nullable=False, default="citizen")
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="SET NULL"), nullable=True)

@@ -86,7 +86,7 @@ class NotificationSender:
 
     def send_email(self, to: str, subject: str, body: str) -> bool:
         if not self._smtp_host:
-            logger.info("[EMAIL] To=%s Subject=%s (SMTP not configured, logged only)", to, subject)
+            logger.info("[EMAIL] SMTP not configured; notification not delivered")
             return True
         try:
             msg = MIMEMultipart("alternative")
@@ -103,18 +103,18 @@ class NotificationSender:
                     server.login(self._smtp_user, self._smtp_pass)
                 server.sendmail(self._smtp_from, [to], msg.as_string())
 
-            logger.info("[EMAIL] Delivered To=%s Subject=%s", to, subject)
+            logger.info("[EMAIL] Notification delivered")
             return True
         except smtplib.SMTPException as exc:
-            logger.error("[EMAIL] SMTP delivery failed To=%s: %s", to, exc)
+            logger.error("[EMAIL] SMTP delivery failed: %s", exc)
             return False
         except Exception as exc:
-            logger.error("[EMAIL] Delivery failed To=%s: %s", to, exc)
+            logger.error("[EMAIL] Delivery failed: %s", exc)
             return False
 
     def send_sms(self, to: str, body: str) -> bool:
         if not self._sms_api_url:
-            logger.info("[SMS] To=%s Body=%s (API not configured, logged only)", to, body[:50])
+            logger.info("[SMS] API not configured; notification not delivered")
             return True
         try:
             payload = {
@@ -125,13 +125,13 @@ class NotificationSender:
             headers = {"Authorization": f"Bearer {self._sms_api_key}"} if self._sms_api_key else {}
             resp = self.http.post(self._sms_api_url, json=payload, headers=headers)
             resp.raise_for_status()
-            logger.info("[SMS] Delivered To=%s", to)
+            logger.info("[SMS] Notification delivered")
             return True
         except httpx.HTTPError as exc:
-            logger.error("[SMS] Delivery failed To=%s: %s", to, exc)
+            logger.error("[SMS] Delivery failed: %s", exc)
             return False
         except Exception as exc:
-            logger.error("[SMS] Delivery failed To=%s: %s", to, exc)
+            logger.error("[SMS] Delivery failed: %s", exc)
             return False
 
     def send_ntfy(
@@ -174,7 +174,7 @@ class NotificationSender:
 
     def send_whatsapp(self, to: str, body: str) -> bool:
         if not self._whatsapp_api_url:
-            logger.info("[WHATSAPP] To=%s Body=%s (API not configured, logged only)", to, body[:50])
+            logger.info("[WHATSAPP] API not configured; notification not delivered")
             return True
         try:
             payload = {
@@ -190,13 +190,13 @@ class NotificationSender:
             url = f"{self._whatsapp_api_url}/{self._whatsapp_phone_id}/messages"
             resp = self.http.post(url, json=payload, headers=headers)
             resp.raise_for_status()
-            logger.info("[WHATSAPP] Delivered To=%s", to)
+            logger.info("[WHATSAPP] Notification delivered")
             return True
         except httpx.HTTPError as exc:
-            logger.error("[WHATSAPP] Delivery failed To=%s: %s", to, exc)
+            logger.error("[WHATSAPP] Delivery failed: %s", exc)
             return False
         except Exception as exc:
-            logger.error("[WHATSAPP] Delivery failed To=%s: %s", to, exc)
+            logger.error("[WHATSAPP] Delivery failed: %s", exc)
             return False
 
     def close(self) -> None:

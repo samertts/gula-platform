@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import json
 import re
+from datetime import datetime, timedelta
+
+from app._compat import UTC
+from app.models.user import User
 
 import pytest
 from fastapi.testclient import TestClient
 
-from shared.auth.passwords import hash_password
+from shared.auth.passwords import hash_password, verify_password
 
 
 @pytest.fixture(autouse=True)
@@ -172,6 +176,30 @@ def test_forgot_password_known_email(client, token):
         headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
     )
     assert resp.status_code == 200
+
+
+def test_reset_password_platform_user(client, db):
+    account = User(
+        email="platform-reset@gula.test",
+        phone="07700000001",
+        password_hash=hash_password("OldPassword123!"),
+        full_name="Platform Reset User",
+        role="citizen",
+        reset_token=hash_password("platform-reset-token"),
+        reset_token_expires=datetime.now(UTC) + timedelta(hours=1),
+    )
+    db.add(account)
+    db.commit()
+
+    response = client.post(
+        "/auth/reset-password",
+        json={"token": "platform-reset-token", "new_password": "NewPassword123!"},
+    )
+
+    assert response.status_code == 200, response.text
+    db.refresh(account)
+    assert account.reset_token is None
+    assert verify_password("NewPassword123!", account.password_hash)
 
 
 def test_reset_password_invalid_token(client, token):
