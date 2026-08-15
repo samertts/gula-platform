@@ -14,22 +14,22 @@ controls are represented here rather than bypassed with global lookups.
 from __future__ import annotations
 
 import json
-from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, Request, status
+from fastapi import APIRouter, Body, Depends, Header, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.lims.models import LabReport
-from app.models.lab_order import LabOrder
 from app.models.canonical_patient import CanonicalPatient, PatientLink
 from app.models.integration_inbox import IntegrationInboxEvent
+from app.models.lab_order import LabOrder
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
 from app.models.service_account import ServiceAccount
-from app.security.dependencies import get_current_user, require_service_account
+from app.security.dependencies import require_service_account
+from app.security.service_accounts import has_service_account_scope
 from app.services.audit_service import log_action
 
 router = APIRouter(prefix="/interop", tags=["IHE PIXm/MHD"])
@@ -62,6 +62,15 @@ def _actor_id(actor: Any) -> str:
     if isinstance(actor, ServiceAccount):
         return f"svc:{actor.id}"
     return f"user:{actor.id}"
+
+
+def _require_service_scope(actor: Any, *required_scopes: str) -> None:
+    """Require an explicit scope for machine identities; humans keep RBAC flow."""
+    if isinstance(actor, ServiceAccount) and not has_service_account_scope(actor, *required_scopes):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"required_scopes": list(required_scopes)},
+        )
 
 
 def _identifier(system: str, value: str) -> dict[str, str]:
@@ -166,13 +175,14 @@ def _document_reference(
 
 @router.get("/Patient/$ihe-pix", response_class=None)
 def pix_query(
-    sourceIdentifier: str = Query(..., min_length=1),
-    targetSystem: str | None = Query(default=None),
-    targetIdentifier: str | None = Query(default=None),
+    sourceIdentifier: str = Query(..., min_length=1),  # noqa: N803
+    targetSystem: str | None = Query(default=None),  # noqa: N803
+    targetIdentifier: str | None = Query(default=None),  # noqa: N803
     actor: LabUser | ServiceAccount = Depends(require_service_account),
     db: Session = Depends(get_db),
 ):
     """Constrained PIXm ITI-83 query returning identifiers for the local subject."""
+    _require_service_scope(actor, "interop:pixm:read")
     lab_id = _lab_id_for_actor(actor)
     patient = _find_local_patient(db, lab_id, sourceIdentifier)
     parameters: list[dict[str, Any]] = []
@@ -213,6 +223,7 @@ def mhd_search_documents(
     db: Session = Depends(get_db),
 ):
     """MHD ITI-67 search over final local laboratory reports."""
+    _require_service_scope(actor, "interop:mhd:read")
     lab_id = _lab_id_for_actor(actor)
     patient_identifier = patient or subject
     query = (
@@ -259,6 +270,7 @@ def mhd_read_document(
     db: Session = Depends(get_db),
 ):
     """MHD ITI-68 read, restricted to the owning laboratory."""
+    _require_service_scope(actor, "interop:mhd:read")
     lab_id = _lab_id_for_actor(actor)
     report_id_filters = [LabReport.fhir_id == report_id]
     if report_id.isdigit():
@@ -310,6 +322,7 @@ def mhd_provide_document(
     if unsupported:
         raise HTTPException(status_code=422, detail={"unsupported_resource_types": sorted(unsupported)})
 
+    _require_service_scope(actor, "interop:mhd:write")
     recipient_lab_id = _lab_id_for_actor(actor)
     existing = (
         db.query(IntegrationInboxEvent)

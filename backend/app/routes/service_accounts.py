@@ -14,6 +14,7 @@ from ..security.service_accounts import (
     list_service_accounts,
     revoke_service_account,
     rotate_api_key,
+    validate_requested_scopes,
 )
 
 logger = logging.getLogger("gula.routes.service_accounts")
@@ -52,8 +53,21 @@ def create(
     if current_user.role not in ("master_admin", "admin"):
         raise HTTPException(status_code=403, detail="Only admins can create service accounts")
 
-    if data.lab_id is not None:
-        lab = db.query(Lab).filter(Lab.id == data.lab_id, Lab.is_active).first()
+    try:
+        scopes = validate_requested_scopes(data.scopes)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    requested_lab_id = data.lab_id
+    if current_user.role != "master_admin":
+        if current_user.lab_id is None:
+            raise HTTPException(status_code=403, detail="An organisation-bound admin is required")
+        if requested_lab_id is not None and requested_lab_id != current_user.lab_id:
+            raise HTTPException(status_code=403, detail="Admins may manage only their own laboratory")
+        requested_lab_id = current_user.lab_id
+
+    if requested_lab_id is not None:
+        lab = db.query(Lab).filter(Lab.id == requested_lab_id, Lab.is_active).first()
         if lab is None:
             raise HTTPException(status_code=404, detail="Active laboratory not found")
 
@@ -62,16 +76,16 @@ def create(
         name=data.name,
         description=data.description,
         roles=data.roles,
-        scopes=data.scopes,
+        scopes=scopes,
         created_by=current_user.id,
-        lab_id=data.lab_id,
+        lab_id=requested_lab_id,
     )
     return {
         "id": account.id,
         "name": account.name,
             "api_key": api_key,
             "roles": data.roles,
-            "scopes": data.scopes,
+            "scopes": scopes,
             "lab_id": account.lab_id,
     }
 
@@ -85,7 +99,10 @@ def list_all(
         raise HTTPException(status_code=403, detail="Only admins can list service accounts")
 
 
-    accounts = list_service_accounts(db)
+    lab_id = None if current_user.role == "master_admin" else current_user.lab_id
+    if current_user.role != "master_admin" and lab_id is None:
+        raise HTTPException(status_code=403, detail="An organisation-bound admin is required")
+    accounts = list_service_accounts(db, lab_id=lab_id)
     return [
         {
             "id": a.id,
@@ -112,7 +129,10 @@ def revoke(
         raise HTTPException(status_code=403, detail="Only admins can revoke service accounts")
 
 
-    if not revoke_service_account(db, account_id):
+    lab_id = None if current_user.role == "master_admin" else current_user.lab_id
+    if current_user.role != "master_admin" and lab_id is None:
+        raise HTTPException(status_code=403, detail="An organisation-bound admin is required")
+    if not revoke_service_account(db, account_id, lab_id=lab_id):
         raise HTTPException(status_code=404, detail="Service account not found")
     return {"message": "Service account revoked"}
 
@@ -127,7 +147,10 @@ def rotate(
         raise HTTPException(status_code=403, detail="Only admins can rotate API keys")
 
 
-    new_key = rotate_api_key(db, account_id)
+    lab_id = None if current_user.role == "master_admin" else current_user.lab_id
+    if current_user.role != "master_admin" and lab_id is None:
+        raise HTTPException(status_code=403, detail="An organisation-bound admin is required")
+    new_key = rotate_api_key(db, account_id, lab_id=lab_id)
     if not new_key:
         raise HTTPException(status_code=404, detail="Service account not found or inactive")
     return {"api_key": new_key}
