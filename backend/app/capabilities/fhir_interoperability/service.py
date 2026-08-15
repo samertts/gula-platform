@@ -1,7 +1,6 @@
 """Application service for GULA's tenant-scoped FHIR resource boundary."""
 from __future__ import annotations
 
-from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy.orm import Session
