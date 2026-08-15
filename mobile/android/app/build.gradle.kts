@@ -40,7 +40,7 @@ android {
                 val props = Properties().apply {
                     load(FileInputStream(propsFile))
                 }
-                storeFile = file(props.getProperty("storeFile"))
+                storeFile = rootProject.file(props.getProperty("storeFile"))
                 storePassword = props.getProperty("storePassword")
                 keyAlias = props.getProperty("keyAlias")
                 keyPassword = props.getProperty("keyPassword")
