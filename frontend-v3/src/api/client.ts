@@ -106,6 +106,61 @@ export interface RoleAssignmentRequest {
   workspace_id?: string;
 }
 
+export type AccountRequestStatus =
+  | "pending_review"
+  | "under_review"
+  | "pending_verification"
+  | "verified"
+  | "pending_approval"
+  | "approved"
+  | "rejected"
+  | "expired"
+  | "cancelled";
+
+export interface AccountRequestCreatePayload {
+  email?: string;
+  phone?: string;
+  display_name?: string;
+  requested_account_type?: "human";
+}
+
+export interface AccountRequestAccepted {
+  accepted: boolean;
+  status: string;
+  request_id: string | null;
+  message: string;
+}
+
+export interface AccountRequestSummary {
+  request_id: string;
+  status: AccountRequestStatus;
+  requested_account_type: string;
+  account_id?: string | null;
+  reviewed_at?: string | null;
+  verified_at?: string | null;
+  expires_at?: string | null;
+  is_active: boolean;
+}
+
+export interface AccountSummary {
+  account_id: string;
+  account_uuid: string;
+  identity_id?: string | null;
+  status: string;
+  is_active: boolean;
+  is_locked: boolean;
+  suspended_until?: string | null;
+  email_verified: boolean;
+  phone_verified: boolean;
+  identity_verified: boolean;
+  activated_at?: string | null;
+}
+
+export interface AccountRequestApprovalResponse {
+  request: AccountRequestSummary;
+  account: AccountSummary;
+}
+
 export interface MembershipInvitationResponse {
   id: string;
   uuid: string;
@@ -256,6 +311,10 @@ const FINANCIAL_CONTROL_READ_PATTERN = /^GET \/payments\/controls\/(summary|requ
 const DEVICE_INTEGRATION_READ_PATTERN = /^GET \/device-integration\/(protocols|summary|devices(?:\/[^/]+)?|connectors|protocol-profiles|simulators|events|printer-jobs|monitoring|monitoring\/alerts)$/;
 const BILLING_WRITE_PATTERN = /^POST \/billing\/(invoices|coverages|claims\/\d+\/advance|coverages\/\d+\/verify-local|invoices\/\d+\/simulate-settlement)$/;
 const DEVICE_INTEGRATION_WRITE_PATTERN = /^POST \/device-integration\/(devices|devices\/[^/]+\/(status|probe)|connectors|connectors\/[^/]+\/(status|simulate)|protocol-profiles|printer-jobs|monitoring\/metrics|monitoring\/alerts\/\d+\/acknowledge)$/;
+const ACCOUNT_REQUEST_READ_PATTERN = /^GET \/niam\/account-requests\/?$/;
+const ACCOUNT_REQUEST_WRITE_PATTERN = /^POST \/niam\/account-requests\/(?:[^/]+\/(review|approve|activation-token|reject|expire)|accounts\/[^/]+\/(suspend|lock|reactivate|deactivate))$/;
+const ACCOUNT_REQUEST_CREATE_PATTERN = /^POST \/niam\/account-requests\/?$/;
+const ACCOUNT_REQUEST_PUBLIC_WRITE_PATTERN = /^POST \/niam\/account-requests\/[^/]+\/(verification\/start|verification\/confirm|activate)$/;
 
 function toRequestKey(method?: string, url?: string): string {
   const normalizedMethod = (method ?? "get").toUpperCase();
@@ -278,10 +337,11 @@ export function assertFrontendWriteIsAllowed(method?: string, url?: string): voi
   const key = toRequestKey(normalizedMethod, url);
   const workspaceSwitch = normalizedMethod === "post" && /^POST \/niam\/workspaces\/[^/]+\/switch$/.test(key);
   const membershipMutation = normalizedMethod === "post" && /^POST \/niam\/memberships\/(?:applications(?:\/[^/]+\/approve)?|invitations(?:\/[^/]+\/(?:accept|revoke))?|[^/]+\/(?:revoke|suspend|reactivate))$/.test(key);
-  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && (BILLING_WRITE_PATTERN.test(key) || DEVICE_INTEGRATION_WRITE_PATTERN.test(key))) {
+  const accountRequestMutation = ACCOUNT_REQUEST_CREATE_PATTERN.test(key) || ACCOUNT_REQUEST_WRITE_PATTERN.test(key) || ACCOUNT_REQUEST_PUBLIC_WRITE_PATTERN.test(key);
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && !accountRequestMutation && (BILLING_WRITE_PATTERN.test(key) || DEVICE_INTEGRATION_WRITE_PATTERN.test(key))) {
     return;
   }
-  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation) {
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && !accountRequestMutation) {
     throw new OperationalWriteBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
 }
@@ -297,7 +357,7 @@ export function assertFrontendReadIsAllowed(method?: string, url?: string): void
 
   const key = toRequestKey(normalizedMethod, url);
   const workspaceDetail = /^GET \/niam\/workspaces\/[^/]+$/.test(key);
-  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key)) return;
+  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || ACCOUNT_REQUEST_READ_PATTERN.test(key)) return;
   if (!INITIALIZATION_READ_ALLOWLIST.has(key) && !workspaceDetail) {
     throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
@@ -404,6 +464,65 @@ class ApiClient {
 
   async changeMembershipState(membershipId: string, action: "revoke" | "suspend" | "reactivate", reason?: string) {
     const response = await this.instance.post<MembershipSummary>(`/niam/memberships/${encodeURIComponent(membershipId)}/${action}`, reason ? { reason } : {});
+    return response.data;
+  }
+
+  async submitAccountRequest(body: AccountRequestCreatePayload, idempotencyKey: string) {
+    const response = await this.instance.post<AccountRequestAccepted>("/niam/account-requests/", body, {
+      headers: { "Idempotency-Key": idempotencyKey },
+    });
+    return response.data;
+  }
+
+  async listAccountRequests(status?: AccountRequestStatus) {
+    const response = await this.instance.get<{ requests: AccountRequestSummary[] }>("/niam/account-requests/", {
+      params: status ? { request_status: status } : undefined,
+    });
+    return response.data;
+  }
+
+  async reviewAccountRequest(requestId: string) {
+    const response = await this.instance.post<AccountRequestSummary>(`/niam/account-requests/${encodeURIComponent(requestId)}/review`, {});
+    return response.data;
+  }
+
+  async approveAccountRequest(requestId: string) {
+    const response = await this.instance.post<AccountRequestApprovalResponse>(`/niam/account-requests/${encodeURIComponent(requestId)}/approve`, {});
+    return response.data;
+  }
+
+  async rejectAccountRequest(requestId: string, reason_code: string) {
+    const response = await this.instance.post<AccountRequestSummary>(`/niam/account-requests/${encodeURIComponent(requestId)}/reject`, { reason_code });
+    return response.data;
+  }
+
+  async expireAccountRequest(requestId: string) {
+    const response = await this.instance.post<AccountRequestSummary>(`/niam/account-requests/${encodeURIComponent(requestId)}/expire`, {});
+    return response.data;
+  }
+
+  async issueAccountActivationToken(requestId: string) {
+    const response = await this.instance.post<{ accepted: boolean; message: string }>(`/niam/account-requests/${encodeURIComponent(requestId)}/activation-token`, {});
+    return response.data;
+  }
+
+  async mutateAccount(accountUuid: string, action: "suspend" | "lock" | "reactivate" | "deactivate", reason_code: string) {
+    const response = await this.instance.post<AccountSummary>(`/niam/account-requests/accounts/${encodeURIComponent(accountUuid)}/${action}`, { reason_code });
+    return response.data;
+  }
+
+  async startAccountRequestVerification(requestId: string) {
+    const response = await this.instance.post<{ accepted: boolean; status: string; message: string }>(`/niam/account-requests/${encodeURIComponent(requestId)}/verification/start`, {});
+    return response.data;
+  }
+
+  async confirmAccountRequestVerification(requestId: string, code: string) {
+    const response = await this.instance.post<{ status: string; message: string }>(`/niam/account-requests/${encodeURIComponent(requestId)}/verification/confirm`, { code });
+    return response.data;
+  }
+
+  async activateAccountRequest(requestId: string, token: string, password: string) {
+    const response = await this.instance.post<AccountSummary>(`/niam/account-requests/${encodeURIComponent(requestId)}/activate`, { token, password });
     return response.data;
   }
 

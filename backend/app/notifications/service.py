@@ -1,6 +1,7 @@
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 from shared.circuit_breaker import CircuitBreaker, CircuitState
 from shared.notifications.sender import get_sender
@@ -60,22 +61,28 @@ class NotificationService:
 
         sender = get_sender()
         if channel == "email":
-            deliver = lambda: sender.send_email(to, subject, body)
+            def deliver() -> bool:
+                return sender.send_email(to, subject, body)
         elif channel == "sms":
-            deliver = lambda: sender.send_sms(to, body)
+            def deliver() -> bool:
+                return sender.send_sms(to, body)
         elif channel == "whatsapp":
-            deliver = lambda: sender.send_whatsapp(to, body)
+            def deliver() -> bool:
+                return sender.send_whatsapp(to, body)
         elif channel == "push":
-            deliver = lambda: sender.send_push(to, subject, body, template_data)
+            def deliver() -> bool:
+                return sender.send_push(to, subject, body, template_data)
         elif channel == "ntfy":
             ntfy_data = template_data or {}
-            deliver = lambda: sender.send_ntfy(
-                body,
-                title=subject or "GULA alert",
-                topic=to,
-                priority=str(ntfy_data.get("priority", priority)),
-                tags=str(ntfy_data.get("tags", "")),
-            )
+
+            def deliver() -> bool:
+                return sender.send_ntfy(
+                    body,
+                    title=subject or "GULA alert",
+                    topic=to,
+                    priority=str(ntfy_data.get("priority", priority)),
+                    tags=str(ntfy_data.get("tags", "")),
+                )
         else:
             return NotificationResult(
                 success=False,
@@ -87,7 +94,7 @@ class NotificationService:
         success, error = self._run_with_circuit(deliver)
         if success:
             return NotificationResult(success=True, channel=channel, recipient=to)
-        logger.error("[NOTIFICATION] %s delivery failed to %s: %s", channel, to, error)
+        logger.error("[NOTIFICATION] %s delivery failed: %s", channel, error)
         return NotificationResult(
             success=False,
             channel=channel,

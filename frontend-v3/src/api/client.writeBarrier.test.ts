@@ -47,6 +47,14 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices/VITAL-001/raw-command")).toThrow(OperationalWriteBlockedError);
   });
 
+  it("يسمح فقط بمسارات account-request المصنفة ويمنع المسارات غير المحددة", () => {
+    expect(() => assertFrontendReadIsAllowed("get", "/niam/account-requests/")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/account-requests/request-1/review")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/account-requests/request-1/verification/start")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/account-requests/accounts/account-1/suspend")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/account-requests/request-1/internal-bypass")).toThrow(OperationalWriteBlockedError);
+  });
+
   it("يرفض قراءة REST غير مصنفة ويحصر الاستثناء في تهيئة الجلسة العامة", () => {
     expect(() => assertFrontendReadIsAllowed("get", "/patients")).toThrow(OperationalReadBlockedError);
     expect(() => assertFrontendReadIsAllowed("get", "/r/public-token")).toThrow(OperationalReadBlockedError);

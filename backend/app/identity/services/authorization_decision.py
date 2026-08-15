@@ -180,6 +180,12 @@ class AuthorizationDecisionService:
             "assign",
             "revoke",
             "transfer",
+            "review",
+            "activate",
+            "suspend",
+            "lock",
+            "reactivate",
+            "deactivate",
             "identity_change",
             "security_change",
         },
@@ -308,13 +314,26 @@ class AuthorizationDecisionService:
 
     @staticmethod
     def _requires_management_authority(request: AuthorizationRequest) -> bool:
-        return request.resource_type in {"role", "membership", "membership_application", "membership_invitation"} and request.action in {
+        return request.resource_type in {
+            "role",
+            "membership",
+            "membership_application",
+            "membership_invitation",
+            "account_request",
+            "account",
+        } and request.action in {
             "assign",
             "revoke",
             "invite",
+            "review",
             "approve",
+            "reject",
+            "expire",
+            "activate",
             "suspend",
+            "lock",
             "reactivate",
+            "deactivate",
         }
 
     async def _has_management_authority(
@@ -322,9 +341,15 @@ class AuthorizationDecisionService:
         actor: AuthorizationActor,
         request: AuthorizationRequest,
     ) -> bool:
-        if not self._requires_management_authority(request) or not request.organization_id:
+        if not self._requires_management_authority(request):
             return False
-        return await self._can_manage_organization(actor.account.id, request.organization_id)
+        organization_id = request.organization_id
+        if request.resource_type in {"account_request", "account"} and not organization_id:
+            configured_governance_org = request.resource_context.get("governance_organization_id")
+            organization_id = configured_governance_org if isinstance(configured_governance_org, str) else None
+        if not organization_id:
+            return False
+        return await self._can_manage_organization(actor.account.id, organization_id)
 
     async def _can_manage_organization(self, account_id: str, organization_id: str) -> bool:
         from app.identity.services.membership_service import MembershipService

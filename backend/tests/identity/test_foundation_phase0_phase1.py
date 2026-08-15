@@ -64,7 +64,7 @@ async def test_account_creation_rejects_missing_identifier_and_short_password(mo
 
 def test_account_lifecycle_matrix_is_deny_by_default():
     assert LEGAL_TRANSITIONS[AccountStatus.pending_verification.value] == frozenset(
-        {AccountStatus.active.value, AccountStatus.deactivated.value},
+        {AccountStatus.verified.value, AccountStatus.rejected.value, AccountStatus.expired.value},
     )
     assert LEGAL_TRANSITIONS[AccountStatus.deactivated.value] == frozenset()
     assert not AccountLifecycleService.can_transition(

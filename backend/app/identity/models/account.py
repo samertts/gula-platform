@@ -14,12 +14,18 @@ class AccountType(StrEnum):
 
 
 class AccountStatus(StrEnum):
+    requested = "requested"
     pending_verification = "pending_verification"
+    verified = "verified"
+    pending_approval = "pending_approval"
+    approved = "approved"
     active = "active"
     suspended = "suspended"
     locked = "locked"
     disabled = "disabled"
     deactivated = "deactivated"
+    rejected = "rejected"
+    expired = "expired"
 
 
 class Account(IdentityBaseEntity):
@@ -46,6 +52,7 @@ class Account(IdentityBaseEntity):
     is_active = Column(Boolean, default=True, nullable=False)
     is_locked = Column(Boolean, default=False, nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)
+    suspended_until = Column(DateTime(timezone=True), nullable=True)
     lock_reason = Column(String(200), nullable=True)
 
     failed_login_attempts = Column(Integer, default=0, nullable=False)

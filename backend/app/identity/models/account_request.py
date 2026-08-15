@@ -8,8 +8,13 @@ from app.identity.base import IdentityBaseEntity
 
 class AccountRequestStatus(StrEnum):
     pending_review = "pending_review"
+    under_review = "under_review"
+    pending_verification = "pending_verification"
+    verified = "verified"
+    pending_approval = "pending_approval"
     approved = "approved"
     rejected = "rejected"
+    expired = "expired"
     cancelled = "cancelled"
 
 
@@ -40,7 +45,15 @@ class AccountCreationRequest(IdentityBaseEntity):
         nullable=True,
     )
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_reason_encrypted = Column(String(1024), nullable=True)
     rejection_reason_encrypted = Column(String(1024), nullable=True)
+    verification_method = Column(String(50), nullable=True)
+    verification_provider = Column(String(100), nullable=True)
+    verification_reference = Column(String(255), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    activation_token_hash = Column(String(64), nullable=True, index=True)
+    activation_token_expires_at = Column(DateTime(timezone=True), nullable=True)
     account_id = Column(
         String(26),
         ForeignKey("niam_accounts.id", ondelete="SET NULL"),

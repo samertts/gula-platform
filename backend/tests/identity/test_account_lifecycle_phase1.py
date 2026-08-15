@@ -25,8 +25,11 @@ def account(status: str):
     )
 
 
-def test_pending_account_can_activate():
-    result = AccountLifecycleService.activate(account(AccountStatus.pending_verification.value))
+def test_pending_account_cannot_activate_without_verification_and_approval():
+    with pytest.raises(InvalidAccountTransition):
+        AccountLifecycleService.activate(account(AccountStatus.pending_verification.value))
+
+    result = AccountLifecycleService.activate(account(AccountStatus.approved.value))
     assert result.status == AccountStatus.active.value
     assert result.is_active is True
 
