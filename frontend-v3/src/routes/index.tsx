@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { lazy, Suspense, type ReactNode } from "react";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
-import { LoadingSpinner } from "@/components/shared/PageComponents";
+import { LoadingSpinner, PageLoadingSkeleton } from "@/components/shared/PageComponents";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserRole } from "@/types";
@@ -103,7 +103,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 function LazyPage({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>;
+  return <Suspense fallback={<PageLoadingSkeleton />}>{children}</Suspense>;
 }
 
 function InstitutionalOnlyRoute({ children }: { children: ReactNode }) {
