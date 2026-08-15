@@ -201,6 +201,7 @@ jobs:
   assemble-debug:
     name: Assemble Debug APK
     needs: [unit-test]
+    if: ${{ inputs.build_type != 'release' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
