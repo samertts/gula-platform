@@ -6,9 +6,10 @@ P0 write path; cash is the only capturable payment method in this release.
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Any, Iterable
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 from uuid import uuid4
 
 from sqlalchemy import func
@@ -16,8 +17,6 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.domain.exceptions import ConflictError, NotFoundError, ServiceError
-
-from .state_machine import transition_payment, transition_refund
 
 from .models import (
     CashShift,
@@ -33,6 +32,7 @@ from .models import (
     PaymentRefund,
     ReconciliationCase,
 )
+from .state_machine import transition_payment, transition_refund
 
 MONEY_QUANTUM = Decimal("0.01")
 PLATFORM_ROLES = {"master_admin", "ministry_admin", "province_admin"}
@@ -457,6 +457,101 @@ class PaymentService:
             "CASH_CAPTURED",
             actor_user_id,
             {"intent_id": intent.id, "invoice_id": invoice.id, "amount": str(intent.amount), "cash_shift_id": shift.id},
+        )
+        return attempt
+
+    def capture_internal_electronic(
+        self,
+        *,
+        institution_id: int,
+        intent_id: str,
+        provider_code: str,
+        provider_transaction_id: str,
+        actor_user_id: int,
+    ) -> PaymentAttempt:
+        """Record a verified callback from the approved internal payment rail.
+
+        External providers must be normalized and signature-verified by an adapter
+        before reaching this method.  The core never accepts raw webhook payloads.
+        """
+        if provider_code != "gula_internal":
+            raise PaymentStateError("Only the approved internal payment rail is supported")
+        normalized_reference = provider_transaction_id.strip()
+        if not normalized_reference or len(normalized_reference) > 128:
+            raise ServiceError("A valid internal provider transaction reference is required", status_code=400)
+        intent = self._intent(intent_id, institution_id)
+        if intent.method == "CASH":
+            raise PaymentStateError("Cash intents must use the cashier capture workflow")
+        existing = (
+            self.db.query(PaymentAttempt)
+            .filter(
+                PaymentAttempt.provider_code == provider_code,
+                PaymentAttempt.provider_transaction_id == normalized_reference,
+            )
+            .first()
+        )
+        if existing is not None:
+            if existing.intent_id != intent.id:
+                raise ConflictError("Provider transaction reference belongs to another payment intent")
+            if existing.status == "SUCCEEDED":
+                return existing
+            raise PaymentStateError("The internal provider transaction is not successful")
+        successful = (
+            self.db.query(PaymentAttempt)
+            .filter(PaymentAttempt.intent_id == intent.id, PaymentAttempt.status == "SUCCEEDED")
+            .first()
+        )
+        if successful is not None:
+            return successful
+        if intent.status not in {"PENDING", "PROCESSING"}:
+            raise PaymentStateError("Payment intent cannot be confirmed in its current state")
+        invoice = self._invoice(intent.invoice_id, institution_id)
+        if money(intent.amount) > money(invoice.total_amount - invoice.paid_amount):
+            raise PaymentStateError("Invoice balance has changed; create a new payment intent")
+        transition_payment(intent, "PROCESSING")
+        attempt = PaymentAttempt(
+            intent_id=intent.id,
+            provider_code=provider_code,
+            provider_transaction_id=normalized_reference,
+            amount=intent.amount,
+            currency="IQD",
+            status="SUCCEEDED",
+            verified_at=now_utc(),
+            safe_provider_metadata={"verification": "approved_internal_callback"},
+        )
+        self.db.add(attempt)
+        self.db.flush()
+        transition_payment(intent, "SUCCEEDED")
+        intent.provider_reference = normalized_reference
+        invoice.paid_amount = money(invoice.paid_amount + intent.amount)
+        invoice.status = "PAID" if money(invoice.paid_amount) == money(invoice.total_amount) else "PARTIALLY_PAID"
+        settlement_account = self._account(
+            institution_id,
+            "ELECTRONIC_SETTLEMENT",
+            "Electronic payment settlement",
+            "asset",
+        )
+        receivable_account = self._account(
+            institution_id,
+            "ACCOUNTS_RECEIVABLE",
+            "Patient receivables",
+            "asset",
+        )
+        self._post_entry(
+            institution_id,
+            "electronic_payment",
+            attempt.id,
+            "Electronic receipt against patient invoice",
+            [(settlement_account, intent.amount, Decimal("0.00")), (receivable_account, Decimal("0.00"), intent.amount)],
+            actor_user_id,
+        )
+        self._audit(
+            institution_id,
+            "payment_attempt",
+            attempt.id,
+            "ELECTRONIC_CAPTURED",
+            actor_user_id,
+            {"intent_id": intent.id, "invoice_id": invoice.id, "provider_code": provider_code},
         )
         return attempt
 

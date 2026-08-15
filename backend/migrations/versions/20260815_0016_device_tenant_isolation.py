@@ -13,27 +13,27 @@ branch_labels = None
 depends_on = None
 
 
+def _switch_unique_constraint(old_name: str, new_name: str, new_columns: list[str]) -> None:
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("integrated_devices", recreate="always") as batch_op:
+            batch_op.drop_constraint(old_name, type_="unique")
+            batch_op.create_unique_constraint(new_name, new_columns)
+    else:
+        op.drop_constraint(old_name, "integrated_devices", type_="unique")
+        op.create_unique_constraint(new_name, "integrated_devices", new_columns)
+
+
 def upgrade() -> None:
-    op.drop_constraint(
+    _switch_unique_constraint(
         "uq_integrated_devices_uid",
-        "integrated_devices",
-        type_="unique",
-    )
-    op.create_unique_constraint(
         "uq_integrated_devices_lab_uid",
-        "integrated_devices",
         ["lab_id", "device_uid"],
     )
 
 
 def downgrade() -> None:
-    op.drop_constraint(
+    _switch_unique_constraint(
         "uq_integrated_devices_lab_uid",
-        "integrated_devices",
-        type_="unique",
-    )
-    op.create_unique_constraint(
         "uq_integrated_devices_uid",
-        "integrated_devices",
         ["device_uid"],
     )

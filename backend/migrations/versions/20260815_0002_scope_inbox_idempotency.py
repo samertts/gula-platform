@@ -28,16 +28,27 @@ def upgrade() -> None:
         return
 
     constraints = {item["name"] for item in inspector.get_unique_constraints(_TABLE)}
-    if _OLD_CONSTRAINT in constraints:
-        op.drop_constraint(_OLD_CONSTRAINT, _TABLE, type_="unique")
-
-    constraints = {item["name"] for item in sa.inspect(bind).get_unique_constraints(_TABLE)}
-    if _NEW_CONSTRAINT not in constraints:
-        op.create_unique_constraint(
-            _NEW_CONSTRAINT,
-            _TABLE,
-            ["tenant_id", "idempotency_key"],
-        )
+    has_old = _OLD_CONSTRAINT in constraints
+    has_new = _NEW_CONSTRAINT in constraints
+    if bind.dialect.name == "sqlite":
+        if has_old or not has_new:
+            with op.batch_alter_table(_TABLE, recreate="always") as batch_op:
+                if has_old:
+                    batch_op.drop_constraint(_OLD_CONSTRAINT, type_="unique")
+                if not has_new:
+                    batch_op.create_unique_constraint(
+                        _NEW_CONSTRAINT,
+                        ["tenant_id", "idempotency_key"],
+                    )
+    else:
+        if has_old:
+            op.drop_constraint(_OLD_CONSTRAINT, _TABLE, type_="unique")
+        if not has_new:
+            op.create_unique_constraint(
+                _NEW_CONSTRAINT,
+                _TABLE,
+                ["tenant_id", "idempotency_key"],
+            )
 
 
 def downgrade() -> None:
@@ -47,8 +58,17 @@ def downgrade() -> None:
         return
 
     constraints = {item["name"] for item in inspector.get_unique_constraints(_TABLE)}
-    if _NEW_CONSTRAINT in constraints:
-        op.drop_constraint(_NEW_CONSTRAINT, _TABLE, type_="unique")
-    constraints = {item["name"] for item in sa.inspect(bind).get_unique_constraints(_TABLE)}
-    if _OLD_CONSTRAINT not in constraints:
-        op.create_unique_constraint(_OLD_CONSTRAINT, _TABLE, ["idempotency_key"])
+    has_new = _NEW_CONSTRAINT in constraints
+    has_old = _OLD_CONSTRAINT in constraints
+    if bind.dialect.name == "sqlite":
+        if has_new or not has_old:
+            with op.batch_alter_table(_TABLE, recreate="always") as batch_op:
+                if has_new:
+                    batch_op.drop_constraint(_NEW_CONSTRAINT, type_="unique")
+                if not has_old:
+                    batch_op.create_unique_constraint(_OLD_CONSTRAINT, ["idempotency_key"])
+    else:
+        if has_new:
+            op.drop_constraint(_NEW_CONSTRAINT, _TABLE, type_="unique")
+        if not has_old:
+            op.create_unique_constraint(_OLD_CONSTRAINT, _TABLE, ["idempotency_key"])

@@ -117,6 +117,8 @@ EXTENDED_ROLE_LEVELS: dict[str, int] = {
     "finance_auditor":    45,
     "finance_operator":   35,
     "cashier":            25,
+    "receptionist":        22,
+
     "doctor":             40,
     "staff":              20,
     "lab_staff":          20,
@@ -160,6 +162,22 @@ EXTENDED_ALL_PERMISSIONS: list[str] = [
     "subscriptions:manage",
     "subscriptions:read",
     "subscriptions:usage",
+    "popular_clinics:read",
+    "popular_clinics:manage",
+    "popular_clinics:patient:read",
+    "popular_clinics:clinical:write",
+    "popular_clinics:prescription:write",
+    "popular_clinics:dispense:approve",
+    "popular_clinics:dispense:record",
+    "popular_clinics:ticket:read",
+    "popular_clinics:ticket:issue",
+    "popular_clinics:ticket:cancel",
+    "popular_clinics:payment:capture",
+    "popular_clinics:payment:confirm",
+    "popular_clinics:report:daily",
+    "popular_clinics:report:monthly",
+    "popular_clinics:workforce:manage",
+    "popular_clinics:alerts:manage",
 ]
 
 EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
@@ -169,11 +187,14 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "dashboard:read", "audit:read",
         "platform:manage_labs", "platform:manage_users", "platform:view_stats",
         "payments:read",
+        "popular_clinics:read", "popular_clinics:report:monthly",
     ],
     "province_admin": [
         "patients:read", "orders:read", "results:read", "lab:read",
         "dashboard:read", "audit:read",
         "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+        "popular_clinics:read", "popular_clinics:report:monthly", "popular_clinics:manage",
+        "popular_clinics:workforce:manage",
     ],
     "admin": [
         "patients:read", "patients:write", "patients:delete",
@@ -185,6 +206,11 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "payments:read", "payments:write", "payments:cashier", "payments:refund:request",
         "payments:refund:approve", "payments:refund:process", "payments:reconcile", "payments:fx:quote",
         "payments:orchestration:route", "payments:control:read", "payments:control:request", "subscriptions:read", "subscriptions:usage",
+        "popular_clinics:read", "popular_clinics:manage", "popular_clinics:patient:read",
+        "popular_clinics:clinical:write", "popular_clinics:prescription:write", "popular_clinics:dispense:approve", "popular_clinics:dispense:record",
+        "popular_clinics:ticket:read", "popular_clinics:ticket:issue", "popular_clinics:ticket:cancel",
+        "popular_clinics:payment:capture", "popular_clinics:payment:confirm", "popular_clinics:report:daily",
+        "popular_clinics:report:monthly", "popular_clinics:workforce:manage", "popular_clinics:alerts:manage",
     ],
     "lab_admin": [
         "patients:read", "patients:write", "patients:delete",
@@ -196,11 +222,18 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "payments:read", "payments:write", "payments:cashier", "payments:refund:request",
         "payments:refund:approve", "payments:refund:process", "payments:reconcile", "payments:fx:quote",
         "payments:orchestration:route", "payments:control:read", "payments:control:request", "subscriptions:read", "subscriptions:usage",
+        "popular_clinics:read", "popular_clinics:manage", "popular_clinics:patient:read",
+        "popular_clinics:clinical:write", "popular_clinics:prescription:write", "popular_clinics:dispense:approve", "popular_clinics:dispense:record",
+        "popular_clinics:ticket:read", "popular_clinics:ticket:issue", "popular_clinics:ticket:cancel",
+        "popular_clinics:payment:capture", "popular_clinics:payment:confirm", "popular_clinics:report:daily",
+        "popular_clinics:report:monthly", "popular_clinics:workforce:manage", "popular_clinics:alerts:manage",
     ],
     "finance_controller": [
         "dashboard:read", "audit:read", "payments:read", "payments:write",
         "payments:refund:approve", "payments:reconcile", "payments:orchestration:manage",
         "payments:control:read", "payments:control:approve", "payments:control:apply",
+        "popular_clinics:read", "popular_clinics:payment:confirm", "popular_clinics:report:daily",
+        "popular_clinics:report:monthly",
     ],
     "refund_reviewer": [
         "dashboard:read", "audit:read", "payments:read", "payments:refund:approve",
@@ -209,6 +242,8 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
     "reconciler": [
         "dashboard:read", "audit:read", "payments:read", "payments:reconcile",
         "payments:control:read", "payments:control:apply",
+        "popular_clinics:read", "popular_clinics:payment:confirm", "popular_clinics:report:daily",
+        "popular_clinics:report:monthly",
     ],
     "finance_auditor": [
         "dashboard:read", "audit:read", "payments:read", "payments:control:read",
@@ -216,13 +251,20 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
     "finance_operator": [
         "dashboard:read", "payments:read", "payments:write",
         "payments:control:read", "payments:control:request",
+        "popular_clinics:read", "popular_clinics:patient:read", "popular_clinics:ticket:read",
+        "popular_clinics:report:daily",
     ],
     "cashier": [
         "dashboard:read", "payments:read", "payments:cashier",
         "payments:control:read", "payments:control:request",
+        "popular_clinics:read", "popular_clinics:patient:read", "popular_clinics:ticket:read",
+        "popular_clinics:ticket:issue", "popular_clinics:ticket:cancel", "popular_clinics:payment:capture",
+        "popular_clinics:report:daily",
     ],
     "doctor": [
         "patients:read", "orders:read", "results:read", "dashboard:read",
+        "popular_clinics:read", "popular_clinics:patient:read", "popular_clinics:clinical:write",
+        "popular_clinics:prescription:write", "popular_clinics:ticket:read", "popular_clinics:report:monthly",
     ],
     "staff": [
         "patients:read", "patients:write",
@@ -239,13 +281,20 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "lab:read", "dashboard:read",
         "payments:read", "payments:write", "payments:cashier", "payments:refund:request", "payments:fx:quote",
         "payments:orchestration:route",
+        "popular_clinics:read", "popular_clinics:patient:read", "popular_clinics:clinical:write",
+        "popular_clinics:dispense:record",
     ],
     "technician": [
         "orders:read", "orders:write",
         "results:read", "results:write",
         "lab:read", "dashboard:read",
+        "popular_clinics:read", "popular_clinics:patient:read", "popular_clinics:clinical:write",
     ],
     "citizen": [],
+    "receptionist": [
+        "patients:read", "popular_clinics:read", "popular_clinics:patient:read", "popular_clinics:ticket:read",
+        "popular_clinics:ticket:issue",
+    ],
 }
 
 EXTENDED_VALID_ROLES: set[str] = set(EXTENDED_ROLE_PERMISSIONS.keys())

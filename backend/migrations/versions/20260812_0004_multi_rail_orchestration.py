@@ -57,13 +57,22 @@ def upgrade() -> None:
     op.add_column("pay_providers", sa.Column("rail_code", sa.String(64), nullable=True))
     op.add_column("pay_providers", sa.Column("jurisdiction_code", sa.String(16), nullable=True))
     op.add_column("pay_providers", sa.Column("live_approved", sa.Boolean(), nullable=False, server_default=sa.false()))
-    op.create_foreign_key("fk_pay_provider_entity", "pay_providers", "pay_payment_entities", ["payment_entity_id"], ["id"])
-    op.create_foreign_key("fk_pay_provider_rail", "pay_providers", "pay_payment_rails", ["rail_code"], ["code"])
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("pay_providers", recreate="always") as batch_op:
+            batch_op.create_foreign_key("fk_pay_provider_entity", "pay_payment_entities", ["payment_entity_id"], ["id"])
+            batch_op.create_foreign_key("fk_pay_provider_rail", "pay_payment_rails", ["rail_code"], ["code"])
+    else:
+        op.create_foreign_key("fk_pay_provider_entity", "pay_providers", "pay_payment_entities", ["payment_entity_id"], ["id"])
+        op.create_foreign_key("fk_pay_provider_rail", "pay_providers", "pay_payment_rails", ["rail_code"], ["code"])
     op.create_index("ix_pay_providers_payment_entity_id", "pay_providers", ["payment_entity_id"])
     op.create_index("ix_pay_providers_rail_code", "pay_providers", ["rail_code"])
 
     op.add_column("pay_payment_intents", sa.Column("payment_entity_id", sa.String(36), nullable=True))
-    op.create_foreign_key("fk_pay_intent_entity", "pay_payment_intents", "pay_payment_entities", ["payment_entity_id"], ["id"])
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("pay_payment_intents", recreate="always") as batch_op:
+            batch_op.create_foreign_key("fk_pay_intent_entity", "pay_payment_entities", ["payment_entity_id"], ["id"])
+    else:
+        op.create_foreign_key("fk_pay_intent_entity", "pay_payment_intents", "pay_payment_entities", ["payment_entity_id"], ["id"])
     op.create_index("ix_pay_payment_intents_payment_entity_id", "pay_payment_intents", ["payment_entity_id"])
 
     op.create_table(
@@ -119,16 +128,31 @@ def downgrade() -> None:
     op.drop_table("pay_payment_routing_decisions")
     op.drop_table("pay_payment_routing_rules")
     op.drop_index("ix_pay_payment_intents_payment_entity_id", table_name="pay_payment_intents")
-    op.drop_constraint("fk_pay_intent_entity", "pay_payment_intents", type_="foreignkey")
-    op.drop_column("pay_payment_intents", "payment_entity_id")
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("pay_payment_intents", recreate="always") as batch_op:
+            batch_op.drop_constraint("fk_pay_intent_entity", type_="foreignkey")
+            batch_op.drop_column("payment_entity_id")
+    else:
+        op.drop_constraint("fk_pay_intent_entity", "pay_payment_intents", type_="foreignkey")
+        op.drop_column("pay_payment_intents", "payment_entity_id")
     op.drop_index("ix_pay_providers_rail_code", table_name="pay_providers")
     op.drop_index("ix_pay_providers_payment_entity_id", table_name="pay_providers")
-    op.drop_constraint("fk_pay_provider_rail", "pay_providers", type_="foreignkey")
-    op.drop_constraint("fk_pay_provider_entity", "pay_providers", type_="foreignkey")
-    op.drop_column("pay_providers", "live_approved")
-    op.drop_column("pay_providers", "created_by")
-    op.drop_column("pay_providers", "jurisdiction_code")
-    op.drop_column("pay_providers", "rail_code")
-    op.drop_column("pay_providers", "payment_entity_id")
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("pay_providers", recreate="always") as batch_op:
+            batch_op.drop_constraint("fk_pay_provider_rail", type_="foreignkey")
+            batch_op.drop_constraint("fk_pay_provider_entity", type_="foreignkey")
+            batch_op.drop_column("live_approved")
+            batch_op.drop_column("created_by")
+            batch_op.drop_column("jurisdiction_code")
+            batch_op.drop_column("rail_code")
+            batch_op.drop_column("payment_entity_id")
+    else:
+        op.drop_constraint("fk_pay_provider_rail", "pay_providers", type_="foreignkey")
+        op.drop_constraint("fk_pay_provider_entity", "pay_providers", type_="foreignkey")
+        op.drop_column("pay_providers", "live_approved")
+        op.drop_column("created_by")
+        op.drop_column("jurisdiction_code")
+        op.drop_column("rail_code")
+        op.drop_column("payment_entity_id")
     op.drop_table("pay_payment_rails")
     op.drop_table("pay_payment_entities")

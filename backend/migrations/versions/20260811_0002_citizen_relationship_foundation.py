@@ -65,13 +65,25 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
 
-        for constraint_name, column, target_table in (
+        foreign_keys = [
             ("fk_citizen_relationship_user", "legacy_user_id", "users"),
             ("fk_citizen_relationship_lab_user", "legacy_lab_user_id", "lab_users"),
             ("fk_citizen_relationship_citizen", "citizen_id", "national_citizens"),
             ("fk_citizen_relationship_patient", "patient_id", "national_patients"),
-        ):
-            if _has_table(target_table):
+        ]
+        existing_foreign_keys = [item for item in foreign_keys if _has_table(item[2])]
+        if op.get_bind().dialect.name == "sqlite":
+            with op.batch_alter_table(_TABLE, recreate="always") as batch_op:
+                for constraint_name, column, target_table in existing_foreign_keys:
+                    batch_op.create_foreign_key(
+                        constraint_name,
+                        target_table,
+                        [column],
+                        ["id"],
+                        ondelete="RESTRICT",
+                    )
+        else:
+            for constraint_name, column, target_table in existing_foreign_keys:
                 op.create_foreign_key(
                     constraint_name,
                     _TABLE,
@@ -103,13 +115,21 @@ def downgrade() -> None:
 
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    for constraint_name in (
+    foreign_keys = {
         "fk_citizen_relationship_patient",
         "fk_citizen_relationship_citizen",
         "fk_citizen_relationship_lab_user",
         "fk_citizen_relationship_user",
-    ):
-        if constraint_name in {c["name"] for c in inspector.get_foreign_keys(_TABLE)}:
+    }
+    existing_foreign_keys = foreign_keys.intersection(
+        {c["name"] for c in inspector.get_foreign_keys(_TABLE)}
+    )
+    if bind.dialect.name == "sqlite":
+        with op.batch_alter_table(_TABLE, recreate="always") as batch_op:
+            for constraint_name in existing_foreign_keys:
+                batch_op.drop_constraint(constraint_name, type_="foreignkey")
+    else:
+        for constraint_name in existing_foreign_keys:
             op.drop_constraint(constraint_name, _TABLE, type_="foreignkey")
 
     for index_name in (
