@@ -22,6 +22,7 @@ from app.database import Base
 from app.models import (
     Lab, LabUser, User, Patient, TestType,
     LabOrder, LabResult, AuditLog, Sample, QualityControl,
+    AccessibilityProfile, HealthPreference,
 )
 from app.models.claim import Claim, ClaimItem  # noqa: F401
 from app.billing.models import (  # noqa: F401

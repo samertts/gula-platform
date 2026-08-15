@@ -157,3 +157,82 @@
     outline-offset: 2px;
   }
 }
+
+
+/* Phase 21: user-controlled, presentation-only accessibility adaptations. */
+html {
+  font-size: calc(100% * var(--gula-text-scale, 1));
+}
+
+.gula-high-contrast {
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
+  --muted-foreground: #1f2937;
+  --border: #111827;
+  --input: #111827;
+  --ring: #000000;
+}
+
+.dark.gula-high-contrast {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #000000;
+  --card-foreground: #ffffff;
+  --muted-foreground: #f3f4f6;
+  --border: #ffffff;
+  --input: #ffffff;
+  --ring: #ffffff;
+}
+
+[data-reduced-color-dependence="true"] [data-status],
+[data-color-blind-mode]:not([data-color-blind-mode="none"]) [data-status] {
+  position: relative;
+}
+
+[data-reduced-color-dependence="true"] [data-status]::before,
+[data-color-blind-mode]:not([data-color-blind-mode="none"]) [data-status]::before {
+  content: attr(data-status-label);
+  margin-inline-end: 0.35rem;
+  font-weight: 700;
+}
+
+[data-reduced-visual-density="true"] .dense-table,
+.gula-simple-interface .dense-table {
+  line-height: 1.75;
+}
+
+.gula-dyslexia-friendly body {
+  letter-spacing: 0.01em;
+  word-spacing: 0.08em;
+}
+
+.gula-reduced-motion *,
+.gula-reduced-motion *::before,
+.gula-reduced-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (pointer: coarse) {
+  button,
+  [role="button"],
+  a {
+    min-height: calc(2.75rem * var(--gula-touch-scale, 1));
+    min-width: calc(2.75rem * var(--gula-touch-scale, 1));
+  }
+}

@@ -49,6 +49,7 @@ from .subscription import FeatureFlag, LabSubscription, UpgradeDemandScore, Upgr
 from .tenant import Tenant
 from .test_type import TestType
 from .user import User
+from .user_preferences import AccessibilityProfile, HealthPreference
 
 __all__ = [
     "AIFeedback",
@@ -56,6 +57,7 @@ __all__ = [
     "AIRetrievalRef",
     "AIUnresolvedQuestion",
     "Appointment",
+    "AccessibilityProfile",
     "AuditLog",
     "AuthorizationAudit",
     "Base",
@@ -81,6 +83,7 @@ __all__ = [
     "LabResult",
     "LabSubscription",
     "LabUser",
+    "HealthPreference",
     "MedicalTerminologyNormalized",
     "OAuth2Client",
     "OAuth2Token",
