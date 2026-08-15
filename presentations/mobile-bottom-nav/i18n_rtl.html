@@ -3,79 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=1280, initial-scale=1.0" />
-  <title>i18n وRTL للغات GULA الخمس</title>
+  <title>i18n وRTL في Mobile Bottom Nav</title>
   <style>
     * { box-sizing: border-box; }
-    html,body{margin:0;padding:0;} /* remove default 8px body margin to reduce total page height */
+    html, body { margin: 0; }
     .slide-container { width: 1280px; min-height: 720px; background: #f0f9ff; color: #082f49; font-family: "Noto Sans Arabic", "Segoe UI", Arial, sans-serif; position: relative; }
-    .top-mark { position: absolute; top: 0; right: 0; width: 330px; min-height: 10px; background: #0284c7; }
-    .content { min-height: 720px; padding-top: 54px; padding-left: 68px; padding-right: 68px; }
+    .top-mark { position: absolute; top: 0; right: 0; width: 330px; min-height: 6px; background: #0284c7; }
+    .content { min-height: 720px; padding-top: 54px; padding-left: 48px; padding-right: 48px; }
     .eyebrow { color: #0284c7; font-size: 14px; font-weight: 800; letter-spacing: .1em; }
     h1 { margin: 10px 0 0; font-size: 39px; line-height: 1.22; font-weight: 800; letter-spacing: -.025em; }
-    .lead { margin-top: 10px; max-width: 880px; color: #52768c; font-size: 18px; line-height: 1.55; }
-    .divider { min-height: 1px; margin-top: 20px; background: repeating-linear-gradient(to left, #90cdec 0 7px, transparent 7px 14px); }
-
-    /* Reduced vertical spacing and inner paddings to avoid overflow */
-    .flow { display: grid; grid-template-columns: 1fr 66px 1fr 66px 1fr; gap: 0; align-items: start; margin-top: 24px; }
-    .stage { min-height: 200px; border-top: 4px solid #0284c7; background: rgba(255,255,255,.58); padding-top: 14px; padding-left: 18px; padding-right: 18px; }
+    .lead { margin-top: 8px; max-width: 900px; color: #52768c; font-size: 18px; line-height: 1.55; }
+    .divider { min-height: 1px; margin-top: 16px; background: repeating-linear-gradient(to left, #90cdec 0 7px, transparent 7px 14px); }
+    .flow { display: grid; grid-template-columns: 1fr 56px 1fr 56px 1fr; gap: 0; align-items: start; margin-top: 18px; }
+    .stage { min-height: 170px; border-top: 4px solid #0284c7; background: rgba(255,255,255,.58); padding-top: 12px; padding-left: 14px; padding-right: 14px; }
     .stage-number { color: #0284c7; font-size: 13px; font-weight: 800; letter-spacing: .08em; }
-    .stage h2 { margin: 8px 0 0; font-size: 24px; line-height: 1.35; }
-    .stage p { margin: 10px 0 0; color: #46687d; font-size: 16px; line-height: 1.65; }
-    .code { display: inline-block; margin-top: 12px; background: #e0f2fe; color: #075985; font-family: Consolas, monospace; font-size: 14px; direction: ltr; padding-top: 6px; padding-left: 8px; padding-right: 8px; }
-    .arrow { color: #0284c7; text-align: center; font-size: 36px; font-weight: 400; }
-    .language-section { margin-top: 20px; }
+    .stage h2 { margin: 6px 0 0; font-size: 23px; line-height: 1.35; }
+    .stage p { margin: 8px 0 0; color: #46687d; font-size: 15px; line-height: 1.6; }
+    .code { display: inline-block; margin-top: 8px; background: #e0f2fe; color: #075985; font-family: Consolas, monospace; font-size: 13px; padding-top: 4px; padding-left: 8px; padding-right: 8px; direction: ltr; }
+    .arrow { color: #0284c7; text-align: center; font-size: 28px; font-weight: 400; }
+    .language-section { margin-top: 12px; }
     .language-label { color: #52768c; font-size: 14px; font-weight: 800; }
-    .languages { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 12px; }
-    .language { min-height: 60px; border-top: 2px solid #7dd3fc; background: rgba(255,255,255,.5); padding-top: 10px; text-align: center; }
-    .language strong { display: block; color: #082f49; font-size: 18px; }
-    .language span { display: block; margin-top: 4px; color: #52768c; font-size: 12px; direction: ltr; }
-    .note { margin-top: 18px; color: #0c4a6e; font-size: 15px; font-weight: 700; }
-    .accent-rule { display: inline-block; width: 56px; min-height: 5px; margin-left: 12px; vertical-align: middle; background: #0284c7; }
+    .languages { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+    .language { min-height: 46px; border-top: 2px solid #7dd3fc; background: rgba(255,255,255,.5); padding-top: 6px; text-align: center; }
+    .language strong { display: block; color: #082f49; font-size: 16px; }
+    .language span { display: block; margin-top: 3px; color: #52768c; font-size: 11px; direction: ltr; }
+    .language.partial { border-top-color: #f59e0b; }
+    .note { margin-top: 10px; color: #0c4a6e; font-size: 14px; font-weight: 700; line-height: 1.5; }
+    .accent-rule { display: inline-block; width: 48px; min-height: 4px; margin-left: 8px; vertical-align: middle; background: #0284c7; }
   </style>
 </head>
 <body>
   <div class="slide-container">
     <div class="top-mark"></div>
     <div class="content">
-      <div class="eyebrow">04 · LANGUAGE &amp; DIRECTION</div>
-      <h1>i18n وRTL للغات GULA الخمس</h1>
-      <p class="lead">الشريط لا يحمل نصًا عربيًا ثابتًا؛ بل يستهلك مفاتيح موحدة ويعرض نصًا وسمات وصول متوافقة مع اللغة المختارة.</p>
+      <div class="eyebrow">04 · LANGUAGE, RTL &amp; AUDIT</div>
+      <h1>i18n وRTL في شريط GULA ومسار «المزيد»</h1>
+      <p class="lead">التدقيق لا يقتصر على أزرار الشريط؛ بل يغطي Sidebar الذي يفتحه زر «المزيد»، وسمات الوصول، واتجاه الجذر، واكتمال مفاتيح الموارد.</p>
       <div class="divider"></div>
 
       <div class="flow">
         <section class="stage">
           <div class="stage-number">01 · CANONICAL KEYS</div>
-          <h2>تسمية موحدة</h2>
-          <p>المسار يستخدم مفاتيح مثل <b>nav.orders</b> و<b>mobileNav.more</b> بدل النصوص المضمنة داخل المكوّن.</p>
-          <div class="code">nav.orders</div>
+          <h2>مفاتيح موحدة</h2>
+          <p>تُستخدم مفاتيح <b>nav.*</b> و<b>mobileNav.*</b> للتسميات وaria labels وعناوين مجموعات Sidebar، بدل نصوص عربية ثابتة.</p>
+          <div class="code">t("mobileNav.current")</div>
         </section>
         <div class="arrow">←</div>
         <section class="stage">
-          <div class="stage-number">02 · I18NEXT</div>
-          <h2>ترجمة الواجهة</h2>
-          <p>تُستبدل التسمية وaria label واسم «الصفحة الحالية» من موارد اللغة النشطة.</p>
-          <div class="code">t(&quot;mobileNav.current&quot;)</div>
+          <div class="stage-number">02 · LOCALE CONTEXT</div>
+          <h2>اتجاه اللغة</h2>
+          <p>يحسب <b>LocaleContext</b> الاتجاه من locale metadata. أصبح Dashboard يدعم RTL/LTR لكل لغة، لا اختبار ar/en فقط.</p>
+          <div class="code">getLocaleDirection(locale)</div>
         </section>
         <div class="arrow">←</div>
         <section class="stage">
-          <div class="stage-number">03 · LOCALE CONTEXT</div>
-          <h2>اتجاه صحيح</h2>
-          <p>يحدد <b>LocaleContext</b> قيمة <b>dir</b>، فيما تبقى بنية التنقل وصلاحياتها نفسها.</p>
-          <div class="code">dir = rtl | ltr</div>
+          <div class="stage-number">03 · RESOURCE TEST</div>
+          <h2>تدقيق قابل للتكرار</h2>
+          <p>يثبت الاختبار وجود مفاتيح التنقل والوصول ومجموعات Sidebar وعدم وجود نص فارغ أو key name ظاهر للمستخدم.</p>
+          <div class="code">mobileNavResources.test.ts</div>
         </section>
       </div>
 
       <section class="language-section">
-        <div class="language-label"><span class="accent-rule"></span> تغطية الموارد في PR #219</div>
+        <div class="language-label"><span class="accent-rule"></span> خريطة الموارد الحالية</div>
         <div class="languages">
-          <div class="language"><strong>العربية</strong><span>ar · RTL</span></div>
-          <div class="language"><strong>English</strong><span>en · LTR</span></div>
-          <div class="language"><strong>کوردی</strong><span>ku · RTL</span></div>
-          <div class="language"><strong>Türkmençe</strong><span>tk · LTR</span></div>
-          <div class="language"><strong>ܣܘܪܝܬ</strong><span>syr · RTL</span></div>
+          <div class="language"><strong>العربية</strong><span>ar · RTL · مكتمل</span></div>
+          <div class="language"><strong>English</strong><span>en · LTR · complete</span></div>
+          <div class="language"><strong>کوردی</strong><span>ku · RTL · مكتمل</span></div>
+          <div class="language"><strong>Türkmençe</strong><span>tk · LTR · complete</span></div>
+          <div class="language"><strong>ܣܘܪܝܬ</strong><span>syr · RTL · مكتمل</span></div>
+          <div class="language"><strong>العربية العراقية</strong><span>ar-IQ · RTL · يشارك ar</span></div>
+          <div class="language partial"><strong>فارسی</strong><span>fa · RTL · nav/sidebar</span></div>
         </div>
       </section>
-      <p class="note">النتيجة: لا fallback عربي صامت داخل Mobile Bottom Nav، ولا علاقة للغة بمنح أي صلاحية.</p>
+      <p class="note">النتيجة: تجربة التنقل و«المزيد» مترجمة في الموارد المحلية، واللغة لا تمنح صلاحية. مورد fa الحالي محدود للشريط وSidebar، وتبقى بقية الواجهة بحاجة إلى مورد فارسي شامل.</p>
     </div>
   </div>
 </body>
