@@ -279,11 +279,14 @@ jobs:
         env:
           KEYSTORE_PASSWORD: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_ENTRY_PASSWORD }}
         run: |
           set -eu
           umask 077
-          printf 'storeFile=keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > signing.properties
+          # The upload keystore is PKCS12 (despite its .jks filename), so the
+          # private-key password is the store password. PKCS12 does not support
+          # distinct store/key passwords; using the separate entry-password
+          # secret causes bundletool to fail while decrypting the key.
+          printf 'storeFile=keystore.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEYSTORE_PASSWORD" > signing.properties
 
       - name: Assemble release AAB
         run: ./gradlew bundleRelease
