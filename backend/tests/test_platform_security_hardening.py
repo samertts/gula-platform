@@ -24,7 +24,7 @@ def _typed_fixture(
 
 @_typed_fixture
 def client() -> Iterator[TestClient]:
-    app.dependency_overrides[get_db] = lambda: object()
+    app.dependency_overrides[get_db] = object
     try:
         with TestClient(app, raise_server_exceptions=False) as test_client:
             yield test_client
