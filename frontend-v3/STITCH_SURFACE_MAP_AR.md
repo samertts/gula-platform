@@ -54,7 +54,20 @@
 | `/reports` and `/stats` | analytic reports and trends | filters، generated/empty/error, export permission state |
 | `/labs` | laboratory directory/status | workspace selector، empty directory، facility status |
 
-## 4. الإدارة والحوكمة والتكاملات
+## 4. Patient Visit / Encounter
+
+| Route / surface | شاشة Stitch المطلوبة | نوافذ وحالات لا بد من تصميمها | الحالة الحالية |
+|---|---|---|---|
+| `/patient-management?tab=appointments` | Appointment مقابل Encounter، مع توضيح أن الموعد ليس زيارة | Scheduled، Arrived، Cancelled، No-show، empty، backend dependency | BACKEND_DEPENDENCY |
+| `/patient-visit/check-in` | Check-in بخطوات قليلة وبأقل بيانات لازمة | verification، wrong facility، forbidden، expired session، offline، conflict | BACKEND_DEPENDENCY |
+| `/patient-visit/queue` | Work Queue desktop/mobile | search، filters، pagination، priority، waiting، service unavailable | BACKEND_DEPENDENCY |
+| `/patient-visit/:id` | Encounter unified workspace | patient header، summary، triage، consultation، orders، results، timeline، follow-up، close | BLOCKED أو BACKEND_DEPENDENCY حسب العقد |
+| `/citizen/visits/:id` | Policy-filtered patient view | current visit، summary، instructions، results available، forbidden، no visit | BACKEND_DEPENDENCY |
+| `/patient-visit/readiness` | Contract and readiness board | READY، READY_FOR_REVIEW، BACKEND_DEPENDENCY، BLOCKED | READY_FOR_REVIEW |
+
+لا تنشئ هذه الأسطح صلاحيات أو API من الواجهة. كل انتقال سريري، نتيجة، ملاحظة، طلب، إحالة، أو إغلاق Encounter يحتاج Backend Contract typed وstate machine وversion check وaudit وtenant/workspace authorization. لا تُستخدم بيانات مرضى أو عمليات سريرية حقيقية في Stitch أو Prototype.
+
+## 5. الإدارة والحوكمة والتكاملات
 
 | Route / surface | شاشة Stitch المطلوبة | نوافذ وحالات لا بد من تصميمها |
 |---|---|---|
