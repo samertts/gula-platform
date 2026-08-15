@@ -6,7 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.security.dependencies import require_permission
-from backend.app.integration.connectors import BaseConnector, ConnectorRegistry
+from app.integration.connectors import BaseConnector, ConnectorRegistry
 
 logger = logging.getLogger("gula.integration.connectors.routes")
 

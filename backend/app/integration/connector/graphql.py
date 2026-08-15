@@ -3,8 +3,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.app.integration.connector.http import HttpConnector
-from backend.app.integration.connector.spec import (
+from app.integration.connector.http import HttpConnector
+from app.integration.connector.spec import (
     ConnectorSpec,
     ConnectorType,
 )

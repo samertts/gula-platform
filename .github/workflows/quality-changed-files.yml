@@ -1,0 +1,54 @@
+name: Changed Files Quality Gate
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: changed-files-quality-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  quality-changed-files:
+    name: Ruff/MyPy changed-files non-regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install backend typing dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt
+          python -m pip install "ruff==0.16.2" "mypy==2.3.0"
+
+      - name: Run changed-files quality gate
+        env:
+          QUALITY_BASE_REF: origin/${{ github.base_ref }}
+          QUALITY_HEAD_REF: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python scripts/quality_changed_files_gate.py \
+            --report quality-gate-report.json
+
+      - name: Upload quality gate report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: changed-files-quality-report-${{ github.event.pull_request.number }}
+          path: quality-gate-report.json
+          if-no-files-found: warn

@@ -1,0 +1,4 @@
+Contact: mailto:security@gulaplatform.com
+Expires: 2027-08-15T00:00:00.000Z
+Preferred-Languages: ar, en
+Canonical: https://www.gula-platform.org/.well-known/security.txt

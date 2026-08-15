@@ -14,13 +14,16 @@ Show what is needed. Hide what is not. Complex functionality is accessible but n
 ### 4. Consistent Patterns
 Same actions appear in consistent locations. Same terminology is used throughout. Same visual patterns indicate same behaviors. Users should never wonder "where is the save button?"
 
-### 5. Accessibility (WCAG 2.1 AA minimum)
+### 5. Accessibility (WCAG 2.2 AA minimum)
 - Keyboard navigable
 - Screen reader compatible
 - Sufficient color contrast
-- Focus indicators visible
+- Focus indicators visible and not obscured by sticky UI
+- Focus appearance and focus-not-obscured criteria are verified on interactive controls
 - Error messages clear and actionable
 - Touch targets minimum 44x44px
+- Dynamic status and error updates expose an appropriate `aria-live` or semantic role
+- Form controls expose purpose through appropriate autocomplete tokens where applicable
 
 ### 6. Responsive
 Desktop, tablet, and mobile are supported. Critical workflows (result review, order entry, patient lookup) are fully functional on tablets for bedside and laboratory use.

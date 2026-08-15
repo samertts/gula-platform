@@ -1,15 +1,15 @@
 """Add privacy-separated user accessibility and health preferences.
 
-Revision ID: 20260815_0019
-Revises: 20260815_0018
+Revision ID: 20260815_0020
+Revises: 20260815_0019
 """
 from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
 
-revision = "20260815_0019"
-down_revision = "20260815_0018"
+revision = "20260815_0020"
+down_revision = "20260815_0019"
 branch_labels = None
 depends_on = None
 

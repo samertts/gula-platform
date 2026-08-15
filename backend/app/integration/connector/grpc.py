@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from backend.app.integration.connector.spec import (
+from app.integration.connector.spec import (
     ConnectorSpec,
     ConnectorStatus,
     ConnectorType,

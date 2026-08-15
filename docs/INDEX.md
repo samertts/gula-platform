@@ -17,7 +17,7 @@
 | المجال | المحتوى |
 |---|---|
 | **البدء والهندسة** | [Start Here](START_HERE.md)، [architecture](architecture/)، [engineering](engineering/)، [api](api/) |
-| **التشغيل والإطلاق** | [deployment](deployment/)، [operations](operations/)، [runbooks](runbooks/)، [production](production/)، [testing](testing/) |
+| **التشغيل والإطلاق** | [deployment](deployment/)، [operations](operations/)، [runbooks](runbooks/)، [production](production/)، [testing](testing/)، [دليل الدمج التلقائي](operations/PR_AUTO_MERGE_RUNBOOK.md) |
 | **الأمن والامتثال** | [security](security/)، [governance](governance/)، [standards](standards/)، [trust](trust/) |
 | **المنتج والمنصات** | [platform](platform/)، [frontend](frontend/)، [pharmacy-platform](pharmacy-platform/)، [radiology-platform](radiology-platform/)، [nursing-platform](nursing-platform/) |
 | **البيانات والتكامل** | [database](database/)، [events](events/)، [api](api/)، [niam](niam/)، [دليل تجربة LIS](LIMS_PILOT_RUNBOOK_AR.md)، [MHD/PIXm](MHD_PIXM_PRACTICAL_IMPLEMENTATION_AR.md) |

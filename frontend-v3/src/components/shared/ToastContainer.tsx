@@ -20,6 +20,9 @@ export function ToastContainer() {
         return (
           <div
             key={t.id}
+            role={t.variant === "destructive" ? "alert" : "status"}
+            aria-live={t.variant === "destructive" ? "assertive" : "polite"}
+            aria-atomic="true"
             className={cn(
               "flex items-start gap-3 rounded-lg border bg-background p-4 text-foreground shadow-lg animate-in slide-in-from-right-full duration-300",
               t.variant === "destructive" && "border-destructive/50 text-destructive",
