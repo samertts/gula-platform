@@ -21,7 +21,13 @@ class Fhir_interoperabilityCapability:
     async def initialize(self) -> None:
         if self._initialized:
             return
-        self._kernel = get_kernel()
+        try:
+            self._kernel = get_kernel()
+        except RuntimeError:
+            # Isolated contract workers and unit tests may start before the
+            # optional application kernel. Pure validation remains available.
+            self._kernel = None
+            logger.debug("FHIR capability initialized without optional kernel")
         logger.info("Fhir_interoperability capability initializing")
         # Depends on: patient_management
         # Depends on: clinical_foundation
