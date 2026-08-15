@@ -8,7 +8,7 @@
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Contributor guide
 - [ARCHITECTURE.md](ARCHITECTURE.md) — System architecture
 - [GOVERNANCE.md](GOVERNANCE.md) — Project governance
-- [CLAUDE.md](CLAUDE.md) — Full developer guide
+- [docs/START_HERE.md](docs/START_HERE.md) — Supported developer path
 - [CHANGELOG.md](CHANGELOG.md) — Release history
 - [ROADMAP.md](ROADMAP.md) — Development roadmap
 - [docs/](docs/) — ADRs, specifications, and reference

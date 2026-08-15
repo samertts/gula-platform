@@ -1,0 +1,144 @@
+name: Opt-in PR Auto-Merge
+
+on:
+  workflow_dispatch:
+    inputs:
+      pull_request:
+        description: "Pull request number to inspect"
+        required: true
+        type: string
+      mode:
+        description: "dry-run only inspects; arm enables GitHub auto-merge if policy allows"
+        required: true
+        default: dry-run
+        type: choice
+        options:
+          - dry-run
+          - arm
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+
+concurrency:
+  group: opt-in-pr-auto-merge-${{ github.event.workflow_run.head_sha || github.event.inputs.pull_request || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  evaluate:
+    name: Evaluate PR auto-merge eligibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Resolve candidate pull request
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PR: ${{ github.event.inputs.pull_request }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            pr_number="$INPUT_PR"
+          else
+            pr_number="$(gh api \
+              "repos/${REPOSITORY}/commits/${HEAD_SHA}/pulls" \
+              --jq '[.[] | select(.base.ref == "main" and .state == "open")][0].number // empty')"
+          fi
+
+          if [[ -z "$pr_number" ]]; then
+            echo "No open pull request targeting main was found."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          pr_json="$(gh api "repos/${REPOSITORY}/pulls/${pr_number}")"
+          base_ref="$(jq -r '.base.ref' <<< "$pr_json")"
+          head_repo="$(jq -r '.head.repo.full_name // empty' <<< "$pr_json")"
+          state="$(jq -r '.state' <<< "$pr_json")"
+          is_draft="$(jq -r '.draft' <<< "$pr_json")"
+          has_label="$(jq -r --arg label "automerge-approved" '[.labels[].name] | any(. == $label)' <<< "$pr_json")"
+
+          {
+            echo "number=$pr_number"
+            echo "base_ref=$base_ref"
+            echo "head_repo=$head_repo"
+            echo "state=$state"
+            echo "is_draft=$is_draft"
+            echo "has_label=$has_label"
+            echo "found=true"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Candidate PR #$pr_number: base=$base_ref state=$state draft=$is_draft label=$has_label head_repo=$head_repo"
+
+      - name: Validate policy and produce dry-run report
+        if: steps.resolve.outputs.found == 'true'
+        id: policy
+        env:
+          BASE_REF: ${{ steps.resolve.outputs.base_ref }}
+          HEAD_REPO: ${{ steps.resolve.outputs.head_repo }}
+          STATE: ${{ steps.resolve.outputs.state }}
+          IS_DRAFT: ${{ steps.resolve.outputs.is_draft }}
+          HAS_LABEL: ${{ steps.resolve.outputs.has_label }}
+          EVENT_NAME: ${{ github.event_name }}
+          REQUESTED_MODE: ${{ github.event.inputs.mode }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          failures=()
+          [[ "$BASE_REF" == "main" ]] || failures+=("base branch is not main")
+          [[ "$HEAD_REPO" == "${{ github.repository }}" ]] || failures+=("head repository is not the trusted repository")
+          [[ "$STATE" == "open" ]] || failures+=("pull request is not open")
+          [[ "$IS_DRAFT" == "false" ]] || failures+=("pull request is still a draft")
+          [[ "$HAS_LABEL" == "true" ]] || failures+=("missing explicit automerge-approved label")
+
+          if (( ${#failures[@]} > 0 )); then
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            printf 'Auto-merge is not eligible: %s\n' "${failures[*]}"
+            exit 0
+          fi
+
+          echo "eligible=true" >> "$GITHUB_OUTPUT"
+          echo "Policy checks passed. Requested mode: ${REQUESTED_MODE:-automatic-arm}"
+
+      - name: Enable GitHub auto-merge
+        if: >-
+          steps.resolve.outputs.found == 'true' &&
+          steps.policy.outputs.eligible == 'true' &&
+          (github.event_name == 'workflow_run' || github.event.inputs.mode == 'arm')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ steps.resolve.outputs.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh pr merge "$PR_NUMBER" --repo "$REPOSITORY" --auto --squash
+          echo "GitHub auto-merge was requested. Branch protection and required reviews remain authoritative."
+
+      - name: Write audit summary
+        if: always()
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.number }}
+          ELIGIBLE: ${{ steps.policy.outputs.eligible }}
+          MODE: ${{ github.event.inputs.mode || 'automatic-arm-after-CI' }}
+        shell: bash
+        run: |
+          {
+            echo "## Opt-in PR Auto-Merge"
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Pull request | ${PR_NUMBER:-not-found} |"
+            echo "| Mode | $MODE |"
+            echo "| Eligible | ${ELIGIBLE:-false} |"
+            echo "| Bypass used | false |"
+            echo "| Production merge/deploy performed | false |"
+          } >> "$GITHUB_STEP_SUMMARY"
