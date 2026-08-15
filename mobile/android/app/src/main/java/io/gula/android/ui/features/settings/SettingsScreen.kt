@@ -28,6 +28,7 @@ fun SettingsScreen(
     var languageExpanded by remember { mutableStateOf(false) }
     var darkModeExpanded by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var colorBlindExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -77,6 +78,58 @@ fun SettingsScreen(
                                 onCheckedChange = { viewModel.setBiometricEnabled(it) },
                             )
                         },
+                    )
+                }
+            }
+
+            Spacer(Modifier.height(8.dp))
+            Text("Accessibility", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(4.dp))
+
+            GulaCard {
+                Column(modifier = Modifier.padding(4.dp)) {
+                    Text("Text size: ${"%.2f".format(uiState.textScale)}×", modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.bodyMedium)
+                    Slider(
+                        value = uiState.textScale,
+                        onValueChange = viewModel::setTextScale,
+                        valueRange = 0.85f..2.0f,
+                        steps = 22,
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    ListItem(
+                        headlineContent = { Text("High contrast") },
+                        supportingContent = { Text("Keep status meaning visible beyond color alone") },
+                        leadingContent = { Icon(Icons.Default.Contrast, contentDescription = null) },
+                        trailingContent = { Switch(checked = uiState.highContrast, onCheckedChange = viewModel::setHighContrast) },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    ListItem(
+                        headlineContent = { Text("Reduced motion") },
+                        supportingContent = { Text("Disable non-essential motion and flashing") },
+                        leadingContent = { Icon(Icons.Default.MotionPhotosOff, contentDescription = null) },
+                        trailingContent = { Switch(checked = uiState.reducedMotion, onCheckedChange = viewModel::setReducedMotion) },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    ListItem(
+                        headlineContent = { Text("Screen reader optimized") },
+                        supportingContent = { Text("Prefer semantic labels and predictable focus") },
+                        leadingContent = { Icon(Icons.Default.RecordVoiceOver, contentDescription = null) },
+                        trailingContent = { Switch(checked = uiState.screenReaderOptimized, onCheckedChange = viewModel::setScreenReaderOptimized) },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    ListItem(
+                        headlineContent = { Text("Larger touch targets") },
+                        supportingContent = { Text("Increase interactive target size") },
+                        leadingContent = { Icon(Icons.Default.TouchApp, contentDescription = null) },
+                        trailingContent = { Switch(checked = uiState.largerTouchTargets, onCheckedChange = viewModel::setLargerTouchTargets) },
+                    )
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                    ListItem(
+                        headlineContent = { Text("Color blind safe palette") },
+                        supportingContent = { Text(uiState.colorBlindMode) },
+                        leadingContent = { Icon(Icons.Default.Palette, contentDescription = null) },
+                        modifier = Modifier.clickable { colorBlindExpanded = true },
                     )
                 }
             }
@@ -169,6 +222,21 @@ fun SettingsScreen(
                     TextButton(onClick = { viewModel.setDarkMode("system"); darkModeExpanded = false }) { Text("System") }
                     TextButton(onClick = { viewModel.setDarkMode("light"); darkModeExpanded = false }) { Text("Light") }
                     TextButton(onClick = { viewModel.setDarkMode("dark"); darkModeExpanded = false }) { Text("Dark") }
+                }
+            },
+            confirmButton = {},
+        )
+    }
+
+    if (colorBlindExpanded) {
+        AlertDialog(
+            onDismissRequest = { colorBlindExpanded = false },
+            title = { Text("Color blind safe palette") },
+            text = {
+                Column {
+                    listOf("none", "protanopia", "deuteranopia", "tritanopia", "monochrome").forEach { mode ->
+                        TextButton(onClick = { viewModel.setColorBlindMode(mode); colorBlindExpanded = false }) { Text(mode) }
+                    }
                 }
             },
             confirmButton = {},

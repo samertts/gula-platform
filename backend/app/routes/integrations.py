@@ -52,6 +52,7 @@ from ..models.lab_user import LabUser
 from ..models.service_account import ServiceAccount
 from ..security.dependencies import require_service_account
 from ..security.rbac import require_role
+from ..security.service_accounts import has_service_account_scope
 from ..services.audit_service import log_action
 
 logger = logging.getLogger("gula.integrations.router")
@@ -103,8 +104,7 @@ def _snapshot(name: str, gw: ExternalGateway) -> dict:
 def _authorize_event_ingress(principal: Any) -> Any:
     """Only scoped service accounts or platform administrators may publish."""
     if isinstance(principal, ServiceAccount):
-        scopes = principal.scopes or ""
-        if "integration:events:write" not in scopes:
+        if not has_service_account_scope(principal, "integration:events:write"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Service account lacks integration:events:write scope",

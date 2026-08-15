@@ -105,6 +105,110 @@ class SettingsPage extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
 
+              // Accessibility
+              GulaCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Accessibility',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Divider(height: 24),
+                    ListTile(
+                      title: const Text('Text scale'),
+                      subtitle: Text(
+                        '${settingsState.textScale.toStringAsFixed(2)}×',
+                      ),
+                      trailing: SizedBox(
+                        width: 180,
+                        child: Slider(
+                          value: settingsState.textScale,
+                          min: 0.85,
+                          max: 2.0,
+                          divisions: 23,
+                          onChanged: settingsState.setTextScale,
+                        ),
+                      ),
+                    ),
+                    SwitchListTile(
+                      title: const Text('High contrast'),
+                      subtitle: const Text(
+                        'Keep status meaning visible beyond color alone',
+                      ),
+                      value: settingsState.highContrast,
+                      onChanged: settingsState.setHighContrast,
+                    ),
+                    SwitchListTile(
+                      title: const Text('Reduced motion and flashing'),
+                      subtitle: const Text('Disable non-essential motion'),
+                      value: settingsState.reducedMotion,
+                      onChanged: settingsState.setReducedMotion,
+                    ),
+                    SwitchListTile(
+                      title: const Text('Screen reader optimized'),
+                      subtitle: const Text(
+                        'Prefer semantic labels and predictable focus',
+                      ),
+                      value: settingsState.screenReaderOptimized,
+                      onChanged: settingsState.setScreenReaderOptimized,
+                    ),
+                    SwitchListTile(
+                      title: const Text('Larger touch targets'),
+                      value: settingsState.largerTouchTargets,
+                      onChanged: settingsState.setLargerTouchTargets,
+                    ),
+                    SwitchListTile(
+                      title: const Text('Static alternatives'),
+                      subtitle: const Text(
+                        'Prefer static alternatives to moving content',
+                      ),
+                      value: settingsState.staticAlternatives,
+                      onChanged: settingsState.setStaticAlternatives,
+                    ),
+                    ListTile(
+                      title: const Text('Color blind safe palette'),
+                      trailing: DropdownButton<String>(
+                        value: settingsState.colorBlindMode,
+                        items: const [
+                          DropdownMenuItem(value: 'none', child: Text('None')),
+                          DropdownMenuItem(
+                            value: 'protanopia',
+                            child: Text('Protanopia'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'deuteranopia',
+                            child: Text('Deuteranopia'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'tritanopia',
+                            child: Text('Tritanopia'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'monochrome',
+                            child: Text('Monochrome'),
+                          ),
+                        ],
+                        onChanged: (v) {
+                          if (v != null) settingsState.setColorBlindMode(v);
+                        },
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'Health Preferences are optional, consent-bound, and are not stored in this device local settings.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
               // Notifications
               GulaCard(
                 child: Column(

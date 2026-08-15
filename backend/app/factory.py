@@ -593,6 +593,9 @@ def _register_routes(app: FastAPI) -> None:
     from .routes import consent as consent_routes
     app.include_router(consent_routes.router)
 
+    from .routes import user_preferences as user_preferences_routes
+    app.include_router(user_preferences_routes.router)
+
     from .routes import mfa as mfa_routes
     app.include_router(mfa_routes.router)
 
