@@ -399,6 +399,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
     from app.middleware import (
         ConcurrencyLimitMiddleware,
         DemoReadOnlyMiddleware,
+        GlobalRateLimitMiddleware,
         HealthcheckHostMiddleware,
         KernelMiddleware,
         MaxBodySizeMiddleware,
@@ -412,6 +413,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
     from .config import MAX_REQUEST_BODY_MB
 
     app.add_middleware(MaxBodySizeMiddleware, max_size_mb=MAX_REQUEST_BODY_MB)
+    app.add_middleware(GlobalRateLimitMiddleware)
     app.add_middleware(RequestIDMiddleware)
 
     if IS_PRODUCTION:

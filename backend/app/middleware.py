@@ -6,6 +6,7 @@ All middleware class definitions live here; they are registered by the factory.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import time
@@ -14,11 +15,18 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from .config import APP_VERSION, DEMO_MODE, IS_PRODUCTION, MAX_REQUEST_BODY_MB
+from .config import (
+    APP_VERSION,
+    DEMO_MODE,
+    IS_PRODUCTION,
+    MAX_REQUEST_BODY_MB,
+    RATE_LIMIT_GLOBAL,
+    RATE_LIMIT_GLOBAL_WINDOW_SECONDS,
+)
 from .core.logging_config import bind_log_context
-from .security.policy import sanitize_request_id
 from .core.privacy import PIIMasker
-import json
+from .security.policy import sanitize_request_id
+from .security.rate_limit import _check, _rl_headers, get_client_ip
 
 logger = logging.getLogger("gula")
 
@@ -83,6 +91,58 @@ class MaxBodySizeMiddleware(BaseHTTPMiddleware):
                 },
             )
         return await call_next(request)
+
+
+class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
+    """Apply a coarse shared IP budget before route-specific limits.
+
+    This is an application-layer abuse guard, not a DDoS scrubber. It is backed
+    by the shared Redis limiter when configured, so multiple workers consume
+    one budget. Health probes remain available for orchestration; expensive and
+    authenticated routes keep their stricter route-level limits.
+    """
+
+    def __init__(
+        self,
+        app,
+        max_requests: int = RATE_LIMIT_GLOBAL,
+        window_seconds: int = RATE_LIMIT_GLOBAL_WINDOW_SECONDS,
+    ) -> None:
+        super().__init__(app)
+        self._max_requests = max_requests
+        self._window_seconds = window_seconds
+
+    async def dispatch(self, request: Request, call_next):
+        path = request.url.path
+        if path in _ALWAYS_ALLOWED_PATHS:
+            return await call_next(request)
+
+        client_ip = get_client_ip(request)
+        allowed, remaining, reset_ts = _check(
+            f"global:{client_ip}",
+            self._max_requests,
+            self._window_seconds,
+            request,
+        )
+        if not allowed:
+            retry_after = max(1, reset_ts - int(time.time()))
+            return JSONResponse(
+                status_code=429,
+                content={
+                    "detail": "Too many requests. Please try again later.",
+                    "detail_ar": "طلبات كثيرة جداً. حاول مرة أخرى لاحقاً.",
+                },
+                headers={
+                    **_rl_headers(self._max_requests, 0, reset_ts),
+                    "Retry-After": str(retry_after),
+                },
+            )
+
+        response = await call_next(request)
+        response.headers.update(
+            _rl_headers(self._max_requests, remaining, reset_ts),
+        )
+        return response
 
 
 class RequestIDMiddleware(BaseHTTPMiddleware):
