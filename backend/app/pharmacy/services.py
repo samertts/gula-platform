@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from sqlalchemy import case, func, or_
@@ -593,7 +593,7 @@ class PharmacyService:
             ]
             invoice = BillingService(self.db).create_invoice(
                 lab_id=self.lab_id,
-                patient_id=int(billing_patient_id),
+                patient_id=int(str(billing_patient_id)),
                 encounter_ref=str(data.get("encounter_ref") or sale.sale_number),
                 lines=billing_lines,
                 covered_amount=Decimal(str(data.get("covered_amount", "0"))),
@@ -717,7 +717,7 @@ class PharmacyService:
         )
         if self.lab_id:
             query = query.filter(PharmacySale.lab_id == self.lab_id)
-        return query.first()
+        return cast(PharmacySale | None, query.first())
 
     def list_pos_sales(self, *, citizen_id: str | None = None, skip: int = 0, limit: int = 50) -> list[PharmacySale]:
         query = self.db.query(PharmacySale).filter(~PharmacySale.is_deleted)
@@ -725,7 +725,7 @@ class PharmacyService:
             query = query.filter(PharmacySale.lab_id == self.lab_id)
         if citizen_id:
             query = query.filter(PharmacySale.citizen_id == citizen_id)
-        return query.order_by(PharmacySale.sold_at.desc()).offset(skip).limit(limit).all()
+        return cast(list[PharmacySale], query.order_by(PharmacySale.sold_at.desc()).offset(skip).limit(limit).all())
 
     def get_pos_summary(self, days: int = 30) -> dict[str, Any]:
         if days < 1 or days > 3650:

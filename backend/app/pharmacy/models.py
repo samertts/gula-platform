@@ -782,7 +782,7 @@ class ClinicalGuideline(TenantAuditEntity):
     )
 
 
-class PharmacySale(TenantAuditEntity):
+class PharmacySale(TenantAuditEntity):  # type: ignore[misc]
     """Institution-scoped pharmacy POS sale.
 
     A sale is the commercial envelope around stock movements, billing, and the
@@ -830,7 +830,7 @@ class PharmacySale(TenantAuditEntity):
     )
 
 
-class PharmacySaleLine(TenantAuditEntity):
+class PharmacySaleLine(TenantAuditEntity):  # type: ignore[misc]
     """One stockable medication line within a POS sale."""
 
     __tablename__ = "pharmacy_sale_lines"
