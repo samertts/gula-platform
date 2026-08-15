@@ -26,4 +26,7 @@ jobs:
             GPL-1.0-only, GPL-2.0-only, GPL-3.0-only,
             LGPL-2.0-only, LGPL-2.1-only, LGPL-3.0-only,
             BUSL-1.1, BSL-1.0, SSPL-1.0, RPL-1.1, RPL-1.5
+          # JNA is an indirect Android/Gradle dependency with Apache-2.0 OR LGPL-2.1-or-later.
+          # Keep the deny list active; allow only this reviewed dependency to avoid a false-positive license block.
+          allow-dependencies: net.java.dev.jna:jna
           comment-summary-in-pr: on-failure
