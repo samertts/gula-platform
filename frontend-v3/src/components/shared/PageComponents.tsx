@@ -45,10 +45,40 @@ export function EmptyState({ icon: Icon = FileText, title, description, action }
   );
 }
 
+export function PageLoadingSkeleton({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn("space-y-5 p-1", className)}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label="جارٍ تحميل الصفحة"
+    >
+      <span className="sr-only">جارٍ تحميل الصفحة</span>
+      <div className="motion-safe:animate-pulse space-y-3" aria-hidden="true">
+        <div className="h-7 w-48 rounded-lg bg-slate-200/80 dark:bg-white/10" />
+        <div className="h-4 w-72 max-w-full rounded-md bg-slate-200/70 dark:bg-white/[0.08]" />
+      </div>
+      <div className="grid gap-4 md:grid-cols-3" aria-hidden="true">
+        {Array.from({ length: 3 }, (_, index) => (
+          <div key={index} className="h-28 rounded-2xl border border-slate-200/80 bg-white/70 dark:border-white/10 dark:bg-white/[0.04]" />
+        ))}
+      </div>
+      <div className="h-64 rounded-2xl border border-slate-200/80 bg-white/70 dark:border-white/10 dark:bg-white/[0.04]" aria-hidden="true" />
+    </div>
+  );
+}
+
 export function LoadingSpinner({ className }: { className?: string }) {
   return (
-    <div className={cn("flex items-center justify-center py-16", className)}>
-      <svg className="h-8 w-8 animate-spin text-primary" viewBox="0 0 24 24" fill="none">
+    <div
+      className={cn("flex items-center justify-center py-16", className)}
+      role="status"
+      aria-live="polite"
+      aria-label="جارٍ التحميل"
+    >
+      <span className="sr-only">جارٍ التحميل</span>
+      <svg className="motion-safe:animate-spin h-8 w-8 text-primary" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
       </svg>
