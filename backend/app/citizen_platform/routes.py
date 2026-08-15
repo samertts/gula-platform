@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.database import get_db
+from app.ehr.models.medication import MedicationDispense
 from app.identity.models.citizen_relationship import CitizenRelationship
 from app.models.lab_user import LabUser
 from app.models.user import User
@@ -186,6 +187,43 @@ def get_own_medications(
         return {"medications": [m.__dict__ for m in medications]}
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/me/medication-dispenses")
+def get_own_medication_dispenses(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    relationship: CitizenRelationship = Depends(get_authorized_citizen_relationship),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    records = db.query(MedicationDispense).filter(
+        MedicationDispense.citizen_id == relationship.citizen_id,
+        ~MedicationDispense.is_deleted,
+    ).order_by(MedicationDispense.dispensed_at.desc()).offset(skip).limit(limit).all()
+    return {
+        "dispenses": [
+            {
+                "id": record.id,
+                "medication_code": record.medication_code,
+                "medication_name": record.medication_name,
+                "medication_name_ar": record.medication_name_ar,
+                "medication_form": record.medication_form,
+                "quantity": record.quantity,
+                "quantity_unit": record.quantity_unit,
+                "days_supply": record.days_supply,
+                "dosage_instruction": record.dosage_instruction,
+                "route": record.route,
+                "frequency": record.frequency,
+                "status": record.status,
+                "dispensed_at": record.dispensed_at.isoformat() if record.dispensed_at else None,
+                "lot_number": (record.metadata_ or {}).get("lot_number"),
+                "expiry_date": (record.metadata_ or {}).get("expiry_date"),
+                "source": (record.metadata_ or {}).get("source", "clinical"),
+            }
+            for record in records
+        ],
+        "total": len(records),
+    }
 
 
 @router.get("/me/lab-results")

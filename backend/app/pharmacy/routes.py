@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
@@ -19,7 +19,7 @@ from app.pharmacy.models import (
     Prescription,
 )
 from app.pharmacy.services import PharmacyService
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_institutional_permission
 
 router = APIRouter(prefix="/pharmacy", tags=["Pharmacy"])
 
@@ -893,7 +893,7 @@ async def get_dispense_records(
     return svc.get_dispense_records(patient_id)
 
 
-# ── Clinical Pharmacy Routes ────────────────────────────────────────────────────
+# ── Clinical Pharmacy Routes ───────────────────────────────────────────────────
 
 
 @router.post("/clinical/interactions/check", response_model=InteractionCheckResponse)
@@ -1203,3 +1203,143 @@ async def get_expiry_alerts(
 ):
     svc = _get_pharmacy_service(db, user)
     return svc.get_expiry_alerts()
+
+
+# ── Pharmacy POS contracts and routes ──────────────────────────────────────────
+
+
+class POSSaleLineCreate(BaseModel):
+    drug_catalog_id: str | None = None
+    barcode: str | None = None
+    batch_id: str | None = None
+    prescription_id: str | None = None
+    quantity: int
+    quantity_unit: str = "unit"
+    unit_price: float | None = None
+    discount: float = 0
+    days_supply: int | None = None
+    dosage_instruction: str | None = None
+    route: str | None = None
+    frequency: str | None = None
+
+
+class POSSaleCreate(BaseModel):
+    patient_id: str | None = None
+    citizen_id: str | None = None
+    billing_patient_id: int | None = None
+    encounter_id: str | None = None
+    encounter_ref: str | None = None
+    currency: str = "IQD"
+    payment_method: str = "synthetic_settlement"
+    covered_amount: float = 0
+    issue_invoice: bool = True
+    idempotency_key: str | None = None
+    lines: list[POSSaleLineCreate]
+
+
+class POSSaleLineResponse(BaseModel):
+    id: str
+    line_number: int
+    drug_catalog_id: str
+    batch_id: str
+    medication_dispense_id: str | None
+    barcode: str | None
+    medication_name: str
+    medication_name_ar: str | None
+    quantity: int
+    quantity_unit: str | None
+    lot_number: str | None
+    expiry_date: date | None
+    unit_price: float
+    unit_cost: float
+    discount: float
+    line_total: float
+    line_cost: float
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class POSSaleResponse(BaseModel):
+    id: str
+    sale_number: str
+    patient_id: str | None
+    citizen_id: str | None
+    billing_patient_id: int | None
+    billing_invoice_id: int | None
+    status: str
+    currency: str
+    subtotal: float
+    discount: float
+    total_amount: float
+    cost_amount: float
+    gross_profit: float
+    payment_status: str
+    payment_method: str
+    sold_at: str
+    lines: list[POSSaleLineResponse]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+@router.post("/pos/sales", response_model=POSSaleResponse, status_code=status.HTTP_201_CREATED)
+async def create_pos_sale(
+    data: POSSaleCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+    user: Any = Depends(require_institutional_permission("payments:write")),
+) -> POSSaleResponse:
+    payload = data.model_dump(exclude_none=True)
+    if idempotency_key and not payload.get("idempotency_key"):
+        payload["idempotency_key"] = idempotency_key
+    try:
+        sale = _get_pharmacy_service(db, user).create_pos_sale(
+            payload,
+            request_id=request.headers.get("X-Request-ID"),
+        )
+        db.commit()
+        db.refresh(sale)
+        return POSSaleResponse.model_validate(sale)
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except Exception:
+        db.rollback()
+        raise
+
+
+@router.get("/pos/sales", response_model=list[POSSaleResponse])
+async def list_pos_sales(
+    citizen_id: str | None = Query(None, max_length=26),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    user: Any = Depends(require_institutional_permission("payments:read")),
+) -> list[POSSaleResponse]:
+    sales = _get_pharmacy_service(db, user).list_pos_sales(citizen_id=citizen_id, skip=skip, limit=limit)
+    return [POSSaleResponse.model_validate(sale) for sale in sales]
+
+
+@router.get("/pos/summary")
+async def get_pos_summary(
+    days: int = Query(30, ge=1, le=3650),
+    db: Session = Depends(get_db),
+    user: Any = Depends(require_institutional_permission("payments:read")),
+) -> dict[str, Any]:
+    try:
+        summary = _get_pharmacy_service(db, user).get_pos_summary(days)
+        return dict(summary)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.get("/pos/sales/{sale_id}", response_model=POSSaleResponse)
+async def get_pos_sale(
+    sale_id: str,
+    db: Session = Depends(get_db),
+    user: Any = Depends(require_institutional_permission("payments:read")),
+) -> POSSaleResponse:
+    sale = _get_pharmacy_service(db, user).get_pos_sale(sale_id)
+    if sale is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
+    return POSSaleResponse.model_validate(sale)

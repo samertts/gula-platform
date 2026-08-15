@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { createColumnHelper } from "@tanstack/react-table";
 import type { ColumnDef } from "@tanstack/react-table";
-import { FolderOpen, Activity, BookOpen, ClipboardList, FileText, List } from "lucide-react";
+import { FolderOpen, Activity, BookOpen, ClipboardList, FileText, List, Pill } from "lucide-react";
 
 const tabs = [
   { id: "dashboard", label: "لوحة القيادة", icon: FileText },
@@ -15,6 +15,7 @@ const tabs = [
   { id: "health-summary", label: "ملخصي الصحي", icon: List },
   { id: "appointments", label: "مواعيدي", icon: ClipboardList },
   { id: "medications", label: "أدويتي", icon: BookOpen },
+  { id: "medication-dispenses", label: "العلاجات المصروفة", icon: Pill },
   { id: "lab-results", label: "نتائج المختبر", icon: FolderOpen },
 ] as const;
 
@@ -57,6 +58,10 @@ export default function CitizenPlatformPage() {
     queryKey: ["citizenPlatform", "lab-results"],
     queryFn: () => api.get("/citizen-platform/me/lab-results").then((r) => r.data),
   });
+  const medicationDispenses = useQuery({
+    queryKey: ["citizenPlatform", "medication-dispenses"],
+    queryFn: () => api.get("/citizen-platform/me/medication-dispenses").then((r) => r.data as { dispenses?: Record<string, unknown>[] }),
+  });
 
   const dashboardCols: ColumnDef<Record<string, unknown>, unknown>[] = [
     col.accessor("id", { header: "المعرف" }),
@@ -94,6 +99,15 @@ export default function CitizenPlatformPage() {
     col.accessor("status", { header: "الحالة", cell: ({ getValue }) => <Badge variant={badgeVariant(getValue() as string)}>{getValue() as string}</Badge> }),
     col.accessor("created_at", { header: "التاريخ", cell: ({ getValue }) => new Date(getValue() as string).toLocaleDateString("ar-IQ") }),
   ];
+  const medicationDispensesCols: ColumnDef<Record<string, unknown>, unknown>[] = [
+    col.accessor("medication_name_ar", { header: "العلاج", cell: ({ row }) => row.original.medication_name_ar || row.original.medication_name || "—" }),
+    col.accessor("quantity", { header: "الكمية" }),
+    col.accessor("quantity_unit", { header: "الوحدة" }),
+    col.accessor("lot_number", { header: "الدفعة" }),
+    col.accessor("expiry_date", { header: "الصلاحية" }),
+    col.accessor("status", { header: "الحالة", cell: ({ getValue }) => <Badge variant={badgeVariant(getValue() as string)}>{getValue() as string}</Badge> }),
+    col.accessor("dispensed_at", { header: "تاريخ الصرف", cell: ({ getValue }) => getValue() ? new Date(getValue() as string).toLocaleDateString("ar-IQ") : "—" }),
+  ];
 
   const tables: Record<TabId, { columns: ColumnDef<Record<string, unknown>, unknown>[]; data: Record<string, unknown>[]; loading: boolean }> = {
     dashboard: { columns: dashboardCols, data: (dashboard.data ?? []) as Record<string, unknown>[], loading: dashboard.isLoading },
@@ -101,6 +115,7 @@ export default function CitizenPlatformPage() {
     "health-summary": { columns: healthSummaryCols, data: (healthSummary.data ?? []) as Record<string, unknown>[], loading: healthSummary.isLoading },
     appointments: { columns: appointmentsCols, data: (appointments.data ?? []) as Record<string, unknown>[], loading: appointments.isLoading },
     medications: { columns: medicationsCols, data: (medications.data ?? []) as Record<string, unknown>[], loading: medications.isLoading },
+    "medication-dispenses": { columns: medicationDispensesCols, data: (medicationDispenses.data?.dispenses ?? []) as Record<string, unknown>[], loading: medicationDispenses.isLoading },
     "lab-results": { columns: labResultsCols, data: (labResults.data ?? []) as Record<string, unknown>[], loading: labResults.isLoading },
   };
 
