@@ -9,7 +9,6 @@ from __future__ import annotations
 import logging
 import os
 import time
-import uuid
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -17,6 +16,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from .config import APP_VERSION, DEMO_MODE, IS_PRODUCTION, MAX_REQUEST_BODY_MB
 from .core.logging_config import bind_log_context
+from .security.policy import sanitize_request_id
 
 logger = logging.getLogger("gula")
 
@@ -87,7 +87,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
     """Assign a unique ID to every request for tracing."""
 
     async def dispatch(self, request: Request, call_next):
-        request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+        request_id = sanitize_request_id(request.headers.get("X-Request-ID"))
         request.state.request_id = request_id
         bind_log_context(request_id=request_id)
         from .database import _endpoint_var, _request_id_var
@@ -225,9 +225,11 @@ class DocsAuthMiddleware(BaseHTTPMiddleware):
                 token = auth_header[7:]
         if not token:
             return JSONResponse(status_code=401, content={"detail": "Authentication required"})
-        from .security.auth import decode_token
+        from .security.auth import decode_token, is_token_blacklisted
 
         payload = decode_token(token)
+        if payload and payload.get("jti") and is_token_blacklisted(payload["jti"]):
+            return JSONResponse(status_code=401, content={"detail": "Session revoked"})
         if not payload or payload.get("role") not in ("admin", "master_admin"):
             return JSONResponse(status_code=403, content={"detail": "Admin access required"})
         return await call_next(request)

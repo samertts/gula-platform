@@ -207,6 +207,19 @@ def rate_limit_auth(
         _raise_429("Too many login attempts. Please wait a moment.", max_per_minute, reset)
 
 
+def rate_limit_ai(request: Request, max_per_minute: int = 30) -> None:
+    """Protect expensive AI and RAG endpoints from burst abuse.
+
+    The limit is intentionally IP-based at the router boundary; authenticated
+    route guards still enforce actor and tenant permissions. Redis keeps the
+    budget shared across API workers.
+    """
+    client_ip = get_client_ip(request)
+    ok, _, reset = _check(f"ai:{client_ip}", max_per_minute, 60, request)
+    if not ok:
+        _raise_429("AI request rate limit exceeded. Please try again later.", max_per_minute, reset)
+
+
 def rate_limit_admin(request: Request, user_id: int, max_per_minute: int = 20) -> None:
     """Strict rate limit for /admin/* endpoints — keyed by user_id + IP."""
     client_ip = get_client_ip(request)

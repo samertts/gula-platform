@@ -29,6 +29,8 @@ class User(Base):
     license_number = Column(String(100), nullable=True)
     national_id_hash = Column(String(255), nullable=True, index=True)
     is_active = Column(Boolean, default=True)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
     is_verified = Column(Boolean, default=False)
     mfa_enabled = Column(Boolean, default=False)
     perm_version = Column(Integer, default=1)
