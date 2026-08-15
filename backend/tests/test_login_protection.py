@@ -13,7 +13,7 @@ from app.security.login_protection import (
 )
 
 
-def test_failed_logins_lock_account_after_threshold():
+def test_failed_logins_lock_account_after_threshold() -> None:
     now = datetime.now(UTC)
     user = SimpleNamespace(failed_login_attempts=MAX_FAILED_LOGIN_ATTEMPTS - 1, locked_until=None)
 
@@ -23,7 +23,7 @@ def test_failed_logins_lock_account_after_threshold():
     assert user.locked_until == now + timedelta(minutes=LOCKOUT_MINUTES)
 
 
-def test_successful_login_clears_lockout_state():
+def test_successful_login_clears_lockout_state() -> None:
     user = SimpleNamespace(failed_login_attempts=5, locked_until=datetime.now(UTC) + timedelta(minutes=5))
 
     register_successful_login(user)
@@ -32,7 +32,7 @@ def test_successful_login_clears_lockout_state():
     assert user.locked_until is None
 
 
-def test_expired_lockout_is_not_active():
+def test_expired_lockout_is_not_active() -> None:
     user = SimpleNamespace(failed_login_attempts=5, locked_until=datetime.now(UTC) - timedelta(seconds=1))
 
     assert is_locked(user) is False

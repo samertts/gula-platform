@@ -14,7 +14,7 @@ LOCKOUT_MINUTES = int(os.getenv("LOGIN_LOCKOUT_MINUTES", "15"))
 
 def is_locked(user: Any, now: datetime | None = None) -> bool:
     locked_until = getattr(user, "locked_until", None)
-    if locked_until is None:
+    if not isinstance(locked_until, datetime):
         return False
     current = now or datetime.now(UTC)
     return locked_until > current

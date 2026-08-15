@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from typing import Any
 
 from shared.rbac import get_permissions_for_role
 
@@ -32,7 +33,7 @@ def normalize_collection_name(value: str | None) -> str:
     return candidate
 
 
-def tenant_collection_key(current_user, requested: str | None) -> str:
+def tenant_collection_key(current_user: Any, requested: str | None) -> str:
     """Namespace AI/RAG collections by lab, never by caller-controlled lab IDs.
 
     Platform administrators without a lab use an explicit platform namespace;
@@ -43,7 +44,7 @@ def tenant_collection_key(current_user, requested: str | None) -> str:
     if lab_id is not None:
         return f"lab:{int(lab_id)}:{collection}"
 
-    role = getattr(current_user, "role", "")
+    role = str(getattr(current_user, "role", ""))
     if "system:admin" not in get_permissions_for_role(role):
         raise PermissionError("A tenant context is required for this operation")
     return f"platform:{collection}"
