@@ -112,6 +112,12 @@ const ku = {
     lightMode: "دۆخی ڕووناک",
     language: "زمان",
   },
+  mobileNav: {
+    quickNavigation: "ڕێڕەوی خێرا",
+    openAllSections: "کردنەوەی هەموو بەشەکان",
+    more: "زیاتر",
+    current: "لاپەڕەی ئێستا",
+  },
 };
 
 export default ku;

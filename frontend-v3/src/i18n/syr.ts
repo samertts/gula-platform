@@ -112,6 +112,12 @@ const syr = {
     lightMode: "ܚܙܘܐ ܢܗܝܪܐ",
     language: "ܠܫܢܐ",
   },
+  mobileNav: {
+    quickNavigation: "ܐܘܪܚܐ ܥܓܝܠܬܐ",
+    openAllSections: "ܦܬܚ ܟܠܗܘܢ ܦܠܓ̈ܐ",
+    more: "ܝܬܝܪ",
+    current: "ܦܬܐ ܕܟܕܘ",
+  },
 };
 
 export default syr;

@@ -213,6 +213,12 @@ const en = {
     lightMode: "Light Mode",
     language: "Language",
   },
+  mobileNav: {
+    quickNavigation: "Quick navigation",
+    openAllSections: "Open all sections",
+    more: "More",
+    current: "Current page",
+  },
   legal: {
     privacyTitle: "Privacy notice",
     termsTitle: "Terms of service",

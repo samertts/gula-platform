@@ -195,7 +195,10 @@ export function DashboardLayout() {
         </div>
       </main>
       <GuideAssistant />
-      <MobileBottomNav onOpenMenu={() => setMobileOpen(true)} />
+      <MobileBottomNav
+        onOpenMenu={() => setMobileOpen(true)}
+        isMenuOpen={mobileOpen}
+      />
     </div>
   );
 }
