@@ -213,6 +213,12 @@ const ar = {
     lightMode: "الوضع الفاتح",
     language: "اللغة",
   },
+  mobileNav: {
+    quickNavigation: "التنقل السريع",
+    openAllSections: "فتح جميع الأقسام",
+    more: "المزيد",
+    current: "الصفحة الحالية",
+  },
   legal: {
     privacyTitle: "إشعار الخصوصية",
     termsTitle: "شروط الخدمة",

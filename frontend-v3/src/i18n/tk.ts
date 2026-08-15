@@ -112,6 +112,12 @@ const tk = {
     lightMode: "Ýagty görnüş",
     language: "Dil",
   },
+  mobileNav: {
+    quickNavigation: "Çalt nawigasiýa",
+    openAllSections: "Ähli bölümleri aç",
+    more: "Köp",
+    current: "Häzirki sahypa",
+  },
 };
 
 export default tk;

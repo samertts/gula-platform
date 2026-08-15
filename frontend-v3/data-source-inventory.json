@@ -61,6 +61,14 @@
       "status": "non-operational"
     },
     {
+      "source": "src/components/navigation/MobileBottomNav.tsx",
+      "kinds": [
+        "demo-surface"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
       "source": "src/components/workspace/WorkspaceSelector.tsx",
       "kinds": [
         "demo-surface"
@@ -791,7 +799,7 @@
       "status": "non-operational"
     },
     {
-      "source": "src/pages/settings/SettingsPage.tsx",
+      "source": "src/pages/settings/SettingsPageLegacy.tsx",
       "kinds": [
         "demo-surface",
         "endpoint-import"
