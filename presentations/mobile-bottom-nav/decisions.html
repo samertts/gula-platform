@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>قرارات مطلوبة من الفريق</title>
+  <style>
+    * { box-sizing: border-box; }
+    html,body { height:100%; margin:0; }
+    .slide-container { width: 1280px; min-height: 720px; background: #f0f9ff; color: #082f49; font-family: "Noto Sans Arabic", "Segoe UI", Arial, sans-serif; }
+    .frame { min-height: 720px; padding-top: 44px; padding-left: 48px; padding-right: 48px; }
+    .eyebrow { color: #0284c7; font-size: 14px; font-weight: 800; letter-spacing: .1em; }
+    h1 { margin: 13px 0 0; font-size: 46px; line-height: 1.2; letter-spacing: -.03em; font-weight: 800; }
+    .lead { max-width: 860px; margin-top: 6px; color: #4b6d81; font-size: 19px; line-height: 1.6; }
+    .divider { margin-top: 8px; border-top: 1px dashed #7dc8eb; }
+    .decisions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 36px; margin-top: 12px; }
+    .decision { display: grid; grid-template-columns: 68px 1fr; gap: 10px; min-height: 110px; padding-top: 8px; border-top: 1px dashed #a2d5eb; }
+    .decision:nth-child(-n+2) { border-top: 0; }
+    .number { width: 52px; min-height: 48px; border: 1px solid #68bee5; border-radius: 50%; color: #0284c7; font-size: 26px; font-weight: 800; line-height: 46px; text-align: center; background: rgba(255,255,255,.42); }
+    .decision h2 { margin: 2px 0 0; font-size: 22px; line-height: 1.35; font-weight: 800; }
+    .decision p { margin: 8px 0 0; color: #45687d; font-size: 16px; line-height: 1.6; }
+    .final-rule { min-height: 60px; margin-top: 12px; padding-top: 8px; border-top: 3px solid #0284c7; background: rgba(186,230,253,.36); display: grid; grid-template-columns: 164px 1fr; gap: 12px; }
+    .final-label { color: #0369a1; font-size: 16px; font-weight: 800; padding-right: 16px; }
+    .final-copy { color: #173f57; font-size: 18px; font-weight: 700; line-height: 1.6; padding-left: 16px; }
+    .final-copy span { color: #0284c7; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <main class="frame">
+      <div class="eyebrow">TEAM DECISIONS · PR #219</div>
+      <h1>قرارات مطلوبة من الفريق</h1>
+      <p class="lead">الدفعة جاهزة للمراجعة التقنية؛ المطلوب هو اعتماد حدودها والتحقق من الجودة قبل أي دمج يدوي.</p>
+      <div class="divider"></div>
+      <section class="decisions" aria-label="قرارات الفريق المطلوبة">
+        <article class="decision">
+          <div class="number">01</div>
+          <div><h2>اعتماد المصدر canonical</h2><p>تأكيد أن <b>NAV_ITEMS</b> هو المصدر الموحد لمسارات الشريط ومفاتيح تسمياته وصلاحياته المرئية.</p></div>
+        </article>
+        <article class="decision">
+          <div class="number">02</div>
+          <div><h2>مراجعة اللغات الخمس</h2><p>تدقيق العربية والإنجليزية والكردية والتركمانية والآشورية من أصحاب اللغة قبل الدمج النهائي.</p></div>
+        </article>
+        <article class="decision">
+          <div class="number">03</div>
+          <div><h2>تثبيت حدود «المزيد»</h2><p>تأكيد أن More Drawer المستقبلي تحسين تنقل فقط، ولا يصبح مسارًا لتجاوز التفويض أو إضافة إجراءات كتابة.</p></div>
+        </article>
+        <article class="decision">
+          <div class="number">04</div>
+          <div><h2>إكمال بوابة المراجعة</h2><p>انتظار كل required CI checks، ثم مراجعة بشرية صريحة ودمج يدوي فقط إذا بقيت الحدود الأمنية سليمة.</p></div>
+        </article>
+      </section>
+      <div class="final-rule"><div class="final-label">قرار الدمج</div><div class="final-copy">لا دمج ولا نشر تلقائي. <span>PR #219</span> يتحرك فقط بعد اكتمال CI والموافقة البشرية؛ ولا يفعّل أي عمليات سريرية أو يبدأ P5.</div></div>
+    </main>
+  </div>
+</body>
+</html>

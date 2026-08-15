@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>ما الذي تم اختباره؟</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .slide-container { width: 1280px; min-height: 720px; background: #f0f9ff; color: #082f49; font-family: "Noto Sans Arabic", "Segoe UI", Arial, sans-serif; }
+    .frame { min-height: 720px; padding-top: 50px; padding-left: 70px; padding-right: 70px; }
+    .eyebrow { color: #0284c7; font-size: 14px; font-weight: 800; letter-spacing: .09em; }
+    h1 { margin: 11px 0 0; font-size: 41px; line-height: 1.18; font-weight: 800; letter-spacing: -.025em; }
+    .lead { margin-top: 11px; color: #486b80; font-size: 18px; line-height: 1.55; }
+    .top-rule { margin-top: 12px; border-top: 1px dashed #8ecdea; }
+    /* reduced some inner heights/gaps to avoid overflow while keeping fonts unchanged */
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; min-height: 120px; padding-top: 18px; }
+    .metric { border-top: 4px solid #0284c7; background: rgba(255,255,255,.56); padding-top: 10px; padding-left: 12px; padding-right: 12px; }
+    .metric-number { color: #082f49; font-size: 42px; line-height: 1; font-weight: 800; letter-spacing: -.04em; direction: ltr; text-align: right; }
+    .metric-label { margin-top: 10px; color: #42687e; font-size: 15px; font-weight: 700; }
+    .metric-note { margin-top: 4px; color: #7493a5; font-size: 12px; }
+    .section-title { margin-top: 22px; color: #0369a1; font-size: 16px; font-weight: 800; }
+    .checks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0 18px; min-height: 150px; margin-top: 12px; }
+    .check { min-height: 72px; padding-top: 10px; border-top: 1px dashed #9ed3ea; }
+    .check-status { display: inline-block; width: 22px; min-height: 22px; margin-left: 8px; border: 1px solid #0284c7; border-radius: 50%; color: #0284c7; font-size: 14px; line-height: 20px; text-align: center; vertical-align: middle; }
+    .check strong { color: #173f57; font-size: 15px; font-weight: 800; }
+    .check p { margin: 6px 0 0; color: #5b7b90; font-size: 13px; line-height: 1.45; }
+    .ci-note { display: grid; grid-template-columns: 178px 1fr; gap: 14px; min-height: 56px; margin-top: 16px; padding-top: 12px; border-top: 2px solid #0284c7; background: rgba(186,230,253,.36); }
+    .ci-label { color: #0369a1; font-size: 15px; font-weight: 800; padding-right: 18px; }
+    .ci-copy { color: #173f57; font-size: 15px; line-height: 1.5; padding-left: 18px; }
+    .ci-copy strong { color: #082f49; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <main class="frame">
+      <div class="eyebrow">VERIFICATION · LOCAL EVIDENCE</div>
+      <h1>ما الذي تم اختبره؟</h1>
+      <p class="lead">تحققت الدفعة محليًا قبل فتح PR #219؛ نجاح هذه الفحوصات لا يحل محل CI أو المراجعة البشرية.</p>
+      <div class="top-rule"></div>
+
+      <section class="metrics" aria-label="المؤشرات الرئيسية للتحقق">
+        <article class="metric"><div class="metric-number">15</div><div class="metric-label">ملف اختبار ناجح</div><div class="metric-note">واجهة GULA كاملة</div></article>
+        <article class="metric"><div class="metric-number">52</div><div class="metric-label">اختبارًا ناجحًا</div><div class="metric-note">يتضمن MobileBottomNav الجديد</div></article>
+        <article class="metric"><div class="metric-number">1424.8 <span style="font-size:18px">KiB</span></div><div class="metric-label">إجمالي الحزمة</div><div class="metric-note">ضمن الميزانية المحددة</div></article>
+      </section>
+
+      <div class="section-title">حواجز التنفيذ التي نجحت محليًا</div>
+      <section class="checks" aria-label="حواجز الجودة الناجحة">
+        <article class="check"><span class="check-status">✓</span><strong>Lint</strong><p>دون تحذيرات مسموحة.</p></article>
+        <article class="check"><span class="check-status">✓</span><strong>Build + PWA</strong><p>Vite وPWA generation ناجحان.</p></article>
+        <article class="check"><span class="check-status">✓</span><strong>Contract governance</strong><p>العقود وحدود القراءة متسقة.</p></article>
+        <article class="check"><span class="check-status">✓</span><strong>Integration boundary</strong><p>لا كشف مباشر أو تجاوز للبوابات.</p></article>
+        <article class="check"><span class="check-status">✓</span><strong>Data-source governance</strong><p>93 سطحًا مصنفًا صراحةً.</p></article>
+        <article class="check"><span class="check-status">✓</span><strong>Audit artifacts</strong><p>خريطة الواجهات والخلفية متحققة.</p></article>
+        <article class="check"><span class="check-status">✓</span><strong>Bundle budget</strong><p>Entry JS: 334.0 KiB · CSS: 134.4 KiB.</p></article>
+        <article class="check"><span class="check-status">✓</span><strong>Mobile Nav tests</strong><p>المسار المتداخل، live denial، وحالة القائمة.</p></article>
+      </section>
+
+      <div class="ci-note"><div class="ci-label">حالة GitHub CI</div><div class="ci-copy"><strong>لا فشل عند الإنشاء:</strong> فحصان ناجحان و24 فحصًا قيد الانتظار في القراءة الأولية. لا يُدمج PR قبل اكتمال الفحوصات المطلوبة والمراجعة البشرية.</div></div>
+    </main>
+  </div>
+</body>
+</html>

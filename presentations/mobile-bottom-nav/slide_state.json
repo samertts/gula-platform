@@ -1,0 +1,133 @@
+{
+  "project_info": {
+    "title": "تحسين شريط التنقل السفلي في GULA",
+    "created": 1786813729.277,
+    "last_updated": 1786814354.71,
+    "total_slides": 11
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "state": "edited",
+      "pageNum": 1
+    },
+    {
+      "id": "why_update",
+      "state": "edited",
+      "pageNum": 2
+    },
+    {
+      "id": "canonical_permissions",
+      "state": "edited",
+      "pageNum": 3
+    },
+    {
+      "id": "filter_flow",
+      "state": "edited",
+      "pageNum": 4
+    },
+    {
+      "id": "i18n_rtl",
+      "state": "edited",
+      "pageNum": 5
+    },
+    {
+      "id": "accessibility_motion",
+      "state": "edited",
+      "pageNum": 6
+    },
+    {
+      "id": "responsive_safe_area",
+      "state": "edited",
+      "pageNum": 7
+    },
+    {
+      "id": "verification",
+      "state": "edited",
+      "pageNum": 8
+    },
+    {
+      "id": "safety_boundaries",
+      "state": "edited",
+      "pageNum": 9
+    },
+    {
+      "id": "next_steps",
+      "state": "edited",
+      "pageNum": 10
+    },
+    {
+      "id": "decisions",
+      "state": "edited",
+      "pageNum": 11
+    }
+  ],
+  "outline": [
+    {
+      "id": "cover",
+      "title": "تحسين شريط التنقل السفلي في GULA",
+      "summary": "تنفيذ آمن متوافق مع Stitch وRTL وi18n وإمكانية الوصول، مع حالة PR #219.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "why_update",
+      "title": "لماذا نحتاج إلى تحديث الشريط؟",
+      "summary": "توضيح الفجوات السابقة في الترجمة، مصدر الصلاحيات، تحديد المسار النشط، وإعلانات الوصول.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "canonical_permissions",
+      "title": "المبدأ المعماري: مصدر واحد للصلاحيات",
+      "summary": "شرح إسقاط Mobile Bottom Nav من NAV_ITEMS مع الفصل بين demo mode وlive mode وبقاء Backend authoritative.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "filter_flow",
+      "title": "كيف يعمل تدفق التصفية؟",
+      "summary": "توضيح اختيار persona، فحص الأدوار والصلاحيات، وحصر العناصر في أربعة مواضع قبل زر المزيد.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "i18n_rtl",
+      "title": "i18n وRTL للغات GULA الخمس",
+      "summary": "عرض نقل التسميات وaria labels إلى i18next ودعم العربية والإنجليزية والكردية والتركمانية والآشورية.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "accessibility_motion",
+      "title": "الوصول والحركة في الهاتف",
+      "summary": "شرح aria-current وaria-expanded وfocus-visible ومؤشر الحالة النشطة واحترام reduced-motion.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "responsive_safe_area",
+      "title": "التصميم المتجاوب والمساحات الآمنة",
+      "summary": "توضيح safe-area، dark mode، السطح شبه الشفاف، وعدم جلب بيانات سريرية من الشريط.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "verification",
+      "title": "ما الذي تم اختباره؟",
+      "summary": "عرض نتائج الاختبارات المحلية وlint وbuild وPWA وحواجز governance وbundle budget.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "safety_boundaries",
+      "title": "حدود السلامة في PR #219",
+      "summary": "تحديد ما لم يتغير: لا صلاحيات أو API أو عمليات سريرية أو دمج ونشر تلقائي.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "next_steps",
+      "title": "ما بعد PR #219؟",
+      "summary": "عرض More Drawer، عقد عداد التنبيهات، visual regression، وتطابق Sidebar مع NAV_ITEMS كدفعات لاحقة.",
+      "image_plan": "Use a suitable image if needed"
+    },
+    {
+      "id": "decisions",
+      "title": "قرارات مطلوبة من الفريق",
+      "summary": "تحديد نقاط المراجعة البشرية والقرارات المطلوبة قبل الدمج اليدوي.",
+      "image_plan": "Use a suitable image if needed"
+    }
+  ]
+}

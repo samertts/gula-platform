@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>ما بعد PR #219؟</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .slide-container { width: 1280px; min-height: 720px; background: #f0f9ff; color: #082f49; font-family: "Noto Sans Arabic", "Segoe UI", Arial, sans-serif; }
+    .frame { min-height: 720px; padding-top: 50px; padding-left: 70px; padding-right: 70px; }
+    .eyebrow { color: #0284c7; font-size: 14px; font-weight: 800; letter-spacing: .09em; }
+    h1 { margin: 11px 0 0; font-size: 41px; line-height: 1.18; font-weight: 800; letter-spacing: -.025em; }
+    .lead { max-width: 900px; margin-top: 12px; color: #496b80; font-size: 18px; line-height: 1.58; }
+    .divider { margin-top: 22px; border-top: 1px dashed #8ccbe9; }
+    .timeline { display: grid; grid-template-columns: 1fr 42px 1fr 42px 1fr 42px 1fr; gap: 0; min-height: 292px; padding-top: 34px; direction: rtl; align-items: start; }
+    .stage { min-height: 236px; border-top: 5px solid #0284c7; border-bottom: 1px dashed #9bd4ec; background: rgba(255,255,255,.5); padding-top: 17px; padding-left: 17px; padding-right: 17px; }
+    .stage:nth-of-type(3) { border-top-color: #075985; }
+    .stage:nth-of-type(5) { border-top-color: #38bdf8; }
+    .stage:nth-of-type(7) { border-top-color: #082f49; }
+    .stage-number { color: #0284c7; font-size: 14px; font-weight: 800; letter-spacing: .07em; }
+    .stage h2 { margin: 11px 0 0; color: #082f49; font-size: 22px; line-height: 1.32; font-weight: 800; }
+    .stage p { margin: 13px 0 0; color: #46687d; font-size: 15px; line-height: 1.6; }
+    .status { display: inline-block; margin-top: 15px; min-height: 28px; padding-top: 6px; padding-left: 10px; padding-right: 10px; border-top: 1px solid #7dc8eb; background: #e0f2fe; color: #075985; font-size: 12px; font-weight: 800; }
+    .status.contract { color: #7c4a03; background: #fff7df; border-top-color: #fbbf24; }
+    .arrow { min-height: 100px; color: #0284c7; font-size: 31px; text-align: center; line-height: 108px; }
+    .gate { display: grid; grid-template-columns: 180px 1fr; gap: 22px; min-height: 105px; margin-top: 23px; padding-top: 17px; border-top: 2px solid #082f49; background: rgba(186,230,253,.36); }
+    .gate-title { color: #082f49; font-size: 18px; font-weight: 800; padding-right: 18px; }
+    .gate-copy { color: #173f57; font-size: 17px; line-height: 1.62; padding-left: 18px; }
+    .gate-copy strong { color: #0284c7; }
+    .foot { margin-top: 18px; color: #638195; font-size: 13px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <main class="frame">
+      <div class="eyebrow">ROADMAP · POST PR #219</div>
+      <h1>ما بعد PR #219؟</h1>
+      <p class="lead">الدفعات التالية تحسن تجربة التنقل تدريجيًا، لكنها لا تبدأ قبل توثيق حدودها وعقودها واختبارها بصورة مستقلة.</p>
+      <div class="divider"></div>
+
+      <section class="timeline" aria-label="خارطة طريق التحسينات التالية">
+        <article class="stage">
+          <div class="stage-number">01 · NAVIGATION</div>
+          <h2>More Drawer آمن</h2>
+          <p>إعادة استخدام Sidebar داخل تجربة هاتفية مع Escape وfocus return وfocus trap بعد مراجعة سلوكها.</p>
+          <div class="status">دفعة UX مستقلة</div>
+        </article>
+        <div class="arrow">←</div>
+        <article class="stage">
+          <div class="stage-number">02 · CONTRACT</div>
+          <h2>عداد تنبيهات خادمي</h2>
+          <p>لا badge ولا polling قبل تحديد endpoint، التفويض، cache policy، وحالة العرض التجريبي.</p>
+          <div class="status contract">يتطلب عقد Backend موثق</div>
+        </article>
+        <div class="arrow">←</div>
+        <article class="stage">
+          <div class="stage-number">03 · QUALITY</div>
+          <h2>Visual Regression</h2>
+          <p>اختبار الهاتف وdark/system theme واللغات الخمس وsafe area وتكبير الخط بصورة قابلة للتكرار.</p>
+          <div class="status">حماية واجهة مستمرة</div>
+        </article>
+        <div class="arrow">←</div>
+        <article class="stage">
+          <div class="stage-number">04 · GOVERNANCE</div>
+          <h2>تطابق التنقلين</h2>
+          <p>اختبار تكامل يضمن تطابق Mobile Nav وSidebar مع NAV_ITEMS بعد كل تحديث للـmetadata.</p>
+          <div class="status">حاجز regression</div>
+        </article>
+      </section>
+
+      <section class="gate" aria-label="بوابة السلامة للدفعات التالية">
+        <div class="gate-title">بوابة السلامة</div>
+        <div class="gate-copy">كل خطوة لاحقة تبقى <strong>تحسين تنقل وعرض فقط</strong> ما لم يوجد عقد خادمي وصلاحية واضحة واختبارات عزل. لا عمليات سريرية، ولا صلاحيات تلقائية، ولا تجاوز للتفويض.</div>
+      </section>
+      <div class="foot">PR #219 يبقى مسارًا مستقلاً يحتاج اكتمال CI ومراجعة بشرية قبل الدمج اليدوي.</div>
+    </main>
+  </div>
+</body>
+</html>

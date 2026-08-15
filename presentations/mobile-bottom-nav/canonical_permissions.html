@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>المبدأ المعماري: مصدر واحد للصلاحيات</title>
+  <style>
+    * { box-sizing: border-box; }
+    .slide-container { width: 1280px; min-height: 720px; background: #f0f9ff; color: #082f49; font-family: "Noto Sans Arabic", "Segoe UI", Arial, sans-serif; }
+    .header { min-height: 142px; padding-top: 50px; padding-left: 48px; padding-right: 48px; border-bottom: 1px dashed #7dd3fc; }
+    .kicker { color: #0284c7; font-size: 14px; font-weight: 800; letter-spacing: .1em; }
+    h1 { margin: 13px 0 0; font-size: 39px; line-height: 1.22; font-weight: 800; letter-spacing: -.025em; }
+    .lead { margin-top: 11px; color: #42687e; font-size: 17px; line-height: 1.5; }
+
+    /* Reduced vertical spacing to avoid overflow while keeping typography intact */
+    .flow { display: grid; grid-template-columns: 210px 44px 220px 44px 1fr; gap: 0; min-height: 240px; padding-top: 28px; padding-left: 48px; padding-right: 48px; align-items: center; direction: rtl; }
+    .node { min-height: 140px; padding-top: 12px; padding-left: 12px; padding-right: 12px; border-top: 4px solid #0284c7; border-bottom: 1px solid #bae6fd; background: rgba(255,255,255,.6); }
+    .node.soft { border-top-color: #38bdf8; background: rgba(255,255,255,.42); }
+    .node-title { color: #082f49; font-size: 21px; font-weight: 800; }
+    .node-code { margin-top: 8px; color: #0284c7; font-family: "SFMono-Regular", Consolas, monospace; font-size: 15px; font-weight: 700; direction: ltr; text-align: right; }
+    .node-copy { margin-top: 10px; color: #43667b; font-size: 15px; line-height: 1.62; }
+    .arrow { color: #0284c7; font-size: 33px; font-weight: 800; text-align: center; }
+    .branches { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-height: 140px; }
+    .branch { min-height: 140px; padding-top: 12px; padding-left: 12px; padding-right: 12px; border-top: 4px solid #0ea5e9; border-bottom: 1px solid #bae6fd; background: rgba(255,255,255,.64); }
+    .branch.live { border-top-color: #0369a1; }
+    .branch-label { color: #075985; font-size: 14px; font-weight: 800; letter-spacing: .06em; }
+    .branch h2 { margin: 8px 0 0; font-size: 21px; font-weight: 800; }
+    .branch p { margin: 10px 0 0; color: #42687e; font-size: 14.5px; line-height: 1.65; }
+    .rule { min-height: 100px; margin-left: 48px; margin-right: 48px; padding-top: 12px; border-top: 1px dashed #7dd3fc; display: grid; grid-template-columns: 110px 1fr; gap: 16px; align-items: start; }
+    .rule-mark { color: #0369a1; font-size: 17px; font-weight: 800; }
+    .rule-copy { color: #173f57; font-size: 20px; line-height: 1.62; font-weight: 700; }
+    .rule-copy span { color: #0284c7; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <header class="header">
+      <div class="kicker">ARCHITECTURE · PR #219</div>
+      <h1>مصدر واحد للمسارات والصلاحيات</h1>
+      <p class="lead">الشريط السفلي لا يعرّف صلاحيات جديدة؛ بل يعرض إسقاطًا محدودًا من السجل المركزي.</p>
+    </header>
+
+    <main class="flow">
+      <section class="node">
+        <div class="node-title">السجل المركزي</div>
+        <div class="node-code">NAV_ITEMS</div>
+        <div class="node-copy">المسار، مفتاح التسمية، ومتطلبات الصلاحية تُحفظ في مكان واحد.</div>
+      </section>
+      <div class="arrow">←</div>
+      <section class="node soft">
+        <div class="node-title">إسقاط الهاتف</div>
+        <div class="node-code">MobileBottomNav</div>
+        <div class="node-copy">يختار المسارات الأساسية ويحدها بأربعة مواضع قبل زر «المزيد».</div>
+      </section>
+      <div class="arrow">←</div>
+      <section class="branches">
+        <article class="branch">
+          <div class="branch-label">DEMO MODE</div>
+          <h2>صلاحيات الدور التجريبي</h2>
+          <p>تُستخدم سياسة الدور التجريبي الموجودة فقط؛ لا تُنشأ قدرة أو دور جديدان.</p>
+        </article>
+        <article class="branch live">
+          <div class="branch-label">LIVE MODE</div>
+          <h2>صلاحيات منعكسة من الخادم</h2>
+          <p>غياب <b>effectivePermissions</b> يعني عدم إظهار الرابط المقيد في الواجهة.</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="rule">
+      <div class="rule-mark">القاعدة</div>
+      <div class="rule-copy">إظهار الرابط <span>ليس قرار تفويض</span>؛ القرار النهائي يبقى Server-authoritative في Backend.</div>
+    </footer>
+  </div>
+</body>
+</html>

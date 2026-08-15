@@ -5,18 +5,19 @@ import en from "./en";
 import ku from "./ku";
 import syr from "./syr";
 import tk from "./tk";
+import fa from "./fa";
 import { getStoredLocale } from "./locales";
 
 i18n.use(initReactI18next).init({
-      resources: {
-      "ar-IQ": { translation: ar },
-      ar: { translation: ar },
-      en: { translation: en },
-      ku: { translation: ku },
-      tk: { translation: tk },
-      syr: { translation: syr },
-      fa: { translation: en },
-    },
+  resources: {
+    "ar-IQ": { translation: ar },
+    ar: { translation: ar },
+    en: { translation: en },
+    ku: { translation: ku },
+    tk: { translation: tk },
+    syr: { translation: syr },
+    fa: { translation: { ...en, mobileNav: fa.mobileNav } },
+  },
 
   lng: getStoredLocale(),
   fallbackLng: "en",
