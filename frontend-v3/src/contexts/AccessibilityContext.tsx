@@ -104,7 +104,6 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
   const clearPreview = useCallback(() => {
     applyPreferences(preferences);
   }, [preferences]);
-
   const update = useCallback(async (patch: Partial<AccessibilityPreferences>) => {
     const next = { ...preferences, ...patch };
     setIsSaving(true);
