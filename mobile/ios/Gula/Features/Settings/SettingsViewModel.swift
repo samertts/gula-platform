@@ -9,6 +9,12 @@ class SettingsViewModel: ObservableObject {
     @Published var currentTheme: AppTheme = .system
     @Published var currentLanguage: AppLanguage = .english
     @Published var highContrast: Bool = false
+    @Published var textScale: Double = 1.0
+    @Published var reducedMotion: Bool = false
+    @Published var screenReaderOptimized: Bool = false
+    @Published var largerTouchTargets: Bool = false
+    @Published var colorBlindMode: String = "none"
+    @Published var staticAlternatives: Bool = true
     @Published var biometricEnabled: Bool = false
     @Published var pushNotificationsEnabled = true
     @Published var syncOnWifiOnly = false
@@ -33,6 +39,13 @@ class SettingsViewModel: ObservableObject {
         currentTheme = themeManager.theme
         currentLanguage = themeManager.language
         highContrast = themeManager.highContrast
+        textScale = min(max(UserDefaults.standard.double(forKey: "accessibility_text_scale"), 0.85), 2.0)
+        if textScale == 0 { textScale = 1.0 }
+        reducedMotion = UserDefaults.standard.bool(forKey: "accessibility_reduced_motion")
+        screenReaderOptimized = UserDefaults.standard.bool(forKey: "accessibility_screen_reader")
+        largerTouchTargets = UserDefaults.standard.bool(forKey: "accessibility_larger_touch_targets")
+        colorBlindMode = UserDefaults.standard.string(forKey: "accessibility_color_blind_mode") ?? "none"
+        staticAlternatives = UserDefaults.standard.object(forKey: "accessibility_static_alternatives") as? Bool ?? true
         biometricEnabled = authManager.biometricEnabled
 
         appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
@@ -59,6 +72,37 @@ class SettingsViewModel: ObservableObject {
     func toggleHighContrast() {
         highContrast.toggle()
         themeManager.highContrast = highContrast
+    }
+
+    func setTextScale(_ value: Double) {
+        textScale = min(max(value, 0.85), 2.0)
+        UserDefaults.standard.set(textScale, forKey: "accessibility_text_scale")
+    }
+
+    func toggleReducedMotion() {
+        reducedMotion.toggle()
+        UserDefaults.standard.set(reducedMotion, forKey: "accessibility_reduced_motion")
+    }
+
+    func toggleScreenReaderOptimized() {
+        screenReaderOptimized.toggle()
+        UserDefaults.standard.set(screenReaderOptimized, forKey: "accessibility_screen_reader")
+    }
+
+    func toggleLargerTouchTargets() {
+        largerTouchTargets.toggle()
+        UserDefaults.standard.set(largerTouchTargets, forKey: "accessibility_larger_touch_targets")
+    }
+
+    func setColorBlindMode(_ value: String) {
+        let allowed = ["none", "protanopia", "deuteranopia", "tritanopia", "monochrome"]
+        colorBlindMode = allowed.contains(value) ? value : "none"
+        UserDefaults.standard.set(colorBlindMode, forKey: "accessibility_color_blind_mode")
+    }
+
+    func toggleStaticAlternatives() {
+        staticAlternatives.toggle()
+        UserDefaults.standard.set(staticAlternatives, forKey: "accessibility_static_alternatives")
     }
 
     func toggleBiometric() {

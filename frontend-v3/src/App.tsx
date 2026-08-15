@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { LocaleProvider } from "@/contexts/LocaleContext";
 import { ToastContainer } from "@/components/shared/ToastContainer";
 import { UpdateGate } from "@/components/shared/UpdateGate";
+import { AccessibilityProvider } from "@/contexts/AccessibilityContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,8 +27,10 @@ export function App() {
         <LocaleProvider>
           <UpdateGate>
             <AuthProvider>
-              <RouterProvider router={router} />
-              <ToastContainer />
+              <AccessibilityProvider>
+                <RouterProvider router={router} />
+                <ToastContainer />
+              </AccessibilityProvider>
             </AuthProvider>
           </UpdateGate>
         </LocaleProvider>

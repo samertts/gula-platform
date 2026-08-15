@@ -63,6 +63,68 @@ struct SettingsView: View {
                     .tint(.gulaPrimary)
                 }
 
+                // MARK: - Accessibility
+                Section("Accessibility") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Text scale")
+                            Spacer()
+                            Text(String(format: "%.2f×", viewModel.textScale))
+                                .foregroundColor(.gulaTextSecondary)
+                        }
+                        Slider(value: Binding(
+                            get: { viewModel.textScale },
+                            set: { viewModel.setTextScale($0) }
+                        ), in: 0.85...2.0, step: 0.05)
+                        .tint(.gulaPrimary)
+                    }
+
+                    Toggle("High contrast", isOn: Binding(
+                        get: { viewModel.highContrast },
+                        set: { _ in viewModel.toggleHighContrast() }
+                    ))
+                    .tint(.gulaPrimary)
+
+                    Toggle("Reduced motion and flashing", isOn: Binding(
+                        get: { viewModel.reducedMotion },
+                        set: { _ in viewModel.toggleReducedMotion() }
+                    ))
+                    .tint(.gulaPrimary)
+
+                    Toggle("Screen reader optimized", isOn: Binding(
+                        get: { viewModel.screenReaderOptimized },
+                        set: { _ in viewModel.toggleScreenReaderOptimized() }
+                    ))
+                    .tint(.gulaPrimary)
+
+                    Toggle("Larger touch targets", isOn: Binding(
+                        get: { viewModel.largerTouchTargets },
+                        set: { _ in viewModel.toggleLargerTouchTargets() }
+                    ))
+                    .tint(.gulaPrimary)
+
+                    Picker("Color blind safe palette", selection: Binding(
+                        get: { viewModel.colorBlindMode },
+                        set: { viewModel.setColorBlindMode($0) }
+                    )) {
+                        Text("None").tag("none")
+                        Text("Protanopia-safe").tag("protanopia")
+                        Text("Deuteranopia-safe").tag("deuteranopia")
+                        Text("Tritanopia-safe").tag("tritanopia")
+                        Text("Monochrome").tag("monochrome")
+                    }
+
+                    Toggle("Static alternatives", isOn: Binding(
+                        get: { viewModel.staticAlternatives },
+                        set: { _ in viewModel.toggleStaticAlternatives() }
+                    ))
+                    .tint(.gulaPrimary)
+
+                    Text("Health Preferences are optional, consent-bound, and are not stored in this device's local settings.")
+                        .font(.footnote)
+                        .foregroundColor(.gulaTextSecondary)
+                }
+
                 // MARK: - Security
                 Section("security".localized) {
                     if BiometricAuth.isAvailable {

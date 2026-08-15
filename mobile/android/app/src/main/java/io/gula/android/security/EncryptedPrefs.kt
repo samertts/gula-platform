@@ -80,6 +80,30 @@ class EncryptedPrefs @Inject constructor(
         get() = prefs.getString(KEY_DARK_MODE, "system") ?: "system"
         set(value) = prefs.edit().putString(KEY_DARK_MODE, value).apply()
 
+    var accessibilityTextScale: Float
+        get() = prefs.getFloat(KEY_ACCESSIBILITY_TEXT_SCALE, 1.0f)
+        set(value) = prefs.edit().putFloat(KEY_ACCESSIBILITY_TEXT_SCALE, value.coerceIn(0.85f, 2.0f)).apply()
+
+    var accessibilityHighContrast: Boolean
+        get() = prefs.getBoolean(KEY_ACCESSIBILITY_HIGH_CONTRAST, false)
+        set(value) = prefs.edit().putBoolean(KEY_ACCESSIBILITY_HIGH_CONTRAST, value).apply()
+
+    var accessibilityReducedMotion: Boolean
+        get() = prefs.getBoolean(KEY_ACCESSIBILITY_REDUCED_MOTION, false)
+        set(value) = prefs.edit().putBoolean(KEY_ACCESSIBILITY_REDUCED_MOTION, value).apply()
+
+    var accessibilityScreenReader: Boolean
+        get() = prefs.getBoolean(KEY_ACCESSIBILITY_SCREEN_READER, false)
+        set(value) = prefs.edit().putBoolean(KEY_ACCESSIBILITY_SCREEN_READER, value).apply()
+
+    var accessibilityLargerTouchTargets: Boolean
+        get() = prefs.getBoolean(KEY_ACCESSIBILITY_LARGER_TOUCH_TARGETS, false)
+        set(value) = prefs.edit().putBoolean(KEY_ACCESSIBILITY_LARGER_TOUCH_TARGETS, value).apply()
+
+    var accessibilityColorBlindMode: String
+        get() = prefs.getString(KEY_ACCESSIBILITY_COLOR_BLIND_MODE, "none") ?: "none"
+        set(value) = prefs.edit().putString(KEY_ACCESSIBILITY_COLOR_BLIND_MODE, value).apply()
+
     fun clearAll() {
         prefs.edit().clear().apply()
     }
@@ -100,5 +124,11 @@ class EncryptedPrefs @Inject constructor(
         private const val KEY_DEVICE_TOKEN = "device_token"
         private const val KEY_LOCALE = "locale"
         private const val KEY_DARK_MODE = "dark_mode"
+        private const val KEY_ACCESSIBILITY_TEXT_SCALE = "accessibility_text_scale"
+        private const val KEY_ACCESSIBILITY_HIGH_CONTRAST = "accessibility_high_contrast"
+        private const val KEY_ACCESSIBILITY_REDUCED_MOTION = "accessibility_reduced_motion"
+        private const val KEY_ACCESSIBILITY_SCREEN_READER = "accessibility_screen_reader"
+        private const val KEY_ACCESSIBILITY_LARGER_TOUCH_TARGETS = "accessibility_larger_touch_targets"
+        private const val KEY_ACCESSIBILITY_COLOR_BLIND_MODE = "accessibility_color_blind_mode"
     }
 }

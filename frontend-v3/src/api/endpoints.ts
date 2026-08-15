@@ -50,6 +50,10 @@ import type {
   DeviceGatewayMonitoringSnapshot,
   DeviceGatewayRecord,
   DeviceOutboxRecord,
+  AccessibilityPreferences,
+  AccessibilityResponse,
+  HealthPreferencesPayload,
+  HealthPreferencesResponse,
 } from "@/types";
 
 // ── Auth ──
@@ -88,6 +92,17 @@ export const authApi = {
     api.post<Record<string, unknown>>("/auth/reset-password", { token, new_password }).then((r) => r.data),
   changePassword: (current_password: string, new_password: string) =>
     api.post<Record<string, unknown>>("/auth/change-password", { current_password, new_password }).then((r) => r.data),
+};
+
+// ── User preferences ──
+export const userPreferencesApi = {
+  getAccessibility: () => api.get<AccessibilityResponse>("/user-preferences/accessibility").then((r) => r.data),
+  updateAccessibility: (data: AccessibilityPreferences & { version?: number }) =>
+    api.put<AccessibilityResponse>("/user-preferences/accessibility", data).then((r) => r.data),
+  getHealth: () => api.get<HealthPreferencesResponse>("/user-preferences/health").then((r) => r.data),
+  updateHealth: (data: { preferences: HealthPreferencesPayload; consent: boolean; consent_version: string; version?: number }) =>
+    api.put<HealthPreferencesResponse>("/user-preferences/health", data).then((r) => r.data),
+  revokeHealth: () => api.delete<HealthPreferencesResponse>("/user-preferences/health").then((r) => r.data),
 };
 
 // ── Setup ──
