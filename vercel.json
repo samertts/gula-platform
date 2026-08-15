@@ -27,7 +27,7 @@
         { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
         { "key": "X-DNS-Prefetch-Control", "value": "on" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.gula-platform.org wss://api.gula-platform.org; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://api.gula-platform.org wss://api.gula-platform.org https://staging.gula-platform.org wss://staging.gula-platform.org https://api.staging.gula-platform.org wss://api.staging.gula-platform.org; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests" },
         { "key": "X-XSS-Protection", "value": "1; mode=block" }
       ]
     },
@@ -48,10 +48,6 @@
     {
       "source": "/demo-api/:path*",
       "destination": "/api/demo-api/:path*"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "https://api.gula-platform.org/api/:path*"
     },
     {
       "source": "/:path*",

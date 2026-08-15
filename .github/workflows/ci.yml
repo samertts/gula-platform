@@ -292,6 +292,8 @@ jobs:
         run: python3 scripts/security/check_public_secrets.py
       - name: Client transport security guard
         run: python3 scripts/security/check_client_transport.py
+      - name: Vercel API isolation guard
+        run: node scripts/verify-vercel-api-isolation.mjs
       - name: Install safety
         run: pip install safety
       - name: Safety check
