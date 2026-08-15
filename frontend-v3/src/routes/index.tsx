@@ -32,6 +32,7 @@ const IdentityPage = lazy(() => import("@/pages/identity/IdentityPage").then(m =
 const TiersPage = lazy(() => import("@/pages/tiers/TiersPage").then(m => ({ default: m.TiersPage })));
 const CompliancePage = lazy(() => import("@/pages/compliance/CompliancePage").then(m => ({ default: m.CompliancePage })));
 const SettingsPage = lazy(() => import("@/pages/settings/SettingsPage").then(m => ({ default: m.SettingsPage })));
+const AccessibilityCenterPage = lazy(() => import("@/pages/settings/AccessibilityCenterPage").then(m => ({ default: m.AccessibilityCenterPage })));
 const ProfilePage = lazy(() => import("@/pages/profile/ProfilePage").then(m => ({ default: m.ProfilePage })));
 const SecurityPage = lazy(() => import("@/pages/security/SecurityPage").then(m => ({ default: m.SecurityPage })));
 const AdminLabsPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminLabsPage })));
@@ -161,6 +162,7 @@ export const router = createBrowserRouter([
       { path: "tiers", element: <RoleGuard roles={readonlyRoles}><LazyPage><TiersPage /></LazyPage></RoleGuard> },
       { path: "compliance", element: <RoleGuard roles={adminRoles}><LazyPage><CompliancePage /></LazyPage></RoleGuard> },
       { path: "settings", element: <LazyPage><SettingsPage /></LazyPage> },
+      { path: "settings/accessibility", element: <LazyPage><AccessibilityCenterPage /></LazyPage> },
       { path: "profile", element: <LazyPage><ProfilePage /></LazyPage> },
       { path: "security", element: <RoleGuard roles={adminRoles}><LazyPage><SecurityPage /></LazyPage></RoleGuard> },
       { path: "admin/labs", element: <RoleGuard roles={adminRoles}><LazyPage><AdminLabsPage /></LazyPage></RoleGuard> },
