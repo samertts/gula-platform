@@ -15,7 +15,7 @@ from app.security.policy import (
 from fastapi.testclient import TestClient
 
 
-@pytest.fixture()
+@pytest.fixture()  # type: ignore[misc,unused-ignore]
 def client() -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = lambda: object()
     try:
