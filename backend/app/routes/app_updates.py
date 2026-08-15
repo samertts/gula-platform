@@ -25,6 +25,7 @@ router = APIRouter(prefix="/app-updates", tags=["app-updates"])
 _DEFAULT_VERSION: Final[str] = "2.5.0"
 _DEFAULT_STORE_URLS: Final[dict[str, str]] = {
     "android": "https://play.google.com/store/apps/details?id=io.gula.android",
+    "ios": "https://github.com/samertts/gula-platform/releases",
     "windows": "https://github.com/samertts/gula-platform/releases",
     "macos": "https://github.com/samertts/gula-platform/releases",
     "linux": "https://github.com/samertts/gula-platform/releases",
@@ -107,7 +108,7 @@ def build_policy(platform: str, current_version: str) -> UpdatePolicy:
 
 @router.get("", response_model=UpdateManifest, response_class=JSONResponse)
 async def get_update_manifest(
-    platform: str = Query("web", pattern="^(android|windows|macos|linux|web)$"),
+    platform: str = Query("web", pattern="^(android|ios|windows|macos|linux|web)$"),
     version: str = Query(_DEFAULT_VERSION, min_length=5, max_length=32),
 ) -> UpdateManifest:
     """Return the update policy for one client platform.

@@ -7,6 +7,6 @@ Layer: infrastructure
 Version: 1.0.0
 """
 
-from fhir_interoperability.capability import Fhir_interoperabilityCapability
+from .capability import Fhir_interoperabilityCapability
 
 __all__ = ["Fhir_interoperabilityCapability"]

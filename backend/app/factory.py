@@ -240,6 +240,7 @@ def import_all_models() -> None:
         DeviceProtocolProfile,
         IntegratedDevice,
     )
+    from .capabilities.fhir_interoperability.models import FHIRResourceRecord  # noqa: F401
     from .models.outbox import OutboxEvent  # noqa: F401
     from .payments import models as payment_models  # noqa: F401
     from .models.subscription import (  # noqa: F401
@@ -592,6 +593,9 @@ def _register_routes(app: FastAPI) -> None:
     from .routes import consent as consent_routes
     app.include_router(consent_routes.router)
 
+    from .routes import user_preferences as user_preferences_routes
+    app.include_router(user_preferences_routes.router)
+
     from .routes import mfa as mfa_routes
     app.include_router(mfa_routes.router)
 
@@ -615,6 +619,9 @@ def _register_routes(app: FastAPI) -> None:
 
     from .devices.routes import router as device_integration_router
     app.include_router(device_integration_router)
+
+    from .capabilities.fhir_interoperability.routes import router as fhir_interoperability_router
+    app.include_router(fhir_interoperability_router)
 
     from .routes import patient_card as patient_card_routes
     app.include_router(patient_card_routes.router)

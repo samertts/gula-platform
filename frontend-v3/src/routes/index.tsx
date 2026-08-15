@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { lazy, Suspense, type ReactNode } from "react";
 import { AuthLayout } from "@/layouts/AuthLayout";
 import { DashboardLayout } from "@/layouts/DashboardLayout";
-import { LoadingSpinner } from "@/components/shared/PageComponents";
+import { LoadingSpinner, PageLoadingSkeleton } from "@/components/shared/PageComponents";
 import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserRole } from "@/types";
@@ -27,6 +27,7 @@ const AiPlatformPage = lazy(() => import("@/pages/ai-platform/AiPlatformPage").t
 const StatsPage = lazy(() => import("@/pages/stats/StatsPage").then(m => ({ default: m.StatsPage })));
 const QCPage = lazy(() => import("@/pages/qc/QCPage").then(m => ({ default: m.QCPage })));
 const PatientCardPage = lazy(() => import("@/pages/patient-card/PatientCardPage").then(m => ({ default: m.PatientCardPage })));
+const PatientVisitReadinessPage = lazy(() => import("@/pages/patient-visit/PatientVisitReadinessPage").then(m => ({ default: m.PatientVisitReadinessPage })));
 const IdentityPage = lazy(() => import("@/pages/identity/IdentityPage").then(m => ({ default: m.IdentityPage })));
 const TiersPage = lazy(() => import("@/pages/tiers/TiersPage").then(m => ({ default: m.TiersPage })));
 const CompliancePage = lazy(() => import("@/pages/compliance/CompliancePage").then(m => ({ default: m.CompliancePage })));
@@ -102,7 +103,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
 }
 
 function LazyPage({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<LoadingSpinner />}>{children}</Suspense>;
+  return <Suspense fallback={<PageLoadingSkeleton />}>{children}</Suspense>;
 }
 
 function InstitutionalOnlyRoute({ children }: { children: ReactNode }) {
@@ -155,6 +156,7 @@ export const router = createBrowserRouter([
       { path: "stats", element: <RoleGuard roles={readonlyRoles}><LazyPage><StatsPage /></LazyPage></RoleGuard> },
       { path: "qc", element: <RoleGuard roles={readonlyRoles}><LazyPage><QCPage /></LazyPage></RoleGuard> },
       { path: "patient-card", element: <RoleGuard roles={staffRoles}><LazyPage><PatientCardPage /></LazyPage></RoleGuard> },
+      { path: "patient-visit/readiness", element: <RoleGuard roles={readonlyRoles}><LazyPage><PatientVisitReadinessPage /></LazyPage></RoleGuard> },
       { path: "identity", element: <RoleGuard roles={staffRoles}><LazyPage><IdentityPage /></LazyPage></RoleGuard> },
       { path: "tiers", element: <RoleGuard roles={readonlyRoles}><LazyPage><TiersPage /></LazyPage></RoleGuard> },
       { path: "compliance", element: <RoleGuard roles={adminRoles}><LazyPage><CompliancePage /></LazyPage></RoleGuard> },

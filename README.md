@@ -28,7 +28,7 @@ security.
 
 The platform has evolved from a single-laboratory LIMS into a national-scale
 healthcare ecosystem supporting EHR, pharmacy, radiology, nursing, hospital
-operations, AI-powered clinical intelligence, and citizen health services.
+operations, clinical decision support, data intelligence, and citizen health services.
 
 ## Problem Statement
 
@@ -72,7 +72,7 @@ offline-capable, self-hosted design.
 - **Hospital Desktop** — ADT, ward rounds, resource management
 - **Nursing Platform** — Clinical care, medication administration, handover
 - **Pharmacy Platform** — Drug catalog, e-prescription, inventory
-- **Radiology/PACS** — DICOM storage, image viewer, AI imaging
+- **Radiology/PACS** — DICOM storage, image viewer, and image analysis
 - **Citizen Super App** — Health card, appointments, lab results
 - **Population Health** — Analytics, epidemiology, outbreak detection
 
@@ -220,7 +220,7 @@ pip install pre-commit && pre-commit install
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contributor guide and
-[CLAUDE.md](CLAUDE.md) for the comprehensive developer reference.
+[docs/START_HERE.md](docs/START_HERE.md) for the supported developer path.
 
 ## Testing
 
@@ -308,7 +308,7 @@ as immutable platform rules.
 | Self-Hosted First | Self-hosted before SaaS |
 | No Vendor Lock-In | Every component replaceable |
 | Zero Paid Dependency | Paid requires documented exception |
-| Local AI First | Self-hosted inference before API |
+| Local Intelligence First | Self-hosted inference before external API |
 | Free Security First | Open-source security tools |
 
 Full policy: `docs/constitution/COST_GOVERNANCE.md`
@@ -323,7 +323,6 @@ Full policy: `docs/constitution/COST_GOVERNANCE.md`
 - [GOVERNANCE.md](GOVERNANCE.md) — Project governance
 - [SUPPORT.md](SUPPORT.md) — Getting help
 - [ROADMAP.md](ROADMAP.md) — Development roadmap
-- [CLAUDE.md](CLAUDE.md) — Developer guide
 
 ## Contributing
 

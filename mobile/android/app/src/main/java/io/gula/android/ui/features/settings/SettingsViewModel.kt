@@ -20,6 +20,12 @@ data class SettingsUiState(
     val pendingSync: Int = 0,
     val failedSync: Int = 0,
     val lastSyncTime: String? = null,
+    val textScale: Float = 1.0f,
+    val highContrast: Boolean = false,
+    val reducedMotion: Boolean = false,
+    val screenReaderOptimized: Boolean = false,
+    val largerTouchTargets: Boolean = false,
+    val colorBlindMode: String = "none",
 )
 
 @HiltViewModel
@@ -42,6 +48,12 @@ class SettingsViewModel @Inject constructor(
             locale = encryptedPrefs.locale,
             darkMode = encryptedPrefs.darkMode,
             biometricEnabled = encryptedPrefs.biometricEnabled,
+            textScale = encryptedPrefs.accessibilityTextScale,
+            highContrast = encryptedPrefs.accessibilityHighContrast,
+            reducedMotion = encryptedPrefs.accessibilityReducedMotion,
+            screenReaderOptimized = encryptedPrefs.accessibilityScreenReader,
+            largerTouchTargets = encryptedPrefs.accessibilityLargerTouchTargets,
+            colorBlindMode = encryptedPrefs.accessibilityColorBlindMode,
         )
     }
 
@@ -66,6 +78,38 @@ class SettingsViewModel @Inject constructor(
     fun setDarkMode(mode: String) {
         encryptedPrefs.darkMode = mode
         _uiState.value = _uiState.value.copy(darkMode = mode)
+    }
+
+    fun setTextScale(scale: Float) {
+        val safeScale = scale.coerceIn(0.85f, 2.0f)
+        encryptedPrefs.accessibilityTextScale = safeScale
+        _uiState.value = _uiState.value.copy(textScale = safeScale)
+    }
+
+    fun setHighContrast(enabled: Boolean) {
+        encryptedPrefs.accessibilityHighContrast = enabled
+        _uiState.value = _uiState.value.copy(highContrast = enabled)
+    }
+
+    fun setReducedMotion(enabled: Boolean) {
+        encryptedPrefs.accessibilityReducedMotion = enabled
+        _uiState.value = _uiState.value.copy(reducedMotion = enabled)
+    }
+
+    fun setScreenReaderOptimized(enabled: Boolean) {
+        encryptedPrefs.accessibilityScreenReader = enabled
+        _uiState.value = _uiState.value.copy(screenReaderOptimized = enabled)
+    }
+
+    fun setLargerTouchTargets(enabled: Boolean) {
+        encryptedPrefs.accessibilityLargerTouchTargets = enabled
+        _uiState.value = _uiState.value.copy(largerTouchTargets = enabled)
+    }
+
+    fun setColorBlindMode(mode: String) {
+        val safeMode = mode.takeIf { it in setOf("none", "protanopia", "deuteranopia", "tritanopia", "monochrome") } ?: "none"
+        encryptedPrefs.accessibilityColorBlindMode = safeMode
+        _uiState.value = _uiState.value.copy(colorBlindMode = safeMode)
     }
 
     fun setBiometricEnabled(enabled: Boolean) {

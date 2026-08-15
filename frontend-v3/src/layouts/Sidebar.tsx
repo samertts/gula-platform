@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { DemoEnvironmentBadge, GulaBrand } from "@/components/shared/GulaBrand";
+import { prefetchRoute } from "@/routes/prefetch";
 
 const iconMap: Record<string, LucideIcon> = {
   Activity,
@@ -114,6 +115,8 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             key={item.path}
             to={item.path}
             onClick={onClose}
+            onPointerEnter={() => prefetchRoute(item.path)}
+            onFocus={() => prefetchRoute(item.path)}
             aria-current={active ? "page" : undefined}
             title={collapsed ? label : undefined}
             className={cn(

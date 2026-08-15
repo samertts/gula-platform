@@ -1,49 +1,49 @@
 from __future__ import annotations
 
-from backend.app.integration.api_management import (
+from app.integration.api_management import (
     APIAuth,
     APICatalog,
     APIGateway,
     APIPortal,
 )
-from backend.app.integration.base import IntegrationRoute, IntegrationStatus, UplinkBase
-from backend.app.integration.connector import (
+from app.integration.base import IntegrationRoute, IntegrationStatus, UplinkBase
+from app.integration.connector import (
     ConnectorRegistry as ConnectorSpecRegistry,
 )
-from backend.app.integration.connector import (
+from app.integration.connector import (
     ConnectorSDK,
     ConnectorSpec,
     ConnectorStatus,
     ConnectorType,
     HttpConnector,
 )
-from backend.app.integration.connectors import (
+from app.integration.connectors import (
     BaseConnector,
 )
-from backend.app.integration.connectors import (
+from app.integration.connectors import (
     ConnectorRegistry as ConnectorClassRegistry,
 )
-from backend.app.integration.connectors.cloud_storage import CloudStorageConnector
-from backend.app.integration.connectors.iot import IoTConnector
-from backend.app.integration.esb import (
+from app.integration.connectors.cloud_storage import CloudStorageConnector
+from app.integration.connectors.iot import IoTConnector
+from app.integration.esb import (
     DeadLetterService,
     ESBMessageBus,
     ESBRouter,
     IdempotencyService,
     PriorityService,
 )
-from backend.app.integration.gateway import (
+from app.integration.gateway import (
     GatewayRegistry,
     MessageGateway,
 )
-from backend.app.integration.government import (
+from app.integration.government import (
     EmergencyServices,
     FinanceIntegration,
     GovernmentBus,
     InteriorIntegration,
     MinistryOfHealth,
 )
-from backend.app.integration.healthcare import (
+from app.integration.healthcare import (
     BloodBankIntegration,
     HospitalIntegration,
     InsuranceIntegration,
@@ -53,10 +53,10 @@ from backend.app.integration.healthcare import (
     RadiologyIntegration,
     VaccinationIntegration,
 )
-from backend.app.integration.integration import IntegrationPlatform
-from backend.app.integration.monitoring import IntegrationMonitor
-from backend.app.integration.offline import OfflineSyncEngine
-from backend.app.integration.standards import (
+from app.integration.integration import IntegrationPlatform
+from app.integration.monitoring import IntegrationMonitor
+from app.integration.offline import OfflineSyncEngine
+from app.integration.standards import (
     DICOMService,
     FHIRService,
     HL7Service,
@@ -64,8 +64,8 @@ from backend.app.integration.standards import (
     TerminologyService,
     ValidationService,
 )
-from backend.app.integration.testing import IntegrationTestSuite
-from backend.app.integration.transformation import (
+from app.integration.testing import IntegrationTestSuite
+from app.integration.transformation import (
     DataTransformer,
     FHIRMappingEngine,
     SchemaMapper,

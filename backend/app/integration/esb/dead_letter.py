@@ -4,7 +4,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 
-from backend.app.integration.esb.types import ESBMessage
+from app.integration.esb.types import ESBMessage
 
 logger = logging.getLogger("gula.integration.esb.dead_letter")
 
