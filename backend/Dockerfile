@@ -37,15 +37,13 @@ COPY backend/start_railway.sh ./start_railway.sh
 COPY backend/railway_startup_probe.py ./railway_startup_probe.py
 COPY shared ./shared
 
-# Shared modules refer to backend.app._compat for the UTC compatibility shim.
-# Copy only that small compatibility module under the namespace expected by
-# shared/; the running application itself continues to import app.*.
-RUN mkdir -p /app/backend/app
-COPY backend/app/_compat.py ./backend/app/_compat.py
+# Keep legacy backend.app.* imports compatible without duplicating the source
+# tree. Integration modules use app.* internally to avoid dual-package cycles.
+RUN mkdir -p /app/backend && ln -s /app/app /app/backend/app
 
 # Fail the image build on syntax errors in application or shared code.
 RUN chmod 755 /app/start_railway.sh && \
-    python -m compileall app/ shared/ backend/app/_compat.py railway_startup_probe.py
+    python -m compileall app/ shared/ railway_startup_probe.py
 
 # SECURITY: Drop root — run as unprivileged user.
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app

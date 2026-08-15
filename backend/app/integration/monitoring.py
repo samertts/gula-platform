@@ -6,7 +6,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.app.integration.connectors import ConnectorRegistry
+from app.integration.connectors import ConnectorRegistry
 
 logger = logging.getLogger("gula.integration.monitoring")
 
