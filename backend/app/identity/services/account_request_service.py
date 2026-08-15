@@ -24,12 +24,14 @@ from app.identity.models.audit import AuditAction
 from app.identity.models.identity import IdentityRecord, IdentityType
 from app.identity.models.membership import Membership, MembershipStatus
 from app.identity.models.person import Person
+from app.identity.models.verification_record import VerificationRecord, VerificationRecordStatus
 from app.identity.services.account_lifecycle_service import (
     AccountLifecycleService,
     InvalidAccountTransition,
 )
 from app.identity.services.audit_service import AuditService
 from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
+from app.identity.services.verification_record_service import VerificationRecordService
 from app.notifications.service import get_service
 from app.security.auth import hash_password
 from app.security.redis_client import cache
@@ -94,6 +96,8 @@ REQUEST_TRANSITIONS: dict[str, frozenset[str]] = {
 
 _OTP_TTL_SECONDS = 15 * 60
 _OTP_MAX_ATTEMPTS = 5
+_OTP_MAX_RESENDS = 3
+_OTP_RESEND_WINDOW_SECONDS = 60
 _REQUEST_TTL = timedelta(days=30)
 _ACTIVATION_TTL = timedelta(hours=24)
 
@@ -184,6 +188,11 @@ class AccountRequestService:
     def _otp_attempt_key(request_uuid: str) -> str:
         digest = hashlib.sha256(request_uuid.encode("utf-8")).hexdigest()
         return f"niam:account-request:otp-attempts:{digest}"
+
+    @staticmethod
+    def _otp_resend_key(request_uuid: str) -> str:
+        digest = hashlib.sha256(request_uuid.encode("utf-8")).hexdigest()
+        return f"niam:account-request:otp-resends:{digest}"
 
     @staticmethod
     def _activation_token_hash(token: str) -> str:
@@ -412,10 +421,21 @@ class AccountRequestService:
             )
             await self.session.commit()
             raise AccountRequestStateError("Account request has expired")
-        if request.status == AccountRequestStatus.pending_verification.value:
-            return request
-        if request.status != AccountRequestStatus.under_review.value:
+        if request.verification_locked_at:
+            raise AccountRequestStateError("Verification is locked")
+        is_resend = request.status == AccountRequestStatus.pending_verification.value
+        if request.status not in {
+            AccountRequestStatus.under_review.value,
+            AccountRequestStatus.pending_verification.value,
+        }:
             raise AccountRequestStateError("Account request is not ready for verification")
+        if is_resend:
+            resend_count = int(cache.get(self._otp_resend_key(request_uuid)) or "0")
+            if resend_count >= _OTP_MAX_RESENDS:
+                raise AccountRequestStateError("Verification resend is throttled")
+            resend_count = cache.incr(self._otp_resend_key(request_uuid))
+            if resend_count == 1:
+                cache.expire(self._otp_resend_key(request_uuid), _OTP_RESEND_WINDOW_SECONDS)
 
         email = self._decrypt_optional(request.contact_email_encrypted)
         phone = self._decrypt_optional(request.contact_phone_encrypted)
@@ -439,15 +459,31 @@ class AccountRequestService:
             json.dumps({"digest": hashlib.sha256(code.encode()).hexdigest(), "channel": channel}),
             ex=_OTP_TTL_SECONDS,
         )
-        cache.set(self._otp_attempt_key(request_uuid), "0", ex=_OTP_TTL_SECONDS)
-        await self._transition_request(
-            request,
-            AccountRequestStatus.pending_verification,
-            actor_id=None,
-            reason_code="verification_started",
-            request_id=request_id,
-            metadata={"channel": channel},
+        cache.set(
+            self._otp_attempt_key(request_uuid),
+            str(request.verification_attempts or 0),
+            ex=_OTP_TTL_SECONDS,
         )
+        if is_resend:
+            await self._audit_event(
+                event_type="account_request_verification_resent",
+                action="account_request.verification_resent",
+                request=request,
+                actor_id=None,
+                decision="allow",
+                reason_code="resend_allowed",
+                request_id=request_id,
+                metadata={"channel": channel},
+            )
+        else:
+            await self._transition_request(
+                request,
+                AccountRequestStatus.pending_verification,
+                actor_id=None,
+                reason_code="verification_started",
+                request_id=request_id,
+                metadata={"channel": channel},
+            )
         await self.session.commit()
         return request
 
@@ -462,34 +498,70 @@ class AccountRequestService:
         entry = cache.get(self._otp_key(request_uuid))
         if request is None or request.status != AccountRequestStatus.pending_verification.value or not entry:
             raise AccountRequestStateError("Verification is invalid or expired")
-        attempts = int(cache.get(self._otp_attempt_key(request_uuid)) or "0")
+        if request.verification_locked_at:
+            raise AccountRequestStateError("Verification is locked")
+        attempts = max(
+            int(cache.get(self._otp_attempt_key(request_uuid)) or "0"),
+            int(request.verification_attempts or 0),
+        )
         if attempts >= _OTP_MAX_ATTEMPTS:
+            request.verification_locked_at = self._now()
+            request.verification_failure_reason_code = "too_many_attempts"
+            cache.delete(self._otp_key(request_uuid))
+            await self._audit_event(
+                event_type="account_request_verification_locked",
+                action="account_request.verification_locked",
+                request=request,
+                actor_id=None,
+                decision="deny",
+                reason_code="too_many_attempts",
+                request_id=request_id,
+                outcome="denied",
+            )
+            await self.session.commit()
             raise AccountRequestStateError("Too many verification attempts")
-        cache.set(self._otp_attempt_key(request_uuid), str(attempts + 1), ex=_OTP_TTL_SECONDS)
         try:
             stored = json.loads(entry)
         except (TypeError, json.JSONDecodeError):
             stored = {}
         digest = hashlib.sha256(code.encode()).hexdigest()
         if not hmac.compare_digest(str(stored.get("digest", "")), digest):
+            request.verification_attempts = attempts + 1
+            cache.set(self._otp_attempt_key(request_uuid), str(request.verification_attempts), ex=_OTP_TTL_SECONDS)
+            if request.verification_attempts >= _OTP_MAX_ATTEMPTS:
+                request.verification_locked_at = self._now()
+                request.verification_failure_reason_code = "too_many_attempts"
+                cache.delete(self._otp_key(request_uuid))
+                event_type = "account_request_verification_locked"
+                action = "account_request.verification_locked"
+                reason_code = "too_many_attempts"
+            else:
+                request.verification_failure_reason_code = "invalid_verification_code"
+                event_type = "account_request_verification_failed"
+                action = "account_request.verification_failed"
+                reason_code = "invalid_verification_code"
             await self._audit_event(
-                event_type="account_request_verification_failed",
-                action="account_request.verification_failed",
+                event_type=event_type,
+                action=action,
                 request=request,
                 actor_id=None,
                 decision="deny",
-                reason_code="invalid_verification_code",
+                reason_code=reason_code,
                 request_id=request_id,
                 outcome="denied",
             )
             await self.session.commit()
-            raise AccountRequestStateError("Verification is invalid or expired")
+            raise AccountRequestStateError(
+                "Too many verification attempts" if request.verification_locked_at else "Verification is invalid or expired",
+            )
 
         cache.delete(self._otp_key(request_uuid))
         cache.delete(self._otp_attempt_key(request_uuid))
+        cache.delete(self._otp_resend_key(request_uuid))
         request.verification_method = str(stored.get("channel", ""))
         request.verification_provider = f"notification:{request.verification_method}"
         request.verification_reference = None
+        request.verification_failure_reason_code = None
         request.verified_at = self._now()
         await self._transition_request(
             request,
@@ -574,6 +646,35 @@ class AccountRequestService:
         )
         self.session.add(account)
         await self.session.flush()
+        contact_record = VerificationRecord(
+            uuid=str(uuid.uuid4()),
+            account_id=account.id,
+            identity_id=identity.id,
+            record_type="contact",
+            method=request.verification_method or "contact",
+            provider=request.verification_provider or "notification:unknown",
+            status=VerificationRecordStatus.not_started.value,
+            assurance_level="L0",
+            requested_at=request.created_at or self._now(),
+            completed_at=request.verified_at,
+            valid_from=request.verified_at,
+            provider_reference=request.verification_reference,
+            verification_session_id=f"contact:{request.request_uuid}",
+            verified_by="account_request_otp",
+            attributes_purpose="account_request_contact_verification",
+            is_active=True,
+        )
+        self.session.add(contact_record)
+        await self.session.flush()
+        if request.verified_at:
+            VerificationRecordService.transition(contact_record, VerificationRecordStatus.pending)
+            VerificationRecordService.transition(contact_record, VerificationRecordStatus.in_progress)
+            VerificationRecordService.transition(contact_record, VerificationRecordStatus.verified)
+            contact_record.started_at = request.verified_at
+            contact_record.completed_at = request.verified_at
+            contact_record.valid_from = request.verified_at
+            contact_record.assurance_level = "L1"
+        request.verification_reference = contact_record.uuid
         request.account_id = account.id
         await self._transition_request(
             request,

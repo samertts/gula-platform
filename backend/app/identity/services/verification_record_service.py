@@ -12,23 +12,49 @@ from app.identity.services.verification_service import (
 )
 
 LEGAL_TRANSITIONS: dict[str, frozenset[str]] = {
-    VerificationRecordStatus.not_started.value: frozenset({VerificationRecordStatus.pending.value}),
-    VerificationRecordStatus.pending.value: frozenset({VerificationRecordStatus.in_progress.value, VerificationRecordStatus.failed.value}),
+    VerificationRecordStatus.not_started.value: frozenset({
+        VerificationRecordStatus.sent.value,
+        VerificationRecordStatus.pending.value,
+    }),
+    VerificationRecordStatus.sent.value: frozenset({
+        VerificationRecordStatus.pending.value,
+        VerificationRecordStatus.in_progress.value,
+        VerificationRecordStatus.failed.value,
+        VerificationRecordStatus.expired.value,
+        VerificationRecordStatus.locked.value,
+    }),
+    VerificationRecordStatus.pending.value: frozenset({
+        VerificationRecordStatus.in_progress.value,
+        VerificationRecordStatus.failed.value,
+        VerificationRecordStatus.expired.value,
+        VerificationRecordStatus.locked.value,
+    }),
     VerificationRecordStatus.in_progress.value: frozenset({
         VerificationRecordStatus.verified.value,
         VerificationRecordStatus.failed.value,
         VerificationRecordStatus.requires_review.value,
+        VerificationRecordStatus.expired.value,
+        VerificationRecordStatus.locked.value,
     }),
     VerificationRecordStatus.verified.value: frozenset({
         VerificationRecordStatus.expired.value,
         VerificationRecordStatus.revoked.value,
     }),
-    VerificationRecordStatus.failed.value: frozenset({VerificationRecordStatus.pending.value}),
+    VerificationRecordStatus.failed.value: frozenset({
+        VerificationRecordStatus.sent.value,
+        VerificationRecordStatus.pending.value,
+        VerificationRecordStatus.locked.value,
+    }),
     VerificationRecordStatus.expired.value: frozenset(),
+    VerificationRecordStatus.locked.value: frozenset({
+        VerificationRecordStatus.requires_review.value,
+        VerificationRecordStatus.expired.value,
+    }),
     VerificationRecordStatus.revoked.value: frozenset(),
     VerificationRecordStatus.requires_review.value: frozenset({
         VerificationRecordStatus.verified.value,
         VerificationRecordStatus.failed.value,
+        VerificationRecordStatus.locked.value,
     }),
 }
 
@@ -46,13 +72,17 @@ class VerificationRecordService:
             raise InvalidVerificationTransition(f"Illegal verification transition: {current} -> {target_value}")
         record.status = target_value
         now = datetime.now(UTC)
-        if target == VerificationRecordStatus.in_progress:
-            record.started_at = now
+        if target in {VerificationRecordStatus.sent, VerificationRecordStatus.in_progress}:
+            record.started_at = record.started_at or now
         elif target == VerificationRecordStatus.verified:
             record.completed_at = now
             record.valid_from = record.valid_from or now
             record.is_active = True
-        elif target in {VerificationRecordStatus.expired, VerificationRecordStatus.revoked}:
+        elif target in {
+            VerificationRecordStatus.expired,
+            VerificationRecordStatus.locked,
+            VerificationRecordStatus.revoked,
+        }:
             record.revoked_at = now if target == VerificationRecordStatus.revoked else record.revoked_at
             record.is_active = False
             record.assurance_level = AssuranceLevel.L0.value
@@ -60,18 +90,28 @@ class VerificationRecordService:
 
     @staticmethod
     def apply_provider_result(record: VerificationRecord, result: VerificationResult) -> VerificationRecord:
+        status_map = {
+            VerificationStatus.sent: VerificationRecordStatus.sent,
+            VerificationStatus.pending: VerificationRecordStatus.pending,
+            VerificationStatus.in_progress: VerificationRecordStatus.in_progress,
+            VerificationStatus.expired: VerificationRecordStatus.expired,
+            VerificationStatus.locked: VerificationRecordStatus.locked,
+            VerificationStatus.requires_review: VerificationRecordStatus.requires_review,
+        }
         if result.status == VerificationStatus.verified:
             VerificationRecordService.transition(record, VerificationRecordStatus.verified)
             record.assurance_level = VerificationPolicy.assurance_for(result).value
             record.provider_reference = result.provider_reference
             record.verified_attributes = result.verified_attributes
-        elif result.status == VerificationStatus.requires_review:
-            VerificationRecordService.transition(record, VerificationRecordStatus.requires_review)
-            record.assurance_level = AssuranceLevel.L0.value
-        elif result.status in {VerificationStatus.failed, VerificationStatus.not_connected}:
-            VerificationRecordService.transition(record, VerificationRecordStatus.failed)
+        elif result.status in status_map:
+            VerificationRecordService.transition(record, status_map[result.status])
             record.assurance_level = AssuranceLevel.L0.value
             record.failure_reason_code = result.reason
+        elif result.status in {VerificationStatus.failed, VerificationStatus.not_connected}:
+            if record.status != VerificationRecordStatus.failed.value:
+                VerificationRecordService.transition(record, VerificationRecordStatus.failed)
+            record.assurance_level = AssuranceLevel.L0.value
+            record.failure_reason_code = result.reason or result.status.value
         return record
 
     @staticmethod

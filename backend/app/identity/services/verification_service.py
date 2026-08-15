@@ -17,11 +17,13 @@ class VerificationMethod(StrEnum):
 
 class VerificationStatus(StrEnum):
     not_started = "not_started"
+    sent = "sent"
     pending = "pending"
     in_progress = "in_progress"
     verified = "verified"
     failed = "failed"
     expired = "expired"
+    locked = "locked"
     revoked = "revoked"
     requires_review = "requires_review"
     not_connected = "not_connected"

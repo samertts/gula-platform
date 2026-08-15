@@ -27,6 +27,8 @@ from ..services.audit_service import log_action
 router = APIRouter(prefix="/auth/verification", tags=["auth / verification"])
 
 _CODE_TTL_SECONDS = 15 * 60
+_RESEND_WINDOW_SECONDS = 60
+_MAX_RESENDS = 3
 _MAX_ATTEMPTS = 5
 
 
@@ -42,6 +44,16 @@ def _cache_key(identifier: str) -> str:
 def _attempt_key(identifier: str) -> str:
     digest = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
     return f"verification:attempts:{digest}"
+
+
+def _resend_key(identifier: str) -> str:
+    digest = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
+    return f"verification:resends:{digest}"
+
+
+def _locked_key(identifier: str) -> str:
+    digest = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
+    return f"verification:locked:{digest}"
 
 
 def _hash_code(code: str) -> str:
@@ -84,27 +96,28 @@ _GENERIC_MESSAGE = (
 )
 
 
-def _issue_code(user: User, identifier: str) -> str:
+def _issue_code(user: User, identifier: str) -> str | None:
     code = f"{secrets.randbelow(1_000_000):06d}"
     channel = "email" if user.email and identifier == user.email else "sms"
+    message = f"Your GULA verification code is {code}. It expires in 15 minutes."
+    from ..notifications.service import get_service
+
+    notification = (
+        get_service().send_email(user.email, "GULA account verification", message)
+        if channel == "email" and user.email
+        else get_service().send_sms(user.phone, message)
+        if user.phone
+        else None
+    )
+    if notification is None or not notification.success:
+        return None
+
     cache.set(
         _cache_key(identifier),
         json.dumps({"digest": _hash_code(code), "user_id": user.id, "channel": channel}),
         ex=_CODE_TTL_SECONDS,
     )
     cache.set(_attempt_key(identifier), "0", ex=_CODE_TTL_SECONDS)
-
-    message = (
-        f"Your GULA verification code is {code}. It expires in 15 minutes."
-    )
-    if channel == "email":
-        from ..notifications.service import get_service
-
-        get_service().send_email(user.email, "GULA account verification", message)
-    elif user.phone:
-        from ..notifications.service import get_service
-
-        get_service().send_sms(user.phone, message)
     return code
 
 
@@ -118,23 +131,29 @@ def request_verification(
     identifier = data.identifier
     user = _find_user(db, identifier)
 
-    # Keep the response identical for unknown and known identifiers.
+    # Keep the response identical for unknown, locked, and known identifiers.
     response: dict[str, object] = {"message": _GENERIC_MESSAGE}
-    if user and not user.is_verified and user.is_active:
-        code = _issue_code(user, identifier)
-        log_action(
-            db,
-            action="verification_requested",
-            resource_type="user",
-            resource_id=user.id,
-            user_id=user.id,
-            user_role=user.role,
-            details="Account verification code requested",
-            ip_address=get_client_ip(request),
-        )
-        db.commit()
-        if DEMO_MODE or not IS_PRODUCTION:
-            response["demo_code"] = code
+    if user and not user.is_verified and user.is_active and not cache.get(_locked_key(identifier)):
+        resend_count = int(cache.get(_resend_key(identifier)) or "0")
+        if resend_count < _MAX_RESENDS:
+            resend_count = cache.incr(_resend_key(identifier))
+            if resend_count == 1:
+                cache.expire(_resend_key(identifier), _RESEND_WINDOW_SECONDS)
+            code = _issue_code(user, identifier)
+            action = "verification_requested" if code else "verification_provider_failed"
+            log_action(
+                db,
+                action=action,
+                resource_type="user",
+                resource_id=user.id,
+                user_id=user.id,
+                user_role=user.role,
+                details="Account verification request processed",
+                ip_address=get_client_ip(request),
+            )
+            db.commit()
+            if code and (DEMO_MODE or not IS_PRODUCTION):
+                response["demo_code"] = code
     return response
 
 
@@ -146,16 +165,16 @@ def confirm_verification(
 ):
     rate_limit_auth(request)
     identifier = data.identifier
+    if cache.get(_locked_key(identifier)):
+        raise HTTPException(status_code=429, detail="Too many verification attempts")
     entry = cache.get(_cache_key(identifier))
     user = _find_user(db, identifier)
 
     if not entry or not user:
         raise HTTPException(status_code=400, detail="Invalid or expired verification code")
-
-    attempts = int(cache.get(_attempt_key(identifier)) or "0")
-    if attempts >= _MAX_ATTEMPTS:
-        raise HTTPException(status_code=429, detail="Too many verification attempts")
-    cache.set(_attempt_key(identifier), attempts + 1, ex=_CODE_TTL_SECONDS)
+    attempts = cache.incr(_attempt_key(identifier))
+    if attempts == 1:
+        cache.expire(_attempt_key(identifier), _CODE_TTL_SECONDS)
 
     try:
         stored = json.loads(entry)
@@ -163,18 +182,28 @@ def confirm_verification(
         stored = {}
     valid = hmac.compare_digest(str(stored.get("digest", "")), _hash_code(data.code))
     if int(stored.get("user_id", -1)) != user.id or not valid:
+        if attempts >= _MAX_ATTEMPTS:
+            cache.set(_locked_key(identifier), "1", ex=_CODE_TTL_SECONDS)
+            cache.delete(_cache_key(identifier))
+            action = "verification_locked"
+            detail = "Too many verification attempts"
+            response_status = 429
+        else:
+            action = "verification_failed"
+            detail = "Invalid or expired verification code"
+            response_status = 400
         log_action(
             db,
-            action="verification_failed",
+            action=action,
             resource_type="user",
             resource_id=user.id,
             user_id=user.id,
             user_role=user.role,
-            details="Invalid account verification code",
+            details="Account verification attempt processed",
             ip_address=get_client_ip(request),
         )
         db.commit()
-        raise HTTPException(status_code=400, detail="Invalid or expired verification code")
+        raise HTTPException(status_code=response_status, detail=detail)
 
     user.is_verified = True
     user.perm_version = (user.perm_version or 1) + 1
@@ -191,6 +220,8 @@ def confirm_verification(
     db.commit()
     cache.delete(_cache_key(identifier))
     cache.delete(_attempt_key(identifier))
+    cache.delete(_resend_key(identifier))
+    cache.delete(_locked_key(identifier))
     return {
         "message": "Account verified successfully",
         "message_ar": "تم التحقق من الحساب بنجاح",

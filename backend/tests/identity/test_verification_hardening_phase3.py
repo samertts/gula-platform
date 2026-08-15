@@ -31,10 +31,12 @@ def result(status: VerificationStatus, method: VerificationMethod, assurance: As
     "status",
     [
         VerificationStatus.not_started,
+        VerificationStatus.sent,
         VerificationStatus.pending,
         VerificationStatus.in_progress,
         VerificationStatus.failed,
         VerificationStatus.expired,
+        VerificationStatus.locked,
         VerificationStatus.revoked,
         VerificationStatus.requires_review,
         VerificationStatus.not_connected,

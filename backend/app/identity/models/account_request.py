@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 
 from app._compat import StrEnum
 from app.identity.base import IdentityBaseEntity
@@ -50,6 +50,9 @@ class AccountCreationRequest(IdentityBaseEntity):
     verification_method = Column(String(50), nullable=True)
     verification_provider = Column(String(100), nullable=True)
     verification_reference = Column(String(255), nullable=True)
+    verification_attempts = Column(Integer, nullable=False, default=0)
+    verification_locked_at = Column(DateTime(timezone=True), nullable=True)
+    verification_failure_reason_code = Column(String(100), nullable=True)
     verified_at = Column(DateTime(timezone=True), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
     activation_token_hash = Column(String(64), nullable=True, index=True)

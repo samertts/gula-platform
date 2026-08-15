@@ -43,6 +43,18 @@ def test_verification_state_machine_requires_backend_progression():
         VerificationRecordService.transition(item, VerificationRecordStatus.revoked)
 
 
+def test_verification_state_machine_supports_sent_and_locked_without_bypass():
+    item = record()
+    VerificationRecordService.transition(item, VerificationRecordStatus.sent)
+    VerificationRecordService.transition(item, VerificationRecordStatus.pending)
+    VerificationRecordService.transition(item, VerificationRecordStatus.in_progress)
+    VerificationRecordService.transition(item, VerificationRecordStatus.locked)
+    assert item.status == VerificationRecordStatus.locked.value
+    assert item.is_active is False
+    with pytest.raises(InvalidVerificationTransition):
+        VerificationRecordService.transition(item, VerificationRecordStatus.verified)
+
+
 def test_provider_result_can_establish_verified_only_after_in_progress():
     item = record(VerificationRecordStatus.in_progress.value)
     result = VerificationResult(

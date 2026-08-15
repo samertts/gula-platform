@@ -9,7 +9,13 @@ import { Input } from "@/components/ui/Input";
 
 const genericError = "تعذر إكمال العملية حالياً. تحقق من البيانات أو أعد المحاولة لاحقاً.";
 
-type PortalStage = "form" | "verification" | "pending_approval" | "activation" | "completed";
+type PortalStage = "form" | "verification" | "pending_approval" | "activation" | "completed" | "failed" | "locked" | "provider_unavailable";
+
+function responseStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null) return undefined;
+  const response = (error as { response?: { status?: number } }).response;
+  return response?.status;
+}
 
 export function RegisterPage() {
   const { t } = useTranslation();
@@ -47,8 +53,13 @@ export function RegisterPage() {
       );
       setRequestId(result.request_id);
       setStage(result.request_id ? "verification" : "pending_approval");
-    } catch {
-      setError(genericError);
+    } catch (error) {
+      if (responseStatus(error) === 503) {
+        setStage("provider_unavailable");
+        setError("مزوّد التحقق غير متاح حالياً. لم يُنشأ حساب ولم تُمنح أي صلاحية.");
+      } else {
+        setError(genericError);
+      }
     }
   };
 
@@ -58,8 +69,14 @@ export function RegisterPage() {
     try {
       await apiClient.startAccountRequestVerification(requestId);
       setStage("verification");
-    } catch {
-      setError("لم يكتمل إرسال رمز التحقق. سيبقى الطلب قيد الانتظار دون إنشاء حساب.");
+    } catch (error) {
+      if (responseStatus(error) === 429) {
+        setStage("locked");
+        setError("تم إيقاف محاولات التحقق مؤقتاً لحماية الطلب. لا تعاود التخمين.");
+      } else {
+        setStage("provider_unavailable");
+        setError("لم يكتمل إرسال رمز التحقق. سيبقى الطلب قيد الانتظار دون إنشاء حساب.");
+      }
     }
   };
 
@@ -70,8 +87,14 @@ export function RegisterPage() {
     try {
       await apiClient.confirmAccountRequestVerification(requestId, code);
       setStage("pending_approval");
-    } catch {
-      setError("رمز التحقق غير صالح أو منتهي. لا تتم إعادة استخدام الرمز بعد نجاحه.");
+    } catch (error) {
+      if (responseStatus(error) === 429) {
+        setStage("locked");
+        setError("تم إيقاف محاولات التحقق مؤقتاً لحماية الطلب. لا تعاود التخمين.");
+      } else {
+        setStage("failed");
+        setError("رمز التحقق غير صالح أو منتهي. لا تتم إعادة استخدام الرمز بعد نجاحه.");
+      }
     }
   };
 
@@ -83,6 +106,7 @@ export function RegisterPage() {
       await apiClient.activateAccountRequest(requestId, activationToken, password);
       setStage("completed");
     } catch {
+      setStage("failed");
       setError("لا يمكن تفعيل الحساب قبل اعتماد الطلب وإثبات الهوية عبر المسار الرسمي.");
     }
   };
@@ -156,6 +180,16 @@ export function RegisterPage() {
               {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-200" role="alert">{error}</p>}
               <Button type="submit" disabled={code.length !== 6}>تأكيد الرمز</Button>
             </form>
+          </div>
+        )}
+
+        {(stage === "failed" || stage === "locked" || stage === "provider_unavailable") && (
+          <div className="mt-8 space-y-4 rounded-2xl border border-red-200 bg-red-50 p-5 text-red-900 dark:border-red-500/20 dark:bg-red-950/30 dark:text-red-100" role="alert">
+            <div className="flex items-start gap-3"><ShieldCheck className="mt-1 h-5 w-5" aria-hidden="true" /><div><h2 className="text-lg font-bold">{stage === "locked" ? "تم إيقاف المحاولات مؤقتاً" : stage === "provider_unavailable" ? "مزوّد التحقق غير متاح" : "تعذر إكمال التحقق"}</h2><p className="mt-1 text-sm leading-6">{error ?? genericError}</p></div></div>
+            <div className="flex flex-wrap gap-3">
+              {requestId && stage !== "locked" && <Button type="button" variant="outline" onClick={() => { setError(null); setStage("verification"); }}>العودة إلى التحقق</Button>}
+              <Button type="button" variant="outline" onClick={() => { setError(null); setRequestId(null); setCode(""); setStage("form"); }}>بدء طلب جديد</Button>
+            </div>
           </div>
         )}
 
