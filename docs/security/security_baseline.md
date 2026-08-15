@@ -116,7 +116,7 @@ X-Frame-Options: DENY
 X-XSS-Protection: 1; mode=block
 X-Content-Type-Options: nosniff
 Referrer-Policy: strict-origin-when-cross-origin
-Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), serial=()
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Resource-Policy: same-site
 Content-Security-Policy: default-src 'self'
