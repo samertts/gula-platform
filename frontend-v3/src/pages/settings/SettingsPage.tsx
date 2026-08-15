@@ -98,7 +98,11 @@ export function SettingsPage() {
 
       <Card className="border-teal-100 bg-teal-50/50 dark:border-teal-900/50 dark:bg-teal-950/20">
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+<<<<<<< HEAD
           <div className="flex items-start gap-3"><Languages className="mt-0.5 h-5 w-5 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><div><h2 className="text-base font-bold text-teal-950 dark:text-teal-100">اللغة واتجاه القراءة</h2><p className="mt-1 text-sm leading-6 text-teal-900/75 dark:text-teal-100/75">يدعم النظام اللغات الخمس المعتمدة: العربية والإنجليزية والكردية والتركمانية والسريانية، مع تطبيق اتجاه القراءة وفق اللغة المختارة.</p></div></div>
+=======
+          <div className="flex items-start gap-3"><Languages className="mt-0.5 h-5 w-5 shrink-0 text-teal-700 dark:text-teal-300" aria-hidden="true" /><div><h2 className="text-base font-bold text-teal-950 dark:text-teal-100">اللغة واتجاه القراءة</h2><p className="mt-1 text-sm leading-6 text-teal-900/75 dark:text-teal-100/75">يدعم النظام سبعة رموز لغة. ar-IQ وfa متاحان كمسارين، لكن تغطيتهما النصية تحتاج مراجعة قانونية/لغوية قبل ادعاء اكتمال الترجمة.</p></div></div>
+>>>>>>> 488528a0 (feat: Phase 22/23 accessibility center and unified settings)
           <label className="flex min-w-56 flex-col gap-2 text-sm font-bold text-[#0F172A] dark:text-white"><span>اللغة الحالية: {locale}</span><select value={locale} onChange={(event) => setLocale(event.target.value as Locale)} className="min-h-11 rounded-xl border border-teal-200 bg-white px-3 dark:border-teal-900/60 dark:bg-slate-950">{localeOptions.map((option) => <option key={option.code} value={option.code}>{option.nativeName} · {option.code}</option>)}</select></label>
         </CardContent>
       </Card>
