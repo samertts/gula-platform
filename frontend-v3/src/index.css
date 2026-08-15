@@ -1,13 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Tajawal", "Noto Naskh Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    "Tajawal", "Noto Naskh Arabic", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   --color-primary: #0b3658;
   --color-primary-container: #124c74;
   --color-on-primary: #ffffff;
   --color-primary-light: #eaf4fb;
+  --color-primary-strong: #072b47;
 
   --color-secondary: #6e8090;
   --color-on-secondary: #ffffff;
@@ -38,11 +40,12 @@
   --color-warning-container: #fffbeb;
   --color-on-warning-container: #92400e;
 
-  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.08);
+  --shadow-xs: 0 1px 2px 0 rgba(15, 43, 68, 0.04);
+  --shadow-sm:
+    0 1px 3px 0 rgba(15, 43, 68, 0.06), 0 1px 2px -1px rgba(15, 43, 68, 0.04);
+  --shadow-md: 0 8px 18px -14px rgba(15, 43, 68, 0.28);
+  --shadow-lg: 0 18px 36px -24px rgba(15, 43, 68, 0.32);
+  --shadow-xl: 0 28px 60px -34px rgba(15, 43, 68, 0.36);
 
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
@@ -52,9 +55,26 @@
 }
 
 @layer base {
+  :root {
+    color-scheme: light;
+    --gula-focus-ring: rgba(13, 148, 136, 0.42);
+    --gula-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  html {
+    min-width: 320px;
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+  }
+
   body {
     @apply bg-background text-on-surface font-sans antialiased;
     direction: rtl;
+    min-width: 320px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -64,54 +84,70 @@
   }
 
   :focus-visible {
-    outline: 3px solid rgba(37, 139, 118, 0.28);
-    outline-offset: 2px;
+    outline: 3px solid var(--gula-focus-ring);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    @apply bg-emerald-100/70 text-slate-950;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :where(a, button, [role="button"], input, select, textarea) {
+      transition-duration: 180ms;
+      transition-timing-function: var(--gula-ease-out);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
     *::after {
+      scroll-behavior: auto !important;
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
-      scroll-behavior: auto !important;
       transition-duration: 0.01ms !important;
     }
   }
 
-  ::selection {
-    @apply bg-emerald-100/70;
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
   }
 
   .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
     height: 4px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full;
+    @apply rounded-full bg-slate-200;
   }
 }
 
 @layer components {
   .glass-panel {
-    backdrop-filter: blur(16px);
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    @apply border border-white/70 bg-white/80 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/70;
   }
 
   .card-sleek {
-    @apply rounded-xl border border-outline bg-surface shadow-sm transition-all duration-200;
+    @apply rounded-2xl border border-outline bg-surface text-on-surface shadow-sm transition-[box-shadow,border-color,transform] duration-200;
   }
 
   .card-sleek:hover {
-    @apply shadow-md;
+    @apply border-slate-300 shadow-md dark:border-white/20;
   }
 
   .gula-status-surface {
     @apply rounded-2xl border border-outline bg-surface p-5 shadow-sm;
+  }
+
+  .gula-focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2;
   }
 }
 

@@ -69,6 +69,15 @@
       "status": "non-operational"
     },
     {
+      "source": "src/contexts/AccessibilityContext.tsx",
+      "kinds": [
+        "demo-surface",
+        "endpoint-import"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
       "source": "src/contexts/AuthContext.tsx",
       "kinds": [
         "demo-surface",
@@ -779,6 +788,15 @@
         "react-query-read"
       ],
       "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/settings/SettingsPage.tsx",
+      "kinds": [
+        "demo-surface",
+        "endpoint-import"
+      ],
+      "classification": "demo-only",
       "status": "non-operational"
     },
     {
