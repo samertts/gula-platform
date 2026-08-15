@@ -1,7 +1,7 @@
 """Add privacy-separated user accessibility and health preferences.
 
 Revision ID: 20260815_0020
-Revises: 20260815_0018
+Revises: 20260815_0019
 """
 from __future__ import annotations
 

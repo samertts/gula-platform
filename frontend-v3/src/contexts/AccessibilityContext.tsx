@@ -39,6 +39,8 @@ interface AccessibilityContextValue {
   isSaving: boolean;
   saveError: string | null;
   update: (patch: Partial<AccessibilityPreferences>) => Promise<void>;
+  preview: (patch: Partial<AccessibilityPreferences>) => void;
+  clearPreview: () => void;
   reload: () => Promise<void>;
 }
 
@@ -95,6 +97,14 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
     };
   }, [preferences]);
 
+  const preview = useCallback((patch: Partial<AccessibilityPreferences>) => {
+    applyPreferences({ ...preferences, ...patch });
+  }, [preferences]);
+
+  const clearPreview = useCallback(() => {
+    applyPreferences(preferences);
+  }, [preferences]);
+
   const update = useCallback(async (patch: Partial<AccessibilityPreferences>) => {
     const next = { ...preferences, ...patch };
     setIsSaving(true);
@@ -112,8 +122,8 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
   }, [preferences, version]);
 
   const value = useMemo(
-    () => ({ preferences, version, isLoading, isSaving, saveError, update, reload }),
-    [isLoading, isSaving, preferences, reload, saveError, update, version],
+    () => ({ preferences, version, isLoading, isSaving, saveError, update, preview, clearPreview, reload }),
+    [clearPreview, isLoading, isSaving, preferences, preview, reload, saveError, update, version],
   );
 
   return <AccessibilityContext.Provider value={value}>{children}</AccessibilityContext.Provider>;
