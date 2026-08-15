@@ -1,0 +1,43 @@
+name: Frontend Bundle Budget
+
+on:
+  pull_request:
+    paths:
+      - "frontend-v3/**"
+      - ".github/workflows/frontend-bundle-budget.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend-v3/**"
+      - ".github/workflows/frontend-bundle-budget.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  bundle-budget:
+    name: frontend bundle budget
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend-v3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend-v3/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build production assets
+        run: npm run build
+
+      - name: Enforce bundle budget
+        run: npm run check:bundle
