@@ -16,7 +16,7 @@ i18n.use(initReactI18next).init({
     ku: { translation: ku },
     tk: { translation: tk },
     syr: { translation: syr },
-    fa: { translation: { ...en, mobileNav: fa.mobileNav } },
+    fa: { translation: fa },
   },
 
   lng: getStoredLocale(),
