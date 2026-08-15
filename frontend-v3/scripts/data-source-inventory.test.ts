@@ -14,6 +14,7 @@ describe("جرد مصادر بيانات frontend-v3", () => {
       expect.objectContaining({ source: "src/pages/ehr/EhrPage.tsx", classification: "safe_bridge" }),
       expect.objectContaining({ source: "src/pages/results/ResultsPage.tsx", classification: "safe_bridge" }),
       expect.objectContaining({ source: "src/pages/samples/SamplesPage.tsx", classification: "safe_bridge" }),
+      expect.objectContaining({ source: "src/pages/popular-clinics/PopularClinicsWorkspacePage.tsx", classification: "contract-bound" }),
     ]));
   });
 

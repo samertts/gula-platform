@@ -748,6 +748,15 @@
       "status": "non-operational"
     },
     {
+      "source": "src/pages/popular-clinics/PopularClinicsWorkspacePage.tsx",
+      "kinds": [
+        "endpoint-import",
+        "react-query-read"
+      ],
+      "classification": "contract-bound",
+      "status": "blocked-until-server-enforcement"
+    },
+    {
       "source": "src/pages/public-health/PublicHealthApiPage.tsx",
       "kinds": [
         "direct-api-client",
@@ -791,7 +800,7 @@
       "status": "non-operational"
     },
     {
-      "source": "src/pages/settings/SettingsPage.tsx",
+      "source": "src/pages/settings/SettingsPageLegacy.tsx",
       "kinds": [
         "demo-surface",
         "endpoint-import"

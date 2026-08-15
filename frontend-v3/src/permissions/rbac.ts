@@ -35,17 +35,22 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'results:read', 'results:write',
     'staff:manage', 'lab:read', 'lab:manage',
     'dashboard:read', 'audit:read',
-    'platform:manage_users', 'payments:control:read', 'payments:control:request',
+        'platform:manage_users', 'payments:control:read', 'payments:control:request',
+    'popular_clinics:read', 'popular_clinics:manage', 'popular_clinics:patient:read', 'popular_clinics:clinical:write',
+    'popular_clinics:prescription:write', 'popular_clinics:dispense:approve', 'popular_clinics:dispense:record', 'popular_clinics:ticket:read',
+    'popular_clinics:ticket:issue', 'popular_clinics:ticket:cancel', 'popular_clinics:payment:capture', 'popular_clinics:payment:confirm',
+    'popular_clinics:report:daily', 'popular_clinics:report:monthly', 'popular_clinics:workforce:manage',
   ],
-  finance_controller: ['dashboard:read', 'audit:read', 'payments:control:read', 'payments:control:approve', 'payments:control:apply'],
+  finance_controller: ['dashboard:read', 'audit:read', 'payments:control:read', 'payments:control:approve', 'payments:control:apply', 'popular_clinics:read', 'popular_clinics:payment:confirm', 'popular_clinics:report:daily', 'popular_clinics:report:monthly'],
   refund_reviewer: ['dashboard:read', 'audit:read', 'payments:control:read', 'payments:control:approve'],
-  reconciler: ['dashboard:read', 'audit:read', 'payments:control:read', 'payments:control:apply'],
-  finance_auditor: ['dashboard:read', 'audit:read', 'payments:control:read'],
-  finance_operator: ['dashboard:read', 'payments:control:read', 'payments:control:request'],
-  cashier: ['dashboard:read', 'payments:control:read', 'payments:control:request'],
+  reconciler: ['dashboard:read', 'audit:read', 'payments:control:read', 'payments:control:apply', 'popular_clinics:read', 'popular_clinics:report:daily', 'popular_clinics:report:monthly'],
+  finance_auditor: ['dashboard:read', 'audit:read', 'payments:control:read', 'popular_clinics:read', 'popular_clinics:report:daily', 'popular_clinics:report:monthly'],
+  finance_operator: ['dashboard:read', 'payments:control:read', 'payments:control:request', 'popular_clinics:read', 'popular_clinics:patient:read', 'popular_clinics:ticket:read', 'popular_clinics:report:daily'],
+  cashier: ['dashboard:read', 'payments:control:read', 'payments:control:request', 'popular_clinics:read', 'popular_clinics:patient:read', 'popular_clinics:ticket:read', 'popular_clinics:ticket:issue', 'popular_clinics:ticket:cancel', 'popular_clinics:payment:capture', 'popular_clinics:report:daily'],
   doctor: [
     'patients:read', 'orders:read', 'results:read',
     'lab:read', 'dashboard:read',
+    'popular_clinics:read', 'popular_clinics:patient:read', 'popular_clinics:clinical:write', 'popular_clinics:prescription:write', 'popular_clinics:ticket:read', 'popular_clinics:report:monthly',
   ],
   staff: [
     'patients:read', 'patients:write',
@@ -63,7 +68,9 @@ const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'orders:read', 'orders:write',
     'results:read', 'results:write',
     'lab:read', 'dashboard:read',
+    'popular_clinics:read', 'popular_clinics:patient:read', 'popular_clinics:clinical:write', 'popular_clinics:dispense:record',
   ],
+  receptionist: ['patients:read', 'popular_clinics:read', 'popular_clinics:patient:read', 'popular_clinics:ticket:read', 'popular_clinics:ticket:issue'],
   citizen: [],
   // Synthetic demo identity: read-only shell access only; no clinical or admin permissions.
   demo_viewer: ['dashboard:read'],
@@ -86,7 +93,7 @@ export function canManageRole(actorRole: UserRole, targetRole: UserRole): boolea
     master_admin: 100, ministry_admin: 90, province_admin: 80,
     admin: 50, lab_admin: 50, finance_controller: 70, refund_reviewer: 60,
     reconciler: 55, finance_auditor: 45, finance_operator: 35, cashier: 25,
-    doctor: 40, staff: 20, lab_staff: 20, technician: 20, citizen: 10, demo_viewer: 0,
+    doctor: 40, staff: 20, lab_staff: 20, technician: 20, receptionist: 25, citizen: 10, demo_viewer: 0,
   };
   return (levels[actorRole] ?? 0) > (levels[targetRole] ?? 0);
 }

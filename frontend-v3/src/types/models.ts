@@ -356,3 +356,84 @@ export interface FhirPatient {
   birthDate?: string;
   telecom: { system: string; value: string; use?: string }[];
 }
+
+
+export interface PopularClinic {
+  id: number;
+  lab_id: number;
+  province_id: number;
+  administrative_unit_code: string;
+  name: string;
+  operating_hours?: string | null;
+  is_active: boolean;
+}
+
+export interface PopularClinicPatient {
+  id: number;
+  full_name: string;
+  birth_date?: string | null;
+  phone: string;
+  health_id?: string | null;
+}
+
+export interface PopularClinicMedication {
+  medication_name: string;
+  quantity: number;
+  dosage: string;
+}
+
+export interface PopularClinicBookletMonth {
+  month: number;
+  dispensation?: {
+    id: number;
+    approved_by?: number | null;
+    dispensed_at?: string | null;
+    medication_name: string;
+    quantity: number;
+    dosage: string;
+    pharmacist_user_id?: number | null;
+  } | null;
+}
+
+export interface PopularClinicPatientCard {
+  patient: PopularClinicPatient;
+  clinic_id: number;
+  attending_doctor_id?: number | null;
+  conditions: string[];
+  treatment_plan?: PopularClinicMedication | null;
+  latest_vitals?: Record<string, unknown> | null;
+}
+
+export interface PopularClinicTicket {
+  id: number;
+  clinic_id: number;
+  patient_id: number;
+  service_code: string;
+  payment_method: "cash" | "electronic";
+  amount: string | number;
+  status: "issued" | "paid" | "cancelled" | string;
+  payment_intent_id?: string | null;
+  issued_at?: string | null;
+  paid_at?: string | null;
+}
+
+export interface PopularClinicDailyReport {
+  clinic_id: number;
+  report_date: string;
+  tickets_issued: number;
+  tickets_paid: number;
+  cash_total: string | number;
+  electronic_total: string | number;
+  pending_total: string | number;
+}
+
+export interface PopularClinicMonthlyReport {
+  clinic_id: number;
+  year: number;
+  month: number;
+  enrolled_patients: number;
+  dispensed_patients: number;
+  missed_patients: number;
+  dispensing_rate: string | number;
+  most_requested_medications: { medication_name: string; quantity: number }[];
+}

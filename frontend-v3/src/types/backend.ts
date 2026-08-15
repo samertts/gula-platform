@@ -14,6 +14,7 @@ export type UserRole =
   | 'staff'
   | 'lab_staff'
   | 'technician'
+  | 'receptionist'
   | 'citizen'
   | 'demo_viewer';
 
@@ -38,7 +39,23 @@ export type Permission =
   | 'payments:control:request'
   | 'payments:control:approve'
   | 'payments:control:apply'
-  | 'payments:control:emergency';
+  | 'payments:control:emergency'
+  | 'popular_clinics:read'
+  | 'popular_clinics:manage'
+  | 'popular_clinics:patient:read'
+  | 'popular_clinics:clinical:write'
+  | 'popular_clinics:prescription:write'
+  | 'popular_clinics:dispense:approve'
+  | 'popular_clinics:dispense:record'
+  | 'popular_clinics:ticket:read'
+  | 'popular_clinics:ticket:issue'
+  | 'popular_clinics:ticket:cancel'
+  | 'popular_clinics:payment:capture'
+  | 'popular_clinics:payment:confirm'
+  | 'popular_clinics:report:daily'
+  | 'popular_clinics:report:monthly'
+  | 'popular_clinics:workforce:manage'
+  | 'popular_clinics:alerts:manage';
 
 export interface LabUser {
   id: number;

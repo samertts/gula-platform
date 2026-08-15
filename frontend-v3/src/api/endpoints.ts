@@ -54,6 +54,13 @@ import type {
   AccessibilityResponse,
   HealthPreferencesPayload,
   HealthPreferencesResponse,
+  PopularClinic,
+  PopularClinicPatient,
+  PopularClinicPatientCard,
+  PopularClinicBookletMonth,
+  PopularClinicTicket,
+  PopularClinicDailyReport,
+  PopularClinicMonthlyReport,
 } from "@/types";
 
 // ── Auth ──
@@ -543,6 +550,19 @@ export const statsApi = {
 };
 
 // ── Metrics & Health ──
+// ── Government Popular Clinics ──
+export const popularClinicsApi = {
+  list: () => api.get<PopularClinic[]>("/popular-clinics").then((r) => r.data),
+  summary: (clinicId: number) => api.get<{ clinic: PopularClinic; active_workers: number; services: number; monthly_chronic_report: PopularClinicMonthlyReport }>(`/popular-clinics/${clinicId}/summary`).then((r) => r.data),
+  patients: (clinicId: number, search?: string) => api.get<PopularClinicPatient[]>(`/popular-clinics/${clinicId}/patients`, { params: search ? { search } : undefined }).then((r) => r.data),
+  patientCard: (clinicId: number, patientId: number) => api.get<PopularClinicPatientCard>(`/popular-clinics/${clinicId}/patients/${patientId}/card`).then((r) => r.data),
+  booklet: (clinicId: number, patientId: number, year?: number) => api.get<{ patient_id: number; year: number; months: PopularClinicBookletMonth[] }>(`/popular-clinics/${clinicId}/patients/${patientId}/booklet`, { params: year ? { year } : undefined }).then((r) => r.data),
+  tickets: (clinicId: number, patientId?: number) => api.get<PopularClinicTicket[]>(`/popular-clinics/${clinicId}/tickets`, { params: patientId ? { patient_id: patientId } : undefined }).then((r) => r.data),
+  dailyReport: (clinicId: number, reportDate?: string) => api.get<PopularClinicDailyReport>(`/popular-clinics/${clinicId}/financial-reports/daily`, { params: reportDate ? { report_date: reportDate } : undefined }).then((r) => r.data),
+  monthlyReport: (clinicId: number, year?: number, month?: number) => api.get<PopularClinicMonthlyReport>(`/popular-clinics/${clinicId}/chronic-care-reports/monthly`, { params: { year, month } }).then((r) => r.data),
+  comparison: (year?: number, month?: number) => api.get<PopularClinicMonthlyReport[]>("/popular-clinics/chronic-care-reports/monthly/comparison", { params: { year, month } }).then((r) => r.data),
+};
+
 export const healthApi = {
   health: () => api.get<HealthStatus>("/health").then((r) => r.data),
   ready: () => api.get<HealthStatus>("/health/ready").then((r) => r.data),

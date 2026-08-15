@@ -14,6 +14,7 @@ const CONTROLLED_SURFACES = {
   "src/pages/results/ResultsPage.tsx": "safe_bridge",
   "src/pages/samples/SamplesPage.tsx": "safe_bridge",
   "src/pages/legal/LegalPage.tsx": "contract-bound",
+  "src/pages/popular-clinics/PopularClinicsWorkspacePage.tsx": "contract-bound",
 };
 
 const DEMO_SURFACES = new Set([

@@ -95,6 +95,7 @@ const DeviceIntegrationWorkspacePageLazy = lazy(() => import("@/pages/devices/De
 const PilotPlatformApiPageLazy = lazy(() => import("@/pages/pilot-platform/PilotPlatformApiPage"));
 const PlatformPageLazy = lazy(() => import("@/pages/platform/PlatformPage"));
 const PublicHealthApiPageLazy = lazy(() => import("@/pages/public-health/PublicHealthApiPage"));
+const PopularClinicsWorkspacePageLazy = lazy(() => import("@/pages/popular-clinics/PopularClinicsWorkspacePage"));
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
@@ -119,6 +120,7 @@ const staffRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'doctor', 
 const readonlyRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'doctor', 'staff', 'lab_staff', 'demo_viewer'];
 const labRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'staff', 'lab_staff'];
 const financialRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'finance_controller', 'refund_reviewer', 'reconciler', 'finance_auditor', 'finance_operator', 'cashier'];
+const popularClinicRoles: UserRole[] = ['master_admin', 'ministry_admin', 'province_admin', 'admin', 'lab_admin', 'finance_controller', 'reconciler', 'finance_auditor', 'finance_operator', 'cashier', 'doctor', 'staff', 'lab_staff', 'technician', 'receptionist'];
 
 export const router = createBrowserRouter([
   {
@@ -221,6 +223,7 @@ export const router = createBrowserRouter([
       { path: "national/workflow-runtime", element: <RoleGuard roles={adminRoles}><LazyPage><NationalWorkflowRuntimeApiPageLazy /></LazyPage></RoleGuard> },
       { path: "pharmacy", element: <RoleGuard roles={adminRoles}><LazyPage><PharmacyPageLazy /></LazyPage></RoleGuard> },
       { path: "pharmacy-operations", element: <RoleGuard roles={readonlyRoles}><LazyPage><PharmacyOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "popular-clinics", element: <RoleGuard roles={popularClinicRoles}><LazyPage><PopularClinicsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "billing-insurance", element: <RoleGuard roles={readonlyRoles}><LazyPage><BillingInsuranceWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "device-integration", element: <InstitutionalOnlyRoute><RoleGuard roles={readonlyRoles}><LazyPage><DeviceIntegrationWorkspacePageLazy /></LazyPage></RoleGuard></InstitutionalOnlyRoute> },
       { path: "pilot-platform", element: <RoleGuard roles={adminRoles}><LazyPage><PilotPlatformApiPageLazy /></LazyPage></RoleGuard> },
