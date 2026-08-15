@@ -94,7 +94,7 @@ async def send_via_gateway(
         raise HTTPException(status_code=404, detail=f"No gateway found for protocol: {protocol}")
     gateway = gateways[0]
     try:
-        from backend.app.integration.gateway import GatewayMessage
+        from app.integration.gateway import GatewayMessage
         message = GatewayMessage(**payload)
         result = await gateway.send(message)
         if _integration_monitor:
@@ -130,7 +130,7 @@ async def receive_via_gateway(
 
 @router.get("/catalog")
 async def api_catalog() -> dict[str, Any]:
-    from backend.app.integration.api_management import APICatalog
+    from app.integration.api_management import APICatalog
     catalog = APICatalog()
     services = catalog.list_services()
     return {
@@ -171,7 +171,7 @@ async def list_integration_connectors() -> dict[str, Any]:
 
 @router.get("/standards")
 async def standards_conformance() -> dict[str, Any]:
-    from backend.app.integration.standards import (
+    from app.integration.standards import (
         DICOMService,
         FHIRService,
         HL7Service,

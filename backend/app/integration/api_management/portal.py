@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.app.integration.api_management.catalog import APICatalog, APIService
+from app.integration.api_management.catalog import APICatalog, APIService
 
 logger = logging.getLogger("gula.integration.api_management.portal")
 
