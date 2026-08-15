@@ -7,11 +7,13 @@ import io.gula.android.data.remote.dto.*
 import io.gula.android.domain.model.SyncAction
 import io.gula.android.domain.model.SyncStatus
 import io.gula.android.domain.repository.SyncRepository
+import io.gula.android.security.EncryptedPrefs
+import io.gula.android.security.SecurePayloadCodec
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import org.json.JSONObject
+import retrofit2.Response
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -22,6 +24,8 @@ import javax.inject.Singleton
 class SyncRepositoryImpl @Inject constructor(
     private val syncQueueDao: SyncQueueDao,
     private val gulaApi: GulaApi,
+    private val encryptedPrefs: EncryptedPrefs,
+    private val payloadCodec: SecurePayloadCodec,
 ) : SyncRepository {
 
     private val _syncStatus = MutableStateFlow(SyncStatus())
@@ -33,27 +37,29 @@ class SyncRepositoryImpl @Inject constructor(
         action: SyncAction,
         payload: String,
     ) {
+        check(encryptedPrefs.syncDeviceId.isNotBlank()) { "Sync device identity is unavailable" }
         syncQueueDao.insert(
             SyncQueueEntity(
                 entityType = entityType,
                 entityId = entityId,
                 action = action.name,
-                payload = payload,
+                payload = payloadCodec.encrypt(payload),
             )
         )
         updateStatus()
     }
 
     override suspend fun processQueue(): SyncStatus {
-        _syncStatus.value = _syncStatus.value.copy(isSyncing = true)
-        var pending = 0
+        check(encryptedPrefs.syncDeviceId.isNotBlank()) { "Sync device identity is unavailable" }
+        syncQueueDao.recoverInProgress()
+        _syncStatus.value = _syncStatus.value.copy(isSyncing = true, errorMessage = null)
         var failed = 0
+        var lastCompletedId: Long? = null
 
         try {
-            val items = syncQueueDao.getPendingItems(50)
-            pending = items.size
-
-            for (item in items) {
+            val storedItems = syncQueueDao.getPendingItems(50)
+            for (storedItem in storedItems) {
+                val item = secureItem(storedItem)
                 syncQueueDao.markInProgress(item.id)
                 try {
                     when (item.action) {
@@ -67,28 +73,34 @@ class SyncRepositoryImpl @Inject constructor(
                         "UPDATE_RESULT" -> syncUpdateResult(item)
                     }
                     syncQueueDao.markCompleted(item.id)
-                } catch (e: Exception) {
-                    failed++
-                    syncQueueDao.markFailed(
-                        item.id,
-                        error = e.message?.take(500) ?: "Unknown error"
-                    )
+                    lastCompletedId = item.id
+                } catch (error: Exception) {
+                    if (error is RetryableSyncException || error is IOException) {
+                        syncQueueDao.markDeferred(item.id, error.message?.take(500))
+                    } else {
+                        failed++
+                        syncQueueDao.markFailed(item.id, error = error.message?.take(500) ?: "Unknown sync error")
+                    }
                 }
             }
-        } catch (e: Exception) {
+        } catch (error: Exception) {
             _syncStatus.value = _syncStatus.value.copy(
                 isSyncing = false,
-                errorMessage = e.message,
+                errorMessage = error.message?.take(500),
+                pendingCount = syncQueueDao.getPendingCountOnce(),
+                failedCount = syncQueueDao.getFailedCountOnce(),
+                deferredCount = syncQueueDao.getDeferredCountOnce(),
             )
             return _syncStatus.value
         }
 
-        val newFailed = syncQueueDao.getFailedCountOnce()
+        if (lastCompletedId != null) encryptedPrefs.syncCursor = lastCompletedId.toString()
         val status = SyncStatus(
             isSyncing = false,
             lastSyncTime = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date()),
             pendingCount = syncQueueDao.getPendingCountOnce(),
-            failedCount = newFailed,
+            failedCount = syncQueueDao.getFailedCountOnce(),
+            deferredCount = syncQueueDao.getDeferredCountOnce(),
         )
         _syncStatus.value = status
         return status
@@ -118,8 +130,27 @@ class SyncRepositoryImpl @Inject constructor(
         _syncStatus.value = SyncStatus(
             pendingCount = syncQueueDao.getPendingCountOnce(),
             failedCount = syncQueueDao.getFailedCountOnce(),
+            deferredCount = syncQueueDao.getDeferredCountOnce(),
         )
     }
+
+    private suspend fun secureItem(item: SyncQueueEntity): SyncQueueEntity {
+        if (payloadCodec.isEncrypted(item.payload)) {
+            return item.copy(payload = payloadCodec.decrypt(item.payload))
+        }
+        // One-way migration for payloads created before encryption was enabled.
+        syncQueueDao.updatePayload(item.id, payloadCodec.encrypt(item.payload))
+        return item
+    }
+
+    private fun Response<*>.ensureSuccessful() {
+        if (isSuccessful) return
+        val message = "Sync request rejected by server (HTTP ${code()})"
+        if (code() == 408 || code() == 429 || code() >= 500) throw RetryableSyncException(message)
+        throw IllegalStateException(message)
+    }
+
+    private class RetryableSyncException(message: String) : IOException(message)
 
     private suspend fun syncCreatePatient(item: SyncQueueEntity) {
         val json = JSONObject(item.payload)
@@ -131,7 +162,7 @@ class SyncRepositoryImpl @Inject constructor(
                 gender = json.optString("gender", null).ifBlank { null },
                 email = json.optString("email", null).ifBlank { null },
             )
-        )
+        ).ensureSuccessful()
     }
 
     private suspend fun syncUpdatePatient(item: SyncQueueEntity) {
@@ -143,7 +174,7 @@ class SyncRepositoryImpl @Inject constructor(
                 fullName = json.optString("full_name", null).ifBlank { null },
                 phone = json.optString("phone", null).ifBlank { null },
             )
-        )
+        ).ensureSuccessful()
     }
 
     private suspend fun syncCreateOrder(item: SyncQueueEntity) {
@@ -167,10 +198,12 @@ class SyncRepositoryImpl @Inject constructor(
                 doctorName = json.optString("doctor_name", null).ifBlank { null },
                 results = results,
             )
-        )
+        ).ensureSuccessful()
     }
 
     private suspend fun syncUpdateOrder(item: SyncQueueEntity) {
+        // Contract not yet exposed by GulaApi; keep the item pending in future work rather than claiming success.
+        throw IllegalStateException("UPDATE_ORDER sync contract is not implemented")
     }
 
     private suspend fun syncCreateSample(item: SyncQueueEntity) {
@@ -182,7 +215,7 @@ class SyncRepositoryImpl @Inject constructor(
                 collectedBy = json.optString("collected_by", null).ifBlank { null },
                 notes = json.optString("notes", null).ifBlank { null },
             )
-        )
+        ).ensureSuccessful()
     }
 
     private suspend fun syncUpdateSample(item: SyncQueueEntity) {
@@ -195,7 +228,7 @@ class SyncRepositoryImpl @Inject constructor(
                 rejectionReason = json.optString("rejection_reason", null).ifBlank { null },
                 notes = json.optString("notes", null).ifBlank { null },
             )
-        )
+        ).ensureSuccessful()
     }
 
     private suspend fun syncCreateResult(item: SyncQueueEntity) {
@@ -212,9 +245,10 @@ class SyncRepositoryImpl @Inject constructor(
                 orderId = if (json.has("order_id")) json.getInt("order_id") else null,
                 sampleCollectedAt = json.optString("sample_collected_at", null),
             )
-        )
+        ).ensureSuccessful()
     }
 
     private suspend fun syncUpdateResult(item: SyncQueueEntity) {
+        throw IllegalStateException("UPDATE_RESULT sync contract is not implemented")
     }
 }

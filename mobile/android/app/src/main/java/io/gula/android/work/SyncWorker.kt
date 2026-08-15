@@ -24,7 +24,7 @@ class SyncWorker @AssistedInject constructor(
         }
         return try {
             val status = syncRepository.processQueue()
-            if (status.errorMessage != null) {
+            if (status.errorMessage != null || status.deferredCount > 0 || status.pendingCount > 0) {
                 Result.retry()
             } else {
                 Result.success()

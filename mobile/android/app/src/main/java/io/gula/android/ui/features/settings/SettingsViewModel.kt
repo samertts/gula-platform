@@ -19,6 +19,7 @@ data class SettingsUiState(
     val isSyncing: Boolean = false,
     val pendingSync: Int = 0,
     val failedSync: Int = 0,
+    val deferredSync: Int = 0,
     val lastSyncTime: String? = null,
     val textScale: Float = 1.0f,
     val highContrast: Boolean = false,
@@ -64,6 +65,7 @@ class SettingsViewModel @Inject constructor(
                     isSyncing = status.isSyncing,
                     pendingSync = status.pendingCount,
                     failedSync = status.failedCount,
+                    deferredSync = status.deferredCount,
                     lastSyncTime = status.lastSyncTime,
                 )
             }

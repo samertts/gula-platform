@@ -122,8 +122,10 @@ dependencies {
     implementation("androidx.hilt:hilt-work:1.4.0")
     kapt("androidx.hilt:hilt-compiler:1.4.0")
 
-    // Room
+    // Room with SQLCipher-at-rest encryption
     implementation("androidx.room:room-runtime:2.8.4")
+    implementation("androidx.sqlite:sqlite:2.6.2")
+    implementation("net.zetetic:sqlcipher-android:4.17.0@aar")
     implementation("androidx.room:room-ktx:2.8.4")
     kapt("androidx.room:room-compiler:2.8.4")
 

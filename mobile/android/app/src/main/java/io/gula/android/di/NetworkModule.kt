@@ -13,6 +13,7 @@ import io.gula.android.data.remote.api.GulaApi
 import io.gula.android.data.remote.interceptor.AuthInterceptor
 import io.gula.android.data.remote.interceptor.CertificatePinningInterceptor
 import io.gula.android.data.remote.interceptor.ErrorInterceptor
+import io.gula.android.data.remote.interceptor.SyncDeviceIdInterceptor
 import io.gula.android.data.remote.interceptor.TokenAuthenticator
 import io.gula.android.util.Constants
 import okhttp3.OkHttpClient
@@ -56,9 +57,11 @@ object NetworkModule {
         loggingInterceptor: HttpLoggingInterceptor,
         certificatePinningInterceptor: CertificatePinningInterceptor,
         tokenAuthenticator: TokenAuthenticator,
+        syncDeviceIdInterceptor: SyncDeviceIdInterceptor,
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(authInterceptor)
+            .addInterceptor(syncDeviceIdInterceptor)
             .addInterceptor(errorInterceptor)
             .addInterceptor(loggingInterceptor)
             .addInterceptor { chain ->

@@ -19,6 +19,7 @@ class SecureConfig {
   static const _keyDeviceId = 'device_id';
   static const _keyLastSync = 'last_sync_timestamp';
   static const _keyEncryptionKey = 'encryption_key';
+  static const _keyDatabaseEncryptionKey = 'database_encryption_key';
 
   static AndroidOptions _androidOptions() =>
       const AndroidOptions(encryptedSharedPreferences: true);
@@ -96,6 +97,14 @@ class SecureConfig {
   static Future<void> setLastSync(String timestamp) =>
       write(_keyLastSync, timestamp);
   static Future<String?> getLastSync() => read(_keyLastSync);
+
+  static Future<String> getOrCreateDatabaseEncryptionKey() async {
+    final existing = await read(_keyDatabaseEncryptionKey);
+    if (existing != null && existing.isNotEmpty) return existing;
+    final key = _generateKey();
+    await write(_keyDatabaseEncryptionKey, key);
+    return key;
+  }
 
   static Future<String> getOrCreateEncryptionKey() async {
     final existing = await read(_keyEncryptionKey);

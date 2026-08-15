@@ -5,6 +5,7 @@ data class SyncStatus(
     val lastSyncTime: String? = null,
     val pendingCount: Int = 0,
     val failedCount: Int = 0,
+    val deferredCount: Int = 0,
     val errorMessage: String? = null,
 )
 
@@ -37,6 +38,7 @@ enum class SyncItemStatus {
     IN_PROGRESS,
     COMPLETED,
     FAILED,
+    DEFERRED,
 }
 
 data class DashboardStats(

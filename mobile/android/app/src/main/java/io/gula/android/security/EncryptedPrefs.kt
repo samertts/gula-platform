@@ -2,9 +2,12 @@ package io.gula.android.security
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Base64
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
+import java.security.SecureRandom
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -72,6 +75,30 @@ class EncryptedPrefs @Inject constructor(
         get() = prefs.getString(KEY_DEVICE_TOKEN, null)
         set(value) = prefs.edit().putString(KEY_DEVICE_TOKEN, value).apply()
 
+    val syncDeviceId: String
+        get() = prefs.getString(KEY_SYNC_DEVICE_ID, null) ?: UUID.randomUUID().toString().also { id ->
+            check(prefs.edit().putString(KEY_SYNC_DEVICE_ID, id).commit()) { "Unable to persist sync device identity" }
+        }
+
+    var syncCursor: String?
+        get() = prefs.getString(KEY_SYNC_CURSOR, null)
+        set(value) = prefs.edit().putString(KEY_SYNC_CURSOR, value).apply()
+
+    val databaseEncryptionKey: String
+        get() = getOrCreateKey(KEY_DATABASE_ENCRYPTION_KEY)
+
+    val syncPayloadKey: String
+        get() = getOrCreateKey(KEY_SYNC_PAYLOAD_KEY)
+
+    private fun getOrCreateKey(keyName: String): String {
+        prefs.getString(keyName, null)?.let { return it }
+        val bytes = ByteArray(32)
+        SecureRandom().nextBytes(bytes)
+        val key = Base64.encodeToString(bytes, Base64.NO_WRAP)
+        check(prefs.edit().putString(keyName, key).commit()) { "Unable to persist encrypted key" }
+        return key
+    }
+
     var locale: String
         get() = prefs.getString(KEY_LOCALE, "ar") ?: "ar"
         set(value) = prefs.edit().putString(KEY_LOCALE, value).apply()
@@ -105,7 +132,16 @@ class EncryptedPrefs @Inject constructor(
         set(value) = prefs.edit().putString(KEY_ACCESSIBILITY_COLOR_BLIND_MODE, value).apply()
 
     fun clearAll() {
-        prefs.edit().clear().apply()
+        val preservedKeys = listOf(
+            KEY_SYNC_DEVICE_ID,
+            KEY_SYNC_CURSOR,
+            KEY_SYNC_PAYLOAD_KEY,
+            KEY_DATABASE_ENCRYPTION_KEY,
+        )
+        val preserved = preservedKeys.mapNotNull { key -> prefs.getString(key, null)?.let { key to it } }
+        val editor = prefs.edit().clear()
+        preserved.forEach { (key, value) -> editor.putString(key, value) }
+        editor.commit()
     }
 
     companion object {
@@ -122,6 +158,10 @@ class EncryptedPrefs @Inject constructor(
         private const val KEY_IS_LOGGED_IN = "is_logged_in"
         private const val KEY_BIOMETRIC_ENABLED = "biometric_enabled"
         private const val KEY_DEVICE_TOKEN = "device_token"
+        private const val KEY_SYNC_DEVICE_ID = "sync_device_id"
+        private const val KEY_SYNC_CURSOR = "sync_cursor"
+        private const val KEY_SYNC_PAYLOAD_KEY = "sync_payload_key"
+        private const val KEY_DATABASE_ENCRYPTION_KEY = "database_encryption_key"
         private const val KEY_LOCALE = "locale"
         private const val KEY_DARK_MODE = "dark_mode"
         private const val KEY_ACCESSIBILITY_TEXT_SCALE = "accessibility_text_scale"

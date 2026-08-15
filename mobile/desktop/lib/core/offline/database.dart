@@ -4,6 +4,9 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqlite3/sqlite3.dart' as sqlite;
+
+import '../security/secure_config.dart';
 
 part 'database.g.dart';
 
@@ -231,10 +234,65 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
+String _escapeSqliteLiteral(String value) => value.replaceAll("'", "''");
+
+Future<void> _migrateLegacyDatabase({
+  required File legacyFile,
+  required File encryptedFile,
+  required String key,
+}) async {
+  if (!await legacyFile.exists() || await encryptedFile.exists()) return;
+
+  final tempFile = File('${encryptedFile.path}.tmp');
+  if (await tempFile.exists()) await tempFile.delete();
+
+  final legacy = sqlite.sqlite3.open(legacyFile.path);
+  try {
+    legacy.execute("VACUUM INTO '${_escapeSqliteLiteral(tempFile.path)}'");
+  } finally {
+    legacy.close();
+  }
+
+  final encrypted = sqlite.sqlite3.open(tempFile.path);
+  try {
+    encrypted.execute("PRAGMA cipher = 'chacha20'");
+    encrypted.execute("PRAGMA rekey = '${_escapeSqliteLiteral(key)}'");
+    if (encrypted.select('PRAGMA cipher;').isEmpty) {
+      throw StateError('SQLite3MultipleCiphers is unavailable during migration');
+    }
+  } finally {
+    encrypted.close();
+  }
+
+  await tempFile.rename(encryptedFile.path);
+  await legacyFile.delete();
+}
+
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'gula_desktop.db'));
-    return NativeDatabase(file);
+    final legacyFile = File(p.join(dbFolder.path, 'gula_desktop.db'));
+    final encryptedFile = File(p.join(dbFolder.path, 'gula_desktop.encrypted.db'));
+    final key = await SecureConfig.getOrCreateDatabaseEncryptionKey();
+
+    await _migrateLegacyDatabase(
+      legacyFile: legacyFile,
+      encryptedFile: encryptedFile,
+      key: key,
+    );
+
+    final escapedKey = _escapeSqliteLiteral(key);
+    return NativeDatabase(
+      encryptedFile,
+      setup: (rawDb) {
+        if (rawDb.select('PRAGMA cipher;').isEmpty) {
+          throw StateError('Encrypted SQLite is required for offline health data');
+        }
+        rawDb.execute("PRAGMA cipher = 'chacha20'");
+        rawDb.execute("PRAGMA key = '$escapedKey'");
+        rawDb.execute('PRAGMA cipher_memory_security = ON');
+        rawDb.execute('PRAGMA foreign_keys = ON');
+      },
+    );
   });
 }
