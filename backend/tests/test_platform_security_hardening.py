@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 from app.database import get_db
@@ -15,7 +16,13 @@ from app.security.policy import (
 from fastapi.testclient import TestClient
 
 
-@pytest.fixture()  # type: ignore[misc,unused-ignore]
+def _typed_fixture(
+    function: Callable[..., Iterator[TestClient]],
+) -> Callable[..., Iterator[TestClient]]:
+    return cast(Callable[..., Iterator[TestClient]], pytest.fixture()(function))
+
+
+@_typed_fixture
 def client() -> Iterator[TestClient]:
     app.dependency_overrides[get_db] = lambda: object()
     try:
