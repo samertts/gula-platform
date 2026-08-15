@@ -8,7 +8,7 @@
 | إصدار تغيير بأمان | [دليل Staging](STAGING_RUNBOOK.md) | [إرشادات النشر](deployment/) و[دليل الإنتاج](production/) |
 | تشغيل تجربة LIS والتشغيل البيني | [دليل تجربة LIS](LIMS_PILOT_RUNBOOK_AR.md) | [دليل MHD/PIXm](MHD_PIXM_PRACTICAL_IMPLEMENTATION_AR.md)، [استراتيجية FHIR](FHIR_R4_NATIONAL_EXPANSION_AR.md)، و[ADR-011](architecture/ADR-011-fhir-strategy.md) |
 | فهم البنية التقنية | [العمارة](architecture/) | [قرارات البنية](adr/) و[واجهات API](api/) |
-| مراجعة الضوابط الأمنية | [الأمن](security/) | [سياسة الإبلاغ](../SECURITY.md) و[الهندسة التشغيلية](operations/) |
+| مراجعة الضوابط الأمنية | [الأمن](security/) | [تقرير تعزيز أمان المنصة](SECURITY_HARDENING_20260815_AR.md)، [سياسة الإبلاغ](../SECURITY.md) و[الهندسة التشغيلية](operations/) |
 | العمل على نطاق صحي أو تشغيلي | [النطاقات](domain/) | [الرعاية الصحية](healthcare/) و[NIAM](niam/) |
 | فهم قرارات الإصدار والجودة | [الإصدارات](release/) | [الجودة](quality/) و[الأداء](performance/) |
 

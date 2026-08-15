@@ -18,6 +18,8 @@ class LabUser(Base):
     password_hash = Column(String(255), nullable=False)
     role = Column(String(50), default="staff", index=True)
     is_active = Column(Boolean, default=True, index=True)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
     perm_version = Column(Integer, default=1, nullable=False)  # bump on role/permission change
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
