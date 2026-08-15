@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from shared.security.encryption import decrypt_value, encrypt_value
 
-from ..config import ENCRYPTION_KEY
+from .. import config
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.user_preferences import AccessibilityProfile, HealthPreference
@@ -143,12 +143,13 @@ def _check_version(existing_version: int, requested_version: int | None) -> None
 
 
 def _encryption_key() -> str:
-    if not ENCRYPTION_KEY:
+    key = config.ENCRYPTION_KEY
+    if not key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Sensitive preference storage is unavailable until encryption is configured.",
         )
-    return ENCRYPTION_KEY
+    return key
 
 
 @router.get("/accessibility", response_model=AccessibilityResponse)
