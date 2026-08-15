@@ -47,6 +47,14 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices/VITAL-001/raw-command")).toThrow(OperationalWriteBlockedError);
   });
 
+  it("يسمح بعقود الصيدلية وسجل المواطن الجديدة ويرفض كتابة صيدلانية غير معتمدة", () => {
+    expect(() => assertFrontendReadIsAllowed("get", "/pharmacy/drugs?query=paracetamol")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/pharmacy/pos/summary?days=30")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/citizen-platform/me/medication-dispenses")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/pos/sales")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/inventory/stock-levels/adjust")).toThrow(OperationalWriteBlockedError);
+  });
+
   it("يرفض قراءة REST غير مصنفة ويحصر الاستثناء في تهيئة الجلسة العامة", () => {
     expect(() => assertFrontendReadIsAllowed("get", "/patients")).toThrow(OperationalReadBlockedError);
     expect(() => assertFrontendReadIsAllowed("get", "/r/public-token")).toThrow(OperationalReadBlockedError);

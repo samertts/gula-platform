@@ -121,9 +121,12 @@ class MedicationDispense(EHRBaseEntity):
     __tablename__ = "ehr_medication_dispenses"
 
     medication_request_id = Column(String(26), ForeignKey("ehr_medication_requests.id", ondelete="SET NULL"), nullable=True, index=True)
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
-    dispenser_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Cross-domain identifiers are enforced by the database migrations. The ORM
+    # intentionally keeps them as scalar IDs because EHRBase and NationalBase
+    # use separate SQLAlchemy metadata collections in the test/runtime harness.
+    patient_id = Column(String(26), nullable=False, index=True)
+    citizen_id = Column(String(26), nullable=True, index=True)
+    dispenser_id = Column(String(26), nullable=True, index=True)
 
     medication_code = Column(String(50), nullable=True, index=True)
     medication_code_system = Column(String(20), nullable=True)
@@ -142,9 +145,9 @@ class MedicationDispense(EHRBaseEntity):
     route = Column(String(100), nullable=True)
     frequency = Column(String(200), nullable=True)
 
-    prepared_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    prepared_by = Column(String(26), nullable=True)
     prepared_at = Column(DateTime(timezone=True), nullable=True)
-    verified_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
+    verified_by = Column(String(26), nullable=True)
     verified_at = Column(DateTime(timezone=True), nullable=True)
     dispensed_at = Column(DateTime(timezone=True), nullable=True)
 

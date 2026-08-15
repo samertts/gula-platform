@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime, timedelta
+from decimal import Decimal
 from typing import Any
+from uuid import uuid4
 
 from sqlalchemy import case, func, or_
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.billing.service import BillingService
+from app.ehr.models.medication import MedicationDispense
 from app.pharmacy.enums import DispenseStatus, PrescriptionStatus, StockMovementType
 from app.pharmacy.models import (
     DispenseQueue,
@@ -19,6 +23,8 @@ from app.pharmacy.models import (
     InventoryForecast,
     InventoryTransfer,
     InventoryTransferItem,
+    PharmacySale,
+    PharmacySaleLine,
     Prescription,
     PrescriptionItem,
     Recall,
@@ -427,6 +433,374 @@ class PharmacyService:
         if self.lab_id:
             q = q.filter(DispenseRecord.lab_id == self.lab_id)
         return q.order_by(DispenseRecord.dispensed_at.desc()).all()
+
+    def create_pos_sale(self, data: dict[str, Any], request_id: str | None = None) -> PharmacySale:
+        """Create an institution-scoped POS sale as one atomic database unit.
+
+        The method validates all lines and FEFO allocations before mutating stock.
+        It then writes the commercial sale, billing projection, stock movements,
+        and durable EHR MedicationDispense records when a citizen/patient context
+        is supplied. Payment remains synthetic and never stores card credentials.
+        """
+        if self.lab_id is None:
+            raise ValueError("institutional pharmacy context is required")
+
+        idempotency_key = str(data.get("idempotency_key") or "").strip() or None
+        if idempotency_key:
+            previous = self.db.query(PharmacySale).filter(
+                PharmacySale.lab_id == self.lab_id,
+                PharmacySale.idempotency_key == idempotency_key,
+                ~PharmacySale.is_deleted,
+            ).first()
+            if previous is not None:
+                return previous
+
+        raw_lines = data.get("lines") or []
+        if not raw_lines:
+            raise ValueError("at least one sale line is required")
+
+        issue_invoice = bool(data.get("issue_invoice", True))
+        billing_patient_id = data.get("billing_patient_id")
+        if issue_invoice and billing_patient_id is None:
+            raise ValueError("billing_patient_id is required when issuing an invoice")
+
+        today = date.today()
+        allocations: list[dict[str, Any]] = []
+        subtotal = Decimal("0.00")
+        discount_total = Decimal("0.00")
+        cost_total = Decimal("0.00")
+        requested_patient_id = data.get("patient_id")
+        requested_citizen_id = data.get("citizen_id")
+
+        for raw_line in raw_lines:
+            quantity = int(raw_line.get("quantity", 0))
+            if quantity <= 0:
+                raise ValueError("sale quantity must be positive")
+
+            drug_id = raw_line.get("drug_catalog_id")
+            barcode = str(raw_line.get("barcode") or "").strip() or None
+            if drug_id is None and barcode:
+                drug = self.db.query(DrugCatalog).filter(
+                    DrugCatalog.barcode_gs1 == barcode,
+                    ~DrugCatalog.is_deleted,
+                    DrugCatalog.lab_id == self.lab_id,
+                ).first()
+                drug_id = drug.id if drug else None
+            drug = self.get_drug(str(drug_id)) if drug_id is not None else None
+            if drug is None or not drug.is_active:
+                raise ValueError("drug not found or inactive")
+
+            stock_query = self.db.query(StockLevel, DrugBatch).join(
+                DrugBatch, DrugBatch.id == StockLevel.batch_id,
+            ).filter(
+                StockLevel.lab_id == self.lab_id,
+                StockLevel.drug_catalog_id == drug.id,
+                ~StockLevel.is_deleted,
+                DrugBatch.lab_id == self.lab_id,
+                ~DrugBatch.is_deleted,
+                DrugBatch.is_quarantined.is_(False),
+                DrugBatch.expiry_date >= today,
+                StockLevel.available_quantity > 0,
+            )
+            requested_batch_id = raw_line.get("batch_id")
+            if requested_batch_id:
+                stock_query = stock_query.filter(StockLevel.batch_id == str(requested_batch_id))
+            stock_rows = stock_query.order_by(DrugBatch.expiry_date.asc(), DrugBatch.id.asc()).with_for_update().all()
+            remaining = quantity
+            unit_price_override = raw_line.get("unit_price")
+            line_discount = Decimal(str(raw_line.get("discount", "0"))).quantize(Decimal("0.01"))
+            if line_discount < 0:
+                raise ValueError("line discount cannot be negative")
+
+            for stock, batch in stock_rows:
+                if remaining <= 0:
+                    break
+                allocated = min(remaining, int(stock.available_quantity))
+                unit_price = Decimal(str(unit_price_override if unit_price_override is not None else (batch.selling_price or "0"))).quantize(Decimal("0.01"))
+                unit_cost = Decimal(str(batch.cost_price or "0")).quantize(Decimal("0.01"))
+                allocated_discount = (line_discount * Decimal(allocated) / Decimal(quantity)).quantize(Decimal("0.01"))
+                line_total = (unit_price * Decimal(allocated) - allocated_discount).quantize(Decimal("0.01"))
+                line_cost = (unit_cost * Decimal(allocated)).quantize(Decimal("0.01"))
+                if unit_price < 0 or unit_cost < 0 or line_total < 0:
+                    raise ValueError("invalid price or discount")
+                allocations.append({
+                    "drug": drug,
+                    "batch": batch,
+                    "stock": stock,
+                    "quantity": allocated,
+                    "barcode": barcode or drug.barcode_gs1,
+                    "unit_price": unit_price,
+                    "unit_cost": unit_cost,
+                    "discount": allocated_discount,
+                    "line_total": line_total,
+                    "line_cost": line_cost,
+                    "prescription_id": raw_line.get("prescription_id"),
+                    "quantity_unit": raw_line.get("quantity_unit") or "unit",
+                    "days_supply": raw_line.get("days_supply"),
+                    "dosage_instruction": raw_line.get("dosage_instruction"),
+                    "route": raw_line.get("route"),
+                    "frequency": raw_line.get("frequency"),
+                })
+                remaining -= allocated
+
+            if remaining > 0:
+                raise ValueError("insufficient non-expired stock")
+
+        if not allocations:
+            raise ValueError("no stock allocation available")
+
+        subtotal = sum((item["unit_price"] * Decimal(item["quantity"]) for item in allocations), Decimal("0.00")).quantize(Decimal("0.01"))
+        discount_total = sum((item["discount"] for item in allocations), Decimal("0.00")).quantize(Decimal("0.01"))
+        total_amount = (subtotal - discount_total).quantize(Decimal("0.01"))
+        cost_total = sum((item["line_cost"] for item in allocations), Decimal("0.00")).quantize(Decimal("0.01"))
+        if total_amount < 0:
+            raise ValueError("sale total cannot be negative")
+
+        sale = PharmacySale(
+            lab_id=self.lab_id,
+            patient_id=requested_patient_id,
+            citizen_id=requested_citizen_id,
+            billing_patient_id=billing_patient_id,
+            encounter_id=data.get("encounter_id"),
+            sale_number=f"GULA-POS-{datetime.now(UTC):%y%m%d%H%M%S}-{uuid4().hex[:6].upper()}",
+            status="completed",
+            currency=str(data.get("currency") or "IQD"),
+            subtotal=subtotal,
+            discount=discount_total,
+            total_amount=total_amount,
+            cost_amount=cost_total,
+            gross_profit=(total_amount - cost_total).quantize(Decimal("0.01")),
+            payment_status="unpaid" if total_amount > 0 else "paid",
+            payment_method=str(data.get("payment_method") or "synthetic_settlement"),
+            idempotency_key=idempotency_key,
+            created_by=self.user_id,
+            updated_by=self.user_id,
+            metadata_={"synthetic": True, "source": "pharmacy_pos", "request_id": request_id},
+        )
+        self.db.add(sale)
+        self.db.flush()
+
+        invoice = None
+        if issue_invoice:
+            billing_lines = [
+                {
+                    "service_code": f"PHARM-{item['drug'].code}",
+                    "description": item["drug"].name_ar or item["drug"].name,
+                    "quantity": item["quantity"],
+                    "unit_amount": item["unit_price"],
+                }
+                for item in allocations
+            ]
+            invoice = BillingService(self.db).create_invoice(
+                lab_id=self.lab_id,
+                patient_id=int(billing_patient_id),
+                encounter_ref=str(data.get("encounter_ref") or sale.sale_number),
+                lines=billing_lines,
+                covered_amount=Decimal(str(data.get("covered_amount", "0"))),
+                due_at=None,
+                idempotency_key=f"pharmacy:{self.lab_id}:{idempotency_key}" if idempotency_key else None,
+                actor_user_id=self.user_id,
+                request_id=request_id,
+            )
+            sale.billing_invoice_id = invoice.id
+
+        dispense_rows: list[tuple[PharmacySaleLine, MedicationDispense | None]] = []
+        for line_number, item in enumerate(allocations, start=1):
+            stock = item["stock"]
+            batch = item["batch"]
+            drug = item["drug"]
+            stock.quantity -= item["quantity"]
+            stock.available_quantity = stock.quantity - stock.reserved_quantity
+            batch.quantity_remaining -= item["quantity"]
+
+            sale_line = PharmacySaleLine(
+                lab_id=self.lab_id,
+                sale_id=sale.id,
+                drug_catalog_id=drug.id,
+                batch_id=batch.id,
+                prescription_id=item["prescription_id"],
+                line_number=line_number,
+                barcode=item["barcode"],
+                medication_name=drug.name,
+                medication_name_ar=drug.name_ar,
+                quantity=item["quantity"],
+                quantity_unit=item["quantity_unit"],
+                lot_number=batch.batch_number,
+                expiry_date=batch.expiry_date,
+                unit_price=item["unit_price"],
+                unit_cost=item["unit_cost"],
+                discount=item["discount"],
+                line_total=item["line_total"],
+                line_cost=item["line_cost"],
+                created_by=self.user_id,
+                updated_by=self.user_id,
+                metadata_={"synthetic": True},
+            )
+            self.db.add(sale_line)
+            self.db.flush()
+
+            movement = StockMovement(
+                lab_id=self.lab_id,
+                drug_catalog_id=drug.id,
+                batch_id=batch.id,
+                warehouse_id=stock.warehouse_id,
+                store_id=stock.store_id,
+                movement_type=StockMovementType.DISPENSED,
+                quantity=item["quantity"],
+                reference_type="pharmacy_sale",
+                reference_id=sale.id,
+                performed_by=str(self.user_id) if self.user_id else None,
+                notes="POS sale; FEFO allocation",
+            )
+            self.db.add(movement)
+
+            record_patient_id = requested_patient_id or requested_citizen_id
+            dispense = None
+            if record_patient_id:
+                dispense = MedicationDispense(
+                    patient_id=str(record_patient_id),
+                    citizen_id=str(requested_citizen_id) if requested_citizen_id else None,
+                    medication_request_id=None,
+                    medication_code=drug.code,
+                    medication_code_system="GULA-PHARMACY",
+                    medication_name=drug.name,
+                    medication_name_ar=drug.name_ar,
+                    medication_brand=drug.brand_name,
+                    medication_form=str(drug.form.value if hasattr(drug.form, "value") else drug.form or ""),
+                    status="completed",
+                    category="outpatient",
+                    quantity=item["quantity"],
+                    quantity_unit=item["quantity_unit"],
+                    days_supply=item["days_supply"],
+                    dosage_instruction=item["dosage_instruction"],
+                    route=item["route"],
+                    frequency=item["frequency"],
+                    dispensed_at=datetime.now(UTC),
+                    prepared_at=datetime.now(UTC),
+                    metadata_={
+                        "source": "pharmacy_pos",
+                        "synthetic": True,
+                        "pharmacy_sale_id": sale.id,
+                        "pharmacy_sale_number": sale.sale_number,
+                        "billing_invoice_id": invoice.id if invoice else None,
+                        "lot_number": batch.batch_number,
+                        "expiry_date": batch.expiry_date.isoformat() if batch.expiry_date else None,
+                    },
+                )
+                self.db.add(dispense)
+                self.db.flush()
+                sale_line.medication_dispense_id = dispense.id
+            dispense_rows.append((sale_line, dispense))
+
+        self.db.flush()
+        if invoice is not None and total_amount > 0:
+            BillingService(self.db).simulate_settlement(
+                invoice_id=invoice.id,
+                lab_id=self.lab_id,
+                actor_user_id=self.user_id,
+                request_id=request_id,
+            )
+            sale.payment_status = "paid"
+        self._audit(
+            "pharmacy.pos.sale.create",
+            "pharmacy_sale",
+            sale.id,
+            f"Created {sale.sale_number} with {len(dispense_rows)} allocated lines",
+        )
+        self.db.flush()
+        return sale
+
+    def get_pos_sale(self, sale_id: str) -> PharmacySale | None:
+        query = self.db.query(PharmacySale).filter(
+            PharmacySale.id == sale_id,
+            ~PharmacySale.is_deleted,
+        )
+        if self.lab_id:
+            query = query.filter(PharmacySale.lab_id == self.lab_id)
+        return query.first()
+
+    def list_pos_sales(self, *, citizen_id: str | None = None, skip: int = 0, limit: int = 50) -> list[PharmacySale]:
+        query = self.db.query(PharmacySale).filter(~PharmacySale.is_deleted)
+        if self.lab_id:
+            query = query.filter(PharmacySale.lab_id == self.lab_id)
+        if citizen_id:
+            query = query.filter(PharmacySale.citizen_id == citizen_id)
+        return query.order_by(PharmacySale.sold_at.desc()).offset(skip).limit(limit).all()
+
+    def get_pos_summary(self, days: int = 30) -> dict[str, Any]:
+        if days < 1 or days > 3650:
+            raise ValueError("days must be between 1 and 3650")
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+        query = self.db.query(
+            func.count(PharmacySale.id),
+            func.coalesce(func.sum(PharmacySale.total_amount), 0),
+            func.coalesce(func.sum(PharmacySale.cost_amount), 0),
+            func.coalesce(func.sum(PharmacySale.gross_profit), 0),
+        ).filter(
+            PharmacySale.sold_at >= cutoff,
+            PharmacySale.status == "completed",
+            ~PharmacySale.is_deleted,
+        )
+        if self.lab_id:
+            query = query.filter(PharmacySale.lab_id == self.lab_id)
+        sale_count, sales_total, cost_total, profit_total = query.one()
+
+        units_query = self.db.query(func.coalesce(func.sum(PharmacySaleLine.quantity), 0)).join(
+            PharmacySale, PharmacySale.id == PharmacySaleLine.sale_id,
+        ).filter(
+            PharmacySale.sold_at >= cutoff,
+            PharmacySale.status == "completed",
+            ~PharmacySale.is_deleted,
+            ~PharmacySaleLine.is_deleted,
+        )
+        if self.lab_id:
+            units_query = units_query.filter(PharmacySale.lab_id == self.lab_id)
+        units_sold = int(units_query.scalar() or 0)
+
+        recent_sales = self.db.query(
+            PharmacySaleLine.drug_catalog_id,
+            func.max(PharmacySale.sold_at).label("last_sold_at"),
+        ).join(
+            PharmacySale, PharmacySale.id == PharmacySaleLine.sale_id,
+        ).filter(
+            PharmacySale.status == "completed",
+            ~PharmacySale.is_deleted,
+            ~PharmacySaleLine.is_deleted,
+        )
+        if self.lab_id:
+            recent_sales = recent_sales.filter(PharmacySale.lab_id == self.lab_id)
+        last_sale_by_drug = dict(recent_sales.group_by(PharmacySaleLine.drug_catalog_id).all())
+
+        stagnant: list[dict[str, Any]] = []
+        stock_query = self.db.query(StockLevel).filter(~StockLevel.is_deleted, StockLevel.available_quantity > 0)
+        if self.lab_id:
+            stock_query = stock_query.filter(StockLevel.lab_id == self.lab_id)
+        for stock in stock_query.all():
+            last_sold_at = last_sale_by_drug.get(stock.drug_catalog_id)
+            if last_sold_at is not None and last_sold_at.tzinfo is None:
+                last_sold_at = last_sold_at.replace(tzinfo=UTC)
+            if last_sold_at is None or last_sold_at < cutoff:
+                drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == stock.drug_catalog_id).first()
+                stagnant.append({
+                    "drug_id": stock.drug_catalog_id,
+                    "drug_name": drug.name if drug else "Unknown",
+                    "available_quantity": stock.available_quantity,
+                    "last_sold_at": last_sold_at.isoformat() if last_sold_at else None,
+                })
+
+        alerts = self.get_stock_alerts()
+        return {
+            "period_days": days,
+            "sale_count": int(sale_count or 0),
+            "units_sold": units_sold,
+            "sales_total": str(Decimal(str(sales_total or 0)).quantize(Decimal("0.01"))),
+            "cost_total": str(Decimal(str(cost_total or 0)).quantize(Decimal("0.01"))),
+            "gross_profit": str(Decimal(str(profit_total or 0)).quantize(Decimal("0.01"))),
+            "low_stock_count": len(alerts["low_stock"]),
+            "expiring_soon_count": len(alerts["expiring_soon"]),
+            "stagnant_items": stagnant[:100],
+            "synthetic": True,
+        }
 
     # ── Inventory Management ───────────────────────────────────────────────────
 
