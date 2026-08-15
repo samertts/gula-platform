@@ -110,7 +110,7 @@ export function LoginPage() {
                 </span>
                 <div className="leading-tight">
                   <p className="text-lg font-extrabold tracking-tight">GULA</p>
-                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-100/75">Health platform</p>
+                  <p className="mt-0.5 text-[10px] font-semibold tracking-[0.12em] text-cyan-100/75">{t("app.name")}</p>
                 </div>
               </div>
               <label className="relative flex items-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-2.5 py-2 text-xs font-semibold text-white/90 backdrop-blur-sm">
