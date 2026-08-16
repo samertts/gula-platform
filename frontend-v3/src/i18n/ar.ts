@@ -25,6 +25,7 @@ const ar = {
     identity: "الهوية الصحية",
     tiers: "الباقات",
     security: "الأمان",
+    memberships: "العضويات والسياقات",
     hospital: "إدارة المستشفيات",
     edgePlatform: "منصة الحافة",
     financial: "النظام المالي",

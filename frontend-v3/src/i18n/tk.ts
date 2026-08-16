@@ -25,6 +25,7 @@ const tk = {
     identity: "Saglyk şahsyýeti",
     tiers: "Derejeler",
     security: "Howpsuzlyk",
+    memberships: "Agzalyk we kontekstler",
     hospital: "Hassahana dolandyryşy",
     edgePlatform: "Edge platformasy",
     financial: "Maliýe ulgamy",

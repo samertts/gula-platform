@@ -25,7 +25,27 @@ vi.mock("@/api/client", async () => {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(useAuth).mockReturnValue({ demoMode: false } as ReturnType<typeof useAuth>);
+  vi.mocked(useAuth).mockReturnValue({
+    demoMode: false,
+    state: "AUTHORIZED",
+    availableWorkspaces: [{
+      id: "workspace-1",
+      uuid: "workspace-uuid-1",
+      workspace_type: "citizen",
+      name: "Citizen Workspace",
+      name_ar: "مساحة المواطن",
+      status: "active",
+      organization_id: null,
+      facility_id: null,
+      department_id: null,
+      professional_type: null,
+      is_personal: true,
+    }],
+    workspace: null,
+    error: null,
+    switchWorkspace: vi.fn(),
+    refreshWorkspaces: vi.fn().mockResolvedValue([]),
+  } as ReturnType<typeof useAuth>);
   vi.mocked(apiClient.listWorkspaces).mockResolvedValue({
     workspaces: [
       {

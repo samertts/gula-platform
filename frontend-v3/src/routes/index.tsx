@@ -7,9 +7,12 @@ import { RoleGuard } from "@/components/auth/RoleGuard";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserRole } from "@/types";
 import { LegacyRouteBridge } from "@/pages/migration/LegacyRouteBridge";
+import { AUTH_STATES } from "@/auth/authState";
 
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then(m => ({ default: m.RegisterPage })));
+const RecoveryPage = lazy(() => import("@/pages/auth/RecoveryPage").then(m => ({ default: m.RecoveryPage })));
+const MembershipsPage = lazy(() => import("@/pages/memberships/MembershipsPage").then(m => ({ default: m.MembershipsPage })));
 const LegalPage = lazy(() => import("@/pages/legal/LegalPage").then(m => ({ default: m.LegalPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const PatientsPage = lazy(() => import("@/pages/patients/PatientsPage").then(m => ({ default: m.PatientsPage })));
@@ -97,8 +100,10 @@ const PlatformPageLazy = lazy(() => import("@/pages/platform/PlatformPage"));
 const PublicHealthApiPageLazy = lazy(() => import("@/pages/public-health/PublicHealthApiPage"));
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, state } = useAuth();
   if (isLoading) return <LoadingSpinner />;
+  if (state === AUTH_STATES.SESSION_EXPIRED) return <Navigate to="/login" state={{ reason: "SESSION_EXPIRED" }} replace />;
+  if (state === AUTH_STATES.SUSPENDED || state === AUTH_STATES.LOCKED) return <Navigate to="/login" state={{ reason: state }} replace />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
@@ -128,6 +133,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/login" replace /> },
       { path: "login", element: <LazyPage><LoginPage /></LazyPage> },
       { path: "register", element: <LazyPage><RegisterPage /></LazyPage> },
+      { path: "recover", element: <LazyPage><RecoveryPage /></LazyPage> },
       { path: "privacy-policy", element: <LazyPage><LegalPage document="privacy" /></LazyPage> },
       { path: "terms-of-service", element: <LazyPage><LegalPage document="terms" /></LazyPage> },
     ],
@@ -164,7 +170,8 @@ export const router = createBrowserRouter([
       { path: "settings", element: <LazyPage><SettingsPage /></LazyPage> },
       { path: "settings/accessibility", element: <LazyPage><AccessibilityCenterPage /></LazyPage> },
       { path: "profile", element: <LazyPage><ProfilePage /></LazyPage> },
-      { path: "security", element: <RoleGuard roles={adminRoles}><LazyPage><SecurityPage /></LazyPage></RoleGuard> },
+      { path: "memberships", element: <LazyPage><MembershipsPage /></LazyPage> },
+      { path: "security", element: <LazyPage><SecurityPage /></LazyPage> },
       { path: "admin/labs", element: <RoleGuard roles={adminRoles}><LazyPage><AdminLabsPage /></LazyPage></RoleGuard> },
       { path: "admin/users", element: <RoleGuard roles={adminRoles}><LazyPage><AdminUsersPage /></LazyPage></RoleGuard> },
       { path: "admin/audit", element: <RoleGuard roles={adminRoles}><LazyPage><AdminAuditPage /></LazyPage></RoleGuard> },

@@ -9,6 +9,7 @@ import {
   clinicalQualityApi, hospitalApi, nationalDataApi, nationalStreamingApi,
   edgeApi, consentApi, claimsApi, integrationsApi, optimizerApi,
   financialApi, kernelRuntimeApi,
+  type MfaStatusResponse,
 } from "@/api/endpoints";
 import { queryKeys } from "./queryKeys";
 import type { LoginRequest } from "@/types/api";
@@ -264,10 +265,10 @@ export function useDeepHealth(opts?: UseQueryOptions<DeepHealth>) {
 }
 
 // ── MFA ──
-export function useMfaStatus(opts?: UseQueryOptions<Record<string, unknown>>) {
+export function useMfaStatus(opts?: UseQueryOptions<MfaStatusResponse>) {
   return useQuery({ queryKey: queryKeys.mfa.status, queryFn: () => mfaApi.status(), ...opts });
 }
-export function useMfaDevices(opts?: UseQueryOptions<Record<string, unknown>>) {
+export function useMfaDevices(opts?: UseQueryOptions<MfaStatusResponse>) {
   return useQuery({ queryKey: queryKeys.mfa.devices, queryFn: () => mfaApi.devices(), ...opts });
 }
 

@@ -207,6 +207,7 @@ type RestWriteMethod = "post" | "put" | "patch" | "delete";
 const IDENTITY_AND_DECISION_ALLOWLIST = new Set([
   "POST /login",
   "POST /logout",
+  "POST /auth/refresh",
   "POST /demo/access",
   "POST /auth/verification/request",
   "POST /auth/verification/confirm",
@@ -214,10 +215,14 @@ const IDENTITY_AND_DECISION_ALLOWLIST = new Set([
   "POST /auth/reset-password",
   "POST /auth/change-password",
   "POST /register/citizen",
+  "POST /niam/account-requests/",
   "POST /authz/check",
   "POST /consent/check",
 ]);
 
+const MFA_READ_PATTERN = /^GET \/mfa\/(status|devices)$/;
+const SECURITY_READ_PATTERN = /^GET \/security\/status$/;
+const SESSION_READ_PATTERN = /^GET \/niam\/sessions\/account\/[^/]+$/;
 const INITIALIZATION_READ_ALLOWLIST = new Set([
   "GET /session",
   "GET /setup/status",
@@ -281,10 +286,12 @@ export function assertFrontendWriteIsAllowed(method?: string, url?: string): voi
   const key = toRequestKey(normalizedMethod, url);
   const workspaceSwitch = normalizedMethod === "post" && /^POST \/niam\/workspaces\/[^/]+\/switch$/.test(key);
   const membershipMutation = normalizedMethod === "post" && /^POST \/niam\/memberships\/(?:applications(?:\/[^/]+\/approve)?|invitations(?:\/[^/]+\/(?:accept|revoke))?|[^/]+\/(?:revoke|suspend|reactivate))$/.test(key);
-  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && (BILLING_WRITE_PATTERN.test(key) || PHARMACY_WRITE_PATTERN.test(key) || DEVICE_INTEGRATION_WRITE_PATTERN.test(key))) {
+  const sessionMutation = normalizedMethod === "post" && /^POST \/niam\/sessions\/(?:[^/]+\/terminate|account\/[^/]+\/terminate-all)$/.test(key);
+  const mfaMutation = /^(?:POST \/mfa\/(?:totp\/(?:setup|verify)|webauthn\/(?:register|authenticate)\/(?:begin|complete))|DELETE \/mfa\/devices\/[^/]+)$/.test(key);
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && !sessionMutation && !mfaMutation && (BILLING_WRITE_PATTERN.test(key) || PHARMACY_WRITE_PATTERN.test(key) || DEVICE_INTEGRATION_WRITE_PATTERN.test(key))) {
     return;
   }
-  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation) {
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && !sessionMutation && !mfaMutation) {
     throw new OperationalWriteBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
 }
@@ -300,7 +307,7 @@ export function assertFrontendReadIsAllowed(method?: string, url?: string): void
 
   const key = toRequestKey(normalizedMethod, url);
   const workspaceDetail = /^GET \/niam\/workspaces\/[^/]+$/.test(key);
-  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || PHARMACY_READ_PATTERN.test(key) || CITIZEN_READ_PATTERN.test(key)) return;
+  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || PHARMACY_READ_PATTERN.test(key) || CITIZEN_READ_PATTERN.test(key) || MFA_READ_PATTERN.test(key) || SECURITY_READ_PATTERN.test(key) || SESSION_READ_PATTERN.test(key)) return;
   if (!INITIALIZATION_READ_ALLOWLIST.has(key) && !workspaceDetail) {
     throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
@@ -445,22 +452,24 @@ class ApiClient {
   private async handleError(error: AxiosError) {
     const originalRequest = error.config as RetryableRequest | undefined;
     const requestUrl = originalRequest?.url ?? "";
+    const isAuthBootstrapRequest = /\/(login|register|register\/citizen|register\/staff|register\/doctor|auth\/refresh|auth\/forgot-password|auth\/reset-password|session)$/.test(requestUrl);
 
-    if (
-      !originalRequest ||
-      error.response?.status !== 401 ||
-      originalRequest._retry ||
-      requestUrl.includes("/auth/refresh")
-    ) {
-      return Promise.reject(error);
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthBootstrapRequest) {
+      originalRequest._retry = true;
+      const refreshed = await this.refreshToken();
+      if (refreshed) return this.instance(originalRequest);
+      this.clearSession();
     }
 
-    originalRequest._retry = true;
-    const refreshed = await this.refreshToken();
-    if (refreshed) return this.instance(originalRequest);
-
-    this.clearSession();
-    if (window.location.pathname !== "/login") window.location.assign("/login");
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("gula:api-error", {
+        detail: {
+          status: error.response?.status,
+          url: requestUrl,
+          method: originalRequest?.method?.toUpperCase(),
+        },
+      }));
+    }
     return Promise.reject(error);
   }
 
@@ -477,7 +486,11 @@ class ApiClient {
   }
 
   private clearSession() {
-    window.dispatchEvent(new CustomEvent("gula:session-expired"));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("gula:session-expired", {
+        detail: { reason: "refresh_failed" },
+      }));
+    }
   }
 
   get api(): AxiosInstance {

@@ -14,6 +14,7 @@ import {
 import { Sidebar } from "./Sidebar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLocale } from "@/contexts/LocaleContext";
+import { localeOptions } from "@/i18n/locales";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui";
 import { GuideAssistant } from "@/components/guide/GuideAssistant";
@@ -23,8 +24,8 @@ import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
 
 export function DashboardLayout() {
   const { theme, setTheme } = useTheme();
-  const { locale, setLocale } = useLocale();
-  const { user, demoMode } = useAuth();
+  const { locale, setLocale, isRTL } = useLocale();
+  const { user, demoMode, state: authState, error: authError } = useAuth();
   const { t } = useTranslation();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -39,7 +40,7 @@ export function DashboardLayout() {
   return (
     <div
       className="flex min-h-[100dvh] overflow-x-clip bg-[#F8FAFC] text-foreground dark:bg-slate-950"
-      dir={locale === "ar" ? "rtl" : "ltr"}
+      dir={isRTL ? "rtl" : "ltr"}
     >
       <a
         href="#main-content"
@@ -104,15 +105,14 @@ export function DashboardLayout() {
               variant="ghost"
               size="icon"
               className="h-11 w-11 rounded-xl"
-              onClick={() => setLocale(locale === "ar" ? "en" : "ar")}
-              title={locale === "ar" ? "English" : "العربية"}
-              aria-label={
-                locale === "ar" ? "التبديل إلى الإنجليزية" : "العربية"
-              }
+              onClick={() => {
+                const currentIndex = localeOptions.findIndex((option) => option.code === locale);
+                setLocale(localeOptions[(currentIndex + 1) % localeOptions.length]!.code);
+              }}
+              title="تغيير اللغة"
+              aria-label="تغيير اللغة"
             >
-              <span className="text-[11px] font-bold">
-                {locale === "ar" ? "EN" : "AR"}
-              </span>
+              <span className="text-[11px] font-bold">{localeOptions.find((option) => option.code === locale)?.shortName || locale}</span>
             </Button>
             <Button
               variant="outline"
@@ -166,6 +166,11 @@ export function DashboardLayout() {
           </div>
         </header>
 
+        {(authState === "SESSION_EXPIRED" || authState === "ERROR" || authError) && (
+          <div role="alert" className="border-b border-amber-500/25 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100 md:px-7">
+            {authError?.message || (authState === "SESSION_EXPIRED" ? "انتهت الجلسة أو أُبطلت. أعد تسجيل الدخول." : "الخدمة أو الاتصال غير متاحين حالياً. لم تُعرض بيانات قديمة على أنها حالية.")}
+          </div>
+        )}
         {demoMode && showDemoNotice && (
           <div
             role="status"

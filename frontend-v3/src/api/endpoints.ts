@@ -56,6 +56,50 @@ import type {
   HealthPreferencesResponse,
 } from "@/types";
 
+// ── Identity lifecycle contracts ──
+export interface AccountRequestPayload {
+  email?: string;
+  phone?: string;
+  display_name?: string;
+  requested_account_type: "human" | "organization" | "service";
+}
+
+export interface AccountRequestAccepted {
+  accepted: boolean;
+  status: string;
+  request_id: string | null;
+  message: string;
+}
+
+export interface SessionSummary {
+  uuid: string;
+  id: number;
+}
+
+export interface MfaDeviceSummary {
+  id: number;
+  type: string;
+  name: string;
+  created_at: string;
+  last_used?: string | null;
+}
+
+export interface MfaStatusResponse {
+  mfa_enabled: boolean;
+  devices: MfaDeviceSummary[];
+}
+
+export const identityLifecycleApi = {
+  submitAccountRequest: (payload: AccountRequestPayload, idempotencyKey: string) =>
+    api.post<AccountRequestAccepted>("/niam/account-requests/", payload, { headers: { "Idempotency-Key": idempotencyKey } }).then((r) => r.data),
+  listSessions: (accountId: string) =>
+    apiClient.api.get<{ sessions: SessionSummary[] }>(`/niam/sessions/account/${encodeURIComponent(accountId)}`).then((r) => r.data),
+  terminateSession: (sessionUuid: string) =>
+    apiClient.api.post<Record<string, unknown>>(`/niam/sessions/${encodeURIComponent(sessionUuid)}/terminate`).then((r) => r.data),
+  terminateAllSessions: (accountId: string) =>
+    apiClient.api.post<Record<string, unknown>>(`/niam/sessions/account/${encodeURIComponent(accountId)}/terminate-all`).then((r) => r.data),
+};
+
 // ── Auth ──
 export const authApi = {
   login: (data: LoginRequest) =>
@@ -617,23 +661,10 @@ export const mfaApi = {
   webauthnAuthBegin: () => api.post<Record<string, unknown>>("/mfa/webauthn/authenticate/begin").then((r) => r.data),
   webauthnAuthComplete: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/mfa/webauthn/authenticate/complete", data).then((r) => r.data),
-  devices: () =>
-    api
-      .get<{ devices: { id: number; type: string; name: string; created_at: string; last_used?: string }[] }>(
-        "/mfa/devices",
-      )
-      .then((r) => r.data),
+  devices: () => api.get<MfaStatusResponse>("/mfa/devices").then((r) => r.data),
   removeDevice: (deviceId: number) =>
     api.delete<Record<string, unknown>>(`/mfa/devices/${deviceId}`).then((r) => r.data),
-  status: () =>
-    api
-      .get<{
-        mfa_enabled: boolean;
-        totp_configured: boolean;
-        webauthn_configured: boolean;
-        recommended_method: string;
-      }>("/mfa/status")
-      .then((r) => r.data),
+  status: () => api.get<MfaStatusResponse>("/mfa/status").then((r) => r.data),
 };
 
 // ── Service Accounts ──
