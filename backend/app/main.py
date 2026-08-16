@@ -14,6 +14,7 @@ import time
 from contextlib import suppress
 from datetime import datetime
 
+from fastapi import Depends
 from fastapi.responses import JSONResponse
 
 from app._compat import UTC
@@ -21,6 +22,11 @@ from app._compat import UTC
 from .config import APP_NAME, APP_VERSION, IS_PRODUCTION, PLATFORM_NAME_AR
 from .core.logging_config import configure_logging
 from .database import check_db_connection, get_pool_status
+from .security.dependencies import require_permission
+
+_HEALTH_DIAGNOSTIC_DEPENDENCIES = (
+    [Depends(require_permission("system:admin"))] if IS_PRODUCTION else []
+)
 
 configure_logging(is_production=IS_PRODUCTION, log_level="INFO")
 logger = logging.getLogger("gula")
@@ -86,10 +92,14 @@ def readiness():
 @app.get("/health/live", tags=["system"])
 def liveness():
     """Kubernetes-style liveness probe - always returns 200 if process is alive."""
-    return {"status": "alive", "version": APP_VERSION}
+    return {"status": "alive"}
 
 
-@app.get("/health/status", tags=["system"])
+@app.get(
+    "/health/status",
+    tags=["system"],
+    dependencies=_HEALTH_DIAGNOSTIC_DEPENDENCIES,
+)
 def health_status():
     """Full diagnostic status — shows exactly why the system is or isn't ready.
     Useful for debugging startup failures without needing server access.
@@ -141,7 +151,11 @@ def health_status():
     }
 
 
-@app.get("/health/deep", tags=["system"])
+@app.get(
+    "/health/deep",
+    tags=["system"],
+    dependencies=_HEALTH_DIAGNOSTIC_DEPENDENCIES,
+)
 def health_deep():
     """Deep diagnostic endpoint — comprehensive latency + queue + memory snapshot.
     Designed for monitoring dashboards and alerting (Prometheus, Grafana, etc.).
@@ -289,7 +303,11 @@ def health_deep():
 
 
 # ===== KERNEL HEALTH =====
-@app.get("/health/kernel", tags=["system"])
+@app.get(
+    "/health/kernel",
+    tags=["system"],
+    dependencies=_HEALTH_DIAGNOSTIC_DEPENDENCIES,
+)
 async def kernel_health():
     """Kernel health and diagnostics.
     Returns the Kernel's internal state, component status, and uptime.
@@ -299,10 +317,10 @@ async def kernel_health():
         from .kernel.integration import get_kernel_health
 
         return await get_kernel_health()
-    except Exception as e:
+    except Exception:
         return {
             "status": "error",
-            "error": str(e),
+            "error": "kernel_unavailable",
             "kernel_initialized": False,
         }
 

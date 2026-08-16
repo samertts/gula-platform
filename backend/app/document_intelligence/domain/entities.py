@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+from app._compat import UTC
+
 from .enums import (
     ClassificationConfidence,
     CollaborationRole,
@@ -53,30 +55,30 @@ class ScannedDocument:
     retry_count: int = 0
     metadata: dict[str, Any] = field(default_factory=dict)
     tags: list[str] = field(default_factory=list)
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     processed_at: datetime | None = None
 
     def mark_ingested(self, storage_path: str, checksum: str) -> None:
         self.storage_path = storage_path
         self.checksum_sha256 = checksum
         self.status = DocumentStatus.ingested
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def mark_ocr_completed(self) -> None:
         self.status = DocumentStatus.ocr_completed
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def mark_ocr_failed(self, error: str) -> None:
         self.status = DocumentStatus.ocr_failed
         self.error_message = error
         self.retry_count += 1
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def mark_processed(self) -> None:
         self.status = DocumentStatus.knowledge_indexed
-        self.processed_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.processed_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
 
     @property
     def extension(self) -> str:
@@ -251,7 +253,7 @@ class DocumentReview:
     decision: ReviewDecision | None = None
     comments: str = ""
     suggested_changes: list[str] = field(default_factory=list)
-    assigned_at: datetime = field(default_factory=datetime.utcnow)
+    assigned_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     completed_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -267,8 +269,8 @@ class DocumentAnnotation:
     annotation_type: str = "comment"
     bounding_box: tuple[float, float, float, float] | None = None
     resolved: bool = False
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -286,7 +288,7 @@ class DigitalPreservationRecord:
     preservation_location: str = ""
     cold_storage_location: str = ""
     integrity_log: list[dict[str, Any]] = field(default_factory=list)
-    preservation_date: datetime = field(default_factory=datetime.utcnow)
+    preservation_date: datetime = field(default_factory=lambda: datetime.now(UTC))
     next_integrity_check: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
@@ -339,8 +341,8 @@ class GovernancePolicy:
     action: GovernancePolicyAction = GovernancePolicyAction.flag
     conditions: dict[str, Any] = field(default_factory=dict)
     enabled: bool = True
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -353,7 +355,7 @@ class GovernanceEvent:
     message: str = ""
     action_taken: GovernancePolicyAction = GovernancePolicyAction.notify
     details: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -364,7 +366,7 @@ class DocumentEvent:
     actor_id: str = ""
     actor_name: str = ""
     payload: dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -392,7 +394,7 @@ class DocumentLifecycleRecord:
     new_status: DocumentStatus | None = None
     actor: str = ""
     reason: str = ""
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -402,6 +404,6 @@ class CollaborationSession:
     document_id: UUID | None = None
     participants: list[dict[str, Any]] = field(default_factory=list)
     status: str = "active"
-    started_at: datetime = field(default_factory=datetime.utcnow)
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     ended_at: datetime | None = None
     metadata: dict[str, Any] = field(default_factory=dict)

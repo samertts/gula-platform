@@ -15,6 +15,8 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from shared.rbac import get_permissions_for_role
+
 from .config import APP_VERSION, DEMO_MODE, IS_PRODUCTION, MAX_REQUEST_BODY_MB
 from .core.logging_config import bind_log_context
 
@@ -26,8 +28,6 @@ _ALWAYS_ALLOWED_PATHS: frozenset[str] = frozenset(
         "/health/ready",
         "/health/live",
         "/health/status",
-        "/health/deep",
-        "/health/kernel",
         "/app-updates",
     }
 )
@@ -145,16 +145,19 @@ class DemoReadOnlyMiddleware(BaseHTTPMiddleware):
     )
 
     async def dispatch(self, request: Request, call_next):
-        if DEMO_MODE and request.method not in {"GET", "HEAD", "OPTIONS"}:
-            if (request.method, request.url.path) not in self._ALLOWED_MUTATIONS:
-                return JSONResponse(
-                    status_code=405,
-                    content={
-                        "detail": "Write operations are disabled in the public demo.",
-                        "detail_ar": "عمليات الكتابة معطلة في العرض التجريبي العام.",
-                    },
-                    headers={"Allow": "GET, HEAD, OPTIONS"},
-                )
+        if (
+            DEMO_MODE
+            and request.method not in {"GET", "HEAD", "OPTIONS"}
+            and (request.method, request.url.path) not in self._ALLOWED_MUTATIONS
+        ):
+            return JSONResponse(
+                status_code=405,
+                content={
+                    "detail": "Write operations are disabled in the public demo.",
+                    "detail_ar": "عمليات الكتابة معطلة في العرض التجريبي العام.",
+                },
+                headers={"Allow": "GET, HEAD, OPTIONS"},
+            )
         return await call_next(request)
 
 
@@ -184,27 +187,34 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; "
             "frame-ancestors 'none'; upgrade-insecure-requests"
         )
-        if request.method == "GET" and request.url.path in _ALWAYS_ALLOWED_PATHS:
-            response.headers["Cache-Control"] = "public, max-age=10, stale-while-revalidate=5"
-        else:
-            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        # Never cache health/readiness/diagnostic responses: they expose current
+        # dependency state and stale values can misroute traffic.
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         if IS_PRODUCTION:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return response
 
 
 class ReadinessMiddleware(BaseHTTPMiddleware):
-    """Reject non-whitelisted requests with 503 until startup guard passes."""
+    """Reject non-whitelisted requests until all mandatory dependencies are ready."""
 
     async def dispatch(self, request: Request, call_next):
-        from .core.startup_guard import system_ready
+        # Liveness/readiness probes are intentionally cheap and must not invoke
+        # database/Redis dependency checks themselves; their handlers expose
+        # the dedicated status. All other traffic uses the detailed guard.
+        if request.url.path in _ALWAYS_ALLOWED_PATHS:
+            return await call_next(request)
 
-        if not system_ready and request.url.path not in _ALWAYS_ALLOWED_PATHS:
+        from .core.startup_guard import is_system_ready
+
+        ready, reason = is_system_ready()
+        if not ready:
             return JSONResponse(
                 status_code=503,
                 content={
-                    "detail": "Service is starting up. Please retry in a moment.",
-                    "detail_ar": "الخدمة تبدأ التشغيل. يرجى المحاولة بعد لحظة.",
+                    "detail": "Service is not ready. Please retry in a moment.",
+                    "detail_ar": "الخدمة غير جاهزة. يرجى المحاولة بعد لحظة.",
+                    "reason": reason,
                 },
             )
         return await call_next(request)
@@ -228,7 +238,14 @@ class DocsAuthMiddleware(BaseHTTPMiddleware):
         from .security.auth import decode_token
 
         payload = decode_token(token)
-        if not payload or payload.get("role") not in ("admin", "master_admin"):
+        role = payload.get("role") if payload else None
+        permissions = get_permissions_for_role(role) if role else []
+        # Canonical permission is preferred; admin/master_admin remain an
+        # explicit transition contract for legacy tokens until NIAM cutover.
+        if not payload or (
+            "system:admin" not in permissions
+            and role not in {"admin", "master_admin"}
+        ):
             return JSONResponse(status_code=403, content={"detail": "Admin access required"})
         return await call_next(request)
 

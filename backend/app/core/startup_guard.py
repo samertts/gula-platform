@@ -51,13 +51,13 @@ def is_system_ready() -> tuple[bool, str]:
     """Return (ready: bool, reason: str).
 
     Readiness tiers:
-      CRITICAL  — PostgreSQL.  If DB is down, all requests return 503.
-      OPTIONAL  — Redis.       If Redis is down after startup, the system
-                               continues in degraded mode (in-memory fallback).
-                               Login, reads, and writes keep working; only
-                               cross-process session invalidation is weakened.
+      CRITICAL  — PostgreSQL and Redis in staging/production. If either is
+                  unavailable, all non-health requests return 503.
+      DEVELOPMENT — Redis may be process-local only in explicitly non-sensitive
+                    development/test runtimes.
 
-    This prevents a Redis hiccup from taking the entire platform offline.
+    This keeps production-like deployments fail-closed while preserving a
+    lightweight local development path.
     """
     if not system_ready:
         return False, "startup_in_progress"
@@ -71,13 +71,10 @@ def is_system_ready() -> tuple[bool, str]:
     except Exception:
         return False, "database_error"
 
-    # ── OPTIONAL: Redis (runtime failure → degraded, not 503) ─────────────────
-    # Redis is mandatory at startup (redis_client.py exits if unreachable).
-    # Post-startup failures are tolerated: in-memory fallback takes over
-    # automatically for rate-limiting and perm_version checks.
+    # Redis is a mandatory shared dependency in staging/production. A failed
+    # probe must keep readiness red so traffic cannot reach a partial runtime.
     try:
         from ..security.redis_client import cache as _redis
-        from ..security.redis_client import shared_cache_required
 
         _redis.set("_readiness_probe", "1", ex=10)
     except Exception:
@@ -87,7 +84,7 @@ def is_system_ready() -> tuple[bool, str]:
             logger.error("[READINESS] Redis unavailable while shared cache is mandatory")
             return False, "redis_unavailable"
         logger.warning(
-            "[READINESS] Redis unreachable — system continues in explicitly allowed degraded mode",
+            "[READINESS] Redis unreachable in an explicitly allowed development/test runtime",
         )
         return True, "degraded_redis"
 
@@ -258,15 +255,20 @@ async def check_redis(max_retries: int = 5, delay: int = 2) -> None:
     - Token blacklisting depends on it (JWT revocation across workers)
     - perm_version caching depends on it (session invalidation across workers)
 
-    Runtime Redis failures are tolerated (in-memory fallback), but startup
-    failures are fatal — they indicate misconfiguration.
+    Runtime Redis failures are tolerated only in development/test runtimes.
+    Startup failures are fatal in staging/production and indicate
+    misconfiguration or an unavailable mandatory dependency.
     """
     import asyncio
 
-    from ..config import ENV, REDIS_URL
-    degraded_allowed = ENV in ("demo", "dev", "test") or os.getenv(
-        "ALLOW_DEGRADED_REDIS", "false",
-    ).lower() == "true"
+    from ..config import ENV, IS_PRODUCTION, REDIS_URL
+    # Production-like runtimes must fail closed. Development/test may use the
+    # process-local fallback explicitly; this branch is never reachable for
+    # staging/production because config.py rejects the flag there as well.
+    degraded_allowed = not IS_PRODUCTION and (
+        ENV in ("demo", "dev", "development", "test")
+        or os.getenv("ALLOW_DEGRADED_REDIS", "false").lower() == "true"
+    )
     effective_retries = 1 if degraded_allowed else max_retries
     effective_delay = 0 if degraded_allowed else delay
 
@@ -457,7 +459,7 @@ def _run_seed_test_types() -> None:
                 test_name="White Blood Cells",
                 test_name_ar="كريات الدم البيضاء",
                 category="CBC",
-                unit="×10³/µL",  # noqa: RUF001
+                unit="×10³/µL",
                 normal_range_low=4.0,
                 normal_range_high=11.0,
             ),
@@ -466,7 +468,7 @@ def _run_seed_test_types() -> None:
                 test_name="Platelets",
                 test_name_ar="الصفائح الدموية",
                 category="CBC",
-                unit="×10³/µL",  # noqa: RUF001
+                unit="×10³/µL",
                 normal_range_low=150,
                 normal_range_high=400,
             ),
@@ -574,7 +576,7 @@ def _run_seed_test_types() -> None:
                 test_name="Red Blood Cells",
                 test_name_ar="كريات الدم الحمراء",
                 category="CBC",
-                unit="×10⁶/µL",  # noqa: RUF001
+                unit="×10⁶/µL",
                 normal_range_low=4.0,
                 normal_range_high=6.0,
             ),
@@ -787,10 +789,10 @@ async def run_startup_guard() -> None:
     immediately without validation — the test harness manages DB/Redis
     state independently.
 
-    A safety timeout (STARTUP_TIMEOUT_SECONDS, default 120) ensures the
-    guard can't block the lifespan indefinitely. After the timeout, the
-    system starts in a partial-readiness state — health probes respond,
-    but route handlers may fail if core dependencies are unavailable.
+    A safety timeout (STARTUP_TIMEOUT_SECONDS, default 120) bounds the
+    validation attempt. A timeout never grants readiness: the service remains
+    unready and continues exposing only health probes until restarted or
+    explicitly reinitialized after the dependency problem is fixed.
     """
     global system_ready, _readiness_reason
 
@@ -811,8 +813,7 @@ async def run_startup_guard() -> None:
     t0 = time.perf_counter()
     logger.info("[STARTUP GUARD] === Starting production startup validation ===")
 
-    # Wrap core validation in a timeout so startup can't block indefinitely.
-    # After the timeout, the system starts in partial-readiness mode.
+    # Bound startup validation without ever converting a timeout into readiness.
     startup_timeout = max(STARTUP_TIMEOUT_SECONDS, 30)
 
     async def _run_core_validation() -> None:
@@ -821,10 +822,9 @@ async def run_startup_guard() -> None:
 
         db_connected = await wait_for_db(max_retries=15, initial_delay=10)  # Step 2
         if not db_connected:
-            logger.critical(
-                "[STARTUP GUARD] Database not available after all retries. System will start in UNREADY state.",
+            raise RuntimeError(
+                "Database not available after all retries; readiness remains false",
             )
-            return
         await check_redis()  # Step 3 — Redis reachable
         await check_migrations()  # Step 4 — migration state
 
@@ -859,16 +859,12 @@ async def run_startup_guard() -> None:
         await asyncio.wait_for(_run_core_validation(), timeout=startup_timeout)
     except TimeoutError:
         elapsed = (time.perf_counter() - t0) * 1000
-        logger.warning(
-            "[STARTUP GUARD] Startup validation did not complete within %ds (%.0fms elapsed) — "
-            "system starts in PARTIAL READY state. Some dependencies may be unavailable.",
+        system_ready = False
+        _readiness_reason = "startup_timeout"
+        logger.error(
+            "[STARTUP GUARD] Startup validation timed out after %ds (%.0fms elapsed); "
+            "service remains UNREADY",
             startup_timeout,
-            elapsed,
-        )
-        system_ready = True
-        _readiness_reason = "partial_startup_timeout"
-        logger.info(
-            "[STARTUP GUARD] === System PARTIALLY READY (%.0fms, timeout) — accepting traffic ===",
             elapsed,
         )
         return

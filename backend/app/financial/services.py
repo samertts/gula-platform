@@ -11,16 +11,9 @@ from typing import Any
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+
 from ..services.audit_service import log_action
-
-
-def _engine_enabled() -> bool:
-    """Read Financial Engine flag at call time (supports monkeypatching in tests)."""
-    # Use sys.modules to get the dynamically-mutable config value
-    config = sys.modules.get("app.config")
-    if config is None:
-        return False
-    return bool(getattr(config, "ENABLE_FINANCIAL_ENGINE", False))
 from .models import (
     FinInvoice,
     FinInvoiceItem,
@@ -32,6 +25,15 @@ from .models import (
     FinTransaction,
 )
 from .pricing import calculate_fee
+
+
+def _engine_enabled() -> bool:
+    """Read Financial Engine flag at call time (supports monkeypatching in tests)."""
+    # Use sys.modules to get the dynamically-mutable config value
+    config = sys.modules.get("app.config")
+    if config is None:
+        return False
+    return bool(getattr(config, "ENABLE_FINANCIAL_ENGINE", False))
 
 logger = logging.getLogger("gula.financial.services")
 
@@ -101,7 +103,7 @@ class InvoiceService:
             or 0
         )
         invoice_number = f"INV-{lab_id:04d}-{invoice_count + 1:06d}"
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         invoice = FinInvoice(
             lab_id=lab_id,
             invoice_number=invoice_number,
@@ -223,7 +225,7 @@ class PaymentService:
         if not invoice:
             raise ValueError("Invoice not found")
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         payment = FinPayment(
             invoice_id=invoice_id,
             lab_id=lab_id,

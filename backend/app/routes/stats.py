@@ -11,6 +11,7 @@ import hashlib
 import json
 import logging
 import os
+from contextlib import suppress
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
@@ -66,10 +67,8 @@ def _cache_set(key: str, data: dict, ttl: int = _CACHE_TTL) -> None:
     r = _get_redis()
     if not r:
         return
-    try:
-        r.setex(key, ttl, json.dumps(data, default=str))
-    except Exception:  # nosec B110 — intentional: cache failures must not break the API
-        pass
+    with suppress(Exception):
+        r.set(key, json.dumps(data, default=str), ex=ttl)
 
 
 def _cache_key(lab_id: int, endpoint: str, **params) -> str:

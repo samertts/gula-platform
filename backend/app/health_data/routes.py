@@ -20,12 +20,37 @@ from app.health_data.governance.audit import DataAccessAuditTrail
 from app.health_data.governance.lineage import LineageTracker
 from app.health_data.governance.policies import GovernancePolicy, PolicyEngine
 from app.health_data.warehouse.service import WarehouseQuery, WarehouseService
-from app.security.dependencies import require_permission
+from app.security.dependencies import get_current_user, require_permission
+
+_health_data_read = Depends(require_permission("health_data:read"))
+_health_data_ingest = Depends(require_permission("health_data:ingest"))
+_health_data_warehouse = Depends(require_permission("health_data:warehouse"))
+_health_data_governance = Depends(require_permission("health_data:governance"))
+_health_data_lineage = Depends(require_permission("health_data:lineage"))
+
+_CENTRAL_HEALTH_ROLES = {"master_admin", "ministry_admin"}
+
+
+def _tenant_scope(current_user) -> str | None:
+    """Return the server-derived scope; never trust a request-provided tenant."""
+    if current_user.role in _CENTRAL_HEALTH_ROLES:
+        return None
+    scope = getattr(current_user, "tenant_id", None) or getattr(current_user, "lab_id", None)
+    if scope is None:
+        raise HTTPException(status_code=403, detail="A tenant-bound health-data account is required")
+    return str(scope)
+
+
+def _scope_events(events: list, tenant_scope: str | None) -> list:
+    if tenant_scope is None:
+        return events
+    return [event for event in events if str(event.tenant_id) == tenant_scope]
+
 
 router = APIRouter(
     prefix="/health-data",
     tags=["Health Data"],
-    dependencies=[Depends(require_permission("system:admin"))],
+    dependencies=[_health_data_read],
 )
 
 _catalog = DataLakeCatalog()
@@ -112,7 +137,7 @@ async def get_dataset_metadata(dataset: str) -> dict:
 # ── Lineage ────────────────────────────────────────────────────────────────────
 
 
-@router.get("/lineage/{entity_type}/{entity_id}")
+@router.get("/lineage/{entity_type}/{entity_id}", dependencies=[_health_data_lineage])
 async def get_lineage(entity_type: str, entity_id: str) -> dict:
     lineage = _lineage_tracker.get(entity_type, entity_id)
     if not lineage:
@@ -168,7 +193,7 @@ async def list_policies() -> list[dict]:
     ]
 
 
-@router.post("/governance/policies")
+@router.post("/governance/policies", dependencies=[_health_data_governance])
 async def create_policy(policy_data: dict[str, Any]) -> dict:
     policy = GovernancePolicy(
         id=policy_data.get("id", str(uuid.uuid4())),
@@ -218,8 +243,12 @@ async def get_quality_metrics() -> dict:
 # ── Ingestion ──────────────────────────────────────────────────────────────────
 
 
-@router.post("/ingest")
-async def trigger_ingestion(body: dict[str, Any]) -> dict:
+@router.post("/ingest", dependencies=[_health_data_ingest])
+async def trigger_ingestion(
+    body: dict[str, Any],
+    current_user=Depends(get_current_user),
+) -> dict:
+    tenant_scope = _tenant_scope(current_user)
     dataset_name = body.get("dataset", "ingested_data")
     records = body.get("records", [])
     source = body.get("source", "api")
@@ -243,6 +272,7 @@ async def trigger_ingestion(body: dict[str, Any]) -> dict:
         event_name="health.data.ingested",
         data={"dataset": dataset_name, "records": len(records), "source": source},
         metadata={"source": source, "result": result.checksum},
+        tenant_id=tenant_scope or "central",
     )
 
     return {
@@ -259,14 +289,16 @@ async def trigger_ingestion(body: dict[str, Any]) -> dict:
 # ── Event Store ────────────────────────────────────────────────────────────────
 
 
-@router.get("/event-store/events")
+@router.get("/event-store/events", dependencies=[_health_data_warehouse])
 async def query_event_store(
     aggregate_id: str | None = Query(None),
     event_name: str | None = Query(None),
     start: str | None = Query(None),
     end: str | None = Query(None),
     limit: int = Query(100, le=1000),
+    current_user=Depends(get_current_user),
 ) -> list[dict]:
+    tenant_scope = _tenant_scope(current_user)
     if aggregate_id:
         events = _event_store.replay_aggregate(aggregate_id)
     elif event_name:
@@ -277,6 +309,7 @@ async def query_event_store(
         events = _event_store.replay_by_time_range(start_dt, end_dt)
     else:
         events = _event_store.replay_all()
+    events = _scope_events(events, tenant_scope)
 
     return [
         {
@@ -289,7 +322,6 @@ async def query_event_store(
             "metadata": e.metadata,
             "timestamp": e.timestamp.isoformat(),
             "correlation_id": e.correlation_id,
-            "tenant_id": e.tenant_id,
         }
         for e in events[:limit]
     ]
@@ -298,7 +330,7 @@ async def query_event_store(
 # ── Warehouse ──────────────────────────────────────────────────────────────────
 
 
-@router.get("/warehouse/query")
+@router.get("/warehouse/query", dependencies=[_health_data_warehouse])
 async def run_warehouse_query(
     dimensions: str = Query(""),
     measures: str = Query(""),
@@ -307,9 +339,11 @@ async def run_warehouse_query(
     order_desc: bool = Query(True),
     limit: int = Query(100, le=10000),
     offset: int = Query(0),
+    current_user=Depends(get_current_user),
     date_from: str | None = Query(None),
     date_to: str | None = Query(None),
 ) -> dict:
+    tenant_scope = _tenant_scope(current_user)
     query = WarehouseQuery(
         dimensions=[d.strip() for d in dimensions.split(",") if d.strip()],
         measures=[m.strip() for m in measures.split(",") if m.strip()],
@@ -320,6 +354,7 @@ async def run_warehouse_query(
         offset=offset,
         date_from=datetime.fromisoformat(date_from).date() if date_from else None,
         date_to=datetime.fromisoformat(date_to).date() if date_to else None,
+        tenant_id=tenant_scope or "",
     )
     return _warehouse.query(query)
 
@@ -327,7 +362,7 @@ async def run_warehouse_query(
 # ── Mapping / FHIR conversion ──────────────────────────────────────────────────
 
 
-@router.post("/canonical/map-patient")
+@router.post("/canonical/map-patient", dependencies=[_health_data_ingest])
 async def map_fhir_patient(fhir_resource: dict[str, Any]) -> dict:
     canonical = map_patient(fhir_resource)
     return {
@@ -343,6 +378,6 @@ async def map_fhir_patient(fhir_resource: dict[str, Any]) -> dict:
 # ── Event Store summary ────────────────────────────────────────────────────────
 
 
-@router.get("/event-store/summary")
-async def event_store_summary() -> dict:
-    return _event_store.get_stream_summary()
+@router.get("/event-store/summary", dependencies=[_health_data_warehouse])
+async def event_store_summary(current_user=Depends(get_current_user)) -> dict:
+    return _event_store.get_stream_summary(_tenant_scope(current_user))

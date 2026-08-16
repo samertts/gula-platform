@@ -5,9 +5,11 @@ import os
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from urllib.parse import urlparse
 
 from app.ai_fabric.base import InferenceRequest, InferenceResponse
 from app.ai_fabric.enums import AIProviderType
+from app.config import IS_PRODUCTION
 from shared.ai.client import AIClient
 from shared.ai.provider import AIProvider
 
@@ -28,6 +30,40 @@ class ProviderConfig:
 
 
 class ProviderRouter:
+    _BUILTIN_PRODUCTION_HOSTS = {
+        "api.openai.com",
+        "api.anthropic.com",
+        "generativelanguage.googleapis.com",
+        "openrouter.ai",
+        "api.deepseek.com",
+    }
+
+    @classmethod
+    def _url_allowed(cls, config: ProviderConfig) -> bool:
+        if not config.base_url:
+            return True
+        parsed = urlparse(config.base_url)
+        host = (parsed.hostname or "").lower()
+        if not parsed.scheme or not host:
+            logger.error("Provider %s disabled: invalid base URL", config.name.value)
+            return False
+        if not IS_PRODUCTION:
+            return parsed.scheme in {"http", "https"}
+        if parsed.scheme != "https" or host in {"localhost", "127.0.0.1", "0.0.0.0", "host.docker.internal"}:
+            logger.error("Provider %s disabled: production requires non-local HTTPS", config.name.value)
+            return False
+        configured_hosts = {
+            item.strip().lower()
+            for item in os.getenv("AI_PROVIDER_ALLOWED_HOSTS", "").split(",")
+            if item.strip()
+        }
+        if host in configured_hosts or host in cls._BUILTIN_PRODUCTION_HOSTS:
+            return True
+        if host.endswith(".openai.azure.com"):
+            return True
+        logger.error("Provider %s disabled: host is not in production allowlist", config.name.value)
+        return False
+
     def __init__(self) -> None:
         self._providers: dict[str, ProviderConfig] = {}
         self._load_defaults()
@@ -114,6 +150,8 @@ class ProviderRouter:
             return
         if config.api_key_env and not os.getenv(config.api_key_env):
             logger.info("Provider %s unavailable: credentials not configured", config.name.value)
+            return
+        if not self._url_allowed(config):
             return
         self._providers[config.name.value] = config
 

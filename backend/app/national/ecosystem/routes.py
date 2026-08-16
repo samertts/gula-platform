@@ -256,7 +256,15 @@ async def issue_credential(partner_id: str, data: dict = Body(...), db: Session 
             name=data.get("name", "default"),
             expires_in_days=data.get("expires_in_days"),
         )
-        return {"api_key": api_key, "partner_id": partner_id, "type": "api_key"}
+        # API keys are write-only secrets: never expose the raw value in a
+        # generic JSON response or allow it to enter proxy/access logs.
+        del api_key
+        return {
+            "issued": True,
+            "partner_id": partner_id,
+            "type": "api_key",
+            "delivery": "secure_out_of_band_required",
+        }
     except PartnerNotFoundError as exc:
         raise HTTPException(status_code=404, detail="Resource not found") from exc
 

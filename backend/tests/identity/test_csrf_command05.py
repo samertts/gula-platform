@@ -44,6 +44,20 @@ def test_new_cookie_session_requires_matching_double_submit_token(monkeypatch):
     assert rejected.status_code == 403
 
 
+def test_refresh_cookie_session_requires_matching_double_submit_token(monkeypatch):
+    monkeypatch.setenv("ENV", "staging")
+    monkeypatch.setenv("CORS_ORIGINS", "http://testserver")
+    client = TestClient(_app())
+    client.cookies.set("refresh_token", "refresh")
+    client.cookies.set("csrf_token", "expected")
+
+    accepted = client.post("/mutate", headers={"Origin": "http://testserver", "X-CSRF-Token": "expected"})
+    rejected = client.post("/mutate", headers={"Origin": "http://testserver"})
+
+    assert accepted.status_code == 200
+    assert rejected.status_code == 403
+
+
 def test_cross_origin_is_rejected_even_with_matching_token(monkeypatch):
     monkeypatch.setenv("ENV", "staging")
     monkeypatch.setenv("CORS_ORIGINS", "http://testserver")

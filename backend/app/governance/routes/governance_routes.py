@@ -35,10 +35,16 @@ from ..services.laboratory_service import LaboratoryGovernanceService
 from ..services.security_governance_service import SecurityGovernanceService
 from ..services.workforce_service import WorkforceGovernanceService
 
-router = APIRouter(prefix="/governance", tags=["governance"])
-
 admin_dep = Depends(require_role("master_admin", "ministry_admin", "national_admin"))
 elevated_dep = Depends(require_role("master_admin", "ministry_admin", "national_admin", "directorate_admin"))
+
+# Governance is an internal administrative surface. Every route requires an
+# authenticated governance role; write routes retain their stricter dependencies.
+router = APIRouter(
+    prefix="/governance",
+    tags=["governance"],
+    dependencies=[admin_dep],
+)
 
 
 def _check_policy(action: GovernanceAction, user_role: str | None = None) -> None:

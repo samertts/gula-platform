@@ -150,10 +150,11 @@ class TestSystemReadiness:
         from app.core.startup_guard import is_system_ready, set_system_ready
         set_system_ready(True, "ok")
         # is_system_ready also checks DB — mock the DB check to pass
-        with patch("app.database.check_db_connection", return_value=True):
-            with patch("app.security.redis_client.cache") as mock_redis:
-                mock_redis.set.return_value = True
-                ready, _reason = is_system_ready()
+        with patch("app.database.check_db_connection", return_value=True), patch(
+            "app.security.redis_client.cache",
+        ) as mock_redis:
+            mock_redis.set.return_value = True
+            ready, _reason = is_system_ready()
         assert ready is True
 
     def test_set_system_ready_false_clears_readiness(self):
@@ -174,10 +175,11 @@ class TestSystemReadiness:
     def test_redis_down_after_startup_returns_degraded_not_false(self):
         from app.core.startup_guard import is_system_ready, set_system_ready
         set_system_ready(True, "ok")
-        with patch("app.database.check_db_connection", return_value=True):
-            with patch("app.security.redis_client.cache") as mock_redis:
-                mock_redis.set.side_effect = Exception("Redis connection refused")
-                ready, reason = is_system_ready()
+        with patch("app.database.check_db_connection", return_value=True), patch(
+            "app.security.redis_client.cache",
+        ) as mock_redis:
+            mock_redis.set.side_effect = Exception("Redis connection refused")
+            ready, reason = is_system_ready()
         # Redis failure post-startup → degraded, not totally down
         assert ready is True
         assert reason == "degraded_redis"
@@ -233,7 +235,7 @@ class TestTestModeBypass:
 # ── Startup timeout fallback ──────────────────────────────────────────────────
 
 class TestStartupTimeout:
-    """Verify that run_startup_guard() times out and sets partial readiness."""
+    """Verify that run_startup_guard() times out and remains fail-closed."""
 
     def setup_method(self):
         from app.core import startup_guard
@@ -246,8 +248,8 @@ class TestStartupTimeout:
         startup_guard._readiness_reason = "startup_in_progress"
         os.environ.pop("STARTUP_TIMEOUT_SECONDS", None)
 
-    def test_timeout_sets_partial_ready(self):
-        """When startup validation times out, system_ready becomes True with reason."""
+    def test_timeout_remains_unready(self):
+        """When startup validation times out, traffic remains blocked."""
         import asyncio
 
         import app.config as cfg
@@ -270,9 +272,9 @@ class TestStartupTimeout:
 
         try:
             asyncio.run(_run())
-            assert startup_guard.system_ready is True, "system_ready should be True after timeout"
-            assert startup_guard._readiness_reason == "partial_startup_timeout", (
-                f"expected 'partial_startup_timeout', got '{startup_guard._readiness_reason}'"
+            assert startup_guard.system_ready is False, "system_ready must remain False after timeout"
+            assert startup_guard._readiness_reason == "startup_timeout", (
+                f"expected 'startup_timeout', got '{startup_guard._readiness_reason}'"
             )
         finally:
             cfg.RUNTIME_MODE = saved_mode
@@ -284,9 +286,10 @@ class TestRedisStartupPolicy:
 
     def test_demo_allows_in_memory_fallback_when_redis_is_unavailable(self):
         import asyncio
+        from unittest.mock import AsyncMock, patch
+
         import app.config as cfg
         from app.core import startup_guard
-        from unittest.mock import AsyncMock, patch
 
         with patch.object(cfg, "ENV", "demo"), patch.dict(
             os.environ, {"ALLOW_DEGRADED_REDIS": "true"},
@@ -297,9 +300,10 @@ class TestRedisStartupPolicy:
 
     def test_production_rejects_unavailable_redis(self):
         import asyncio
+        from unittest.mock import AsyncMock, patch
+
         import app.config as cfg
         from app.core import startup_guard
-        from unittest.mock import AsyncMock, patch
 
         with patch.object(cfg, "ENV", "production"), patch.dict(
             os.environ, {"ALLOW_DEGRADED_REDIS": "false"},

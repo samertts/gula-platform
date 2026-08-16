@@ -43,6 +43,12 @@ class WarehouseService:
         fact_table = query.dimensions[0].split(".")[0] if query.dimensions else ""
         data = self._data.get(fact_table, [])
 
+        if query.tenant_id:
+            data = [
+                row for row in data
+                if str(row.get("tenant_id", "")) == str(query.tenant_id)
+            ]
+
         if query.filters:
             filtered = []
             for row in data:

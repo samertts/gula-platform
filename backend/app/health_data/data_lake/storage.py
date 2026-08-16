@@ -6,6 +6,8 @@ import os
 import tempfile
 from abc import ABC, abstractmethod
 
+from app.config import IS_PRODUCTION
+
 logger = logging.getLogger("gula.health_data.data_lake.storage")
 
 
@@ -31,7 +33,15 @@ class StorageBackend(ABC):
 
 class LocalStorageBackend(StorageBackend):
     def __init__(self, base_path: str | None = None):
-        self.base_path = base_path or os.environ.get("GULA_DATA_LAKE_PATH") or os.path.join(tempfile.gettempdir(), "gula", "data", "lake")
+        configured_path = (base_path or os.environ.get("GULA_DATA_LAKE_PATH", "")).strip()
+        if IS_PRODUCTION and not configured_path:
+            raise RuntimeError(
+                "GULA_DATA_LAKE_PATH must point to a durable, access-controlled volume "
+                "in staging/production; /tmp fallback is forbidden",
+            )
+        self.base_path = configured_path or os.path.join(
+            tempfile.gettempdir(), "gula", "data", "lake",
+        )
         os.makedirs(self.base_path, exist_ok=True)
 
     def _resolve(self, path: str) -> str:

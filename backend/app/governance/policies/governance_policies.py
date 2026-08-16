@@ -3,6 +3,8 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+from app._compat import UTC
+
 
 class GovernanceAction(Enum):
     CREATE_NODE = "create_node"
@@ -76,7 +78,7 @@ class GovernancePolicyEngine:
                 action=action,
                 reason=f"Unknown governance action: {action.value}",
                 context=context or {},
-                ts=datetime.utcnow().isoformat(),
+                ts=datetime.now(UTC).isoformat(),
             )
 
         return GovernancePolicyDecision(
@@ -88,7 +90,7 @@ class GovernancePolicyEngine:
                 **(context or {}),
                 "require_approval": policy["require_approval"],
             },
-            ts=datetime.utcnow().isoformat(),
+            ts=datetime.now(UTC).isoformat(),
         )
 
     def require_elevated_approval(

@@ -461,7 +461,8 @@ def _build_middleware_stack(app: FastAPI) -> None:
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID",
                        "X-Device-ID", "X-App-Version", "Idempotency-Key",
-                       "X-GULA-Operation-ID", "X-GULA-Request-Fingerprint", "If-Match"],
+                       "X-GULA-Operation-ID", "X-GULA-Request-Fingerprint", "If-Match",
+                       "X-CSRF-Token"],
         expose_headers=["X-Request-ID", "X-Response-Time", "X-API-Version"],
     )
 
@@ -845,7 +846,7 @@ def _build_lifespan():
 
         non_blocking_production_startup = (
             IS_PRODUCTION
-            and os.getenv("NON_BLOCKING_STARTUP", "true").strip().lower() not in {"0", "false", "no"}
+            and os.getenv("NON_BLOCKING_STARTUP", "false").strip().lower() not in {"0", "false", "no"}
         )
         startup_task: asyncio.Task[None] | None = None
         if non_blocking_production_startup:

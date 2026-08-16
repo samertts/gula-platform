@@ -20,7 +20,10 @@ logger = logging.getLogger("gula.ai_fabric.routes")
 router = APIRouter(
     prefix="/ai/fabric",
     tags=["AI Fabric"],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[
+        Depends(get_current_user),
+        Depends(require_permission("ai:use")),
+    ],
 )
 sdk = UnifiedAISDK()
 

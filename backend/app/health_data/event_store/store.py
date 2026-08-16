@@ -105,10 +105,18 @@ class HealthEventStore:
     def count(self) -> int:
         return len(self._events)
 
-    def get_stream_summary(self) -> dict[str, Any]:
+    def get_stream_summary(self, tenant_scope: str | None = None) -> dict[str, Any]:
+        events = [
+            event
+            for event in self._events.values()
+            if tenant_scope is None or str(event.tenant_id) == tenant_scope
+        ]
+        event_types: dict[str, int] = {}
+        for event in events:
+            event_types[event.event_name] = event_types.get(event.event_name, 0) + 1
         return {
-            "total_events": len(self._events),
-            "total_aggregates": len(self._by_aggregate),
-            "event_types": {name: len(ids) for name, ids in self._by_name.items()},
-            "stream_length": len(self._stream),
+            "total_events": len(events),
+            "total_aggregates": len({event.aggregate_id for event in events}),
+            "event_types": event_types,
+            "stream_length": len(events),
         }

@@ -36,7 +36,7 @@ from hashlib import sha256
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -52,6 +52,7 @@ from app.models.lab_order import LabOrder
 from app.models.lab_result import LabResult
 from app.models.patient import Patient
 from app.security.dependencies import get_current_user
+from app.security.rate_limit import rate_limit_public
 
 logger = logging.getLogger("gula.ai")
 
@@ -335,8 +336,9 @@ def analyze_order(
 
 
 @router.get("/operations")
-def list_operations():
-    """List all sandbox-whitelisted operations."""
+def list_operations(current_user=Depends(get_current_user)):
+    """List sandbox operations for authenticated clinical reviewers only."""
+    _require_doctor(current_user)
     return {
         "whitelisted_operations": AISandbox.registered_operations(),
         "note": "Only these operations can be executed by AI after human approval.",
@@ -344,10 +346,11 @@ def list_operations():
 
 
 @router.get("/providers", summary="حالة مزودي الذكاء الاصطناعي")
-async def list_ai_providers():
-    """Return which AI providers are configured and their reachability status.
+async def list_ai_providers(current_user=Depends(get_current_user)):
+    """Return provider reachability only to authenticated clinical reviewers.
     Useful for operators to verify the fallback chain before going live.
     """
+    _require_doctor(current_user)
     statuses = []
 
     # Ollama — test by calling /api/tags (lightweight list-models endpoint)
@@ -639,7 +642,7 @@ def _action_guidance(overall_sev: str) -> dict:
 
 
 def _emit_critical_alert(
-    db: Session, order_id: int, critical_tests: list[str], token_prefix: str,
+    db: Session, order_id: int, critical_tests: list[str],
 ) -> None:
     """Write a critical-result alert to audit_logs. Non-fatal."""
     try:
@@ -653,7 +656,6 @@ def _emit_critical_alert(
                 details=json.dumps(
                     {
                         "critical_tests": critical_tests,
-                        "token_prefix": token_prefix,
                         "source": "ai_interpret",
                     },
                     ensure_ascii=False,
@@ -828,7 +830,6 @@ def list_critical_alerts(
                 "id": row.id,
                 "order_id": row.resource_id,
                 "critical_tests": details.get("critical_tests", []),
-                "token_prefix": details.get("token_prefix", ""),
                 "created_at": row.created_at.isoformat() if row.created_at else None,
             },
         )
@@ -844,19 +845,28 @@ def list_critical_alerts(
     response_class=JSONResponse,
     tags=["AI Public"],
 )
-async def interpret_result_public(token: str) -> JSONResponse:
+async def interpret_result_public(token: str, request: Request) -> JSONResponse:
     """Plain-Arabic AI explanation for lab results identified by *token*.
     Public endpoint — no login required.
     Responses are cached 120 s per token to prevent cost explosion.
     """
+    rate_limit_public(
+        request,
+        max_per_minute=int(os.getenv("AI_INTERPRET_RATE_LIMIT", "20")),
+    )
     if not token or not re.match(r"^[A-Za-z0-9_-]{10,}$", token):
         raise HTTPException(status_code=400, detail="رمز النتيجة غير صالح")
 
     # ── In-process cache check ────────────────────────────────────────────────
-    cache_key = sha256(token.encode()).hexdigest()[:16]
+    # Keep only a one-way digest in memory; never use the bearer token itself as
+    # a key that could be surfaced by diagnostics or accidental logging.
+    cache_key = sha256(token.encode()).hexdigest()
     cached = _INTERPRET_CACHE.get(cache_key)
     if cached and time.monotonic() < cached[1]:
-        return JSONResponse({**cached[0], "cached": True})
+        return JSONResponse(
+            {**cached[0], "cached": True},
+            headers={"Cache-Control": "no-store"},
+        )
 
     # ── Load results + patient context from DB (run blocking ops in executor) ─
     token_hash = sha256(token.encode()).hexdigest()
@@ -936,7 +946,7 @@ async def interpret_result_public(token: str) -> JSONResponse:
         def _write_critical_alert():
             db2: Session = SessionLocal()
             try:
-                _emit_critical_alert(db2, order_id, critical_flags, token[:8])
+                _emit_critical_alert(db2, order_id, critical_flags)
             finally:
                 db2.close()
 
@@ -958,9 +968,8 @@ async def interpret_result_public(token: str) -> JSONResponse:
     confidence = _compute_confidence(enriched, patient_context, provider_used)
 
     logger.info(
-        "[AI] interpreted token=%.8s provider=%s tests=%d severity=%s "
+        "[AI] interpreted result provider=%s tests=%d severity=%s "
         "critical=%d confidence=%s conflicts=%d",
-        token,
         provider_used,
         len(results_data),
         overall_sev,
@@ -980,7 +989,7 @@ async def interpret_result_public(token: str) -> JSONResponse:
         "action_guidance": action,
     }
     _INTERPRET_CACHE[cache_key] = (payload, time.monotonic() + _CACHE_TTL)
-    return JSONResponse(payload)
+    return JSONResponse(payload, headers={"Cache-Control": "no-store"})
 
 
 # ══════════════════════════════════════════════════════════════════════════════

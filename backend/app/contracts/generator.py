@@ -7,6 +7,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from app._compat import UTC
+from app.config import BASE_URL, IS_PRODUCTION
+
 logger = logging.getLogger("gula.contracts")
 
 
@@ -20,7 +23,7 @@ class ContractGenerator:
     def __init__(self, app_name: str = "GULA Platform", app_version: str = "2.1.0"):
         self._app_name = app_name
         self._app_version = app_version
-        self._generated_at = datetime.utcnow().isoformat()
+        self._generated_at = datetime.now(UTC).isoformat()
 
     def generate_openapi(self, app=None) -> dict:
         from fastapi import FastAPI
@@ -75,8 +78,13 @@ class ContractGenerator:
             },
             "servers": [
                 {
-                    "url": "https://api.gula-platform.org",
-                    "description": "Production server",
+                    "url": BASE_URL,
+                    "description": "Configured API server",
+                },
+            ] if IS_PRODUCTION else [
+                {
+                    "url": BASE_URL,
+                    "description": "Configured API server",
                 },
                 {
                     "url": "http://localhost:8000",

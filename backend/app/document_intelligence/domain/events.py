@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from app._compat import UTC
+
 from .enums import DocumentCategory, OcrEngine, ProcessingPhase
 
 
@@ -12,7 +14,7 @@ from .enums import DocumentCategory, OcrEngine, ProcessingPhase
 class DocumentIntelligenceEvent:
     document_id: UUID
     tenant_id: UUID | None = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = field(default_factory=dict)
 
 

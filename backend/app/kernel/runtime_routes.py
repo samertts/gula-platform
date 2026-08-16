@@ -5,9 +5,15 @@ from typing import Any
 from fastapi import APIRouter, Body, Depends, HTTPException, Query
 
 from app.kernel.integration import get_kernel, is_kernel_ready
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 
-router = APIRouter(prefix="/kernel/runtime", tags=["kernel-runtime"])
+router = APIRouter(
+    prefix="/kernel/runtime",
+    tags=["kernel-runtime"],
+    dependencies=[Depends(require_permission("runtime:read"))],
+)
+_runtime_operate = Depends(require_permission("runtime:operate"))
+_ai_infer = Depends(require_permission("ai:infer"))
 
 
 def _require_kernel():
@@ -100,7 +106,7 @@ async def runtime_resources(_user=Depends(get_current_user)):
     return rm.get_diagnostics()
 
 
-@router.post("/optimize")
+@router.post("/optimize", dependencies=[_runtime_operate])
 async def runtime_optimize(_user=Depends(get_current_user)):
     optimizer = _get_component("performance_optimizer")
     result = optimizer.optimize_all()
@@ -130,7 +136,7 @@ async def runtime_validation_report(
     return {"reports": history, "count": len(history)}
 
 
-@router.post("/validation/run")
+@router.post("/validation/run", dependencies=[_runtime_operate])
 async def runtime_validation_run(
     name: str = Body("manual-validation"),
     _user=Depends(get_current_user),
@@ -166,7 +172,7 @@ async def runtime_ai_models(_user=Depends(get_current_user)):
     return {"models": models, "count": len(models)}
 
 
-@router.post("/ai/infer")
+@router.post("/ai/infer", dependencies=[_runtime_operate, _ai_infer])
 async def runtime_ai_infer(
     model_name: str = Body(...),
     prompt: str = Body(...),

@@ -83,6 +83,10 @@ def test_production_log_levels_exclude_debug() -> None:
         "app/reference/routes/results.py",
     ],
 )
-def test_sensitive_router_has_system_admin_guard(relative_path: str) -> None:
+def test_sensitive_router_has_explicit_permission_guard(relative_path: str) -> None:
     source = (Path(__file__).parents[1] / relative_path).read_text()
-    assert 'require_permission("system:admin")' in source
+    if relative_path == "app/health_data/routes.py":
+        assert 'require_permission("health_data:read")' in source
+        assert 'require_permission("health_data:warehouse")' in source
+    else:
+        assert 'require_permission("system:admin")' in source

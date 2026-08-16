@@ -9,6 +9,8 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from app.config import IS_PRODUCTION
+
 from .base import BaseConnector, ConnectorConfig, ConnectorResult, ConnectorStatus
 
 logger = logging.getLogger("gula.ecosystem.messaging")
@@ -132,6 +134,8 @@ class MessagingConnector(BaseConnector):
                 ca_cert = tls_opts.get("ca_cert")
                 cert_file = tls_opts.get("cert_file")
                 key_file = tls_opts.get("key_file")
+                if not tls_opts.get("verify", True) and IS_PRODUCTION:
+                    raise RuntimeError("TLS certificate verification cannot be disabled in staging/production")
                 if ca_cert:
                     client.tls_set(
                         ca_certs=ca_cert,
@@ -262,8 +266,11 @@ class MessagingConnector(BaseConnector):
             logger.error("AMQP listen error: %s", exc)
 
     async def _simulated_publish(self, topic: str, payload: bytes) -> bool:
-        await asyncio.sleep(0.01)
-        return True
+        # A missing transport client is an integration failure, never a
+        # successful publish. Returning True would create false clinical and
+        # notification delivery records.
+        del topic, payload
+        raise RuntimeError("Messaging transport client is unavailable; publish not simulated")
 
     async def _safe_callback(self, callback: Callable, message: Any) -> None:
         try:

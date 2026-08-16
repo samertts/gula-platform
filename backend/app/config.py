@@ -233,19 +233,20 @@ RATE_LIMIT_PUBLIC = int(os.getenv("RATE_LIMIT_PUBLIC", "30"))
 # Default: 120 seconds (covers DB backoff + Redis + migrations + kernel boot).
 STARTUP_TIMEOUT_SECONDS = int(os.getenv("STARTUP_TIMEOUT_SECONDS", "120"))
 
-# ─── Redis (optional only with an explicit production acknowledgement) ───────
+# ─── Redis (mandatory for staging/production) ─────────────────────────────────
 # Production remains fail-closed by default: Redis is required for shared
 # session revocation and rate limiting. A single-replica deployment may opt into
 # the in-memory fallback only by setting ALLOW_DEGRADED_REDIS=true explicitly.
 REDIS_URL = os.getenv("REDIS_URL", "")
 ALLOW_DEGRADED_REDIS = os.getenv("ALLOW_DEGRADED_REDIS", "false").lower() == "true"
+if IS_PRODUCTION and ALLOW_DEGRADED_REDIS:
+    sys.exit("ALLOW_DEGRADED_REDIS is forbidden in staging and production")
 if not REDIS_URL:
-    if IS_PRODUCTION and not ALLOW_DEGRADED_REDIS:
-        sys.exit("REDIS_URL must be set in production unless ALLOW_DEGRADED_REDIS=true")
+    if IS_PRODUCTION:
+        sys.exit("REDIS_URL must be set in staging and production")
     logger.warning(
-        "REDIS_URL not set — using an explicitly acknowledged in-memory store "
-        "(not shared across workers). Set REDIS_URL for full rate-limiting and "
-        "cross-process session invalidation.",
+        "REDIS_URL not set — using a process-local store for development/test only. "
+        "Set REDIS_URL before any staging or production startup.",
     )
 
 # ─── Redis Sentinel / Cluster (HA mode) ──────────────────────────────────────

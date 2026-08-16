@@ -693,6 +693,7 @@ router.include_router(webhook_router)
 obs_router = APIRouter(
     prefix="/document-intelligence/observability",
     tags=["Observability"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
 
 
@@ -733,6 +734,7 @@ router.include_router(obs_router)
 access_router = APIRouter(
     prefix="/document-intelligence/access",
     tags=["Access Control"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
 
 
@@ -776,6 +778,7 @@ router.include_router(access_router)
 semantic_router = APIRouter(
     prefix="/document-intelligence/semantic-search",
     tags=["Semantic Search"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
 
 
@@ -818,6 +821,7 @@ router.include_router(semantic_router)
 lifecycle_router = APIRouter(
     prefix="/document-intelligence/lifecycle",
     tags=["Document Lifecycle"],
+    dependencies=[Depends(require_permission("system:admin"))],
 )
 
 
