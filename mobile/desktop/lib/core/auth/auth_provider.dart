@@ -22,7 +22,9 @@ class AuthProvider extends ChangeNotifier {
   List<Map<String, dynamic>> get workspaces => _authManager.workspaces;
   Map<String, dynamic>? get workspaceContext => _authManager.workspaceContext;
   bool get isMfaRequired => _authManager.isMfaRequired;
-  bool get isLoading => _authManager.identityState == IdentityState.loading || _authManager.status == AuthStatus.authenticating;
+  bool get isLoading =>
+      _authManager.identityState == IdentityState.loading ||
+      _authManager.status == AuthStatus.authenticating;
   bool get isInitialized => _authManager.status != AuthStatus.uninitialized;
 
   String? get error => _authManager.errorNotifier.value;

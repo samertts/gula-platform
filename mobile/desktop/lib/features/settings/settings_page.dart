@@ -93,18 +93,40 @@ class SettingsPage extends ConsumerWidget {
                       subtitle: Text(_languageLabel(themeState.locale)),
                       trailing: DropdownButton<Locale>(
                         value: AppLocalization.supportedLocales.firstWhere(
-                          (locale) => locale.languageCode == themeState.locale.languageCode,
+                          (locale) =>
+                              locale.languageCode ==
+                              themeState.locale.languageCode,
                           orElse: () => AppLocalization.fallbackLocale,
                         ),
                         items: const [
-                          DropdownMenuItem(value: Locale('ar', 'IQ'), child: Text('العربية')),
-                          DropdownMenuItem(value: Locale('en', 'US'), child: Text('English')),
-                          DropdownMenuItem(value: Locale('ku'), child: Text('کوردی')),
-                          DropdownMenuItem(value: Locale('tk'), child: Text('Türkmençe')),
-                          DropdownMenuItem(value: Locale('syr'), child: Text('ܣܘܪܝܝܐ')),
-                          DropdownMenuItem(value: Locale('fa'), child: Text('فارسی')),
+                          DropdownMenuItem(
+                            value: Locale('ar', 'IQ'),
+                            child: Text('العربية'),
+                          ),
+                          DropdownMenuItem(
+                            value: Locale('en', 'US'),
+                            child: Text('English'),
+                          ),
+                          DropdownMenuItem(
+                            value: Locale('ku'),
+                            child: Text('کوردی'),
+                          ),
+                          DropdownMenuItem(
+                            value: Locale('tk'),
+                            child: Text('Türkmençe'),
+                          ),
+                          DropdownMenuItem(
+                            value: Locale('syr'),
+                            child: Text('ܣܘܪܝܝܐ'),
+                          ),
+                          DropdownMenuItem(
+                            value: Locale('fa'),
+                            child: Text('فارسی'),
+                          ),
                         ],
-                        onChanged: (value) { if (value != null) themeState.setLocale(value); },
+                        onChanged: (value) {
+                          if (value != null) themeState.setLocale(value);
+                        },
                       ),
                     ),
                   ],

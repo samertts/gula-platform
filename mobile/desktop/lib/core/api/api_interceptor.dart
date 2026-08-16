@@ -58,7 +58,9 @@ class AuthInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
-    if (err.response?.statusCode == 401 && err.requestOptions.extra['skipAuthRefresh'] != true && getRefreshToken != null) {
+    if (err.response?.statusCode == 401 &&
+        err.requestOptions.extra['skipAuthRefresh'] != true &&
+        getRefreshToken != null) {
       final refreshToken = getRefreshToken!();
       if (refreshToken.isNotEmpty && onRefreshToken != null) {
         try {

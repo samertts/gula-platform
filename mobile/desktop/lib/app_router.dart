@@ -268,7 +268,8 @@ class AppRouter {
   );
 
   String? _guardRoutes(BuildContext context, GoRouterState state) {
-    if (authProvider.identityState == IdentityState.unknown || authProvider.identityState == IdentityState.loading) {
+    if (authProvider.identityState == IdentityState.unknown ||
+        authProvider.identityState == IdentityState.loading) {
       return null;
     }
     final isAuthenticated = authProvider.isAuthenticated;
@@ -277,11 +278,13 @@ class AppRouter {
     final isMfaRoute = state.matchedLocation == '/mfa';
     final isForgotPasswordRoute = state.matchedLocation == '/forgot-password';
     final isAccountRequestRoute = state.matchedLocation == '/account-request';
-    final isIdentityPublicRoute = isLoginRoute || isForgotPasswordRoute || isAccountRequestRoute || isMfaRoute;
+    final isIdentityPublicRoute =
+        isLoginRoute ||
+        isForgotPasswordRoute ||
+        isAccountRequestRoute ||
+        isMfaRoute;
 
-    if (!isAuthenticated &&
-        !isLoginRoute &&
-        !isIdentityPublicRoute) {
+    if (!isAuthenticated && !isLoginRoute && !isIdentityPublicRoute) {
       return '/login';
     }
 
@@ -294,8 +297,12 @@ class AppRouter {
     }
 
     final workspaceRoute = state.matchedLocation == '/workspace';
-    final identityRoute = state.matchedLocation == '/memberships' || state.matchedLocation == '/security';
-    if (authProvider.identityState == IdentityState.workspaceRequired && !workspaceRoute && !identityRoute) {
+    final identityRoute =
+        state.matchedLocation == '/memberships' ||
+        state.matchedLocation == '/security';
+    if (authProvider.identityState == IdentityState.workspaceRequired &&
+        !workspaceRoute &&
+        !identityRoute) {
       return '/workspace';
     }
 

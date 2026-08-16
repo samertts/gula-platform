@@ -53,7 +53,8 @@ class AuthManager {
   IdentityState get identityState => _identityState;
   IdentityError? get identityError => _identityError;
   List<Map<String, dynamic>> get workspaces => List.unmodifiable(_workspaces);
-  Map<String, dynamic>? get workspaceContext => _workspaceContext == null ? null : Map.unmodifiable(_workspaceContext!);
+  Map<String, dynamic>? get workspaceContext =>
+      _workspaceContext == null ? null : Map.unmodifiable(_workspaceContext!);
   String? get token => _token;
   String? get refreshToken => _refreshToken;
   String? get userId => _userId;
@@ -73,7 +74,9 @@ class AuthManager {
   final ValueNotifier<AuthStatus> statusNotifier = ValueNotifier(
     AuthStatus.uninitialized,
   );
-  final ValueNotifier<IdentityState> identityStateNotifier = ValueNotifier(IdentityState.unknown);
+  final ValueNotifier<IdentityState> identityStateNotifier = ValueNotifier(
+    IdentityState.unknown,
+  );
   final ValueNotifier<String?> errorNotifier = ValueNotifier(null);
 
   Future<void> initialize({required String apiUrl}) async {
@@ -191,22 +194,33 @@ class AuthManager {
   Future<List<Map<String, dynamic>>> refreshWorkspaces() async {
     final response = await _apiClient.get(ApiEndpoints.workspaces);
     final body = response.data;
-    final raw = body is Map<String, dynamic> ? (body['workspaces'] ?? body['items']) : body;
+    final raw = body is Map<String, dynamic>
+        ? (body['workspaces'] ?? body['items'])
+        : body;
     _workspaces = raw is List
-        ? raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList(growable: false)
+        ? raw
+              .whereType<Map>()
+              .map((item) => Map<String, dynamic>.from(item))
+              .toList(growable: false)
         : const [];
-    _setIdentityState(identityStateFor(
-      hasUser: _userId != null,
-      hasWorkspaceContext: _workspaceContext != null,
-      hasWorkspaces: _workspaces.isNotEmpty,
-    ));
+    _setIdentityState(
+      identityStateFor(
+        hasUser: _userId != null,
+        hasWorkspaceContext: _workspaceContext != null,
+        hasWorkspaces: _workspaces.isNotEmpty,
+      ),
+    );
     return workspaces;
   }
 
   Future<Map<String, dynamic>> switchWorkspace(String workspaceId) async {
-    final response = await _apiClient.post(ApiEndpoints.switchWorkspace(workspaceId), data: {});
+    final response = await _apiClient.post(
+      ApiEndpoints.switchWorkspace(workspaceId),
+      data: {},
+    );
     final body = response.data;
-    if (body is! Map<String, dynamic>) throw StateError('Invalid workspace context response.');
+    if (body is! Map<String, dynamic>)
+      throw StateError('Invalid workspace context response.');
     _workspaceContext = body['context'] is Map<String, dynamic>
         ? Map<String, dynamic>.from(body['context'] as Map<String, dynamic>)
         : Map<String, dynamic>.from(body);
@@ -222,7 +236,9 @@ class AuthManager {
       _workspaces = const [];
     }
     // No client-side auto-selection. A server-approved context is required.
-    if (_workspaceContext == null && _userId != null && _workspaces.isNotEmpty) {
+    if (_workspaceContext == null &&
+        _userId != null &&
+        _workspaces.isNotEmpty) {
       _setIdentityState(IdentityState.workspaceRequired);
     }
   }
@@ -308,7 +324,8 @@ class AuthManager {
   Future<bool> _refreshAccessToken() {
     final inFlight = _refreshInFlight;
     if (inFlight != null) return inFlight;
-    if (_refreshToken == null || _refreshToken!.isEmpty) return Future.value(false);
+    if (_refreshToken == null || _refreshToken!.isEmpty)
+      return Future.value(false);
     final future = _performRefresh();
     _refreshInFlight = future;
     return future.whenComplete(() => _refreshInFlight = null);
@@ -325,7 +342,8 @@ class AuthManager {
       _token = (data['access_token'] ?? data['token']) as String?;
       _refreshToken = data['refresh_token'] as String?;
       if (_token != null) await _storage.saveToken(_token!);
-      if (_refreshToken != null) await _storage.saveRefreshToken(_refreshToken!);
+      if (_refreshToken != null)
+        await _storage.saveRefreshToken(_refreshToken!);
       return _token != null;
     } catch (_) {
       return false;
@@ -408,10 +426,10 @@ class AuthManager {
       AuthStatus.mfaRequired => IdentityState.verifying,
       AuthStatus.requiresSetup => IdentityState.pending,
       AuthStatus.authenticated => identityStateFor(
-          hasUser: _userId != null,
-          hasWorkspaceContext: _workspaceContext != null,
-          hasWorkspaces: _workspaces.isNotEmpty,
-        ),
+        hasUser: _userId != null,
+        hasWorkspaceContext: _workspaceContext != null,
+        hasWorkspaces: _workspaces.isNotEmpty,
+      ),
       AuthStatus.authorized => IdentityState.authorized,
       AuthStatus.workspaceRequired => IdentityState.workspaceRequired,
       AuthStatus.sessionExpired => IdentityState.sessionExpired,
@@ -438,11 +456,17 @@ class AuthManager {
     final state = statusCode == 423
         ? IdentityState.locked
         : statusCode == 403
-            ? IdentityState.suspended
-            : IdentityState.error;
+        ? IdentityState.suspended
+        : IdentityState.error;
     _identityError = IdentityError(
-      code: statusCode == 423 ? 'LOCKED' : statusCode == 403 ? 'SUSPENDED' : 'REQUEST_FAILED',
-      message: statusCode == 401 ? 'Invalid credentials or expired session.' : apiError?.message ?? 'The request could not be completed.',
+      code: statusCode == 423
+          ? 'LOCKED'
+          : statusCode == 403
+          ? 'SUSPENDED'
+          : 'REQUEST_FAILED',
+      message: statusCode == 401
+          ? 'Invalid credentials or expired session.'
+          : apiError?.message ?? 'The request could not be completed.',
       statusCode: statusCode,
       retryable: statusCode == null || statusCode >= 500 || statusCode == 429,
       reauthenticate: statusCode == 401,

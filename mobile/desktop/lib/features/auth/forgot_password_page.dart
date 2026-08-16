@@ -40,14 +40,27 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
     });
 
     try {
-      await ref.read(authProviderProvider).manager.apiClient.post(
-        ApiEndpoints.forgotPassword,
-        data: {'email': _emailController.text.trim()},
-        idempotent: true,
-      );
-      if (mounted) setState(() { _isLoading = false; _emailSent = true; });
+      await ref
+          .read(authProviderProvider)
+          .manager
+          .apiClient
+          .post(
+            ApiEndpoints.forgotPassword,
+            data: {'email': _emailController.text.trim()},
+            idempotent: true,
+          );
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+          _emailSent = true;
+        });
     } catch (_) {
-      if (mounted) setState(() { _isLoading = false; _error = 'تعذر إكمال الطلب حالياً. حاول مرة أخرى دون كشف حالة الحساب.'; });
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+          _error =
+              'تعذر إكمال الطلب حالياً. حاول مرة أخرى دون كشف حالة الحساب.';
+        });
     }
   }
 
@@ -93,8 +106,15 @@ class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
-                      child: Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Colors.red.shade800)),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        _error!,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.red.shade800),
+                      ),
                     ),
                     const SizedBox(height: 16),
                   ],

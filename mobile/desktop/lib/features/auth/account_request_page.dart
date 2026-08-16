@@ -30,21 +30,37 @@ class _AccountRequestPageState extends ConsumerState<AccountRequestPage> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      await ref.read(authProviderProvider).manager.apiClient.post(
-        ApiEndpoints.accountRequests,
-        data: {
-          'display_name': _name.text.trim(),
-          'email': _email.text.trim(),
-          'phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-          'requested_account_type': 'citizen',
-        },
-        idempotent: true,
-      );
-      if (mounted) setState(() { _loading = false; _submitted = true; });
+      await ref
+          .read(authProviderProvider)
+          .manager
+          .apiClient
+          .post(
+            ApiEndpoints.accountRequests,
+            data: {
+              'display_name': _name.text.trim(),
+              'email': _email.text.trim(),
+              'phone': _phone.text.trim().isEmpty ? null : _phone.text.trim(),
+              'requested_account_type': 'citizen',
+            },
+            idempotent: true,
+          );
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _submitted = true;
+        });
     } catch (_) {
-      if (mounted) setState(() { _loading = false; _error = 'The request could not be submitted. Please try again later.'; });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _error =
+              'The request could not be submitted. Please try again later.';
+        });
     }
   }
 
@@ -58,17 +74,59 @@ class _AccountRequestPageState extends ConsumerState<AccountRequestPage> {
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: _submitted
-                ? const Column(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.schedule, size: 56), SizedBox(height: 16), Text('Request received. It is pending review and does not create a session yet.')])
+                ? const Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.schedule, size: 56),
+                      SizedBox(height: 16),
+                      Text(
+                        'Request received. It is pending review and does not create a session yet.',
+                      ),
+                    ],
+                  )
                 : Form(
                     key: _formKey,
-                    child: Column(mainAxisSize: MainAxisSize.min, children: [
-                      TextFormField(controller: _name, decoration: const InputDecoration(labelText: 'Name'), validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null),
-                      TextFormField(controller: _email, decoration: const InputDecoration(labelText: 'Email'), keyboardType: TextInputType.emailAddress, validator: (v) => v == null || !v.contains('@') ? 'Enter a valid email' : null),
-                      TextFormField(controller: _phone, decoration: const InputDecoration(labelText: 'Phone (optional)'), keyboardType: TextInputType.phone),
-                      if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: const TextStyle(color: Colors.red))),
-                      const SizedBox(height: 20),
-                      FilledButton(onPressed: _loading ? null : _submit, child: Text(_loading ? 'Submitting…' : 'Submit request')),
-                    ]),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextFormField(
+                          controller: _name,
+                          decoration: const InputDecoration(labelText: 'Name'),
+                          validator: (v) =>
+                              v == null || v.trim().isEmpty ? 'Required' : null,
+                        ),
+                        TextFormField(
+                          controller: _email,
+                          decoration: const InputDecoration(labelText: 'Email'),
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (v) => v == null || !v.contains('@')
+                              ? 'Enter a valid email'
+                              : null,
+                        ),
+                        TextFormField(
+                          controller: _phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Phone (optional)',
+                          ),
+                          keyboardType: TextInputType.phone,
+                        ),
+                        if (_error != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Text(
+                              _error!,
+                              style: const TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        const SizedBox(height: 20),
+                        FilledButton(
+                          onPressed: _loading ? null : _submit,
+                          child: Text(
+                            _loading ? 'Submitting…' : 'Submit request',
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
           ),
         ),

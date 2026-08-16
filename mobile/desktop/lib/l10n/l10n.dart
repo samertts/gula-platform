@@ -40,7 +40,9 @@ class AppLocalization {
       'fa' => faTranslations,
       _ => enTranslations,
     };
-    return _getValue(key, translations) ?? _getValue(key, enTranslations) ?? key;
+    return _getValue(key, translations) ??
+        _getValue(key, enTranslations) ??
+        key;
   }
 
   static String tr(BuildContext context, String key) {
@@ -115,24 +117,41 @@ class AppLocalization {
     'workspace': 'Workspace',
     'securityCenter': 'Security Center',
     'sessionExpired': 'Your session expired. Please sign in again.',
-    'accountRequestPending': 'Your account request was received and is pending review.',
+    'accountRequestPending':
+        'Your account request was received and is pending review.',
   };
 
   static final Map<String, dynamic> kuTranslations = {
-    'appName': 'پلاتفۆرمی GULA', 'login': 'چوونەژوورەوە', 'logout': 'دەرچوون',
-    'memberships': 'ئەندامێتی و کۆنتێکست', 'workspace': 'شوێنی کار', 'securityCenter': 'ناوەندی ئاسایش',
+    'appName': 'پلاتفۆرمی GULA',
+    'login': 'چوونەژوورەوە',
+    'logout': 'دەرچوون',
+    'memberships': 'ئەندامێتی و کۆنتێکست',
+    'workspace': 'شوێنی کار',
+    'securityCenter': 'ناوەندی ئاسایش',
   };
   static final Map<String, dynamic> tkTranslations = {
-    'appName': 'GULA Platformasy', 'login': 'Ulgama girmek', 'logout': 'Çykmak',
-    'memberships': 'Agzalyk we kontekstler', 'workspace': 'Iş meýdany', 'securityCenter': 'Howpsuzlyk merkezi',
+    'appName': 'GULA Platformasy',
+    'login': 'Ulgama girmek',
+    'logout': 'Çykmak',
+    'memberships': 'Agzalyk we kontekstler',
+    'workspace': 'Iş meýdany',
+    'securityCenter': 'Howpsuzlyk merkezi',
   };
   static final Map<String, dynamic> syrTranslations = {
-    'appName': 'ܦܠܛܦܘܪܡܐ ܕܓܘܠܐ', 'login': 'ܥܘܠ ܠܢܝܫܡܐ', 'logout': 'ܦܘܩ',
-    'memberships': 'ܚܒܪܘܬܐ ܘܩܢܛܟܣܛ', 'workspace': 'ܦܢܝܬܐ ܕܦܘܠܚܢܐ', 'securityCenter': 'ܡܨܥܬܐ ܕܚܘܣܝܢܐ',
+    'appName': 'ܦܠܛܦܘܪܡܐ ܕܓܘܠܐ',
+    'login': 'ܥܘܠ ܠܢܝܫܡܐ',
+    'logout': 'ܦܘܩ',
+    'memberships': 'ܚܒܪܘܬܐ ܘܩܢܛܟܣܛ',
+    'workspace': 'ܦܢܝܬܐ ܕܦܘܠܚܢܐ',
+    'securityCenter': 'ܡܨܥܬܐ ܕܚܘܣܝܢܐ',
   };
   static final Map<String, dynamic> faTranslations = {
-    'appName': 'پلتفرم GULA', 'login': 'ورود', 'logout': 'خروج',
-    'memberships': 'عضویت‌ها و زمینه‌ها', 'workspace': 'فضای کاری', 'securityCenter': 'مرکز امنیت',
+    'appName': 'پلتفرم GULA',
+    'login': 'ورود',
+    'logout': 'خروج',
+    'memberships': 'عضویت‌ها و زمینه‌ها',
+    'workspace': 'فضای کاری',
+    'securityCenter': 'مرکز امنیت',
   };
 }
 

@@ -24,34 +24,38 @@ void main() async {
 
 Future<void> _initializeApp() async {
   try {
-    final isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    final isDesktop =
+        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
     if (isDesktop) {
       await windowManager.ensureInitialized();
 
-    const windowOptions = WindowOptions(
-      size: Size(
-        AppConstants.defaultDesktopWidth,
-        AppConstants.defaultDesktopHeight,
-      ),
-      minimumSize: Size(
-        AppConstants.minDesktopWidth,
-        AppConstants.minDesktopHeight,
-      ),
-      center: true,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: false,
-      title: AppConstants.appName,
-      titleBarStyle: TitleBarStyle.normal,
-    );
-
-    await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
-      await windowManager.setPreventClose(true);
-      await windowManager.setMinimumSize(
-        const Size(AppConstants.minDesktopWidth, AppConstants.minDesktopHeight),
+      const windowOptions = WindowOptions(
+        size: Size(
+          AppConstants.defaultDesktopWidth,
+          AppConstants.defaultDesktopHeight,
+        ),
+        minimumSize: Size(
+          AppConstants.minDesktopWidth,
+          AppConstants.minDesktopHeight,
+        ),
+        center: true,
+        backgroundColor: Colors.transparent,
+        skipTaskbar: false,
+        title: AppConstants.appName,
+        titleBarStyle: TitleBarStyle.normal,
       );
-    });
+
+      await windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.show();
+        await windowManager.focus();
+        await windowManager.setPreventClose(true);
+        await windowManager.setMinimumSize(
+          const Size(
+            AppConstants.minDesktopWidth,
+            AppConstants.minDesktopHeight,
+          ),
+        );
+      });
     }
 
     if (Platform.isAndroid || Platform.isIOS) {
@@ -121,7 +125,8 @@ class _AppEntryState extends ConsumerState<_AppEntry> {
       }
     } catch (_) {}
 
-    final isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    final isDesktop =
+        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
     if (isDesktop) {
       try {
         await _autoUpdater.initialize();
