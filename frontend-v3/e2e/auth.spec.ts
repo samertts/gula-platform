@@ -13,7 +13,12 @@ async function mockLogin(page: Page) {
       body: JSON.stringify({
         access_token: "test-token-12345",
         token_type: "bearer",
-        user: { id: 1, email: TEST_CREDENTIALS.email, name: "Admin User", role: "admin" },
+        user: {
+          id: 1,
+          email: TEST_CREDENTIALS.email,
+          name: "Admin User",
+          role: "admin",
+        },
       }),
     });
   });
@@ -37,37 +42,53 @@ async function mockAuthenticatedRoutes(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ memberships: [{
-        id: "membership-e2e",
-        uuid: "membership-e2e-uuid",
-        account_id: "account-e2e",
-        identity_id: "identity-e2e",
-        organization_id: "org-e2e",
-        facility_id: "facility-e2e",
-        workspace_id: "workspace-e2e",
-        relationship_type: "staff",
-        scope_type: "facility",
-        status: "active",
-        source: "e2e",
-        expires_at: null,
-        version: 1,
-        is_active: true,
-      }] }),
-    });
-  });
-  await page.route("**/api/niam/workspaces", async (route) => {
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ workspaces: [workspace] }) });
-  });
-  await page.route("**/api/niam/workspaces/workspace-e2e/switch", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
       body: JSON.stringify({
-        context: { account_id: "account-e2e", identity_id: "identity-e2e", workspace_id: workspace.id, version: 1 },
-        workspace,
+        memberships: [
+          {
+            id: "membership-e2e",
+            uuid: "membership-e2e-uuid",
+            account_id: "account-e2e",
+            identity_id: "identity-e2e",
+            organization_id: "org-e2e",
+            facility_id: "facility-e2e",
+            workspace_id: "workspace-e2e",
+            relationship_type: "staff",
+            scope_type: "facility",
+            status: "active",
+            source: "e2e",
+            expires_at: null,
+            version: 1,
+            is_active: true,
+          },
+        ],
       }),
     });
   });
+  await page.route("**/api/niam/workspaces", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ workspaces: [workspace] }),
+    });
+  });
+  await page.route(
+    "**/api/niam/workspaces/workspace-e2e/switch",
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          context: {
+            account_id: "account-e2e",
+            identity_id: "identity-e2e",
+            workspace_id: workspace.id,
+            version: 1,
+          },
+          workspace,
+        }),
+      });
+    },
+  );
   await page.route("**/api/dashboard/**", async (route) => {
     await route.fulfill({
       status: 200,
@@ -106,12 +127,22 @@ async function mockAuthenticatedRoutes(page: Page) {
 }
 
 test.describe("Authentication", () => {
-  test("should display login page with correct Arabic text", async ({ page }) => {
+  test("should display login page with correct Arabic text", async ({
+    page,
+  }) => {
     await page.goto("/login");
-    await expect(page.locator("h2")).toContainText("اختر مسار الوصول المناسب لك");
-    await expect(page.locator('label[for="email"]')).toContainText("البريد الإلكتروني");
-    await expect(page.locator('label[for="password"]')).toContainText("كلمة المرور");
-    await expect(page.locator('button[type="submit"]')).toContainText("الدخول إلى مساحة المواطن");
+    await expect(page.locator("h2")).toContainText(
+      "اختر مسار الوصول المناسب لك",
+    );
+    await expect(page.locator('label[for="email"]')).toContainText(
+      "البريد الإلكتروني",
+    );
+    await expect(page.locator('label[for="password"]')).toContainText(
+      "كلمة المرور",
+    );
+    await expect(page.locator('button[type="submit"]')).toContainText(
+      "الدخول إلى مساحة المواطن",
+    );
   });
 
   test("should show validation error for empty fields", async ({ page }) => {
@@ -134,10 +165,14 @@ test.describe("Authentication", () => {
     await page.locator("#email").fill(TEST_CREDENTIALS.email);
     await page.locator("#password").fill("wrongpassword");
     await page.locator('button[type="submit"]').click();
-    await expect(page.locator("text=تعذر تسجيل الدخول بالبيانات المقدمة.")).toBeVisible();
+    await expect(
+      page.locator("text=تعذر تسجيل الدخول بالبيانات المقدمة."),
+    ).toBeVisible();
   });
 
-  test("should login successfully and redirect to dashboard", async ({ page }) => {
+  test("should login successfully and redirect to dashboard", async ({
+    page,
+  }) => {
     await mockLogin(page);
     await mockAuthenticatedRoutes(page);
 
@@ -149,7 +184,9 @@ test.describe("Authentication", () => {
     await expect(page).toHaveURL(/\/dashboard/);
   });
 
-  test("should redirect to login when accessing protected routes without token", async ({ page }) => {
+  test("should redirect to login when accessing protected routes without token", async ({
+    page,
+  }) => {
     await page.goto("/dashboard");
     await expect(page).toHaveURL(/\/login/);
   });
