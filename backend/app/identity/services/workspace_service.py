@@ -3,17 +3,12 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import or_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus, AccountType
-from app.identity.models.administrative_structure import (
-    OrganizationOwnership,
-    OrganizationRepresentative,
-    OwnershipStatus,
-    RepresentativeStatus,
-)
+from app.identity.models.membership import Membership, MembershipStatus
 from app.identity.models.verification_record import (
     VerificationRecord,
     VerificationRecordStatus,
@@ -120,24 +115,52 @@ class WorkspaceService:
     async def list_eligible(self, account: Account) -> list[Workspace]:
         if account.status != AccountStatus.active.value or not account.is_active:
             return []
+        # Personal citizen workspaces are owned directly by the account. An
+        # organization-owned workspace must never be reachable merely because
+        # the account is an organization owner/representative: access is
+        # derived from an active, unexpired Membership with matching scope.
         direct = select(Workspace).where(
             Workspace.owner_account_id == account.id,
+            Workspace.organization_id.is_(None),
             Workspace.status.in_([WorkspaceStatus.active.value, WorkspaceStatus.restricted.value]),
         )
         result = await self.session.execute(direct)
         workspaces = {workspace.id: workspace for workspace in result.scalars().all()}
 
-        organization_ids = select(OrganizationRepresentative.organization_id).where(
-            OrganizationRepresentative.account_id == account.id,
-            OrganizationRepresentative.status == RepresentativeStatus.active.value,
+        membership_result = await self.session.execute(
+            select(Membership).where(
+                Membership.account_id == account.id,
+                Membership.status == MembershipStatus.active.value,
+                Membership.is_active.is_(True),
+                or_(Membership.expires_at.is_(None), Membership.expires_at > datetime.now(UTC)),
+            ),
         )
-        ownership_ids = select(OrganizationOwnership.organization_id).where(
-            OrganizationOwnership.account_id == account.id,
-            OrganizationOwnership.status == OwnershipStatus.active.value,
-        )
+        memberships = list(membership_result.scalars().all())
+        if not memberships:
+            return list(workspaces.values())
+
+        scoped_membership_conditions = []
+        for membership in memberships:
+            # Workspace has no unit relation. A unit-scoped membership without
+            # an explicit workspace must not broaden into an organization or
+            # department-wide workspace grant.
+            if membership.unit_id is not None and membership.workspace_id is None:
+                continue
+            conditions = [Workspace.organization_id == membership.organization_id]
+            for field in ("facility_id", "department_id"):
+                value = getattr(membership, field, None)
+                if value is not None:
+                    conditions.append(getattr(Workspace, field) == value)
+            if membership.workspace_id is not None:
+                conditions.append(Workspace.id == membership.workspace_id)
+            scoped_membership_conditions.append(and_(*conditions))
+
+        if not scoped_membership_conditions:
+            return list(workspaces.values())
+
         organization_result = await self.session.execute(
             select(Workspace).where(
-                Workspace.organization_id.in_(organization_ids.union(ownership_ids)),
+                or_(*scoped_membership_conditions),
                 Workspace.status.in_([WorkspaceStatus.active.value, WorkspaceStatus.restricted.value]),
             ),
         )

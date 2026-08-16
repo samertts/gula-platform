@@ -159,3 +159,58 @@ async def test_professional_workspace_requires_verified_record_before_lookup():
 
     assert result is None
     assert session.added == []
+
+
+@pytest.mark.asyncio
+async def test_organization_workspace_requires_active_scoped_membership():
+    personal = workspace("personal")
+    organization_workspace = SimpleNamespace(
+        id="org-workspace",
+        organization_id="org-1",
+        facility_id="facility-1",
+        department_id=None,
+        status=WorkspaceStatus.active.value,
+    )
+    membership = SimpleNamespace(
+        account_id="account-1",
+        organization_id="org-1",
+        facility_id="facility-1",
+        department_id=None,
+        unit_id=None,
+        workspace_id=None,
+        status="active",
+        is_active=True,
+        expires_at=None,
+    )
+    session = _AsyncSession(
+        [
+            _Result(rows=[personal]),
+            _Result(rows=[membership]),
+            _Result(rows=[organization_workspace]),
+        ],
+    )
+
+    result = await WorkspaceService(session).list_eligible(account())
+
+    assert {item.id for item in result} == {"personal", "org-workspace"}
+
+
+@pytest.mark.asyncio
+async def test_unit_membership_without_workspace_does_not_broaden_access():
+    personal = workspace("personal")
+    unit_membership = SimpleNamespace(
+        account_id="account-1",
+        organization_id="org-1",
+        facility_id="facility-1",
+        department_id="department-1",
+        unit_id="unit-1",
+        workspace_id=None,
+        status="active",
+        is_active=True,
+        expires_at=None,
+    )
+    session = _AsyncSession([_Result(rows=[personal]), _Result(rows=[unit_membership])])
+
+    result = await WorkspaceService(session).list_eligible(account())
+
+    assert [item.id for item in result] == ["personal"]

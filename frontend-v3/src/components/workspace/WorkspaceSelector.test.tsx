@@ -70,17 +70,17 @@ describe("WorkspaceSelector", () => {
     expect(screen.getByRole("status")).toHaveTextContent("جارٍ تحميل المساحات");
   });
 
-  it("renders server workspaces and selects the first returned context", async () => {
+  it("renders server workspaces without inferring an active context", async () => {
     const onActiveWorkspace = vi.fn();
     vi.mocked(apiClient.listWorkspaces).mockResolvedValue({ workspaces: [workspaceOne, workspaceTwo] });
 
     render(<WorkspaceSelector onActiveWorkspace={onActiveWorkspace} />);
 
     const selector = await screen.findByRole("combobox", { name: "اختيار مساحة العمل" });
-    expect(selector).toHaveValue("workspace-1");
+    expect(selector).toHaveValue("");
     expect(screen.getByRole("option", { name: "مساحة المواطن" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "المساحة المهنية" })).toBeInTheDocument();
-    expect(onActiveWorkspace).toHaveBeenCalledWith(workspaceOne);
+    expect(onActiveWorkspace).not.toHaveBeenCalled();
   });
 
   it("renders a safe empty state when the backend returns no eligible workspace", async () => {
@@ -133,7 +133,7 @@ describe("WorkspaceSelector", () => {
     fireEvent.change(selector, { target: { value: "workspace-2" } });
 
     expect(await screen.findByRole("alert")).toHaveTextContent("رفض الخادم تبديل مساحة العمل");
-    expect(selector).toHaveValue("workspace-1");
+    expect(selector).toHaveValue("");
   });
 
   it("does not call operational workspace APIs in demo mode", () => {

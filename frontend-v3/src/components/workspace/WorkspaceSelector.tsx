@@ -27,11 +27,9 @@ export function WorkspaceSelector({ onActiveWorkspace }: WorkspaceSelectorProps)
       .then((payload) => {
         if (cancelled) return;
         setWorkspaces(payload.workspaces);
-        const first = payload.workspaces[0];
-        if (first) {
-          setActiveWorkspaceId(first.id);
-          onActiveWorkspace?.(first);
-        }
+        // Do not infer an active context from list order. The server must
+        // authorize the explicit selection and return the authoritative context.
+        setActiveWorkspaceId("");
       })
       .catch(() => {
         if (!cancelled) setError("تعذر تحميل مساحات العمل المصرح بها من الخادم.");
@@ -82,6 +80,7 @@ export function WorkspaceSelector({ onActiveWorkspace }: WorkspaceSelectorProps)
         onChange={(event) => void handleSwitch(event.target.value)}
         aria-label="اختيار مساحة العمل"
       >
+        <option value="" disabled>اختر مساحة العمل</option>
         {workspaces.map((workspace) => (
           <option key={workspace.id} value={workspace.id}>
             {workspace.name_ar || workspace.name}
