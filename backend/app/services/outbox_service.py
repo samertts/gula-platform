@@ -30,12 +30,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app._compat import UTC
 from app.core.events import events
 from app.models.outbox import MAX_ATTEMPTS, OutboxEvent
 
@@ -233,7 +232,7 @@ def purge_old_events(db: Session, days: int = 30) -> int:
 
     from sqlalchemy import text
 
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
     result = db.execute(
         text("""
             DELETE FROM outbox_events

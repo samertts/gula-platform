@@ -20,7 +20,8 @@ def hash_token(token: str) -> str:
 
 
 def default_expiry():
-    return datetime.now(UTC) + timedelta(days=90)
+    """Issue short-lived public links; revocation remains an explicit provider concern."""
+    return datetime.now(UTC) + timedelta(days=7)
 
 
 class LabResult(Base):

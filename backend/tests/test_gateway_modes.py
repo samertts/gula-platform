@@ -108,6 +108,20 @@ class TestStubResponses:
         assert r["valid"] is True
         assert r["source"].startswith("stub_")
 
+    def test_nid_shadow_calls_external_but_returns_stub(self, monkeypatch):
+        gw = self._make_gw("national_identity_gateway.py", "NationalIdentityGateway", monkeypatch)
+        gw.mode = AdapterMode.SHADOW
+        calls: list[str] = []
+
+        def fake_live(national_id: str) -> dict:
+            calls.append(national_id)
+            return {"valid": True, "source": "nid_sandbox"}
+
+        monkeypatch.setattr(gw, "_live_response", fake_live)
+        result = gw._do_call("verify_national_id", national_id="1" * 12)
+        assert calls == ["1" * 12]
+        assert result["source"].startswith("stub_")
+
     def test_insurance_stub(self, monkeypatch):
         gw = self._make_gw("insurance_gateway.py", "InsuranceGateway", monkeypatch)
         assert gw._stub_response("")["insured"] is False

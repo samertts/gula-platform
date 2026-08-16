@@ -32,11 +32,20 @@ def _load_config(monkeypatch: pytest.MonkeyPatch, **overrides: str):
             scoped_env.setenv(name, value)
         if "DEMO_MODE" not in overrides:
             scoped_env.delenv("DEMO_MODE", raising=False)
+        app_package = importlib.import_module("app")
+        original_config = sys.modules.get("app.config")
+        original_package_config = getattr(app_package, "config", None)
         sys.modules.pop("app.config", None)
         try:
             return importlib.import_module("app.config")
         finally:
             sys.modules.pop("app.config", None)
+            if original_config is not None:
+                sys.modules["app.config"] = original_config
+            if original_package_config is not None:
+                app_package.config = original_package_config
+            else:
+                app_package.__dict__.pop("config", None)
 
 
 def test_staging_uses_hardened_production_guards(monkeypatch: pytest.MonkeyPatch) -> None:

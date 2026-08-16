@@ -41,6 +41,7 @@ from app.config import JWT_ALGORITHM, SECRET_KEY
 from app.models.lab import Lab
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
+from app.routes.ai import _allow_legacy_public_token_fallback
 from app.security.auth import (
     build_token_payload,
     create_refresh_token,
@@ -66,6 +67,21 @@ def sec_lab(db, make_lab, make_lab_user):
     tech = make_lab_user(lab_id=lab.id, role="technician", email="sec_tech@x.com")
     db.commit()
     return {"lab": lab, "admin": admin, "tech": tech}
+
+
+def test_public_ai_legacy_raw_token_fallback_is_not_allowed_in_production(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    assert _allow_legacy_public_token_fallback() is False
+
+
+def test_public_ai_legacy_raw_token_fallback_is_not_allowed_in_staging(monkeypatch):
+    monkeypatch.setenv("ENV", "staging")
+    assert _allow_legacy_public_token_fallback() is False
+
+
+def test_public_ai_legacy_raw_token_fallback_is_limited_to_non_production(monkeypatch):
+    monkeypatch.setenv("ENV", "test")
+    assert _allow_legacy_public_token_fallback() is True
 
 
 # ─── Phase 14.A — Stale-token rejection ──────────────────────────────────────

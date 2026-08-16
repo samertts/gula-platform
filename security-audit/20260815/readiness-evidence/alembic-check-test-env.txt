@@ -1,0 +1,33 @@
+DATABASE_URL not set — using local dev default. Set DATABASE_URL in .env for production.
+REFRESH_TOKEN_SECRET not set - using random key. Set it in .env for production.
+AUDIT_ANCHOR_KEY not set. Set in .env for production.
+REDIS_URL not set — using a process-local store for development/test only. Set REDIS_URL before any staging or production startup.
+Traceback (most recent call last):
+  File "/usr/local/bin/alembic", line 10, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/alembic/config.py", line 1039, in main
+    CommandLine(prog=prog).main(argv=argv)
+  File "/usr/local/lib/python3.12/dist-packages/alembic/config.py", line 1029, in main
+    self.run_cmd(cfg, options)
+  File "/usr/local/lib/python3.12/dist-packages/alembic/config.py", line 963, in run_cmd
+    fn(
+  File "/usr/local/lib/python3.12/dist-packages/alembic/command.py", line 360, in check
+    script_directory.run_env()
+  File "/usr/local/lib/python3.12/dist-packages/alembic/script/base.py", line 550, in run_env
+    util.load_python_file(self.dir, "env.py")
+  File "/usr/local/lib/python3.12/dist-packages/alembic/util/pyfiles.py", line 114, in load_python_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/alembic/util/pyfiles.py", line 132, in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/home/ubuntu/gula-platform/backend/migrations/env.py", line 37, in <module>
+    from app.national.base import NationalBase
+  File "/home/ubuntu/gula-platform/backend/app/national/base.py", line 11, in <module>
+    from app.models.base import (
+  File "/home/ubuntu/gula-platform/backend/app/models/base.py", line 7, in <module>
+    from shared.models import (
+ModuleNotFoundError: No module named 'shared'

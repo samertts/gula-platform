@@ -1,0 +1,6 @@
+=== alembic heads ===
+20260815_0025 (head)
+heads_status=0
+=== alembic check ===
+Unsupported ENV='migration'; choose one of ['development', 'production', 'staging', 'test']
+check_status=1

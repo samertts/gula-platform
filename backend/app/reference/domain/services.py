@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from .exceptions import (
@@ -135,7 +135,7 @@ class OrderProcessingService:
             order.priority = Priority.ROUTINE
 
         if not order.created_at:
-            order.created_at = datetime.utcnow()
+            order.created_at = datetime.now(UTC)
 
         return order
 

@@ -183,3 +183,23 @@
 [15]: `../frontend-v3/src/contexts/AuthContext.tsx` — legacy web auth context.
 
 [16]: `../.github/workflows/staging-verify.yml` — staging health verification workflow.
+
+
+## 7. ملحق تحقق محلي — 16 آب 2026
+
+يصحح هذا الملحق حالة السجل بعد دفعة المعالجة المحلية الأخيرة. تم تعديل source محلياً على الفرع `security/p0-bootstrap-alembic`، من دون push أو merge أو deployment أو migration إنتاجية. أصبح عدد الاستخدامات النصية لـ`datetime.utcnow` في `backend/app` و`shared` صفراً، مع تحويل callsites وSQLAlchemy `default/onupdate` و`dataclasses` وcode generators إلى UTC-aware callables. كما أضيفت مواءمة frontend-v3 مع scopes المالية والتكاملية الدقيقة، وفُصلت financial routes إلى read/write/orchestration/subscription permissions.
+
+| البند | الحالة المحلية الجديدة | دليل التحقق |
+|---|---|---|
+| UTC-aware timestamps | **مغلق محلياً**؛ `datetime.utcnow` occurrences = 0 | grep residual scan + `compileall` |
+| Financial route authorization | **مغلق محلياً**؛ read/write/orchestration/subscription guards مضافة، والـengine ما زال خلف feature flag | `backend/app/financial/routes.py`، full backend gate |
+| Contract exposure | **مغلق محلياً**؛ internal contract metadata export محمي، public allowlist محدود | `backend/app/contracts/routes.py`، contract tests |
+| Public lab-result token | **مغلق محلياً ضمن نطاق التصميم الحالي**؛ hash lookup/TTL/error minimization مطبقة، مع بقاء audit staging مطلوباً | `backend/app/models/lab_result.py`، security regression tests |
+| Ecosystem authorization/redaction | **مغلق محلياً ضمن static/contract scope**؛ granular scopes وPII redaction مطبقان | `backend/app/national/ecosystem/routes.py`، side-door tests |
+| Frontend RBAC alignment | **مغلق محلياً**؛ `runtime:operate` للـedge و`payments:read` للـfinancial، مع role maps محدثة | `frontend-v3/src/permissions/index.ts`، frontend build |
+| Backend regression gate | **ناجح**؛ 2654 passed، 42 deselected، 20 warnings | `pytest -q -m 'not integration'` |
+| Frontend gate | **ناجح**؛ الاختبارات والبناء/PWA اكتملت بنجاح | `pnpm test -- --run` و`pnpm build` |
+
+لا يزيل هذا الملحق `SAFE_STOP`. تبقى البنود المرتبطة بموفر الهوية الرسمي، Redis/PostgreSQL متعدد العمال في staging، browser CSRF/CORS الحقيقي، TLS/egress للموصلات، Android/Flutter وTalkBack/Orca، وPentest المرخص مفتوحة حتى إنتاج أدلة خارجية قابلة لإعادة التشغيل. كما لا يُعد نجاح الاختبارات المحلية دليلاً على خلو النظام المطلق من الثغرات؛ القرار التشغيلي الصحيح يبقى `AUTHENTICATION_RUNTIME_PARTIAL` إلى حين استيفاء شروط staging والمراجعة البشرية.
+
+تم تصحيح العبارة السابقة التي كانت تفيد بأن الجرد لم يعدل source؛ فهي صحيحة فقط عند بداية الجرد، وليست صحيحة بعد هذا الملحق.

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from backend.app.engineering.generators.base import BaseGenerator, GenerateResult
@@ -56,8 +56,8 @@ from uuid import uuid4
 class {entity}:
     id: str = field(default_factory=lambda: str(uuid4()))
 {fields}
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 """
 
 _DTO_TPL = """from __future__ import annotations
@@ -667,7 +667,7 @@ from typing import Any
 class {cmd_cap}Command:
     """{cmd_name} command for {spec.name} capability."""
     command_id: str = ""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     data: dict = field(default_factory=dict)
 ''',
             )
@@ -700,7 +700,7 @@ from typing import Any
 class {evt_cap}Event:
     """{evt_name} event for {spec.name} capability."""
     event_id: str = ""
-    occurred_at: datetime = field(default_factory=datetime.utcnow)
+    occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     data: dict = field(default_factory=dict)
     version: int = 1
 ''',
@@ -923,7 +923,7 @@ from typing import Any
 class {cap}Input:
     action: str = "execute"
     data: dict = field(default_factory=dict)
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 @dataclass
@@ -931,5 +931,5 @@ class {cap}Output:
     success: bool = True
     data: dict = field(default_factory=dict)
     error: str | None = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 '''

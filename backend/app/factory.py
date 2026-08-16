@@ -21,7 +21,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .config import APP_NAME, APP_VERSION, DEMO_MODE, IS_PRODUCTION, RUNTIME_MODE
+from .config import APP_NAME, APP_VERSION, DEMO_MODE, ENV, IS_PRODUCTION, RUNTIME_MODE
 from .core.error_contract import (
     build_error_payload,
     public_http_detail,
@@ -698,6 +698,10 @@ def _register_routes(app: FastAPI) -> None:
 
     from .integration.connectors.routes import router as connectors_router
     app.include_router(connectors_router)
+
+    if ENV.lower() in {"development", "staging", "test"}:
+        from .routes.staging_import import router as staging_import_router
+        app.include_router(staging_import_router)
 
     from .routes import hospital as hospital_routes
     app.include_router(hospital_routes.router)

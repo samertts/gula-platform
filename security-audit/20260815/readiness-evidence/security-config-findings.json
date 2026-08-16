@@ -1,0 +1,1073 @@
+[
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 23763,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26174,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26256,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26282,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26308,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26334,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26360,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26386,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26475,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26651,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26661,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26671,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26681,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 26789,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 27351,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 27371,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 27381,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 27391,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 27411,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 27431,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 27451,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 28031,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 30271,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 31632,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 31660,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 31688,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 31716,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 31965,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 31990,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 32153,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 32179,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 32229,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 32249,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 32275,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 32300,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.audit/bandit_backend.json",
+    "line": 32326,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/actions/build-android/action.yml",
+    "line": 90,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/actions/build-android/action.yml",
+    "line": 92,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/actions/build-android/action.yml",
+    "line": 115,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/actions/build-android/action.yml",
+    "line": 117,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/frontend-pwa.yml",
+    "line": 169,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/frontend-pwa.yml",
+    "line": 170,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/frontend-pwa.yml",
+    "line": 218,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/frontend-pwa.yml",
+    "line": 219,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/mobile-android.yml",
+    "line": 359,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/mobile-android.yml",
+    "line": 361,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/scorecard.yml",
+    "line": 18,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 51,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 53,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 60,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 62,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 90,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 92,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 99,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 101,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 178,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 180,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml",
+    "line": 187,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/config/cert-manager/cluster-issuer.yaml",
+    "line": 102,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/config/cert-manager/cluster-issuer.yaml",
+    "line": 119,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/config/postgres-ha/patroni.yml",
+    "line": 16,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/config/postgres-ha/patroni.yml",
+    "line": 55,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/config/postgres-ha/patroni.yml",
+    "line": 58,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/config/postgres-ha/patroni.yml",
+    "line": 61,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/config/postgres-ha/patroni.yml",
+    "line": 181,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/config/postgres-ha/patroni.yml",
+    "line": 186,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/config/prometheus/prometheus-full.yml",
+    "line": 135,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/reports/PHASE_10B_LEGACY_INVENTORY.json",
+    "line": 27524,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/reports/PHASE_10B_LEGACY_INVENTORY.json",
+    "line": 27552,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/reports/PHASE_10B_LEGACY_INVENTORY.json",
+    "line": 27629,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/terraform/modules/postgres/main.tf",
+    "line": 28,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/terraform/modules/postgres/main.tf",
+    "line": 151,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/terraform/modules/rabbitmq/main.tf",
+    "line": 24,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "CRITICAL",
+    "rule": "SECRET_EXPOSED",
+    "path": "/home/ubuntu/gula-platform/terraform/modules/rabbitmq/main.tf",
+    "line": 65,
+    "message": "possible generic-secret-assignment; value redacted"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/.audit/secret_scan_results.json",
+    "line": 1,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/.github/actions/build-ios/action.yml",
+    "line": 131,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_ACTION",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/nightly.yml",
+    "line": 26,
+    "message": "GitHub Action must be pinned to a full commit SHA"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_ACTION",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/nightly.yml",
+    "line": 36,
+    "message": "GitHub Action must be pinned to a full commit SHA"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_ACTION",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/nightly.yml",
+    "line": 48,
+    "message": "GitHub Action must be pinned to a full commit SHA"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_ACTION",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/release.yml",
+    "line": 148,
+    "message": "GitHub Action must be pinned to a full commit SHA"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_ACTION",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/release.yml",
+    "line": 161,
+    "message": "GitHub Action must be pinned to a full commit SHA"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_ACTION",
+    "path": "/home/ubuntu/gula-platform/.github/workflows/release.yml",
+    "line": 176,
+    "message": "GitHub Action must be pinned to a full commit SHA"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/archive/experimental/k8s/base/configmap.yaml",
+    "line": 10,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/archive/experimental/k8s/base/configmap.yaml",
+    "line": 13,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/archive/experimental/k8s/base/configmap.yaml",
+    "line": 16,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "MUTATING_COMMAND",
+    "path": "/home/ubuntu/gula-platform/archive/experimental/k8s/base/mesh/linkerd.yaml",
+    "line": 7,
+    "message": "configuration contains a mutating command; review and gate it"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "MUTATING_COMMAND",
+    "path": "/home/ubuntu/gula-platform/archive/experimental/k8s/base/mesh/linkerd.yaml",
+    "line": 8,
+    "message": "configuration contains a mutating command; review and gate it"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/archive/experimental/k8s/base/patient-service.yaml",
+    "line": 27,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/archive/experimental/k8s/base/result-service.yaml",
+    "line": 27,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "MUTATING_COMMAND",
+    "path": "/home/ubuntu/gula-platform/archive/experimental/k8s/overlays/prod/kustomization.yaml",
+    "line": 3,
+    "message": "configuration contains a mutating command; review and gate it"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "FILE_TOO_LARGE",
+    "path": "/home/ubuntu/gula-platform/assessment/brain/knowledge_graph.json",
+    "line": 1,
+    "message": "file exceeds 2097152 bytes"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/backend/app/capabilities/clinical_foundation/capability.json",
+    "line": 12,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/backend/app/capabilities/document_management/capability.json",
+    "line": 13,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/backend/app/capabilities/encounter_management/capability.json",
+    "line": 12,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/backend/app/capabilities/fhir_interoperability/capability.json",
+    "line": 12,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/backend/app/capabilities/healthcare_consent/capability.json",
+    "line": 12,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/backend/app/capabilities/provider_management/capability.json",
+    "line": 12,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/backend/app/capabilities/reporting_service/capability.json",
+    "line": 12,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/backend/app/capabilities/search_service/capability.json",
+    "line": 11,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/backend/app/capabilities/storage_service/capability.json",
+    "line": 11,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/backend/app/capabilities/workflow_engine/capability.json",
+    "line": 12,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "MUTATING_COMMAND",
+    "path": "/home/ubuntu/gula-platform/config/cert-manager/certificate-template.yaml",
+    "line": 6,
+    "message": "configuration contains a mutating command; review and gate it"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "MUTATING_COMMAND",
+    "path": "/home/ubuntu/gula-platform/config/cert-manager/cluster-issuer.yaml",
+    "line": 6,
+    "message": "configuration contains a mutating command; review and gate it"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/grafana/provisioning/datasources/datasources.yml",
+    "line": 7,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/grafana/provisioning/datasources/datasources.yml",
+    "line": 14,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/grafana/provisioning/datasources/datasources.yml",
+    "line": 20,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml",
+    "line": 36,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml",
+    "line": 81,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml",
+    "line": 126,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml",
+    "line": 171,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml",
+    "line": 234,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml",
+    "line": 239,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/opentelemetry/otel-collector-config.yml",
+    "line": 15,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/opentelemetry/otel-collector-config.yml",
+    "line": 169,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/prometheus/prometheus-full.yml",
+    "line": 127,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "MUTATING_COMMAND",
+    "path": "/home/ubuntu/gula-platform/config/prometheus/prometheus.yml",
+    "line": 52,
+    "message": "configuration contains a mutating command; review and gate it"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/promtail/promtail-config.yml",
+    "line": 14,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PARSE_ERROR",
+    "path": "/home/ubuntu/gula-platform/config/runtime-protection/seccomp-profile.json",
+    "line": 11,
+    "message": "configuration does not parse"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/config/tempo/docker-compose.tempo.yml",
+    "line": 9,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/config/tempo/docker-compose.tempo.yml",
+    "line": 24,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/tempo/docker-compose.tempo.yml",
+    "line": 31,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/config/tempo/tempo-config.yml",
+    "line": 88,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "MUTATING_COMMAND",
+    "path": "/home/ubuntu/gula-platform/config/zero-trust/linkerd-policy.yaml",
+    "line": 6,
+    "message": "configuration contains a mutating command; review and gate it"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.full.yml",
+    "line": 324,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.full.yml",
+    "line": 343,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.full.yml",
+    "line": 425,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.full.yml",
+    "line": 561,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.full.yml",
+    "line": 585,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.full.yml",
+    "line": 609,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.full.yml",
+    "line": 631,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.full.yml",
+    "line": 635,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.full.yml",
+    "line": 657,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.full.yml",
+    "line": 678,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.yml",
+    "line": 135,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.yml",
+    "line": 223,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/docker-compose.yml",
+    "line": 438,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "SERVICE_ACCOUNT_TOKEN",
+    "path": "/home/ubuntu/gula-platform/helm/gula-platform/values.yaml",
+    "line": 33,
+    "message": "disable automatic service-account token mounting unless required"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/helm/gula-platform/values.yaml",
+    "line": 1226,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/k8s/base/backend/deployment.yaml",
+    "line": 54,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/k8s/base/configmap.yaml",
+    "line": 8,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "MUTATING_COMMAND",
+    "path": "/home/ubuntu/gula-platform/k8s/base/mesh/linkerd.yaml",
+    "line": 2,
+    "message": "configuration contains a mutating command; review and gate it"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "MUTATING_COMMAND",
+    "path": "/home/ubuntu/gula-platform/k8s/base/mesh/linkerd.yaml",
+    "line": 6,
+    "message": "configuration contains a mutating command; review and gate it"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml",
+    "line": 43,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml",
+    "line": 125,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml",
+    "line": 207,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml",
+    "line": 289,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml",
+    "line": 383,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml",
+    "line": 462,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "UNPINNED_IMAGE",
+    "path": "/home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml",
+    "line": 536,
+    "message": "container image uses latest; pin an immutable digest or version"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml",
+    "line": 544,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/k8s/overlays/dev/kustomization.yaml",
+    "line": 29,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "HIGH",
+    "rule": "PLAINTEXT_ENDPOINT",
+    "path": "/home/ubuntu/gula-platform/tests/stress/stress-config.yml",
+    "line": 63,
+    "message": "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint"
+  },
+  {
+    "severity": "MEDIUM",
+    "rule": "WILDCARD_BIND",
+    "path": "/home/ubuntu/gula-platform/helm/gula-platform/templates/redis/configmap.yaml",
+    "line": 17,
+    "message": "wildcard bind address requires explicit staging/production justification"
+  }
+]

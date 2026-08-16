@@ -1,0 +1,1039 @@
+=== modified python files ===
+backend/app/capabilities/clinical_foundation/commands/add_allergy.py
+backend/app/capabilities/clinical_foundation/commands/add_diagnosis.py
+backend/app/capabilities/clinical_foundation/commands/add_medication.py
+backend/app/capabilities/clinical_foundation/commands/record_vitals.py
+backend/app/capabilities/clinical_foundation/contract.py
+backend/app/capabilities/clinical_foundation/events/AllergyRecorded.py
+backend/app/capabilities/clinical_foundation/events/DiagnosisAdded.py
+backend/app/capabilities/clinical_foundation/events/MedicationPrescribed.py
+backend/app/capabilities/clinical_foundation/events/VitalsRecorded.py
+backend/app/capabilities/document_management/commands/delete_document.py
+backend/app/capabilities/document_management/commands/ocr_document.py
+backend/app/capabilities/document_management/commands/sign_document.py
+backend/app/capabilities/document_management/commands/upload_document.py
+backend/app/capabilities/document_management/contract.py
+backend/app/capabilities/document_management/domain/entities.py
+backend/app/capabilities/document_management/events/DocumentDeleted.py
+backend/app/capabilities/document_management/events/DocumentOcrCompleted.py
+backend/app/capabilities/document_management/events/DocumentSigned.py
+backend/app/capabilities/document_management/events/DocumentUploaded.py
+backend/app/capabilities/encounter_management/commands/add_clinical_note.py
+backend/app/capabilities/encounter_management/commands/admit.py
+backend/app/capabilities/encounter_management/commands/create_encounter.py
+backend/app/capabilities/encounter_management/commands/discharge.py
+backend/app/capabilities/encounter_management/commands/transfer.py
+backend/app/capabilities/encounter_management/contract.py
+backend/app/capabilities/encounter_management/domain/entities.py
+backend/app/capabilities/encounter_management/events/EncounterCreated.py
+backend/app/capabilities/encounter_management/events/NoteAdded.py
+backend/app/capabilities/encounter_management/events/PatientAdmitted.py
+backend/app/capabilities/encounter_management/events/PatientDischarged.py
+backend/app/capabilities/encounter_management/events/PatientTransferred.py
+backend/app/capabilities/fhir_interoperability/commands/convert_from_hl7.py
+backend/app/capabilities/fhir_interoperability/commands/convert_to_fhir.py
+backend/app/capabilities/fhir_interoperability/commands/validate_resource.py
+backend/app/capabilities/fhir_interoperability/contract.py
+backend/app/capabilities/fhir_interoperability/events/FhirResourceCreated.py
+backend/app/capabilities/fhir_interoperability/events/Hl7MessageReceived.py
+backend/app/capabilities/fhir_interoperability/events/TerminologyUpdated.py
+backend/app/capabilities/healthcare_consent/commands/break_glass.py
+backend/app/capabilities/healthcare_consent/commands/grant_consent.py
+backend/app/capabilities/healthcare_consent/commands/revoke_consent.py
+backend/app/capabilities/healthcare_consent/contract.py
+backend/app/capabilities/healthcare_consent/events/BreakGlassActivated.py
+backend/app/capabilities/healthcare_consent/events/ConsentGranted.py
+backend/app/capabilities/healthcare_consent/events/ConsentRevoked.py
+backend/app/capabilities/provider_management/commands/deactivate_provider.py
+backend/app/capabilities/provider_management/commands/register_provider.py
+backend/app/capabilities/provider_management/commands/update_license.py
+backend/app/capabilities/provider_management/contract.py
+backend/app/capabilities/provider_management/domain/entities.py
+backend/app/capabilities/provider_management/events/LicenseUpdated.py
+backend/app/capabilities/provider_management/events/ProviderDeactivated.py
+backend/app/capabilities/provider_management/events/ProviderRegistered.py
+backend/app/capabilities/reporting_service/commands/export_report.py
+backend/app/capabilities/reporting_service/commands/generate_report.py
+backend/app/capabilities/reporting_service/commands/schedule_report.py
+backend/app/capabilities/reporting_service/contract.py
+backend/app/capabilities/reporting_service/events/ReportExported.py
+backend/app/capabilities/reporting_service/events/ReportGenerated.py
+backend/app/capabilities/reporting_service/events/ReportScheduled.py
+backend/app/capabilities/search_service/commands/delete_index.py
+backend/app/capabilities/search_service/commands/index_document.py
+backend/app/capabilities/search_service/commands/reindex.py
+backend/app/capabilities/search_service/contract.py
+backend/app/capabilities/search_service/events/DocumentIndexed.py
+backend/app/capabilities/search_service/events/IndexRebuilt.py
+backend/app/capabilities/storage_service/commands/delete_file.py
+backend/app/capabilities/storage_service/commands/list_files.py
+backend/app/capabilities/storage_service/commands/retrieve_file.py
+backend/app/capabilities/storage_service/commands/store_file.py
+backend/app/capabilities/storage_service/contract.py
+backend/app/capabilities/storage_service/events/FileDeleted.py
+backend/app/capabilities/storage_service/events/FileRetrieved.py
+backend/app/capabilities/storage_service/events/FileStored.py
+backend/app/capabilities/workflow_engine/commands/cancel_workflow.py
+backend/app/capabilities/workflow_engine/commands/create_workflow.py
+backend/app/capabilities/workflow_engine/commands/escalate.py
+backend/app/capabilities/workflow_engine/commands/transition.py
+backend/app/capabilities/workflow_engine/contract.py
+backend/app/capabilities/workflow_engine/domain/entities.py
+backend/app/capabilities/workflow_engine/events/WorkflowCancelled.py
+backend/app/capabilities/workflow_engine/events/WorkflowCompleted.py
+backend/app/capabilities/workflow_engine/events/WorkflowCreated.py
+backend/app/capabilities/workflow_engine/events/WorkflowEscalated.py
+backend/app/capabilities/workflow_engine/events/WorkflowTransitioned.py
+backend/app/config.py
+backend/app/contracts/models.py
+backend/app/contracts/routes.py
+backend/app/core/idempotency.py
+backend/app/document_intelligence/infrastructure/models.py
+backend/app/document_intelligence/infrastructure/repository.py
+backend/app/engineering/ci/quality_gates.py
+backend/app/engineering/crud/generator.py
+backend/app/engineering/docs/adr.py
+backend/app/engineering/generators/capability.py
+backend/app/engineering/generators/module.py
+backend/app/engineering/intelligence/changelog.py
+backend/app/engineering/repository/generator.py
+backend/app/engineering/security/sbom.py
+backend/app/engineering/testing/factories.py
+backend/app/engineering/testing/fixtures.py
+backend/app/factory.py
+backend/app/financial/routes.py
+backend/app/governance/reports/reports.py
+backend/app/insurance/api/payments.py
+backend/app/insurance/api/policies.py
+backend/app/insurance/api/referrals.py
+backend/app/kernel/rules_runtime.py
+backend/app/legal/consent.py
+backend/app/lims/events.py
+backend/app/lims/integration/device_registry.py
+backend/app/models/lab_result.py
+backend/app/national/ecosystem/gateway/policies.py
+backend/app/national/ecosystem/routes.py
+backend/app/national/ecosystem/transformation/engine.py
+backend/app/national/services/citizen_service.py
+backend/app/reference/domain/services.py
+backend/app/reference/infrastructure/repositories.py
+backend/app/routes/ai.py
+backend/app/services/outbox_service.py
+backend/tests/test_gateway_modes.py
+backend/tests/test_production_security_config.py
+backend/tests/test_security_regression.py
+backend/tests/test_side_door_hardening.py
+shared/rbac/permissions.py
+=== focused ruff ===
+[1m[91mN801[0m[1m Class name `Add_allergyCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/clinical_foundation/commands/add_allergy.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Add_allergyCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """add_allergy command for clinical_foundation capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Add_diagnosisCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/clinical_foundation/commands/add_diagnosis.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Add_diagnosisCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """add_diagnosis command for clinical_foundation capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Add_medicationCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/clinical_foundation/commands/add_medication.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Add_medicationCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """add_medication command for clinical_foundation capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Record_vitalsCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/clinical_foundation/commands/record_vitals.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Record_vitalsCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """record_vitals command for clinical_foundation capability."""
+  [1m[94m|[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/clinical_foundation/contract.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m """Contracts for Clinical_foundation capability - input/output schemas."""
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/clinical_foundation/contract.py:6:1
+  [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mN801[0m[1m Class name `Clinical_foundationInput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/clinical_foundation/contract.py:10:7
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m @dataclass
+[1m[94m10[0m [1m[94m|[0m class Clinical_foundationInput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m     action: str = "execute"
+[1m[94m12[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Clinical_foundationOutput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/clinical_foundation/contract.py:17:7
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m @dataclass
+[1m[94m17[0m [1m[94m|[0m class Clinical_foundationOutput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18[0m [1m[94m|[0m     success: bool = True
+[1m[94m19[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN999[0m[1m Invalid module name: 'AllergyRecorded'[0m
+[1m[94m--> [0mbackend/app/capabilities/clinical_foundation/events/AllergyRecorded.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'DiagnosisAdded'[0m
+[1m[94m--> [0mbackend/app/capabilities/clinical_foundation/events/DiagnosisAdded.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'MedicationPrescribed'[0m
+[1m[94m--> [0mbackend/app/capabilities/clinical_foundation/events/MedicationPrescribed.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'VitalsRecorded'[0m
+[1m[94m--> [0mbackend/app/capabilities/clinical_foundation/events/VitalsRecorded.py:1:1
+
+[1m[91mN801[0m[1m Class name `Delete_documentCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/document_management/commands/delete_document.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Delete_documentCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """delete_document command for document_management capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Ocr_documentCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/document_management/commands/ocr_document.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Ocr_documentCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """ocr_document command for document_management capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Sign_documentCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/document_management/commands/sign_document.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Sign_documentCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """sign_document command for document_management capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Upload_documentCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/document_management/commands/upload_document.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Upload_documentCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """upload_document command for document_management capability."""
+  [1m[94m|[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/document_management/contract.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m """Contracts for Document_management capability - input/output schemas."""
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/document_management/contract.py:6:1
+  [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mN801[0m[1m Class name `Document_managementInput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/document_management/contract.py:10:7
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m @dataclass
+[1m[94m10[0m [1m[94m|[0m class Document_managementInput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m     action: str = "execute"
+[1m[94m12[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Document_managementOutput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/document_management/contract.py:17:7
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m @dataclass
+[1m[94m17[0m [1m[94m|[0m class Document_managementOutput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18[0m [1m[94m|[0m     success: bool = True
+[1m[94m19[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Document_management` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/document_management/domain/entities.py:9:7
+   [1m[94m|[0m
+[1m[94m 8[0m [1m[94m|[0m @dataclass
+[1m[94m 9[0m [1m[94m|[0m class Document_management:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m10[0m [1m[94m|[0m     id: str = field(default_factory=lambda: str(uuid4()))
+[1m[94m11[0m [1m[94m|[0m     document_id: str
+   [1m[94m|[0m
+
+[1m[91mN999[0m[1m Invalid module name: 'DocumentDeleted'[0m
+[1m[94m--> [0mbackend/app/capabilities/document_management/events/DocumentDeleted.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'DocumentOcrCompleted'[0m
+[1m[94m--> [0mbackend/app/capabilities/document_management/events/DocumentOcrCompleted.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'DocumentSigned'[0m
+[1m[94m--> [0mbackend/app/capabilities/document_management/events/DocumentSigned.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'DocumentUploaded'[0m
+[1m[94m--> [0mbackend/app/capabilities/document_management/events/DocumentUploaded.py:1:1
+
+[1m[91mN801[0m[1m Class name `Add_clinical_noteCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/encounter_management/commands/add_clinical_note.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Add_clinical_noteCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """add_clinical_note command for encounter_management capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Create_encounterCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/encounter_management/commands/create_encounter.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Create_encounterCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """create_encounter command for encounter_management capability."""
+  [1m[94m|[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/encounter_management/contract.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m """Contracts for Encounter_management capability - input/output schemas."""
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/encounter_management/contract.py:6:1
+  [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mN801[0m[1m Class name `Encounter_managementInput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/encounter_management/contract.py:10:7
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m @dataclass
+[1m[94m10[0m [1m[94m|[0m class Encounter_managementInput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m     action: str = "execute"
+[1m[94m12[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Encounter_managementOutput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/encounter_management/contract.py:17:7
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m @dataclass
+[1m[94m17[0m [1m[94m|[0m class Encounter_managementOutput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18[0m [1m[94m|[0m     success: bool = True
+[1m[94m19[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Encounter_management` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/encounter_management/domain/entities.py:9:7
+   [1m[94m|[0m
+[1m[94m 8[0m [1m[94m|[0m @dataclass
+[1m[94m 9[0m [1m[94m|[0m class Encounter_management:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m10[0m [1m[94m|[0m     id: str = field(default_factory=lambda: str(uuid4()))
+[1m[94m11[0m [1m[94m|[0m     encounter_id: str
+   [1m[94m|[0m
+
+[1m[91mN999[0m[1m Invalid module name: 'EncounterCreated'[0m
+[1m[94m--> [0mbackend/app/capabilities/encounter_management/events/EncounterCreated.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'NoteAdded'[0m
+[1m[94m--> [0mbackend/app/capabilities/encounter_management/events/NoteAdded.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'PatientAdmitted'[0m
+[1m[94m--> [0mbackend/app/capabilities/encounter_management/events/PatientAdmitted.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'PatientDischarged'[0m
+[1m[94m--> [0mbackend/app/capabilities/encounter_management/events/PatientDischarged.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'PatientTransferred'[0m
+[1m[94m--> [0mbackend/app/capabilities/encounter_management/events/PatientTransferred.py:1:1
+
+[1m[91mN801[0m[1m Class name `Convert_from_hl7Command` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/fhir_interoperability/commands/convert_from_hl7.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Convert_from_hl7Command:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """convert_from_hl7 command for fhir_interoperability capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Convert_to_fhirCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/fhir_interoperability/commands/convert_to_fhir.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Convert_to_fhirCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """convert_to_fhir command for fhir_interoperability capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Validate_resourceCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/fhir_interoperability/commands/validate_resource.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Validate_resourceCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """validate_resource command for fhir_interoperability capability."""
+  [1m[94m|[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/fhir_interoperability/contract.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m """Contracts for Fhir_interoperability capability - input/output schemas."""
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/fhir_interoperability/contract.py:6:1
+  [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mN801[0m[1m Class name `Fhir_interoperabilityInput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/fhir_interoperability/contract.py:10:7
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m @dataclass
+[1m[94m10[0m [1m[94m|[0m class Fhir_interoperabilityInput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m     action: str = "execute"
+[1m[94m12[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Fhir_interoperabilityOutput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/fhir_interoperability/contract.py:17:7
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m @dataclass
+[1m[94m17[0m [1m[94m|[0m class Fhir_interoperabilityOutput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18[0m [1m[94m|[0m     success: bool = True
+[1m[94m19[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN999[0m[1m Invalid module name: 'FhirResourceCreated'[0m
+[1m[94m--> [0mbackend/app/capabilities/fhir_interoperability/events/FhirResourceCreated.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'Hl7MessageReceived'[0m
+[1m[94m--> [0mbackend/app/capabilities/fhir_interoperability/events/Hl7MessageReceived.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'TerminologyUpdated'[0m
+[1m[94m--> [0mbackend/app/capabilities/fhir_interoperability/events/TerminologyUpdated.py:1:1
+
+[1m[91mN801[0m[1m Class name `Break_glassCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/healthcare_consent/commands/break_glass.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Break_glassCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """break_glass command for healthcare_consent capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Grant_consentCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/healthcare_consent/commands/grant_consent.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Grant_consentCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """grant_consent command for healthcare_consent capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Revoke_consentCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/healthcare_consent/commands/revoke_consent.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Revoke_consentCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """revoke_consent command for healthcare_consent capability."""
+  [1m[94m|[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/healthcare_consent/contract.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m """Contracts for Healthcare_consent capability - input/output schemas."""
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/healthcare_consent/contract.py:6:1
+  [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mN801[0m[1m Class name `Healthcare_consentInput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/healthcare_consent/contract.py:10:7
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m @dataclass
+[1m[94m10[0m [1m[94m|[0m class Healthcare_consentInput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m     action: str = "execute"
+[1m[94m12[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Healthcare_consentOutput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/healthcare_consent/contract.py:17:7
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m @dataclass
+[1m[94m17[0m [1m[94m|[0m class Healthcare_consentOutput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18[0m [1m[94m|[0m     success: bool = True
+[1m[94m19[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN999[0m[1m Invalid module name: 'BreakGlassActivated'[0m
+[1m[94m--> [0mbackend/app/capabilities/healthcare_consent/events/BreakGlassActivated.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'ConsentGranted'[0m
+[1m[94m--> [0mbackend/app/capabilities/healthcare_consent/events/ConsentGranted.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'ConsentRevoked'[0m
+[1m[94m--> [0mbackend/app/capabilities/healthcare_consent/events/ConsentRevoked.py:1:1
+
+[1m[91mN801[0m[1m Class name `Deactivate_providerCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/provider_management/commands/deactivate_provider.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Deactivate_providerCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """deactivate_provider command for provider_management capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Register_providerCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/provider_management/commands/register_provider.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Register_providerCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """register_provider command for provider_management capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Update_licenseCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/provider_management/commands/update_license.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Update_licenseCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """update_license command for provider_management capability."""
+  [1m[94m|[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/provider_management/contract.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m """Contracts for Provider_management capability - input/output schemas."""
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/provider_management/contract.py:6:1
+  [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mN801[0m[1m Class name `Provider_managementInput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/provider_management/contract.py:10:7
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m @dataclass
+[1m[94m10[0m [1m[94m|[0m class Provider_managementInput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m     action: str = "execute"
+[1m[94m12[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Provider_managementOutput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/provider_management/contract.py:17:7
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m @dataclass
+[1m[94m17[0m [1m[94m|[0m class Provider_managementOutput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18[0m [1m[94m|[0m     success: bool = True
+[1m[94m19[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Provider_management` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/provider_management/domain/entities.py:9:7
+   [1m[94m|[0m
+[1m[94m 8[0m [1m[94m|[0m @dataclass
+[1m[94m 9[0m [1m[94m|[0m class Provider_management:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m10[0m [1m[94m|[0m     id: str = field(default_factory=lambda: str(uuid4()))
+[1m[94m11[0m [1m[94m|[0m     provider_id: str
+   [1m[94m|[0m
+
+[1m[91mN999[0m[1m Invalid module name: 'LicenseUpdated'[0m
+[1m[94m--> [0mbackend/app/capabilities/provider_management/events/LicenseUpdated.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'ProviderDeactivated'[0m
+[1m[94m--> [0mbackend/app/capabilities/provider_management/events/ProviderDeactivated.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'ProviderRegistered'[0m
+[1m[94m--> [0mbackend/app/capabilities/provider_management/events/ProviderRegistered.py:1:1
+
+[1m[91mN801[0m[1m Class name `Export_reportCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/reporting_service/commands/export_report.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Export_reportCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """export_report command for reporting_service capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Generate_reportCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/reporting_service/commands/generate_report.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Generate_reportCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """generate_report command for reporting_service capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Schedule_reportCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/reporting_service/commands/schedule_report.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Schedule_reportCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """schedule_report command for reporting_service capability."""
+  [1m[94m|[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/reporting_service/contract.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m """Contracts for Reporting_service capability - input/output schemas."""
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/reporting_service/contract.py:6:1
+  [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mN801[0m[1m Class name `Reporting_serviceInput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/reporting_service/contract.py:10:7
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m @dataclass
+[1m[94m10[0m [1m[94m|[0m class Reporting_serviceInput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m     action: str = "execute"
+[1m[94m12[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Reporting_serviceOutput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/reporting_service/contract.py:17:7
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m @dataclass
+[1m[94m17[0m [1m[94m|[0m class Reporting_serviceOutput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18[0m [1m[94m|[0m     success: bool = True
+[1m[94m19[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN999[0m[1m Invalid module name: 'ReportExported'[0m
+[1m[94m--> [0mbackend/app/capabilities/reporting_service/events/ReportExported.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'ReportGenerated'[0m
+[1m[94m--> [0mbackend/app/capabilities/reporting_service/events/ReportGenerated.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'ReportScheduled'[0m
+[1m[94m--> [0mbackend/app/capabilities/reporting_service/events/ReportScheduled.py:1:1
+
+[1m[91mN801[0m[1m Class name `Delete_indexCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/search_service/commands/delete_index.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Delete_indexCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """delete_index command for search_service capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Index_documentCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/search_service/commands/index_document.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Index_documentCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """index_document command for search_service capability."""
+  [1m[94m|[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/search_service/contract.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m """Contracts for Search_service capability - input/output schemas."""
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/search_service/contract.py:6:1
+  [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mN801[0m[1m Class name `Search_serviceInput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/search_service/contract.py:10:7
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m @dataclass
+[1m[94m10[0m [1m[94m|[0m class Search_serviceInput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m     action: str = "execute"
+[1m[94m12[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Search_serviceOutput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/search_service/contract.py:17:7
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m @dataclass
+[1m[94m17[0m [1m[94m|[0m class Search_serviceOutput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18[0m [1m[94m|[0m     success: bool = True
+[1m[94m19[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN999[0m[1m Invalid module name: 'DocumentIndexed'[0m
+[1m[94m--> [0mbackend/app/capabilities/search_service/events/DocumentIndexed.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'IndexRebuilt'[0m
+[1m[94m--> [0mbackend/app/capabilities/search_service/events/IndexRebuilt.py:1:1
+
+[1m[91mN801[0m[1m Class name `Delete_fileCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/storage_service/commands/delete_file.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Delete_fileCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """delete_file command for storage_service capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `List_filesCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/storage_service/commands/list_files.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class List_filesCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """list_files command for storage_service capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Retrieve_fileCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/storage_service/commands/retrieve_file.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Retrieve_fileCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """retrieve_file command for storage_service capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Store_fileCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/storage_service/commands/store_file.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Store_fileCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """store_file command for storage_service capability."""
+  [1m[94m|[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/storage_service/contract.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m """Contracts for Storage_service capability - input/output schemas."""
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/storage_service/contract.py:6:1
+  [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mN801[0m[1m Class name `Storage_serviceInput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/storage_service/contract.py:10:7
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m @dataclass
+[1m[94m10[0m [1m[94m|[0m class Storage_serviceInput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m     action: str = "execute"
+[1m[94m12[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Storage_serviceOutput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/storage_service/contract.py:17:7
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m @dataclass
+[1m[94m17[0m [1m[94m|[0m class Storage_serviceOutput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18[0m [1m[94m|[0m     success: bool = True
+[1m[94m19[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN999[0m[1m Invalid module name: 'FileDeleted'[0m
+[1m[94m--> [0mbackend/app/capabilities/storage_service/events/FileDeleted.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'FileRetrieved'[0m
+[1m[94m--> [0mbackend/app/capabilities/storage_service/events/FileRetrieved.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'FileStored'[0m
+[1m[94m--> [0mbackend/app/capabilities/storage_service/events/FileStored.py:1:1
+
+[1m[91mN801[0m[1m Class name `Cancel_workflowCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/workflow_engine/commands/cancel_workflow.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Cancel_workflowCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """cancel_workflow command for workflow_engine capability."""
+  [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Create_workflowCommand` should use CapWords convention[0m
+ [1m[94m--> [0mbackend/app/capabilities/workflow_engine/commands/create_workflow.py:8:7
+  [1m[94m|[0m
+[1m[94m7[0m [1m[94m|[0m @dataclass
+[1m[94m8[0m [1m[94m|[0m class Create_workflowCommand:
+  [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m9[0m [1m[94m|[0m     """create_workflow command for workflow_engine capability."""
+  [1m[94m|[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/workflow_engine/contract.py:5:1
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m """Contracts for Workflow_engine capability - input/output schemas."""
+[1m[94m4[0m [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mE402[0m[1m Module level import not at top of file[0m
+ [1m[94m--> [0mbackend/app/capabilities/workflow_engine/contract.py:6:1
+  [1m[94m|[0m
+[1m[94m5[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m6[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[96mhelp[0m[1m: Move module level imports to top of file[0m
+
+[1m[91mN801[0m[1m Class name `Workflow_engineInput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/workflow_engine/contract.py:10:7
+   [1m[94m|[0m
+[1m[94m 9[0m [1m[94m|[0m @dataclass
+[1m[94m10[0m [1m[94m|[0m class Workflow_engineInput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m11[0m [1m[94m|[0m     action: str = "execute"
+[1m[94m12[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Workflow_engineOutput` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/workflow_engine/contract.py:17:7
+   [1m[94m|[0m
+[1m[94m16[0m [1m[94m|[0m @dataclass
+[1m[94m17[0m [1m[94m|[0m class Workflow_engineOutput:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m18[0m [1m[94m|[0m     success: bool = True
+[1m[94m19[0m [1m[94m|[0m     data: dict = field(default_factory=dict)
+   [1m[94m|[0m
+
+[1m[91mN801[0m[1m Class name `Workflow_engine` should use CapWords convention[0m
+  [1m[94m--> [0mbackend/app/capabilities/workflow_engine/domain/entities.py:9:7
+   [1m[94m|[0m
+[1m[94m 8[0m [1m[94m|[0m @dataclass
+[1m[94m 9[0m [1m[94m|[0m class Workflow_engine:
+   [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^^^[0m
+[1m[94m10[0m [1m[94m|[0m     id: str = field(default_factory=lambda: str(uuid4()))
+[1m[94m11[0m [1m[94m|[0m     workflow_id: str
+   [1m[94m|[0m
+
+[1m[91mN999[0m[1m Invalid module name: 'WorkflowCancelled'[0m
+[1m[94m--> [0mbackend/app/capabilities/workflow_engine/events/WorkflowCancelled.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'WorkflowCompleted'[0m
+[1m[94m--> [0mbackend/app/capabilities/workflow_engine/events/WorkflowCompleted.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'WorkflowCreated'[0m
+[1m[94m--> [0mbackend/app/capabilities/workflow_engine/events/WorkflowCreated.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'WorkflowEscalated'[0m
+[1m[94m--> [0mbackend/app/capabilities/workflow_engine/events/WorkflowEscalated.py:1:1
+
+[1m[91mN999[0m[1m Invalid module name: 'WorkflowTransitioned'[0m
+[1m[94m--> [0mbackend/app/capabilities/workflow_engine/events/WorkflowTransitioned.py:1:1
+
+[1m[91mN815[0m[1m Variable `resourceType` in class scope should not be mixedCase[0m
+  [1m[94m--> [0mbackend/app/contracts/models.py:70:5
+   [1m[94m|[0m
+[1m[94m69[0m [1m[94m|[0m class FHIRProfile(BaseModel):
+[1m[94m70[0m [1m[94m|[0m     resourceType: str = Field(default="StructureDefinition")
+   [1m[94m|[0m     [1m[91m^^^^^^^^^^^^[0m
+[1m[94m71[0m [1m[94m|[0m     id: str
+[1m[94m72[0m [1m[94m|[0m     url: str
+   [1m[94m|[0m
+
+[1m[91mN815[0m[1m Variable `fhirVersion` in class scope should not be mixedCase[0m
+  [1m[94m--> [0mbackend/app/contracts/models.py:77:5
+   [1m[94m|[0m
+[1m[94m75[0m [1m[94m|[0m     status: str = Field(default="draft")
+[1m[94m76[0m [1m[94m|[0m     description: str
+[1m[94m77[0m [1m[94m|[0m     fhirVersion: str = Field(default="4.0.1")
+   [1m[94m|[0m     [1m[91m^^^^^^^^^^^[0m
+[1m[94m78[0m [1m[94m|[0m     kind: str = Field(default="resource")
+[1m[94m79[0m [1m[94m|[0m     abstract: bool = Field(default=False)
+   [1m[94m|[0m
+
+[1m[91mN815[0m[1m Variable `baseDefinition` in class scope should not be mixedCase[0m
+  [1m[94m--> [0mbackend/app/contracts/models.py:81:5
+   [1m[94m|[0m
+[1m[94m79[0m [1m[94m|[0m     abstract: bool = Field(default=False)
+[1m[94m80[0m [1m[94m|[0m     type: str
+[1m[94m81[0m [1m[94m|[0m     baseDefinition: str = Field(default="http://hl7.org/fhir/StructureDefinition/DomainResource")
+   [1m[94m|[0m     [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m82[0m [1m[94m|[0m     derivation: str = Field(default="constraint")
+[1m[94m83[0m [1m[94m|[0m     differential: dict[str, Any] = Field(default_factory=lambda: {"element": []})
+   [1m[94m|[0m
+
+[1m[91mF811[0m[1m Redefinition of unused `UTC` from line 41[0m
+  [1m[94m--> [0mbackend/app/core/idempotency.py:48:25
+   [1m[94m|[0m
+[1m[94m46[0m [1m[94m|[0m from sqlalchemy.orm import Session
+[1m[94m47[0m [1m[94m|[0m
+[1m[94m48[0m [1m[94m|[0m from app._compat import UTC
+   [1m[94m|[0m                         [1m[91m^^^[0m [1m[91m`UTC` redefined here[0m
+[1m[94m49[0m [1m[94m|[0m from app.database import get_db
+[1m[94m50[0m [1m[94m|[0m from app.security.dependencies import get_current_user
+   [1m[94m|[0m
+  [1m[94m::: [0mbackend/app/core/idempotency.py:41:22
+   [1m[94m|[0m
+[1m[94m39[0m [1m[94m|[0m import logging
+[1m[94m40[0m [1m[94m|[0m from dataclasses import dataclass
+[1m[94m41[0m [1m[94m|[0m from datetime import UTC, datetime, timedelta
+   [1m[94m|[0m                      [1m[94m---[0m [1m[94mprevious definition of `UTC` here[0m
+[1m[94m42[0m [1m[94m|[0m from typing import Any
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove definition: `UTC`[0m
+
+[1m[91mE741[0m[1m Ambiguous variable name: `l`[0m
+  [1m[94m--> [0mbackend/app/engineering/docs/adr.py:89:72
+   [1m[94m|[0m
+[1m[94m87[0m [1m[94m|[0m         relations = kwargs.get("relations", [])
+[1m[94m88[0m [1m[94m|[0m
+[1m[94m89[0m [1m[94m|[0m         layers_section = "\n".join(f"- **{l.capitalize()} Layer**" for l in layers)
+   [1m[94m|[0m                                                                        [1m[91m^[0m
+[1m[94m90[0m [1m[94m|[0m
+[1m[94m91[0m [1m[94m|[0m         comps_section = ""
+   [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `datetime.UTC` imported but unused[0m
+ [1m[94m--> [0mbackend/app/engineering/generators/capability.py:5:22
+  [1m[94m|[0m
+[1m[94m3[0m [1m[94m|[0m import uuid
+[1m[94m4[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m5[0m [1m[94m|[0m from datetime import UTC, datetime
+  [1m[94m|[0m                      [1m[91m^^^[0m
+[1m[94m6[0m [1m[94m|[0m from typing import Any
+  [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import: `datetime.UTC`[0m
+[1m[94m [0m [1m[94m|[0m
+[1m[94m4[0m [1m[94m|[0m from dataclasses import dataclass, field
+[1m[94m [0m [1m[31m-[0m [31mfrom datetime import [0m[1m[31mUTC, [0m[0m[31mdatetime
+[0m[1m[94m5[0m [1m[32m+[0m [32mfrom datetime import [0m[32mdatetime
+[0m[1m[94m6[0m [1m[94m|[0m from typing import Any
+[1m[94m [0m [1m[94m|[0m
+
+[1m[91mSIM102[0m[1m Use a single `if` statement instead of nested `if` statements[0m
+   [1m[94m--> [0mbackend/app/national/ecosystem/gateway/policies.py:255:13
+    [1m[94m|[0m
+[1m[94m254[0m [1m[94m|[0m               issuer = payload.get("iss", "")
+[1m[94m255[0m [1m[94m|[0m [1m[91m/[0m             if issuer in self._token_validators:
+[1m[94m256[0m [1m[94m|[0m [1m[91m|[0m                 if not self._token_validators[issuer](token):
+    [1m[94m|[0m [1m[91m|_____________________________________________________________^[0m
+[1m[94m257[0m [1m[94m|[0m                       return PolicyResult(PolicyDecision.DENY, self.name, f"token validation failed for issuer {issuer}")
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Combine `if` statements using `and`[0m
+
+[1m[91mN801[0m[1m Class name `mTLSPolicy` should use CapWords convention[0m
+   [1m[94m--> [0mbackend/app/national/ecosystem/gateway/policies.py:265:7
+    [1m[94m|[0m
+[1m[94m265[0m [1m[94m|[0m class mTLSPolicy(BasePolicy):
+    [1m[94m|[0m       [1m[91m^^^^^^^^^^[0m
+[1m[94m266[0m [1m[94m|[0m     def __init__(self, name: str = "mtls") -> None:
+[1m[94m267[0m [1m[94m|[0m         super().__init__(name)
+    [1m[94m|[0m
+
+Found 117 errors.
+[[36m*[0m] 1 fixable with the `--fix` option.
+ruff_status=123
+=== focused compileall ===
+compile_status=0
+=== residual UTC ===
+utc_status=1

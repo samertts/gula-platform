@@ -92,3 +92,18 @@ class TestIdentityGovernance:
         assert "health_number" in view
         assert view.get("national_id_hash") is None
         assert "national_id" not in view
+
+
+def test_registration_logs_are_redacted(caplog):
+    svc = IdentityGovernanceService(nid_hmac_key="test-key")
+    with caplog.at_level("INFO"):
+        record = svc.register_citizen(
+            full_name="Private Citizen",
+            national_id="9876543210",
+            gender="female",
+        )
+    messages = " ".join(caplog.messages)
+    assert "Private Citizen" not in messages
+    assert record.health_number not in messages
+    assert "9876543210" not in messages
+    assert record.history[0].get("national_id") is None

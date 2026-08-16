@@ -9,11 +9,13 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+from app.security.dependencies import get_current_user, require_permission
+
 from ..config import ENABLE_FINANCIAL_ENGINE
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
 from ..services.audit_service import log_action
 from .models import (
     FinPricingRule,
@@ -51,7 +53,10 @@ def _get_provider(db: Session, lab_id: int) -> FinProvider:
 # ── Billing Status ─────────────────────────────────────────────────────
 
 
-@router.get("/billing/status")
+@router.get(
+    "/billing/status",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def get_billing_status(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -71,7 +76,10 @@ def get_billing_status(
     }
 
 
-@router.get("/billing/rates")
+@router.get(
+    "/billing/rates",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def get_billing_rates(
     current_user: LabUser = Depends(get_current_user),
 ):
@@ -89,7 +97,10 @@ def get_billing_rates(
 # ── Invoices ───────────────────────────────────────────────────────────
 
 
-@router.get("/invoices")
+@router.get(
+    "/invoices",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def list_invoices(
     status: str | None = Query(None),
     limit: int = Query(50, le=500),
@@ -101,7 +112,10 @@ def list_invoices(
     return InvoiceService.list_invoices(db, current_user.lab_id, status, limit, offset)
 
 
-@router.get("/invoices/{invoice_id}")
+@router.get(
+    "/invoices/{invoice_id}",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def get_invoice(
     invoice_id: int,
     current_user: LabUser = Depends(get_current_user),
@@ -114,7 +128,11 @@ def get_invoice(
     return invoice
 
 
-@router.post("/invoices", status_code=201)
+@router.post(
+    "/invoices",
+    status_code=201,
+    dependencies=[Depends(require_permission("payments:write"))],
+)
 def create_invoice(
     amount: float = Query(..., description="Invoice amount"),
     currency: str = Query("IQD"),
@@ -144,7 +162,11 @@ def create_invoice(
 # ── Payments ───────────────────────────────────────────────────────────
 
 
-@router.post("/payments", status_code=201)
+@router.post(
+    "/payments",
+    status_code=201,
+    dependencies=[Depends(require_permission("payments:write"))],
+)
 def process_payment(
     invoice_id: int = Query(..., description="Invoice ID"),
     amount: float = Query(..., description="Payment amount"),
@@ -175,7 +197,10 @@ def process_payment(
         raise HTTPException(status_code=400, detail="Invalid request") from e
 
 
-@router.get("/payments")
+@router.get(
+    "/payments",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def list_payments(
     limit: int = Query(50, le=500),
     offset: int = Query(0, ge=0),
@@ -189,7 +214,10 @@ def list_payments(
 # ── Receivables ────────────────────────────────────────────────────────
 
 
-@router.get("/receivables")
+@router.get(
+    "/receivables",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def get_receivables(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -198,7 +226,10 @@ def get_receivables(
     return ReceivableService.get_receivables(db, current_user.lab_id)
 
 
-@router.get("/receivables/aging")
+@router.get(
+    "/receivables/aging",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def get_receivable_aging(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -210,7 +241,10 @@ def get_receivable_aging(
 # ── Payables ───────────────────────────────────────────────────────────
 
 
-@router.get("/payables")
+@router.get(
+    "/payables",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def get_payables(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -223,7 +257,10 @@ def get_payables(
 # ── Pricing ────────────────────────────────────────────────────────────
 
 
-@router.get("/pricing/calculate")
+@router.get(
+    "/pricing/calculate",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def calculate_price(
     test_name: str = Query(..., description="Test name/code"),
     quantity: int = Query(1, ge=1),
@@ -234,7 +271,11 @@ def calculate_price(
     return PricingService.get_price(db, test_name, current_user.lab_id, quantity)
 
 
-@router.post("/pricing/rules", status_code=201)
+@router.post(
+    "/pricing/rules",
+    status_code=201,
+    dependencies=[Depends(require_permission("payments:write"))],
+)
 def create_pricing_rule(
     name: str = Query(...),
     test_type: str | None = Query(None),
@@ -259,7 +300,10 @@ def create_pricing_rule(
     return result
 
 
-@router.get("/pricing/rules")
+@router.get(
+    "/pricing/rules",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def list_pricing_rules(
     active_only: bool = Query(True),
     current_user: LabUser = Depends(get_current_user),
@@ -286,7 +330,10 @@ def list_pricing_rules(
 # ── Transactions ───────────────────────────────────────────────────────
 
 
-@router.post("/transactions")
+@router.post(
+    "/transactions",
+    dependencies=[Depends(require_permission("payments:write"))],
+)
 def create_transaction(
     amount: float = Query(..., description="Transaction amount"),
     description: str = Query("", description="Transaction description"),
@@ -305,7 +352,7 @@ def create_transaction(
         currency="IQD",
         status="pending",
         description=description,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
     )
     db.add(txn)
     db.commit()
@@ -322,7 +369,10 @@ def create_transaction(
     return {"id": txn.id, "status": "pending", "amount": amount, "description": description}
 
 
-@router.get("/transactions")
+@router.get(
+    "/transactions",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def list_transactions(
     limit: int = Query(50, le=500),
     offset: int = Query(0, ge=0),
@@ -357,7 +407,10 @@ def list_transactions(
 # ── Billing Cycle ──────────────────────────────────────────────────────
 
 
-@router.post("/billing/run-cycle")
+@router.post(
+    "/billing/run-cycle",
+    dependencies=[Depends(require_permission("payments:orchestration:manage"))],
+)
 def run_billing_cycle(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -380,7 +433,10 @@ def run_billing_cycle(
 # ── Reports ────────────────────────────────────────────────────────────
 
 
-@router.get("/reports/summary")
+@router.get(
+    "/reports/summary",
+    dependencies=[Depends(require_permission("payments:read"))],
+)
 def get_financial_summary(
     date_from: date | None = Query(None),
     date_to: date | None = Query(None),
@@ -402,7 +458,10 @@ def get_financial_summary(
 # ── Subscription management ────────────────────────────────────────────
 
 
-@router.get("/subscriptions")
+@router.get(
+    "/subscriptions",
+    dependencies=[Depends(require_permission("subscriptions:read"))],
+)
 def list_subscriptions(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),

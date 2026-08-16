@@ -1,0 +1,148 @@
+review_started_utc=2026-08-16T13:07:57Z
+branch=security/p0-bootstrap-alembic
+commit=b2b909723b8242f06282312012fbcbfa01d1c590
+status=
+ [31mM[m .github/workflows/staging-verify.yml
+ [31mM[m backend/app/capabilities/clinical_foundation/commands/add_allergy.py
+ [31mM[m backend/app/capabilities/clinical_foundation/commands/add_diagnosis.py
+ [31mM[m backend/app/capabilities/clinical_foundation/commands/add_medication.py
+ [31mM[m backend/app/capabilities/clinical_foundation/commands/record_vitals.py
+ [31mM[m backend/app/capabilities/clinical_foundation/contract.py
+ [31mM[m backend/app/capabilities/clinical_foundation/events/AllergyRecorded.py
+ [31mM[m backend/app/capabilities/clinical_foundation/events/DiagnosisAdded.py
+ [31mM[m backend/app/capabilities/clinical_foundation/events/MedicationPrescribed.py
+ [31mM[m backend/app/capabilities/clinical_foundation/events/VitalsRecorded.py
+ [31mM[m backend/app/capabilities/document_management/commands/delete_document.py
+ [31mM[m backend/app/capabilities/document_management/commands/ocr_document.py
+ [31mM[m backend/app/capabilities/document_management/commands/sign_document.py
+ [31mM[m backend/app/capabilities/document_management/commands/upload_document.py
+ [31mM[m backend/app/capabilities/document_management/contract.py
+ [31mM[m backend/app/capabilities/document_management/domain/entities.py
+ [31mM[m backend/app/capabilities/document_management/events/DocumentDeleted.py
+ [31mM[m backend/app/capabilities/document_management/events/DocumentOcrCompleted.py
+ [31mM[m backend/app/capabilities/document_management/events/DocumentSigned.py
+ [31mM[m backend/app/capabilities/document_management/events/DocumentUploaded.py
+ [31mM[m backend/app/capabilities/encounter_management/commands/add_clinical_note.py
+ [31mM[m backend/app/capabilities/encounter_management/commands/admit.py
+ [31mM[m backend/app/capabilities/encounter_management/commands/create_encounter.py
+ [31mM[m backend/app/capabilities/encounter_management/commands/discharge.py
+ [31mM[m backend/app/capabilities/encounter_management/commands/transfer.py
+ [31mM[m backend/app/capabilities/encounter_management/contract.py
+ [31mM[m backend/app/capabilities/encounter_management/domain/entities.py
+ [31mM[m backend/app/capabilities/encounter_management/events/EncounterCreated.py
+ [31mM[m backend/app/capabilities/encounter_management/events/NoteAdded.py
+ [31mM[m backend/app/capabilities/encounter_management/events/PatientAdmitted.py
+ [31mM[m backend/app/capabilities/encounter_management/events/PatientDischarged.py
+ [31mM[m backend/app/capabilities/encounter_management/events/PatientTransferred.py
+ [31mM[m backend/app/capabilities/fhir_interoperability/commands/convert_from_hl7.py
+ [31mM[m backend/app/capabilities/fhir_interoperability/commands/convert_to_fhir.py
+ [31mM[m backend/app/capabilities/fhir_interoperability/commands/validate_resource.py
+ [31mM[m backend/app/capabilities/fhir_interoperability/contract.py
+ [31mM[m backend/app/capabilities/fhir_interoperability/events/FhirResourceCreated.py
+ [31mM[m backend/app/capabilities/fhir_interoperability/events/Hl7MessageReceived.py
+ [31mM[m backend/app/capabilities/fhir_interoperability/events/TerminologyUpdated.py
+ [31mM[m backend/app/capabilities/healthcare_consent/commands/break_glass.py
+ [31mM[m backend/app/capabilities/healthcare_consent/commands/grant_consent.py
+ [31mM[m backend/app/capabilities/healthcare_consent/commands/revoke_consent.py
+ [31mM[m backend/app/capabilities/healthcare_consent/contract.py
+ [31mM[m backend/app/capabilities/healthcare_consent/events/BreakGlassActivated.py
+ [31mM[m backend/app/capabilities/healthcare_consent/events/ConsentGranted.py
+ [31mM[m backend/app/capabilities/healthcare_consent/events/ConsentRevoked.py
+ [31mM[m backend/app/capabilities/provider_management/commands/deactivate_provider.py
+ [31mM[m backend/app/capabilities/provider_management/commands/register_provider.py
+ [31mM[m backend/app/capabilities/provider_management/commands/update_license.py
+ [31mM[m backend/app/capabilities/provider_management/contract.py
+ [31mM[m backend/app/capabilities/provider_management/domain/entities.py
+ [31mM[m backend/app/capabilities/provider_management/events/LicenseUpdated.py
+ [31mM[m backend/app/capabilities/provider_management/events/ProviderDeactivated.py
+ [31mM[m backend/app/capabilities/provider_management/events/ProviderRegistered.py
+ [31mM[m backend/app/capabilities/reporting_service/commands/export_report.py
+ [31mM[m backend/app/capabilities/reporting_service/commands/generate_report.py
+ [31mM[m backend/app/capabilities/reporting_service/commands/schedule_report.py
+ [31mM[m backend/app/capabilities/reporting_service/contract.py
+ [31mM[m backend/app/capabilities/reporting_service/events/ReportExported.py
+ [31mM[m backend/app/capabilities/reporting_service/events/ReportGenerated.py
+ [31mM[m backend/app/capabilities/reporting_service/events/ReportScheduled.py
+ [31mM[m backend/app/capabilities/search_service/commands/delete_index.py
+ [31mM[m backend/app/capabilities/search_service/commands/index_document.py
+ [31mM[m backend/app/capabilities/search_service/commands/reindex.py
+ [31mM[m backend/app/capabilities/search_service/contract.py
+ [31mM[m backend/app/capabilities/search_service/events/DocumentIndexed.py
+ [31mM[m backend/app/capabilities/search_service/events/IndexRebuilt.py
+ [31mM[m backend/app/capabilities/storage_service/commands/delete_file.py
+ [31mM[m backend/app/capabilities/storage_service/commands/list_files.py
+ [31mM[m backend/app/capabilities/storage_service/commands/retrieve_file.py
+ [31mM[m backend/app/capabilities/storage_service/commands/store_file.py
+ [31mM[m backend/app/capabilities/storage_service/contract.py
+ [31mM[m backend/app/capabilities/storage_service/events/FileDeleted.py
+ [31mM[m backend/app/capabilities/storage_service/events/FileRetrieved.py
+ [31mM[m backend/app/capabilities/storage_service/events/FileStored.py
+ [31mM[m backend/app/capabilities/workflow_engine/commands/cancel_workflow.py
+ [31mM[m backend/app/capabilities/workflow_engine/commands/create_workflow.py
+ [31mM[m backend/app/capabilities/workflow_engine/commands/escalate.py
+ [31mM[m backend/app/capabilities/workflow_engine/commands/transition.py
+ [31mM[m backend/app/capabilities/workflow_engine/contract.py
+ [31mM[m backend/app/capabilities/workflow_engine/domain/entities.py
+ [31mM[m backend/app/capabilities/workflow_engine/events/WorkflowCancelled.py
+ [31mM[m backend/app/capabilities/workflow_engine/events/WorkflowCompleted.py
+ [31mM[m backend/app/capabilities/workflow_engine/events/WorkflowCreated.py
+ [31mM[m backend/app/capabilities/workflow_engine/events/WorkflowEscalated.py
+ [31mM[m backend/app/capabilities/workflow_engine/events/WorkflowTransitioned.py
+ [31mM[m backend/app/config.py
+ [31mM[m backend/app/contracts/models.py
+ [31mM[m backend/app/contracts/routes.py
+ [31mM[m backend/app/core/idempotency.py
+ [31mM[m backend/app/document_intelligence/infrastructure/models.py
+ [31mM[m backend/app/document_intelligence/infrastructure/repository.py
+ [31mM[m backend/app/engineering/ci/quality_gates.py
+ [31mM[m backend/app/engineering/crud/generator.py
+ [31mM[m backend/app/engineering/docs/adr.py
+ [31mM[m backend/app/engineering/generators/capability.py
+ [31mM[m backend/app/engineering/generators/module.py
+ [31mM[m backend/app/engineering/intelligence/changelog.py
+ [31mM[m backend/app/engineering/repository/generator.py
+ [31mM[m backend/app/engineering/security/sbom.py
+ [31mM[m backend/app/engineering/testing/factories.py
+ [31mM[m backend/app/engineering/testing/fixtures.py
+ [31mM[m backend/app/factory.py
+ [31mM[m backend/app/financial/routes.py
+ [31mM[m backend/app/governance/reports/reports.py
+ [31mM[m backend/app/insurance/api/payments.py
+ [31mM[m backend/app/insurance/api/policies.py
+ [31mM[m backend/app/insurance/api/referrals.py
+ [31mM[m backend/app/kernel/rules_runtime.py
+ [31mM[m backend/app/legal/consent.py
+ [31mM[m backend/app/lims/events.py
+ [31mM[m backend/app/lims/integration/device_registry.py
+ [31mM[m backend/app/models/lab_result.py
+ [31mM[m backend/app/national/ecosystem/gateway/policies.py
+ [31mM[m backend/app/national/ecosystem/routes.py
+ [31mM[m backend/app/national/ecosystem/transformation/engine.py
+ [31mM[m backend/app/national/services/citizen_service.py
+ [31mM[m backend/app/reference/domain/services.py
+ [31mM[m backend/app/reference/infrastructure/repositories.py
+ [31mM[m backend/app/routes/ai.py
+ [31mM[m backend/app/services/outbox_service.py
+ [31mM[m backend/tests/test_gateway_modes.py
+ [31mM[m backend/tests/test_production_security_config.py
+ [31mM[m backend/tests/test_security_regression.py
+ [31mM[m backend/tests/test_side_door_hardening.py
+ [31mM[m frontend-v3/src/permissions/index.ts
+ [31mM[m security-audit/20260815/COMPREHENSIVE_RISK_INVENTORY_AND_REMEDIATION_PLAN_AR.md
+ [31mM[m shared/rbac/permissions.py
+[31m??[m backend/app/routes/staging_import.py
+[31m??[m backend/app/services/staging_tabular_import.py
+[31m??[m backend/tests/test_staging_import_route.py
+[31m??[m backend/tests/test_staging_preflight.py
+[31m??[m backend/tests/test_staging_tabular_import.py
+[31m??[m scripts/convert_utcnow.py
+[31m??[m scripts/staging_preflight.py
+[31m??[m security-audit/20260815/COMMAND06_LOCAL_CLOSURE_REPORT_AR.md
+[31m??[m security-audit/20260815/LOCAL_NID_MOCK_SIMULATION_GUIDE_AR.md
+[31m??[m security-audit/20260815/PRODUCTION_READINESS_REVIEW_RUNBOOK_AR.md
+[31m??[m security-audit/20260815/STAGING_NID_GOVERNMENT_CONNECTORS_EXECUTION_REPORT_AR.md
+[31m??[m security-audit/20260815/STAGING_NID_GOVERNMENT_CONNECTORS_RUNBOOK_AR.md
+[31m??[m security-audit/20260815/readiness-evidence/
+head=
+[33mb2b90972[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32msecurity/p0-bootstrap-alembic[m[33m)[m fix(security): close local P0 risk inventory batch
+diff_check=

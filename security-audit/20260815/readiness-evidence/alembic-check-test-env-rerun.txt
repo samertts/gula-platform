@@ -1,0 +1,2 @@
+  FAILED: Path doesn't exist: migrations.  Please use the 'init' command to
+  create a new scripts folder.

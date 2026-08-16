@@ -353,25 +353,26 @@ async def list_ai_providers(current_user=Depends(get_current_user)):
     _require_doctor(current_user)
     statuses = []
 
-    # Ollama — test by calling /api/tags (lightweight list-models endpoint)
+    # Ollama — test by calling /api/tags only when explicitly configured.
+    ollama_configured = bool(_OLLAMA_BASE_URL)
     ollama_ok = False
     ollama_models: list[str] = []
-    try:
-        async with httpx.AsyncClient(timeout=3) as client:
-            r = await client.get(f"{_OLLAMA_BASE_URL}/api/tags")
-            if r.status_code == 200:
-                ollama_ok = True
-                ollama_models = [m["name"] for m in r.json().get("models", [])]
-    except Exception:
-        pass
+    if ollama_configured:
+        try:
+            async with httpx.AsyncClient(timeout=3) as client:
+                r = await client.get(f"{_OLLAMA_BASE_URL}/api/tags")
+                if r.status_code == 200:
+                    ollama_ok = True
+                    ollama_models = [m["name"] for m in r.json().get("models", [])]
+        except Exception:
+            pass
     statuses.append(
         {
             "name": "ollama",
             "type": "local",
-            "configured": True,
-            "reachable": ollama_ok,
+            "configured": ollama_configured,
+            "reachable": ollama_ok if ollama_configured else None,
             "model": _OLLAMA_CLINICAL_MODEL,
-            "base_url": _OLLAMA_BASE_URL,
             "available_models": ollama_models,
             "cost": "free (local)",
         },
@@ -436,6 +437,27 @@ _FORBIDDEN_PHRASES = [
 # ── In-process response cache (prevents AI cost explosion / token replay) ─────
 _INTERPRET_CACHE: dict[str, tuple[dict, float]] = {}
 _CACHE_TTL = 120  # seconds — same token served from cache
+_CACHE_MAX_ENTRIES = 256
+
+
+def _cache_interpretation(cache_key: str, payload: dict) -> None:
+    now = time.monotonic()
+    expired = [key for key, (_value, expires_at) in _INTERPRET_CACHE.items() if expires_at <= now]
+    for key in expired:
+        _INTERPRET_CACHE.pop(key, None)
+    if len(_INTERPRET_CACHE) >= _CACHE_MAX_ENTRIES:
+        oldest_key = min(_INTERPRET_CACHE, key=lambda key: _INTERPRET_CACHE[key][1])
+        _INTERPRET_CACHE.pop(oldest_key, None)
+    _INTERPRET_CACHE[cache_key] = (payload, now + _CACHE_TTL)
+
+
+def _allow_legacy_public_token_fallback() -> bool:
+    """Allow raw-token compatibility only outside internet-facing runtimes.
+
+    Production and staging must use the one-way token_hash column exclusively;
+    legacy raw-token rows are denied rather than silently weakening the boundary.
+    """
+    return os.getenv("ENV", "production").lower() not in {"production", "staging"}
 
 
 # ── Clinical Weighting Table ──────────────────────────────────────────────────
@@ -664,7 +686,10 @@ def _emit_critical_alert(
         )
         db.commit()
     except Exception as exc:
-        logger.error("[AI] critical_result_alert audit write failed: %s", exc)
+        logger.error(
+            "[AI] critical_result_alert audit write failed (%s)",
+            type(exc).__name__,
+        )
         with contextlib.suppress(Exception):
             db.rollback()
 
@@ -789,9 +814,13 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
             text = await fn(prompt)
             return text, name
         except Exception as exc:
-            logger.warning("[AI] Provider %s failed: %s — trying fallback", name, exc)
+            logger.warning(
+                "[AI] Provider %s failed (%s) — trying fallback",
+                name,
+                type(exc).__name__,
+            )
             last_exc = exc
-    logger.error("[AI] All providers failed: %s", last_exc)
+    logger.error("[AI] All providers failed (%s)", type(last_exc).__name__)
     raise HTTPException(status_code=503, detail="تعذر الحصول على التفسير حالياً. حاول لاحقاً.")
 
 
@@ -877,10 +906,9 @@ async def interpret_result_public(token: str, request: Request) -> JSONResponse:
         order_id: int = 0
         results_data: list[dict] = []
         try:
-            result = (
-                db.query(LabResult).filter(LabResult.token_hash == token_hash).first()
-                or db.query(LabResult).filter(LabResult.token == token).first()
-            )
+            result = db.query(LabResult).filter(LabResult.token_hash == token_hash).first()
+            if result is None and _allow_legacy_public_token_fallback():
+                result = db.query(LabResult).filter(LabResult.token == token).first()
             if not result:
                 return None, None, None
 
@@ -988,7 +1016,7 @@ async def interpret_result_public(token: str, request: Request) -> JSONResponse:
         "confidence": confidence,
         "action_guidance": action,
     }
-    _INTERPRET_CACHE[cache_key] = (payload, time.monotonic() + _CACHE_TTL)
+    _cache_interpretation(cache_key, payload)
     return JSONResponse(payload, headers={"Cache-Control": "no-store"})
 
 

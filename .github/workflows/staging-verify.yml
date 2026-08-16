@@ -23,6 +23,23 @@ jobs:
     environment:
       name: staging
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate staging security configuration
+        env:
+          ENV: staging
+          ALLOW_DEGRADED_REDIS: ${{ vars.ALLOW_DEGRADED_REDIS || 'false' }}
+          REDIS_URL: ${{ secrets.STAGING_REDIS_URL }}
+          CORS_ALLOWED_ORIGINS: ${{ vars.STAGING_CORS_ALLOWED_ORIGINS }}
+          GULA_ADAPTER_MODE_NID: ${{ vars.GULA_ADAPTER_MODE_NID || 'shadow' }}
+          MOI_NID_API_URL: ${{ vars.MOI_NID_API_URL }}
+          MOI_NID_API_KEY: ${{ secrets.MOI_NID_API_KEY }}
+          GOV_CONNECTOR_URLS: ${{ vars.GOV_CONNECTOR_URLS }}
+          STAGING_EGRESS_ALLOWLIST: ${{ vars.STAGING_EGRESS_ALLOWLIST }}
+          STAGING_REQUIRE_EXTERNAL_NID: 'true'
+        run: python3 scripts/staging_preflight.py
+
       - name: Validate and normalize endpoint
         id: endpoint
         env:

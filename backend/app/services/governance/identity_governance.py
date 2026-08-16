@@ -160,7 +160,7 @@ class IdentityGovernanceService:
         self._records[record.id] = record
         self._health_index[health_number] = record.id
         self._nid_index[nid_hash] = record.id
-        logger.info("Citizen registered: %s (HN: %s)", full_name, health_number)
+        logger.info("Citizen registered")
         return record
 
     def register_newborn(
@@ -195,7 +195,7 @@ class IdentityGovernanceService:
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
-        logger.info("Newborn registered: %s (HN: %s)", full_name, health_number)
+        logger.info("Newborn registered")
         return record
 
     def register_foreigner(
@@ -233,14 +233,14 @@ class IdentityGovernanceService:
             )
         record.add_history_entry({
             "action": "foreigner_registered",
-            "passport": passport_number,
+            "passport_hash": self._hash_national_id(passport_number),
             "country": country_of_origin,
             "description": "Foreigner registered with passport",
         })
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
-        logger.info("Foreigner registered: %s (%s)", full_name, country_of_origin)
+        logger.info("Foreigner registered")
         return record
 
     def register_resident(
@@ -268,13 +268,13 @@ class IdentityGovernanceService:
         )
         record.add_history_entry({
             "action": "resident_registered",
-            "residency": residency_number,
+            "residency_hash": self._hash_national_id(residency_number),
             "description": "Resident registered with residency document",
         })
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
-        logger.info("Resident registered: %s", full_name)
+        logger.info("Resident registered")
         return record
 
     def register_visitor(
@@ -309,14 +309,14 @@ class IdentityGovernanceService:
         )
         record.add_history_entry({
             "action": "visitor_registered",
-            "passport": passport_number,
-            "visa": visa_number,
+            "passport_hash": self._hash_national_id(passport_number),
+            "visa_hash": self._hash_national_id(visa_number),
             "description": "Visitor registered with passport and visa",
         })
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
-        logger.info("Visitor registered: %s", full_name)
+        logger.info("Visitor registered")
         return record
 
     def register_unknown_patient(
@@ -341,7 +341,7 @@ class IdentityGovernanceService:
 
         self._records[record.id] = record
         self._health_index[health_number] = record.id
-        logger.info("Unknown patient registered: %s", health_number)
+        logger.info("Unknown patient registered")
         return record
 
     def link_birth_certificate(
@@ -358,7 +358,7 @@ class IdentityGovernanceService:
         )
         record.add_history_entry({
             "action": "birth_certificate_linked",
-            "birth_certificate": birth_certificate_number,
+            "birth_certificate_hash": self._hash_national_id(birth_certificate_number),
         })
         return record
 
@@ -375,7 +375,7 @@ class IdentityGovernanceService:
         )
         record.add_history_entry({
             "action": "passport_linked",
-            "passport": passport_number,
+            "passport_hash": self._hash_national_id(passport_number),
         })
         return record
 
@@ -392,7 +392,7 @@ class IdentityGovernanceService:
         )
         record.add_history_entry({
             "action": "visa_linked",
-            "visa": visa_number,
+            "visa_hash": self._hash_national_id(visa_number),
         })
         return record
 

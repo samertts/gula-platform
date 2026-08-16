@@ -1,0 +1,194 @@
+$ eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0
+$ tsc --noEmit
+$ tsc -b && vite build
+vite v8.1.5 building client environment for production...
+[2Ktransforming...[32m✓[0m 1826 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[0m[32mregisterSW.js                                           [0m[1;2m  0.13 kB[0m
+[2mdist/[0m[32mmanifest.webmanifest                                    [0m[1;2m  0.60 kB[0m
+[2mdist/[0m[32mindex.html                                              [0m[1;2m  5.46 kB[0m[2m │ gzip:   1.55 kB[0m
+[2mdist/[0m[2massets/[0m[35mstyle-BhgIYKyD.css                               [0m[1;2m138.58 kB[0m[2m │ gzip:  19.85 kB[0m
+[2mdist/[0m[2massets/[0m[36mchevron-left-G8_Vw5kw.js                         [0m[1;2m  0.12 kB[0m[2m │ gzip:   0.14 kB[0m
+[2mdist/[0m[2massets/[0m[36mplus-DSY2IUxg.js                                 [0m[1;2m  0.15 kB[0m[2m │ gzip:   0.15 kB[0m
+[2mdist/[0m[2massets/[0m[36mResultsPage-BqZeGWr8.js                          [0m[1;2m  0.16 kB[0m[2m │ gzip:   0.15 kB[0m
+[2mdist/[0m[2massets/[0m[36mSamplesPage-0DnxR2hu.js                          [0m[1;2m  0.16 kB[0m[2m │ gzip:   0.15 kB[0m
+[2mdist/[0m[2massets/[0m[36marrow-left-CzzUCs7-.js                           [0m[1;2m  0.16 kB[0m[2m │ gzip:   0.16 kB[0m
+[2mdist/[0m[2massets/[0m[36marrow-right-nSwHbJNU.js                          [0m[1;2m  0.16 kB[0m[2m │ gzip:   0.16 kB[0m
+[2mdist/[0m[2massets/[0m[36msearch-BcGAMqUa.js                               [0m[1;2m  0.17 kB[0m[2m │ gzip:   0.16 kB[0m
+[2mdist/[0m[2massets/[0m[36mgauge-y6bWxGpJ.js                                [0m[1;2m  0.17 kB[0m[2m │ gzip:   0.16 kB[0m
+[2mdist/[0m[2massets/[0m[36mcircle-check-CSUkj632.js                         [0m[1;2m  0.17 kB[0m[2m │ gzip:   0.16 kB[0m
+[2mdist/[0m[2massets/[0m[36muser-round-vpvyHMtC.js                           [0m[1;2m  0.18 kB[0m[2m │ gzip:   0.17 kB[0m
+[2mdist/[0m[2massets/[0m[36mclock-3-DMIoO12k.js                              [0m[1;2m  0.18 kB[0m[2m │ gzip:   0.17 kB[0m
+[2mdist/[0m[2massets/[0m[36muser-DRw6SUsX.js                                 [0m[1;2m  0.19 kB[0m[2m │ gzip:   0.18 kB[0m
+[2mdist/[0m[2massets/[0m[36minfo-CdVmxTV_.js                                 [0m[1;2m  0.20 kB[0m[2m │ gzip:   0.17 kB[0m
+[2mdist/[0m[2massets/[0m[36mcircle-x-CEZ7GPuf.js                             [0m[1;2m  0.20 kB[0m[2m │ gzip:   0.17 kB[0m
+[2mdist/[0m[2massets/[0m[36mcredit-card-DxdqXTyl.js                          [0m[1;2m  0.20 kB[0m[2m │ gzip:   0.18 kB[0m
+[2mdist/[0m[2massets/[0m[36mmail-192CJg3T.js                                 [0m[1;2m  0.21 kB[0m[2m │ gzip:   0.20 kB[0m
+[2mdist/[0m[2massets/[0m[36mdollar-sign-nAmKbQ92.js                          [0m[1;2m  0.21 kB[0m[2m │ gzip:   0.19 kB[0m
+[2mdist/[0m[2massets/[0m[36mactivity-DiBAYgrg.js                             [0m[1;2m  0.23 kB[0m[2m │ gzip:   0.19 kB[0m
+[2mdist/[0m[2massets/[0m[36mhistory-C1aKgajy.js                              [0m[1;2m  0.23 kB[0m[2m │ gzip:   0.19 kB[0m
+[2mdist/[0m[2massets/[0m[36mglobe-eOVJRxe_.js                                [0m[1;2m  0.24 kB[0m[2m │ gzip:   0.19 kB[0m
+[2mdist/[0m[2massets/[0m[36mdatabase-Bjnc4yuu.js                             [0m[1;2m  0.24 kB[0m[2m │ gzip:   0.20 kB[0m
+[2mdist/[0m[2massets/[0m[36mcircle-off-C8zpcyw7.js                           [0m[1;2m  0.24 kB[0m[2m │ gzip:   0.20 kB[0m
+[2mdist/[0m[2massets/[0m[36mcircle-alert-C-NVSm-1.js                         [0m[1;2m  0.24 kB[0m[2m │ gzip:   0.18 kB[0m
+[2mdist/[0m[2massets/[0m[36mchart-column-6T5X2udo.js                         [0m[1;2m  0.25 kB[0m[2m │ gzip:   0.19 kB[0m
+[2mdist/[0m[2massets/[0m[36musers-round-BJ2l86OK.js                          [0m[1;2m  0.25 kB[0m[2m │ gzip:   0.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mlock-keyhole-BW34ZOHe.js                         [0m[1;2m  0.25 kB[0m[2m │ gzip:   0.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mfile-check-2-BwNRIQq8.js                         [0m[1;2m  0.25 kB[0m[2m │ gzip:   0.20 kB[0m
+[2mdist/[0m[2massets/[0m[36mmessage-square-text-BypyXWGe.js                  [0m[1;2m  0.25 kB[0m[2m │ gzip:   0.19 kB[0m
+[2mdist/[0m[2massets/[0m[36meye-CMka0bZU.js                                  [0m[1;2m  0.25 kB[0m[2m │ gzip:   0.20 kB[0m
+[2mdist/[0m[2massets/[0m[36mmap-pin-DJwJ3kwb.js                              [0m[1;2m  0.25 kB[0m[2m │ gzip:   0.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mcircle-user-Cypn4fTD.js                          [0m[1;2m  0.25 kB[0m[2m │ gzip:   0.20 kB[0m
+[2mdist/[0m[2massets/[0m[36mmonitor-CcDIZXS7.js                              [0m[1;2m  0.25 kB[0m[2m │ gzip:   0.20 kB[0m
+[2mdist/[0m[2massets/[0m[36mkey-Flx0XwqA.js                                  [0m[1;2m  0.26 kB[0m[2m │ gzip:   0.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mtriangle-alert-Wq9_mf7B.js                       [0m[1;2m  0.26 kB[0m[2m │ gzip:   0.21 kB[0m
+[2mdist/[0m[2massets/[0m[36mfile-check-DW9JBS8b.js                           [0m[1;2m  0.26 kB[0m[2m │ gzip:   0.19 kB[0m
+[2mdist/[0m[2massets/[0m[36mworkflow-COLBDm1-.js                             [0m[1;2m  0.26 kB[0m[2m │ gzip:   0.20 kB[0m
+[2mdist/[0m[2massets/[0m[36mshield-D4FCzLJ5.js                               [0m[1;2m  0.27 kB[0m[2m │ gzip:   0.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mbook-open-nFN743Cu.js                            [0m[1;2m  0.27 kB[0m[2m │ gzip:   0.20 kB[0m
+[2mdist/[0m[2massets/[0m[36mfolder-open-s-K7mPzU.js                          [0m[1;2m  0.29 kB[0m[2m │ gzip:   0.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mlist-C6AWdP-v.js                                 [0m[1;2m  0.30 kB[0m[2m │ gzip:   0.18 kB[0m
+[2mdist/[0m[2massets/[0m[36mclipboard-check-BskQ7HZq.js                      [0m[1;2m  0.30 kB[0m[2m │ gzip:   0.23 kB[0m
+[2mdist/[0m[2massets/[0m[36musers-CVqUKZNT.js                                [0m[1;2m  0.30 kB[0m[2m │ gzip:   0.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mflask-conical-Cz_-ll1U.js                        [0m[1;2m  0.30 kB[0m[2m │ gzip:   0.23 kB[0m
+[2mdist/[0m[2massets/[0m[36mbell-ring-Wo0YFwJF.js                            [0m[1;2m  0.31 kB[0m[2m │ gzip:   0.23 kB[0m
+[2mdist/[0m[2massets/[0m[36mheart-pulse-DGa3Dz0q.js                          [0m[1;2m  0.31 kB[0m[2m │ gzip:   0.25 kB[0m
+[2mdist/[0m[2massets/[0m[36mprinter-BoXHMzMP.js                              [0m[1;2m  0.31 kB[0m[2m │ gzip:   0.23 kB[0m
+[2mdist/[0m[2massets/[0m[36mshield-check-Ddcccrsn.js                         [0m[1;2m  0.31 kB[0m[2m │ gzip:   0.25 kB[0m
+[2mdist/[0m[2massets/[0m[36mrefresh-cw-DQrx59Q4.js                           [0m[1;2m  0.32 kB[0m[2m │ gzip:   0.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mmonitor-smartphone-4LI-c5tJ.js                   [0m[1;2m  0.32 kB[0m[2m │ gzip:   0.24 kB[0m
+[2mdist/[0m[2massets/[0m[36mwallet-cards-Tx7e3fCM.js                         [0m[1;2m  0.32 kB[0m[2m │ gzip:   0.25 kB[0m
+[2mdist/[0m[2massets/[0m[36mfile-text-D66UNkat.js                            [0m[1;2m  0.33 kB[0m[2m │ gzip:   0.21 kB[0m
+[2mdist/[0m[2massets/[0m[36mIdentityPage-Ceiu-05z.js                         [0m[1;2m  0.33 kB[0m[2m │ gzip:   0.23 kB[0m
+[2mdist/[0m[2massets/[0m[36mserver-C2T-0mfV.js                               [0m[1;2m  0.33 kB[0m[2m │ gzip:   0.21 kB[0m
+[2mdist/[0m[2massets/[0m[36mstethoscope-8QBYtsOX.js                          [0m[1;2m  0.34 kB[0m[2m │ gzip:   0.23 kB[0m
+[2mdist/[0m[2massets/[0m[36mkey-round-HCsXAG3V.js                            [0m[1;2m  0.35 kB[0m[2m │ gzip:   0.26 kB[0m
+[2mdist/[0m[2massets/[0m[36mscale-B7QiOt4P.js                                [0m[1;2m  0.36 kB[0m[2m │ gzip:   0.23 kB[0m
+[2mdist/[0m[2massets/[0m[36mradio-cai7wp4c.js                                [0m[1;2m  0.36 kB[0m[2m │ gzip:   0.25 kB[0m
+[2mdist/[0m[2massets/[0m[36mnetwork-B9iqkTZ_.js                              [0m[1;2m  0.38 kB[0m[2m │ gzip:   0.23 kB[0m
+[2mdist/[0m[2massets/[0m[36mtags-BcO-mI6O.js                                 [0m[1;2m  0.39 kB[0m[2m │ gzip:   0.28 kB[0m
+[2mdist/[0m[2massets/[0m[36mcircle-help-CbUy7Py1.js                          [0m[1;2m  0.39 kB[0m[2m │ gzip:   0.27 kB[0m
+[2mdist/[0m[2massets/[0m[36mearth-DgUU40Ye.js                                [0m[1;2m  0.39 kB[0m[2m │ gzip:   0.26 kB[0m
+[2mdist/[0m[2massets/[0m[36mlandmark-BnmtAz1M.js                             [0m[1;2m  0.40 kB[0m[2m │ gzip:   0.23 kB[0m
+[2mdist/[0m[2massets/[0m[36mclipboard-list-MogcqLEL.js                       [0m[1;2m  0.41 kB[0m[2m │ gzip:   0.26 kB[0m
+[2mdist/[0m[2massets/[0m[36mbuilding-2-CQCUVySY.js                           [0m[1;2m  0.43 kB[0m[2m │ gzip:   0.24 kB[0m
+[2mdist/[0m[2massets/[0m[36mmessage-square-BuE0cydA.js                       [0m[1;2m  0.45 kB[0m[2m │ gzip:   0.29 kB[0m
+[2mdist/[0m[2massets/[0m[36museToast-8wWyhV0-.js                             [0m[1;2m  0.46 kB[0m[2m │ gzip:   0.31 kB[0m
+[2mdist/[0m[2massets/[0m[36mbrain-Dyt5rcPl.js                                [0m[1;2m  0.73 kB[0m[2m │ gzip:   0.35 kB[0m
+[2mdist/[0m[2massets/[0m[36mlocales-BJ1DgvAr.js                              [0m[1;2m  0.75 kB[0m[2m │ gzip:   0.40 kB[0m
+[2mdist/[0m[2massets/[0m[36mtruck-uOQsXS7P.js                                [0m[1;2m  0.77 kB[0m[2m │ gzip:   0.43 kB[0m
+[2mdist/[0m[2massets/[0m[36mLocaleContext-TXyKnCDV.js                        [0m[1;2m  0.79 kB[0m[2m │ gzip:   0.48 kB[0m
+[2mdist/[0m[2massets/[0m[36mNiamAuthPilotPage-fiDWH-Vc.js                    [0m[1;2m  0.86 kB[0m[2m │ gzip:   0.56 kB[0m
+[2mdist/[0m[2massets/[0m[36mcreateLucideIcon-vkKBFd2y.js                     [0m[1;2m  0.93 kB[0m[2m │ gzip:   0.56 kB[0m
+[2mdist/[0m[2massets/[0m[36mjsx-runtime-DUAcabCT.js                          [0m[1;2m  1.06 kB[0m[2m │ gzip:   0.60 kB[0m
+[2mdist/[0m[2massets/[0m[36mLabsPage-zw2fM3G6.js                             [0m[1;2m  1.69 kB[0m[2m │ gzip:   0.89 kB[0m
+[2mdist/[0m[2massets/[0m[36mCapabilitiesSearchServicePage-CY5I-55Q.js        [0m[1;2m  1.88 kB[0m[2m │ gzip:   0.97 kB[0m
+[2mdist/[0m[2massets/[0m[36mCapabilitiesStorageServicePage-orcE2AWg.js       [0m[1;2m  1.90 kB[0m[2m │ gzip:   0.98 kB[0m
+[2mdist/[0m[2massets/[0m[36mCapabilitiesWorkflowEnginePage-B-bTuJcR.js       [0m[1;2m  1.90 kB[0m[2m │ gzip:   0.98 kB[0m
+[2mdist/[0m[2massets/[0m[36mCapabilitiesReportingServicePage-BtxC4K4d.js     [0m[1;2m  1.91 kB[0m[2m │ gzip:   0.97 kB[0m
+[2mdist/[0m[2massets/[0m[36mCapabilitiesHealthcareConsentPage-G0-A_Kvo.js    [0m[1;2m  1.93 kB[0m[2m │ gzip:   0.98 kB[0m
+[2mdist/[0m[2massets/[0m[36mCapabilitiesClinicalFoundationPage-QezrR0qr.js   [0m[1;2m  1.93 kB[0m[2m │ gzip:   0.98 kB[0m
+[2mdist/[0m[2massets/[0m[36mCapabilitiesProviderManagementPage-CP4kwDhV.js   [0m[1;2m  1.93 kB[0m[2m │ gzip:   0.98 kB[0m
+[2mdist/[0m[2massets/[0m[36mCapabilitiesDocumentManagementPage-Cu3BReWN.js   [0m[1;2m  1.94 kB[0m[2m │ gzip:   0.97 kB[0m
+[2mdist/[0m[2massets/[0m[36mCapabilitiesEncounterManagementPage-BuDpGUCm.js  [0m[1;2m  1.94 kB[0m[2m │ gzip:   0.97 kB[0m
+[2mdist/[0m[2massets/[0m[36mAuthContext-DYul9jpF.js                          [0m[1;2m  2.10 kB[0m[2m │ gzip:   0.92 kB[0m
+[2mdist/[0m[2massets/[0m[36museMutation-D-OEI25a.js                          [0m[1;2m  2.32 kB[0m[2m │ gzip:   0.97 kB[0m
+[2mdist/[0m[2massets/[0m[36mLegalPage-C_zl6GfJ.js                            [0m[1;2m  2.40 kB[0m[2m │ gzip:   0.96 kB[0m
+[2mdist/[0m[2massets/[0m[36mReportsPage-DlKDkzdp.js                          [0m[1;2m  2.58 kB[0m[2m │ gzip:   1.15 kB[0m
+[2mdist/[0m[2massets/[0m[36mCompliancePage-BTrfiXHm.js                       [0m[1;2m  2.65 kB[0m[2m │ gzip:   0.99 kB[0m
+[2mdist/[0m[2massets/[0m[36mNotificationsPage-BOyLRhVW.js                    [0m[1;2m  2.70 kB[0m[2m │ gzip:   1.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mAccessibilityContext-C00rOyQ_.js                 [0m[1;2m  2.75 kB[0m[2m │ gzip:   1.28 kB[0m
+[2mdist/[0m[2massets/[0m[36mTiersPage-paMWRMaE.js                            [0m[1;2m  2.80 kB[0m[2m │ gzip:   1.37 kB[0m
+[2mdist/[0m[2massets/[0m[36mAIPage-D1mlb4S5.js                               [0m[1;2m  2.87 kB[0m[2m │ gzip:   1.16 kB[0m
+[2mdist/[0m[2massets/[0m[36mPlatformPage-BxhYMJxO.js                         [0m[1;2m  2.94 kB[0m[2m │ gzip:   1.11 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalEcosystemGatewayPage-CQGZciTP.js         [0m[1;2m  3.01 kB[0m[2m │ gzip:   1.14 kB[0m
+[2mdist/[0m[2massets/[0m[36mIntegrationConnectorsPage-zQaOWEFw.js            [0m[1;2m  3.03 kB[0m[2m │ gzip:   1.11 kB[0m
+[2mdist/[0m[2massets/[0m[36mPageComponents-D7MNeBcv.js                       [0m[1;2m  3.26 kB[0m[2m │ gzip:   1.14 kB[0m
+[2mdist/[0m[2massets/[0m[36mmutation-C7QZVFm7.js                             [0m[1;2m  3.38 kB[0m[2m │ gzip:   1.14 kB[0m
+[2mdist/[0m[2massets/[0m[36mPatientCardPage-DJkHzarH.js                      [0m[1;2m  3.45 kB[0m[2m │ gzip:   1.39 kB[0m
+[2mdist/[0m[2massets/[0m[36mCriticalAlertsPage-Cem2jm6g.js                   [0m[1;2m  3.70 kB[0m[2m │ gzip:   1.64 kB[0m
+[2mdist/[0m[2massets/[0m[36museTranslation-g_Ym3Zf7.js                       [0m[1;2m  3.81 kB[0m[2m │ gzip:   1.90 kB[0m
+[2mdist/[0m[2massets/[0m[36mWorkflowsPage-BbTW8HEn.js                        [0m[1;2m  3.85 kB[0m[2m │ gzip:   1.68 kB[0m
+[2mdist/[0m[2massets/[0m[36mCertificationPage-BCzlrrgr.js                    [0m[1;2m  4.05 kB[0m[2m │ gzip:   1.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalEcosystemPage-DWZfnw02.js                [0m[1;2m  4.13 kB[0m[2m │ gzip:   1.27 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalRulesEngineApiPage-CzLNX0Eq.js           [0m[1;2m  4.14 kB[0m[2m │ gzip:   1.24 kB[0m
+[2mdist/[0m[2massets/[0m[36mPatientsPage-BDengciS.js                         [0m[1;2m  4.23 kB[0m[2m │ gzip:   1.85 kB[0m
+[2mdist/[0m[2massets/[0m[36mEmsApiPage-DCcw3Pwt.js                           [0m[1;2m  4.52 kB[0m[2m │ gzip:   1.32 kB[0m
+[2mdist/[0m[2massets/[0m[36mKernelPage-DzP62yjJ.js                           [0m[1;2m  4.56 kB[0m[2m │ gzip:   1.30 kB[0m
+[2mdist/[0m[2massets/[0m[36mAiFabricPage-XPgbCWHj.js                         [0m[1;2m  4.61 kB[0m[2m │ gzip:   1.32 kB[0m
+[2mdist/[0m[2massets/[0m[36mHealthDataPage-BE4DGq0a.js                       [0m[1;2m  4.65 kB[0m[2m │ gzip:   1.35 kB[0m
+[2mdist/[0m[2massets/[0m[36mIntegrationPage-DordZPMU.js                      [0m[1;2m  4.67 kB[0m[2m │ gzip:   1.33 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalSearchPlatformApiPage-CSIyI6IP.js        [0m[1;2m  4.67 kB[0m[2m │ gzip:   1.29 kB[0m
+[2mdist/[0m[2massets/[0m[36mControlPlanePage-C___ZLiz.js                     [0m[1;2m  4.67 kB[0m[2m │ gzip:   1.33 kB[0m
+[2mdist/[0m[2massets/[0m[36mBiomedicalApiPage-Y_7k-8_w.js                    [0m[1;2m  4.69 kB[0m[2m │ gzip:   1.32 kB[0m
+[2mdist/[0m[2massets/[0m[36mBloodBankApiPage-CguqFywF.js                     [0m[1;2m  4.70 kB[0m[2m │ gzip:   1.35 kB[0m
+[2mdist/[0m[2massets/[0m[36mPharmacyPage-8xBejimt.js                         [0m[1;2m  4.71 kB[0m[2m │ gzip:   1.32 kB[0m
+[2mdist/[0m[2massets/[0m[36mPilotPlatformApiPage-r0xGdIb4.js                 [0m[1;2m  4.71 kB[0m[2m │ gzip:   1.30 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalTaskEngineApiPage-8jucMiYX.js            [0m[1;2m  4.72 kB[0m[2m │ gzip:   1.32 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalBackgroundPlatformApiPage-Bab985F1.js    [0m[1;2m  4.73 kB[0m[2m │ gzip:   1.33 kB[0m
+[2mdist/[0m[2massets/[0m[36mTrustPage-xW2LCE_p.js                            [0m[1;2m  4.74 kB[0m[2m │ gzip:   1.99 kB[0m
+[2mdist/[0m[2massets/[0m[36mCriticalCareApiPage-DE7KrqOS.js                  [0m[1;2m  4.75 kB[0m[2m │ gzip:   1.35 kB[0m
+[2mdist/[0m[2massets/[0m[36mCommandIntelligencePage-Nl1tJM-k.js              [0m[1;2m  4.75 kB[0m[2m │ gzip:   1.32 kB[0m
+[2mdist/[0m[2massets/[0m[36mLifecyclePlatformApiPage-Csn7_F-R.js             [0m[1;2m  4.76 kB[0m[2m │ gzip:   1.34 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalObservabilityApiPage-J003eA-P.js         [0m[1;2m  4.76 kB[0m[2m │ gzip:   1.31 kB[0m
+[2mdist/[0m[2massets/[0m[36mCitizenPlatformPage-xAp5YP2k.js                  [0m[1;2m  4.78 kB[0m[2m │ gzip:   1.34 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalDocumentPlatformApiPage-nS4g1R7P.js      [0m[1;2m  4.79 kB[0m[2m │ gzip:   1.32 kB[0m
+[2mdist/[0m[2massets/[0m[36mOrdersPage-BUZikw-2.js                           [0m[1;2m  4.82 kB[0m[2m │ gzip:   2.07 kB[0m
+[2mdist/[0m[2massets/[0m[36mPublicHealthApiPage-BuSZ1Ai-.js                  [0m[1;2m  4.82 kB[0m[2m │ gzip:   1.32 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalWorkflowRuntimeApiPage-oSScVtjf.js       [0m[1;2m  4.84 kB[0m[2m │ gzip:   1.34 kB[0m
+[2mdist/[0m[2massets/[0m[36mAdaptiveAuthPage-j7tI8Ojg.js                     [0m[1;2m  4.85 kB[0m[2m │ gzip:   1.88 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalSchedulingPlatformApiPage-CCJXnKS3.js    [0m[1;2m  4.85 kB[0m[2m │ gzip:   1.33 kB[0m
+[2mdist/[0m[2massets/[0m[36mCommandCenterApiPage-Ic4naqHH.js                 [0m[1;2m  4.86 kB[0m[2m │ gzip:   1.33 kB[0m
+[2mdist/[0m[2massets/[0m[36mCitizenWorkspacePage-lyFFmvkV.js                 [0m[1;2m  4.87 kB[0m[2m │ gzip:   1.42 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalNotificationPlatformApiPage-DHFsATJ5.js  [0m[1;2m  4.89 kB[0m[2m │ gzip:   1.35 kB[0m
+[2mdist/[0m[2massets/[0m[36mAdaptiveComponents-CrcONn9V.js                   [0m[1;2m  4.95 kB[0m[2m │ gzip:   1.93 kB[0m
+[2mdist/[0m[2massets/[0m[36mCertificatesPage-BHCB4LEN.js                     [0m[1;2m  4.99 kB[0m[2m │ gzip:   1.94 kB[0m
+[2mdist/[0m[2massets/[0m[36mQCPage-CRF8AYxN.js                               [0m[1;2m  5.25 kB[0m[2m │ gzip:   1.96 kB[0m
+[2mdist/[0m[2massets/[0m[36mworkspaceScopedReads-aWQ1U3QB.js                 [0m[1;2m  5.26 kB[0m[2m │ gzip:   2.17 kB[0m
+[2mdist/[0m[2massets/[0m[36mFederationPage-CqHsmUh1.js                       [0m[1;2m  5.44 kB[0m[2m │ gzip:   2.09 kB[0m
+[2mdist/[0m[2massets/[0m[36mGovernancePage-DUMXyM_X.js                       [0m[1;2m  5.88 kB[0m[2m │ gzip:   2.11 kB[0m
+[2mdist/[0m[2massets/[0m[36mProfilePage-CjXRNbVT.js                          [0m[1;2m  5.96 kB[0m[2m │ gzip:   1.76 kB[0m
+[2mdist/[0m[2massets/[0m[36mEdgePage-WbHmm0Lu.js                             [0m[1;2m  6.72 kB[0m[2m │ gzip:   2.54 kB[0m
+[2mdist/[0m[2massets/[0m[36mSecurityPage-CMQm-qsW.js                         [0m[1;2m  6.94 kB[0m[2m │ gzip:   2.11 kB[0m
+[2mdist/[0m[2massets/[0m[36mStatsPage-Dg9EPWhi.js                            [0m[1;2m  7.18 kB[0m[2m │ gzip:   2.35 kB[0m
+[2mdist/[0m[2massets/[0m[36mPatientVisitReadinessPage-Cnj4_ZRA.js            [0m[1;2m  7.20 kB[0m[2m │ gzip:   2.87 kB[0m
+[2mdist/[0m[2massets/[0m[36mFinancialPage-iVS--vGP.js                        [0m[1;2m  7.20 kB[0m[2m │ gzip:   2.41 kB[0m
+[2mdist/[0m[2massets/[0m[36mLegacyRouteBridge-QB7g-Ykk.js                    [0m[1;2m  7.28 kB[0m[2m │ gzip:   2.52 kB[0m
+[2mdist/[0m[2massets/[0m[36mNationalDataPage-B1-lH-Zg.js                     [0m[1;2m  7.48 kB[0m[2m │ gzip:   2.28 kB[0m
+[2mdist/[0m[2massets/[0m[36mreact-DEX2qfRi.js                                [0m[1;2m  7.52 kB[0m[2m │ gzip:   2.87 kB[0m
+[2mdist/[0m[2massets/[0m[36mAdminPages-qL8KXBGP.js                           [0m[1;2m  7.67 kB[0m[2m │ gzip:   2.60 kB[0m
+[2mdist/[0m[2massets/[0m[36mLifecyclePage-BaB6bxCM.js                        [0m[1;2m  8.36 kB[0m[2m │ gzip:   2.81 kB[0m
+[2mdist/[0m[2massets/[0m[36museQuery-CTx4zp8i.js                             [0m[1;2m  8.83 kB[0m[2m │ gzip:   3.22 kB[0m
+[2mdist/[0m[2massets/[0m[36mFinancialGovernancePage-B6lfpKNh.js              [0m[1;2m 12.36 kB[0m[2m │ gzip:   4.23 kB[0m
+[2mdist/[0m[2massets/[0m[36mLoginPage-BLhBRZ_6.js                            [0m[1;2m 13.58 kB[0m[2m │ gzip:   4.01 kB[0m
+[2mdist/[0m[2massets/[0m[36mPopularClinicsWorkspacePage-BV2WxJV1.js          [0m[1;2m 13.97 kB[0m[2m │ gzip:   4.28 kB[0m
+[2mdist/[0m[2massets/[0m[36mHospitalPage-FR1TBtet.js                         [0m[1;2m 14.17 kB[0m[2m │ gzip:   3.52 kB[0m
+[2mdist/[0m[2massets/[0m[36mAiPlatformPage-zoKflJhw.js                       [0m[1;2m 14.23 kB[0m[2m │ gzip:   3.69 kB[0m
+[2mdist/[0m[2massets/[0m[36mHealthEcosystemPage-Dq3mnIuR.js                  [0m[1;2m 14.25 kB[0m[2m │ gzip:   4.76 kB[0m
+[2mdist/[0m[2massets/[0m[36mRegisterPage-QYuJSK7R.js                         [0m[1;2m 15.19 kB[0m[2m │ gzip:   4.11 kB[0m
+[2mdist/[0m[2massets/[0m[36mQueryClientProvider-BxUImEmW.js                  [0m[1;2m 15.28 kB[0m[2m │ gzip:   5.27 kB[0m
+[2mdist/[0m[2massets/[0m[36mDashboardPage-DOVxLsMk.js                        [0m[1;2m 15.32 kB[0m[2m │ gzip:   4.23 kB[0m
+[2mdist/[0m[2massets/[0m[36mAccessibilityCenterPage-DK1h3KDC.js              [0m[1;2m 17.10 kB[0m[2m │ gzip:   5.49 kB[0m
+[2mdist/[0m[2massets/[0m[36mPatientManagementWorkspacePage-CgN05RXH.js       [0m[1;2m 19.00 kB[0m[2m │ gzip:   5.58 kB[0m
+[2mdist/[0m[2massets/[0m[36mSettingsPage-Cm4KbxIG.js                         [0m[1;2m 20.11 kB[0m[2m │ gzip:   6.15 kB[0m
+[2mdist/[0m[2massets/[0m[36mendpoints-CrSn0zlZ.js                            [0m[1;2m 20.32 kB[0m[2m │ gzip:   4.04 kB[0m
+[2mdist/[0m[2massets/[0m[36mFhirPage-Um17EDR3.js                             [0m[1;2m 20.47 kB[0m[2m │ gzip:   4.45 kB[0m
+[2mdist/[0m[2massets/[0m[36mLabOperationsWorkspacePage-BuFd0ozI.js           [0m[1;2m 22.96 kB[0m[2m │ gzip:   6.31 kB[0m
+[2mdist/[0m[2massets/[0m[36mInput-Du1oavrU.js                                [0m[1;2m 23.31 kB[0m[2m │ gzip:   8.31 kB[0m
+[2mdist/[0m[2massets/[0m[36mPharmacyOperationsWorkspacePage-BE1DcE9u.js      [0m[1;2m 24.78 kB[0m[2m │ gzip:   6.79 kB[0m
+[2mdist/[0m[2massets/[0m[36mBillingInsuranceWorkspacePage-HqMgyonw.js        [0m[1;2m 35.46 kB[0m[2m │ gzip:   8.98 kB[0m
+[2mdist/[0m[2massets/[0m[36mclient-Cc707PZy.js                               [0m[1;2m 55.39 kB[0m[2m │ gzip:  20.26 kB[0m
+[2mdist/[0m[2massets/[0m[36mui-eLESFjIp.js                                   [0m[1;2m 58.50 kB[0m[2m │ gzip:  15.97 kB[0m
+[2mdist/[0m[2massets/[0m[36mDeviceIntegrationWorkspacePage-D4VRYPFT.js       [0m[1;2m 60.63 kB[0m[2m │ gzip:  14.72 kB[0m
+[2mdist/[0m[2massets/[0m[36mchunk-62JRHF6Z-B5Ppjdfm.js                       [0m[1;2m 94.26 kB[0m[2m │ gzip:  31.25 kB[0m
+[2mdist/[0m[2massets/[0m[36mindex-BImfZOl3.js                                [0m[1;2m346.04 kB[0m[2m │ gzip: 104.23 kB[0m
+
+✓ built in 579ms
+
+PWA v1.3.0
+mode      generateSW
+precache  185 entries (1430.37 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-dcde9eb3.js

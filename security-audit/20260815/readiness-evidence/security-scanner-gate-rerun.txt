@@ -1,0 +1,203 @@
+[1m[91mI001[0m [[1m[96m*[0m][1m Import block is un-sorted or un-formatted[0m
+  [1m[94m--> [0mscripts/security_scan_config.py:7:1
+   [1m[94m|[0m
+[1m[94m 5[0m [1m[94m|[0m   configuration, contact external services, or print secret values.
+[1m[94m 6[0m [1m[94m|[0m   """
+[1m[94m 7[0m [1m[94m|[0m [1m[91m/[0m from __future__ import annotations
+[1m[94m 8[0m [1m[94m|[0m [1m[91m|[0m
+[1m[94m 9[0m [1m[94m|[0m [1m[91m|[0m import argparse
+[1m[94m10[0m [1m[94m|[0m [1m[91m|[0m import json
+[1m[94m11[0m [1m[94m|[0m [1m[91m|[0m import re
+[1m[94m12[0m [1m[94m|[0m [1m[91m|[0m import sys
+[1m[94m13[0m [1m[94m|[0m [1m[91m|[0m import tomllib
+[1m[94m14[0m [1m[94m|[0m [1m[91m|[0m from dataclasses import asdict, dataclass
+[1m[94m15[0m [1m[94m|[0m [1m[91m|[0m from collections.abc import Iterable
+[1m[94m16[0m [1m[94m|[0m [1m[91m|[0m from pathlib import Path
+   [1m[94m|[0m [1m[91m|________________________^[0m
+[1m[94m17[0m [1m[94m|[0m
+[1m[94m18[0m [1m[94m|[0m   MAX_FILE_BYTES = 2 * 1024 * 1024
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Organize imports[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m13[0m [1m[94m|[0m import tomllib
+[1m[94m14[0m [1m[32m+[0m [32mfrom collections.abc import Iterable
+[0m[1m[94m15[0m [1m[94m|[0m from dataclasses import asdict, dataclass
+[1m[94m  [0m [1m[31m-[0m [31mfrom collections.abc import Iterable
+[0m[1m[94m16[0m [1m[94m|[0m from pathlib import Path
+[1m[94m  [0m [1m[94m|[0m
+
+Found 1 error.
+[[36m*[0m] 1 fixable with the `--fix` option.
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/ubuntu/gula-platform/backend
+configfile: pytest.ini
+plugins: anyio-4.14.2, asyncio-1.4.0, timeout-2.4.0, Faker-40.36.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 4 items
+
+backend/tests/test_security_scan_config.py ....                          [100%]
+
+=============================== warnings summary ===============================
+../../../usr/local/lib/python3.12/dist-packages/fastapi/testclient.py:1
+  /usr/local/lib/python3.12/dist-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================= 4 passed, 1 warning in 0.05s =========================
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:23763 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26174 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26256 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26282 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26308 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26334 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26360 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26386 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26475 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26651 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26661 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26671 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26681 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:26789 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:27351 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:27371 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:27381 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:27391 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:27411 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:27431 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:27451 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:28031 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:30271 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:31632 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:31660 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:31688 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:31716 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:31965 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:31990 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:32153 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:32179 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:32229 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:32249 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:32275 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:32300 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.audit/bandit_backend.json:32326 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/actions/build-android/action.yml:90 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/actions/build-android/action.yml:92 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/actions/build-android/action.yml:115 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/actions/build-android/action.yml:117 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/workflows/frontend-pwa.yml:169 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/workflows/frontend-pwa.yml:170 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/workflows/frontend-pwa.yml:218 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/workflows/frontend-pwa.yml:219 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/workflows/mobile-android.yml:359 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/workflows/mobile-android.yml:361 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.github/workflows/scorecard.yml:18 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:51 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:53 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:60 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:62 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:90 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:92 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:99 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:101 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:178 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:180 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/.semgrep/rules/security/hardcoded-secrets.yaml:187 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/config/cert-manager/cluster-issuer.yaml:102 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/config/cert-manager/cluster-issuer.yaml:119 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/config/postgres-ha/patroni.yml:16 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/config/postgres-ha/patroni.yml:55 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/config/postgres-ha/patroni.yml:58 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/config/postgres-ha/patroni.yml:61 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/config/postgres-ha/patroni.yml:181 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/config/postgres-ha/patroni.yml:186 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/config/prometheus/prometheus-full.yml:135 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/reports/PHASE_10B_LEGACY_INVENTORY.json:27524 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/reports/PHASE_10B_LEGACY_INVENTORY.json:27552 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/reports/PHASE_10B_LEGACY_INVENTORY.json:27629 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/terraform/modules/postgres/main.tf:28 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/terraform/modules/postgres/main.tf:151 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/terraform/modules/rabbitmq/main.tf:24 possible generic-secret-assignment; value redacted
+CRITICAL SECRET_EXPOSED               /home/ubuntu/gula-platform/terraform/modules/rabbitmq/main.tf:65 possible generic-secret-assignment; value redacted
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/.audit/secret_scan_results.json:1 configuration does not parse
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/.github/actions/build-ios/action.yml:131 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     UNPINNED_ACTION              /home/ubuntu/gula-platform/.github/workflows/nightly.yml:26 GitHub Action must be pinned to a full commit SHA
+HIGH     UNPINNED_ACTION              /home/ubuntu/gula-platform/.github/workflows/nightly.yml:36 GitHub Action must be pinned to a full commit SHA
+HIGH     UNPINNED_ACTION              /home/ubuntu/gula-platform/.github/workflows/nightly.yml:48 GitHub Action must be pinned to a full commit SHA
+HIGH     UNPINNED_ACTION              /home/ubuntu/gula-platform/.github/workflows/release.yml:148 GitHub Action must be pinned to a full commit SHA
+HIGH     UNPINNED_ACTION              /home/ubuntu/gula-platform/.github/workflows/release.yml:161 GitHub Action must be pinned to a full commit SHA
+HIGH     UNPINNED_ACTION              /home/ubuntu/gula-platform/.github/workflows/release.yml:176 GitHub Action must be pinned to a full commit SHA
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/archive/experimental/k8s/base/configmap.yaml:10 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/archive/experimental/k8s/base/configmap.yaml:13 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/archive/experimental/k8s/base/configmap.yaml:16 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     MUTATING_COMMAND             /home/ubuntu/gula-platform/archive/experimental/k8s/base/mesh/linkerd.yaml:7 configuration contains a mutating command; review and gate it
+HIGH     MUTATING_COMMAND             /home/ubuntu/gula-platform/archive/experimental/k8s/base/mesh/linkerd.yaml:8 configuration contains a mutating command; review and gate it
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/archive/experimental/k8s/base/patient-service.yaml:27 container image uses latest; pin an immutable digest or version
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/archive/experimental/k8s/base/result-service.yaml:27 container image uses latest; pin an immutable digest or version
+HIGH     MUTATING_COMMAND             /home/ubuntu/gula-platform/archive/experimental/k8s/overlays/prod/kustomization.yaml:3 configuration contains a mutating command; review and gate it
+HIGH     FILE_TOO_LARGE               /home/ubuntu/gula-platform/assessment/brain/knowledge_graph.json:1 file exceeds 2097152 bytes
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/backend/app/capabilities/clinical_foundation/capability.json:12 configuration does not parse
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/backend/app/capabilities/document_management/capability.json:13 configuration does not parse
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/backend/app/capabilities/encounter_management/capability.json:12 configuration does not parse
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/backend/app/capabilities/fhir_interoperability/capability.json:12 configuration does not parse
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/backend/app/capabilities/healthcare_consent/capability.json:12 configuration does not parse
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/backend/app/capabilities/provider_management/capability.json:12 configuration does not parse
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/backend/app/capabilities/reporting_service/capability.json:12 configuration does not parse
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/backend/app/capabilities/search_service/capability.json:11 configuration does not parse
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/backend/app/capabilities/storage_service/capability.json:11 configuration does not parse
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/backend/app/capabilities/workflow_engine/capability.json:12 configuration does not parse
+HIGH     MUTATING_COMMAND             /home/ubuntu/gula-platform/config/cert-manager/certificate-template.yaml:6 configuration contains a mutating command; review and gate it
+HIGH     MUTATING_COMMAND             /home/ubuntu/gula-platform/config/cert-manager/cluster-issuer.yaml:6 configuration contains a mutating command; review and gate it
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/grafana/provisioning/datasources/datasources.yml:7 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/grafana/provisioning/datasources/datasources.yml:14 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/grafana/provisioning/datasources/datasources.yml:20 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml:36 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml:81 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml:126 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml:171 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml:234 container image uses latest; pin an immutable digest or version
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/minio-ha/docker-compose.minio-ha.yml:239 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/opentelemetry/otel-collector-config.yml:15 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/opentelemetry/otel-collector-config.yml:169 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/prometheus/prometheus-full.yml:127 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     MUTATING_COMMAND             /home/ubuntu/gula-platform/config/prometheus/prometheus.yml:52 configuration contains a mutating command; review and gate it
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/promtail/promtail-config.yml:14 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PARSE_ERROR                  /home/ubuntu/gula-platform/config/runtime-protection/seccomp-profile.json:11 configuration does not parse
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/config/tempo/docker-compose.tempo.yml:9 container image uses latest; pin an immutable digest or version
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/config/tempo/docker-compose.tempo.yml:24 container image uses latest; pin an immutable digest or version
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/tempo/docker-compose.tempo.yml:31 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/config/tempo/tempo-config.yml:88 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     MUTATING_COMMAND             /home/ubuntu/gula-platform/config/zero-trust/linkerd-policy.yaml:6 configuration contains a mutating command; review and gate it
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.full.yml:324 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.full.yml:343 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.full.yml:425 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.full.yml:561 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.full.yml:585 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.full.yml:609 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.full.yml:631 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.full.yml:635 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.full.yml:657 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.full.yml:678 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.yml:135 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.yml:223 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/docker-compose.yml:438 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     SERVICE_ACCOUNT_TOKEN        /home/ubuntu/gula-platform/helm/gula-platform/values.yaml:33 disable automatic service-account token mounting unless required
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/helm/gula-platform/values.yaml:1226 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/k8s/base/backend/deployment.yaml:54 container image uses latest; pin an immutable digest or version
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/k8s/base/configmap.yaml:8 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     MUTATING_COMMAND             /home/ubuntu/gula-platform/k8s/base/mesh/linkerd.yaml:2 configuration contains a mutating command; review and gate it
+HIGH     MUTATING_COMMAND             /home/ubuntu/gula-platform/k8s/base/mesh/linkerd.yaml:6 configuration contains a mutating command; review and gate it
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml:43 container image uses latest; pin an immutable digest or version
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml:125 container image uses latest; pin an immutable digest or version
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml:207 container image uses latest; pin an immutable digest or version
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml:289 container image uses latest; pin an immutable digest or version
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml:383 container image uses latest; pin an immutable digest or version
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml:462 container image uses latest; pin an immutable digest or version
+HIGH     UNPINNED_IMAGE               /home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml:536 container image uses latest; pin an immutable digest or version
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/k8s/base/microservices/deployments.yaml:544 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/k8s/overlays/dev/kustomization.yaml:29 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+HIGH     PLAINTEXT_ENDPOINT           /home/ubuntu/gula-platform/tests/stress/stress-config.yml:63 non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint
+MEDIUM   WILDCARD_BIND                /home/ubuntu/gula-platform/helm/gula-platform/templates/redis/configmap.yaml:17 wildcard bind address requires explicit staging/production justification
+
+Scanned .; findings=153; blocking=152; fail_on=HIGH
+scanner_exit=1

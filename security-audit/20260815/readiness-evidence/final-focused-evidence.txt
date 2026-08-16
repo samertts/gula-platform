@@ -1,0 +1,1014 @@
+=== focused readiness files ruff ===
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+ [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:1:8
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m export const ROLE_LEVELS: Record<string, number> = {
+  [1m[94m|[0m        [1m[91m^^^^^[0m
+[1m[94m2[0m [1m[94m|[0m   master_admin: 100,
+[1m[94m3[0m [1m[94m|[0m   ministry_admin: 90,
+  [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+ [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:1:14
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m export const ROLE_LEVELS: Record<string, number> = {
+  [1m[94m|[0m              [1m[91m^^^^^^^^^^^[0m
+[1m[94m2[0m [1m[94m|[0m   master_admin: 100,
+[1m[94m3[0m [1m[94m|[0m   ministry_admin: 90,
+  [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected a statement[0m
+ [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:1:40
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m export const ROLE_LEVELS: Record<string, number> = {
+  [1m[94m|[0m                                        [1m[91m^[0m
+[1m[94m2[0m [1m[94m|[0m   master_admin: 100,
+[1m[94m3[0m [1m[94m|[0m   ministry_admin: 90,
+  [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Invalid assignment target[0m
+ [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:1:42
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m export const ROLE_LEVELS: Record<string, number> = {
+  [1m[94m|[0m                                          [1m[91m^^^^^^^[0m
+[1m[94m2[0m [1m[94m|[0m   master_admin: 100,
+[1m[94m3[0m [1m[94m|[0m   ministry_admin: 90,
+  [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an expression[0m
+ [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:1:50
+  [1m[94m|[0m
+[1m[94m1[0m [1m[94m|[0m export const ROLE_LEVELS: Record<string, number> = {
+  [1m[94m|[0m                                                  [1m[91m^[0m
+[1m[94m2[0m [1m[94m|[0m   master_admin: 100,
+[1m[94m3[0m [1m[94m|[0m   ministry_admin: 90,
+  [1m[94m|[0m
+
+[1m[91mE703[0m[1m Statement ends with an unnecessary semicolon[0m
+  [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:19:2
+   [1m[94m|[0m
+[1m[94m17[0m [1m[94m|[0m   receptionist: 25,
+[1m[94m18[0m [1m[94m|[0m   citizen: 10,
+[1m[94m19[0m [1m[94m|[0m };
+   [1m[94m|[0m  [1m[91m^[0m
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m export const ROLE_PERMISSIONS: Record<string, string[]> = {
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unnecessary semicolon[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+  [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:21:8
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m };
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m export const ROLE_PERMISSIONS: Record<string, string[]> = {
+   [1m[94m|[0m        [1m[91m^^^^^[0m
+[1m[94m22[0m [1m[94m|[0m   master_admin: [
+[1m[94m23[0m [1m[94m|[0m     "patients:read", "patients:write", "patients:delete",
+   [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+  [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:21:14
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m };
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m export const ROLE_PERMISSIONS: Record<string, string[]> = {
+   [1m[94m|[0m              [1m[91m^^^^^^^^^^^^^^^^[0m
+[1m[94m22[0m [1m[94m|[0m   master_admin: [
+[1m[94m23[0m [1m[94m|[0m     "patients:read", "patients:write", "patients:delete",
+   [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected a statement[0m
+  [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:21:45
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m };
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m export const ROLE_PERMISSIONS: Record<string, string[]> = {
+   [1m[94m|[0m                                             [1m[91m^[0m
+[1m[94m22[0m [1m[94m|[0m   master_admin: [
+[1m[94m23[0m [1m[94m|[0m     "patients:read", "patients:write", "patients:delete",
+   [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Invalid assignment target[0m
+  [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:21:47
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m };
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m export const ROLE_PERMISSIONS: Record<string, string[]> = {
+   [1m[94m|[0m                                               [1m[91m^^^^^^^^^[0m
+[1m[94m22[0m [1m[94m|[0m   master_admin: [
+[1m[94m23[0m [1m[94m|[0m     "patients:read", "patients:write", "patients:delete",
+   [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected index or slice expression[0m
+  [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:21:54
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m };
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m export const ROLE_PERMISSIONS: Record<string, string[]> = {
+   [1m[94m|[0m                                                      [1m[91m^[0m
+[1m[94m22[0m [1m[94m|[0m   master_admin: [
+[1m[94m23[0m [1m[94m|[0m     "patients:read", "patients:write", "patients:delete",
+   [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an expression[0m
+  [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:21:57
+   [1m[94m|[0m
+[1m[94m19[0m [1m[94m|[0m };
+[1m[94m20[0m [1m[94m|[0m
+[1m[94m21[0m [1m[94m|[0m export const ROLE_PERMISSIONS: Record<string, string[]> = {
+   [1m[94m|[0m                                                         [1m[91m^[0m
+[1m[94m22[0m [1m[94m|[0m   master_admin: [
+[1m[94m23[0m [1m[94m|[0m     "patients:read", "patients:write", "patients:delete",
+   [1m[94m|[0m
+
+[1m[91mE703[0m[1m Statement ends with an unnecessary semicolon[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:105:2
+    [1m[94m|[0m
+[1m[94m103[0m [1m[94m|[0m   receptionist: ["patients:read", "popular_clinics:read", "popular_clinics:patient:read", "popular_clinics:ticket:read", "popular_cli[1m[94m…[0m
+[1m[94m104[0m [1m[94m|[0m   citizen: ["citizen:workspace"],
+[1m[94m105[0m [1m[94m|[0m };
+    [1m[94m|[0m  [1m[91m^[0m
+[1m[94m106[0m [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unnecessary semicolon[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:107:8
+    [1m[94m|[0m
+[1m[94m105[0m [1m[94m|[0m };
+[1m[94m106[0m [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+    [1m[94m|[0m        [1m[91m^^^^^^^^[0m
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:107:17
+    [1m[94m|[0m
+[1m[94m105[0m [1m[94m|[0m };
+[1m[94m106[0m [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Invalid annotated assignment target[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:107:17
+    [1m[94m|[0m
+[1m[94m105[0m [1m[94m|[0m };
+[1m[94m106[0m [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `:`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:107:35
+    [1m[94m|[0m
+[1m[94m105[0m [1m[94m|[0m };
+[1m[94m106[0m [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+    [1m[94m|[0m                                   [1m[91m^[0m
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `:`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:107:55
+    [1m[94m|[0m
+[1m[94m105[0m [1m[94m|[0m };
+[1m[94m106[0m [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+    [1m[94m|[0m                                                       [1m[91m^[0m
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:107:74
+    [1m[94m|[0m
+[1m[94m105[0m [1m[94m|[0m };
+[1m[94m106[0m [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+    [1m[94m|[0m                                                                          [1m[91m^[0m
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an identifier, but found a keyword `return` that cannot be used here[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:108:3
+    [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+    [1m[94m|[0m   [1m[91m^^^^^^[0m
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found name[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:108:10
+    [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+    [1m[94m|[0m          [1m[91m^^^^^^^^^^^^^^^^[0m
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:108:32
+    [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+    [1m[94m|[0m                                [1m[91m^[0m
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `.`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:108:33
+    [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+    [1m[94m|[0m                                 [1m[91m^[0m
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:108:55
+    [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+    [1m[94m|[0m                                                       [1m[91m^[0m
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:108:56
+    [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+    [1m[94m|[0m                                                        [1m[91m^[0m
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `;`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:108:63
+    [1m[94m|[0m
+[1m[94m107[0m [1m[94m|[0m export function hasPermission(role: string, permission: string): boolean {
+[1m[94m108[0m [1m[94m|[0m   return ROLE_PERMISSIONS[role]?.includes(permission) ?? false;
+    [1m[94m|[0m                                                               [1m[91m^[0m
+[1m[94m109[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:111:8
+    [1m[94m|[0m
+[1m[94m109[0m [1m[94m|[0m }
+[1m[94m110[0m [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+    [1m[94m|[0m        [1m[91m^^^^^^^^[0m
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:111:17
+    [1m[94m|[0m
+[1m[94m109[0m [1m[94m|[0m }
+[1m[94m110[0m [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^[0m
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Invalid annotated assignment target[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:111:17
+    [1m[94m|[0m
+[1m[94m109[0m [1m[94m|[0m }
+[1m[94m110[0m [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `:`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:111:38
+    [1m[94m|[0m
+[1m[94m109[0m [1m[94m|[0m }
+[1m[94m110[0m [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+    [1m[94m|[0m                                      [1m[91m^[0m
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `:`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:111:59
+    [1m[94m|[0m
+[1m[94m109[0m [1m[94m|[0m }
+[1m[94m110[0m [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+    [1m[94m|[0m                                                           [1m[91m^[0m
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected index or slice expression[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:111:68
+    [1m[94m|[0m
+[1m[94m109[0m [1m[94m|[0m }
+[1m[94m110[0m [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+    [1m[94m|[0m                                                                    [1m[91m^[0m
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:111:80
+    [1m[94m|[0m
+[1m[94m109[0m [1m[94m|[0m }
+[1m[94m110[0m [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+    [1m[94m|[0m                                                                                [1m[91m^[0m
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an identifier, but found a keyword `return` that cannot be used here[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:112:3
+    [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+    [1m[94m|[0m   [1m[91m^^^^^^[0m
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found name[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:112:10
+    [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+    [1m[94m|[0m          [1m[91m^^^^^^^^^^^[0m
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Cannot use parenthesized keyword argument name on Python 3.14 (syntax was removed in Python 3.8)[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:112:27
+    [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+    [1m[94m|[0m                           [1m[91m^^^[0m
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an expression[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:112:32
+    [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+    [1m[94m|[0m                                [1m[91m^[0m
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `;`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:112:57
+    [1m[94m|[0m
+[1m[94m111[0m [1m[94m|[0m export function hasAnyPermission(role: string, permissions: string[]): boolean {
+[1m[94m112[0m [1m[94m|[0m   return permissions.some((p) => hasPermission(role, p));
+    [1m[94m|[0m                                                         [1m[91m^[0m
+[1m[94m113[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:115:8
+    [1m[94m|[0m
+[1m[94m113[0m [1m[94m|[0m }
+[1m[94m114[0m [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+    [1m[94m|[0m        [1m[91m^^^^^^^^[0m
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:115:17
+    [1m[94m|[0m
+[1m[94m113[0m [1m[94m|[0m }
+[1m[94m114[0m [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Invalid annotated assignment target[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:115:17
+    [1m[94m|[0m
+[1m[94m113[0m [1m[94m|[0m }
+[1m[94m114[0m [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `:`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:115:40
+    [1m[94m|[0m
+[1m[94m113[0m [1m[94m|[0m }
+[1m[94m114[0m [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+    [1m[94m|[0m                                        [1m[91m^[0m
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `:`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:115:60
+    [1m[94m|[0m
+[1m[94m113[0m [1m[94m|[0m }
+[1m[94m114[0m [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+    [1m[94m|[0m                                                            [1m[91m^[0m
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:115:79
+    [1m[94m|[0m
+[1m[94m113[0m [1m[94m|[0m }
+[1m[94m114[0m [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+    [1m[94m|[0m                                                                               [1m[91m^[0m
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an identifier, but found a keyword `if` that cannot be used here[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:116:3
+    [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+    [1m[94m|[0m   [1m[91m^^[0m
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected a parameter name[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:116:7
+    [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+    [1m[94m|[0m       [1m[91m^^^^^^^^^^^^^[0m
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an expression[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:116:20
+    [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+    [1m[94m|[0m                    [1m[91m^[0m
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `return`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:116:38
+    [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+    [1m[94m|[0m                                      [1m[91m^^^^^^[0m
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an expression[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:116:57
+    [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+    [1m[94m|[0m                                                         [1m[91m^[0m
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Unexpected indentation[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:117:1
+    [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m [1m[91m^^[0m
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:117:9
+    [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^[0m
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:117:45
+    [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m                                             [1m[91m^[0m
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:117:46
+    [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m                                              [1m[91m^[0m
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+    [1m[94m|[0m
+
+[1m[91mE703[0m[1m Statement ends with an unnecessary semicolon[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:117:49
+    [1m[94m|[0m
+[1m[94m115[0m [1m[94m|[0m export function canManageRole(actorRole: string, targetRole: string): boolean {
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+    [1m[94m|[0m                                                 [1m[91m^[0m
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unnecessary semicolon[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:118:9
+    [1m[94m|[0m
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+    [1m[94m|[0m         [1m[91m^^^^^^^^^^^[0m
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+[1m[94m120[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:118:47
+    [1m[94m|[0m
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+    [1m[94m|[0m                                               [1m[91m^[0m
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+[1m[94m120[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:118:48
+    [1m[94m|[0m
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+    [1m[94m|[0m                                                [1m[91m^[0m
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+[1m[94m120[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91mE703[0m[1m Statement ends with an unnecessary semicolon[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:118:51
+    [1m[94m|[0m
+[1m[94m116[0m [1m[94m|[0m   if (targetRole === "master_admin") return actorRole === "master_admin";
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+    [1m[94m|[0m                                                   [1m[91m^[0m
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+[1m[94m120[0m [1m[94m|[0m }
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unnecessary semicolon[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an expression[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:119:36
+    [1m[94m|[0m
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+    [1m[94m|[0m                                    [1m[91m^[0m
+[1m[94m120[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91mE703[0m[1m Statement ends with an unnecessary semicolon[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:119:52
+    [1m[94m|[0m
+[1m[94m117[0m [1m[94m|[0m   const actorLevel = ROLE_LEVELS[actorRole] ?? 0;
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+    [1m[94m|[0m                                                    [1m[91m^[0m
+[1m[94m120[0m [1m[94m|[0m }
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unnecessary semicolon[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected a statement[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:120:1
+    [1m[94m|[0m
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+[1m[94m120[0m [1m[94m|[0m }
+    [1m[94m|[0m [1m[91m^[0m
+[1m[94m121[0m [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected a statement[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:120:2
+    [1m[94m|[0m
+[1m[94m118[0m [1m[94m|[0m   const targetLevel = ROLE_LEVELS[targetRole] ?? 0;
+[1m[94m119[0m [1m[94m|[0m   return actorLevel > targetLevel && actorLevel > 0;
+[1m[94m120[0m [1m[94m|[0m }
+    [1m[94m|[0m  [1m[91m^[0m
+[1m[94m121[0m [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:122:8
+    [1m[94m|[0m
+[1m[94m120[0m [1m[94m|[0m }
+[1m[94m121[0m [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+    [1m[94m|[0m        [1m[91m^^^^^^^^[0m
+[1m[94m123[0m [1m[94m|[0m   return ROLE_LEVELS[role] ?? 0;
+[1m[94m124[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:122:17
+    [1m[94m|[0m
+[1m[94m120[0m [1m[94m|[0m }
+[1m[94m121[0m [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^[0m
+[1m[94m123[0m [1m[94m|[0m   return ROLE_LEVELS[role] ?? 0;
+[1m[94m124[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Invalid annotated assignment target[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:122:17
+    [1m[94m|[0m
+[1m[94m120[0m [1m[94m|[0m }
+[1m[94m121[0m [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m123[0m [1m[94m|[0m   return ROLE_LEVELS[role] ?? 0;
+[1m[94m124[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `:`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:122:34
+    [1m[94m|[0m
+[1m[94m120[0m [1m[94m|[0m }
+[1m[94m121[0m [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+    [1m[94m|[0m                                  [1m[91m^[0m
+[1m[94m123[0m [1m[94m|[0m   return ROLE_LEVELS[role] ?? 0;
+[1m[94m124[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:122:52
+    [1m[94m|[0m
+[1m[94m120[0m [1m[94m|[0m }
+[1m[94m121[0m [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+    [1m[94m|[0m                                                    [1m[91m^[0m
+[1m[94m123[0m [1m[94m|[0m   return ROLE_LEVELS[role] ?? 0;
+[1m[94m124[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an identifier, but found a keyword `return` that cannot be used here[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:123:3
+    [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+[1m[94m123[0m [1m[94m|[0m   return ROLE_LEVELS[role] ?? 0;
+    [1m[94m|[0m   [1m[91m^^^^^^[0m
+[1m[94m124[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found name[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:123:10
+    [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+[1m[94m123[0m [1m[94m|[0m   return ROLE_LEVELS[role] ?? 0;
+    [1m[94m|[0m          [1m[91m^^^^^^^^^^^[0m
+[1m[94m124[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:123:28
+    [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+[1m[94m123[0m [1m[94m|[0m   return ROLE_LEVELS[role] ?? 0;
+    [1m[94m|[0m                            [1m[91m^[0m
+[1m[94m124[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:123:29
+    [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+[1m[94m123[0m [1m[94m|[0m   return ROLE_LEVELS[role] ?? 0;
+    [1m[94m|[0m                             [1m[91m^[0m
+[1m[94m124[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `;`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:123:32
+    [1m[94m|[0m
+[1m[94m122[0m [1m[94m|[0m export function getRoleLevel(role: string): number {
+[1m[94m123[0m [1m[94m|[0m   return ROLE_LEVELS[role] ?? 0;
+    [1m[94m|[0m                                [1m[91m^[0m
+[1m[94m124[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:126:8
+    [1m[94m|[0m
+[1m[94m124[0m [1m[94m|[0m }
+[1m[94m125[0m [1m[94m|[0m
+[1m[94m126[0m [1m[94m|[0m export function isPlatformRole(role: string): boolean {
+    [1m[94m|[0m        [1m[91m^^^^^^^^[0m
+[1m[94m127[0m [1m[94m|[0m   return ["master_admin", "ministry_admin", "province_admin"].includes(role);
+[1m[94m128[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:126:17
+    [1m[94m|[0m
+[1m[94m124[0m [1m[94m|[0m }
+[1m[94m125[0m [1m[94m|[0m
+[1m[94m126[0m [1m[94m|[0m export function isPlatformRole(role: string): boolean {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^[0m
+[1m[94m127[0m [1m[94m|[0m   return ["master_admin", "ministry_admin", "province_admin"].includes(role);
+[1m[94m128[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Invalid annotated assignment target[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:126:17
+    [1m[94m|[0m
+[1m[94m124[0m [1m[94m|[0m }
+[1m[94m125[0m [1m[94m|[0m
+[1m[94m126[0m [1m[94m|[0m export function isPlatformRole(role: string): boolean {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m127[0m [1m[94m|[0m   return ["master_admin", "ministry_admin", "province_admin"].includes(role);
+[1m[94m128[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `:`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:126:36
+    [1m[94m|[0m
+[1m[94m124[0m [1m[94m|[0m }
+[1m[94m125[0m [1m[94m|[0m
+[1m[94m126[0m [1m[94m|[0m export function isPlatformRole(role: string): boolean {
+    [1m[94m|[0m                                    [1m[91m^[0m
+[1m[94m127[0m [1m[94m|[0m   return ["master_admin", "ministry_admin", "province_admin"].includes(role);
+[1m[94m128[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:126:55
+    [1m[94m|[0m
+[1m[94m124[0m [1m[94m|[0m }
+[1m[94m125[0m [1m[94m|[0m
+[1m[94m126[0m [1m[94m|[0m export function isPlatformRole(role: string): boolean {
+    [1m[94m|[0m                                                       [1m[91m^[0m
+[1m[94m127[0m [1m[94m|[0m   return ["master_admin", "ministry_admin", "province_admin"].includes(role);
+[1m[94m128[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an identifier, but found a keyword `return` that cannot be used here[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:127:3
+    [1m[94m|[0m
+[1m[94m126[0m [1m[94m|[0m export function isPlatformRole(role: string): boolean {
+[1m[94m127[0m [1m[94m|[0m   return ["master_admin", "ministry_admin", "province_admin"].includes(role);
+    [1m[94m|[0m   [1m[91m^^^^^^[0m
+[1m[94m128[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an expression or a '}'[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:127:77
+    [1m[94m|[0m
+[1m[94m126[0m [1m[94m|[0m export function isPlatformRole(role: string): boolean {
+[1m[94m127[0m [1m[94m|[0m   return ["master_admin", "ministry_admin", "province_admin"].includes(role);
+    [1m[94m|[0m                                                                             [1m[91m^[0m
+[1m[94m128[0m [1m[94m|[0m }
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:8
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m        [1m[91m^^^^^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Simple statements must be separated by newlines or semicolons[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:14
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m              [1m[91m^^^^^^^^^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected a statement[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:38
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m                                      [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Invalid assignment target[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:40
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m129[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m130[0m [1m[94m|[0m [1m[94m…[0mRecord<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boolean }[]> = {
+    [1m[94m|[0m                 [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m131[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m132[0m [1m[94m|[0m [1m[94m…[0mard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an expression or a '}'[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:55
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m                                                       [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `;`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:69
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m                                                                     [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `;`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:83
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m                                                                                   [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:96
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m                                                                                                [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `:`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:97
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m                                                                                                 [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected index or slice expression[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:106
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m                                                                                                          [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `:`, found `;`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:107
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m                                                                                                           [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Got unexpected token ?[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:126
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m                                                                                                                              [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `,`, found `:`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:127
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m }
+[1m[94m129[0m [1m[94m|[0m
+[1m[94m130[0m [1m[94m|[0m export const NAV_ITEMS: Record<string, { label: string; path: string; icon: string; permissions?: string[]; institutionalOnly?: boole[1m[94m…[0m
+    [1m[94m|[0m                                                                                                                               [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m   main: [
+[1m[94m132[0m [1m[94m|[0m     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected `:`, found `}`[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:137
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m129[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m130[0m [1m[94m|[0m [1m[94m…[0mcon: string; permissions?: string[]; institutionalOnly?: boolean }[]> = {
+    [1m[94m|[0m                                                                   [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m132[0m [1m[94m|[0m [1m[94m…[0md", permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected index or slice expression[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:139
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m129[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m130[0m [1m[94m|[0m [1m[94m…[0mn: string; permissions?: string[]; institutionalOnly?: boolean }[]> = {
+    [1m[94m|[0m                                                                   [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m132[0m [1m[94m|[0m [1m[94m…[0m, permissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91minvalid-syntax:[0m[1m Expected an expression[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:130:142
+    [1m[94m|[0m
+[1m[94m128[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m129[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m130[0m [1m[94m|[0m [1m[94m…[0mstring; permissions?: string[]; institutionalOnly?: boolean }[]> = {
+    [1m[94m|[0m                                                                   [1m[91m^[0m
+[1m[94m131[0m [1m[94m|[0m [1m[94m…[0m
+[1m[94m132[0m [1m[94m|[0m [1m[94m…[0mermissions: ["dashboard:read"] },
+    [1m[94m|[0m
+
+[1m[91mE703[0m[1m Statement ends with an unnecessary semicolon[0m
+   [1m[94m--> [0mfrontend-v3/src/permissions/index.ts:231:2
+    [1m[94m|[0m
+[1m[94m229[0m [1m[94m|[0m     { label: "التوافق الصحي FHIR", path: "/fhir", icon: "Share2", permissions: ["system:admin"] },
+[1m[94m230[0m [1m[94m|[0m   ],
+[1m[94m231[0m [1m[94m|[0m };
+    [1m[94m|[0m  [1m[91m^[0m
+[1m[96mhelp[0m[1m: Remove unnecessary semicolon[0m
+
+Found 96 errors.
+focused_ruff_status=1
+=== git diff check ===
+diff_check_status=0
+=== utc residual ===
+utc_scan_status=1
+=== branch and commit ===
+security/p0-bootstrap-alembic
+b2b909723b8242f06282312012fbcbfa01d1c590

@@ -5,7 +5,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -54,6 +53,13 @@ def test_production_configuration_accepts_explicit_strong_defaults():
     result = _run({"CORS_ORIGINS": ""})
 
     assert result.returncode == 0, result.stderr
+
+
+def test_unknown_environment_is_rejected():
+    result = _run({"ENV": "mystery"})
+
+    assert result.returncode != 0
+    assert "Unsupported ENV" in (result.stdout + result.stderr)
 
 
 def test_production_requires_base_url():

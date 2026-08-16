@@ -88,5 +88,10 @@ def test_sensitive_router_has_explicit_permission_guard(relative_path: str) -> N
     if relative_path == "app/health_data/routes.py":
         assert 'require_permission("health_data:read")' in source
         assert 'require_permission("health_data:warehouse")' in source
+    elif relative_path == "app/national/ecosystem/routes.py":
+        assert 'require_permission("integration:read")' in source
+        assert 'require_permission("integration:manage")' in source
+        assert 'require_permission("credential:issue")' in source
+        assert 'require_permission("integration:audit")' in source
     else:
         assert 'require_permission("system:admin")' in source

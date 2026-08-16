@@ -60,6 +60,7 @@ class {mod}Repository(ABC):
                 f'''"""SQLAlchemy repository for {mod}."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -97,7 +98,7 @@ class {mod}RepositoryImpl({mod}RepositoryInterface):
             else ""
         )
         soft_del_body = (
-            "\n        entity.deleted_at = datetime.utcnow()"
+            "\n        entity.deleted_at = datetime.now(UTC)"
             if spec.has_soft_delete
             else "\n        self.session.delete(entity)"
         )

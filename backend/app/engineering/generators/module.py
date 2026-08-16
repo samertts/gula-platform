@@ -58,14 +58,14 @@ class ModuleGenerator(BaseGenerator):
             f"""from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 
 
 @dataclass
 class {mod}:
     id: int | None = None
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 """,
         )
 
@@ -81,19 +81,19 @@ from datetime import datetime
 @dataclass
 class {mod}Created:
     {module}_id: int
-    occurred_at: datetime = datetime.utcnow()
+    occurred_at: datetime = datetime.now(UTC)
 
 
 @dataclass
 class {mod}Updated:
     {module}_id: int
-    occurred_at: datetime = datetime.utcnow()
+    occurred_at: datetime = datetime.now(UTC)
 
 
 @dataclass
 class {mod}Deleted:
     {module}_id: int
-    occurred_at: datetime = datetime.utcnow()
+    occurred_at: datetime = datetime.now(UTC)
 """,
             )
 

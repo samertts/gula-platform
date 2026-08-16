@@ -1,0 +1,79 @@
+[1m[91mUP035[0m [[1m[96m*[0m][1m Import from `collections.abc` instead: `Iterable`[0m
+  [1m[94m--> [0mscripts/security_scan_config.py:16:1
+   [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m from dataclasses import asdict, dataclass
+[1m[94m15[0m [1m[94m|[0m from pathlib import Path
+[1m[94m16[0m [1m[94m|[0m from typing import Any, Iterable
+   [1m[94m|[0m [1m[91m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+[1m[94m17[0m [1m[94m|[0m
+[1m[94m18[0m [1m[94m|[0m MAX_FILE_BYTES = 2 * 1024 * 1024
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Import from `collections.abc`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m from pathlib import Path
+[1m[94m  [0m [1m[31m-[0m [31mfrom typing import [0m[1m[31mAny,[0m[0m[31m Iterable
+[0m[1m[94m16[0m [1m[32m+[0m [32mfrom typing import [0m[1m[32mAny[0m[0m[32m
+[0m[1m[94m17[0m [1m[32m+[0m [1m[32mfrom collections.abc import[0m[0m[32m Iterable
+[0m[1m[94m18[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mF401[0m [[1m[96m*[0m][1m `typing.Any` imported but unused[0m
+  [1m[94m--> [0mscripts/security_scan_config.py:16:20
+   [1m[94m|[0m
+[1m[94m14[0m [1m[94m|[0m from dataclasses import asdict, dataclass
+[1m[94m15[0m [1m[94m|[0m from pathlib import Path
+[1m[94m16[0m [1m[94m|[0m from typing import Any, Iterable
+   [1m[94m|[0m                    [1m[91m^^^[0m
+[1m[94m17[0m [1m[94m|[0m
+[1m[94m18[0m [1m[94m|[0m MAX_FILE_BYTES = 2 * 1024 * 1024
+   [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove unused import: `typing.Any`[0m
+[1m[94m  [0m [1m[94m|[0m
+[1m[94m15[0m [1m[94m|[0m from pathlib import Path
+[1m[94m  [0m [1m[31m-[0m [31mfrom typing import [0m[1m[31mAny, [0m[0m[31mIterable
+[0m[1m[94m16[0m [1m[32m+[0m [32mfrom typing import [0m[32mIterable
+[0m[1m[94m17[0m [1m[94m|[0m
+[1m[94m  [0m [1m[94m|[0m
+
+[1m[91mT201[0m[1m `print` found[0m
+   [1m[94m--> [0mscripts/security_scan_config.py:157:9
+    [1m[94m|[0m
+[1m[94m155[0m [1m[94m|[0m     findings.sort(key=lambda item: (-severity_rank[item.severity], item.path, item.line, item.rule))
+[1m[94m156[0m [1m[94m|[0m     for finding in findings:
+[1m[94m157[0m [1m[94m|[0m         print(finding.render())
+    [1m[94m|[0m         [1m[91m^^^^^[0m
+[1m[94m158[0m [1m[94m|[0m     if args.json_output:
+[1m[94m159[0m [1m[94m|[0m         args.json_output.parent.mkdir(parents=True, exist_ok=True)
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove `print`[0m
+
+[1m[91mT201[0m[1m `print` found[0m
+   [1m[94m--> [0mscripts/security_scan_config.py:162:5
+    [1m[94m|[0m
+[1m[94m160[0m [1m[94m|[0m         args.json_output.write_text(json.dumps([asdict(item) for item in findings], indent=2) + "\n", encoding="utf-8")
+[1m[94m161[0m [1m[94m|[0m     blocking = [item for item in findings if severity_rank[item.severity] >= severity_rank[args.fail_on]]
+[1m[94m162[0m [1m[94m|[0m     print(f"\nScanned {args.root}; findings={len(findings)}; blocking={len(blocking)}; fail_on={args.fail_on}")
+    [1m[94m|[0m     [1m[91m^^^^^[0m
+[1m[94m163[0m [1m[94m|[0m     return 1 if blocking else 0
+    [1m[94m|[0m
+[1m[96mhelp[0m[1m: Remove `print`[0m
+
+Found 4 errors.
+[[36m*[0m] 2 fixable with the `--fix` option (2 hidden fixes can be enabled with the `--unsafe-fixes` option).
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/ubuntu/gula-platform/backend
+configfile: pytest.ini
+plugins: anyio-4.14.2, asyncio-1.4.0, timeout-2.4.0, Faker-40.36.0
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=function, asyncio_default_test_loop_scope=function
+collected 4 items
+
+backend/tests/test_security_scan_config.py ....                          [100%]
+
+=============================== warnings summary ===============================
+../../../usr/local/lib/python3.12/dist-packages/fastapi/testclient.py:1
+  /usr/local/lib/python3.12/dist-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+========================= 4 passed, 1 warning in 0.06s =========================

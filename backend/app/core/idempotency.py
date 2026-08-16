@@ -38,7 +38,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from fastapi import Depends, Header, HTTPException
@@ -175,7 +175,7 @@ def purge_expired_keys(db: Session) -> int:
     """
     from datetime import datetime, timedelta
 
-    cutoff = datetime.utcnow() - timedelta(hours=_KEY_TTL_HOURS)
+    cutoff = datetime.now(UTC) - timedelta(hours=_KEY_TTL_HOURS)
     result = db.execute(
         text("""
             DELETE FROM idempotency_keys

@@ -32,11 +32,8 @@ from .transformation import TransformationEngine
 
 logger = logging.getLogger("gula.ecosystem.routes")
 
-router = APIRouter(
-    prefix="/ecosystem",
-    tags=["Ecosystem"],
-    dependencies=[Depends(require_permission("system:admin"))],
-)
+router = APIRouter(prefix="/ecosystem", tags=["Ecosystem"])
+
 
 _transformation_engine = TransformationEngine()
 _schema_registry = _transformation_engine.schema_registry
@@ -83,7 +80,10 @@ def _build_connector(protocol: str, config: dict) -> BaseConnector:
     return conn_cls(conn_config)
 
 
-@router.post("/connectors/register")
+@router.post(
+    "/connectors/register",
+    dependencies=[Depends(require_permission("integration:manage"))],
+)
 async def register_connector(config: dict = Body(...)) -> dict:
     protocol = config.get("protocol", "")
     if not protocol:
@@ -101,12 +101,18 @@ async def register_connector(config: dict = Body(...)) -> dict:
     }
 
 
-@router.get("/connectors")
+@router.get(
+    "/connectors",
+    dependencies=[Depends(require_permission("integration:read"))],
+)
 async def list_connectors() -> list[dict]:
     return ConnectorRegistry.list()
 
 
-@router.get("/connectors/{name}/health")
+@router.get(
+    "/connectors/{name}/health",
+    dependencies=[Depends(require_permission("integration:read"))],
+)
 async def connector_health(name: str) -> dict:
     connector = ConnectorRegistry.get(name)
     if not connector:
@@ -121,7 +127,10 @@ async def connector_health(name: str) -> dict:
     }
 
 
-@router.delete("/connectors/{name}")
+@router.delete(
+    "/connectors/{name}",
+    dependencies=[Depends(require_permission("integration:manage"))],
+)
 async def unregister_connector(name: str) -> dict:
     connector = ConnectorRegistry.get(name)
     if not connector:
@@ -132,7 +141,10 @@ async def unregister_connector(name: str) -> dict:
     return {"name": name, "status": "unregistered"}
 
 
-@router.post("/connectors/{name}/send")
+@router.post(
+    "/connectors/{name}/send",
+    dependencies=[Depends(require_permission("integration:operate"))],
+)
 async def connector_send(name: str, data: Any = Body(...)) -> dict:
     connector = ConnectorRegistry.get(name)
     if not connector:
@@ -148,7 +160,10 @@ async def connector_send(name: str, data: Any = Body(...)) -> dict:
     }
 
 
-@router.post("/connectors/{name}/receive")
+@router.post(
+    "/connectors/{name}/receive",
+    dependencies=[Depends(require_permission("integration:operate"))],
+)
 async def connector_receive(name: str) -> dict:
     connector = ConnectorRegistry.get(name)
     if not connector:
@@ -164,7 +179,10 @@ async def connector_receive(name: str) -> dict:
     }
 
 
-@router.post("/transform")
+@router.post(
+    "/transform",
+    dependencies=[Depends(require_permission("integration:operate"))],
+)
 async def transform_data(
     source_data: Any = Body(...),
     source_format: str = Query("json"),
@@ -176,12 +194,18 @@ async def transform_data(
         raise HTTPException(status_code=400, detail="Invalid request") from exc
 
 
-@router.get("/schemas")
+@router.get(
+    "/schemas",
+    dependencies=[Depends(require_permission("integration:read"))],
+)
 async def list_schemas() -> list[dict]:
     return _schema_registry.list_schemas()
 
 
-@router.post("/schemas")
+@router.post(
+    "/schemas",
+    dependencies=[Depends(require_permission("integration:manage"))],
+)
 async def register_schema(data: dict = Body(...)) -> dict:
     name = data.get("name", "")
     schema = data.get("schema", {})
@@ -191,20 +215,29 @@ async def register_schema(data: dict = Body(...)) -> dict:
     return _schema_registry.register_schema(name, schema, version)
 
 
-@router.post("/schemas/{schema_name}/validate")
+@router.post(
+    "/schemas/{schema_name}/validate",
+    dependencies=[Depends(require_permission("integration:operate"))],
+)
 async def validate_against_schema(schema_name: str, data: Any = Body(...)) -> dict:
     valid, errors = _schema_registry.validate_against_schema(data, schema_name)
     return {"valid": valid, "errors": errors}
 
 
-@router.post("/partners")
+@router.post(
+    "/partners",
+    dependencies=[Depends(require_permission("integration:manage"))],
+)
 async def register_partner(data: dict = Body(...), db: Session = Depends(get_db)) -> dict:
     manager = PartnerManager(db)
     partner = manager.register_partner(data)
     return partner.to_dict()
 
 
-@router.get("/partners")
+@router.get(
+    "/partners",
+    dependencies=[Depends(require_permission("integration:read"))],
+)
 async def list_partners(
     status: str | None = Query(None),
     tier: str | None = Query(None),
@@ -224,7 +257,10 @@ async def list_partners(
     }
 
 
-@router.get("/partners/{partner_id}")
+@router.get(
+    "/partners/{partner_id}",
+    dependencies=[Depends(require_permission("integration:read"))],
+)
 async def get_partner(partner_id: str, db: Session = Depends(get_db)) -> dict:
     from .partners.service import PartnerNotFoundError
     manager = PartnerManager(db)
@@ -235,7 +271,10 @@ async def get_partner(partner_id: str, db: Session = Depends(get_db)) -> dict:
         raise HTTPException(status_code=404, detail="Resource not found") from exc
 
 
-@router.put("/partners/{partner_id}")
+@router.put(
+    "/partners/{partner_id}",
+    dependencies=[Depends(require_permission("integration:manage"))],
+)
 async def update_partner(partner_id: str, data: dict = Body(...), db: Session = Depends(get_db)) -> dict:
     from .partners.service import PartnerNotFoundError
     manager = PartnerManager(db)
@@ -246,7 +285,10 @@ async def update_partner(partner_id: str, data: dict = Body(...), db: Session = 
         raise HTTPException(status_code=404, detail="Resource not found") from exc
 
 
-@router.post("/partners/{partner_id}/credentials")
+@router.post(
+    "/partners/{partner_id}/credentials",
+    dependencies=[Depends(require_permission("credential:issue"))],
+)
 async def issue_credential(partner_id: str, data: dict = Body(...), db: Session = Depends(get_db)) -> dict:
     from .partners.service import PartnerNotFoundError
     credential_mgr = CredentialManager(db)
@@ -269,7 +311,10 @@ async def issue_credential(partner_id: str, data: dict = Body(...), db: Session 
         raise HTTPException(status_code=404, detail="Resource not found") from exc
 
 
-@router.post("/partners/{partner_id}/certificates")
+@router.post(
+    "/partners/{partner_id}/certificates",
+    dependencies=[Depends(require_permission("integration:manage"))],
+)
 async def register_certificate(partner_id: str, data: dict = Body(...), db: Session = Depends(get_db)) -> dict:
     from .partners.service import PartnerNotFoundError
     cert_mgr = CertificateManager(db)
@@ -280,7 +325,10 @@ async def register_certificate(partner_id: str, data: dict = Body(...), db: Sess
         raise HTTPException(status_code=404, detail="Resource not found") from exc
 
 
-@router.get("/partners/{partner_id}/audit")
+@router.get(
+    "/partners/{partner_id}/audit",
+    dependencies=[Depends(require_permission("integration:audit"))],
+)
 async def get_partner_audit_log(
     partner_id: str,
     action: str | None = Query(None),
@@ -301,13 +349,12 @@ async def get_partner_audit_log(
         "partner_id": partner_id,
         "offset": offset,
         "limit": limit,
+        "redacted_fields": ["details", "ip_address", "user_agent"],
         "data": [
             {
                 "id": log.id,
                 "action": log.action,
                 "resource": log.resource,
-                "details": log.details,
-                "ip_address": log.ip_address,
                 "status": log.status,
                 "created_at": log.created_at.isoformat() if log.created_at else None,
             }

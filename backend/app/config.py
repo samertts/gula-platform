@@ -13,6 +13,9 @@ logger = logging.getLogger("gula.config")
 
 # ─── Environment ─────────────────────────────────────────────────────────────
 ENV = os.getenv("ENV", "production").lower()
+_ALLOWED_ENVS = {"development", "test", "staging", "production"}
+if ENV not in _ALLOWED_ENVS:
+    sys.exit(f"Unsupported ENV={ENV!r}; choose one of {sorted(_ALLOWED_ENVS)}")
 IS_STAGING = ENV == "staging"
 # Staging is internet-facing and must behave like production from a security
 # standpoint: strong secrets, HTTPS, secure cookies, authenticated docs, and

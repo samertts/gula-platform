@@ -1,8 +1,10 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
+
+from app.security.dependencies import require_permission
 
 from .events import EVENT_REGISTRY, get_event_catalog
 from .fhir import get_capability_statement, get_fhir_profiles, get_structure_definitions
@@ -155,7 +157,11 @@ async def get_contract_catalog():
     return JSONResponse(content=catalog)
 
 
-@router.post("/export", summary="Export all contracts to filesystem")
+@router.post(
+    "/export",
+    summary="Export all contracts to filesystem",
+    dependencies=[Depends(require_permission("system:admin"))],
+)
 async def export_contracts(export: ContractExport):
     try:
         exported_files = _generator.export_all(export.output_dir)
