@@ -9,6 +9,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
+from app.database import get_request_audit_context
 from app.identity.models.audit import AuditAction, IdentityAuditEntry
 
 
@@ -39,6 +40,12 @@ class AuditService:
         outcome: str,
         previous_hash: str | None,
         organization_id: str | None = None,
+        facility_id: str | None = None,
+        workspace_id: str | None = None,
+        decision: str | None = None,
+        reason_code: str | None = None,
+        request_id: str | None = None,
+        correlation_id: str | None = None,
     ) -> str:
         content = {
             "id": entry_id,
@@ -52,6 +59,15 @@ class AuditService:
             "organization_id": organization_id,
             "previous_hash": previous_hash,
         }
+        optional_context = {
+            "facility_id": facility_id,
+            "workspace_id": workspace_id,
+            "decision": decision,
+            "reason_code": reason_code,
+            "request_id": request_id,
+            "correlation_id": correlation_id,
+        }
+        content.update({key: value for key, value in optional_context.items() if value is not None})
         raw = json.dumps(content, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
@@ -69,9 +85,27 @@ class AuditService:
         user_agent: str | None = None,
         session_id: str | None = None,
         organization_id: str | None = None,
+        facility_id: str | None = None,
+        workspace_id: str | None = None,
+        decision: str | None = None,
+        reason_code: str | None = None,
+        request_id: str | None = None,
+        correlation_id: str | None = None,
+        source: str | None = None,
+        data_classification: str | None = None,
         outcome: str = "success",
         error_message: str | None = None,
     ) -> IdentityAuditEntry:
+        metadata = dict(metadata or {})
+        facility_id = facility_id or metadata.get("facility_id")
+        workspace_id = workspace_id or metadata.get("workspace_id")
+        decision = decision or metadata.get("decision")
+        reason_code = reason_code or metadata.get("reason_code")
+        request_id = request_id or metadata.get("request_id")
+        correlation_id = correlation_id or metadata.get("correlation_id")
+        context_request_id, context_correlation_id = get_request_audit_context()
+        request_id = request_id or context_request_id
+        correlation_id = correlation_id or context_correlation_id
         entry_id = str(uuid.uuid4()).replace("-", "").upper()[:26]
         uuid_str = str(uuid.uuid4())
         occurred_at = datetime.now(UTC)
@@ -87,6 +121,12 @@ class AuditService:
             outcome=outcome,
             previous_hash=previous_hash,
             organization_id=organization_id,
+            facility_id=facility_id,
+            workspace_id=workspace_id,
+            decision=decision,
+            reason_code=reason_code,
+            request_id=request_id,
+            correlation_id=correlation_id,
         )
 
         entry = IdentityAuditEntry(
@@ -105,6 +145,14 @@ class AuditService:
             ip_address=ip_address,
             user_agent=user_agent,
             session_id=session_id,
+            facility_id=facility_id,
+            workspace_id=workspace_id,
+            decision=decision,
+            reason_code=reason_code,
+            request_id=request_id,
+            correlation_id=correlation_id,
+            source=source,
+            data_classification=data_classification,
             occurred_at=occurred_at,
             organization_id=organization_id,
             outcome=outcome,
@@ -122,8 +170,26 @@ class AuditService:
         target_id: str | None = None,
         metadata: dict | None = None,
         organization_id: str | None = None,
+        facility_id: str | None = None,
+        workspace_id: str | None = None,
+        decision: str | None = None,
+        reason_code: str | None = None,
+        request_id: str | None = None,
+        correlation_id: str | None = None,
+        source: str | None = None,
+        data_classification: str | None = None,
         outcome: str = "success",
     ) -> IdentityAuditEntry:
+        metadata = dict(metadata or {})
+        facility_id = facility_id or metadata.get("facility_id")
+        workspace_id = workspace_id or metadata.get("workspace_id")
+        decision = decision or metadata.get("decision")
+        reason_code = reason_code or metadata.get("reason_code")
+        request_id = request_id or metadata.get("request_id")
+        correlation_id = correlation_id or metadata.get("correlation_id")
+        context_request_id, context_correlation_id = get_request_audit_context()
+        request_id = request_id or context_request_id
+        correlation_id = correlation_id or context_correlation_id
         entry_id = str(uuid.uuid4()).replace("-", "").upper()[:26]
         uuid_str = str(uuid.uuid4())
         occurred_at = datetime.now(UTC)
@@ -139,6 +205,12 @@ class AuditService:
             outcome=outcome,
             previous_hash=previous_hash,
             organization_id=organization_id,
+            facility_id=facility_id,
+            workspace_id=workspace_id,
+            decision=decision,
+            reason_code=reason_code,
+            request_id=request_id,
+            correlation_id=correlation_id,
         )
 
         entry = IdentityAuditEntry(
@@ -153,6 +225,14 @@ class AuditService:
             extra_data=metadata,
             occurred_at=occurred_at,
             organization_id=organization_id,
+            facility_id=facility_id,
+            workspace_id=workspace_id,
+            decision=decision,
+            reason_code=reason_code,
+            request_id=request_id,
+            correlation_id=correlation_id,
+            source=source,
+            data_classification=data_classification,
             outcome=outcome,
         )
         self.session.add(entry)
@@ -189,6 +269,12 @@ class AuditService:
                 outcome=entry.outcome,
                 previous_hash=entry.previous_hash,
                 organization_id=entry.organization_id,
+                facility_id=entry.facility_id,
+                workspace_id=entry.workspace_id,
+                decision=entry.decision,
+                reason_code=entry.reason_code,
+                request_id=entry.request_id,
+                correlation_id=entry.correlation_id,
             )
             if computed != entry.entry_hash:
                 violations.append({

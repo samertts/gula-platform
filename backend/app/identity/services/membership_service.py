@@ -31,7 +31,8 @@ from app.identity.models.membership import (
     MembershipStatus,
 )
 from app.identity.models.niam_organization import NIAMOrganization
-from app.identity.models.workspace import Workspace
+from app.identity.models.workspace import Workspace, WorkspaceStatus
+from app.identity.services.access_revocation import revoke_account_access
 from app.identity.services.audit_service import AuditService
 
 LEGAL_MEMBERSHIP_TRANSITIONS: dict[str, frozenset[str]] = {
@@ -143,6 +144,9 @@ class MembershipService:
             target_type=target_type,
             target_id=target_id,
             organization_id=organization_id,
+            decision="deny" if outcome == "denied" else "allow",
+            reason_code=(metadata or {}).get("reason_code") or (metadata or {}).get("reason"),
+            source="niam_membership",
             metadata=metadata,
             outcome=outcome,
         )
@@ -200,13 +204,24 @@ class MembershipService:
             workspace = await self.session.scalar(select(Workspace).where(Workspace.id == workspace_id))
             if workspace is None or workspace.organization_id != organization_id:
                 raise MembershipValidationError("Workspace is outside the organization context")
+            if workspace.status != WorkspaceStatus.active.value:
+                raise MembershipValidationError("Workspace is not active")
+            if facility_id and workspace.facility_id and workspace.facility_id != facility_id:
+                raise MembershipValidationError("Workspace is outside the facility context")
 
     async def _can_manage_organization(self, actor_id: str, organization_id: str) -> bool:
+        try:
+            await self._require_active_account(actor_id)
+        except MembershipAccessDenied:
+            return False
+        now = self._now()
         ownership = await self.session.scalar(
             select(OrganizationOwnership.id).where(
                 OrganizationOwnership.account_id == actor_id,
                 OrganizationOwnership.organization_id == organization_id,
                 OrganizationOwnership.status == OwnershipStatus.active.value,
+                (OrganizationOwnership.valid_from.is_(None) | (OrganizationOwnership.valid_from <= now)),
+                (OrganizationOwnership.expires_at.is_(None) | (OrganizationOwnership.expires_at > now)),
             ).limit(1),
         )
         if ownership:
@@ -216,6 +231,8 @@ class MembershipService:
                 OrganizationRepresentative.account_id == actor_id,
                 OrganizationRepresentative.organization_id == organization_id,
                 OrganizationRepresentative.status == RepresentativeStatus.active.value,
+                (OrganizationRepresentative.valid_from.is_(None) | (OrganizationRepresentative.valid_from <= now)),
+                (OrganizationRepresentative.expires_at.is_(None) | (OrganizationRepresentative.expires_at > now)),
             ).limit(1),
         )
         return representative is not None
@@ -357,7 +374,11 @@ class MembershipService:
         return invitation, raw_token
 
     async def accept_invitation(self, invitation_id: str, actor_id: str, raw_token: str) -> Membership:
-        invitation = await self.session.scalar(select(MembershipInvitation).where(MembershipInvitation.id == invitation_id))
+        invitation = await self.session.scalar(
+            select(MembershipInvitation)
+            .where(MembershipInvitation.id == invitation_id)
+            .with_for_update()
+        )
         if invitation is None or invitation.status != InvitationStatus.pending.value:
             raise InvitationError("Invitation is not available")
         if invitation.expires_at <= self._now():
@@ -367,9 +388,26 @@ class MembershipService:
             await self._audit(AuditAction.invitation_expired, actor_id, "membership_invitation", invitation.id, invitation.organization_id, outcome="denied")
             raise InvitationError("Invitation has expired")
         if not secrets.compare_digest(invitation.token_hash, self.token_hash(raw_token)):
-            await self._audit(AuditAction.invitation_accepted, actor_id, "membership_invitation", invitation.id, invitation.organization_id, outcome="denied")
+            await self._audit(
+                AuditAction.invitation_rejected,
+                actor_id,
+                "membership_invitation",
+                invitation.id,
+                invitation.organization_id,
+                {"reason_code": "invalid_invitation_token"},
+                outcome="denied",
+            )
             raise InvitationError("Invitation token is invalid")
         if invitation.recipient_account_id and invitation.recipient_account_id != actor_id:
+            await self._audit(
+                AuditAction.invitation_rejected,
+                actor_id,
+                "membership_invitation",
+                invitation.id,
+                invitation.organization_id,
+                {"reason_code": "invitation_recipient_mismatch"},
+                outcome="denied",
+            )
             raise InvitationError("Invitation recipient mismatch")
         account = await self._require_active_account(actor_id)
         key = self.relationship_key(actor_id, invitation.organization_id, invitation.relationship_type, invitation.scope_type, invitation.facility_id, invitation.department_id, invitation.unit_id, invitation.workspace_id)
@@ -416,6 +454,15 @@ class MembershipService:
         membership.revocation_reason = reason
         await self.session.flush()
         await self._audit(AuditAction.membership_revoked, actor_id, "membership", membership.id, membership.organization_id, {"reason": reason})
+        await revoke_account_access(
+            self.session,
+            account_id=membership.account_id,
+            actor_id=actor_id,
+            organization_id=membership.organization_id,
+            facility_id=membership.facility_id,
+            workspace_id=membership.workspace_id,
+            reason_code="membership_revoked",
+        )
         return membership
 
     async def suspend_membership(self, membership_id: str, actor_id: str, reason: str | None = None) -> Membership:
@@ -429,6 +476,15 @@ class MembershipService:
         membership.revocation_reason = reason
         await self.session.flush()
         await self._audit(AuditAction.membership_suspended, actor_id, "membership", membership.id, membership.organization_id, {"reason": reason})
+        await revoke_account_access(
+            self.session,
+            account_id=membership.account_id,
+            actor_id=actor_id,
+            organization_id=membership.organization_id,
+            facility_id=membership.facility_id,
+            workspace_id=membership.workspace_id,
+            reason_code="membership_suspended",
+        )
         return membership
 
     async def reactivate_membership(self, membership_id: str, actor_id: str) -> Membership:
@@ -471,9 +527,28 @@ class MembershipService:
         )
         memberships = list(result.scalars().all())
         now = self._now()
+        expired_memberships: list[Membership] = []
         for membership in memberships:
             if membership.expires_at and membership.expires_at <= now and membership.status in {MembershipStatus.pending.value, MembershipStatus.invited.value, MembershipStatus.active.value, MembershipStatus.suspended.value}:
                 self.transition_membership(membership, MembershipStatus.expired)
                 membership.revoked_at = now
+                expired_memberships.append(membership)
+                await self._audit(
+                    AuditAction.membership_expired,
+                    account_id,
+                    "membership",
+                    membership.id,
+                    membership.organization_id,
+                    {"reason_code": "membership_expired"},
+                    outcome="success",
+                )
+        if expired_memberships:
+            await revoke_account_access(
+                self.session,
+                account_id=account_id,
+                actor_id=account_id,
+                organization_id=expired_memberships[0].organization_id,
+                reason_code="membership_expired",
+            )
         await self.session.flush()
         return memberships

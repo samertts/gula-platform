@@ -91,6 +91,8 @@ class AuthorizationRequest:
     required_assurance: str | None = None
     break_glass: bool = False
     break_glass_authorized: bool = False
+    request_id: str | None = None
+    correlation_id: str | None = None
 
     @property
     def effective_permission(self) -> str:
@@ -563,6 +565,13 @@ class AuthorizationDecisionService:
                 target_type=request.resource_type,
                 target_id=request.resource_id,
                 organization_id=request.organization_id,
+                facility_id=request.facility_id,
+                workspace_id=request.workspace_id,
+                decision=decision.decision.value,
+                reason_code=decision.reason_code.value,
+                request_id=request.request_id,
+                correlation_id=request.correlation_id,
+                source="niam_authorization",
                 metadata=metadata,
                 outcome="success" if decision.allowed else "denied",
             )

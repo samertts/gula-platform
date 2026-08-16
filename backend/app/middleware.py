@@ -175,14 +175,18 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         request_id = sanitize_request_id(request.headers.get("X-Request-ID"))
         request.state.request_id = request_id
         bind_log_context(request_id=request_id)
-        from .database import _endpoint_var, _request_id_var
+        from .database import _correlation_id_var, _endpoint_var, _request_id_var
 
+        correlation_id = sanitize_request_id(request.headers.get("X-Correlation-ID")) if request.headers.get("X-Correlation-ID") else request_id
+        request.state.correlation_id = correlation_id
         rid_token = _request_id_var.set(request_id)
+        cid_token = _correlation_id_var.set(correlation_id)
         ep_token = _endpoint_var.set(request.url.path)
         try:
             response = await call_next(request)
         finally:
             _request_id_var.reset(rid_token)
+            _correlation_id_var.reset(cid_token)
             _endpoint_var.reset(ep_token)
         response.headers["X-Request-ID"] = request_id
         return response

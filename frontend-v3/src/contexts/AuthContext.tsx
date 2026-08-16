@@ -62,6 +62,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(nextState);
   };
 
+  const refreshScopedPermissions = async (membershipList: MembershipSummary[], activeWorkspace: WorkspaceSummary | null) => {
+    if (!activeWorkspace?.organization_id) {
+      setEffectivePermissions({});
+      return;
+    }
+    const organizationId = activeWorkspace.organization_id;
+    if (!membershipList.some((membership) => membership.organization_id === organizationId)) {
+      setEffectivePermissions({});
+      return;
+    }
+    try {
+      const result = await apiClient.getEffectivePermissions(organizationId, {
+        facility_id: activeWorkspace.facility_id ?? undefined,
+        department_id: activeWorkspace.department_id ?? undefined,
+        workspace_id: activeWorkspace.id,
+      });
+      setEffectivePermissions({ [organizationId]: result.permissions });
+    } catch {
+      setEffectivePermissions({});
+    }
+  };
+
   const refreshMemberships = async (forceLive = false) => {
     if (demoMode && !forceLive) {
       setMemberships([]);
@@ -70,18 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const response = await apiClient.listMyMemberships();
     setMemberships(response.memberships);
-    const organizationIds = [...new Set(response.memberships.map((membership) => membership.organization_id))];
-    const reflected = await Promise.all(
-      organizationIds.map(async (organizationId) => {
-        try {
-          const result = await apiClient.getEffectivePermissions(organizationId);
-          return [organizationId, result.permissions] as const;
-        } catch {
-          return [organizationId, []] as const;
-        }
-      }),
-    );
-    setEffectivePermissions(Object.fromEntries(reflected));
+    await refreshScopedPermissions(response.memberships, workspace);
   };
 
   const refreshWorkspaces = async () => {
@@ -92,18 +103,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await apiClient.listWorkspaces();
     setAvailableWorkspaces(response.workspaces);
     return response.workspaces;
-  };
-
-  const establishSingleWorkspaceContext = async (workspaces: WorkspaceSummary[]) => {
-    if (workspaces.length !== 1) {
-      setWorkspace(null);
-      setWorkspaceContext(null);
-      return null;
-    }
-    const response = await apiClient.switchWorkspace(workspaces[0]!.id);
-    setWorkspace(response.workspace);
-    setWorkspaceContext(response.context);
-    return response.workspace;
   };
 
   const refreshIdentity = async () => {
@@ -122,20 +121,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const membershipResponse = await apiClient.listMyMemberships();
       setMemberships(membershipResponse.memberships);
-      const organizationIds = [...new Set(membershipResponse.memberships.map((membership) => membership.organization_id))];
-      const reflected = await Promise.all(organizationIds.map(async (organizationId) => {
-        try {
-          const result = await apiClient.getEffectivePermissions(organizationId);
-          return [organizationId, result.permissions] as const;
-        } catch {
-          return [organizationId, []] as const;
-        }
-      }));
-      setEffectivePermissions(Object.fromEntries(reflected));
+      setEffectivePermissions({});
       const response = await apiClient.listWorkspaces();
       setAvailableWorkspaces(response.workspaces);
-      const activeWorkspace = await establishSingleWorkspaceContext(response.workspaces);
-      setState(stateForAuthorizedContext(session.user, response.workspaces, activeWorkspace));
+      setWorkspace(null);
+      setWorkspaceContext(null);
+      setState(stateForAuthorizedContext(session.user, response.workspaces, null));
     } catch (caught) {
       const info = classifyApiError(caught, "تعذر التحقق من الجلسة الحالية.");
       setError(toStateError(info));
@@ -212,10 +203,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       const membershipResponse = await apiClient.listMyMemberships();
       setMemberships(membershipResponse.memberships);
+      setEffectivePermissions({});
       const workspacesResponse = await apiClient.listWorkspaces();
       setAvailableWorkspaces(workspacesResponse.workspaces);
-      const activeWorkspace = await establishSingleWorkspaceContext(workspacesResponse.workspaces);
-      setState(stateForAuthorizedContext(response.user, workspacesResponse.workspaces, activeWorkspace));
+      setWorkspace(null);
+      setWorkspaceContext(null);
+      setState(stateForAuthorizedContext(response.user, workspacesResponse.workspaces, null));
     } catch (caught) {
       const info = authFailureMessage(caught);
       const nextState = info.code === "LOCKED"
@@ -252,8 +245,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await apiClient.switchWorkspace(workspaceId);
     setWorkspace(response.workspace);
     setWorkspaceContext(response.context);
+    const membershipResponse = await apiClient.listMyMemberships();
+    setMemberships(membershipResponse.memberships);
+    await refreshScopedPermissions(membershipResponse.memberships, response.workspace);
     if (user) setState(AUTH_STATES.AUTHORIZED);
-    await refreshMemberships(true);
     return response.workspace;
   };
 

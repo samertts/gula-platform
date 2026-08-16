@@ -8,7 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
 from app.identity.models.account import Account, AccountStatus, AccountType
+from app.identity.models.administrative_structure import NIAMAdminFacility
 from app.identity.models.membership import Membership, MembershipStatus
+from app.identity.models.niam_organization import NIAMOrganization
 from app.identity.models.verification_record import (
     VerificationRecord,
     VerificationRecordStatus,
@@ -83,6 +85,9 @@ class WorkspaceService:
             actor_type="account",
             target_type="workspace",
             target_id=workspace.id,
+            decision="allow",
+            reason_code="workspace_created",
+            source="niam_workspace",
             metadata={"workspace_type": workspace.workspace_type, "idempotent": True},
         )
         return workspace
@@ -119,10 +124,15 @@ class WorkspaceService:
         # organization-owned workspace must never be reachable merely because
         # the account is an organization owner/representative: access is
         # derived from an active, unexpired Membership with matching scope.
-        direct = select(Workspace).where(
-            Workspace.owner_account_id == account.id,
-            Workspace.organization_id.is_(None),
-            Workspace.status.in_([WorkspaceStatus.active.value, WorkspaceStatus.restricted.value]),
+        direct = (
+            select(Workspace)
+            .outerjoin(NIAMOrganization, Workspace.organization_id == NIAMOrganization.id)
+            .outerjoin(NIAMAdminFacility, Workspace.facility_id == NIAMAdminFacility.id)
+            .where(
+                Workspace.owner_account_id == account.id,
+                Workspace.organization_id.is_(None),
+                Workspace.status.in_([WorkspaceStatus.active.value, WorkspaceStatus.restricted.value]),
+            )
         )
         result = await self.session.execute(direct)
         workspaces = {workspace.id: workspace for workspace in result.scalars().all()}
@@ -159,9 +169,22 @@ class WorkspaceService:
             return list(workspaces.values())
 
         organization_result = await self.session.execute(
-            select(Workspace).where(
+            select(Workspace)
+            .join(NIAMOrganization, Workspace.organization_id == NIAMOrganization.id)
+            .outerjoin(NIAMAdminFacility, Workspace.facility_id == NIAMAdminFacility.id)
+            .where(
                 or_(*scoped_membership_conditions),
                 Workspace.status.in_([WorkspaceStatus.active.value, WorkspaceStatus.restricted.value]),
+                NIAMOrganization.status == "active",
+                NIAMOrganization.is_active.is_(True),
+                or_(
+                    Workspace.facility_id.is_(None),
+                    and_(
+                        NIAMAdminFacility.organization_id == Workspace.organization_id,
+                        NIAMAdminFacility.status == "active",
+                        NIAMAdminFacility.is_active.is_(True),
+                    ),
+                ),
             ),
         )
         for workspace in organization_result.scalars().all():

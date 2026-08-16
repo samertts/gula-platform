@@ -186,6 +186,10 @@ async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_cur
             actor_id=actor.account.id,
             target_type="workspace",
             target_id=workspace_id,
+            workspace_id=workspace_id,
+            decision="deny",
+            reason_code="workspace_access_denied",
+            source="niam_workspace",
             metadata={"outcome": "denied"},
             outcome="denied",
         )
@@ -197,6 +201,11 @@ async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_cur
         actor_type="account",
         target_type="workspace",
         target_id=workspace.id,
+        workspace_id=workspace.id,
+        facility_id=workspace.facility_id,
+        decision="allow",
+        reason_code="workspace_switched",
+        source="niam_workspace",
         session_id=actor.session.uuid,
         metadata={"context_version": context.version},
     )

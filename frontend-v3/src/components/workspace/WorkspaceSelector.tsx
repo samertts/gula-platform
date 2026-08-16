@@ -14,6 +14,7 @@ export function WorkspaceSelector({ onActiveWorkspace }: WorkspaceSelectorProps)
     demoMode,
     availableWorkspaces,
     workspace,
+    memberships,
     state,
     switchWorkspace,
     refreshWorkspaces,
@@ -22,6 +23,10 @@ export function WorkspaceSelector({ onActiveWorkspace }: WorkspaceSelectorProps)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState(workspace?.id ?? "");
+  const activeMemberships = workspace?.organization_id
+    ? memberships.filter((membership) => membership.organization_id === workspace.organization_id && membership.status === "active")
+    : [];
+  const accessStatus = state === "AUTHORIZED" ? "مصرح" : state === "WORKSPACE_REQUIRED" ? "يتطلب اختياراً" : state === "ERROR" ? "الخدمة غير متاحة" : state;
 
   useEffect(() => {
     setSelectedWorkspaceId(workspace?.id ?? "");
@@ -62,6 +67,15 @@ export function WorkspaceSelector({ onActiveWorkspace }: WorkspaceSelectorProps)
   }
   return (
     <div className="flex items-center gap-2">
+      {workspace && (
+        <div className="hidden max-w-72 flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground lg:flex" role="status" aria-label="السياق الحالي">
+          <span>المنظمة: {workspace.organization_id || "شخصية"}</span>
+          <span>المنشأة: {workspace.facility_id || "غير محددة"}</span>
+          <span>المساحة: {workspace.name_ar || workspace.name}</span>
+          <span>الوصول: {accessStatus}</span>
+          <span>نطاق العضوية: {activeMemberships[0]?.scope_type || "غير معروض"}</span>
+        </div>
+      )}
       {loading && <span className="text-xs text-muted-foreground" role="status" aria-live="polite">جارٍ اعتماد السياق…</span>}
       {(error || authError) && <div className="flex items-center gap-2" role="alert"><span className="max-w-56 text-xs text-destructive">{error || authError?.message}</span><button type="button" className="text-xs font-semibold underline" onClick={() => void refreshWorkspaces()}>إعادة المحاولة</button></div>}
     <label className="flex items-center gap-2 rounded-xl border border-teal-100 bg-teal-50/60 px-2.5 py-1.5 text-xs shadow-sm dark:border-teal-900/50 dark:bg-teal-950/20">

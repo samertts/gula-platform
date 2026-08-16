@@ -24,14 +24,12 @@ from app.models.authorization import (
 from app.models.organization import Facility, Organization
 from app.models.tenant import Tenant
 from app.models.user import User
-from shared.rbac import (
-    get_permissions_for_role as shared_get_permissions,
-)
-from shared.rbac import (
-    has_permission_str,
-)
 
 logger = logging.getLogger("gula.services.authorization")
+
+
+class LegacyAuthorizationDenied(PermissionError):
+    """Raised when a legacy authorization mutation cannot be proven safe."""
 
 
 class PermissionService:
@@ -138,6 +136,52 @@ class RoleAssignmentService:
     def __init__(self, db: Session):
         self.db = db
 
+    def _require_management_authority(
+        self,
+        *,
+        actor_id: int,
+        organization_id: int | None,
+        facility_id: int | None,
+    ) -> None:
+        if organization_id is None:
+            raise LegacyAuthorizationDenied("Explicit organization scope is required")
+        actor = self.db.query(User).filter(User.id == actor_id, User.is_active.is_(True)).first()
+        organization = self.db.query(Organization).filter(
+            Organization.id == organization_id,
+            Organization.is_active.is_(True),
+        ).first()
+        if actor is None or organization is None:
+            raise LegacyAuthorizationDenied("Management authority is unavailable")
+        if actor.tenant_id is not None and organization.tenant_id is not None and actor.tenant_id != organization.tenant_id:
+            raise LegacyAuthorizationDenied("Management authority crosses tenant boundary")
+        if actor.organization_id is not None and actor.organization_id != organization_id:
+            raise LegacyAuthorizationDenied("Management authority crosses organization boundary")
+        if facility_id is not None:
+            facility = self.db.query(Facility).filter(
+                Facility.id == facility_id,
+                Facility.organization_id == organization_id,
+                Facility.is_active.is_(True),
+            ).first()
+            if facility is None:
+                raise LegacyAuthorizationDenied("Facility scope is invalid")
+        authority = self.db.query(RoleAssignment).join(
+            RolePermission,
+            RolePermission.role_id == RoleAssignment.role_id,
+        ).join(
+            Role,
+            Role.role_id == RoleAssignment.role_id,
+        ).filter(
+            RoleAssignment.user_id == actor_id,
+            RoleAssignment.organization_id == organization_id,
+            RoleAssignment.status == "active",
+            Role.is_active.is_(True),
+            RolePermission.permission_id == "role.manage",
+            RoleAssignment.expires_at.is_(None) | (RoleAssignment.expires_at > datetime.now(UTC)),
+            RoleAssignment.facility_id.is_(None) | (facility_id is None) | (RoleAssignment.facility_id == facility_id),
+        ).first()
+        if authority is None:
+            raise LegacyAuthorizationDenied("Management authority is required")
+
     def get_for_user(self, user_id: int) -> list[RoleAssignment]:
         return self.db.query(RoleAssignment).filter(
             RoleAssignment.user_id == user_id,
@@ -180,6 +224,23 @@ class RoleAssignmentService:
         expires_at: datetime | None = None,
         is_primary: bool = True,
     ) -> RoleAssignment:
+        if assigned_by is None:
+            raise LegacyAuthorizationDenied("Server actor is required")
+        self._require_management_authority(
+            actor_id=assigned_by,
+            organization_id=organization_id,
+            facility_id=facility_id,
+        )
+        target = self.db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
+        role = self.db.query(Role).filter(Role.role_id == role_id, Role.is_active.is_(True)).first()
+        if target is None or role is None or assigned_by == user_id:
+            raise LegacyAuthorizationDenied("Target or role is not eligible")
+        if target.tenant_id is not None:
+            organization = self.db.query(Organization).filter(Organization.id == organization_id).first()
+            if organization is None or (organization.tenant_id is not None and target.tenant_id != organization.tenant_id):
+                raise LegacyAuthorizationDenied("Target account is outside the tenant")
+        if expires_at is not None and expires_at <= datetime.now(UTC):
+            raise LegacyAuthorizationDenied("Role assignment expiry must be in the future")
         existing = self.db.query(RoleAssignment).filter(
             RoleAssignment.user_id == user_id,
             RoleAssignment.role_id == role_id,
@@ -202,7 +263,9 @@ class RoleAssignmentService:
         self.db.refresh(assignment)
         return assignment
 
-    def revoke_role(self, user_id: int, role_id: str) -> bool:
+    def revoke_role(self, user_id: int, role_id: str, revoked_by: int | None = None) -> bool:
+        if revoked_by is None:
+            raise LegacyAuthorizationDenied("Server actor is required")
         assignment = self.db.query(RoleAssignment).filter(
             RoleAssignment.user_id == user_id,
             RoleAssignment.role_id == role_id,
@@ -210,6 +273,11 @@ class RoleAssignmentService:
         ).first()
         if not assignment:
             return False
+        self._require_management_authority(
+            actor_id=revoked_by,
+            organization_id=assignment.organization_id,
+            facility_id=assignment.facility_id,
+        )
         assignment.status = "revoked"
         self.db.commit()
         return True
@@ -281,9 +349,8 @@ class PolicyService:
             return False
         if target.get("user_types") and subject.get("user_type") not in target["user_types"]:
             return False
-        if conditions.get("governorate"):
-            if subject.get("governorate_id") not in conditions["governorate"]:
-                return False
+        if conditions.get("governorate") and subject.get("governorate_id") not in conditions["governorate"]:
+            return False
         if conditions.get("time_of_day"):
             current_hour = datetime.now(UTC).hour
             allowed = conditions["time_of_day"]
@@ -328,10 +395,8 @@ class AuthorizationCheckService:
             .first()
         )
         if not assigned_perms:
-            has_legacy = has_permission_str(user.role if hasattr(user, "role") else "", permission_id)
-            if not has_legacy:
-                self._log_decision(decision_id, user, permission_id, "deny", perm.domain, [], resource_attrs, risk_score=perm.is_sensitive)
-                return self._build_response(decision_id, "deny", "Permission not assigned", perm)
+            self._log_decision(decision_id, user, permission_id, "deny", perm.domain, [], resource_attrs, risk_score=perm.is_sensitive)
+            return self._build_response(decision_id, "deny", "Permission not assigned", perm)
 
         break_glass = self.db.query(BreakGlassSession).filter(
             BreakGlassSession.user_id == user.id,
@@ -389,11 +454,7 @@ class AuthorizationCheckService:
             return []
         q = self.db.query(RolePermission).filter(RolePermission.role_id.in_(role_ids))
         assigned = {rp.permission_id for rp in q.all()}
-        legacy = set()
-        if user.role:
-            all_legacy = shared_get_permissions(user.role)
-            legacy.update(all_legacy)
-        combined = assigned | legacy
+        combined = assigned
         if domain:
             perm_rows = self.db.query(Permission).filter(Permission.permission_id.in_(combined), Permission.domain == domain).all()
             return sorted(p.permission_id for p in perm_rows)
@@ -885,9 +946,112 @@ class FieldSecurityService:
         return "".join(result)
 
 
+class DelegationAuthorizationError(PermissionError):
+    """Raised when a legacy delegation cannot be proven safe server-side."""
+
+
 class DelegationService:
+    _ALLOWED_SCOPE_KEYS = frozenset({"organization_id", "facility_id", "department_id"})
+
     def __init__(self, db: Session):
         self.db = db
+
+    def _audit(
+        self,
+        *,
+        actor_id: int,
+        action: str,
+        decision: str,
+        reason_code: str,
+        delegation_id: int | None = None,
+        context: dict[str, Any] | None = None,
+    ) -> None:
+        entry = AuthorizationAudit(
+            decision_id=str(uuid.uuid4()),
+            user_id=actor_id,
+            action=action,
+            resource_type="delegation",
+            resource_id=str(delegation_id) if delegation_id is not None else None,
+            decision=decision,
+            policy_engine="legacy-delegation-boundary",
+            context={"reason_code": reason_code, **(context or {})},
+        )
+        self.db.add(entry)
+
+    def _management_assignment(
+        self,
+        *,
+        actor_id: int,
+        organization_id: int,
+        facility_id: int | None,
+    ) -> RoleAssignment | None:
+        now = datetime.now(UTC)
+        query = self.db.query(RoleAssignment).join(
+            RolePermission,
+            RolePermission.role_id == RoleAssignment.role_id,
+        ).join(
+            Role,
+            Role.role_id == RoleAssignment.role_id,
+        ).filter(
+            RoleAssignment.user_id == actor_id,
+            RoleAssignment.organization_id == organization_id,
+            RoleAssignment.status == "active",
+            Role.is_active.is_(True),
+            RolePermission.permission_id == "role.manage",
+            RoleAssignment.expires_at.is_(None) | (RoleAssignment.expires_at > now),
+        )
+        if facility_id is not None:
+            query = query.filter(RoleAssignment.facility_id.is_(None) | (RoleAssignment.facility_id == facility_id))
+        return query.first()
+
+    def _load_and_validate_scope(
+        self,
+        *,
+        delegator: User,
+        delegate: User,
+        source_assignment: RoleAssignment,
+        scope: dict[str, Any] | None,
+    ) -> dict[str, int | None]:
+        if scope is not None and not isinstance(scope, dict):
+            raise DelegationAuthorizationError("Delegation scope must be an object")
+        requested = dict(scope or {})
+        if set(requested) - self._ALLOWED_SCOPE_KEYS:
+            raise DelegationAuthorizationError("Delegation scope contains unsupported fields")
+        organization_id = requested.get("organization_id", source_assignment.organization_id)
+        facility_id = requested.get("facility_id", source_assignment.facility_id)
+        department_id = requested.get("department_id")
+        if not isinstance(organization_id, int) or (facility_id is not None and not isinstance(facility_id, int)):
+            raise DelegationAuthorizationError("Delegation scope is not server-valid")
+        if department_id is not None and not isinstance(department_id, (int, str)):
+            raise DelegationAuthorizationError("Delegation department scope is invalid")
+        if source_assignment.organization_id != organization_id:
+            raise DelegationAuthorizationError("Delegation cannot cross organization boundary")
+        if source_assignment.facility_id is not None and source_assignment.facility_id != facility_id:
+            raise DelegationAuthorizationError("Delegation cannot exceed source facility scope")
+        organization = self.db.query(Organization).filter(
+            Organization.id == organization_id,
+            Organization.is_active.is_(True),
+        ).first()
+        if organization is None:
+            raise DelegationAuthorizationError("Delegation organization is inactive or unknown")
+        for account in (delegator, delegate):
+            if not account.is_active or (account.tenant_id is not None and organization.tenant_id is not None and account.tenant_id != organization.tenant_id):
+                raise DelegationAuthorizationError("Delegation account is outside the organization tenant")
+            if account.organization_id is not None and account.organization_id != organization_id:
+                raise DelegationAuthorizationError("Delegation account is outside the organization")
+        if facility_id is not None:
+            facility = self.db.query(Facility).filter(
+                Facility.id == facility_id,
+                Facility.organization_id == organization_id,
+                Facility.is_active.is_(True),
+            ).first()
+            if facility is None:
+                raise DelegationAuthorizationError("Delegation facility is outside the organization")
+        return {
+            "organization_id": organization_id,
+            "facility_id": facility_id,
+            "department_id": department_id,
+        }
 
     def create_delegation(
         self,
@@ -898,19 +1062,79 @@ class DelegationService:
         duration_hours: int,
         scope: dict[str, Any] | None = None,
     ) -> Delegation:
+        delegator = self.db.query(User).filter(User.id == delegator_id).first()
+        delegate = self.db.query(User).filter(User.id == delegate_id).first()
+        role = self.db.query(Role).filter(Role.role_id == role_id, Role.is_active.is_(True)).first()
+        if delegator is None or delegate is None or role is None or not delegator.is_active or not delegate.is_active:
+            self._audit(actor_id=delegator_id, action="delegation.create", decision="deny", reason_code="inactive_or_unknown_subject")
+            self.db.commit()
+            raise DelegationAuthorizationError("Delegation subjects are not eligible")
+        if delegator_id == delegate_id or not role.is_delegatable:
+            self._audit(actor_id=delegator_id, action="delegation.create", decision="deny", reason_code="self_or_non_delegatable_role")
+            self.db.commit()
+            raise DelegationAuthorizationError("Role delegation is not allowed")
+        requested_scope = scope or {}
+        organization_id = requested_scope.get("organization_id")
+        facility_id = requested_scope.get("facility_id")
+        if not isinstance(organization_id, int):
+            self._audit(actor_id=delegator_id, action="delegation.create", decision="deny", reason_code="explicit_organization_scope_required")
+            self.db.commit()
+            raise DelegationAuthorizationError("Delegation requires an explicit organization scope")
+        if self._management_assignment(actor_id=delegator_id, organization_id=organization_id, facility_id=facility_id) is None:
+            self._audit(actor_id=delegator_id, action="delegation.create", decision="deny", reason_code="management_authority_required", context={"organization_id": organization_id})
+            self.db.commit()
+            raise DelegationAuthorizationError("Delegator lacks server-side management authority")
+        source_assignment = self.db.query(RoleAssignment).filter(
+            RoleAssignment.user_id == delegator_id,
+            RoleAssignment.role_id == role_id,
+            RoleAssignment.organization_id == organization_id,
+            RoleAssignment.status == "active",
+        ).first()
+        if source_assignment is None:
+            self._audit(actor_id=delegator_id, action="delegation.create", decision="deny", reason_code="source_role_not_owned", context={"organization_id": organization_id})
+            self.db.commit()
+            raise DelegationAuthorizationError("Delegator does not hold the role in this organization")
+        if role.max_duration_hours is not None and duration_hours > role.max_duration_hours:
+            self._audit(actor_id=delegator_id, action="delegation.create", decision="deny", reason_code="maximum_duration_exceeded", context={"organization_id": organization_id})
+            self.db.commit()
+            raise DelegationAuthorizationError("Delegation duration exceeds the role maximum")
+        normalized_scope = self._load_and_validate_scope(
+            delegator=delegator,
+            delegate=delegate,
+            source_assignment=source_assignment,
+            scope=scope,
+        )
         now = datetime.now(UTC)
+        existing = self.db.query(Delegation).filter(
+            Delegation.delegator_id == delegator_id,
+            Delegation.delegate_id == delegate_id,
+            Delegation.role_id == role_id,
+            Delegation.status == "active",
+            Delegation.expires_at > now,
+        ).first()
+        if existing:
+            raise DelegationAuthorizationError("An active delegation already exists")
         delegation = Delegation(
             delegator_id=delegator_id,
             delegate_id=delegate_id,
             role_id=role_id,
             delegation_type="temporary",
-            scope=scope,
+            scope=normalized_scope,
             reason=reason,
             starts_at=now,
             expires_at=now + timedelta(hours=duration_hours),
             status="active",
         )
         self.db.add(delegation)
+        self.db.flush()
+        self._audit(
+            actor_id=delegator_id,
+            action="delegation.create",
+            decision="allow",
+            reason_code="delegation_created",
+            delegation_id=delegation.id,
+            context=normalized_scope,
+        )
         self.db.commit()
         self.db.refresh(delegation)
         return delegation
@@ -919,9 +1143,24 @@ class DelegationService:
         delegation = self.db.query(Delegation).filter(Delegation.id == delegation_id).first()
         if not delegation or delegation.status != "active":
             return False
+        scope = delegation.scope if isinstance(delegation.scope, dict) else {}
+        organization_id = scope.get("organization_id")
+        facility_id = scope.get("facility_id")
+        authorized = revoked_by == delegation.delegator_id
+        if not authorized and isinstance(organization_id, int):
+            authorized = self._management_assignment(
+                actor_id=revoked_by,
+                organization_id=organization_id,
+                facility_id=facility_id if isinstance(facility_id, int) else None,
+            ) is not None
+        if not authorized:
+            self._audit(actor_id=revoked_by, action="delegation.revoke", decision="deny", reason_code="management_authority_required", delegation_id=delegation.id, context=scope)
+            self.db.commit()
+            raise DelegationAuthorizationError("Actor cannot revoke this delegation")
         delegation.status = "revoked"
         delegation.revoked_at = datetime.now(UTC)
         delegation.revoked_by = revoked_by
+        self._audit(actor_id=revoked_by, action="delegation.revoke", decision="allow", reason_code="delegation_revoked", delegation_id=delegation.id, context=scope)
         self.db.commit()
         return True
 

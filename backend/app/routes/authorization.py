@@ -17,9 +17,11 @@ from app.services.authorization_service import (
     AuthorizationAuditService,
     AuthorizationCheckService,
     BreakGlassService,
+    DelegationAuthorizationError,
     DelegationService,
     FieldSecurityService,
     IdentityService,
+    LegacyAuthorizationDenied,
     MenuService,
     PermissionService,
     PolicyService,
@@ -30,6 +32,12 @@ from app.services.authorization_service import (
 logger = logging.getLogger("gula.routes.authorization")
 
 router = APIRouter(prefix="/authz", tags=["authorization"])
+_CLIENT_AUTHORITY_FIELDS = frozenset({"tenant_id", "organization_id", "facility_id", "department_id", "unit_id", "workspace_id", "resource_id"})
+
+
+def _reject_client_authority_fields(values: dict[str, Any] | None) -> None:
+    if values and _CLIENT_AUTHORITY_FIELDS.intersection(values):
+        raise HTTPException(status_code=403, detail="Resource scope must be resolved server-side")
 
 
 class PermissionCheckRequest(BaseModel):
@@ -227,6 +235,8 @@ def check_permission(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _reject_client_authority_fields(req.resource_attrs)
+    _reject_client_authority_fields(req.environment)
     svc = AuthorizationCheckService(db)
     return svc.check_permission(
         current_user,
@@ -243,6 +253,8 @@ def check_permissions_batch(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _reject_client_authority_fields(req.resource_attrs)
+    _reject_client_authority_fields(req.environment)
     svc = AuthorizationCheckService(db)
     return svc.check_many(
         current_user,
@@ -348,14 +360,17 @@ def create_delegation(
     current_user: User = Depends(get_current_user),
 ):
     svc = DelegationService(db)
-    return svc.create_delegation(
-        delegator_id=current_user.id,
-        delegate_id=req.delegate_id,
-        role_id=req.role_id,
-        reason=req.reason,
-        duration_hours=req.duration_hours,
-        scope=req.scope,
-    )
+    try:
+        return svc.create_delegation(
+            delegator_id=current_user.id,
+            delegate_id=req.delegate_id,
+            role_id=req.role_id,
+            reason=req.reason,
+            duration_hours=req.duration_hours,
+            scope=req.scope,
+        )
+    except DelegationAuthorizationError as exc:
+        raise HTTPException(status_code=403, detail="Delegation authorization denied") from exc
 
 
 @router.delete("/delegations/{delegation_id}")
@@ -365,7 +380,10 @@ def revoke_delegation(
     current_user: User = Depends(get_current_user),
 ):
     svc = DelegationService(db)
-    success = svc.revoke_delegation(delegation_id, revoked_by=current_user.id)
+    try:
+        success = svc.revoke_delegation(delegation_id, revoked_by=current_user.id)
+    except DelegationAuthorizationError as exc:
+        raise HTTPException(status_code=403, detail="Delegation revocation denied") from exc
     if not success:
         raise HTTPException(status_code=404, detail="Delegation not found or already revoked")
     return Response(status_code=204, response_model=None)
@@ -572,15 +590,18 @@ def assign_role(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid expires_at format") from None
     svc = RoleAssignmentService(db)
-    return svc.assign_role(
-        user_id=req.user_id,
-        role_id=req.role_id,
-        assigned_by=current_user.id,
-        organization_id=req.organization_id,
-        facility_id=req.facility_id,
-        expires_at=expires_at,
-        is_primary=req.is_primary,
-    )
+    try:
+        return svc.assign_role(
+            user_id=req.user_id,
+            role_id=req.role_id,
+            assigned_by=current_user.id,
+            organization_id=req.organization_id,
+            facility_id=req.facility_id,
+            expires_at=expires_at,
+            is_primary=req.is_primary,
+        )
+    except LegacyAuthorizationDenied as exc:
+        raise HTTPException(status_code=403, detail="Role assignment denied") from exc
 
 
 @router.delete("/assignments/{user_id}/{role_id}")
@@ -591,7 +612,10 @@ def revoke_role_assignment(
     current_user: User = Depends(get_current_user),
 ):
     svc = RoleAssignmentService(db)
-    success = svc.revoke_role(user_id, role_id)
+    try:
+        success = svc.revoke_role(user_id, role_id, revoked_by=current_user.id)
+    except LegacyAuthorizationDenied as exc:
+        raise HTTPException(status_code=403, detail="Role revocation denied") from exc
     if not success:
         raise HTTPException(status_code=404, detail="Role assignment not found")
     return Response(status_code=204, response_model=None)

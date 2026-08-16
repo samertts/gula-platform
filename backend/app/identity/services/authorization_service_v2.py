@@ -7,6 +7,7 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
+from app.identity.models.administrative_structure import NIAMAdminFacility
 from app.identity.models.audit import AuditAction
 from app.identity.models.authorization import (
     CatalogStatus,
@@ -17,6 +18,8 @@ from app.identity.models.authorization import (
     RolePermission,
 )
 from app.identity.models.membership import Membership, MembershipStatus
+from app.identity.models.niam_organization import NIAMOrganization
+from app.identity.services.access_revocation import revoke_account_access
 from app.identity.services.audit_service import AuditService
 from app.identity.services.membership_service import MembershipService
 
@@ -95,6 +98,9 @@ class RolePermissionService:
             target_type=target_type,
             target_id=target_id,
             organization_id=organization_id,
+            decision="deny" if outcome == "denied" else "allow",
+            reason_code=(metadata or {}).get("reason_code") or (metadata or {}).get("reason"),
+            source="niam_role_assignment",
             metadata=metadata,
             outcome=outcome,
         )
@@ -117,6 +123,26 @@ class RolePermissionService:
             raise RoleAuthorizationDenied("Target membership is not active for this account")
         if membership.expires_at and membership.expires_at <= datetime.now(UTC):
             raise RoleAuthorizationDenied("Target membership has expired")
+        organization = await self.session.scalar(
+            select(NIAMOrganization).where(
+                NIAMOrganization.id == membership.organization_id,
+                NIAMOrganization.status == "active",
+                NIAMOrganization.is_active.is_(True),
+            ),
+        )
+        if organization is None:
+            raise RoleAuthorizationDenied("Target organization is not active")
+        if membership.facility_id:
+            facility = await self.session.scalar(
+                select(NIAMAdminFacility).where(
+                    NIAMAdminFacility.id == membership.facility_id,
+                    NIAMAdminFacility.organization_id == membership.organization_id,
+                    NIAMAdminFacility.status == "active",
+                    NIAMAdminFacility.is_active.is_(True),
+                ),
+            )
+            if facility is None:
+                raise RoleAuthorizationDenied("Target facility is not active")
         return membership
 
     async def _load_active_role(self, role_id: str) -> Role:
@@ -198,6 +224,15 @@ class RolePermissionService:
         assignment.revocation_reason = reason
         await self.session.flush()
         await self._audit(AuditAction.role_assignment_revoked, actor_id, "role_assignment", assignment.id, assignment.organization_id, {"reason": reason})
+        await revoke_account_access(
+            self.session,
+            account_id=assignment.account_id,
+            actor_id=actor_id,
+            organization_id=assignment.organization_id,
+            facility_id=assignment.facility_id,
+            workspace_id=assignment.workspace_id,
+            reason_code="role_assignment_revoked",
+        )
         return assignment
 
     async def effective_permissions(

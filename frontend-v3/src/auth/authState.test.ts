@@ -10,6 +10,9 @@ describe("AuthState model", () => {
   it("requires explicit context when multiple workspaces exist", () => {
     expect(stateForAuthorizedContext(user, [workspace, { ...workspace, id: "w-2", uuid: "w-2" }], null)).toBe(AUTH_STATES.WORKSPACE_REQUIRED);
   });
+  it("requires explicit context for a single workspace before server switch", () => {
+    expect(stateForAuthorizedContext(user, [workspace], null)).toBe(AUTH_STATES.WORKSPACE_REQUIRED);
+  });
   it("allows server-approved single workspace after context establishment", () => {
     expect(stateForAuthorizedContext(user, [workspace], workspace)).toBe(AUTH_STATES.AUTHORIZED);
   });

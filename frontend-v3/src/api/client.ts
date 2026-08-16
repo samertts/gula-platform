@@ -93,6 +93,10 @@ export interface PermissionSummary {
 
 export interface EffectivePermissionsResponse {
   organization_id: string;
+  facility_id?: string | null;
+  department_id?: string | null;
+  unit_id?: string | null;
+  workspace_id?: string | null;
   permissions: string[];
 }
 
