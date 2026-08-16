@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
+from app.database_async import get_async_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.services.session_service import SessionService
 
@@ -37,7 +37,7 @@ def _serialize_session(session, *, current_uuid: str | None = None) -> dict[str,
 async def list_sessions(
     account_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, object]:
     _owned_account(actor, account_id)
     service = SessionService(db)
@@ -50,7 +50,7 @@ async def terminate_session(
     session_uuid: str,
     reason: str = "manual",
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, object]:
     service = SessionService(db)
     session = await service.repo.get_by_uuid(session_uuid)
@@ -71,7 +71,7 @@ async def terminate_all_sessions(
     account_id: str,
     reason: str = "manual",
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, object]:
     _owned_account(actor, account_id)
     from app.identity.services.authentication_service import AuthenticationService

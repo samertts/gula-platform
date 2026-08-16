@@ -77,14 +77,18 @@ def is_system_ready() -> tuple[bool, str]:
     # automatically for rate-limiting and perm_version checks.
     try:
         from ..security.redis_client import cache as _redis
+        from ..security.redis_client import shared_cache_required
 
         _redis.set("_readiness_probe", "1", ex=10)
     except Exception:
+        from ..security.redis_client import shared_cache_required
+
+        if shared_cache_required():
+            logger.error("[READINESS] Redis unavailable while shared cache is mandatory")
+            return False, "redis_unavailable"
         logger.warning(
-            "[READINESS] Redis unreachable — system continues in degraded mode "
-            "(in-memory fallback active; cross-process invalidation weakened)",
+            "[READINESS] Redis unreachable — system continues in explicitly allowed degraded mode",
         )
-        # Return ready=True with a warning reason instead of blocking all traffic
         return True, "degraded_redis"
 
     return True, "ok"
@@ -453,7 +457,7 @@ def _run_seed_test_types() -> None:
                 test_name="White Blood Cells",
                 test_name_ar="كريات الدم البيضاء",
                 category="CBC",
-                unit="×10³/µL",
+                unit="×10³/µL",  # noqa: RUF001
                 normal_range_low=4.0,
                 normal_range_high=11.0,
             ),
@@ -462,7 +466,7 @@ def _run_seed_test_types() -> None:
                 test_name="Platelets",
                 test_name_ar="الصفائح الدموية",
                 category="CBC",
-                unit="×10³/µL",
+                unit="×10³/µL",  # noqa: RUF001
                 normal_range_low=150,
                 normal_range_high=400,
             ),
@@ -570,7 +574,7 @@ def _run_seed_test_types() -> None:
                 test_name="Red Blood Cells",
                 test_name_ar="كريات الدم الحمراء",
                 category="CBC",
-                unit="×10⁶/µL",
+                unit="×10⁶/µL",  # noqa: RUF001
                 normal_range_low=4.0,
                 normal_range_high=6.0,
             ),
@@ -809,7 +813,7 @@ async def run_startup_guard() -> None:
 
     # Wrap core validation in a timeout so startup can't block indefinitely.
     # After the timeout, the system starts in partial-readiness mode.
-    STARTUP_TIMEOUT = max(STARTUP_TIMEOUT_SECONDS, 30)
+    startup_timeout = max(STARTUP_TIMEOUT_SECONDS, 30)
 
     async def _run_core_validation() -> None:
         """Core validation: config → DB → Redis → migrations → seeds → kernel."""
@@ -852,13 +856,13 @@ async def run_startup_guard() -> None:
         )
 
     try:
-        await asyncio.wait_for(_run_core_validation(), timeout=STARTUP_TIMEOUT)
+        await asyncio.wait_for(_run_core_validation(), timeout=startup_timeout)
     except TimeoutError:
         elapsed = (time.perf_counter() - t0) * 1000
         logger.warning(
             "[STARTUP GUARD] Startup validation did not complete within %ds (%.0fms elapsed) — "
             "system starts in PARTIAL READY state. Some dependencies may be unavailable.",
-            STARTUP_TIMEOUT,
+            startup_timeout,
             elapsed,
         )
         system_ready = True

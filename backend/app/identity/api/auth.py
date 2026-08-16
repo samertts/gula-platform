@@ -5,9 +5,10 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import REFRESH_TOKEN_EXPIRE_DAYS, USE_SECURE_COOKIES
-from app.database import get_db
+from app.database_async import get_async_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.services.authentication_service import AuthenticationService
+from app.security.csrf import clear_csrf_cookie, issue_csrf_cookie
 from app.security.rate_limit import get_client_ip, rate_limit_auth
 
 router = APIRouter(prefix="/auth", tags=["NIAM Auth"])
@@ -55,11 +56,13 @@ def _set_auth_cookies(response: Response, result: dict) -> None:
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 86400,
         **_cookie_kwargs(),
     )
+    issue_csrf_cookie(response)
 
 
 def _clear_auth_cookies(response: Response) -> None:
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/")
+    clear_csrf_cookie(response)
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -67,7 +70,7 @@ async def login(
     body: LoginRequest,
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     rate_limit_auth(request, identifier=body.login)
     service = AuthenticationService(db)
@@ -89,7 +92,7 @@ async def refresh(
     response: Response,
     body: RefreshRequest | None = None,
     refresh_token: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     rate_limit_auth(request, max_per_minute=20)
     raw_refresh = (body.refresh_token if body else None) or refresh_token or request.cookies.get("refresh_token")
@@ -108,7 +111,7 @@ async def refresh(
 async def logout(
     response: Response,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     service = AuthenticationService(db)
     terminated = await service.logout(actor.session.uuid, account_id=str(actor.account.id))
@@ -124,7 +127,7 @@ async def logout(
 async def logout_all(
     response: Response,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ):
     count = await AuthenticationService(db).logout_all_sessions(str(actor.account.id))
     await db.commit()

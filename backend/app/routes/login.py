@@ -7,7 +7,13 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from ..config import DEMO_MODE, JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS, USE_SECURE_COOKIES
+from ..config import (
+    DEMO_MODE,
+    JWT_EXPIRE_MINUTES,
+    NID_HMAC_KEY,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    USE_SECURE_COOKIES,
+)
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.user import User
@@ -20,8 +26,9 @@ from ..security.auth import (
     decode_token,
     verify_password,
 )
-from ..security.rate_limit import get_client_ip, rate_limit_auth
+from ..security.csrf import clear_csrf_cookie, issue_csrf_cookie
 from ..security.dependencies import get_current_user
+from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..security.session import bump_perm_version, warm_perm_version
 from ..services.audit_service import log_action
 
@@ -112,8 +119,8 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         )
 
     # ── Enforce MFA for privileged roles ─────────────────────────────────────
-    PRIVILEGED_ROLES = {"master_admin", "ministry_admin", "province_admin"}
-    if user.role in PRIVILEGED_ROLES:
+    privileged_roles = {"master_admin", "ministry_admin", "province_admin"}
+    if user.role in privileged_roles:
         from ..security.mfa_service import MFAService
         mfa = MFAService(db)
         if not mfa.has_mfa_enabled(user.id):
@@ -200,6 +207,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         path="/",
         **cookie_kwargs,
     )
+    issue_csrf_cookie(response)
 
     return {
         # `access_token` is the canonical native-client field; `token` remains
@@ -273,6 +281,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
 
     response.delete_cookie(key="access_token", path="/")
     response.delete_cookie(key="refresh_token", path="/")
+    clear_csrf_cookie(response)
     return {"message": "Logged out successfully"}
 
 

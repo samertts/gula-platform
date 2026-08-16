@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from ..models.lab_user import LabUser
 from ..models.user import User
 from ..services.audit_service import log_action
-from .redis_client import cache
+from .redis_client import cache, ensure_shared_cache
 
 logger = logging.getLogger("gula.session")
 
@@ -49,6 +49,7 @@ def bump_perm_version(
 
     Returns the new perm_version value.
     """
+    ensure_shared_cache()
     old_version = user.perm_version or 1
     new_version = old_version + 1
 
@@ -83,6 +84,7 @@ def warm_perm_version(user: LabUser) -> None:
     """Write the current perm_version to Redis if not already there.
     Called on login so the fast path in get_current_user always hits Redis.
     """
+    ensure_shared_cache()
     key = perm_ver_key(user.id)
     if cache.get(key) is None:
         ver = user.perm_version or 1
@@ -93,6 +95,7 @@ def get_perm_version(user_id: int, db_version: int, account_kind: str = "lab") -
     """Return the authoritative perm_version for a user.
     Reads from Redis (fast); falls back to the DB value passed in.
     """
+    ensure_shared_cache()
     cached = cache.get(perm_ver_key(user_id, account_kind))
     if cached is not None:
         return int(cached)

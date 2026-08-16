@@ -29,6 +29,11 @@ class SessionRepository(IdentityRepositoryBase[UserSession]):
         if active_only:
             predicates.append(self.model_class.is_active.is_(True))
         stmt = select(self.model_class).where(*predicates)
+        if active_only:
+            # PostgreSQL serializes concurrent refresh attempts on the same
+            # durable session. SQLite ignores FOR UPDATE, but keeps the same
+            # contract for local tests.
+            stmt = stmt.with_for_update()
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 

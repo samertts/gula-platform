@@ -52,14 +52,16 @@ JWTClaims = dict[str, Any]
 
 
 def blacklist_token(jti: str, ttl_seconds: int) -> None:
-    from .redis_client import cache
+    from .redis_client import cache, ensure_shared_cache
 
+    ensure_shared_cache()
     cache.set(f"blacklist:jti:{jti}", "1", ex=ttl_seconds)
 
 
 def is_token_blacklisted(jti: str) -> bool:
-    from .redis_client import cache
+    from .redis_client import cache, ensure_shared_cache
 
+    ensure_shared_cache()
     return cache.get(f"blacklist:jti:{jti}") is not None
 
 

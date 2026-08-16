@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.database import get_db
+from app.database_async import get_async_db
 from app.identity.models.account import Account, AccountStatus
 from app.identity.models.audit import AuditAction
 from app.identity.models.session import UserSession
@@ -20,6 +21,7 @@ from app.identity.services.audit_service import AuditService
 from app.identity.services.workspace_service import WorkspaceAccessDenied, WorkspaceService
 from app.identity.session_policy import session_is_usable
 from app.security.auth import decode_token, is_token_blacklisted
+from app.security.redis_client import CacheUnavailable
 
 router = APIRouter(prefix="/workspaces", tags=["NIAM Workspaces"])
 _bearer = HTTPBearer(auto_error=False)
@@ -42,8 +44,15 @@ def _validate_token_payload(raw_token: str) -> dict:
     payload = decode_token(raw_token)
     if not payload or not payload.get("account_uuid") or not payload.get("jti"):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid NIAM access token")
-    if is_token_blacklisted(payload["jti"]):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session revoked")
+    try:
+        if is_token_blacklisted(payload["jti"]):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session revoked")
+    except CacheUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Session security backend unavailable",
+            headers={"Retry-After": "5"},
+        ) from exc
     return payload
 
 
@@ -95,7 +104,7 @@ def get_current_niam_actor_sync(
 async def get_current_niam_actor(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
 ) -> NiamActor:
     raw_token = _raw_niam_token(request, credentials)
     payload = _validate_token_payload(raw_token)

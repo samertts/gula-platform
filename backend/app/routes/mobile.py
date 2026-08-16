@@ -31,6 +31,7 @@ from ..security.auth import (
     hash_password,
     verify_password,
 )
+from ..security.csrf import issue_csrf_cookie
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..security.session import bump_perm_version, get_perm_version
@@ -170,6 +171,7 @@ def refresh_access_token(
         path="/",
         **cookie_kwargs,
     )
+    issue_csrf_cookie(response)
 
     return {
         "access_token": new_access_token,

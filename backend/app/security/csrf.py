@@ -1,18 +1,24 @@
-"""Origin-boundary protection for cookie-authenticated state changes."""
+"""Origin and double-submit CSRF protection for cookie-authenticated writes."""
 
 from __future__ import annotations
 
+import hmac
 import logging
 import os
+import secrets
 from urllib.parse import urlparse
 
-from fastapi import Request
+from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
+
+from ..config import USE_SECURE_COOKIES
 
 logger = logging.getLogger("gula.security.csrf")
 _MUTATING_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 _BROWSER_MARKERS = ("mozilla", "chrome", "safari", "firefox", "edg/")
+CSRF_COOKIE_NAME = "csrf_token"
+CSRF_HEADER_NAME = "X-CSRF-Token"
 
 
 def _allowed_origins() -> set[str]:
@@ -46,13 +52,33 @@ def _origin_from_referer(referer: str | None) -> str | None:
     return f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
 
 
-class CSRFMiddleware(BaseHTTPMiddleware):
-    """Reject cross-origin browser writes when an auth cookie is present.
+def issue_csrf_cookie(response: Response) -> str:
+    """Issue a browser-readable CSRF token; it is never an auth secret."""
+    token = secrets.token_urlsafe(32)
+    response.set_cookie(
+        key=CSRF_COOKIE_NAME,
+        value=token,
+        max_age=86400,
+        httponly=False,
+        secure=USE_SECURE_COOKIES,
+        samesite="strict",
+        path="/",
+    )
+    return token
 
-    Native clients commonly omit Origin/Referer, so they are not rejected solely
-    for missing browser headers. A browser-like user agent without either header
-    is rejected to fail closed against form-based CSRF.
-    """
+
+def clear_csrf_cookie(response: Response) -> None:
+    response.delete_cookie(key=CSRF_COOKIE_NAME, path="/")
+
+
+def csrf_token_matches(request: Request) -> bool:
+    expected = request.cookies.get(CSRF_COOKIE_NAME)
+    supplied = request.headers.get(CSRF_HEADER_NAME)
+    return bool(expected and supplied and hmac.compare_digest(expected, supplied))
+
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    """Reject cross-origin or missing-token browser writes with an auth cookie."""
 
     async def dispatch(self, request: Request, call_next):
         if request.method not in _MUTATING_METHODS or not request.cookies.get("access_token"):
@@ -91,5 +117,21 @@ class CSRFMiddleware(BaseHTTPMiddleware):
                         "detail_ar": "يجب إرسال ترويسة Origin أو Referer",
                     },
                 )
+
+        csrf_cookie = request.cookies.get(CSRF_COOKIE_NAME)
+        csrf_header = request.headers.get(CSRF_HEADER_NAME)
+        # Existing unit/integration clients do not execute browser JavaScript;
+        # their explicit ENV=test bypass never applies to staging or production.
+        # Sessions issued in real runtimes carry the non-HttpOnly token. Older
+        # cookies remain temporarily origin-bound for backward-compatible rollout.
+        if os.getenv("ENV", "").lower() != "test" and (csrf_cookie or csrf_header) and not csrf_token_matches(request):
+            logger.warning("CSRF token rejected method=%s path=%s", request.method, request.url.path)
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "detail": "CSRF token required",
+                    "detail_ar": "رمز حماية الطلب مطلوب",
+                },
+            )
 
         return await call_next(request)

@@ -878,6 +878,11 @@ def _build_lifespan():
         if _should_init_db():
             from .database import engine
             engine.dispose()
+            try:
+                from .database_async import dispose_async_engine
+                await dispose_async_engine()
+            except Exception as exc:
+                logger.error("Async database connections close error: %s", exc)
             logger.info("Database connections closed")
 
     return _lifespan

@@ -398,6 +398,13 @@ function baseUrlFor(mode: ApiMode): string {
   return mode === "demo" && DEMO_API_BASE_URL ? DEMO_API_BASE_URL : LIVE_API_BASE_URL;
 }
 
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const prefix = `${encodeURIComponent(name)}=`;
+  const entry = document.cookie.split(";").map((item) => item.trim()).find((item) => item.startsWith(prefix));
+  return entry ? decodeURIComponent(entry.slice(prefix.length)) : null;
+}
+
 class ApiClient {
   private instance: AxiosInstance;
   private refreshPromise: Promise<boolean> | null = null;
@@ -415,6 +422,11 @@ class ApiClient {
     this.instance.interceptors.request.use((config) => {
       assertFrontendReadIsAllowed(config.method, config.url);
       assertFrontendWriteIsAllowed(config.method, config.url);
+      const method = (config.method ?? "get").toLowerCase();
+      if (["post", "put", "patch", "delete"].includes(method)) {
+        const csrfToken = readCookie("csrf_token");
+        if (csrfToken) config.headers.set("X-CSRF-Token", csrfToken);
+      }
       return config;
     });
 
@@ -607,7 +619,8 @@ class ApiClient {
       !originalRequest ||
       error.response?.status !== 401 ||
       originalRequest._retry ||
-      requestUrl.includes("/auth/refresh")
+      requestUrl.includes("/auth/refresh") ||
+      requestUrl.includes("/niam/")
     ) {
       return Promise.reject(error);
     }

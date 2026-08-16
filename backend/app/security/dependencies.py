@@ -13,6 +13,7 @@ from ..models.lab_user import LabUser
 from ..models.user import User
 from .auth import decode_token, is_token_blacklisted
 from .rbac import get_permissions_for_role
+from .redis_client import CacheUnavailable
 from .session import get_perm_version
 
 if TYPE_CHECKING:
@@ -48,13 +49,21 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token",
         )
 
-    # Reject revoked tokens (logout, forced expiry)
+    # Reject revoked tokens (logout, forced expiry). In strict runtime, an
+    # unavailable Redis security backend is a 503, never an implicit allow.
     jti = payload.get("jti")
-    if jti and is_token_blacklisted(jti):
-        logger.warning("Token revoked jti=%s user_id=%s", jti, payload.get("user_id"))
+    try:
+        if jti and is_token_blacklisted(jti):
+            logger.warning("Token revoked jti=%s user_id=%s", jti, payload.get("user_id"))
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked",
+            )
+    except CacheUnavailable as exc:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked",
-        )
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Session security backend unavailable",
+            headers={"Retry-After": "5"},
+        ) from exc
 
     user_id = payload.get("user_id")
     if user_id is None:
@@ -79,11 +88,18 @@ def get_current_user(
     # Fast path: compare against Redis (O(1)).  Falls back to DB value if Redis
     # has no entry for this user yet (e.g. first request after server restart).
     token_perm_ver = int(payload.get("perm_ver", 1))
-    authoritative_ver = get_perm_version(
-        user.id,
-        user.perm_version or 1,
-        account_kind="user" if isinstance(user, User) else "lab",
-    )
+    try:
+        authoritative_ver = get_perm_version(
+            user.id,
+            user.perm_version or 1,
+            account_kind="user" if isinstance(user, User) else "lab",
+        )
+    except CacheUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Session security backend unavailable",
+            headers={"Retry-After": "5"},
+        ) from exc
     if token_perm_ver != authoritative_ver:
         logger.warning(
             "Permission version mismatch user=%s token_perm_ver=%s authoritative=%s",

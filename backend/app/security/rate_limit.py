@@ -24,7 +24,7 @@ import time
 
 from fastapi import HTTPException, Request
 
-from .redis_client import cache
+from .redis_client import CacheUnavailable, cache, ensure_shared_cache
 
 logger = logging.getLogger("gula.rate_limit")
 
@@ -91,6 +91,15 @@ def _check(
       remaining — requests left in the current window (≥0)
       reset_ts  — Unix timestamp when this window expires
     """
+    try:
+        ensure_shared_cache()
+    except CacheUnavailable as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication rate limiting is temporarily unavailable",
+            headers={"Retry-After": "5"},
+        ) from exc
+
     # HTTP integration tests pound the same loopback IP dozens of times per
     # second; honouring production rate limits there produces flaky 429s that
     # mask real assertion failures. Skip the counter for request-bound checks

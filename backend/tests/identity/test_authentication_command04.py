@@ -9,8 +9,28 @@ from unittest.mock import AsyncMock
 import pytest
 from app._compat import UTC
 from app.identity.api.auth import router as niam_auth_router
+from app.identity.repositories.session_repository import SessionRepository
 from app.identity.services.authentication_service import AuthenticationService
 from app.security import auth as security_auth
+
+
+@pytest.mark.asyncio
+async def test_active_refresh_lookup_requests_row_lock():
+    class _Result:
+        def scalar_one_or_none(self):
+            return None
+
+    class _Session:
+        def __init__(self):
+            self.statements = []
+
+        async def execute(self, statement):
+            self.statements.append(statement)
+            return _Result()
+
+    db = _Session()
+    await SessionRepository(db).find_by_refresh_token_jti("refresh-jti")
+    assert db.statements[0]._for_update_arg is not None
 
 
 def test_niam_auth_contract_exposes_server_authoritative_session_routes():
