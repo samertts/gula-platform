@@ -222,6 +222,11 @@ RESULT_LINK_EXPIRE_DAYS = 90
 MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "2"))
 MAX_REQUEST_BODY_MB = int(os.getenv("MAX_REQUEST_BODY_MB", "10"))
 
+# Bound local and Redis-backed task queues to prevent unbounded growth.
+TASK_QUEUE_MAX_DEPTH = int(os.getenv("TASK_QUEUE_MAX_DEPTH", "1000"))
+if TASK_QUEUE_MAX_DEPTH < 1:
+    sys.exit("TASK_QUEUE_MAX_DEPTH must be positive")
+
 # ─── Rate Limiting ───────────────────────────────────────────────────────────
 RATE_LIMIT_AUTH = int(os.getenv("RATE_LIMIT_AUTH", "10"))
 RATE_LIMIT_PUBLIC = int(os.getenv("RATE_LIMIT_PUBLIC", "30"))

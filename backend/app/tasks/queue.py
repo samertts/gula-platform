@@ -21,7 +21,7 @@ import contextlib
 import json
 import logging
 
-from ..config import REDIS_URL
+from ..config import ALLOW_DEGRADED_REDIS, IS_PRODUCTION, REDIS_URL, TASK_QUEUE_MAX_DEPTH
 from .schema import TaskPayload
 
 logger = logging.getLogger("gula.task_queue")
@@ -34,16 +34,26 @@ RUNNING_SET = "gula:tasks:running"
 # ── In-memory fallback ───────────────────────────────────────────────────────
 
 
+class QueueBackpressureError(RuntimeError):
+    """Raised when the task queue reaches its configured capacity."""
+
+
 class _InMemoryQueue:
     """asyncio.Queue wrapper that mirrors the RedisTaskQueue interface."""
 
-    def __init__(self) -> None:
-        self._pending: asyncio.Queue[str] = asyncio.Queue()
+    def __init__(self, max_depth: int = TASK_QUEUE_MAX_DEPTH) -> None:
+        self._pending: asyncio.Queue[str] = asyncio.Queue(maxsize=max_depth)
+        self._max_depth = max_depth
         self._dlq: list[str] = []
         self._running: set[str] = set()
 
     async def enqueue(self, task: TaskPayload) -> None:
-        await self._pending.put(task.model_dump_json())
+        try:
+            self._pending.put_nowait(task.model_dump_json())
+        except asyncio.QueueFull as exc:
+            raise QueueBackpressureError(
+                f"task queue capacity reached ({self._max_depth})"
+            ) from exc
 
     async def dequeue(self, timeout: int = 5) -> TaskPayload | None:
         try:
@@ -89,12 +99,29 @@ class _RedisTaskQueue:
     yields control to the event loop rather than spinning.
     """
 
-    def __init__(self, redis_client) -> None:
+    def __init__(self, redis_client, max_depth: int = TASK_QUEUE_MAX_DEPTH) -> None:
         self._r = redis_client
+        self._max_depth = max_depth
 
     async def enqueue(self, task: TaskPayload) -> None:
+        script = (
+            "if redis.call('LLEN', KEYS[1]) >= tonumber(ARGV[1]) then "
+            "return 0 else redis.call('LPUSH', KEYS[1], ARGV[2]); return 1 end"
+        )
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._r.lpush, QUEUE_KEY, task.model_dump_json())
+        accepted = await loop.run_in_executor(
+            None,
+            self._r.eval,
+            script,
+            1,
+            QUEUE_KEY,
+            self._max_depth,
+            task.model_dump_json(),
+        )
+        if not accepted:
+            raise QueueBackpressureError(
+                f"task queue capacity reached ({self._max_depth})"
+            )
         logger.debug("Enqueued task %s (%s)", task.task_id, task.type)
 
     async def dequeue(self, timeout: int = 5) -> TaskPayload | None:
@@ -159,7 +186,16 @@ def build_queue() -> _InMemoryQueue | _RedisTaskQueue:
         logger.info("Task queue connected to Redis (%s)", REDIS_URL)
         return _RedisTaskQueue(client)
     except Exception as exc:
-        logger.warning("Redis unavailable (%s) — task queue using in-memory fallback", exc)
+        if IS_PRODUCTION and not ALLOW_DEGRADED_REDIS:
+            raise RuntimeError(
+                "Redis is required for the production task queue; "
+                "set ALLOW_DEGRADED_REDIS=true only for an explicitly approved "
+                "single-process degraded deployment"
+            ) from exc
+        logger.warning(
+            "Redis unavailable (%s) — task queue using bounded in-memory fallback",
+            exc,
+        )
         return _InMemoryQueue()
 
 

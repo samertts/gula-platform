@@ -23,7 +23,7 @@ import logging
 import time
 from typing import Any
 
-from .queue import _InMemoryQueue, _RedisTaskQueue
+from .queue import QueueBackpressureError, _InMemoryQueue, _RedisTaskQueue
 from .registry import get_handler
 from .schema import TaskPayload, TaskResult, TaskStatus
 
@@ -148,7 +148,17 @@ class TaskWorker:
             task.max_retries,
         )
         await asyncio.sleep(backoff)
-        await self._queue.enqueue(next_task)
+        try:
+            await self._queue.enqueue(next_task)
+        except QueueBackpressureError as exc:
+            error_msg = f"{error}; retry queue backpressure: {exc}"
+            await self._queue.dead_letter(next_task, error_msg)
+            return TaskResult(
+                task_id=task.task_id,
+                status=TaskStatus.DEAD,
+                error=error_msg,
+                attempt=next_task.retry_count,
+            )
         return TaskResult(
             task_id=task.task_id,
             status=TaskStatus.FAILED,
