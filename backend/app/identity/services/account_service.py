@@ -67,7 +67,12 @@ class AccountService:
         return await self.repo.create(account)
 
     async def authenticate(self, login: str, password: str) -> Account | None:
-        account = await self.repo.find_by_login(login)
+        normalized_login = login.strip()
+        if "@" in normalized_login:
+            normalized_login = normalized_login.lower()
+        else:
+            normalized_login = re.sub(r"\s+", "", normalized_login)
+        account = await self.repo.find_by_login(normalized_login)
         if not account:
             verify_password(password, _DUMMY_HASH)
             return None
@@ -84,7 +89,13 @@ class AccountService:
         password_is_valid = verify_password(password, account.password_hash or _DUMMY_HASH)
 
         if account.is_locked or account.status == AccountStatus.locked.value:
-            if account.locked_until and account.locked_until > datetime.now(UTC):
+            now = datetime.now(UTC)
+            # A lock without an expiry is an explicit/manual lock. It must not
+            # be cleared by an unauthenticated login attempt. Only an expired
+            # timed lockout may be reopened automatically.
+            if account.locked_until is None:
+                return None
+            if account.locked_until > now:
                 return None
             AccountLifecycleService.transition(account, AccountStatus.active)
             account.failed_login_attempts = 0

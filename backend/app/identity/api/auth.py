@@ -1,11 +1,13 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
+from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
 from app.database import get_db
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor_sync
 from app.identity.services.authentication_service import AuthenticationService
-from app.security.rate_limit import rate_limit_auth
+from app.security.rate_limit import get_client_ip, rate_limit_auth
 
 router = APIRouter(prefix="/auth", tags=["NIAM Auth"])
 
@@ -30,15 +32,19 @@ async def login(
     request: Request,
     ip_address: str | None = None,
     user_agent: str | None = None,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     rate_limit_auth(request, identifier=body.login)
-    service = AuthenticationService(db)
+    # Keep legacy optional query parameters for API compatibility, but never
+    # trust caller-supplied session metadata. Persist only request-derived data.
+    server_ip_address = get_client_ip(request)
+    server_user_agent = request.headers.get("user-agent")
+    service = AuthenticationService(SyncSessionAsyncFacade(db))
     result = await service.login(
         login=body.login,
         password=body.password,
-        ip_address=ip_address,
-        user_agent=user_agent,
+        ip_address=server_ip_address,
+        user_agent=server_user_agent,
     )
     if not result:
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -49,10 +55,10 @@ async def login(
 async def refresh(
     refresh_token: str,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     rate_limit_auth(request, max_per_minute=20)
-    service = AuthenticationService(db)
+    service = AuthenticationService(SyncSessionAsyncFacade(db))
     result = await service.refresh_session(refresh_token)
     if not result:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
@@ -62,8 +68,11 @@ async def refresh(
 @router.post("/logout")
 async def logout(
     session_uuid: str,
-    db: AsyncSession = Depends(get_db),
+    actor: NiamActor = Depends(get_current_niam_actor_sync),
+    db: Session = Depends(get_db),
 ):
-    service = AuthenticationService(db)
-    await service.logout(session_uuid)
+    service = AuthenticationService(SyncSessionAsyncFacade(db))
+    terminated = await service.logout(session_uuid, account_id=str(actor.account.id))
+    if not terminated:
+        raise HTTPException(status_code=403, detail="Session does not belong to the authenticated account")
     return {"success": True}

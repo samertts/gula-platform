@@ -132,14 +132,18 @@ class AuthenticationService:
             device_id=session.device_id,
         )
 
-    async def logout(self, session_uuid: str) -> None:
+    async def logout(self, session_uuid: str, account_id: str | None = None) -> bool:
         session = await self.session_repo.get_by_uuid(session_uuid)
-        if session:
-            await self.session_repo.terminate_session(
-                session_id=session.id,
-                reason="user_logout",
-                terminated_by="user",
-            )
+        if not session:
+            return False
+        if account_id is not None and str(session.account_id) != str(account_id):
+            return False
+        await self.session_repo.terminate_session(
+            session_id=session.id,
+            reason="user_logout",
+            terminated_by="user",
+        )
+        return True
 
     async def logout_all_sessions(self, account_id: str) -> None:
         await self.session_repo.terminate_all_for_account(

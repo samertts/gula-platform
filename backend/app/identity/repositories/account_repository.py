@@ -14,6 +14,7 @@ class AccountRepository(IdentityRepositoryBase[Account]):
             or_(
                 self.model_class.email == login,
                 self.model_class.username == login,
+                self.model_class.phone == login,
             ),
             self.model_class.is_active.is_(True),
         )
