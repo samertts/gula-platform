@@ -37,6 +37,66 @@ export async function mockLogin(page: Page) {
     });
   });
 
+  const workspace = {
+    id: "workspace-e2e",
+    uuid: "workspace-e2e-uuid",
+    workspace_type: "facility",
+    name: "E2E Finance Workspace",
+    name_ar: "مساحة اختبار مالية",
+    status: "active",
+    organization_id: "org-e2e",
+    facility_id: "facility-e2e",
+    department_id: null,
+    professional_type: null,
+    is_personal: false,
+  };
+  await page.route("**/api/niam/memberships/me", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ memberships: [{
+        id: "membership-e2e",
+        uuid: "membership-e2e-uuid",
+        account_id: "account-e2e",
+        identity_id: "identity-e2e",
+        organization_id: "org-e2e",
+        facility_id: "facility-e2e",
+        workspace_id: "workspace-e2e",
+        relationship_type: "staff",
+        scope_type: "facility",
+        status: "active",
+        source: "e2e",
+        expires_at: null,
+        version: 1,
+        is_active: true,
+      }] }),
+    });
+  });
+  await page.route("**/api/niam/roles/effective**", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ permissions: ["dashboard:read"] }),
+    });
+  });
+  await page.route("**/api/niam/workspaces", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ workspaces: [workspace] }),
+    });
+  });
+  await page.route("**/api/niam/workspaces/workspace-e2e/switch", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        context: { account_id: "account-e2e", identity_id: "identity-e2e", workspace_id: workspace.id, version: 1 },
+        workspace,
+      }),
+    });
+  });
+
   await page.route("**/api/dashboard/**", async (route) => {
     await route.fulfill({
       status: 200,

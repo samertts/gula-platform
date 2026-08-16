@@ -10,7 +10,7 @@ test.describe("Navigation & Routing", () => {
         await route.fallback();
         return;
       }
-      if (pathname === "/api/session" || pathname === "/api/login" || pathname === "/api/auth/refresh") {
+      if (pathname === "/api/session" || pathname === "/api/login" || pathname === "/api/auth/refresh" || pathname.startsWith("/api/niam/")) {
         await route.fallback();
         return;
       }
