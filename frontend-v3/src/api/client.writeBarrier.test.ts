@@ -25,6 +25,10 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
   it("يسمح فقط باستثناءات الهوية والتحقق الضيقة اللازمة لبدء جلسة أو فحص قرار قراءة", () => {
     expect(() => assertFrontendWriteIsAllowed("post", "/login")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/authz/check")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/auth/login")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/auth/refresh")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/auth/logout")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/auth/logout-all")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("get", "/patients")).not.toThrow();
   });
 
@@ -60,5 +64,9 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
     expect(() => assertFrontendReadIsAllowed("get", "/r/public-token")).toThrow(OperationalReadBlockedError);
     expect(() => assertFrontendReadIsAllowed("get", "/session")).not.toThrow();
     expect(() => assertFrontendReadIsAllowed("get", "/setup/status")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/niam/sessions/account/account-1")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/sessions/session-1/terminate")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/sessions/account/account-1/terminate-all")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/sessions/account/account-1/delete-all")).toThrow(OperationalWriteBlockedError);
   });
 });

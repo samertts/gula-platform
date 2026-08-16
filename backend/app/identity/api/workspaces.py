@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import inspect
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -8,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.database import get_db
 from app.identity.models.account import Account, AccountStatus
 from app.identity.models.audit import AuditAction
@@ -15,7 +18,8 @@ from app.identity.models.session import UserSession
 from app.identity.models.workspace import Workspace
 from app.identity.services.audit_service import AuditService
 from app.identity.services.workspace_service import WorkspaceAccessDenied, WorkspaceService
-from app.security.auth import decode_token
+from app.identity.session_policy import session_is_usable
+from app.security.auth import decode_token, is_token_blacklisted
 
 router = APIRouter(prefix="/workspaces", tags=["NIAM Workspaces"])
 _bearer = HTTPBearer(auto_error=False)
@@ -34,6 +38,31 @@ def _raw_niam_token(request: Request, credentials: HTTPAuthorizationCredentials 
     return raw_token
 
 
+def _validate_token_payload(raw_token: str) -> dict:
+    payload = decode_token(raw_token)
+    if not payload or not payload.get("account_uuid") or not payload.get("jti"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid NIAM access token")
+    if is_token_blacklisted(payload["jti"]):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session revoked")
+    return payload
+
+
+def _expire_if_unusable(session: UserSession) -> None:
+    now = datetime.now(UTC)
+    # Canonical UserSession always has both fields. The short fallback keeps
+    # older adapters/test doubles compatible without weakening the production
+    # model, where expires_at is non-null and last_activity_at is persisted.
+    expires_at = getattr(session, "expires_at", None) or (now + timedelta(minutes=1))
+    last_activity_at = getattr(session, "last_activity_at", None) or now
+    if session_is_usable(now=now, expires_at=expires_at, last_activity_at=last_activity_at):
+        session.last_activity_at = now
+        return
+    session.is_active = False
+    session.terminated_at = now
+    session.termination_reason = "session_expired_or_idle"
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired")
+
+
 def get_current_niam_actor_sync(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
@@ -41,9 +70,7 @@ def get_current_niam_actor_sync(
 ) -> NiamActor:
     """Canonical actor dependency for the sync clinical gateway."""
     raw_token = _raw_niam_token(request, credentials)
-    payload = decode_token(raw_token)
-    if not payload or not payload.get("account_uuid") or not payload.get("jti"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid NIAM access token")
+    payload = _validate_token_payload(raw_token)
     actor = (
         db.query(Account, UserSession)
         .join(UserSession, UserSession.account_id == Account.id)
@@ -59,7 +86,10 @@ def get_current_niam_actor_sync(
     )
     if actor is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive or invalid NIAM session")
-    return NiamActor(account=actor[0], session=actor[1])
+    account, session = actor
+    _expire_if_unusable(session)
+    db.flush()
+    return NiamActor(account=account, session=session)
 
 
 async def get_current_niam_actor(
@@ -68,9 +98,7 @@ async def get_current_niam_actor(
     db: AsyncSession = Depends(get_db),
 ) -> NiamActor:
     raw_token = _raw_niam_token(request, credentials)
-    payload = decode_token(raw_token)
-    if not payload or not payload.get("account_uuid") or not payload.get("jti"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid NIAM access token")
+    payload = _validate_token_payload(raw_token)
 
     result = await db.execute(
         select(Account, UserSession)
@@ -79,6 +107,7 @@ async def get_current_niam_actor(
             Account.uuid == payload["account_uuid"],
             Account.status == AccountStatus.active.value,
             Account.is_active.is_(True),
+            Account.is_locked.is_(False),
             UserSession.token_jti == payload["jti"],
             UserSession.is_active.is_(True),
         ),
@@ -86,7 +115,14 @@ async def get_current_niam_actor(
     actor = result.first()
     if actor is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive or invalid NIAM session")
-    return NiamActor(account=actor[0], session=actor[1])
+    account, session = actor
+    _expire_if_unusable(session)
+    flush = getattr(db, "flush", None)
+    if flush is not None:
+        result = flush()
+        if inspect.isawaitable(result):
+            await result
+    return NiamActor(account=account, session=session)
 
 
 def serialize_workspace(workspace: Workspace) -> dict[str, object]:
@@ -150,4 +186,12 @@ async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_cur
         session_id=actor.session.uuid,
         metadata={"context_version": context.version},
     )
-    return {"context": {"account_id": context.account_id, "identity_id": context.identity_id, "workspace_id": context.workspace_id, "version": context.version}, "workspace": serialize_workspace(workspace)}
+    return {
+        "context": {
+            "account_id": context.account_id,
+            "identity_id": context.identity_id,
+            "workspace_id": context.workspace_id,
+            "version": context.version,
+        },
+        "workspace": serialize_workspace(workspace),
+    }

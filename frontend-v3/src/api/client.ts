@@ -31,6 +31,25 @@ export interface WorkspaceContextResponse {
   workspace: WorkspaceSummary;
 }
 
+export interface NiamSessionSummary {
+  uuid: string;
+  id: string;
+  session_type: string;
+  is_current: boolean;
+  device_id?: string | null;
+  user_agent?: string | null;
+  ip_address?: string | null;
+  started_at: string;
+  last_activity_at: string;
+  expires_at: string;
+  auth_method?: string | null;
+  mfa_used: boolean;
+}
+
+export interface NiamSessionListResponse {
+  sessions: NiamSessionSummary[];
+}
+
 export interface MembershipSummary {
   id: string;
   uuid: string;
@@ -262,6 +281,10 @@ type RestWriteMethod = "post" | "put" | "patch" | "delete";
 const IDENTITY_AND_DECISION_ALLOWLIST = new Set([
   "POST /login",
   "POST /logout",
+  "POST /niam/auth/login",
+  "POST /niam/auth/refresh",
+  "POST /niam/auth/logout",
+  "POST /niam/auth/logout-all",
   "POST /demo/access",
   "POST /auth/verification/request",
   "POST /auth/verification/confirm",
@@ -315,6 +338,8 @@ const ACCOUNT_REQUEST_READ_PATTERN = /^GET \/niam\/account-requests\/?$/;
 const ACCOUNT_REQUEST_WRITE_PATTERN = /^POST \/niam\/account-requests\/(?:[^/]+\/(review|approve|activation-token|reject|expire)|accounts\/[^/]+\/(suspend|lock|reactivate|deactivate))$/;
 const ACCOUNT_REQUEST_CREATE_PATTERN = /^POST \/niam\/account-requests\/?$/;
 const ACCOUNT_REQUEST_PUBLIC_WRITE_PATTERN = /^POST \/niam\/account-requests\/[^/]+\/(verification\/start|verification\/confirm|activate)$/;
+const NIAM_SESSION_READ_PATTERN = /^GET \/niam\/sessions\/account\/[^/]+$/;
+const NIAM_SESSION_WRITE_PATTERN = /^POST \/niam\/sessions\/(?:[^/]+\/terminate|account\/[^/]+\/terminate-all)$/;
 
 function toRequestKey(method?: string, url?: string): string {
   const normalizedMethod = (method ?? "get").toUpperCase();
@@ -338,10 +363,11 @@ export function assertFrontendWriteIsAllowed(method?: string, url?: string): voi
   const workspaceSwitch = normalizedMethod === "post" && /^POST \/niam\/workspaces\/[^/]+\/switch$/.test(key);
   const membershipMutation = normalizedMethod === "post" && /^POST \/niam\/memberships\/(?:applications(?:\/[^/]+\/approve)?|invitations(?:\/[^/]+\/(?:accept|revoke))?|[^/]+\/(?:revoke|suspend|reactivate))$/.test(key);
   const accountRequestMutation = ACCOUNT_REQUEST_CREATE_PATTERN.test(key) || ACCOUNT_REQUEST_WRITE_PATTERN.test(key) || ACCOUNT_REQUEST_PUBLIC_WRITE_PATTERN.test(key);
-  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && !accountRequestMutation && (BILLING_WRITE_PATTERN.test(key) || DEVICE_INTEGRATION_WRITE_PATTERN.test(key))) {
+  const sessionMutation = NIAM_SESSION_WRITE_PATTERN.test(key);
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && !accountRequestMutation && !sessionMutation && (BILLING_WRITE_PATTERN.test(key) || DEVICE_INTEGRATION_WRITE_PATTERN.test(key))) {
     return;
   }
-  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && !accountRequestMutation) {
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && !accountRequestMutation && !sessionMutation) {
     throw new OperationalWriteBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
 }
@@ -357,7 +383,7 @@ export function assertFrontendReadIsAllowed(method?: string, url?: string): void
 
   const key = toRequestKey(normalizedMethod, url);
   const workspaceDetail = /^GET \/niam\/workspaces\/[^/]+$/.test(key);
-  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || ACCOUNT_REQUEST_READ_PATTERN.test(key)) return;
+  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || ACCOUNT_REQUEST_READ_PATTERN.test(key) || NIAM_SESSION_READ_PATTERN.test(key)) return;
   if (!INITIALIZATION_READ_ALLOWLIST.has(key) && !workspaceDetail) {
     throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
@@ -429,6 +455,21 @@ class ApiClient {
 
   async switchWorkspace(workspaceId: string) {
     const response = await this.instance.post<WorkspaceContextResponse>(`/niam/workspaces/${encodeURIComponent(workspaceId)}/switch`, {});
+    return response.data;
+  }
+
+  async listNiamSessions(accountId: string) {
+    const response = await this.instance.get<NiamSessionListResponse>(`/niam/sessions/account/${encodeURIComponent(accountId)}`);
+    return response.data;
+  }
+
+  async terminateNiamSession(sessionUuid: string) {
+    const response = await this.instance.post<{ success: boolean; session_uuid: string }>(`/niam/sessions/${encodeURIComponent(sessionUuid)}/terminate`, {});
+    return response.data;
+  }
+
+  async terminateAllNiamSessions(accountId: string) {
+    const response = await this.instance.post<{ success: boolean; terminated: number }>(`/niam/sessions/account/${encodeURIComponent(accountId)}/terminate-all`, {});
     return response.data;
   }
 

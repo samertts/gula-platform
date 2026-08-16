@@ -64,6 +64,25 @@ import type {
 } from "@/types";
 
 // ── Auth ──
+export interface NiamAuthResponse {
+  access_token: string;
+  refresh_token: string;
+  token_type: "bearer";
+  expires_in: number;
+  session_uuid: string;
+  account_uuid: string;
+  refresh_family_id?: string | null;
+}
+
+export const niamAuthApi = {
+  login: (data: { login: string; password: string }) =>
+    api.post<NiamAuthResponse>("/niam/auth/login", data).then((r) => r.data),
+  refresh: (refresh_token?: string) =>
+    api.post<NiamAuthResponse>("/niam/auth/refresh", refresh_token ? { refresh_token } : {}).then((r) => r.data),
+  logout: () => api.post<{ success: boolean; scope: "current_session" }>("/niam/auth/logout").then((r) => r.data),
+  logoutAll: () => api.post<{ success: boolean; scope: "all_sessions"; terminated: number }>("/niam/auth/logout-all").then((r) => r.data),
+};
+
 export const authApi = {
   login: (data: LoginRequest) =>
     api.post<LoginResponse>("/login", data).then((r) => r.data),

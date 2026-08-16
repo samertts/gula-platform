@@ -19,13 +19,26 @@ class SessionRepository(IdentityRepositoryBase[UserSession]):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def find_by_refresh_token_jti(self, jti: str) -> UserSession | None:
+    async def find_by_refresh_token_jti(
+        self,
+        jti: str,
+        *,
+        active_only: bool = True,
+    ) -> UserSession | None:
+        predicates = [self.model_class.refresh_token_jti == jti]
+        if active_only:
+            predicates.append(self.model_class.is_active.is_(True))
+        stmt = select(self.model_class).where(*predicates)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def find_by_refresh_family_id(self, family_id: str) -> list[UserSession]:
         stmt = select(self.model_class).where(
-            self.model_class.refresh_token_jti == jti,
+            self.model_class.refresh_family_id == family_id,
             self.model_class.is_active.is_(True),
         )
         result = await self.session.execute(stmt)
-        return result.scalar_one_or_none()
+        return list(result.scalars().all())
 
     async def find_by_account_id(self, account_id: str) -> list[UserSession]:
         stmt = (
@@ -57,6 +70,22 @@ class SessionRepository(IdentityRepositoryBase[UserSession]):
             update(self.model_class)
             .where(
                 self.model_class.account_id == account_id,
+                self.model_class.is_active.is_(True),
+            )
+            .values(
+                is_active=False,
+                terminated_at=datetime.now(UTC),
+                termination_reason=reason,
+            )
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
+
+    async def terminate_all_for_refresh_family(self, family_id: str, reason: str) -> None:
+        stmt = (
+            update(self.model_class)
+            .where(
+                self.model_class.refresh_family_id == family_id,
                 self.model_class.is_active.is_(True),
             )
             .values(
