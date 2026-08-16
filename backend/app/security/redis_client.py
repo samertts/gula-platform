@@ -33,6 +33,17 @@ class _MemoryStore:
         with self._lock:
             self._data[key] = (str(value), expire_at)
 
+    def set_if_absent(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> bool:
+        expire_at = time.monotonic() + ex if ex else None
+        with self._lock:
+            entry = self._data.get(key)
+            if entry is not None:
+                if entry[1] is None or time.monotonic() <= entry[1]:
+                    return False
+                del self._data[key]
+            self._data[key] = (str(value), expire_at)
+            return True
+
     def get(self, key: str) -> str | None:
         with self._lock:
             entry = self._data.get(key)
@@ -63,6 +74,10 @@ class _MemoryStore:
             if entry is not None:
                 self._data[key] = (entry[0], time.monotonic() + seconds)
 
+    @property
+    def is_shared(self) -> bool:
+        return False
+
     def ping(self) -> bool:
         """Always return True for in-memory store as it's always 'available'."""
         return True
@@ -87,6 +102,9 @@ class _RedisWrapper:
     def set(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> None:
         self._client.set(key, value, ex=ex)
 
+    def set_if_absent(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> bool:
+        return bool(self._client.set(key, value, ex=ex, nx=True))
+
     def get(self, key: str) -> str | None:
         value = self._client.get(key)
         return value.decode() if isinstance(value, bytes) else value
@@ -99,6 +117,10 @@ class _RedisWrapper:
 
     def expire(self, key: str, seconds: int) -> None:
         self._client.expire(key, seconds)
+
+    @property
+    def is_shared(self) -> bool:
+        return True
 
     def ping(self) -> bool:
         """Ping Redis — raises on failure so callers can catch it."""

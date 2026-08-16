@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -17,7 +17,20 @@ from .services import (
     TrustFrameworkService,
 )
 
-router = APIRouter(prefix="/niam/trust", tags=["NIAM Trust"])
+
+def _reject_unscoped_trust_workflow() -> None:
+    """Trust/proofing APIs stay unavailable until server-side scope is wired."""
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Identity trust workflow is unavailable until governed authorization is enabled.",
+    )
+
+
+router = APIRouter(
+    prefix="/niam/trust",
+    tags=["NIAM Trust"],
+    dependencies=[Depends(_reject_unscoped_trust_workflow)],
+)
 
 
 # ── Trust Frameworks ──────────────────────────────────────────────────────────

@@ -12,6 +12,7 @@ import { AUTH_STATES } from "@/auth/authState";
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage").then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage").then(m => ({ default: m.RegisterPage })));
 const RecoveryPage = lazy(() => import("@/pages/auth/RecoveryPage").then(m => ({ default: m.RecoveryPage })));
+const VerificationPage = lazy(() => import("@/pages/auth/VerificationPage").then(m => ({ default: m.VerificationPage })));
 const MembershipsPage = lazy(() => import("@/pages/memberships/MembershipsPage").then(m => ({ default: m.MembershipsPage })));
 const LegalPage = lazy(() => import("@/pages/legal/LegalPage").then(m => ({ default: m.LegalPage })));
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage").then(m => ({ default: m.DashboardPage })));
@@ -134,6 +135,7 @@ export const router = createBrowserRouter([
       { path: "login", element: <LazyPage><LoginPage /></LazyPage> },
       { path: "register", element: <LazyPage><RegisterPage /></LazyPage> },
       { path: "recover", element: <LazyPage><RecoveryPage /></LazyPage> },
+      { path: "verify", element: <LazyPage><VerificationPage /></LazyPage> },
       { path: "privacy-policy", element: <LazyPage><LegalPage document="privacy" /></LazyPage> },
       { path: "terms-of-service", element: <LazyPage><LegalPage document="terms" /></LazyPage> },
     ],
