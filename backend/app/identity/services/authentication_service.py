@@ -119,7 +119,12 @@ class AuthenticationService:
             return None
 
         account = await self.account_repo.get_by_id(session.account_id)
-        if not account or not account.is_active:
+        if (
+            not account
+            or not account.is_active
+            or account.status != "active"
+            or account.is_locked
+        ):
             return None
 
         remaining_seconds = max(1, int((session.expires_at - datetime.now(UTC)).total_seconds()))

@@ -10,6 +10,7 @@ from typing import Any
 
 from cryptography.fernet import Fernet
 from sqlalchemy import or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
@@ -20,6 +21,10 @@ from shared.security.encryption import encrypt_value
 
 class AccountRequestConfigurationError(RuntimeError):
     """Raised when required key material is unavailable; intake must fail closed."""
+
+
+class IdempotencyConflictError(ValueError):
+    """Raised when a key is reused with a different request payload."""
 
 
 @dataclass(frozen=True)
@@ -111,13 +116,21 @@ class AccountRequestService:
             display_name=display_name,
             requested_account_type=requested_account_type,
         )
-        idempotency_hash = self._blind_index(idempotency_key.strip())
+        normalized_idempotency_key = idempotency_key.strip()
+        if not normalized_idempotency_key:
+            raise ValueError("idempotency key is required")
+        idempotency_hash = self._blind_index(normalized_idempotency_key)
+        request_fingerprint = self._request_fingerprint(normalized)
         existing_by_key = await self.session.scalar(
             select(AccountCreationRequest).where(
                 AccountCreationRequest.idempotency_key_hash == idempotency_hash,
             ),
         )
         if existing_by_key is not None:
+            if existing_by_key.request_fingerprint != request_fingerprint:
+                raise IdempotencyConflictError(
+                    "Idempotency key was already used with a different request"
+                )
             return existing_by_key
 
         email_lookup = self._blind_index(normalized.email) if normalized.email else None
@@ -171,12 +184,31 @@ class AccountRequestService:
                 else None
             ),
             idempotency_key_hash=idempotency_hash,
-            request_fingerprint=self._request_fingerprint(normalized),
+            request_fingerprint=request_fingerprint,
             source_ip_hash=self._blind_index(source_ip) if source_ip else None,
             is_active=True,
         )
         self.session.add(account_request)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError as exc:
+            rollback = getattr(self.session, "rollback", None)
+            if rollback is not None:
+                result = rollback()
+                if hasattr(result, "__await__"):
+                    await result
+            existing_after_race = await self.session.scalar(
+                select(AccountCreationRequest).where(
+                    AccountCreationRequest.idempotency_key_hash == idempotency_hash,
+                ),
+            )
+            if existing_after_race is not None:
+                if existing_after_race.request_fingerprint != request_fingerprint:
+                    raise IdempotencyConflictError(
+                        "Idempotency key was already used with a different request"
+                    ) from exc
+                return existing_after_race
+            raise
         await self.audit.record(
             AuditEventInput(
                 event_type="account_request_submitted",

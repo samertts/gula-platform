@@ -22,8 +22,10 @@ class _Db:
     def __init__(self, row=None, workspace=None):
         self.row = row
         self.workspace = workspace
+        self.statement = None
 
     async def execute(self, statement):
+        self.statement = statement
         return _Result(self.row)
 
     async def get(self, model, workspace_id):
@@ -122,13 +124,15 @@ async def test_valid_token_requires_matching_active_account_and_session(monkeypa
     account = SimpleNamespace(id="account-1")
     session = SimpleNamespace(id="session-1")
 
+    db = _Db(row=(account, session))
     result = await workspace_api.get_current_niam_actor(
         request(),
         _Credentials("valid-token"),
-        _Db(row=(account, session)),
+        db,
     )
 
     assert result.account is account
+    assert "is_locked" in str(db.statement)
     assert result.session is session
 
 

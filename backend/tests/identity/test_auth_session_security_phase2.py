@@ -78,7 +78,9 @@ def _build_service(monkeypatch, *, active_account: bool = True):
         id="account-1",
         uuid="account-uuid-1",
         identity_id="identity-1",
+        status="active",
         is_active=active_account,
+        is_locked=False,
     )
     old_session = SimpleNamespace(
         id="session-1",
@@ -158,6 +160,17 @@ async def test_refresh_replay_is_rejected_after_rotation(monkeypatch):
 @pytest.mark.asyncio
 async def test_refresh_is_rejected_for_inactive_account_without_blacklisting(monkeypatch):
     service, old_session, blacklisted = _build_service(monkeypatch, active_account=False)
+
+    assert await service.refresh_session("old-token") is None
+    assert old_session.is_active is True
+    assert blacklisted == []
+
+
+@pytest.mark.asyncio
+async def test_refresh_is_rejected_for_locked_account_without_blacklisting(monkeypatch):
+    service, old_session, blacklisted = _build_service(monkeypatch)
+    service.account_repo.account.status = "locked"
+    service.account_repo.account.is_locked = True
 
     assert await service.refresh_session("old-token") is None
     assert old_session.is_active is True

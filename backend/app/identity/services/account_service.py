@@ -4,6 +4,7 @@ import re
 import uuid
 from datetime import datetime, timedelta
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
@@ -16,6 +17,19 @@ PASSWORD_MIN_LENGTH = 12
 ACCOUNT_LOCKOUT_THRESHOLD = 5
 ACCOUNT_LOCKOUT_DURATION_MINUTES = 30
 PASSWORD_EXPIRY_DAYS = 90
+
+
+class DuplicateAccountError(ValueError):
+    """Raised when a unique account identifier is already registered."""
+
+
+def _is_unique_violation(error: IntegrityError) -> bool:
+    original = getattr(error, "orig", None)
+    code = getattr(original, "pgcode", None) or getattr(original, "sqlstate", None)
+    if code == "23505":
+        return True
+    message = str(original or error).lower()
+    return "unique constraint" in message or "duplicate key" in message
 
 
 class AccountService:
@@ -32,6 +46,8 @@ class AccountService:
         username: str | None = None,
         password: str | None = None,
     ) -> Account:
+        if not identity_id or not identity_id.strip():
+            raise ValueError("identity_id is required")
         email = email.strip().lower() if email else None
         phone = re.sub(r"\s+", "", phone) if phone else None
         username = username.strip().lower() if username else None
@@ -64,7 +80,17 @@ class AccountService:
             phone_verified=False,
             identity_verified=False,
         )
-        return await self.repo.create(account)
+        try:
+            return await self.repo.create(account)
+        except IntegrityError as exc:
+            rollback = getattr(self.repo.session, "rollback", None)
+            if rollback is not None:
+                result = rollback()
+                if hasattr(result, "__await__"):
+                    await result
+            if _is_unique_violation(exc):
+                raise DuplicateAccountError("Account identifier is already registered") from exc
+            raise
 
     async def authenticate(self, login: str, password: str) -> Account | None:
         normalized_login = login.strip()

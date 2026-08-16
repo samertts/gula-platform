@@ -20,7 +20,6 @@ export function RegisterPage() {
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [accountType, setAccountType] = useState<"human" | "organization">("human");
   const [status, setStatus] = useState<RequestStatus>("idle");
   const [message, setMessage] = useState("");
 
@@ -30,7 +29,7 @@ export function RegisterPage() {
     setMessage("");
     try {
       const response = await identityLifecycleApi.submitAccountRequest(
-        { display_name: displayName.trim() || undefined, email: email.trim() || undefined, phone: phone.trim() || undefined, requested_account_type: accountType },
+        { display_name: displayName.trim() || undefined, email: email.trim() || undefined, phone: phone.trim() || undefined, requested_account_type: "human" },
         idempotencyKey(),
       );
       setMessage(response.message || "تم استلام الطلب للمراجعة.");
@@ -53,7 +52,7 @@ export function RegisterPage() {
       <div className="p-7 sm:p-10">
         <div className="grid gap-4 md:grid-cols-2">
           <article className="rounded-2xl border border-slate-200 p-5 dark:border-white/10"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><UserRound className="h-5 w-5" /></span><h2 className="mt-4 text-base font-bold">حساب شخصي</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">طلب مواطن أو مستخدم بشري يخضع للتحقق والمراجعة قبل التفعيل.</p><p className="mt-5 flex gap-2 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> لا يتم إصدار جلسة من هذا الطلب</p></article>
-          <article className="rounded-2xl border border-slate-200 p-5 dark:border-white/10"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"><Building2 className="h-5 w-5" /></span><h2 className="mt-4 text-base font-bold">حساب مؤسسة</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">طلب مؤسسة أو جهة صحية يخضع لإجراءات اعتماد مستقلة وصلاحيات server-side.</p><p className="mt-5 flex gap-2 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> لا يتم تفعيل Public Registration</p></article>
+          <article className="rounded-2xl border border-slate-200 p-5 dark:border-white/10"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"><Building2 className="h-5 w-5" /></span><h2 className="mt-4 text-base font-bold">حساب مؤسسة</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">طلبات المؤسسات والجهات الصحية لا تُنشأ من هذا النموذج؛ تمر عبر اعتماد مؤسسي منفصل بصلاحيات server-side.</p><p className="mt-5 flex gap-2 text-xs text-slate-600 dark:text-slate-300"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> لا يتم تفعيل Public Registration</p></article>
         </div>
 
         {status === "accepted" ? (
@@ -63,7 +62,7 @@ export function RegisterPage() {
             {status === "failed" && <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-3.5 py-3 text-sm leading-6 text-destructive" role="alert">{message}</div>}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2"><label className="text-sm font-semibold" htmlFor="request-name">الاسم المعروض</label><Input id="request-name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={200} /></div>
-              <div className="space-y-2"><label className="text-sm font-semibold" htmlFor="request-type">نوع الطلب</label><select id="request-type" value={accountType} onChange={(event) => setAccountType(event.target.value as "human" | "organization")} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="human">حساب شخصي</option><option value="organization">حساب مؤسسة</option></select></div>
+              <div className="space-y-2"><span className="text-sm font-semibold">نوع الطلب</span><div className="flex h-10 items-center rounded-md border border-input bg-muted/30 px-3 text-sm text-muted-foreground">طلب حساب بشري — يخضع للمراجعة</div></div>
               <div className="space-y-2"><label className="text-sm font-semibold" htmlFor="request-email"><Mail className="me-1 inline h-4 w-4" />البريد الإلكتروني</label><Input id="request-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} /></div>
               <div className="space-y-2"><label className="text-sm font-semibold" htmlFor="request-phone"><Phone className="me-1 inline h-4 w-4" />رقم الهاتف</label><Input id="request-phone" type="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} /></div>
             </div>

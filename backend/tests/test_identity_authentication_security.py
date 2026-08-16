@@ -79,7 +79,7 @@ async def test_refresh_session_uses_refresh_token_identifier(monkeypatch):
         device_id="device-1",
         id="session-1",
     )
-    account = SimpleNamespace(is_active=True)
+    account = SimpleNamespace(status="active", is_active=True, is_locked=False)
     service.session_repo.find_by_refresh_token_jti.return_value = session
     service.account_repo.get_by_id.return_value = account
     blacklist = Mock()

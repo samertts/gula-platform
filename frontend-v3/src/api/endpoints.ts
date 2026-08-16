@@ -61,7 +61,7 @@ export interface AccountRequestPayload {
   email?: string;
   phone?: string;
   display_name?: string;
-  requested_account_type: "human" | "organization" | "service";
+  requested_account_type: "human";
 }
 
 export interface AccountRequestAccepted {
