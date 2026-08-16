@@ -33,7 +33,8 @@ class _WorkspacePageState extends ConsumerState<WorkspacePage> {
     } catch (_) {
       if (mounted)
         setState(
-          () => _error = 'Workspace switching was denied by the server. The previous context was kept.',
+          () => _error =
+              'Workspace switching was denied by the server. The previous context was kept.',
         );
     } finally {
       if (mounted) setState(() => _loading = false);

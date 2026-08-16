@@ -55,7 +55,8 @@ class _SecurityCenterPageState extends ConsumerState<SecurityCenterPage> {
           ? (deviceBody['devices'] as List? ?? const [])
           : (deviceBody is List ? deviceBody : const []);
     } catch (_) {
-      _error = 'Some security details are unavailable. No cached values are shown as current.';
+      _error =
+          'Some security details are unavailable. No cached values are shown as current.';
     } finally {
       if (mounted) setState(() => _loading = false);
     }
