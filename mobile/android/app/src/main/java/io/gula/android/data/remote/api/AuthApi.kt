@@ -5,6 +5,7 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface AuthApi {
+    @Headers("X-Client-Platform: android")
     @POST("login")
     suspend fun login(@Body request: LoginRequestDto): Response<LoginResponseDto>
 

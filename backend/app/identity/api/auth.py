@@ -47,7 +47,12 @@ async def login(
         user_agent=server_user_agent,
     )
     if not result:
+        # AccountService flushes failed-attempt/lockout state before returning
+        # None; commit it before raising so the request dependency cannot roll
+        # the security control back.
+        db.commit()
         raise HTTPException(status_code=401, detail="Invalid credentials")
+    db.commit()
     return result
 
 
@@ -62,6 +67,7 @@ async def refresh(
     result = await service.refresh_session(refresh_token)
     if not result:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+    db.commit()
     return result
 
 
@@ -75,4 +81,5 @@ async def logout(
     terminated = await service.logout(session_uuid, account_id=str(actor.account.id))
     if not terminated:
         raise HTTPException(status_code=403, detail="Session does not belong to the authenticated account")
+    db.commit()
     return {"success": True}

@@ -48,6 +48,7 @@ class ApiClient {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
           'Accept-Language': 'ar',
+          'X-Client-Platform': 'desktop',
         },
       ),
     );

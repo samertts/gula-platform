@@ -57,6 +57,14 @@ actor APIClient {
         let _: EmptyResponse = try await performRequest(endpoint, body: body)
     }
 
+    /// Logout without refresh/retry: the captured access token is sent to the
+    /// server before local credentials are cleared by AuthManager.
+    func serverLogout(accessToken: String) async throws {
+        var request = try buildRequest(.logout)
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        _ = try await performDataRequest(request)
+    }
+
     func requestData(_ endpoint: APIEndpoint) async throws -> Data {
         var urlRequest = try buildRequest(endpoint)
         try await injectAuth(&urlRequest)
@@ -232,6 +240,9 @@ actor APIClient {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         guard let newToken = json?["access_token"] as? String else {
             throw APIError.authentication
+        }
+        if let newRefreshToken = json?["refresh_token"] as? String, !newRefreshToken.isEmpty {
+            KeychainManager.shared.set(key: "refresh_token", value: newRefreshToken)
         }
 
         KeychainManager.shared.set(key: "access_token", value: newToken)

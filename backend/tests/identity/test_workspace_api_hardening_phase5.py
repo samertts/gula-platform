@@ -174,3 +174,31 @@ async def test_switch_route_returns_403_and_audits_denial(monkeypatch):
     assert error.value.status_code == 403
     assert len(_Audit.denied) == 1
     assert _Audit.denied[0][1]["outcome"] == "denied"
+
+
+def test_niam_session_idle_timeout_is_server_enforced(monkeypatch):
+    from datetime import datetime, timedelta
+
+    from app._compat import UTC
+
+    session = SimpleNamespace(last_activity_at=datetime.now(UTC) - timedelta(hours=2))
+    assert workspace_api._session_is_idle(session, datetime.now(UTC)) is True
+
+
+def test_niam_session_touch_skips_recent_activity(monkeypatch):
+    from datetime import datetime
+
+    from app._compat import UTC
+
+    class _SyncDb:
+        def __init__(self):
+            self.commits = 0
+
+        def commit(self):
+            self.commits += 1
+
+    now = datetime.now(UTC)
+    session = SimpleNamespace(last_activity_at=now)
+    db = _SyncDb()
+    workspace_api._touch_session_sync(db, session, now)
+    assert db.commits == 0

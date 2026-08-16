@@ -6,9 +6,11 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Any
 
+from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.config import IS_PRODUCTION
 from app.models.mfa_device import MFADevice, MFASession
 from shared.auth.mfa import (
     generate_backup_codes,
@@ -34,6 +36,13 @@ class MFAService:
     def __init__(self, db: Session):
         self._db = db
 
+    def _challenge_cache(self):
+        from .redis_client import cache
+
+        if IS_PRODUCTION and not cache.is_shared:
+            raise RuntimeError("MFA challenge store unavailable")
+        return cache
+
     # ── TOTP ──
 
     def setup_totp(self, user_id: int, email: str, device_name: str = "Authenticator App") -> dict[str, Any]:
@@ -55,7 +64,7 @@ class MFAService:
             MFADevice.user_id == user_id,
             MFADevice.device_type == "totp",
             MFADevice.is_active.is_(True),
-        ).all()
+        ).with_for_update().all()
         for device in devices:
             if verify_totp(device.secret, token):
                 device.last_used_at = datetime.now(UTC)
@@ -89,21 +98,23 @@ class MFAService:
             user_display_name=user_display_name,
             existing_credentials=existing_creds,
         )
-        from .redis_client import cache
+        cache = self._challenge_cache()
         try:
             cache.set(f"webauthn:challenge:{user_id}", options["challenge"], ex=300)
         except Exception as exc:
-            logger.warning("WebAuthn registration challenge cache failed for user %s: %s", user_id, exc)
+            logger.error("WebAuthn registration challenge cache failed for user %s", user_id)
+            raise RuntimeError("WebAuthn challenge store unavailable") from exc
         return options
 
     def complete_webauthn_registration(self, user_id: int, credential: dict[str, Any],
                                         device_name: str = "Security Key") -> MFADevice:
-        from .redis_client import cache
+        cache = self._challenge_cache()
         challenge = ""
         try:
-            challenge = cache.get(f"webauthn:challenge:{user_id}") or ""
+            challenge = cache.get_and_delete(f"webauthn:challenge:{user_id}") or ""
         except Exception as exc:
-            logger.warning("WebAuthn registration challenge read failed for user %s: %s", user_id, exc)
+            logger.error("WebAuthn registration challenge read failed for user %s", user_id)
+            raise RuntimeError("WebAuthn challenge store unavailable") from exc
         result = verify_registration(credential, challenge)
         device = MFADevice(
             user_id=user_id, device_type="webauthn",
@@ -130,14 +141,22 @@ class MFAService:
             for d in devices if d.credential_id
         ]
         options = generate_authentication_options_for_user(creds)
-        from .redis_client import cache
+        cache = self._challenge_cache()
         try:
             cache.set(f"webauthn:challenge:{user_id}", options["challenge"], ex=300)
         except Exception as exc:
-            logger.warning("WebAuthn authentication challenge cache failed for user %s: %s", user_id, exc)
+            logger.error("WebAuthn authentication challenge cache failed for user %s", user_id)
+            raise RuntimeError("WebAuthn challenge store unavailable") from exc
         return options
 
     def complete_webauthn_authentication(self, user_id: int, credential: dict[str, Any]) -> bool:
+        cache = self._challenge_cache()
+        challenge = ""
+        try:
+            challenge = cache.get_and_delete(f"webauthn:challenge:{user_id}") or ""
+        except Exception as exc:
+            logger.error("WebAuthn authentication challenge read failed for user %s", user_id)
+            raise RuntimeError("WebAuthn challenge store unavailable") from exc
         device = self._db.query(MFADevice).filter(
             MFADevice.user_id == user_id,
             MFADevice.credential_id == credential.get("id"),
@@ -145,12 +164,6 @@ class MFAService:
         ).first()
         if not device:
             return False
-        from .redis_client import cache
-        challenge = ""
-        try:
-            challenge = cache.get(f"webauthn:challenge:{user_id}") or ""
-        except Exception as exc:
-            logger.warning("WebAuthn authentication challenge read failed for user %s: %s", user_id, exc)
         pk = json.loads(device.public_key) if device.public_key else {}
         result = verify_authentication(
             credential, challenge,
@@ -175,16 +188,27 @@ class MFAService:
         return token
 
     def verify_mfa_session(self, session_token: str) -> int | None:
-        session = self._db.query(MFASession).filter(
+        now = datetime.now(UTC)
+        candidate = self._db.query(MFASession.user_id).filter(
             MFASession.session_token == session_token,
             MFASession.is_verified.is_(False),
-            MFASession.expires_at > datetime.now(UTC),
+            MFASession.expires_at > now,
         ).first()
-        if session:
-            session.is_verified = True
-            self._db.commit()
-            return session.user_id
-        return None
+        if not candidate:
+            return None
+        result = self._db.execute(
+            update(MFASession)
+            .where(
+                MFASession.session_token == session_token,
+                MFASession.is_verified.is_(False),
+                MFASession.expires_at > now,
+            )
+            .values(is_verified=True),
+        )
+        if result.rowcount != 1:
+            return None
+        self._db.commit()
+        return candidate[0]
 
     def get_user_devices(self, user_id: int) -> list[dict[str, Any]]:
         devices = self._db.query(MFADevice).filter(

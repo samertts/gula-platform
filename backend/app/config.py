@@ -183,6 +183,15 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 if REFRESH_TOKEN_EXPIRE_DAYS < 1 or REFRESH_TOKEN_EXPIRE_DAYS > 30:
     sys.exit("REFRESH_TOKEN_EXPIRE_DAYS must be between 1 and 30 days")
 
+# NIAM sessions use a sliding idle timeout in addition to the absolute
+# refresh/session expiry stored on each UserSession row.
+SESSION_IDLE_TIMEOUT_MINUTES = int(os.getenv("SESSION_IDLE_TIMEOUT_MINUTES", "30"))
+if SESSION_IDLE_TIMEOUT_MINUTES < 5 or SESSION_IDLE_TIMEOUT_MINUTES > 1440:
+    sys.exit("SESSION_IDLE_TIMEOUT_MINUTES must be between 5 minutes and 24 hours")
+SESSION_TOUCH_INTERVAL_SECONDS = int(os.getenv("SESSION_TOUCH_INTERVAL_SECONDS", "60"))
+if SESSION_TOUCH_INTERVAL_SECONDS < 10 or SESSION_TOUCH_INTERVAL_SECONDS > 3600:
+    sys.exit("SESSION_TOUCH_INTERVAL_SECONDS must be between 10 seconds and 1 hour")
+
 # ─── Encryption ──────────────────────────────────────────────────────────────
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
 if not ENCRYPTION_KEY:

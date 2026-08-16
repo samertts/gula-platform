@@ -127,9 +127,13 @@ class AuthenticationService:
         ):
             return None
 
-        remaining_seconds = max(1, int((session.expires_at - datetime.now(UTC)).total_seconds()))
+        now = datetime.now(UTC)
+        remaining_seconds = max(1, int((session.expires_at - now).total_seconds()))
+        consumed = await self.session_repo.consume_refresh_token(refresh_jti, now)
+        if not consumed:
+            # Another worker already rotated this token, so this is a replay.
+            return None
         blacklist_token(refresh_jti, remaining_seconds)
-        await self.session_repo.soft_delete(session.id)
         return await self._create_session(
             account=account,
             ip_address=session.ip_address,

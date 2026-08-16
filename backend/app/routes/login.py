@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -48,7 +48,13 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/login")
-def login(data: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+def login(
+    data: LoginRequest,
+    request: Request,
+    response: Response,
+    client_platform: str | None = Header(default=None, alias="X-Client-Platform"),
+    db: Session = Depends(get_db),
+):
     client_ip = get_client_ip(request)
     identifier = data.email
     rate_limit_auth(request, identifier=identifier)
@@ -89,7 +95,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     if user and is_locked(user):
         log_action(
             db,
-            action="login_denied_lockout",
+            action="login_failure",
             resource_type="auth",
             user_id=user.id,
             user_role=user.role,
@@ -101,10 +107,10 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
     if not user or not password_ok:
         if user:
-            locked_now = register_failed_login(user)
-            action = "login_lockout_started" if locked_now else "login_failed"
+            register_failed_login(user)
+            action = "login_failure"
         else:
-            action = "login_failed"
+            action = "login_failure"
         log_action(
             db,
             action=action,
@@ -125,7 +131,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     if not isinstance(user, LabUser) and not user.is_verified:
         log_action(
             db,
-            action="login_denied_verification",
+            action="login_failure",
             resource_type="auth",
             user_id=user.id,
             user_role=user.role,
@@ -146,7 +152,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         if not mfa.has_mfa_enabled(user.id):
             log_action(
                 db,
-                action="login_denied_mfa_required",
+                action="login_failure",
                 resource_type="auth",
                 user_id=user.id,
                 user_role=user.role,
@@ -168,7 +174,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         if not lab and lab_user.role != "master_admin":
             log_action(
                 db,
-                action="login_denied",
+                action="login_failure",
                 resource_type="auth",
                 user_id=lab_user.id,
                 user_role=lab_user.role,
@@ -200,7 +206,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
     log_action(
         db,
-        action="login",
+        action="login_success",
         resource_type="auth",
         user_id=user.id,
         user_role=user.role,
@@ -230,9 +236,9 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     )
 
     # Browser clients use the HttpOnly cookies above. Do not echo bearer
-    # material in JSON where page JavaScript, extensions, or observability tools
-    # could read it. Native clients use the dedicated mobile/NIAM contracts.
-    return {
+    # material in JSON. Native clients opt into the token-bearing contract via
+    # an explicit platform header and persist those tokens in secure storage.
+    result = {
         "user": {
             "id": user.id,
             "name": user_name,
@@ -243,6 +249,14 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
             "is_verified": bool(getattr(user, "is_verified", True)),
         },
     }
+    if (client_platform or "").strip().lower() in {"android", "ios", "desktop", "flutter"}:
+        result.update({
+            "access_token": token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": JWT_EXPIRE_MINUTES * 60,
+        })
+    return result
 
 
 @router.post("/logout")
@@ -256,8 +270,13 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     user_id = None
     account_kind = None
 
-    # Layer 1: blacklist access token JTI in Redis
+    # Layer 1: blacklist access token JTI in Redis. Native clients may send
+    # the same token in Authorization while web clients use the cookie.
     access_token = request.cookies.get("access_token")
+    if not access_token:
+        authorization = request.headers.get("authorization", "")
+        if authorization.lower().startswith("bearer "):
+            access_token = authorization[7:].strip()
     if access_token:
         payload = decode_token(access_token)
         if payload:
@@ -297,6 +316,14 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                 actor_id=user_id,
                 actor_role=user.role,
                 reason="logout",
+            )
+            log_action(
+                db,
+                action="logout",
+                resource_type="auth",
+                user_id=user_id,
+                user_role=user.role,
+                details="User logged out",
             )
             db.commit()
 

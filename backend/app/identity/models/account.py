@@ -19,6 +19,7 @@ class AccountStatus(StrEnum):
     suspended = "suspended"
     locked = "locked"
     disabled = "disabled"
+    rejected = "rejected"
     deactivated = "deactivated"
 
 

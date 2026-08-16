@@ -55,6 +55,16 @@ class _MemoryStore:
                 return None
             return value
 
+    def get_and_delete(self, key: str) -> str | None:
+        with self._lock:
+            entry = self._data.pop(key, None)
+            if entry is None:
+                return None
+            value, expire_at = entry
+            if expire_at is not None and time.monotonic() > expire_at:
+                return None
+            return value
+
     def delete(self, key: str) -> None:
         with self._lock:
             self._data.pop(key, None)
@@ -107,6 +117,10 @@ class _RedisWrapper:
 
     def get(self, key: str) -> str | None:
         value = self._client.get(key)
+        return value.decode() if isinstance(value, bytes) else value
+
+    def get_and_delete(self, key: str) -> str | None:
+        value = self._client.getdel(key)
         return value.decode() if isinstance(value, bytes) else value
 
     def delete(self, key: str) -> None:

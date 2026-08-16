@@ -8,6 +8,27 @@ from app.models.user import User
 from shared.auth.passwords import hash_password
 
 
+def test_auth_hardening_middleware_is_registered():
+    from app.main import app
+
+    middleware_names = {middleware.cls.__name__ for middleware in app.user_middleware}
+    assert "CSRFMiddleware" in middleware_names
+    assert "GlobalRateLimitMiddleware" in middleware_names
+
+
+def test_global_rate_limit_fails_closed_without_shared_cache(client, monkeypatch):
+    from app import middleware
+    from app.security import redis_client
+    from app.security.redis_client import _MemoryStore
+
+    monkeypatch.setattr(middleware, "IS_PRODUCTION", True)
+    monkeypatch.setattr(redis_client, "cache", _MemoryStore())
+
+    response = client.get("/test-types")
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "5"
+
+
 def test_failed_login_is_a_safe_401(client):
     response = client.post("/login", json={"email": "nobody@example.com", "password": "wrong-password"})
     assert response.status_code == 401
@@ -195,6 +216,34 @@ def test_cross_origin_cookie_write_is_rejected(client, db):
     assert rejected.status_code == 403
 
 
+def test_cross_origin_refresh_cookie_write_is_rejected(client, db):
+    lab = Lab(name="CSRF Refresh Lab", is_active=True)
+    db.add(lab)
+    db.flush()
+    user = LabUser(
+        lab_id=lab.id,
+        name="CSRF Refresh Admin",
+        email="csrf-refresh-admin@example.com",
+        password_hash=hash_password("AdminPassword123!"),
+        role="admin",
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+
+    logged_in = client.post(
+        "/login",
+        json={"email": user.email, "password": "AdminPassword123!"},
+    )
+    assert logged_in.status_code == 200
+    client.cookies.delete("access_token")
+    rejected = client.post(
+        "/auth/refresh",
+        headers={"Origin": "https://evil.example"},
+    )
+    assert rejected.status_code == 403
+
+
 def test_demo_access_is_disabled_by_default(client):
     response = client.post("/demo/access")
     assert response.status_code == 404
@@ -272,6 +321,16 @@ def test_web_refresh_hides_tokens_and_native_refresh_preserves_contract(client, 
     )
     assert logged_in.status_code == 200
     assert client.cookies.get("refresh_token")
+    assert "access_token" not in logged_in.json()
+
+    native_login = client.post(
+        "/login",
+        json={"email": user.email, "password": "RefreshPassword123!"},
+        headers={"X-Client-Platform": "android"},
+    )
+    assert native_login.status_code == 200
+    assert native_login.json().get("access_token")
+    assert native_login.json().get("refresh_token")
 
     web_refresh = client.post("/auth/refresh", json={})
     assert web_refresh.status_code == 200
@@ -279,14 +338,19 @@ def test_web_refresh_hides_tokens_and_native_refresh_preserves_contract(client, 
     assert "refresh_token" not in web_refresh.json()
     assert client.cookies.get("refresh_token")
 
+    native_refresh_token = client.cookies.get("refresh_token")
     native_refresh = client.post(
         "/auth/refresh",
-        json={"refresh_token": client.cookies.get("refresh_token")},
+        json={"refresh_token": native_refresh_token},
     )
     assert native_refresh.status_code == 200
     native_body = native_refresh.json()
     assert native_body.get("access_token")
     assert native_body.get("refresh_token")
+
+    replay = client.post("/auth/refresh", json={"refresh_token": native_refresh_token})
+    assert replay.status_code == 401
+    assert "reuse" in replay.json()["detail"].lower()
 
 
 def test_account_kind_prevents_legacy_id_collision_on_session_and_logout(client, db):

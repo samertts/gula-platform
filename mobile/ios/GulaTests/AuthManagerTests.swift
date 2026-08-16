@@ -11,8 +11,8 @@ final class AuthManagerTests: XCTestCase {
     }
 
     override func tearDown() {
-        sut.logout()
         KeychainManager.shared.clearAll()
+        UserDefaults.standard.removePersistentDomain(forName: Bundle.main.bundleIdentifier ?? "Gula")
         super.tearDown()
     }
 
@@ -22,8 +22,8 @@ final class AuthManagerTests: XCTestCase {
         XCTAssertFalse(sut.isLoading)
     }
 
-    func testLogoutClearsState() {
-        sut.logout()
+    func testLogoutClearsState() async {
+        await sut.logout()
         XCTAssertFalse(sut.isAuthenticated)
         XCTAssertNil(sut.currentUser)
     }

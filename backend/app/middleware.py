@@ -115,13 +115,38 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
         if path in _ALWAYS_ALLOWED_PATHS:
             return await call_next(request)
 
+        from .security.redis_client import cache as rate_limit_cache
+
+        if IS_PRODUCTION and not rate_limit_cache.is_shared:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Traffic protection temporarily unavailable",
+                    "detail_ar": "حماية الطلبات غير متاحة مؤقتاً",
+                },
+                headers={"Retry-After": "5"},
+            )
+
         client_ip = get_client_ip(request)
-        allowed, remaining, reset_ts = _check(
-            f"global:{client_ip}",
-            self._max_requests,
-            self._window_seconds,
-            request,
-        )
+        try:
+            allowed, remaining, reset_ts = _check(
+                f"global:{client_ip}",
+                self._max_requests,
+                self._window_seconds,
+                request,
+            )
+        except Exception:
+            logger.exception("Global rate-limit backend failed")
+            if IS_PRODUCTION:
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "detail": "Traffic protection temporarily unavailable",
+                        "detail_ar": "حماية الطلبات غير متاحة مؤقتاً",
+                    },
+                    headers={"Retry-After": "5"},
+                )
+            return await call_next(request)
         if not allowed:
             retry_after = max(1, reset_ts - int(time.time()))
             return JSONResponse(
@@ -205,16 +230,19 @@ class DemoReadOnlyMiddleware(BaseHTTPMiddleware):
     )
 
     async def dispatch(self, request: Request, call_next):
-        if DEMO_MODE and request.method not in {"GET", "HEAD", "OPTIONS"}:
-            if (request.method, request.url.path) not in self._ALLOWED_MUTATIONS:
-                return JSONResponse(
-                    status_code=405,
-                    content={
-                        "detail": "Write operations are disabled in the public demo.",
-                        "detail_ar": "عمليات الكتابة معطلة في العرض التجريبي العام.",
-                    },
-                    headers={"Allow": "GET, HEAD, OPTIONS"},
-                )
+        if (
+            DEMO_MODE
+            and request.method not in {"GET", "HEAD", "OPTIONS"}
+            and (request.method, request.url.path) not in self._ALLOWED_MUTATIONS
+        ):
+            return JSONResponse(
+                status_code=405,
+                content={
+                    "detail": "Write operations are disabled in the public demo.",
+                    "detail_ar": "عمليات الكتابة معطلة في العرض التجريبي العام.",
+                },
+                headers={"Allow": "GET, HEAD, OPTIONS"},
+            )
         return await call_next(request)
 
 

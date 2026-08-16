@@ -55,7 +55,10 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next):
-        if request.method not in _MUTATING_METHODS or not request.cookies.get("access_token"):
+        has_auth_cookie = bool(
+            request.cookies.get("access_token") or request.cookies.get("refresh_token")
+        )
+        if request.method not in _MUTATING_METHODS or not has_auth_cookie:
             return await call_next(request)
 
         supplied_origin = request.headers.get("origin") or _origin_from_referer(

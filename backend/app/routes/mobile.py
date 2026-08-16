@@ -5,6 +5,7 @@ Supports token refresh, device registration, and mobile-friendly data.
 
 import logging
 import os
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
@@ -15,6 +16,7 @@ from app._compat import UTC
 from ..config import (
     APP_NAME,
     APP_VERSION,
+    IS_PRODUCTION,
     JWT_EXPIRE_HOURS,
     REFRESH_TOKEN_EXPIRE_DAYS,
     USE_SECURE_COOKIES,
@@ -25,20 +27,48 @@ from ..models.lab_user import LabUser
 from ..models.user import User
 from ..security.auth import (
     build_token_payload,
+    consume_refresh_jti,
     create_refresh_token,
     create_token,
     decode_refresh_token,
     hash_password,
+    is_token_blacklisted,
     verify_password,
 )
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip, rate_limit_auth
+from ..security.redis_client import cache
 from ..security.session import bump_perm_version, get_perm_version
 from ..services.audit_service import log_action
 
 logger = logging.getLogger("gula.mobile")
 
 router = APIRouter(prefix="/auth", tags=["mobile / auth"])
+
+
+def _require_shared_refresh_backend() -> None:
+    if IS_PRODUCTION and not cache.is_shared:
+        raise HTTPException(status_code=503, detail="Session refresh temporarily unavailable")
+
+
+def _revoke_after_refresh_replay(db: Session, user, request: Request) -> None:
+    bump_perm_version(
+        user,
+        db,
+        actor_id=user.id,
+        actor_role=user.role,
+        reason="refresh_replay",
+    )
+    log_action(
+        db,
+        action="refresh_replay_detected",
+        resource_type="auth",
+        user_id=user.id,
+        user_role=user.role,
+        details="Refresh token replay detected; all sessions revoked",
+        ip_address=get_client_ip(request),
+    )
+    db.commit()
 
 
 # ─── Token Refresh ───────────────────────────────────────────────────────────
@@ -76,7 +106,7 @@ def refresh_access_token(
     if not raw_refresh:
         raise HTTPException(status_code=401, detail="Refresh token required")
 
-    payload = decode_refresh_token(raw_refresh)
+    payload = decode_refresh_token(raw_refresh, check_blacklist=False)
     if not payload:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
@@ -117,10 +147,21 @@ def refresh_access_token(
     if token_perm_ver != authoritative_ver:
         raise HTTPException(status_code=401, detail="Permissions updated — please log in again")
 
-    # Issue new tokens FIRST, then blacklist the old one.
-    # This ordering prevents a lost-response scenario where the client retries
-    # with the old token and finds it already revoked, forcing a full re-login.
-    # A short grace period (30 s) allows in-flight retries to succeed.
+    old_jti = payload.get("jti")
+    if not old_jti:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    if is_token_blacklisted(old_jti):
+        _revoke_after_refresh_replay(db, user, request)
+        raise HTTPException(status_code=401, detail="Refresh token reuse detected")
+    _require_shared_refresh_backend()
+
+    remaining = max(1, int(payload.get("exp", 0) - time.time()))
+    if not consume_refresh_jti(old_jti, remaining):
+        _revoke_after_refresh_replay(db, user, request)
+        raise HTTPException(status_code=401, detail="Refresh token reuse detected")
+
+    # Consume the old token before issuing anything. This is deliberately
+    # single-use: concurrent requests have one winner and all replays fail.
     base_payload = (
         build_token_payload(user, account_kind="lab")
         if isinstance(user, LabUser)
@@ -135,19 +176,12 @@ def refresh_access_token(
     new_access_token = create_token(base_payload)
     new_refresh_token = create_refresh_token(base_payload)
 
-    # ── Refresh token rotation: blacklist the OLD refresh token ──
-    # Prevents reuse attacks: if this token is stolen, using it here
-    # invalidates it for everyone — including the attacker.
-    import time as _time
-
+    # Keep the blacklist as a second revocation layer. The atomic consumed
+    # marker above is the replay boundary; the blacklist protects stateless
+    # decode paths and survives until the original token expiry.
     from ..security.auth import blacklist_token as _blacklist
 
-    _grace_seconds = 30  # allow network retries without forcing re-login
-    old_jti = payload.get("jti")
-    if old_jti:
-        remaining = int((payload["exp"] - _time.time()) + _grace_seconds)
-        if remaining > 0:
-            _blacklist(old_jti, min(remaining, REFRESH_TOKEN_EXPIRE_DAYS * 86400))
+    _blacklist(old_jti, remaining)
 
     log_action(
         db,

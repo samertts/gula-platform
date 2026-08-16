@@ -41,6 +41,7 @@ async def terminate_session(
             detail="Session does not belong to the authenticated account",
         )
     await service.terminate(session.id, reason)
+    await db.commit()
     return {"success": True}
 
 
@@ -58,4 +59,5 @@ async def terminate_all_sessions(
         )
     service = SessionService(db)
     await service.terminate_all(str(actor.account.id), reason)
+    await db.commit()
     return {"success": True}

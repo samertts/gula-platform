@@ -107,6 +107,7 @@ class AccountService:
             AccountStatus.pending_verification.value,
             AccountStatus.suspended.value,
             AccountStatus.disabled.value,
+            AccountStatus.rejected.value,
             AccountStatus.deactivated.value,
         } or not account.is_active:
             verify_password(password, account.password_hash or _DUMMY_HASH)

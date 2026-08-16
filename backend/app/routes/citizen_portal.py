@@ -50,7 +50,9 @@ from ..security.auth import (
     decode_token,
     verify_password,
 )
+from ..security.dependencies import get_current_user
 from ..security.rate_limit import rate_limit_auth
+from ..security.session import bump_perm_version
 from ..services.audit_service import log_action
 
 logger = logging.getLogger("gula.citizen")
@@ -76,32 +78,11 @@ class CitizenLoginRequest(BaseModel):
 
 
 def _current_citizen(request: Request, db: Session) -> User:
-    """Extract and validate citizen JWT from cookie.  Raises 401 if invalid."""
-    token = request.cookies.get("access_token")
-    if not token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-    from ..security.auth import decode_token, is_token_blacklisted
-
-    payload = decode_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Token invalid or expired")
-    if is_token_blacklisted(payload.get("jti", "")):
-        raise HTTPException(status_code=401, detail="Token revoked")
-    if payload.get("role") != "citizen":
+    """Use the unified server-side auth boundary, then enforce citizen role."""
+    current_user = get_current_user(request=request, credentials=None, db=db)
+    if not isinstance(current_user, User) or current_user.role != "citizen":
         raise HTTPException(status_code=403, detail="Citizen access only")
-    user = (
-        db.query(User)
-        .filter(
-            User.id == payload["user_id"],
-            User.role == "citizen",
-            User.is_active,
-            User.is_verified,
-        )
-        .first()
-    )
-    if not user:
-        raise HTTPException(status_code=401, detail="Account not found or deactivated")
-    return user
+    return current_user
 
 
 def _citizen_patients(citizen: User, db: Session) -> list[Patient]:
@@ -144,7 +125,7 @@ def citizen_login(
     """Citizen-only login.  Rejects lab staff accounts.
     Sets httpOnly access_token + refresh_token cookies.
     """
-    rate_limit_auth(request)
+    rate_limit_auth(request, identifier=data.identifier or data.email)
     identifier = data.identifier or data.email or ""
     identifier = identifier.strip().lower()
 
@@ -192,7 +173,7 @@ def citizen_login(
     if not citizen or not password_ok:
         log_action(
             db,
-            action="citizen_login_failed",
+            action="login_failure",
             resource_type="auth",
             user_id=citizen.id if citizen else None,
             user_role="citizen",
@@ -202,12 +183,13 @@ def citizen_login(
         db.commit()
         raise HTTPException(status_code=401, detail="بيانات الدخول غير صحيحة")
 
-    # Build token payload for citizen (no perm_version needed)
+    # Citizen sessions use the same scoped legacy token contract as other users.
     payload = {
         "user_id": citizen.id,
         "lab_id": None,
         "role": "citizen",
-        "perm_ver": 1,
+        "account_kind": "user",
+        "perm_ver": citizen.perm_version or 1,
     }
     access_token = create_token(payload)
     refresh_token = create_refresh_token(payload)
@@ -216,7 +198,7 @@ def citizen_login(
     citizen.last_login = datetime.now(UTC)
     log_action(
         db,
-        action="citizen_login",
+        action="login_success",
         resource_type="auth",
         user_id=citizen.id,
         user_role="citizen",
@@ -257,6 +239,26 @@ def citizen_logout(request: Request, response: Response, db: Session = Depends(g
             if payload and payload.get("jti"):
                 remaining = max(1, int(payload.get("exp", 0) - _time.time()))
                 blacklist_token(payload["jti"], remaining)
+    payload = decode_token(access) if access else None
+    if payload and payload.get("account_kind") == "user" and payload.get("user_id"):
+        citizen = db.query(User).filter(User.id == payload["user_id"], User.role == "citizen").first()
+        if citizen:
+            bump_perm_version(
+                citizen,
+                db,
+                actor_id=citizen.id,
+                actor_role="citizen",
+                reason="citizen_logout",
+            )
+            log_action(
+                db,
+                action="logout",
+                resource_type="auth",
+                user_id=citizen.id,
+                user_role="citizen",
+                details="Citizen logged out",
+            )
+            db.commit()
     response.delete_cookie("access_token", path="/")
     response.delete_cookie("refresh_token", path="/")
     return {"message": "تم تسجيل الخروج بنجاح"}
@@ -315,7 +317,7 @@ def citizen_results(
     lab_ids = {o.lab_id for o in orders}
     if lab_ids:
         labs = db.query(Lab).filter(Lab.id.in_(lab_ids)).all()
-        lab_map = {l.id: l.name for l in labs}
+        lab_map = {lab.id: lab.name for lab in labs}
 
     # Flatten to individual results
     all_results = []
@@ -378,7 +380,7 @@ def citizen_orders(
     lab_map = {}
     if lab_ids:
         labs = db.query(Lab).filter(Lab.id.in_(lab_ids)).all()
-        lab_map = {l.id: l.name for l in labs}
+        lab_map = {lab.id: lab.name for lab in labs}
 
     result = []
     for o in orders:
@@ -462,7 +464,7 @@ def citizen_health_record(request: Request, db: Session = Depends(get_db)):
                     "unit": r.unit,
                     "flag": r.flag,
                     "date": order.created_at.date().isoformat() if order.created_at else None,
-                    "reference": f"{r.normal_range_low}–{r.normal_range_high}"
+                    "reference": f"{r.normal_range_low}-{r.normal_range_high}"
                     if r.normal_range_low is not None
                     else None,
                 }

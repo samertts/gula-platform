@@ -55,6 +55,19 @@ class _SessionRepository:
             return session
         return None
 
+    async def consume_refresh_token(self, refresh_jti: str, now: datetime) -> bool:
+        session = self.session_record
+        if (
+            session
+            and session.is_active
+            and session.refresh_token_jti == refresh_jti
+            and session.expires_at > now
+        ):
+            session.is_active = False
+            self.deleted.append(session.id)
+            return True
+        return False
+
     async def soft_delete(self, session_id: str):
         session = self.session_record
         if session and session.id == session_id:

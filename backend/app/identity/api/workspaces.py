@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from inspect import isawaitable
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -8,6 +10,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+from app.config import SESSION_IDLE_TIMEOUT_MINUTES, SESSION_TOUCH_INTERVAL_SECONDS
 from app.database import get_db
 from app.identity.models.account import Account, AccountStatus
 from app.identity.models.audit import AuditAction
@@ -25,6 +29,43 @@ _bearer = HTTPBearer(auto_error=False)
 class NiamActor:
     account: Account
     session: UserSession
+
+
+def _session_is_idle(session: UserSession, now: datetime) -> bool:
+    last_activity = getattr(session, "last_activity_at", None)
+    if last_activity is None:
+        return False
+    if last_activity.tzinfo is None:
+        last_activity = last_activity.replace(tzinfo=now.tzinfo)
+    return now - last_activity > timedelta(minutes=SESSION_IDLE_TIMEOUT_MINUTES)
+
+
+def _touch_session_sync(db: Session, session: UserSession, now: datetime) -> None:
+    last_activity = getattr(session, "last_activity_at", None)
+    if last_activity is None:
+        return
+    if last_activity.tzinfo is None:
+        last_activity = last_activity.replace(tzinfo=now.tzinfo)
+    if now - last_activity < timedelta(seconds=SESSION_TOUCH_INTERVAL_SECONDS):
+        return
+    session.last_activity_at = now
+    db.commit()
+
+
+async def _touch_session_async(db: AsyncSession, session: UserSession, now: datetime) -> None:
+    last_activity = getattr(session, "last_activity_at", None)
+    if last_activity is None:
+        return
+    if last_activity.tzinfo is None:
+        last_activity = last_activity.replace(tzinfo=now.tzinfo)
+    if now - last_activity < timedelta(seconds=SESSION_TOUCH_INTERVAL_SECONDS):
+        return
+    session.last_activity_at = now
+    commit = getattr(db, "commit", None)
+    if commit is not None:
+        result = commit()
+        if isawaitable(result):
+            await result
 
 
 def _raw_niam_token(request: Request, credentials: HTTPAuthorizationCredentials | None) -> str:
@@ -59,6 +100,10 @@ def get_current_niam_actor_sync(
     )
     if actor is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive or invalid NIAM session")
+    now = datetime.now(UTC)
+    if _session_is_idle(actor[1], now):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="NIAM session expired due to inactivity")
+    _touch_session_sync(db, actor[1], now)
     return NiamActor(account=actor[0], session=actor[1])
 
 
@@ -87,6 +132,10 @@ async def get_current_niam_actor(
     actor = result.first()
     if actor is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive or invalid NIAM session")
+    now = datetime.now(UTC)
+    if _session_is_idle(actor[1], now):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="NIAM session expired due to inactivity")
+    await _touch_session_async(db, actor[1], now)
     return NiamActor(account=actor[0], session=actor[1])
 
 

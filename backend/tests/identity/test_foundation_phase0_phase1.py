@@ -88,7 +88,7 @@ async def test_account_creation_rejects_missing_identifier_and_short_password(mo
 
 def test_account_lifecycle_matrix_is_deny_by_default():
     assert LEGAL_TRANSITIONS[AccountStatus.pending_verification.value] == frozenset(
-        {AccountStatus.active.value, AccountStatus.deactivated.value},
+        {AccountStatus.active.value, AccountStatus.rejected.value, AccountStatus.deactivated.value},
     )
     assert LEGAL_TRANSITIONS[AccountStatus.deactivated.value] == frozenset()
     assert not AccountLifecycleService.can_transition(
@@ -124,3 +124,24 @@ def test_phase0_audit_vocabulary_covers_foundation_security_events():
     assert required.issubset(set(AuditAction))
     values = [item.value for item in AuditAction]
     assert len(values) == len(set(values))
+
+
+@pytest.mark.asyncio
+async def test_rejected_account_is_denied_without_state_reactivation(monkeypatch):
+    account = SimpleNamespace(
+        status=AccountStatus.rejected.value,
+        is_active=False,
+        is_locked=False,
+        password_hash="stored-hash",
+    )
+    repository = SimpleNamespace(
+        find_by_login=AsyncMock(return_value=account),
+        session=SimpleNamespace(flush=AsyncMock()),
+    )
+    service = AccountService(SimpleNamespace())
+    service.repo = repository
+    monkeypatch.setattr(account_service_module, "verify_password", lambda *_args: True)
+
+    assert await service.authenticate("rejected@example.test", "password") is None
+    assert account.status == AccountStatus.rejected.value
+    repository.session.flush.assert_not_awaited()

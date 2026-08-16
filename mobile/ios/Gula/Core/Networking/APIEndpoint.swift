@@ -2,6 +2,7 @@ import Foundation
 
 enum APIEndpoint {
     case login
+    case logout
     case refreshToken
     case changePassword
     case registerDevice(token: String, platform: String)
@@ -103,6 +104,7 @@ enum APIEndpoint {
     var path: String {
         switch self {
         case .login: return "/login"
+        case .logout: return "/logout"
         case .refreshToken: return "/auth/refresh"
         case .changePassword: return "/auth/change-password"
         case .registerDevice: return "/mobile/register-device"
@@ -205,7 +207,7 @@ enum APIEndpoint {
 
     var method: String {
         switch self {
-        case .login, .refreshToken, .registerDevice, .createPatient, .convertGuest, .bulkAssignLab,
+        case .login, .logout, .refreshToken, .registerDevice, .createPatient, .convertGuest, .bulkAssignLab,
                 .scanPatientCard, .createOrder, .cancelOrder, .analyzeResults, .createBatchOrders,
                 .createSample, .bulkRegisterSamples, .receiveSample, .rejectSample, .transferSample,
                 .createResult, .bulkCreateResults, .autoValidate, .amendResult, .generateReport,
