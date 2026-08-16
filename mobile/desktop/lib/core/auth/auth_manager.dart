@@ -6,6 +6,7 @@ import '../api/api_endpoints.dart';
 import '../api/api_exceptions.dart';
 import 'secure_storage.dart';
 import 'biometric_auth.dart';
+import 'identity_state.dart';
 
 enum AuthStatus {
   uninitialized,
@@ -14,6 +15,16 @@ enum AuthStatus {
   authenticating,
   mfaRequired,
   requiresSetup,
+  unknown,
+  loading,
+  verifying,
+  pending,
+  workspaceRequired,
+  authorized,
+  sessionExpired,
+  suspended,
+  locked,
+  error,
 }
 
 class AuthManager {
@@ -33,8 +44,16 @@ class AuthManager {
   Map<String, dynamic>? _userProfile;
   List<Map<String, dynamic>> _memberships = const [];
   Map<String, List<String>> _effectivePermissions = const {};
+  List<Map<String, dynamic>> _workspaces = const [];
+  Map<String, dynamic>? _workspaceContext;
+  IdentityState _identityState = IdentityState.unknown;
+  IdentityError? _identityError;
 
   AuthStatus get status => _status;
+  IdentityState get identityState => _identityState;
+  IdentityError? get identityError => _identityError;
+  List<Map<String, dynamic>> get workspaces => List.unmodifiable(_workspaces);
+  Map<String, dynamic>? get workspaceContext => _workspaceContext == null ? null : Map.unmodifiable(_workspaceContext!);
   String? get token => _token;
   String? get refreshToken => _refreshToken;
   String? get userId => _userId;
@@ -54,9 +73,11 @@ class AuthManager {
   final ValueNotifier<AuthStatus> statusNotifier = ValueNotifier(
     AuthStatus.uninitialized,
   );
+  final ValueNotifier<IdentityState> identityStateNotifier = ValueNotifier(IdentityState.unknown);
   final ValueNotifier<String?> errorNotifier = ValueNotifier(null);
 
   Future<void> initialize({required String apiUrl}) async {
+    _setIdentityState(IdentityState.loading);
     await _biometricAuth.initialize();
     await _storage.saveApiUrl(apiUrl);
 
@@ -65,7 +86,7 @@ class AuthManager {
       getToken: () => _token ?? '',
       getRefreshToken: () => _refreshToken ?? '',
       onRefreshToken: _refreshAccessToken,
-      onAuthFailure: () => _setStatus(AuthStatus.unauthenticated),
+      onAuthFailure: () => _markSessionExpired(),
       enableLogging: kDebugMode,
     );
 
@@ -86,6 +107,7 @@ class AuthManager {
           return;
         }
       }
+      await _refreshWorkspaceContext();
       _setStatus(AuthStatus.authenticated);
     } else {
       _setStatus(AuthStatus.unauthenticated);
@@ -120,18 +142,22 @@ class AuthManager {
       final error = e.error;
       if (error is ApiException) {
         errorNotifier.value = error.message;
+        _setIdentityError(error);
         rethrow;
       }
       errorNotifier.value = 'Login failed. Please try again.';
+      _setIdentityError(e);
       rethrow;
     } catch (e) {
       errorNotifier.value = 'Login failed. Please try again.';
+      _setIdentityError(e);
       _setStatus(AuthStatus.unauthenticated);
       rethrow;
     }
   }
 
   String? _mfaSessionToken;
+  Future<bool>? _refreshInFlight;
 
   Future<Map<String, dynamic>> verifyMfa({
     required String code,
@@ -154,8 +180,50 @@ class AuthManager {
       final error = e.error;
       if (error is ApiException) {
         errorNotifier.value = error.message;
+        _setIdentityError(error);
+      } else {
+        _setIdentityError(e);
       }
       rethrow;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> refreshWorkspaces() async {
+    final response = await _apiClient.get(ApiEndpoints.workspaces);
+    final body = response.data;
+    final raw = body is Map<String, dynamic> ? (body['workspaces'] ?? body['items']) : body;
+    _workspaces = raw is List
+        ? raw.whereType<Map>().map((item) => Map<String, dynamic>.from(item)).toList(growable: false)
+        : const [];
+    _setIdentityState(identityStateFor(
+      hasUser: _userId != null,
+      hasWorkspaceContext: _workspaceContext != null,
+      hasWorkspaces: _workspaces.isNotEmpty,
+    ));
+    return workspaces;
+  }
+
+  Future<Map<String, dynamic>> switchWorkspace(String workspaceId) async {
+    final response = await _apiClient.post(ApiEndpoints.switchWorkspace(workspaceId), data: {});
+    final body = response.data;
+    if (body is! Map<String, dynamic>) throw StateError('Invalid workspace context response.');
+    _workspaceContext = body['context'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(body['context'] as Map<String, dynamic>)
+        : Map<String, dynamic>.from(body);
+    _setIdentityState(IdentityState.authorized);
+    await refreshMemberships();
+    return Map.unmodifiable(_workspaceContext!);
+  }
+
+  Future<void> _refreshWorkspaceContext() async {
+    try {
+      await refreshWorkspaces();
+    } catch (_) {
+      _workspaces = const [];
+    }
+    // No client-side auto-selection. A server-approved context is required.
+    if (_workspaceContext == null && _userId != null && _workspaces.isNotEmpty) {
+      _setIdentityState(IdentityState.workspaceRequired);
     }
   }
 
@@ -233,24 +301,33 @@ class AuthManager {
       _memberships = const [];
       _effectivePermissions = const {};
     }
+    await _refreshWorkspaceContext();
     _setStatus(AuthStatus.authenticated);
   }
 
-  Future<bool> _refreshAccessToken() async {
-    if (_refreshToken == null || _refreshToken!.isEmpty) return false;
+  Future<bool> _refreshAccessToken() {
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) return inFlight;
+    if (_refreshToken == null || _refreshToken!.isEmpty) return Future.value(false);
+    final future = _performRefresh();
+    _refreshInFlight = future;
+    return future.whenComplete(() => _refreshInFlight = null);
+  }
+
+  Future<bool> _performRefresh() async {
     try {
       final response = await apiClient.post(
         ApiEndpoints.refreshToken,
         data: {'refresh_token': _refreshToken},
+        options: Options(extra: {'skipAuthRefresh': true}),
       );
       final data = response.data as Map<String, dynamic>;
       _token = (data['access_token'] ?? data['token']) as String?;
       _refreshToken = data['refresh_token'] as String?;
       if (_token != null) await _storage.saveToken(_token!);
-      if (_refreshToken != null)
-        await _storage.saveRefreshToken(_refreshToken!);
-      return true;
-    } catch (e) {
+      if (_refreshToken != null) await _storage.saveRefreshToken(_refreshToken!);
+      return _token != null;
+    } catch (_) {
       return false;
     }
   }
@@ -290,7 +367,11 @@ class AuthManager {
     _userProfile = null;
     _memberships = const [];
     _effectivePermissions = const {};
+    _workspaces = const [];
+    _workspaceContext = null;
+    _identityError = null;
     await _storage.clear();
+    _setIdentityState(IdentityState.unauthenticated);
     _setStatus(AuthStatus.unauthenticated);
   }
 
@@ -317,10 +398,73 @@ class AuthManager {
   void _setStatus(AuthStatus newStatus) {
     _status = newStatus;
     statusNotifier.value = newStatus;
+    _syncIdentityState(newStatus);
+  }
+
+  void _syncIdentityState(AuthStatus status) {
+    final mapped = switch (status) {
+      AuthStatus.uninitialized => IdentityState.unknown,
+      AuthStatus.authenticating => IdentityState.verifying,
+      AuthStatus.mfaRequired => IdentityState.verifying,
+      AuthStatus.requiresSetup => IdentityState.pending,
+      AuthStatus.authenticated => identityStateFor(
+          hasUser: _userId != null,
+          hasWorkspaceContext: _workspaceContext != null,
+          hasWorkspaces: _workspaces.isNotEmpty,
+        ),
+      AuthStatus.authorized => IdentityState.authorized,
+      AuthStatus.workspaceRequired => IdentityState.workspaceRequired,
+      AuthStatus.sessionExpired => IdentityState.sessionExpired,
+      AuthStatus.suspended => IdentityState.suspended,
+      AuthStatus.locked => IdentityState.locked,
+      AuthStatus.error => IdentityState.error,
+      AuthStatus.unknown => IdentityState.unknown,
+      AuthStatus.loading => IdentityState.loading,
+      AuthStatus.verifying => IdentityState.verifying,
+      AuthStatus.pending => IdentityState.pending,
+      AuthStatus.unauthenticated => IdentityState.unauthenticated,
+    };
+    _setIdentityState(mapped);
+  }
+
+  void _setIdentityState(IdentityState state) {
+    _identityState = state;
+    identityStateNotifier.value = state;
+  }
+
+  void _setIdentityError(Object error) {
+    final apiError = error is ApiException ? error : null;
+    final statusCode = apiError?.statusCode;
+    final state = statusCode == 423
+        ? IdentityState.locked
+        : statusCode == 403
+            ? IdentityState.suspended
+            : IdentityState.error;
+    _identityError = IdentityError(
+      code: statusCode == 423 ? 'LOCKED' : statusCode == 403 ? 'SUSPENDED' : 'REQUEST_FAILED',
+      message: statusCode == 401 ? 'Invalid credentials or expired session.' : apiError?.message ?? 'The request could not be completed.',
+      statusCode: statusCode,
+      retryable: statusCode == null || statusCode >= 500 || statusCode == 429,
+      reauthenticate: statusCode == 401,
+    );
+    _setIdentityState(state);
+  }
+
+  void _markSessionExpired() {
+    _identityError = const IdentityError(
+      code: 'SESSION_EXPIRED',
+      message: 'Your session has expired. Please sign in again.',
+      statusCode: 401,
+      reauthenticate: true,
+    );
+    _setIdentityState(IdentityState.sessionExpired);
+    _status = AuthStatus.sessionExpired;
+    statusNotifier.value = _status;
   }
 
   void dispose() {
     statusNotifier.dispose();
+    identityStateNotifier.dispose();
     errorNotifier.dispose();
     _apiClient.dispose();
   }

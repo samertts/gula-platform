@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../core/api/api_endpoints.dart';
+import '../../core/providers/app_providers.dart';
 
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_dimensions.dart';
@@ -7,18 +11,19 @@ import '../../core/utils/validators.dart';
 import '../../widgets/core/gula_button.dart';
 import '../../widgets/core/gula_text_field.dart';
 
-class ForgotPasswordPage extends StatefulWidget {
+class ForgotPasswordPage extends ConsumerStatefulWidget {
   const ForgotPasswordPage({super.key});
 
   @override
-  State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
+  ConsumerState<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
 }
 
-class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
+class _ForgotPasswordPageState extends ConsumerState<ForgotPasswordPage> {
   final _emailController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
   bool _emailSent = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -29,15 +34,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Future<void> _handleReset() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
 
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _emailSent = true;
-      });
+    try {
+      await ref.read(authProviderProvider).manager.apiClient.post(
+        ApiEndpoints.forgotPassword,
+        data: {'email': _emailController.text.trim()},
+        idempotent: true,
+      );
+      if (mounted) setState(() { _isLoading = false; _emailSent = true; });
+    } catch (_) {
+      if (mounted) setState(() { _isLoading = false; _error = 'تعذر إكمال الطلب حالياً. حاول مرة أخرى دون كشف حالة الحساب.'; });
     }
   }
 
@@ -79,6 +89,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     style: TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 32),
+                  if (_error != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
+                      child: Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Colors.red.shade800)),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   if (!_emailSent) ...[
                     GulaTextField(
                       label: 'Email',

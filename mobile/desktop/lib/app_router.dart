@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/auth/auth_provider.dart';
+import 'core/auth/identity_state.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/mfa_page.dart';
 import 'features/auth/forgot_password_page.dart';
+import 'features/auth/account_request_page.dart';
 import 'features/dashboard/dashboard_page.dart';
 import 'features/patients/patient_list_page.dart';
 import 'features/patients/patient_detail_page.dart';
@@ -30,6 +32,9 @@ import 'features/radiology/radiology_page.dart';
 import 'features/bloodbank/bloodbank_page.dart';
 import 'features/emergency/emergency_page.dart';
 import 'features/settings/settings_page.dart';
+import 'features/identity/memberships_page.dart';
+import 'features/identity/workspace_page.dart';
+import 'features/identity/security_center_page.dart';
 import 'features/search/global_search_page.dart';
 import 'features/admin/user_management_page.dart';
 import 'features/admin/audit_log_page.dart';
@@ -60,6 +65,11 @@ class AppRouter {
         path: '/forgot-password',
         name: 'forgotPassword',
         builder: (context, state) => const ForgotPasswordPage(),
+      ),
+      GoRoute(
+        path: '/account-request',
+        name: 'accountRequest',
+        builder: (context, state) => const AccountRequestPage(),
       ),
       ShellRoute(
         builder: (context, state, child) => DesktopScaffold(child: child),
@@ -176,6 +186,21 @@ class AppRouter {
             ],
           ),
           GoRoute(
+            path: '/memberships',
+            name: 'memberships',
+            builder: (context, state) => const MembershipsPage(),
+          ),
+          GoRoute(
+            path: '/workspace',
+            name: 'workspace',
+            builder: (context, state) => const WorkspacePage(),
+          ),
+          GoRoute(
+            path: '/security',
+            name: 'security',
+            builder: (context, state) => const SecurityCenterPage(),
+          ),
+          GoRoute(
             path: '/notifications',
             name: 'notifications',
             builder: (context, state) => const NotificationListPage(),
@@ -243,16 +268,20 @@ class AppRouter {
   );
 
   String? _guardRoutes(BuildContext context, GoRouterState state) {
+    if (authProvider.identityState == IdentityState.unknown || authProvider.identityState == IdentityState.loading) {
+      return null;
+    }
     final isAuthenticated = authProvider.isAuthenticated;
     final isMfaRequired = authProvider.isMfaRequired;
     final isLoginRoute = state.matchedLocation == '/login';
     final isMfaRoute = state.matchedLocation == '/mfa';
     final isForgotPasswordRoute = state.matchedLocation == '/forgot-password';
+    final isAccountRequestRoute = state.matchedLocation == '/account-request';
+    final isIdentityPublicRoute = isLoginRoute || isForgotPasswordRoute || isAccountRequestRoute || isMfaRoute;
 
     if (!isAuthenticated &&
         !isLoginRoute &&
-        !isForgotPasswordRoute &&
-        !isMfaRoute) {
+        !isIdentityPublicRoute) {
       return '/login';
     }
 
@@ -262,6 +291,12 @@ class AppRouter {
 
     if (isMfaRequired && !isMfaRoute && !isLoginRoute) {
       return '/mfa';
+    }
+
+    final workspaceRoute = state.matchedLocation == '/workspace';
+    final identityRoute = state.matchedLocation == '/memberships' || state.matchedLocation == '/security';
+    if (authProvider.identityState == IdentityState.workspaceRequired && !workspaceRoute && !identityRoute) {
+      return '/workspace';
     }
 
     return null;

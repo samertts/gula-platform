@@ -187,3 +187,30 @@ Adaptive UI الموجود مسبقاً يغطي تفضيلات color blindness 
 | `backend/app/routes/security.py` | security status limitations |
 | `backend/app/identity/api/devices.py` | NIAM device-management limitations |
 | `docs/command06-authorization-context-report.md` | Command 06 partial decision |
+
+## 13. Cross-Platform Remediation Update
+
+تمت معالجة الجزء القابل للتنفيذ من فجوات Flutter/mobile/desktop داخل `mobile/desktop`، وهو مشروع Flutter واحد يستهدف Android وiOS وWindows وLinux وmacOS، وليس تطبيق Desktop منفصلاً فقط.
+
+| الفجوة | المعالجة |
+|---|---|
+| AuthStatus محدود | أضيف `IdentityState` المشترك بالحالات الاثنتي عشرة المطلوبة، مع إبقاء AuthStatus القديم للتوافق الانتقالي. |
+| عدم وجود Workspace lifecycle | أضيف list/switch Workspace، مع رفض auto-authorize واعتماد context الذي يعيده الخادم فقط. |
+| Router يعتمد boolean فقط | أضيفت guards لـunknown/loading وMFA وworkspace-required وsession-expired عبر `AuthProvider.identityState`. |
+| Recovery stub | أُوصل Forgot Password فعلياً بـ`POST /auth/forgot-password` برسالة غير كاشفة. |
+| عدم وجود Account Request | أضيفت صفحة `/account-request` ترسل `POST /niam/account-requests/` وتعرض Pending Review دون إصدار جلسة. |
+| غياب Memberships | أضيفت `/memberships` مع status/scope/organization/facility/workspace من state الخادمي. |
+| غياب Workspace UI | أضيفت `/workspace` للاختيار والتبديل الصريح مع الحفاظ على السياق السابق عند الرفض. |
+| غياب Security Center | أضيفت `/security` لعرض MFA/devices/sessions وLogout All وفق account context، دون secrets. |
+| refresh race/recursive refresh | أضيف single-flight refresh lock و`skipAuthRefresh` لمسار refresh نفسه. |
+| desktop-only bootstrap | أصبح window manager وauto-updater وdesktop window setup مشروطاً بالمنصة؛ mobile يسمح portrait/landscape ولا ينفذ desktop updater. |
+| Sidebar غير مكتمل | أضيفت روابط Memberships وWorkspace وSecurity Center. |
+| localization محدودة | أضيفت supported locales: ar/en/ku/tk/syr/fa مع fallback واضح ومفاتيح الهوية الأساسية، وأضيفت الاختيارات إلى Settings. |
+
+## 14. Cross-Platform Verification Boundary
+
+تم تنفيذ اختبارات unit إضافية لـ`IdentityState` في `mobile/desktop/test/unit/identity_state_test.dart`، ونجح static transport security check، ونجح `git diff --check`. لم يكن Flutter SDK متاحاً داخل sandbox الحالي، لذلك لا يجوز ادعاء نجاح `flutter analyze` أو `flutter test` أو builds Android/iOS/Windows/Linux/macOS محلياً.
+
+سيتم اعتماد التحقق النهائي من خلال CI المعلن في `.github/workflows/mobile-flutter-desktop.yml` بعد رفع commit، ويجب أن يشمل `flutter analyze` و`flutter test` وبناءات Windows/Linux/macOS. أما Android/iOS فتحتاج runners/toolchains مناسبة أو CI mobile مستقل؛ عدم وجودها يبقيهما `UNVERIFIED` حتى يتم تشغيلهما فعلياً.
+
+حتى بعد نجاح CI، يبقى `FRONTEND_IDENTITY_PARTIAL` هو القرار الآمن إذا لم تتوفر اختبارات device حقيقية لـAndroid/iOS/deep-links وWebAuthn ceremony، أو إذا لم يثبت Staging تدوير refresh والإبطال المتزامن مع Redis/PostgreSQL حقيقيين.

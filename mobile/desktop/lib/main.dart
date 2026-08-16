@@ -24,7 +24,9 @@ void main() async {
 
 Future<void> _initializeApp() async {
   try {
-    await windowManager.ensureInitialized();
+    final isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    if (isDesktop) {
+      await windowManager.ensureInitialized();
 
     const windowOptions = WindowOptions(
       size: Size(
@@ -50,11 +52,16 @@ Future<void> _initializeApp() async {
         const Size(AppConstants.minDesktopWidth, AppConstants.minDesktopHeight),
       );
     });
+    }
 
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+    if (Platform.isAndroid || Platform.isIOS) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
 
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -114,14 +121,17 @@ class _AppEntryState extends ConsumerState<_AppEntry> {
       }
     } catch (_) {}
 
-    try {
-      await _autoUpdater.initialize();
-      _updatePolicy = await _autoUpdater.checkForUpdates(
-        apiClient: authProvider.manager.apiClient,
-        platform: _desktopPlatform(),
-        currentVersion: AppConstants.appVersion,
-      );
-    } catch (_) {}
+    final isDesktop = Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    if (isDesktop) {
+      try {
+        await _autoUpdater.initialize();
+        _updatePolicy = await _autoUpdater.checkForUpdates(
+          apiClient: authProvider.manager.apiClient,
+          platform: _desktopPlatform(),
+          currentVersion: AppConstants.appVersion,
+        );
+      } catch (_) {}
+    }
 
     if (mounted) setState(() => _initialized = true);
   }
@@ -137,7 +147,9 @@ class _AppEntryState extends ConsumerState<_AppEntry> {
       ref.read(syncEngineProvider).dispose();
       ref.read(databaseProvider).close();
     } catch (_) {}
-    await windowManager.destroy();
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      await windowManager.destroy();
+    }
   }
 
   @override
