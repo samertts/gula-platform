@@ -191,6 +191,46 @@ test.describe("Authentication", () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
+  test("should show enumeration-resistant recovery request result", async ({ page }) => {
+    await page.route("**/auth/forgot-password", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ message: "If the account exists, recovery instructions will be sent." }),
+      });
+    });
+
+    await page.goto("/recover");
+    await page.locator("#recovery-identifier").fill("unknown@example.test");
+    await page.getByRole("button", { name: "إرسال طلب الاسترداد" }).click();
+    await expect(page.getByRole("status")).toContainText("لم يتم تغيير الحساب بعد");
+  });
+
+  test("should sanitize recovery URL and complete server verify/reset flow", async ({ page }) => {
+    await page.route("**/auth/recovery/verify", async (route) => {
+      const body = route.request().postDataJSON();
+      expect(body.token).toBe("test-recovery-token");
+      expect(body.request_id).toBe("12345678-1234-1234-1234-123456789012");
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "approved", message: "verified" }),
+      });
+    });
+    await page.route("**/auth/reset-password", async (route) => {
+      const body = route.request().postDataJSON();
+      expect(body.new_password).toBe("NewRecoveryPassword123!");
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ message: "ok" }) });
+    });
+
+    await page.goto("/recover?token=test-recovery-token&request_id=12345678-1234-1234-1234-123456789012");
+    await expect(page).toHaveURL(/\/recover$/);
+    await page.getByRole("button", { name: "تحقق من الرمز" }).click();
+    await page.locator("#new-recovery-password").fill("NewRecoveryPassword123!");
+    await page.getByRole("button", { name: "تغيير كلمة المرور" }).click();
+    await expect(page.getByRole("status")).toContainText("تم تغيير كلمة المرور");
+  });
+
   test("should logout successfully", async ({ page }) => {
     await mockLogin(page);
     await mockAuthenticatedRoutes(page);

@@ -21,10 +21,13 @@ interface AuthApi {
     @POST("auth/change-password")
     suspend fun changePassword(@Body request: ChangePasswordRequestDto): Response<MessageResponseDto>
 
-    @POST("auth/password-reset")
+    @POST("auth/forgot-password")
     suspend fun requestPasswordReset(@Body request: PasswordResetRequestDto): Response<MessageResponseDto>
 
-    @POST("auth/password-reset/confirm")
+    @POST("auth/recovery/verify")
+    suspend fun verifyPasswordReset(@Body request: RecoveryVerifyRequestDto): Response<Map<String, Any>>
+
+    @POST("auth/reset-password")
     suspend fun confirmPasswordReset(@Body request: PasswordResetConfirmDto): Response<MessageResponseDto>
 
     @GET("auth/me")

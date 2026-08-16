@@ -192,6 +192,21 @@ SESSION_TOUCH_INTERVAL_SECONDS = int(os.getenv("SESSION_TOUCH_INTERVAL_SECONDS",
 if SESSION_TOUCH_INTERVAL_SECONDS < 10 or SESSION_TOUCH_INTERVAL_SECONDS > 3600:
     sys.exit("SESSION_TOUCH_INTERVAL_SECONDS must be between 10 seconds and 1 hour")
 
+# Account recovery is deliberately short-lived and bounded. High-risk recovery
+# operations remain manual-review only until an assurance provider is connected.
+ACCOUNT_RECOVERY_TOKEN_TTL_MINUTES = int(os.getenv("ACCOUNT_RECOVERY_TOKEN_TTL_MINUTES", "15"))
+if ACCOUNT_RECOVERY_TOKEN_TTL_MINUTES < 5 or ACCOUNT_RECOVERY_TOKEN_TTL_MINUTES > 60:
+    sys.exit("ACCOUNT_RECOVERY_TOKEN_TTL_MINUTES must be between 5 and 60 minutes")
+ACCOUNT_RECOVERY_MAX_ATTEMPTS = int(os.getenv("ACCOUNT_RECOVERY_MAX_ATTEMPTS", "5"))
+if ACCOUNT_RECOVERY_MAX_ATTEMPTS < 3 or ACCOUNT_RECOVERY_MAX_ATTEMPTS > 10:
+    sys.exit("ACCOUNT_RECOVERY_MAX_ATTEMPTS must be between 3 and 10")
+ACCOUNT_RECOVERY_MANUAL_REVIEW_ENABLED = os.getenv(
+    "ACCOUNT_RECOVERY_MANUAL_REVIEW_ENABLED", "true",
+).lower() == "true"
+ACCOUNT_RECOVERY_EMAIL_ENABLED = os.getenv(
+    "ACCOUNT_RECOVERY_EMAIL_ENABLED", "false",
+).lower() == "true"
+
 # ─── Encryption ──────────────────────────────────────────────────────────────
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
 if not ENCRYPTION_KEY:

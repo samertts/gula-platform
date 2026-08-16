@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import secrets
@@ -180,7 +181,7 @@ class MFAService:
     def create_mfa_session(self, user_id: int, method: str) -> str:
         token = secrets.token_urlsafe(32)
         session = MFASession(
-            user_id=user_id, session_token=token, mfa_method=method,
+            user_id=user_id, session_token=hashlib.sha256(token.encode("utf-8")).hexdigest(), mfa_method=method,
             expires_at=datetime.now(UTC) + timedelta(minutes=MFA_SESSION_TTL_MINUTES),
         )
         self._db.add(session)
@@ -189,8 +190,9 @@ class MFAService:
 
     def verify_mfa_session(self, session_token: str) -> int | None:
         now = datetime.now(UTC)
+        token_digest = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
         candidate = self._db.query(MFASession.user_id).filter(
-            MFASession.session_token == session_token,
+            MFASession.session_token == token_digest,
             MFASession.is_verified.is_(False),
             MFASession.expires_at > now,
         ).first()
@@ -199,7 +201,7 @@ class MFAService:
         result = self._db.execute(
             update(MFASession)
             .where(
-                MFASession.session_token == session_token,
+                MFASession.session_token == token_digest,
                 MFASession.is_verified.is_(False),
                 MFASession.expires_at > now,
             )

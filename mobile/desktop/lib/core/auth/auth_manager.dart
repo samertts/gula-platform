@@ -159,6 +159,46 @@ class AuthManager {
     }
   }
 
+  Future<Map<String, dynamic>> requestPasswordRecovery(String email) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.forgotPassword,
+      data: {'email': email},
+      idempotent: true,
+    );
+    final body = response.data;
+    return body is Map<String, dynamic> ? Map<String, dynamic>.from(body) : <String, dynamic>{};
+  }
+
+  Future<Map<String, dynamic>> verifyPasswordRecovery(
+    String token, {
+    String? requestId,
+  }) async {
+    final response = await _apiClient.post(
+      ApiEndpoints.recoveryVerify,
+      data: {
+        'token': token,
+        if (requestId != null && requestId.isNotEmpty) 'request_id': requestId,
+      },
+    );
+    final body = response.data;
+    return body is Map<String, dynamic> ? Map<String, dynamic>.from(body) : <String, dynamic>{};
+  }
+
+  Future<void> resetPassword(
+    String token,
+    String newPassword, {
+    String? requestId,
+  }) async {
+    await _apiClient.post(
+      ApiEndpoints.resetPassword,
+      data: {
+        'token': token,
+        'new_password': newPassword,
+        if (requestId != null && requestId.isNotEmpty) 'request_id': requestId,
+      },
+    );
+  }
+
   String? _mfaSessionToken;
   Future<bool>? _refreshInFlight;
 

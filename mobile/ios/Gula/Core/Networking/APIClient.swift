@@ -270,6 +270,27 @@ actor APIClient {
         try await refreshAccessToken(refreshToken: refreshToken)
     }
 
+    func requestPasswordRecovery(email: String) async throws {
+        let _: EmptyResponse = try await performRequest(
+            APIEndpoint.forgotPassword,
+            body: ForgotPasswordRequest(email: email),
+        )
+    }
+
+    func verifyPasswordRecovery(token: String, requestId: String? = nil) async throws -> RecoveryVerificationResponse {
+        try await performRequest(
+            APIEndpoint.verifyRecovery,
+            body: RecoveryVerifyRequest(token: token, requestId: requestId),
+        )
+    }
+
+    func resetPassword(token: String, newPassword: String, requestId: String? = nil) async throws {
+        try await requestVoid(
+            APIEndpoint.resetPassword,
+            body: ResetPasswordRequest(token: token, newPassword: newPassword, requestId: requestId),
+        )
+    }
+
     func registerDeviceToken(token: String, platform: String) async throws {
         let _: EmptyResponse = try await performRequest(
             APIEndpoint.registerDevice(token: token, platform: platform),
@@ -293,4 +314,24 @@ struct AnyEncodable: Encodable {
 struct DeviceTokenRequest: Encodable {
     let deviceToken: String
     let platform: String
+}
+
+struct ForgotPasswordRequest: Encodable {
+    let email: String
+}
+
+struct RecoveryVerifyRequest: Encodable {
+    let token: String
+    let requestId: String?
+}
+
+struct ResetPasswordRequest: Encodable {
+    let token: String
+    let newPassword: String
+    let requestId: String?
+}
+
+struct RecoveryVerificationResponse: Decodable {
+    let status: String
+    let message: String
 }

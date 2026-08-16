@@ -18,6 +18,7 @@ class ApiEndpoints {
   static const String verifyMfa = '/auth/mfa/verify';
   static const String setupMfa = '/auth/mfa/setup';
   static const String forgotPassword = '/auth/forgot-password';
+  static const String recoveryVerify = '/auth/recovery/verify';
   static const String resetPassword = '/auth/reset-password';
   static const String changePassword = '/auth/change-password';
   static const String accountRequests = '/niam/account-requests/';

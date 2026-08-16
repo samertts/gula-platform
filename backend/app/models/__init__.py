@@ -1,4 +1,5 @@
 from ..database import Base
+from .account_recovery import AccountRecoveryRequest
 from .ai_interaction import (
     AIFeedback,
     AIInteraction,
@@ -52,6 +53,7 @@ from .user import User
 from .user_preferences import AccessibilityProfile, HealthPreference
 
 __all__ = [
+    "AccountRecoveryRequest",
     "AIFeedback",
     "AIInteraction",
     "AIRetrievalRef",

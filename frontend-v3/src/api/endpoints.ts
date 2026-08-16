@@ -78,10 +78,12 @@ export interface SessionSummary {
 
 export interface MfaDeviceSummary {
   id: number;
-  type: string;
-  name: string;
+  device_type: string;
+  device_name: string;
   created_at: string;
-  last_used?: string | null;
+  last_used_at?: string | null;
+  is_active?: boolean;
+  is_primary?: boolean;
 }
 
 export interface MfaStatusResponse {
@@ -130,12 +132,16 @@ export const authApi = {
     api.post<Record<string, unknown>>("/register/staff", data).then((r) => r.data),
   registerDoctor: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/register/doctor", data).then((r) => r.data),
-  forgotPassword: (email: string) =>
-    api.post<Record<string, unknown>>("/auth/forgot-password", { email }).then((r) => r.data),
-  resetPassword: (token: string, new_password: string) =>
-    api.post<Record<string, unknown>>("/auth/reset-password", { token, new_password }).then((r) => r.data),
+  forgotPassword: (email: string, idempotencyKey?: string) =>
+    api.post<Record<string, unknown>>("/auth/forgot-password", { email }, idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined).then((r) => r.data),
+  verifyRecovery: (token: string, requestId?: string) =>
+    api.post<Record<string, unknown>>("/auth/recovery/verify", { token, ...(requestId ? { request_id: requestId } : {}) }).then((r) => r.data),
+  resetPassword: (token: string, new_password: string, requestId?: string) =>
+    api.post<Record<string, unknown>>("/auth/reset-password", { token, new_password, ...(requestId ? { request_id: requestId } : {}) }).then((r) => r.data),
   changePassword: (current_password: string, new_password: string) =>
     api.post<Record<string, unknown>>("/auth/change-password", { current_password, new_password }).then((r) => r.data),
+  requestSecurityRecovery: (operation: "contact_change" | "lost_device" | "mfa_reset" | "passkey_recovery" | "account_unlock") =>
+    api.post<Record<string, unknown>>("/auth/security/recovery-request", { operation }).then((r) => r.data),
 };
 
 // ── User preferences ──
@@ -662,8 +668,8 @@ export const mfaApi = {
   webauthnAuthComplete: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/mfa/webauthn/authenticate/complete", data).then((r) => r.data),
   devices: () => api.get<MfaStatusResponse>("/mfa/devices").then((r) => r.data),
-  removeDevice: (deviceId: number) =>
-    api.delete<Record<string, unknown>>(`/mfa/devices/${deviceId}`).then((r) => r.data),
+  removeDevice: (deviceId: number, mfaSessionToken: string) =>
+    api.delete<Record<string, unknown>>(`/mfa/devices/${deviceId}`, { data: { session_token: mfaSessionToken } }).then((r) => r.data),
   status: () => api.get<MfaStatusResponse>("/mfa/status").then((r) => r.data),
 };
 

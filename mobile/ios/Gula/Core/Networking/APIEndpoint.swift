@@ -5,6 +5,9 @@ enum APIEndpoint {
     case logout
     case refreshToken
     case changePassword
+    case forgotPassword
+    case verifyRecovery
+    case resetPassword
     case registerDevice(token: String, platform: String)
     case getProfile
 
@@ -107,6 +110,9 @@ enum APIEndpoint {
         case .logout: return "/logout"
         case .refreshToken: return "/auth/refresh"
         case .changePassword: return "/auth/change-password"
+        case .forgotPassword: return "/auth/forgot-password"
+        case .verifyRecovery: return "/auth/recovery/verify"
+        case .resetPassword: return "/auth/reset-password"
         case .registerDevice: return "/mobile/register-device"
         case .getProfile: return "/auth/me"
 
@@ -207,7 +213,7 @@ enum APIEndpoint {
 
     var method: String {
         switch self {
-        case .login, .logout, .refreshToken, .registerDevice, .createPatient, .convertGuest, .bulkAssignLab,
+        case .login, .logout, .refreshToken, .forgotPassword, .verifyRecovery, .resetPassword, .registerDevice, .createPatient, .convertGuest, .bulkAssignLab,
                 .scanPatientCard, .createOrder, .cancelOrder, .analyzeResults, .createBatchOrders,
                 .createSample, .bulkRegisterSamples, .receiveSample, .rejectSample, .transferSample,
                 .createResult, .bulkCreateResults, .autoValidate, .amendResult, .generateReport,

@@ -212,8 +212,10 @@ const IDENTITY_AND_DECISION_ALLOWLIST = new Set([
   "POST /auth/verification/request",
   "POST /auth/verification/confirm",
   "POST /auth/forgot-password",
+  "POST /auth/recovery/verify",
   "POST /auth/reset-password",
   "POST /auth/change-password",
+  "POST /auth/security/recovery-request",
   "POST /register/citizen",
   "POST /niam/account-requests/",
   "POST /authz/check",
@@ -452,7 +454,7 @@ class ApiClient {
   private async handleError(error: AxiosError) {
     const originalRequest = error.config as RetryableRequest | undefined;
     const requestUrl = originalRequest?.url ?? "";
-    const isAuthBootstrapRequest = /\/(login|register|register\/citizen|register\/staff|register\/doctor|auth\/refresh|auth\/forgot-password|auth\/reset-password|session)$/.test(requestUrl);
+    const isAuthBootstrapRequest = /\/(login|register|register\/citizen|register\/staff|register\/doctor|auth\/refresh|auth\/forgot-password|auth\/recovery\/verify|auth\/reset-password|session)$/.test(requestUrl);
 
     if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthBootstrapRequest) {
       originalRequest._retry = true;
