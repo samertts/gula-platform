@@ -111,7 +111,7 @@ def client(db):
 
 
 def _admin_token(user_id: int, lab_id: int) -> dict:
-    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": "admin"})
+    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": "admin", "account_kind": "lab"})
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -262,7 +262,7 @@ class TestStaffRegistration:
         db.add(tech)
         db.flush()
         db.commit()
-        token = create_token({"user_id": tech.id, "lab_id": lab.id, "role": "technician"})
+        token = create_token({"user_id": tech.id, "lab_id": lab.id, "role": "technician", "account_kind": "lab"})
         res = client.post(
             "/register/staff",
             json={**self._STAFF, "email": "new@lab.com"},

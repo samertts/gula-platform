@@ -217,10 +217,12 @@ def confirm_verification(
 
     try:
         stored = json.loads(entry)
-    except json.JSONDecodeError:
+        stored_user_id = int(stored.get("user_id", -1))
+    except (json.JSONDecodeError, TypeError, ValueError):
         stored = {}
+        stored_user_id = -1
     valid = hmac.compare_digest(str(stored.get("digest", "")), _hash_code(data.code))
-    if int(stored.get("user_id", -1)) != user.id or not valid:
+    if stored_user_id != user.id or not valid:
         log_action(
             db,
             action="verification_failed",

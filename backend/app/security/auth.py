@@ -76,11 +76,14 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return cast(bool, _shared_verify_password(plain_password, hashed_password))
 
 
-def build_token_payload(user: _TokenUser) -> JWTClaims:
+def build_token_payload(user: _TokenUser, *, account_kind: str = "lab") -> JWTClaims:
+    if account_kind not in {"lab", "user"}:
+        raise ValueError("Unsupported account kind")
     return {
         "user_id": user.id,
         "lab_id": user.lab_id,
         "role": user.role,
+        "account_kind": account_kind,
         "perm_ver": user.perm_version if user.perm_version is not None else 1,
     }
 

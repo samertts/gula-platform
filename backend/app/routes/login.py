@@ -7,7 +7,13 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from ..config import DEMO_MODE, JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS, USE_SECURE_COOKIES
+from ..config import (
+    DEMO_MODE,
+    JWT_EXPIRE_MINUTES,
+    NID_HMAC_KEY,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    USE_SECURE_COOKIES,
+)
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.user import User
@@ -20,9 +26,9 @@ from ..security.auth import (
     decode_token,
     verify_password,
 )
-from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..security.dependencies import get_current_user
 from ..security.login_protection import is_locked, register_failed_login, register_successful_login
+from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..security.session import bump_perm_version, warm_perm_version
 from ..services.audit_service import log_action
 
@@ -133,8 +139,8 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         )
 
     # ── Enforce MFA for privileged roles ─────────────────────────────────────
-    PRIVILEGED_ROLES = {"master_admin", "ministry_admin", "province_admin"}
-    if user.role in PRIVILEGED_ROLES:
+    privileged_roles = {"master_admin", "ministry_admin", "province_admin"}
+    if user.role in privileged_roles:
         from ..security.mfa_service import MFAService
         mfa = MFAService(db)
         if not mfa.has_mfa_enabled(user.id):
@@ -174,7 +180,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
         # Warm Redis perm_version cache (lab users only)
         warm_perm_version(lab_user)
-        base_payload = build_token_payload(lab_user)
+        base_payload = build_token_payload(lab_user, account_kind="lab")
         user_name = lab_user.name
         lab_name = lab.name if lab else None
     else:
@@ -183,7 +189,8 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
             "user_id": citizen.id,
             "lab_id": None,
             "role": "citizen",
-            "perm_ver": 1,
+            "account_kind": "user",
+            "perm_ver": citizen.perm_version or 1,
         }
         user_name = citizen.full_name
         lab_name = None
@@ -222,14 +229,10 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         **cookie_kwargs,
     )
 
+    # Browser clients use the HttpOnly cookies above. Do not echo bearer
+    # material in JSON where page JavaScript, extensions, or observability tools
+    # could read it. Native clients use the dedicated mobile/NIAM contracts.
     return {
-        # `access_token` is the canonical native-client field; `token` remains
-        # temporarily for older clients while they migrate to secure storage.
-        "access_token": token,
-        "token": token,
-        "refresh_token": refresh_token,
-        "token_type": "Bearer",
-        "expires_in": JWT_EXPIRE_MINUTES * 60,
         "user": {
             "id": user.id,
             "name": user_name,
@@ -251,6 +254,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     import time as _time
 
     user_id = None
+    account_kind = None
 
     # Layer 1: blacklist access token JTI in Redis
     access_token = request.cookies.get("access_token")
@@ -258,6 +262,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         payload = decode_token(access_token)
         if payload:
             user_id = payload.get("user_id")
+            account_kind = payload.get("account_kind")
             jti = payload.get("jti")
             if jti:
                 remaining = int((payload["exp"] - _time.time()) + 1)
@@ -274,14 +279,17 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                 blacklist_token(rp["jti"], min(remaining, REFRESH_TOKEN_EXPIRE_DAYS * 86400))
             if not user_id:
                 user_id = rp.get("user_id")
+                account_kind = rp.get("account_kind")
 
     # Layer 2: bump perm_version in DB so ALL existing tokens become invalid
     # This is the safety net if Redis is wiped — get_current_user will reject
     # any token whose perm_ver no longer matches the DB value.
-    if user_id:
-        user = db.query(LabUser).filter(LabUser.id == user_id).first()
-        if user is None:
-            user = db.query(User).filter(User.id == user_id).first()
+    if user_id and account_kind in {"lab", "user"}:
+        user = (
+            db.query(LabUser).filter(LabUser.id == user_id).first()
+            if account_kind == "lab"
+            else db.query(User).filter(User.id == user_id).first()
+        )
         if user:
             bump_perm_version(
                 user,

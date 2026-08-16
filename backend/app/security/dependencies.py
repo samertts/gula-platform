@@ -62,12 +62,21 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload",
         )
 
-    user = db.query(LabUser).filter(LabUser.id == user_id, LabUser.is_active).first()
-    if user is None:
+    account_kind = payload.get("account_kind")
+    if account_kind == "lab":
+        user = db.query(LabUser).filter(LabUser.id == user_id, LabUser.is_active).first()
+    elif account_kind == "user":
         user = (
             db.query(User)
             .filter(User.id == user_id, User.is_active, User.is_verified)
             .first()
+        )
+    else:
+        # Numeric IDs overlap between legacy tables; never guess the account
+        # namespace from an unscoped or old token.
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token account scope",
         )
     if user is None:
         raise HTTPException(

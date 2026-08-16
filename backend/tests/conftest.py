@@ -326,7 +326,8 @@ def make_subscription(db):
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
-def auth_headers(user_id: int, lab_id: int, role: str = "admin") -> dict:
+def auth_headers(user_id: int, lab_id: int | None, role: str = "admin") -> dict:
     """Generate a valid Bearer token header for a given user."""
-    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role})
+    account_kind = "user" if role == "citizen" or lab_id is None else "lab"
+    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role, "account_kind": account_kind})
     return {"Authorization": f"Bearer {token}"}

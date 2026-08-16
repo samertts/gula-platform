@@ -626,7 +626,7 @@ class TestPerformanceBaseline:
         times = []
         for _ in range(50):
             start = time.perf_counter()
-            create_token({"user_id": 1, "lab_id": 1, "role": "staff"})
+            create_token({"user_id": 1, "lab_id": 1, "role": "staff", "account_kind": "lab"})
             elapsed = (time.perf_counter() - start) * 1000
             times.append(elapsed)
         avg_ms = statistics.mean(times)

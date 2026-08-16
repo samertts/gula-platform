@@ -110,3 +110,26 @@ Government Identity لا يملك مزوداً رسمياً حياً في هذه
 [7]: ../frontend-v3/src/pages/auth/VerificationPage.tsx "Contact verification UX"
 [8]: ../backend/app/identity/services/verification_service.py "Verification policy and assurance engine"
 [9]: ../backend/app/config.py "Production Redis and onboarding safety defaults"
+
+## 10. Remediation Addendum — Account Scope وCookie-only Sessions
+
+بعد المراجعة اللاحقة، أُغلقت أربع فجوات إضافية قابلة للإصلاح داخل الكود من دون تغيير قاعدة بيانات أو بيئة إنتاج. أولاً، لم تعد استجابة `/login` للويب تعيد `access_token` أو `refresh_token` أو `token` داخل JSON؛ تبقى الرموز داخل cookies محمية بـ`HttpOnly`، بينما يظل contract التطبيقات الأصلية منفصلاً في `/auth/refresh` عندما يرسل العميل native refresh token صراحةً في body. وبذلك لا تُعاد bearer material إلى JavaScript في مسار الويب.
+
+ثانياً، أُضيف claim موقّع باسم `account_kind` إلى JWT legacy (`lab` أو `user`). أصبح `get_current_user` وmobile refresh وlogout يختارون جدول الحساب من هذا claim فقط، ويرفضون token القديم أو الملتبس بـ`401 Invalid token account scope`. هذا يعالج خطر تصادم numeric IDs بين `LabUser` و`User`، ويمنع أن تُفسَّر جلسة مواطن على أنها جلسة مؤسسة أو العكس. ثالثاً، أصبح cache payload التالف في confirm verification يعيد `400 Invalid or expired verification code` بدلاً من خطأ داخلي أو تحويل فساد داخلي إلى مسار نجاح.
+
+تمت إضافة اختبارات regression لهذه السلوكيات، كما تم تحديث test fixtures التي كانت تنشئ bearer claims غير محددة النطاق لتستخدم `account_kind` صراحةً، واختبار auth infrastructure ليقرأ access token من cookie. لم تتم إضافة inference أو bypass في production؛ token غير المعرّف بالنطاق يبقى مرفوضاً.
+
+| الدليل بعد remediation | النتيجة |
+|---|---:|
+| Backend full suite | **2692 passed, 4 skipped** |
+| Remediation regression suite | **498 passed** |
+| Frontend typecheck/lint/build | **PASS** |
+| Frontend unit tests | **61 passed / 17 files** |
+| Frontend Playwright E2E | **53/53 passed** |
+| Ruff على source وملفات remediation | **PASS** |
+| Bandit على security/auth source | **PASS** |
+| `git diff --check` | **PASS** |
+
+أُعيد فحص Vercel بعد الدفع الأخير، فظهر deployment `dpl_HFVVqbgsQGBkYYEh2GPyNANqzxvk` المرتبط بالـcommit `dfbd048b2b691403604350476b57d44c5dd288ea` بحالة `BLOCKED`، ورابطه [Vercel deployment](https://gula-platform-oodq3sg2j-samertts-projects.vercel.app). كما أظهر فحص الحماية أن password protection معطل، وtrusted IPs معطلة، بينما SSO protection مفعلة على كل deployments باستثناء custom domains. لذلك أصبح سبب الحظر موثقاً كإعداد حماية/حساب أو مشروع Vercel خارج كود GULA؛ لم يتم تعطيل SSO أو تغيير إعدادات Vercel تلقائياً حفاظاً على سلامة الإنتاج.
+
+**الحالة بعد remediation:** الإصلاحات البرمجية الجديدة **REMEDIATED** ضمن نطاق session confidentiality وaccount namespace isolation وmalformed OTP cache handling. تبقى الحالة الكلية **`VERIFICATION_PARTIAL`** بسبب عدم توحيد legacy User مع NIAM VerificationRecord، وعدم توفر مزودات رسمية Government/Professional/Organization، وعدم تنفيذ PostgreSQL rehearsal أو Flutter native CI، وبقاء Vercel deployment محجوباً بحماية خارجية.

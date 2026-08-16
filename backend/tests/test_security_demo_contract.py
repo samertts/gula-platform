@@ -198,3 +198,149 @@ def test_cross_origin_cookie_write_is_rejected(client, db):
 def test_demo_access_is_disabled_by_default(client):
     response = client.post("/demo/access")
     assert response.status_code == 404
+
+
+def test_web_login_does_not_echo_bearer_tokens(client, db):
+    user = User(
+        email="web-session@example.com",
+        phone="+9647701112222",
+        password_hash=hash_password("WebPassword123!"),
+        full_name="Web Session User",
+        role="citizen",
+        is_active=True,
+        is_verified=True,
+    )
+    db.add(user)
+    db.commit()
+
+    response = client.post(
+        "/login",
+        json={"email": "web-session@example.com", "password": "WebPassword123!"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert "access_token" not in body
+    assert "token" not in body
+    assert "refresh_token" not in body
+    assert "access_token=" in response.headers.get("set-cookie", "")
+    assert "HttpOnly" in response.headers.get("set-cookie", "")
+
+
+def test_malformed_verification_cache_is_safe_400(client, db):
+    from app.routes import verification as verification_route
+
+    identifier = "malformed-cache@example.com"
+    user = User(
+        email=identifier,
+        phone="+9647701113333",
+        password_hash=hash_password("CitizenPassword123!"),
+        full_name="Malformed Cache Citizen",
+        role="citizen",
+        is_active=True,
+        is_verified=False,
+    )
+    db.add(user)
+    db.commit()
+    verification_route.cache.set(verification_route._cache_key(identifier), "not-json", ex=60)
+
+    response = client.post(
+        "/auth/verification/confirm",
+        json={"identifier": identifier, "code": "123456"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid or expired verification code"
+
+
+def test_web_refresh_hides_tokens_and_native_refresh_preserves_contract(client, db):
+    user = User(
+        email="refresh-contract@example.com",
+        phone="+9647701114444",
+        password_hash=hash_password("RefreshPassword123!"),
+        full_name="Refresh Contract User",
+        role="citizen",
+        is_active=True,
+        is_verified=True,
+    )
+    db.add(user)
+    db.commit()
+
+    logged_in = client.post(
+        "/login",
+        json={"email": user.email, "password": "RefreshPassword123!"},
+    )
+    assert logged_in.status_code == 200
+    assert client.cookies.get("refresh_token")
+
+    web_refresh = client.post("/auth/refresh", json={})
+    assert web_refresh.status_code == 200
+    assert "access_token" not in web_refresh.json()
+    assert "refresh_token" not in web_refresh.json()
+    assert client.cookies.get("refresh_token")
+
+    native_refresh = client.post(
+        "/auth/refresh",
+        json={"refresh_token": client.cookies.get("refresh_token")},
+    )
+    assert native_refresh.status_code == 200
+    native_body = native_refresh.json()
+    assert native_body.get("access_token")
+    assert native_body.get("refresh_token")
+
+
+def test_account_kind_prevents_legacy_id_collision_on_session_and_logout(client, db):
+    lab = Lab(name="Namespace Lab", is_active=True)
+    db.add(lab)
+    db.flush()
+    staff = LabUser(
+        lab_id=lab.id,
+        name="Colliding Staff",
+        email="colliding-staff@example.com",
+        password_hash=hash_password("StaffPassword123!"),
+        role="admin",
+        is_active=True,
+        perm_version=1,
+    )
+    citizen = User(
+        email="colliding-citizen@example.com",
+        phone="+9647701115555",
+        password_hash=hash_password("CitizenPassword123!"),
+        full_name="Colliding Citizen",
+        role="citizen",
+        is_active=True,
+        is_verified=True,
+        perm_version=1,
+    )
+    db.add_all([staff, citizen])
+    db.commit()
+    assert staff.id == citizen.id
+
+    logged_in = client.post(
+        "/login",
+        json={"email": citizen.email, "password": "CitizenPassword123!"},
+    )
+    assert logged_in.status_code == 200
+
+    session = client.get("/session")
+    assert session.status_code == 200
+    assert session.json()["user"]["email"] == citizen.email
+
+    logged_out = client.post("/logout")
+    assert logged_out.status_code == 200
+    db.refresh(staff)
+    db.refresh(citizen)
+    assert staff.perm_version == 1
+    assert citizen.perm_version == 2
+
+
+def test_unscoped_legacy_token_is_rejected(client):
+    from app.security.auth import create_token
+
+    token = create_token({"user_id": 1, "role": "citizen", "perm_ver": 1})
+    client.cookies.set("access_token", token)
+
+    response = client.get("/session")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid token account scope"

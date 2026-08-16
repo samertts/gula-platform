@@ -234,7 +234,7 @@ class TestTokenUniqueness:
         def make_token(i):
             try:
                 # Each call has a unique user_id → unique payload → unique token
-                t = create_token({"user_id": i, "lab_id": 1, "role": "staff"})
+                t = create_token({"user_id": i, "lab_id": 1, "role": "staff", "account_kind": "lab"})
                 with lock:
                     tokens.append(t)
             except Exception as e:

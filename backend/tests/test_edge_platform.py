@@ -24,7 +24,7 @@ from app.security.auth import create_token
 
 def _auth(user_id: int, lab_id: int, role: str = "admin") -> dict:
     """Bearer header for an admin user — same recipe as conftest.auth_headers."""
-    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role})
+    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role, "account_kind": "lab"})
     return {"Authorization": f"Bearer {token}"}
 
 

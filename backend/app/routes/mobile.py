@@ -67,7 +67,11 @@ def refresh_access_token(
     """
     rate_limit_auth(request)
 
-    # Accept refresh token from JSON body (mobile) or httpOnly cookie (web)
+    # Accept refresh token from JSON body (native) or HttpOnly cookie (web).
+    # The source determines the response contract: browser responses never
+    # echo bearer material, while native clients receive tokens for secure
+    # Keychain/Keystore storage.
+    native_client = data.refresh_token is not None
     raw_refresh = data.refresh_token or request.cookies.get("refresh_token")
     if not raw_refresh:
         raise HTTPException(status_code=401, detail="Refresh token required")
@@ -77,16 +81,17 @@ def refresh_access_token(
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
 
     user_id = payload.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token payload")
+    account_kind = payload.get("account_kind")
+    if not user_id or account_kind not in {"lab", "user"}:
+        raise HTTPException(status_code=401, detail="Invalid token account scope")
 
-    lab_user = (
-        db.query(LabUser)
-        .filter(LabUser.id == user_id, LabUser.is_active)
-        .first()
-    )
-    user = lab_user
-    if user is None:
+    if account_kind == "lab":
+        user = (
+            db.query(LabUser)
+            .filter(LabUser.id == user_id, LabUser.is_active)
+            .first()
+        )
+    else:
         user = (
             db.query(User)
             .filter(User.id == user_id, User.is_active, User.is_verified)
@@ -117,12 +122,13 @@ def refresh_access_token(
     # with the old token and finds it already revoked, forcing a full re-login.
     # A short grace period (30 s) allows in-flight retries to succeed.
     base_payload = (
-        build_token_payload(user)
+        build_token_payload(user, account_kind="lab")
         if isinstance(user, LabUser)
         else {
             "user_id": user.id,
             "lab_id": user.lab_id,
             "role": user.role,
+            "account_kind": "user",
             "perm_ver": user.perm_version or 1,
         }
     )
@@ -171,13 +177,15 @@ def refresh_access_token(
         **cookie_kwargs,
     )
 
-    return {
-        "access_token": new_access_token,
-        "token": new_access_token,
-        "refresh_token": new_refresh_token,
-        "token_type": "Bearer",
-        "expires_in": JWT_EXPIRE_HOURS * 3600,
-    }
+    result = {"expires_in": JWT_EXPIRE_HOURS * 3600}
+    if native_client:
+        result.update({
+            "access_token": new_access_token,
+            "token": new_access_token,
+            "refresh_token": new_refresh_token,
+            "token_type": "Bearer",
+        })
+    return result
 
 
 # ─── Change Password ─────────────────────────────────────────────────────────

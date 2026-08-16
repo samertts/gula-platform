@@ -34,7 +34,9 @@ def _setup_db(db):
 def token(client):
     resp = client.post("/login", json={"email": "test@mfa.gula", "password": "password123"})
     assert resp.status_code == 200, resp.text
-    return resp.json()["token"]
+    token = resp.cookies.get("access_token")
+    assert token
+    return token
 
 
 _AUTH_HEADER_TEMPLATE = "Bearer {}"
