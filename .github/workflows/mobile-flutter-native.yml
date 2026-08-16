@@ -1,0 +1,75 @@
+name: Mobile - Flutter Android and iOS
+
+on:
+  pull_request:
+    paths:
+      - 'mobile/desktop/**'
+      - '.github/workflows/mobile-flutter-native.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mobile-native-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter-analyze-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart analyze
+      - run: dart format --set-exit-if-changed lib/
+      - run: flutter test --coverage
+
+  build-android:
+    needs: flutter-analyze-test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build apk --debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gula-android-debug-apk
+          path: mobile/desktop/build/app/outputs/flutter-apk/app-debug.apk
+          if-no-files-found: error
+
+  build-ios:
+    needs: flutter-analyze-test
+    runs-on: macos-14
+    defaults:
+      run:
+        working-directory: mobile/desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build ios --debug --no-codesign
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gula-ios-debug-build
+          path: mobile/desktop/build/ios/iphoneos/Runner.app
+          if-no-files-found: error

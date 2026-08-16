@@ -214,3 +214,13 @@ Adaptive UI الموجود مسبقاً يغطي تفضيلات color blindness 
 سيتم اعتماد التحقق النهائي من خلال CI المعلن في `.github/workflows/mobile-flutter-desktop.yml` بعد رفع commit، ويجب أن يشمل `flutter analyze` و`flutter test` وبناءات Windows/Linux/macOS. أما Android/iOS فتحتاج runners/toolchains مناسبة أو CI mobile مستقل؛ عدم وجودها يبقيهما `UNVERIFIED` حتى يتم تشغيلهما فعلياً.
 
 حتى بعد نجاح CI، يبقى `FRONTEND_IDENTITY_PARTIAL` هو القرار الآمن إذا لم تتوفر اختبارات device حقيقية لـAndroid/iOS/deep-links وWebAuthn ceremony، أو إذا لم يثبت Staging تدوير refresh والإبطال المتزامن مع Redis/PostgreSQL حقيقيين.
+
+## 15. Native Mobile Platform Remediation Update
+
+تم إغلاق فجوة عدم وجود منصات أصلية داخل مشروع Flutter. أضيفت ملفات Android وiOS الرسمية عبر Flutter 3.44، مع بقاء application id `org.gula.gula_desktop` واسم الحزمة الحالي. أضيف `gula://` custom URL scheme إلى Android Manifest وiOS Info.plist لفتح مسارات الهوية عبر deep links؛ لم يتم الادعاء بإعداد Universal Links/App Links موثقة على نطاق Production.
+
+أضيف workflow مستقل `.github/workflows/mobile-flutter-native.yml` يقوم بـ`dart analyze` و`dart format` و`flutter test`، ثم يبني Android debug APK وiOS debug build بدون code signing. وبذلك أصبحت Android وiOS قابليتين للبناء في CI، مع فصل signing/notarization عن هذا التحقق الآلي.
+
+التحقق المحلي باستخدام Flutter 3.44: **Flutter tests passed (14 tests)**، و`flutter analyze --no-fatal-infos --no-fatal-warnings` لم يعثر على أخطاء compile/analyze، لكنه يعرض ملاحظات lint قديمة على مستوى المستودع. كما تم إصلاح Flutter template test الذي كان يستدعي `MyApp` غير موجود.
+
+يبقى تحقق جهاز فعلي وApp Links/Universal Links production signing خارج sandbox، لذلك لا يتم الادعاء بتماثل device-runtime الكامل أو جاهزية النشر في المتاجر. القرار الآمن بعد هذه المعالجة يعتمد على نجاح native CI، مع بقاء `FRONTEND_IDENTITY_PARTIAL` إلى حين إثبات device tests وWebAuthn ceremony وStaging revocation الحي.
