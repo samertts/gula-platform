@@ -125,15 +125,15 @@ Adaptive UI الموجود مسبقاً يغطي تفضيلات color blindness 
 
 | Capability | Web | PWA | Android | iOS | Flutter/Desktop | Status | Evidence |
 |---|---|---|---|---|---|---|---|
-| Login/session lifecycle | PASS | PASS | NOT_BUILT | NOT_BUILT | UNVERIFIED | PARTIAL overall | Web/PWA `AuthContext`, interceptor، tests/build؛ لا mobile builds في repo الحالي |
-| HttpOnly web session | PASS | PASS | NOT_BUILT | NOT_BUILT | UNVERIFIED | PARTIAL | `withCredentials` وno localStorage tokens |
-| Mobile secure storage | N/A | N/A | NOT_BUILT | NOT_BUILT | N/A | NOT_BUILT | لا توجد toolchains/app source مثبتة هنا |
-| Refresh/revocation | PASS | PASS | NOT_BUILT | NOT_BUILT | UNVERIFIED | PARTIAL | `/auth/refresh` وsession-expired event؛ لا cross-platform runtime evidence |
-| Workspace selection/switch | PASS | PASS | NOT_BUILT | NOT_BUILT | UNVERIFIED | PARTIAL | WorkspaceSelector + API tests |
-| Membership display | PASS | PASS | NOT_BUILT | NOT_BUILT | UNVERIFIED | PARTIAL | `/memberships` page + live membership contract |
-| MFA/Passkey | PARTIAL | PARTIAL | NOT_BUILT | NOT_BUILT | UNVERIFIED | PARTIAL | `/mfa/status` وdevices فقط؛ WebAuthn ceremony UI ليست مكتملة |
-| Deep links | UNVERIFIED | UNVERIFIED | NOT_BUILT | NOT_BUILT | UNVERIFIED | UNVERIFIED | لا توجد builds/toolchains أو manifests كافية لإثبات المسار |
-| RTL/LTR/responsive | PASS | PASS | NOT_BUILT | NOT_BUILT | UNVERIFIED | PARTIAL | LocaleContext، responsive web tests/build |
+| Login/session lifecycle | PASS | PASS | PASS (CI build) | PASS (CI build) | PASS (desktop CI build) | PARTIAL overall | Flutter native/desktop CI builds pass؛ device-runtime غير مثبت |
+| HttpOnly web session | PASS | PASS | N/A (native transport) | N/A (native transport) | N/A (native transport) | PARTIAL | Web/PWA `withCredentials` وno localStorage tokens؛ native يستخدم transport/session manager |
+| Mobile secure storage | N/A | N/A | PARTIAL | PARTIAL | N/A | PARTIAL | native scaffolding وCI build مثبتان؛ secure-storage/device runtime يحتاج اختبار جهاز فعلي |
+| Refresh/revocation | PASS | PASS | PARTIAL | PARTIAL | PASS (CI/static) | PARTIAL | `/auth/refresh` وsingle-flight/session-expired؛ revocation الحي يحتاج Staging وdevice runtime |
+| Workspace selection/switch | PASS | PASS | PASS (CI) | PASS (CI) | PASS (desktop CI) | PARTIAL | Web/Flutter state وserver-backed switch؛ لا device-runtime evidence |
+| Membership display | PASS | PASS | PASS (CI) | PASS (CI) | PASS (desktop CI) | PARTIAL | Web/Flutter `/memberships` + server membership contract؛ لا device-runtime evidence |
+| MFA/Passkey | PARTIAL | PARTIAL | PARTIAL | PARTIAL | PARTIAL | PARTIAL | status/devices وnative parity موجودة؛ WebAuthn ceremony/device verification غير مكتملين |
+| Deep links | UNVERIFIED | UNVERIFIED | PARTIAL (manifest/build) | PARTIAL (plist/build) | UNVERIFIED | UNVERIFIED | `gula://` مضاف إلى Android/iOS؛ فتح المسار على جهاز فعلي وUniversal/App Links غير مثبتين |
+| RTL/LTR/responsive | PASS | PASS | PASS (CI) | PASS (CI) | PASS (desktop CI) | PARTIAL | LocaleContext/web responsive tests وFlutter test/build؛ device visual parity غير مثبتة |
 
 ## 11. Tests and Build
 
@@ -148,6 +148,8 @@ Adaptive UI الموجود مسبقاً يغطي تفضيلات color blindness 
 | Frontend production build + PWA generateSW | **PASS**؛ 190 precache entries |
 | Backend focused identity/workspace/session tests | **13 passed** |
 | Ruff على ملفات Command 06 backend المعدلة | **PASS** |
+| Frontend exact-CI E2E (`npm ci`, `CI=true`, Playwright) | **53/53 PASS محلياً** |
+| Frontend bundle budget | **PASS**؛ total 1,498,030 bytes، entry JS 344,698، CSS 138,528، violations 0 |
 | `git diff --check` | **PASS** |
 
 تشغيل Vitest الرسمي يستبعد `e2e/**` كما يحدد script المشروع. لم يتم حذف اختبار فاشل ولم تُستخدم suppressions عامة. تم تثبيت اعتماديات backend الناقصة داخل `backend/.venv` وفق requirements المعلنة فقط؛ لم يتغير كود Production بسبب ذلك.
@@ -161,7 +163,7 @@ Adaptive UI الموجود مسبقاً يغطي تفضيلات color blindness 
 | Security recent events personal feed | BACKEND_DEPENDENCY؛ `/security/status` يعطي status عام أو admin aggregate، وليس personal event feed |
 | Session current account UUID | PARTIAL؛ sessions API موجود لكن Security Center لا يستعمل legacy numeric user id كبديل |
 | WebAuthn full browser ceremony | BACKEND/UI DEPENDENCY؛ endpoints begin/complete موجودة، لكن passkey UX الكامل يحتاج policy وتجربة متصفح واختبارات مناسبة |
-| Android/iOS/Flutter/Desktop parity | UNVERIFIED/NOT_BUILT؛ لا توجد toolchains/build evidence في هذا المستودع |
+| Android/iOS/Flutter/Desktop parity | PARTIAL؛ native/desktop CI build evidence موجود، لكن device runtime وdeep-link/WebAuthn E2E غير مثبتة |
 | Frontend authorization | SAFE؛ RoleGuard/sidebar UX فقط، ولا يعتمد عليه كحاجز أمني |
 | tokens/browser storage | SAFE بالنسبة للتغييرات الجديدة؛ token fields types فقط، والتخزين المستخدم marker demo/locale/theme لا tokens |
 | mock identity | محصور في demo المعلن synthetic؛ مسار انتهاء session لا يعيد mock user ولا legacy session |
@@ -209,9 +211,9 @@ Adaptive UI الموجود مسبقاً يغطي تفضيلات color blindness 
 
 ## 14. Cross-Platform Verification Boundary
 
-تم تنفيذ اختبارات unit إضافية لـ`IdentityState` في `mobile/desktop/test/unit/identity_state_test.dart`، ونجح static transport security check، ونجح `git diff --check`. لم يكن Flutter SDK متاحاً داخل sandbox الحالي، لذلك لا يجوز ادعاء نجاح `flutter analyze` أو `flutter test` أو builds Android/iOS/Windows/Linux/macOS محلياً.
+تم تنفيذ اختبارات unit إضافية لـ`IdentityState` في `mobile/desktop/test/unit/identity_state_test.dart`، ونجح static transport security check، ونجح `git diff --check`. وبحسب سجل native/desktop CI الموثق، نجحت analyze/format/tests وبناءات Android/iOS/Windows/Linux/macOS؛ أما device-runtime وdeep-link invocation وWebAuthn ceremony فتبقى خارج الإثبات.
 
-سيتم اعتماد التحقق النهائي من خلال CI المعلن في `.github/workflows/mobile-flutter-desktop.yml` بعد رفع commit، ويجب أن يشمل `flutter analyze` و`flutter test` وبناءات Windows/Linux/macOS. أما Android/iOS فتحتاج runners/toolchains مناسبة أو CI mobile مستقل؛ عدم وجودها يبقيهما `UNVERIFIED` حتى يتم تشغيلهما فعلياً.
+تم اعتماد الجزء الآلي عبر `.github/workflows/mobile-flutter-desktop.yml` و`.github/workflows/mobile-flutter-native.yml`: analyze/format/tests وبناءات desktop وAndroid/iOS نجحت وفق النتائج المسجلة. لا يساوي ذلك اختبار جهاز فعلي أو signing/release validation.
 
 حتى بعد نجاح CI، يبقى `FRONTEND_IDENTITY_PARTIAL` هو القرار الآمن إذا لم تتوفر اختبارات device حقيقية لـAndroid/iOS/deep-links وWebAuthn ceremony، أو إذا لم يثبت Staging تدوير refresh والإبطال المتزامن مع Redis/PostgreSQL حقيقيين.
 
@@ -240,3 +242,23 @@ Adaptive UI الموجود مسبقاً يغطي تفضيلات color blindness 
 بهذا لم تعد Android وiOS `NOT_BUILT`. كما نجح workflow السابق `Mobile - Flutter Desktop CI/CD` على commit `6cdd61ed` في Dart analyze/format، Flutter tests، Windows MSIX، Linux AppImage/deb/rpm، وmacOS DMG.
 
 الفجوات المتبقية ليست غياب platform source أو build: هي device-runtime tests على أجهزة فعلية، App Links/Universal Links مع domain association إنتاجي، WebAuthn/passkey ceremony، وStaging live revocation/session race. لذلك تم تخفيض نطاق الفجوة، لكن لا يتم إعلان `COMPLETE` قبل هذه الأدلة التشغيلية.
+
+## 17. Final Audit and Evidence Boundary
+
+أُعيد التدقيق على commit `a07d86f79f65b0902f7be78e3d1b5b5f215621c9` دون تعديل قاعدة بيانات أو بيئة Production. شغّل التدقيق مسار Frontend مطابقاً لـCI باستخدام `npm ci` ثم `CI=true npm run build` و`CI=true PLAYWRIGHT_BASE_URL=http://127.0.0.1:4173 npx playwright test`، وكانت النتيجة **53/53 PASS**. كما نجح `npm run check:bundle` بعد البناء، بإجمالي `1,498,030` bytes، وentry JavaScript بحجم `344,698` bytes، وCSS بحجم `138,528` bytes، ومن دون violations.
+
+| Gate | النتيجة الدقيقة | التصنيف |
+|---|---|---|
+| Frontend unit/Vitest | 61 tests passed في 17 ملفاً | **PASS** |
+| Frontend typecheck/lint/build/PWA | PASS؛ 190 precache entries | **PASS** |
+| Frontend exact-CI E2E | 53/53 passed محلياً بعد `npm ci` | **PASS محلياً** |
+| Frontend bundle budget | 0 violations؛ جميع الحدود ضمن budget | **PASS** |
+| Flutter native/desktop CI | Analyze/Format/Test وبناءات Android/iOS/Windows/Linux/macOS موثقة كناجحة في النتائج السابقة | **PASS CI سابق** |
+| GitHub Frontend E2E run `31946272790` | job أنهى بـfailure خلال 3 ثوانٍ، `steps: []`، و`runner_id: 0`؛ لا يوجد log أو assertion يمكن فحصه عبر الصلاحية الحالية | **UNVERIFIED / CI infrastructure** |
+| CodeQL وCode Scanning | فشل/عدم تفعيل صلاحيات Code Scanning في مستوى المستودع؛ لا يوجد دليل على regression في Command 07 | **UNVERIFIED / repository configuration** |
+| Ruff format على النطاق الواسع | توجد ملفات legacy غير منسقة خارج نطاق identity الحالي؛ workflow الحالي لا يحول هذا الأمر إلى إصلاح تلقائي | **PRE-EXISTING / requires separate cleanup** |
+| Production database/environment | لم يُعدّل | **SAFE / NOT TOUCHED** |
+
+لا يصح تحويل فشل GitHub E2E ذي job بلا خطوات إلى ادعاء بأن assertions فشلت، كما لا يصح إعلان CodeQL ناجحاً أو فاشلاً بسبب صلاحيات غير متاحة. لذلك تبقى الحالة النهائية الآمنة **FRONTEND_IDENTITY_PARTIAL**: الوظائف الأساسية والاختبارات المحلية وnative build evidence ناجحة، بينما device-runtime، deep-link invocation، WebAuthn ceremony، Staging revocation مع Redis/PostgreSQL حقيقيين، وCode Scanning repository enablement ما زالت حدود إثبات أو dependencies خارجية.
+
+قبل الانتقال إلى Command 08، يلزم تشغيل GitHub Actions على runner صالح مع صلاحيات Code Scanning، ثم إعادة قراءة job logs، إضافة اختبار جهاز Android/iOS فعلي لمسار `gula://`، وتشغيل اختبار Staging لتدوير refresh وإبطال الجلسات المتزامن. لا ينبغي دمج أو نشر Production اعتماداً على نتيجة `UNVERIFIED`.
