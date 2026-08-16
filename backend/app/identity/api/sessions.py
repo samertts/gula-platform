@@ -61,7 +61,7 @@ async def terminate_session(
     # sufficient for server-authoritative logout.
     from app.identity.services.authentication_service import AuthenticationService
 
-    await AuthenticationService(db).logout(session.uuid, account_id=str(actor.account.id))
+    await AuthenticationService(db).logout_current_session(session.uuid, account_id=str(actor.account.id))
     await db.commit()
     return {"success": True, "session_uuid": session.uuid}
 

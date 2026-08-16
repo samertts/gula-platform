@@ -55,6 +55,17 @@ def test_cross_origin_is_rejected_even_with_matching_token(monkeypatch):
     assert response.status_code == 403
 
 
+def test_production_new_cookie_session_never_uses_test_bypass(monkeypatch):
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("CORS_ORIGINS", "http://testserver")
+    client = TestClient(_app())
+    client.cookies.set("access_token", "access")
+    client.cookies.set("csrf_token", "expected")
+
+    response = client.post("/mutate", headers={"Origin": "http://testserver"})
+    assert response.status_code == 403
+
+
 def test_old_cookie_session_remains_origin_bound_during_rollout(monkeypatch):
     monkeypatch.setenv("ENV", "staging")
     monkeypatch.setenv("CORS_ORIGINS", "http://testserver")

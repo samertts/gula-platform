@@ -195,6 +195,10 @@ class AuthenticationService:
         return result
 
     async def logout(self, session_uuid: str, *, account_id: str | None = None) -> bool:
+        """Backward-compatible alias for current-session logout only."""
+        return await self.logout_current_session(session_uuid, account_id=account_id)
+
+    async def logout_current_session(self, session_uuid: str, *, account_id: str | None = None) -> bool:
         session = await self.session_repo.get_by_uuid(session_uuid)
         if not session or (account_id is not None and str(session.account_id) != str(account_id)):
             return False
@@ -208,7 +212,7 @@ class AuthenticationService:
             "logout",
             actor_id=str(account_id or session.account_id),
             target_id=str(getattr(session, "uuid", getattr(session, "id", ""))),
-            metadata={"scope": "current_session"},
+            metadata={"scope": "current_session", "authorization_boundary": "owned_session"},
         )
         return True
 
@@ -224,7 +228,7 @@ class AuthenticationService:
             "logout",
             actor_id=str(account_id),
             target_id=str(account_id),
-            metadata={"scope": "all_sessions", "count": len(sessions)},
+            metadata={"scope": "all_sessions", "authorization_boundary": "owned_account", "count": len(sessions)},
         )
         return len(sessions)
 

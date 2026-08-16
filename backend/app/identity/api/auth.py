@@ -114,7 +114,7 @@ async def logout(
     db: AsyncSession = Depends(get_async_db),
 ):
     service = AuthenticationService(db)
-    terminated = await service.logout(actor.session.uuid, account_id=str(actor.account.id))
+    terminated = await service.logout_current_session(actor.session.uuid, account_id=str(actor.account.id))
     if not terminated:
         _clear_auth_cookies(response)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session is no longer active")
