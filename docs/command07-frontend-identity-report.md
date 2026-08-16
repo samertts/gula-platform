@@ -224,3 +224,19 @@ Adaptive UI الموجود مسبقاً يغطي تفضيلات color blindness 
 التحقق المحلي باستخدام Flutter 3.44: **Flutter tests passed (14 tests)**، و`flutter analyze --no-fatal-infos --no-fatal-warnings` لم يعثر على أخطاء compile/analyze، لكنه يعرض ملاحظات lint قديمة على مستوى المستودع. كما تم إصلاح Flutter template test الذي كان يستدعي `MyApp` غير موجود.
 
 يبقى تحقق جهاز فعلي وApp Links/Universal Links production signing خارج sandbox، لذلك لا يتم الادعاء بتماثل device-runtime الكامل أو جاهزية النشر في المتاجر. القرار الآمن بعد هذه المعالجة يعتمد على نجاح native CI، مع بقاء `FRONTEND_IDENTITY_PARTIAL` إلى حين إثبات device tests وWebAuthn ceremony وStaging revocation الحي.
+
+## 16. Native CI Result
+
+نجح workflow `Mobile - Flutter Android and iOS` على commit `9924620a`:
+
+| Job | النتيجة |
+|---|---:|
+| Flutter analyze مع عدم إسقاط lint legacy | PASS |
+| Flutter format | PASS |
+| Flutter tests + coverage | PASS |
+| Android debug APK | PASS |
+| iOS debug build بدون code signing | PASS |
+
+بهذا لم تعد Android وiOS `NOT_BUILT`. كما نجح workflow السابق `Mobile - Flutter Desktop CI/CD` على commit `6cdd61ed` في Dart analyze/format، Flutter tests، Windows MSIX، Linux AppImage/deb/rpm، وmacOS DMG.
+
+الفجوات المتبقية ليست غياب platform source أو build: هي device-runtime tests على أجهزة فعلية، App Links/Universal Links مع domain association إنتاجي، WebAuthn/passkey ceremony، وStaging live revocation/session race. لذلك تم تخفيض نطاق الفجوة، لكن لا يتم إعلان `COMPLETE` قبل هذه الأدلة التشغيلية.
