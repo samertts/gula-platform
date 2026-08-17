@@ -156,33 +156,14 @@ class OfflineSyncEngine:
         if not conflict:
             return None
 
-        if resolution == ConflictResolution.LAST_WRITE_WINS:
-            winner = (
-                conflict.operation_a
-                if conflict.operation_a.timestamp >= conflict.operation_b.timestamp
-                else conflict.operation_b
+        if resolution != ConflictResolution.MANUAL:
+            raise ValueError(
+                "Automatic conflict resolution is disabled for clinical data; "
+                "use MANUAL with an explicit reviewed merged_data payload"
             )
-            result = winner.data
-
-        elif resolution == ConflictResolution.TIMESTAMP_MERGE:
-            merged = {}
-            for op in (conflict.operation_a, conflict.operation_b):
-                for k, v in op.data.items():
-                    existing = merged.get(k)
-                    if existing is None or op.timestamp > existing.get("_ts", 0):
-                        merged[k] = {"value": v, "_ts": op.timestamp}
-            result = {k: v["value"] for k, v in merged.items()}
-
-        elif resolution == ConflictResolution.CRDT_MERGE:
-            merged = {}
-            for op in (conflict.operation_a, conflict.operation_b):
-                for k, v in op.data.items():
-                    if k not in merged:
-                        merged[k] = v
-            result = merged
-
-        else:
-            result = merged_data or conflict.operation_a.data
+        if not merged_data:
+            raise ValueError("Manual conflict resolution requires merged_data")
+        result = merged_data
 
         conflict.resolution = resolution
         conflict.resolved_at = time.time()
@@ -233,7 +214,7 @@ class OfflineSyncEngine:
                     conflict_id=conflict_id,
                     operation_a=existing,
                     operation_b=incoming,
-                    resolution=ConflictResolution.LAST_WRITE_WINS,
+                    resolution=ConflictResolution.MANUAL,
                 )
         return None
 

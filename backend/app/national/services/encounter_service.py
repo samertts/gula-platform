@@ -40,13 +40,15 @@ _FLOW_TO_FHIR_STATUS = {
 }
 
 
-def get_encounter(db: Session, encounter_id: str, lab_id: int | None = None) -> Encounter | None:
+def get_encounter(db: Session, encounter_id: str, lab_id: int | None = None, for_update: bool = False) -> Encounter | None:
     query = db.query(Encounter).filter(
         Encounter.id == encounter_id,
         ~Encounter.is_deleted,
     )
     if lab_id is not None:
         query = query.filter(Encounter.lab_id == lab_id)
+    if for_update:
+        query = query.with_for_update()
     return query.first()
 
 
@@ -81,6 +83,7 @@ def transition_flow_state(
     target_state: str,
     user_id: int,
     expected_version: int | None = None,
+    lab_id: int | None = None,
 ) -> Encounter:
     """Move an encounter through the short government-hospital workflow.
 
@@ -89,7 +92,7 @@ def transition_flow_state(
     """
     if target_state not in FLOW_TRANSITIONS:
         raise ConflictError(f"Unknown flow state: {target_state}")
-    encounter = get_encounter(db, encounter_id)
+    encounter = get_encounter(db, encounter_id, lab_id=lab_id, for_update=True)
     if encounter is None:
         raise EncounterNotFoundError(encounter_id)
     current_state = encounter.flow_state or "planned"
@@ -157,6 +160,7 @@ def complete_encounter(
         "discharged",
         int(user_id),
         expected_version=encounter.version,
+        lab_id=lab_id,
     )
 
 
@@ -177,6 +181,7 @@ def cancel_encounter(
         "cancelled",
         int(user_id),
         expected_version=encounter.version,
+        lab_id=lab_id,
     )
 
 

@@ -16,6 +16,7 @@ from .patient_flow import router as patient_flow_router
 from .reference import router as reference_router
 from .referral import router as referral_router
 from .security import router as security_router
+from .sync import router as sync_router
 from .vital_signs import router as vital_signs_router
 
 national_router = APIRouter(prefix="/national", tags=["National Healthcare Domain"])
@@ -35,4 +36,5 @@ national_router.include_router(patient_flow_router)
 national_router.include_router(reference_router)
 national_router.include_router(referral_router)
 national_router.include_router(security_router)
+national_router.include_router(sync_router)
 national_router.include_router(vital_signs_router)

@@ -1303,6 +1303,58 @@ export const patientFlowApi = {
     api.post<PatientFlowRecord>(`/national/patient-flow/${encounterId}/transition`, data).then((r) => r.data),
 };
 
+export type SyncConflict = {
+  conflict_id: string;
+  operation_id: string;
+  entity_type: string;
+  entity_id: string | null;
+  conflict_type: string;
+  severity: string;
+  status: string;
+  base_version: number | null;
+  server_version: number | null;
+  local_payload: Record<string, unknown>;
+  server_snapshot?: Record<string, unknown> | null;
+  resolution?: string | null;
+  created_at: string;
+};
+
+export type ClinicalNotification = {
+  notification_id: string;
+  conflict_id: string;
+  severity: string;
+  title: string;
+  message: string;
+  status: string;
+  requires_ack: boolean;
+  created_at: string;
+  acknowledged_at?: string | null;
+  escalated_at?: string | null;
+};
+
+export const syncApi = {
+  registerDevice: (data: { device_id: string; hospital_id: number }) =>
+    api.post<Record<string, unknown>>("/national/sync/devices/session", data).then((r) => r.data),
+  status: (deviceId: string) => api.get<Record<string, unknown>>("/national/sync/status", { params: { device_id: deviceId } }).then((r) => r.data),
+  pushBatch: (data: { device_id: string; operations: Record<string, unknown>[] }) =>
+    api.post<{ accepted_count: number; duplicate_count: number; conflict_count: number; rejected_count: number; results: { operation_id?: string; status?: string }[] }>("/national/sync/operations:batch", data).then((r) => r.data),
+  changes: (after?: string) => api.get<{ changes: Record<string, unknown>[] }>("/national/sync/changes", { params: after ? { after } : undefined }).then((r) => r.data),
+  conflicts: (params?: { hospital_id?: number; status?: string; limit?: number }) =>
+    api.get<SyncConflict[]>("/national/sync/conflicts", { params }).then((r) => r.data),
+  resolveConflict: (conflictId: string, data: { decision: string; reason_code: string; reason_note: string; expected_server_version?: number }) =>
+    api.post<SyncConflict>(`/national/sync/conflicts/${conflictId}:resolve`, data).then((r) => r.data),
+  notifications: (status = "unread") =>
+    api.get<{ items: ClinicalNotification[]; unread_count: number }>("/national/sync/notifications", { params: { status } }).then((r) => r.data),
+  acknowledgeNotification: (notificationId: string) =>
+    api.post<ClinicalNotification>(`/national/sync/notifications/${notificationId}:acknowledge`).then((r) => r.data),
+  escalateNotification: (notificationId: string) =>
+    api.post<ClinicalNotification>(`/national/sync/notifications/${notificationId}:escalate`).then((r) => r.data),
+  acquireLock: (resourceType: string, resourceId: string, data: { device_id: string; hospital_id?: number }) =>
+    api.post<Record<string, unknown>>(`/national/sync/records/${resourceType}/${resourceId}:lock`, data).then((r) => r.data),
+  heartbeatLock: (resourceType: string, resourceId: string, lockToken: string) =>
+    api.post<Record<string, unknown>>(`/national/sync/records/${resourceType}/${resourceId}:lock-heartbeat`, { lock_token: lockToken }).then((r) => r.data),
+};
+
 // ── National Data ──
 export const nationalDataApi = {
   // Patients

@@ -242,6 +242,14 @@ def import_all_models() -> None:
     )
     from .capabilities.fhir_interoperability.models import FHIRResourceRecord  # noqa: F401
     from .models.outbox import OutboxEvent  # noqa: F401
+    from .national.sync_models import (  # noqa: F401
+        NationalClinicalNotificationModel,
+        NationalDeviceSessionModel,
+        NationalRecordLockModel,
+        NationalSyncConflictModel,
+        NationalSyncOperationModel,
+        NationalSyncOutboxModel,
+    )
     from .payments import models as payment_models  # noqa: F401
     from .models.subscription import (  # noqa: F401
         FeatureFlag,
@@ -668,6 +676,7 @@ def _register_routes(app: FastAPI) -> None:
 
     from .national.notification_platform.api.routes import router as notification_platform_router
     app.include_router(notification_platform_router)
+    from .tasks import sync_outbox as _sync_outbox_tasks  # noqa: F401 — registers task handlers
     from .notifications.telegram_chat import router as telegram_chat_router
     app.include_router(telegram_chat_router)
 

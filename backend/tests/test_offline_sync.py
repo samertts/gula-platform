@@ -122,7 +122,7 @@ class TestOfflineSyncEngine:
         assert clock.get("d1", 0) >= 1
         assert clock.get("d2", 0) >= 1
 
-    def test_last_write_wins_resolution(self):
+    def test_automatic_last_write_wins_is_rejected(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         op_a = engine.create_operation(
             entity_type="patient", entity_id="p-conflict",
@@ -152,13 +152,13 @@ class TestOfflineSyncEngine:
         conflicts = engine.get_conflicts()
         assert len(conflicts) >= 1
 
-        result = engine.resolve_conflict(
-            conflicts[0].conflict_id,
-            ConflictResolution.LAST_WRITE_WINS,
-            resolver="system",
-        )
-        assert result is not None
-        assert result["name"] == "Bob"
+        import pytest
+        with pytest.raises(ValueError, match="Automatic conflict resolution is disabled"):
+            engine.resolve_conflict(
+                conflicts[0].conflict_id,
+                ConflictResolution.LAST_WRITE_WINS,
+                resolver="system",
+            )
 
     def test_conflict_detection(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
@@ -190,7 +190,7 @@ class TestOfflineSyncEngine:
         conflicts = engine.get_conflicts()
         assert len(conflicts) >= 1
 
-    def test_crdt_merge(self):
+    def test_automatic_crdt_merge_is_rejected(self):
         engine = OfflineSyncEngine(device_secret="test-secret")
         op_a = engine.create_operation(
             entity_type="patient", entity_id="p-crdt",
@@ -218,14 +218,13 @@ class TestOfflineSyncEngine:
         conflicts = engine.get_conflicts()
         assert len(conflicts) >= 1
 
-        result = engine.resolve_conflict(
-            conflicts[0].conflict_id,
-            ConflictResolution.CRDT_MERGE,
-            resolver="system",
-        )
-        assert result is not None
-        assert "name" in result
-        assert "phone" in result or "email" in result
+        import pytest
+        with pytest.raises(ValueError, match="Automatic conflict resolution is disabled"):
+            engine.resolve_conflict(
+                conflicts[0].conflict_id,
+                ConflictResolution.CRDT_MERGE,
+                resolver="system",
+            )
 
     def test_sync_log(self):
         engine = OfflineSyncEngine(device_secret="test-secret")

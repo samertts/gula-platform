@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 
 from . import PlatformRegistry
+from app.domain.exceptions import ConflictError
 
 logger = logging.getLogger("gula.platform.sync")
 
@@ -46,9 +47,11 @@ class SyncService:
         return [c for c in self._changes if c.timestamp > since]
 
     def resolve_conflicts(self, local: SyncChange, remote: SyncChange) -> SyncChange:
-        if local.version >= remote.version:
-            return local
-        return remote
+        if local.entity_type != remote.entity_type or local.entity_id != remote.entity_id:
+            raise ConflictError("Cannot resolve changes for different resources")
+        raise ConflictError(
+            "Automatic conflict resolution is disabled; create an explicit clinical review decision"
+        )
 
     def get_sync_status(self) -> dict:
         return {
