@@ -54,11 +54,26 @@ class FHIRJSONResponse(JSONResponse):
 
     media_type = "application/fhir+json"
 
-    def __init__(self, content, **kwargs):
-        headers = dict(kwargs.pop("headers", None) or {})
-        headers.setdefault("Cache-Control", "no-store, no-cache, must-revalidate")
-        headers.setdefault("Pragma", "no-cache")
-        super().__init__(content=content, headers=headers, **kwargs)
+    def __init__(
+        self,
+        content,
+        status_code: int = 200,
+        headers=None,
+        media_type=None,
+        background=None,
+        **kwargs,
+    ):
+        response_headers = dict(headers or {})
+        response_headers.setdefault("Cache-Control", "no-store, no-cache, must-revalidate")
+        response_headers.setdefault("Pragma", "no-cache")
+        super().__init__(
+            content=content,
+            status_code=status_code,
+            headers=response_headers,
+            media_type=media_type,
+            background=background,
+            **kwargs,
+        )
 
 
 # ===========================================================================

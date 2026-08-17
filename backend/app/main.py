@@ -32,7 +32,7 @@ app = create_app()
 
 
 # ===== HEALTH & STATUS =====
-@app.get("/health", tags=["system"])
+@app.get("/health", tags=["system"], response_class=JSONResponse)
 def health():
     """Liveness probe — always returns 200 if the process is alive.
     Includes circuit breaker state and pool info for observability.
@@ -60,7 +60,7 @@ def health():
     }
 
 
-@app.get("/health/ready", tags=["system"])
+@app.get("/health/ready", tags=["system"], response_class=JSONResponse)
 def readiness():
     """Hybrid readiness probe — startup completed AND services still alive.
 
@@ -83,13 +83,13 @@ def readiness():
     return {"status": "ready"}
 
 
-@app.get("/health/live", tags=["system"])
+@app.get("/health/live", tags=["system"], response_class=JSONResponse)
 def liveness():
     """Kubernetes-style liveness probe - always returns 200 if process is alive."""
     return {"status": "alive", "version": APP_VERSION}
 
 
-@app.get("/health/status", tags=["system"])
+@app.get("/health/status", tags=["system"], response_class=JSONResponse)
 def health_status():
     """Full diagnostic status — shows exactly why the system is or isn't ready.
     Useful for debugging startup failures without needing server access.
@@ -141,7 +141,7 @@ def health_status():
     }
 
 
-@app.get("/health/deep", tags=["system"])
+@app.get("/health/deep", tags=["system"], response_class=JSONResponse)
 def health_deep():
     """Deep diagnostic endpoint — comprehensive latency + queue + memory snapshot.
     Designed for monitoring dashboards and alerting (Prometheus, Grafana, etc.).
@@ -289,7 +289,7 @@ def health_deep():
 
 
 # ===== KERNEL HEALTH =====
-@app.get("/health/kernel", tags=["system"])
+@app.get("/health/kernel", tags=["system"], response_class=JSONResponse)
 async def kernel_health():
     """Kernel health and diagnostics.
     Returns the Kernel's internal state, component status, and uptime.
@@ -311,7 +311,7 @@ async def kernel_health():
 _test_types_cache: dict = {"data": None, "at": 0.0}
 
 
-@app.get("/test-types", tags=["system"])
+@app.get("/test-types", tags=["system"], response_class=JSONResponse)
 def list_test_types():
     """Returns all available test types and their reference ranges.
     Cached in-memory for 5 minutes to reduce database load.

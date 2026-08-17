@@ -52,3 +52,50 @@ def test_public_health_diagnostics_do_not_format_raw_exception_text() -> None:
     assert "db_err = str(e)" not in source
     assert "red_err = str(e)" not in source
     assert "queue_err = str(e)" not in source
+
+
+def test_openapi_generation_has_unique_operation_ids_and_canonical_security_routes() -> None:
+    from app.main import app
+
+    schema = app.openapi()
+    operations: list[str] = []
+    for path_item in schema.get("paths", {}).values():
+        for method, operation in path_item.items():
+            if method.lower() in {"get", "post", "put", "patch", "delete", "options", "head"}:
+                operation_id = operation.get("operationId")
+                if operation_id:
+                    operations.append(operation_id)
+
+    assert len(operations) == len(set(operations))
+    assert "/auth/change-password" in schema["paths"]
+    assert "/integration/connectors" in schema["paths"]
+    assert "/lims/orders/{order_id}/fhir-bundle" in schema["paths"]
+    assert "application/fhir+json" in str(schema["paths"]["/lims/orders/{order_id}/fhir-bundle"])
+
+
+def test_person_and_device_routes_require_server_side_actor() -> None:
+    from app.identity.api.workspaces import get_current_niam_actor
+    from app.main import app
+    from fastapi.routing import APIRoute
+
+    def iter_routes(routes, prefix: str = ""):
+        for route in routes:
+            if isinstance(route, APIRoute):
+                path = f"{prefix.rstrip('/')}{route.path or '/'}"
+                yield route, path
+                continue
+            original_router = getattr(route, "original_router", None)
+            if original_router is not None:
+                include_context = getattr(route, "include_context", None)
+                included_prefix = getattr(include_context, "prefix", None) or prefix
+                yield from iter_routes(original_router.routes, included_prefix)
+
+    protected_paths = [
+        (route, path)
+        for route, path in iter_routes(app.routes)
+        if path.startswith(("/niam/persons", "/niam/devices"))
+    ]
+    assert protected_paths
+    for route, path in protected_paths:
+        dependency_calls = {getattr(dependency.call, "__name__", "") for dependency in route.dependant.dependencies}
+        assert get_current_niam_actor.__name__ in dependency_calls, path

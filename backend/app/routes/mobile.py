@@ -31,9 +31,7 @@ from ..security.auth import (
     create_refresh_token,
     create_token,
     decode_refresh_token,
-    hash_password,
     is_token_blacklisted,
-    verify_password,
 )
 from ..security.dependencies import get_current_user
 from ..security.rate_limit import get_client_ip, rate_limit_auth
@@ -222,39 +220,9 @@ def refresh_access_token(
     return result
 
 
-# ─── Change Password ─────────────────────────────────────────────────────────
-
-
-class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
-
-
-@router.post("/change-password", summary="Change current user password")
-def change_password(
-    data: ChangePasswordRequest,
-    current_user: LabUser = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Change the password for the currently authenticated user."""
-    if not verify_password(data.current_password, current_user.password_hash):
-        raise HTTPException(status_code=400, detail="كلمة المرور الحالية غير صحيحة")
-    if len(data.new_password) < 8:
-        raise HTTPException(
-            status_code=400, detail="كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل",
-        )
-    current_user.password_hash = hash_password(data.new_password)
-    # Invalidate all active sessions — user must log in again with new password
-    bump_perm_version(
-        current_user,
-        db,
-        actor_id=current_user.id,
-        actor_role=current_user.role,
-        reason="password_change",
-    )
-    db.commit()
-    return {"message": "تم تغيير كلمة المرور بنجاح"}
-
+# Password changes are served by the canonical password-reset router at
+# ``/auth/change-password``.  Keeping a second mobile handler here would create
+# a duplicate route and allow two divergent security policies for one operation.
 
 # ─── App Info ────────────────────────────────────────────────────────────────
 

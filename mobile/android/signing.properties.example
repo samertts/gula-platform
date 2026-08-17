@@ -1,0 +1,10 @@
+# Android release signing is intentionally not stored in the repository.
+#
+# CI must inject the signing material through Gradle project properties:
+#   android.injected.signing.store.file
+#   android.injected.signing.store.password
+#   android.injected.signing.key.alias
+#   android.injected.signing.key.password
+#
+# Keep the real keystore and values in the approved CI/secret manager only.
+# Do not rename this file to signing.properties and do not commit a keystore.

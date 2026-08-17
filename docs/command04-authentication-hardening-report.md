@@ -7,8 +7,8 @@
 **Pull Request:** [#226](https://github.com/samertts/gula-platform/pull/226)
 **التاريخ:** 2026-08-16
 **المؤلف:** **Manus AI**
-**قرار Command 04:** **`AUTHENTICATION_PARTIAL`**
-**الحكم الأمني:** تم إصلاح دورة المصادقة والجلسة والتدوير والإبطال على مستوى الخادم، وأصبحت مسارات replay وCSRF وMFA وworkspace context وrate limiting fail-closed في الحدود التي يمكن إثباتها محلياً. لا يجوز اعتبار التكامل عبر جميع المنصات **REMEDIATED بالكامل** قبل تشغيل Android على SDK فعلي، وFlutter Desktop CI، وiOS/Xcode CI، وإجراء PostgreSQL/Alembic rehearsal على بيئة staging، ومعالجة حظر Vercel الخارجي.
+**قرار Command 04:** **`SECURITY_BLOCKED — AUTHENTICATION_PARTIAL`**
+**الحكم الأمني:** تم إصلاح دورة المصادقة والجلسة والتدوير والإبطال على مستوى الخادم، وأصبحت مسارات replay وCSRF وMFA وworkspace context وrate limiting fail-closed في الحدود التي يمكن إثباتها محلياً. أثناء التدقيق اكتُشف keystore إنتاجي وملف signing properties متتبعان في Git؛ لذلك فُعّل **SAFE_STOP**، وأزيلت الأسرار من working tree وأضيفت حواجز جديدة، لكن لا يمكن رفع الحظر قبل تدوير/إبطال المفتاح وكلمات المرور خارجياً ومعالجة التاريخ وفق إجراء أمني معتمد. كما تبقى أدلة Android/iOS/Flutter وPostgreSQL/Redis وVercel الخارجية غير مكتملة.
 
 ## 1. الملخص التنفيذي
 
@@ -126,7 +126,7 @@ Vercel `BLOCKED` ليس فشلاً في هذا الكود وفق القراءة 
 
 ## 9. القرار النهائي
 
-قرار Command 04 هو **`AUTHENTICATION_PARTIAL`**. السبب ليس وجود authentication bypass مثبت في الاختبارات، بل أن إثبات الجاهزية الكاملة يتطلب ثلاثة عناصر لم تتوفر في هذه البيئة: **PostgreSQL/Redis staging rehearsal، Android/iOS/Flutter native CI، وإزالة أو تفسير Vercel deployment block خارج الكود**.
+قرار Command 04 هو **`SECURITY_BLOCKED — AUTHENTICATION_PARTIAL`**. لا يوجد authentication bypass مثبت في الاختبارات، لكن اكتشاف signing material إنتاجي متتبع في Git هو blocker أمني مستقل يتطلب تدويراً/إبطالاً خارجياً ومراجعة تاريخ المستودع. إضافة إلى ذلك، يتطلب إثبات الجاهزية الكاملة **PostgreSQL/Redis staging rehearsal، Android/iOS/Flutter native CI، وإزالة أو تفسير Vercel deployment block خارج الكود**.
 
 داخل نطاق backend والواجهة المتاحة، تم تنفيذ hardening جوهري ومثبت: server-authoritative session lifecycle، idle/absolute expiry، atomic refresh rotation، family-wide replay revocation، cookie-only Web contract، native token boundary، server-authoritative logout، CSRF middleware registered and refresh-cookie protected، global rate-limit middleware registered and fail-closed، MFA/WebAuthn single-use، audit normalization، وworkspace context isolation. لا يجوز تفعيل مزودات Government/Professional/Organization أو أي biometric/OCR/NFC path اعتماداً على هذا الأمر؛ تبقى تلك المسارات **PROVIDER_DEPENDENCY** وفق قرار Command 03.
 
@@ -158,4 +158,38 @@ Vercel `BLOCKED` ليس فشلاً في هذا الكود وفق القراءة 
 [22]: https://github.com/samertts/gula-platform/pull/226 "Command 04 pull request"
 
 **التوقيع:** Manus AI
-**الحالة:** Report committed and pushed to `chore/security-ddos-hardening-clean`; PR #226 remains open for CI/review.
+**الحالة:** هذا التقرير محدث محلياً بعد SAFE_STOP، وسيُثبت في commit منفصل فقط بعد اكتمال الاختبارات؛ PR #226 remains open for review. لا يوجد force-push أو history rewrite.
+
+## 11. SAFE_STOP Addendum — Android Signing Material
+
+في 2026-08-17 اكتشف التدقيق أن المستودع كان يتتبع `mobile/android/app/keystore/gula-production.jks` و`mobile/android/app/signing.properties`. الملف الأول binary keystore بحجم 2796 بايت، والملف الثاني يحتوي مفاتيح إعداد signing مثل `storePassword` و`keyPassword`. لم تُطبع أي قيمة سرية أو private key، ولم يُجرَ أي تدوير أو إبطال خارجي تلقائياً.
+
+| الإجراء | النتيجة الحالية | الدليل المحلي |
+|---|---|---|
+| إزالة keystore وsigning properties من working tree | **PASS** | لا توجد ملفات `.jks` أو `signing.properties` حالياً تحت `mobile/android` |
+| منع عودة الملفات | **PASS** | `.gitignore` يمنعها، مع السماح فقط بـ`signing.properties.example` |
+| CI-only signing | **PASS محلياً** | Gradle يقرأ `android.injected.signing.*` فقط؛ release بلا properties يفشل برسالة fail-closed |
+| CI material handling | **PASS source review** | `umask 077`، `printf`، `chmod 600`، وcleanup للـkeystore/service account بعد الاستخدام |
+| Secret guard | **PASS** | `check_public_secrets.py` يرفض tracked `.jks` و`signing.properties` ويعيد `OK` بعد staging |
+| Gradle help | **PASS** | `:app:help` نجح |
+| Debug Android build | **ENVIRONMENT BLOCKED** | فشل قبل compile لأن Java toolchain المتاحة لا توفر `JAVA_COMPILER` |
+| Release بدون أسرار | **PASS fail-closed** | `bundleRelease` رفض التنفيذ برسالة `Release signing is not configured` |
+| External key rotation/revocation | **REQUIRED / UNVERIFIED** | لم يتم الوصول إلى Google Play/App Signing أو CI secret manager |
+| Git history purge | **REQUIRED / NOT PERFORMED** | لا force-push ولا history rewrite؛ يلزم إجراء بشري معتمد |
+
+بسبب بقاء المفتاح الإنتاجي وكلمات المرور محتملة التعرض في تاريخ Git، لا يجوز تصنيف Command 04 كـPASS بعد إزالة الملفات الحالية فقط. يلزم أولاً إبطال/تدوير Android production signing key و`storePassword` و`keyPassword` في الجهة المالكة، تدوير أي CI secrets مرتبطة به، ثم تنفيذ إجراء معتمد لتنظيف التاريخ أو احتواء أثره دون تجاوز سياسة منع force-push. إلى أن تثبت هذه الخطوات، يبقى **P4 `SECURITY_BLOCKED`** وP5 وCommand 05 محجوبين.
+
+## 12. Final Security Regression After SAFE_STOP Remediation
+
+| Evidence | Result |
+|---|---:|
+| Command 04 adversarial/security suite | **437 passed, 3 skipped, 3 warnings** |
+| BOLA/tenant isolation proof subset | **83 passed, 2 warnings** |
+| Person/device route actor-gating regression | **69 passed, 1 warning** |
+| OpenAPI route tracer | **PASS** |
+| Frontend dependency audit | **0 vulnerabilities across 190 production/optional dependencies** |
+| YAML/template validation | **PASS** |
+| Staged `git diff --check` | **PASS** |
+| Production/DB/deployment mutation | **NONE** |
+
+The security suite covers authentication, refresh replay, session scope, MFA, recovery, verification, membership, workspace, audit integrity, CSRF, rate limiting, runtime isolation, production configuration, headers, clinical authorization, LIMS/radiology tenant isolation, and token forgery. These results establish local regression safety; they do not substitute for external key rotation, Git-history containment, native release builds, PostgreSQL/Redis rehearsal, or production deployment evidence.

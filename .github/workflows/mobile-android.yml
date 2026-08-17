@@ -271,7 +271,9 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
+          chmod 600 keystore.jks
 
       - name: Assemble release AAB
         env:
@@ -334,7 +336,9 @@ jobs:
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
+          chmod 600 keystore.jks
 
       - name: Download AAB artifact
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
@@ -367,13 +371,19 @@ jobs:
         env:
           PLAY_SERVICE_ACCOUNT_KEY: ${{ secrets.PLAY_SERVICE_ACCOUNT_KEY }}
         run: |
-          echo "$PLAY_SERVICE_ACCOUNT_KEY" | base64 -d > play-service-account.json
+          umask 077
+          printf '%s' "$PLAY_SERVICE_ACCOUNT_KEY" | base64 --decode > play-service-account.json
+          chmod 600 play-service-account.json
           bundle exec fastlane run supply \
             --json_key play-service-account.json \
             --package_name "io.gula.android" \
             --track alpha \
             --promote_from_track alpha \
             --track beta
+
+      - name: Remove release signing material
+        if: always()
+        run: rm -f keystore.jks play-service-account.json
 
   dependency-submission:
     name: Dependency Graph

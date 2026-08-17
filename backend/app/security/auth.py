@@ -97,7 +97,8 @@ def build_token_payload(user: _TokenUser, *, account_kind: str = "lab") -> JWTCl
 
 def create_token(data: JWTClaims) -> str:
     to_encode = data.copy()
-    to_encode.update({"type": "access", "jti": str(uuid4())})
+    to_encode.setdefault("jti", str(uuid4()))
+    to_encode["type"] = "access"
     return cast(str, _shared_create_access_token(
         to_encode,
         secret_key=SECRET_KEY,
@@ -118,7 +119,8 @@ def decode_token(token: str) -> JWTClaims | None:
 
 def create_refresh_token(data: JWTClaims) -> str:
     to_encode = data.copy()
-    to_encode.update({"type": "refresh", "jti": str(uuid4())})
+    to_encode.setdefault("jti", str(uuid4()))
+    to_encode["type"] = "refresh"
     return cast(str, _shared_create_refresh_token(
         to_encode,
         refresh_secret=REFRESH_TOKEN_SECRET,

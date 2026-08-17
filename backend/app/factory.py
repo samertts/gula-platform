@@ -695,8 +695,8 @@ def _register_routes(app: FastAPI) -> None:
     from .contracts.routes import router as contracts_router
     app.include_router(contracts_router)
 
-    from .integration.connectors.routes import router as connectors_router
-    app.include_router(connectors_router)
+    # Connector routes are registered once by IntegrationPlatform.initialize().
+    # Keeping a second include here creates duplicate runtime routes and OpenAPI IDs.
 
     from .routes import hospital as hospital_routes
     app.include_router(hospital_routes.router)

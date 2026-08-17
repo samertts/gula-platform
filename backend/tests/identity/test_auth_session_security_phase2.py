@@ -207,3 +207,25 @@ def test_rate_limit_429_contains_retry_and_budget_headers() -> None:
     assert error.value.headers["X-RateLimit-Limit"] == "3"
     assert error.value.headers["X-RateLimit-Remaining"] == "0"
     assert int(error.value.headers["Retry-After"]) >= 1
+
+
+def test_token_helpers_preserve_session_bound_jti() -> None:
+    access_jti = "access-session-jti"
+    refresh_jti = "refresh-session-jti"
+
+    access_token = security_auth.create_token(
+        {
+            "jti": access_jti,
+            "account_uuid": "account-uuid-1",
+            "identity_id": "identity-1",
+        },
+    )
+    refresh_token = security_auth.create_refresh_token(
+        {
+            "jti": refresh_jti,
+            "account_uuid": "account-uuid-1",
+        },
+    )
+
+    assert security_auth.decode_token(access_token)["jti"] == access_jti
+    assert security_auth.decode_refresh_token(refresh_token, check_blacklist=False)["jti"] == refresh_jti

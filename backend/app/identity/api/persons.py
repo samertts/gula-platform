@@ -1,10 +1,13 @@
 from datetime import date
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.identity.services.person_service import PersonService
+from app.identity.api.workspaces import NiamActor, get_current_niam_actor
+from app.identity.models.identity import IdentityRecord
+from app.identity.models.person import Person
 
 router = APIRouter(prefix="/persons", tags=["NIAM Persons"])
 
@@ -22,32 +25,34 @@ async def create_person(
     phone: str | None = None,
     national_id_hash: str | None = None,
     health_id: str | None = None,
+    _actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
-    service = PersonService(db)
-    person = await service.create_person(
-        given_name=given_name,
-        family_name=family_name,
-        middle_name=middle_name,
-        full_name_ar=full_name_ar,
-        gender=gender,
-        birth_date=birth_date,
-        nationality=nationality,
-        email=email,
-        phone=phone,
-        national_id_hash=national_id_hash,
-        health_id=health_id,
+    del _actor, db, given_name, family_name, middle_name, full_name_ar, gender, birth_date
+    del nationality, email, phone, national_id_hash, health_id
+    raise HTTPException(
+        status_code=status.HTTP_410_GONE,
+        detail="Direct person creation is disabled. Use an approved account or institutional workflow.",
     )
-    return {"uuid": person.uuid, "id": person.id}
 
 
 @router.get("/{person_uuid}")
 async def get_person(
     person_uuid: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
-    service = PersonService(db)
-    person = await service.get_person_by_uuid(person_uuid)
-    if not person:
-        return {"error": "not_found"}
+    result = await db.execute(
+        select(Person)
+        .join(IdentityRecord, IdentityRecord.person_id == Person.id)
+        .where(
+            Person.uuid == person_uuid,
+            Person.is_active.is_(True),
+            IdentityRecord.id == actor.account.identity_id,
+            IdentityRecord.is_active.is_(True),
+        ),
+    )
+    person = result.scalar_one_or_none()
+    if person is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Person not found")
     return {"uuid": person.uuid, "given_name": person.given_name, "family_name": person.family_name}

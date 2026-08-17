@@ -26,7 +26,7 @@ from app.identity.services.person_service import PersonService
 from app.identity.services.account_service import AccountService
 from app.identity.services.authentication_service import AuthenticationService
 from app.identity.services.session_service import SessionService
-from app.identity.services.device_service import DeviceService
+from app.identity.services.device_service import DeviceOwnershipError, DeviceService
 from app.identity.services.audit_service import AuditService
 from app.identity.repositories.person_repository import PersonRepository
 from app.identity.repositories.account_repository import AccountRepository
@@ -390,6 +390,26 @@ class TestServices:
         )
         assert isinstance(result, Device)
         assert result.device_fingerprint == "fp-new-device"
+
+    @pytest.mark.asyncio
+    async def test_device_service_rejects_cross_account_fingerprint(self, mock_session):
+        svc = DeviceService(mock_session)
+        existing = Device(
+            id="device-1",
+            person_id="person-1",
+            account_id="account-1",
+            device_fingerprint="fp-existing",
+            is_active=True,
+        )
+        svc.repo.find_by_fingerprint = AsyncMock(return_value=existing)
+
+        with pytest.raises(DeviceOwnershipError):
+            await svc.register_device(
+                person_id="person-2",
+                account_id="account-2",
+                device_fingerprint="fp-existing",
+            )
+        mock_session.flush.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_audit_service_record(self, mock_session):
