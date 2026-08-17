@@ -22,6 +22,7 @@ Security
 - Results are always scoped to citizen's own phone/national-id hash
 - No cross-citizen data access is possible
 """
+from app.services.route_audit import audit_route_mutation
 
 import hashlib
 import hmac as _hmac
@@ -246,6 +247,7 @@ def citizen_login(
     }
 
 
+@audit_route_mutation(action="route.citizen_logout", resource_type="citizen_portal")
 @router.post("/logout")
 def citizen_logout(request: Request, response: Response, db: Session = Depends(get_db)):
     """Revoke citizen tokens and clear cookies."""

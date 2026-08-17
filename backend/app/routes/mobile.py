@@ -2,6 +2,7 @@
 Endpoints optimized for Android and iOS applications.
 Supports token refresh, device registration, and mobile-friendly data.
 """
+from app.services.route_audit import audit_route_mutation
 
 import logging
 import os
@@ -188,6 +189,7 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
+@audit_route_mutation(action="route.change_password", resource_type="mobile")
 @router.post("/change-password", summary="Change current user password")
 def change_password(
     data: ChangePasswordRequest,

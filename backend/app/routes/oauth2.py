@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 import base64
 import json
@@ -49,6 +50,7 @@ class ClientRegisterRequest(BaseModel):
     token_endpoint_auth_method: str = "client_secret_basic"
 
 
+@audit_route_mutation(action="route.register_client", resource_type="oauth2")
 @router.post("/register")
 def register_client(
     data: ClientRegisterRequest,
@@ -186,6 +188,7 @@ def introspect(
     }
 
 
+@audit_route_mutation(action="route.revoke", resource_type="oauth2")
 @router.post("/revoke")
 def revoke(
     data: OAuth2RevokeRequest,

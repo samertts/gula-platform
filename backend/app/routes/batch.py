@@ -1,5 +1,6 @@
 """Batch operations - process multiple orders/results efficiently."""
 
+from app.services.route_audit import audit_route_mutation
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -33,6 +34,7 @@ class BatchOrderRequest(BaseModel):
     orders: list[BatchOrderItem]
 
 
+@audit_route_mutation(action="route.create_batch_orders", resource_type="batch")
 @router.post("/orders", status_code=201)
 def create_batch_orders(
     data: BatchOrderRequest,

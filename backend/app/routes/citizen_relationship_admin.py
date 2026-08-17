@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 from typing import Literal
 
@@ -66,6 +67,7 @@ def _workflow_error(exc: Exception) -> HTTPException:
     return HTTPException(status_code=500, detail="Citizen relationship workflow failed")
 
 
+@audit_route_mutation(action="route.create_pending_relationship", resource_type="citizen_relationship_admin")
 @router.post("", status_code=status.HTTP_201_CREATED)
 def create_pending_relationship(
     body: CreateCitizenRelationshipRequest,

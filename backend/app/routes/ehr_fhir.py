@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 from datetime import date, datetime
 from html import escape
@@ -1434,6 +1435,7 @@ def fhir_delete_resource(
 # ── Batch / Transaction support ─────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.fhir_batch", resource_type="ehr_fhir")
 @router.post("", summary="FHIR Batch or Transaction")
 def fhir_batch(
     body: dict[str, Any],

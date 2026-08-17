@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 import logging
 from datetime import datetime
@@ -67,6 +68,7 @@ class CDCChangeRecord(BaseModel):
 
 # ── FHIR Subscription Endpoint ────────────────────────────────────────────────
 
+@audit_route_mutation(action="route.receive_fhir_subscription", resource_type="national_streaming")
 @router.post("/fhir", summary="FHIR Subscription endpoint")
 def receive_fhir_subscription(
     payload: FHIRSubscriptionPayload,
@@ -110,6 +112,7 @@ def receive_fhir_subscription(
 
 # ── HL7 Streaming Endpoint ───────────────────────────────────────────────────
 
+@audit_route_mutation(action="route.receive_hl7_message", resource_type="national_streaming")
 @router.post("/hl7", summary="HL7 message streaming endpoint")
 def receive_hl7_message(
     payload: HL7StreamingPayload,
@@ -159,6 +162,7 @@ def receive_hl7_message(
 
 # ── Event Streaming Endpoint ─────────────────────────────────────────────────
 
+@audit_route_mutation(action="route.receive_streaming_event", resource_type="national_streaming")
 @router.post("/events", summary="Event streaming endpoint")
 def receive_streaming_event(
     payload: EventStreamingPayload,
@@ -234,6 +238,7 @@ def get_cdc_feed(
     ]
 
 
+@audit_route_mutation(action="route.record_cdc_change", resource_type="national_streaming")
 @router.post("/cdc", summary="Record CDC change")
 def record_cdc_change(
     payload: CDCChangeRecord,

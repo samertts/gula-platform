@@ -1,5 +1,6 @@
 """Health Identity management - create and link health IDs."""
 
+from app.services.route_audit import audit_route_mutation
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -19,6 +20,7 @@ class LinkIdentityRequest(BaseModel):
     confirm_name: str | None = None
 
 
+@audit_route_mutation(action="route.link_national_id", resource_type="identity")
 @router.post("/link")
 def link_national_id(
     data: LinkIdentityRequest,

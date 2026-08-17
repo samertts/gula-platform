@@ -8,6 +8,7 @@ No route mutates clinical state directly — AI is always an assistant.
 """
 
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 import logging
 import time
@@ -30,6 +31,7 @@ from app.ai.rag_pipeline import rag
 from app.ai.security import scan_input
 from app.ai.vector_store import vector_store
 from app.database import get_db
+from sqlalchemy.orm import Session
 from app.models.patient import Patient
 from app.security.dependencies import get_current_user, require_permission
 
@@ -363,8 +365,12 @@ def list_tasks(status: str | None = None, limit: int = 20, current_user=Depends(
 # ─── Memory Routes ───────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.create_session", resource_type="ai_platform")
 @router.post("/sessions", summary="Create a new conversation session")
-async def create_session(current_user=Depends(get_current_user)):
+async def create_session(
+    current_user=Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     conv = await memory_store.create_session(
         lab_id=current_user.lab_id,
         user_id=current_user.id,

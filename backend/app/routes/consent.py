@@ -14,6 +14,7 @@ MVP policy
 - Revoke: the subject may always revoke; master/ministry admins may too.
 - Check: any authenticated actor can check if THEY have consent.
 """
+from app.services.route_audit import audit_route_mutation
 
 from datetime import datetime
 
@@ -84,6 +85,7 @@ def _user_owns_gpid(user: LabUser, gpid: str) -> bool:
 # ── POST /consent/grant ──────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.grant", resource_type="consent")
 @router.post("/grant", response_model=GrantResponse, status_code=201)
 def grant(
     data: GrantRequest,
@@ -136,6 +138,7 @@ def grant(
 # ── POST /consent/revoke ──────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.revoke", resource_type="consent")
 @router.post("/revoke", response_model=RevokeResponse)
 def revoke(
     data: RevokeRequest,

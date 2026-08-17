@@ -1,3 +1,4 @@
+from app.services.route_audit import audit_route_mutation
 from datetime import datetime
 from typing import Any
 
@@ -214,6 +215,7 @@ def get_canonical_encounter(
     return result
 
 
+@audit_route_mutation(action="route.record_canonical_encounter", resource_type="national_data")
 @router.post("/encounters", summary="Record a canonical encounter")
 def record_canonical_encounter(
     data: dict[str, Any],
@@ -259,6 +261,7 @@ def get_canonical_observation(
     return result
 
 
+@audit_route_mutation(action="route.record_canonical_observation", resource_type="national_data")
 @router.post("/observations", summary="Record a canonical observation")
 def record_canonical_observation(
     data: dict[str, Any],
@@ -292,6 +295,7 @@ def list_golden_records(
     return {"total": total, "records": [_golden_to_dict(r) for r in records]}
 
 
+@audit_route_mutation(action="route.create_golden_record", resource_type="national_data")
 @router.post("/golden-records", summary="Create golden record", status_code=201)
 def create_golden_record(
     data: GoldenRecordCreate,
@@ -312,6 +316,7 @@ def create_golden_record(
     return _golden_to_dict(record)
 
 
+@audit_route_mutation(action="route.resolve_golden_record", resource_type="national_data")
 @router.post("/golden-records/{golden_record_id}/resolve", summary="Resolve a golden record")
 def resolve_golden_record(
     golden_record_id: int,
@@ -332,6 +337,7 @@ def resolve_golden_record(
 
 # ── Duplicate Check ───────────────────────────────────────────────────────────
 
+@audit_route_mutation(action="route.check_duplicates", resource_type="national_data")
 @router.post("/duplicate-check", summary="Check for duplicate records")
 def check_duplicates(
     data: DuplicateCheckRequest,
@@ -359,6 +365,7 @@ def check_duplicates(
 
 # ── Merge Action ──────────────────────────────────────────────────────────────
 
+@audit_route_mutation(action="route.perform_merge", resource_type="national_data")
 @router.post("/merge", summary="Perform merge action")
 def perform_merge(
     data: MergeActionRequest,
@@ -387,6 +394,7 @@ def perform_merge(
 
 # ── Event Store ───────────────────────────────────────────────────────────────
 
+@audit_route_mutation(action="route.record_event", resource_type="national_data")
 @router.post("/events", summary="Record an event", status_code=201)
 def record_event(
     data: RecordEventRequest,
@@ -455,6 +463,7 @@ def list_data_catalog(
     return {"total": total, "entries": [_catalog_to_dict(e) for e in entries]}
 
 
+@audit_route_mutation(action="route.create_data_catalog_entry", resource_type="national_data")
 @router.post("/data-catalog", summary="Create data catalog entry", status_code=201)
 def create_data_catalog_entry(
     data: CatalogEntryCreate,
@@ -482,6 +491,7 @@ def create_data_catalog_entry(
 
 # ── Data Quality ──────────────────────────────────────────────────────────────
 
+@audit_route_mutation(action="route.create_quality_check", resource_type="national_data")
 @router.post("/data-quality-checks", summary="Record data quality check")
 def create_quality_check(
     data: QualityCheckCreate,
@@ -526,6 +536,7 @@ def get_data_lineage(
     )
 
 
+@audit_route_mutation(action="route.record_data_lineage", resource_type="national_data")
 @router.post("/data-lineage", summary="Record data lineage entry")
 def record_data_lineage(
     data: dict[str, Any],
@@ -563,6 +574,7 @@ def list_retention_policies(
     return [_retention_to_dict(p) for p in policies]
 
 
+@audit_route_mutation(action="route.create_retention_policy", resource_type="national_data")
 @router.post("/retention-policies", summary="Create retention policy", status_code=201)
 def create_retention_policy(
     data: RetentionPolicyCreate,
@@ -603,6 +615,7 @@ def list_consent_directives(
     return [_consent_to_dict(d) for d in directives]
 
 
+@audit_route_mutation(action="route.create_consent_directive", resource_type="national_data")
 @router.post("/consent-directives", summary="Create consent directive", status_code=201)
 def create_consent_directive(
     data: ConsentDirectiveCreate,
@@ -626,6 +639,7 @@ def create_consent_directive(
 
 # ── De-identification Jobs ────────────────────────────────────────────────────
 
+@audit_route_mutation(action="route.create_deidentification_job", resource_type="national_data")
 @router.post("/deidentification-jobs", summary="Create de-identification job", status_code=201)
 def create_deidentification_job(
     data: DeidentificationJobCreate,
@@ -699,6 +713,7 @@ def list_features(
     ]
 
 
+@audit_route_mutation(action="route.create_feature", resource_type="national_data")
 @router.post("/features", summary="Create feature definition", status_code=201)
 def create_feature(
     data: FeatureDefinitionCreate,
@@ -726,6 +741,7 @@ def create_feature(
 
 # ── Feature Values ────────────────────────────────────────────────────────────
 
+@audit_route_mutation(action="route.store_feature_values", resource_type="national_data")
 @router.post("/feature-values", summary="Store feature values", status_code=201)
 def store_feature_values(
     data: FeatureValueCreate,
@@ -800,6 +816,7 @@ def list_training_datasets(
     ]
 
 
+@audit_route_mutation(action="route.create_training_dataset", resource_type="national_data")
 @router.post("/training-datasets", summary="Create training dataset", status_code=201)
 def create_training_dataset(
     data: TrainingDatasetCreate,
@@ -859,6 +876,7 @@ def list_vector_embeddings(
     ]
 
 
+@audit_route_mutation(action="route.store_vector_embedding", resource_type="national_data")
 @router.post("/vector-embeddings", summary="Store vector embedding", status_code=201)
 def store_vector_embedding(
     data: VectorEmbeddingCreate,

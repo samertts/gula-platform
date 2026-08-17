@@ -17,6 +17,7 @@ Design:
 """
 
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 import logging
 import os
@@ -121,6 +122,7 @@ def _authorize_event_ingress(principal: Any) -> Any:
 # ── POST /integrations/events ────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.receive_integration_event", resource_type="integrations")
 @router.post("/events", status_code=status.HTTP_202_ACCEPTED, summary="Stage an external event")
 def receive_integration_event(
     envelope: IntegrationEventEnvelope,
@@ -250,6 +252,7 @@ def reject_inbox_event(
 # ── POST /integrations/identity-bundles ──────────────────────────────────────
 
 
+@audit_route_mutation(action="route.receive_identity_bundle", resource_type="integrations")
 @router.post("/identity-bundles", status_code=status.HTTP_202_ACCEPTED, summary="Import a signed offline identity bundle")
 def receive_identity_bundle(
     bundle: dict[str, Any],

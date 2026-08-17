@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 import logging
 from datetime import datetime
@@ -341,6 +342,7 @@ def mask_field_value(
 # ── Delegation Endpoints ───────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.create_delegation", resource_type="authorization")
 @router.post("/delegations", status_code=201)
 def create_delegation(
     req: DelegationCreateRequest,
@@ -358,6 +360,7 @@ def create_delegation(
     )
 
 
+@audit_route_mutation(action="route.revoke_delegation", resource_type="authorization")
 @router.delete("/delegations/{delegation_id}")
 def revoke_delegation(
     delegation_id: int,
@@ -583,6 +586,7 @@ def assign_role(
     )
 
 
+@audit_route_mutation(action="route.revoke_role_assignment", resource_type="authorization")
 @router.delete("/assignments/{user_id}/{role_id}")
 def revoke_role_assignment(
     user_id: int,

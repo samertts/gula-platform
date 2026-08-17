@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 import logging
 
@@ -44,6 +45,7 @@ class ServiceAccountResponse(BaseModel):
     expires_at: str | None = None
 
 
+@audit_route_mutation(action="route.create", resource_type="service_accounts")
 @router.post("")
 def create(
     data: CreateServiceAccountRequest,
@@ -119,6 +121,7 @@ def list_all(
     ]
 
 
+@audit_route_mutation(action="route.revoke", resource_type="service_accounts")
 @router.delete("/{account_id}")
 def revoke(
     account_id: int,

@@ -1,3 +1,4 @@
+from app.services.route_audit import audit_route_mutation
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
@@ -114,6 +115,7 @@ def list_my_employees(
     }
 
 
+@audit_route_mutation(action="route.create_employee", resource_type="labs")
 @router.post("/me/employees", status_code=201)
 def create_employee(
     data: CreateEmployeeRequest,
@@ -142,6 +144,7 @@ def create_employee(
     return {"message": "تم إضافة الموظف بنجاح", "id": employee.id}
 
 
+@audit_route_mutation(action="route.update_employee", resource_type="labs")
 @router.put("/me/employees/{employee_id}")
 def update_employee(
     employee_id: int,
@@ -181,6 +184,7 @@ def update_employee(
     return {"message": "تم تحديث بيانات الموظف"}
 
 
+@audit_route_mutation(action="route.update_my_lab", resource_type="labs")
 @router.put("/me")
 def update_my_lab(
     data: LabUpdate,

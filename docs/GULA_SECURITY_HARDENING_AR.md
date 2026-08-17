@@ -51,3 +51,39 @@ python3 config/quality-gates/security-gate.py --json
 ```
 
 في حال غياب أدوات الفحص الخارجية، يجب تسجيل ذلك كفشل في بوابة الإصدار أو كعنصر مفتوح، وليس كنجاح أمني.
+
+## 6. إغلاق التحذيرات غير الوطنية
+
+تمت مراجعة تحذيرات `audit_coverage` الثلاثين التي شملت مسارات الذكاء الاصطناعي، الصلاحيات، المرضى المرجعيين، مسار الرعاية المستمرة، السجل الإلكتروني، المستشفى، البيانات الوطنية، البث، OAuth2، الحسابات الخدمية، الحوكمة، والمراجع. الكتابات المباشرة والمسارات المفوضة إلى الخدمات أصبحت مغطاة بواسطة `audit_route_mutation`، بينما بقيت helpers التي تستدعي `log_action` مباشرة مدعومة في تحليل Security Gate بدل إنشاء سجل مكرر.
+
+يسجل decorator المركزي نجاح العملية بعد تنفيذ route، ويستخدم `audit_mutation` الذي يضيف المستخدم والدور و`lab_id` واسم المسار ونوع المورد إلى السجل hash-chained. لا تُحفظ استجابة سريرية أو أسرار OAuth داخل payload؛ ويُسجل أن before/after العام محجوبان عندما لا يتوفر snapshot دلالي آمن في طبقة route. المسارات التي تحتاج before/after سريريًا مفصلًا يجب أن تضيفه داخل service transaction قبل rollout السريري.
+
+| النتيجة | القيمة |
+|---|---:|
+| تحذيرات `audit_coverage` قبل الإصلاح | 30 |
+| تحذيرات `audit_coverage` بعد الإصلاح | 0 |
+| اختبارات التغطية الأمنية الجديدة | 2 |
+| المجموعة الأمنية المركزة | 45 اختبارًا ناجحًا |
+| Backend suite الرسمية | 2686 اختبارًا ناجحًا، 4 متجاوزة، 252 تحذيرًا |
+
+أضيف اختبار regression يثبت أن decorator ينشئ سجلًا قابلًا للاستعلام، ويمنع تسريب حقل سري من response، ويتحقق آليًا من أن Security Gate لا يعيد أي finding في تغطية التدقيق. أما الاختبارات الاثنا عشر القديمة تحت `services/device_bridge/tests` فتظل خارج Backend suite بسبب أخطاء import وتجميع تاريخية غير مرتبطة بهذه الدفعة، ويجب فصلها أو إصلاحها في مهمة مستقلة.
+
+> صفر تحذيرات في AST لا يساوي موافقة إنتاج. يجب استكمال تشغيل SAST وGitleaks وdependency/container/IaC scans على CI نظيف، ثم اختبار تكامل staging ومراجعة اختراق مستقلة.
+
+## 7. التحقق الخاص بهذه الدفعة
+
+```bash
+PYTHONPATH=backend pytest -q \
+  backend/tests/test_non_national_audit_coverage.py \
+  backend/tests/test_platform_security_hardening.py \
+  backend/tests/test_security_regression.py \
+  backend/tests/test_sync_security_and_outbox.py
+
+PYTHONPATH=backend pytest -q backend/tests
+
+python3 config/quality-gates/security-gate.py \
+  --skip-sast --skip-deps --skip-secrets --skip-container \
+  --skip-iac --skip-sbom --skip-credentials --json
+```
+
+يجب تنفيذ الأمر الأخير دون خيارات `skip` في CI الإنتاجي بعد تثبيت الأدوات الخارجية؛ خيارات التجاوز استُخدمت محليًا فقط لأن الأدوات غير مثبتة في البيئة الحالية.

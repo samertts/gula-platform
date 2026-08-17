@@ -1,5 +1,6 @@
 """Quality Control endpoints - Westgard rules for lab instrument validation."""
 
+from app.services.route_audit import audit_route_mutation
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -144,6 +145,7 @@ def evaluate_westgard_full(
     return {"status": "pass", "violation": None}
 
 
+@audit_route_mutation(action="route.submit_qc", resource_type="quality_control")
 @router.post("", status_code=201)
 def submit_qc(
     data: QCSubmit,
@@ -193,6 +195,7 @@ def submit_qc(
     }
 
 
+@audit_route_mutation(action="route.submit_qc_batch", resource_type="quality_control")
 @router.post("/batch", status_code=201)
 def submit_qc_batch(
     data: QCBatchSubmit,

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 import logging
 from typing import Any
@@ -123,6 +124,7 @@ def search_terminology_codes(
     return {"items": [c.to_dict() for c in items], "total": total, "skip": skip, "limit": limit}
 
 
+@audit_route_mutation(action="route.create_terminology_code", resource_type="clinical")
 @router.post("/terminology/codes", status_code=201)
 def create_terminology_code(
     data: TerminologyCodeCreate,
@@ -145,6 +147,7 @@ def get_terminology_code(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.update_terminology_code", resource_type="clinical")
 @router.put("/terminology/codes/{code_id}")
 def update_terminology_code(
     code_id: str,
@@ -158,6 +161,7 @@ def update_terminology_code(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.delete_terminology_code", resource_type="clinical")
 @router.delete("/terminology/codes/{code_id}")
 def delete_terminology_code(
     code_id: str,
@@ -182,6 +186,7 @@ def list_terminology_versions(
     return {"items": [v.to_dict() for v in items], "total": total}
 
 
+@audit_route_mutation(action="route.create_terminology_version", resource_type="clinical")
 @router.post("/terminology/versions", status_code=201)
 def create_terminology_version(
     data: TerminologyVersionCreate,
@@ -192,6 +197,7 @@ def create_terminology_version(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.create_terminology_mapping", resource_type="clinical")
 @router.post("/terminology/mappings", status_code=201)
 def create_terminology_mapping(
     data: TerminologyMappingCreate,
@@ -214,6 +220,7 @@ def list_value_sets(
     return {"items": [v.to_dict() for v in items], "total": total}
 
 
+@audit_route_mutation(action="route.create_value_set", resource_type="clinical")
 @router.post("/terminology/value-sets", status_code=201)
 def create_value_set(
     data: ValueSetCreate,
@@ -224,6 +231,7 @@ def create_value_set(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.create_value_set_member", resource_type="clinical")
 @router.post("/terminology/value-set-members", status_code=201)
 def create_value_set_member(
     data: ValueSetMemberCreate,
@@ -245,6 +253,7 @@ def list_code_systems(
     return {"items": [c.to_dict() for c in items], "total": total}
 
 
+@audit_route_mutation(action="route.create_code_system", resource_type="clinical")
 @router.post("/terminology/code-systems", status_code=201)
 def create_code_system(
     data: CodeSystemCreate,
@@ -500,6 +509,7 @@ def list_guidelines(
     return {"items": [g.to_dict() for g in items], "total": total}
 
 
+@audit_route_mutation(action="route.create_guideline", resource_type="clinical")
 @router.post("/knowledge/guidelines", status_code=201)
 def create_guideline(
     data: GuidelineCreate,
@@ -522,6 +532,7 @@ def get_guideline(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.update_guideline", resource_type="clinical")
 @router.put("/knowledge/guidelines/{guideline_id}")
 def update_guideline(
     guideline_id: str,
@@ -552,6 +563,7 @@ def list_protocols(
     return {"items": [p.to_dict() for p in items], "total": total}
 
 
+@audit_route_mutation(action="route.create_protocol", resource_type="clinical")
 @router.post("/knowledge/protocols", status_code=201)
 def create_protocol(
     data: ProtocolCreate,
@@ -574,6 +586,7 @@ def get_protocol(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.update_protocol", resource_type="clinical")
 @router.put("/knowledge/protocols/{protocol_id}")
 def update_protocol(
     protocol_id: str,
@@ -604,6 +617,7 @@ def list_pathways(
     return {"items": [p.to_dict() for p in items], "total": total}
 
 
+@audit_route_mutation(action="route.create_pathway", resource_type="clinical")
 @router.post("/knowledge/pathways", status_code=201)
 def create_pathway(
     data: PathwayCreate,
@@ -626,6 +640,7 @@ def get_pathway(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.update_pathway", resource_type="clinical")
 @router.put("/knowledge/pathways/{pathway_id}")
 def update_pathway(
     pathway_id: str,
@@ -641,6 +656,7 @@ def update_pathway(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.create_guideline_approval", resource_type="clinical")
 @router.post("/knowledge/guidelines/{guideline_id}/approvals", status_code=201)
 def create_guideline_approval(
     guideline_id: str,
@@ -669,6 +685,7 @@ def list_standing_orders(
     return {"items": [s.to_dict() for s in items], "total": total}
 
 
+@audit_route_mutation(action="route.create_standing_order", resource_type="clinical")
 @router.post("/knowledge/standing-orders", status_code=201)
 def create_standing_order(
     data: StandingOrderCreate,
@@ -794,6 +811,7 @@ def check_drug_interactions(
     return {"interactions": results, "count": len(results)}
 
 
+@audit_route_mutation(action="route.create_clinical_alert", resource_type="clinical")
 @router.post("/cds/alerts", status_code=201)
 def create_clinical_alert(
     data: ClinicalAlertCreate,
@@ -998,6 +1016,7 @@ def list_quality_indicators(
     return {"items": [i.to_dict() for i in items], "total": total}
 
 
+@audit_route_mutation(action="route.create_quality_indicator", resource_type="clinical")
 @router.post("/quality/indicators", status_code=201)
 def create_quality_indicator(
     data: QualityIndicatorCreate,
@@ -1039,6 +1058,7 @@ def list_audit_records(
     return {"items": [r.to_dict() for r in items], "total": total}
 
 
+@audit_route_mutation(action="route.create_audit_record", resource_type="clinical")
 @router.post("/quality/audit-records", status_code=201)
 def create_audit_record(
     data: dict[str, Any],
@@ -1049,6 +1069,7 @@ def create_audit_record(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.create_compliance_check", resource_type="clinical")
 @router.post("/quality/compliance-checks", status_code=201)
 def create_compliance_check(
     data: ComplianceCheckCreate,
@@ -1091,6 +1112,7 @@ def list_benchmarks(
     return {"items": [b.to_dict() for b in items], "total": total}
 
 
+@audit_route_mutation(action="route.create_mortality_review", resource_type="clinical")
 @router.post("/quality/mortality-reviews", status_code=201)
 def create_mortality_review(
     data: MortalityReviewCreate,
@@ -1103,6 +1125,7 @@ def create_mortality_review(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.create_incident_report", resource_type="clinical")
 @router.post("/quality/incident-reports", status_code=201)
 def create_incident_report(
     data: IncidentReportCreate,
@@ -1115,6 +1138,7 @@ def create_incident_report(
     return obj.to_dict()
 
 
+@audit_route_mutation(action="route.create_safety_event", resource_type="clinical")
 @router.post("/quality/safety-events", status_code=201)
 def create_safety_event(
     data: PatientSafetyEventCreate,
@@ -1164,6 +1188,7 @@ class CohortCreate(BaseModel):
     is_active: bool = True
 
 
+@audit_route_mutation(action="route.create_registry", resource_type="clinical")
 @router.post("/research/registries", status_code=201)
 def create_registry(
     data: RegistryCreate,
@@ -1190,6 +1215,7 @@ def list_registries(
     }
 
 
+@audit_route_mutation(action="route.create_cohort", resource_type="clinical")
 @router.post("/research/cohorts", status_code=201)
 def create_cohort(
     data: CohortCreate,

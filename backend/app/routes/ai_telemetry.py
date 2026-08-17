@@ -31,6 +31,7 @@ reachable so operators can inspect the flag state.
 """
 
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 import logging
 import uuid
@@ -192,6 +193,7 @@ def _now() -> datetime:
 # ── POST /api/ai/interactions ───────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.log_interaction", resource_type="ai_telemetry")
 @router.post(
     "/interactions",
     response_model=InteractionOut,
@@ -324,6 +326,7 @@ def log_interaction(
 # ── POST /api/ai/interactions/{id}/refs ─────────────────────────────────────
 
 
+@audit_route_mutation(action="route.append_retrieval_refs", resource_type="ai_telemetry")
 @router.post(
     "/interactions/{interaction_id}/refs",
     status_code=status.HTTP_201_CREATED,
@@ -376,6 +379,7 @@ def append_retrieval_refs(
 # ── POST /api/ai/feedback ───────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.submit_feedback", resource_type="ai_telemetry")
 @router.post(
     "/feedback",
     status_code=status.HTTP_201_CREATED,
@@ -422,6 +426,7 @@ def submit_feedback(
 # ── POST /api/ai/unresolved ─────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.log_unresolved", resource_type="ai_telemetry")
 @router.post(
     "/unresolved",
     status_code=status.HTTP_201_CREATED,

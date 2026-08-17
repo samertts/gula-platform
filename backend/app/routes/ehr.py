@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 from datetime import date, datetime
 from typing import Any
@@ -88,6 +89,7 @@ class ClinicalNoteUpdate(BaseModel):
     metadata_: dict[str, Any] | None = None
 
 
+@audit_route_mutation(action="route.create_clinical_note", resource_type="ehr")
 @router.post("/clinical-notes", summary="Create a clinical note")
 def create_clinical_note(
     body: ClinicalNoteCreate,
@@ -137,6 +139,7 @@ def get_clinical_note_for_verified_facility(
     return _clinical_note_read_response(record)
 
 
+@audit_route_mutation(action="route.update_clinical_note", resource_type="ehr")
 @router.put("/clinical-notes/{note_id}", summary="Update a clinical note")
 def update_clinical_note(
     note_id: str,
@@ -155,6 +158,7 @@ def update_clinical_note(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_clinical_note", resource_type="ehr")
 @router.delete("/clinical-notes/{note_id}", summary="Soft-delete a clinical note")
 def delete_clinical_note(
     note_id: str,
@@ -238,6 +242,7 @@ class AllergyUpdate(BaseModel):
     notes: str | None = None
 
 
+@audit_route_mutation(action="route.create_allergy", resource_type="ehr")
 @router.post("/allergies", summary="Create an allergy record")
 def create_allergy(
     body: AllergyCreate,
@@ -263,6 +268,7 @@ def get_allergy(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_allergy", resource_type="ehr")
 @router.put("/allergies/{allergy_id}", summary="Update an allergy record")
 def update_allergy(
     allergy_id: str,
@@ -279,6 +285,7 @@ def update_allergy(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_allergy", resource_type="ehr")
 @router.delete("/allergies/{allergy_id}", summary="Soft-delete an allergy record")
 def delete_allergy(
     allergy_id: str,
@@ -342,6 +349,7 @@ class MedStatementCreate(BaseModel):
     metadata_: dict[str, Any] | None = None
 
 
+@audit_route_mutation(action="route.create_medication_statement", resource_type="ehr")
 @router.post("/medication-statements", summary="Create a medication statement")
 def create_medication_statement(
     body: MedStatementCreate,
@@ -370,6 +378,7 @@ def get_medication_statement(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_medication_statement", resource_type="ehr")
 @router.put(
     "/medication-statements/{statement_id}",
     summary="Update a medication statement",
@@ -391,6 +400,7 @@ def update_medication_statement(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_medication_statement", resource_type="ehr")
 @router.delete(
     "/medication-statements/{statement_id}",
     summary="Soft-delete a medication statement",
@@ -464,6 +474,7 @@ class MedRequestCreate(BaseModel):
     metadata_: dict[str, Any] | None = None
 
 
+@audit_route_mutation(action="route.create_medication_request", resource_type="ehr")
 @router.post("/medication-requests", summary="Create a medication request")
 def create_medication_request(
     body: MedRequestCreate,
@@ -492,6 +503,7 @@ def get_medication_request(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_medication_request", resource_type="ehr")
 @router.put(
     "/medication-requests/{request_id}",
     summary="Update a medication request",
@@ -513,6 +525,7 @@ def update_medication_request(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_medication_request", resource_type="ehr")
 @router.delete(
     "/medication-requests/{request_id}",
     summary="Soft-delete a medication request",
@@ -579,6 +592,7 @@ class MedDispenseCreate(BaseModel):
     metadata_: dict[str, Any] | None = None
 
 
+@audit_route_mutation(action="route.create_medication_dispense", resource_type="ehr")
 @router.post("/medication-dispenses", summary="Create a medication dispense")
 def create_medication_dispense(
     body: MedDispenseCreate,
@@ -607,6 +621,7 @@ def get_medication_dispense(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_medication_dispense", resource_type="ehr")
 @router.put(
     "/medication-dispenses/{dispense_id}",
     summary="Update a medication dispense",
@@ -628,6 +643,7 @@ def update_medication_dispense(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_medication_dispense", resource_type="ehr")
 @router.delete(
     "/medication-dispenses/{dispense_id}",
     summary="Soft-delete a medication dispense",
@@ -690,6 +706,7 @@ class MedAdminCreate(BaseModel):
     metadata_: dict[str, Any] | None = None
 
 
+@audit_route_mutation(action="route.create_medication_administration", resource_type="ehr")
 @router.post(
     "/medication-administrations",
     summary="Create a medication administration",
@@ -723,6 +740,7 @@ def get_medication_administration(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_medication_administration", resource_type="ehr")
 @router.put(
     "/medication-administrations/{admin_id}",
     summary="Update a medication administration",
@@ -744,6 +762,7 @@ def update_medication_administration(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_medication_administration", resource_type="ehr")
 @router.delete(
     "/medication-administrations/{admin_id}",
     summary="Soft-delete a medication administration",
@@ -814,6 +833,7 @@ class CarePlanUpdate(BaseModel):
     notes: str | None = None
 
 
+@audit_route_mutation(action="route.create_care_plan", resource_type="ehr")
 @router.post("/care-plans", summary="Create a care plan")
 def create_care_plan(
     body: CarePlanCreate,
@@ -847,6 +867,7 @@ def get_care_plan(
     return result
 
 
+@audit_route_mutation(action="route.update_care_plan", resource_type="ehr")
 @router.put("/care-plans/{plan_id}", summary="Update a care plan")
 def update_care_plan(
     plan_id: str,
@@ -871,6 +892,7 @@ def update_care_plan(
     return result
 
 
+@audit_route_mutation(action="route.delete_care_plan", resource_type="ehr")
 @router.delete("/care-plans/{plan_id}", summary="Soft-delete a care plan")
 def delete_care_plan(
     plan_id: str,
@@ -928,6 +950,7 @@ class CarePlanGoalCreate(BaseModel):
     metadata_: dict[str, Any] | None = None
 
 
+@audit_route_mutation(action="route.create_care_plan_goal", resource_type="ehr")
 @router.post("/care-plans/{plan_id}/goals", summary="Add a goal to a care plan")
 def create_care_plan_goal(
     plan_id: str,
@@ -946,6 +969,7 @@ def create_care_plan_goal(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_care_plan_goal", resource_type="ehr")
 @router.put(
     "/care-plan-goals/{goal_id}",
     summary="Update a care plan goal",
@@ -969,6 +993,7 @@ def update_care_plan_goal(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_care_plan_goal", resource_type="ehr")
 @router.delete(
     "/care-plan-goals/{goal_id}",
     summary="Soft-delete a care plan goal",
@@ -1011,6 +1036,7 @@ class CarePlanActivityCreate(BaseModel):
     metadata_: dict[str, Any] | None = None
 
 
+@audit_route_mutation(action="route.create_care_plan_activity", resource_type="ehr")
 @router.post(
     "/care-plans/{plan_id}/activities",
     summary="Add an activity to a care plan",
@@ -1032,6 +1058,7 @@ def create_care_plan_activity(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_care_plan_activity", resource_type="ehr")
 @router.put(
     "/care-plan-activities/{activity_id}",
     summary="Update a care plan activity",
@@ -1055,6 +1082,7 @@ def update_care_plan_activity(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_care_plan_activity", resource_type="ehr")
 @router.delete(
     "/care-plan-activities/{activity_id}",
     summary="Soft-delete a care plan activity",
@@ -1110,6 +1138,7 @@ class ProblemListItemUpdate(BaseModel):
     notes: str | None = None
 
 
+@audit_route_mutation(action="route.create_problem_list_item", resource_type="ehr")
 @router.post("/problem-list", summary="Add a problem list item")
 def create_problem_list_item(
     body: ProblemListItemCreate,
@@ -1138,6 +1167,7 @@ def get_problem_list_item(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_problem_list_item", resource_type="ehr")
 @router.put(
     "/problem-list/{item_id}",
     summary="Update a problem list item",
@@ -1159,6 +1189,7 @@ def update_problem_list_item(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_problem_list_item", resource_type="ehr")
 @router.delete(
     "/problem-list/{item_id}",
     summary="Soft-delete a problem list item",
@@ -1231,6 +1262,7 @@ class ConditionUpdate(BaseModel):
     notes: str | None = None
 
 
+@audit_route_mutation(action="route.create_condition", resource_type="ehr")
 @router.post("/conditions", summary="Create a condition record")
 def create_condition(
     body: ConditionCreate,
@@ -1259,6 +1291,7 @@ def get_condition(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_condition", resource_type="ehr")
 @router.put(
     "/conditions/{condition_id}",
     summary="Update a condition record",
@@ -1278,6 +1311,7 @@ def update_condition(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_condition", resource_type="ehr")
 @router.delete(
     "/conditions/{condition_id}",
     summary="Soft-delete a condition record",
@@ -1350,6 +1384,7 @@ class DiagnosisUpdate(BaseModel):
     notes: str | None = None
 
 
+@audit_route_mutation(action="route.create_diagnosis", resource_type="ehr")
 @router.post("/diagnoses", summary="Create a diagnosis record")
 def create_diagnosis(
     body: DiagnosisCreate,
@@ -1378,6 +1413,7 @@ def get_diagnosis(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_diagnosis", resource_type="ehr")
 @router.put(
     "/diagnoses/{diagnosis_id}",
     summary="Update a diagnosis record",
@@ -1397,6 +1433,7 @@ def update_diagnosis(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_diagnosis", resource_type="ehr")
 @router.delete(
     "/diagnoses/{diagnosis_id}",
     summary="Soft-delete a diagnosis record",
@@ -1464,6 +1501,7 @@ class FamilyHistoryUpdate(BaseModel):
     notes: str | None = None
 
 
+@audit_route_mutation(action="route.create_family_history", resource_type="ehr")
 @router.post("/family-history", summary="Create a family history record")
 def create_family_history(
     body: FamilyHistoryCreate,
@@ -1492,6 +1530,7 @@ def get_family_history(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_family_history", resource_type="ehr")
 @router.put(
     "/family-history/{record_id}",
     summary="Update a family history record",
@@ -1513,6 +1552,7 @@ def update_family_history(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_family_history", resource_type="ehr")
 @router.delete(
     "/family-history/{record_id}",
     summary="Soft-delete a family history record",
@@ -1590,6 +1630,7 @@ class SocialHistoryUpdate(BaseModel):
     notes: str | None = None
 
 
+@audit_route_mutation(action="route.create_social_history", resource_type="ehr")
 @router.post("/social-history", summary="Create a social history record")
 def create_social_history(
     body: SocialHistoryCreate,
@@ -1618,6 +1659,7 @@ def get_social_history(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_social_history", resource_type="ehr")
 @router.put(
     "/social-history/{record_id}",
     summary="Update a social history record",
@@ -1639,6 +1681,7 @@ def update_social_history(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_social_history", resource_type="ehr")
 @router.delete(
     "/social-history/{record_id}",
     summary="Soft-delete a social history record",
@@ -1709,6 +1752,7 @@ class RiskFactorUpdate(BaseModel):
     notes: str | None = None
 
 
+@audit_route_mutation(action="route.create_risk_factor", resource_type="ehr")
 @router.post("/risk-factors", summary="Create a risk factor record")
 def create_risk_factor(
     body: RiskFactorCreate,
@@ -1737,6 +1781,7 @@ def get_risk_factor(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_risk_factor", resource_type="ehr")
 @router.put(
     "/risk-factors/{record_id}",
     summary="Update a risk factor record",
@@ -1758,6 +1803,7 @@ def update_risk_factor(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_risk_factor", resource_type="ehr")
 @router.delete(
     "/risk-factors/{record_id}",
     summary="Soft-delete a risk factor record",
@@ -1838,6 +1884,7 @@ class ImmunizationUpdate(BaseModel):
     notes: str | None = None
 
 
+@audit_route_mutation(action="route.create_immunization", resource_type="ehr")
 @router.post("/immunizations", summary="Create an immunization record")
 def create_immunization(
     body: ImmunizationCreate,
@@ -1866,6 +1913,7 @@ def get_immunization(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_immunization", resource_type="ehr")
 @router.put(
     "/immunizations/{record_id}",
     summary="Update an immunization record",
@@ -1887,6 +1935,7 @@ def update_immunization(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_immunization", resource_type="ehr")
 @router.delete(
     "/immunizations/{record_id}",
     summary="Soft-delete an immunization record",
@@ -1963,6 +2012,7 @@ class AttachmentUpdate(BaseModel):
     sort_order: int | None = None
 
 
+@audit_route_mutation(action="route.create_attachment", resource_type="ehr")
 @router.post("/attachments", summary="Create a clinical attachment record")
 def create_attachment(
     body: AttachmentCreate,
@@ -1991,6 +2041,7 @@ def get_attachment(
     return record.to_dict()
 
 
+@audit_route_mutation(action="route.update_attachment", resource_type="ehr")
 @router.put(
     "/attachments/{attachment_id}",
     summary="Update a clinical attachment record",
@@ -2012,6 +2063,7 @@ def update_attachment(
     return updated.to_dict()
 
 
+@audit_route_mutation(action="route.delete_attachment", resource_type="ehr")
 @router.delete(
     "/attachments/{attachment_id}",
     summary="Soft-delete a clinical attachment record",

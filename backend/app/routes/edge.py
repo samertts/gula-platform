@@ -33,6 +33,7 @@ user JWT and never call get_current_user.
 """
 
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 from datetime import datetime
 from typing import Any
@@ -325,6 +326,7 @@ def _resolve_agent_device(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.register_device_endpoint", resource_type="edge")
 @router.post(
     "/devices/register", response_model=RegisterDeviceResponse, status_code=status.HTTP_201_CREATED,
 )
@@ -414,6 +416,7 @@ def get_device(
     )
 
 
+@audit_route_mutation(action="route.quarantine_device", resource_type="edge")
 @router.post("/devices/{device_id}/quarantine")
 def quarantine_device(
     device_id: str,
@@ -433,6 +436,7 @@ def quarantine_device(
     return {"device_id": device_id, "status": d.status}
 
 
+@audit_route_mutation(action="route.revoke_device", resource_type="edge")
 @router.post("/devices/{device_id}/revoke")
 def revoke_device(
     device_id: str,
@@ -452,6 +456,7 @@ def revoke_device(
     return {"device_id": device_id, "status": d.status}
 
 
+@audit_route_mutation(action="route.reinstate_device", resource_type="edge")
 @router.post("/devices/{device_id}/reinstate")
 def reinstate_device(
     device_id: str,
@@ -473,6 +478,7 @@ def reinstate_device(
     return {"device_id": device_id, "status": d.status}
 
 
+@audit_route_mutation(action="route.device_kill_switch", resource_type="edge")
 @router.post("/devices/{device_id}/kill_switch")
 def device_kill_switch(
     device_id: str,
@@ -497,6 +503,7 @@ def device_kill_switch(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.submit_task_endpoint", resource_type="edge")
 @router.post("/tasks", response_model=TaskDetail, status_code=status.HTTP_201_CREATED)
 def submit_task_endpoint(
     body: TaskSubmitRequest,
@@ -582,6 +589,7 @@ def get_task(
     )
 
 
+@audit_route_mutation(action="route.cancel_task_endpoint", resource_type="edge")
 @router.post("/tasks/{task_uid}/cancel")
 def cancel_task_endpoint(
     task_uid: str,
@@ -621,6 +629,7 @@ def get_lab_policy(
     return PolicyView(**p.__dict__)
 
 
+@audit_route_mutation(action="route.update_lab_policy", resource_type="edge")
 @router.put("/policy", response_model=PolicyView)
 def update_lab_policy(
     body: PolicyUpdate,
@@ -683,6 +692,7 @@ def fleet_summary_endpoint(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.register_model_endpoint", resource_type="edge")
 @router.post("/models", status_code=status.HTTP_201_CREATED)
 def register_model_endpoint(
     body: ModelRegisterRequest,
@@ -740,6 +750,7 @@ def list_models(
     ]
 
 
+@audit_route_mutation(action="route.update_model_status", resource_type="edge")
 @router.post("/models/{model_uid}/status")
 def update_model_status(
     model_uid: str,
@@ -765,6 +776,7 @@ def update_model_status(
     return {"model_uid": m.model_uid, "status": m.status, "rollout_pct": m.rollout_pct}
 
 
+@audit_route_mutation(action="route.assign_model_endpoint", resource_type="edge")
 @router.post("/models/{model_uid}/assign")
 def assign_model_endpoint(
     model_uid: str,
@@ -802,6 +814,7 @@ def assign_model_endpoint(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.agent_heartbeat", resource_type="edge")
 @router.post("/agent/heartbeat", response_model=HeartbeatResponse)
 def agent_heartbeat(
     body: HeartbeatRequest,
@@ -861,6 +874,7 @@ def agent_heartbeat(
     )
 
 
+@audit_route_mutation(action="route.agent_task_result", resource_type="edge")
 @router.post("/agent/tasks/{task_uid}/result")
 def agent_task_result(
     task_uid: str,
@@ -899,6 +913,7 @@ def agent_task_result(
     return {"task_uid": task_uid, "status": t.status}
 
 
+@audit_route_mutation(action="route.agent_telemetry", resource_type="edge")
 @router.post("/agent/telemetry")
 def agent_telemetry(
     sample: dict[str, Any],

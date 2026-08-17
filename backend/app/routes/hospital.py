@@ -1,3 +1,4 @@
+from app.services.route_audit import audit_route_mutation
 from datetime import date, datetime
 from typing import Any
 
@@ -321,6 +322,7 @@ def get_hospital(
     return _model_to_dict(HospitalService.get_hospital(db, hospital_id, current_user.lab_id))
 
 
+@audit_route_mutation(action="route.create_hospital", resource_type="hospital")
 @router.post("/", summary="Create hospital", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_hospital(
     body: HospitalCreate,
@@ -333,6 +335,7 @@ def create_hospital(
     return _model_to_dict(hospital)
 
 
+@audit_route_mutation(action="route.update_hospital", resource_type="hospital")
 @router.put("/{hospital_id}", summary="Update hospital", dependencies=[Depends(require_permission("hospital:manage"))])
 def update_hospital(
     hospital_id: int,
@@ -372,6 +375,7 @@ def list_campuses(
     return [_model_to_dict(c) for c in campuses]
 
 
+@audit_route_mutation(action="route.create_campus", resource_type="hospital")
 @router.post("/{hospital_id}/campuses", summary="Create campus", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_campus(
     hospital_id: int,
@@ -385,6 +389,7 @@ def create_campus(
     return _model_to_dict(campus)
 
 
+@audit_route_mutation(action="route.update_campus", resource_type="hospital")
 @router.put("/campuses/{campus_id}", summary="Update campus", dependencies=[Depends(require_permission("hospital:manage"))])
 def update_campus(
     campus_id: int,
@@ -413,6 +418,7 @@ def list_buildings(
     return [_model_to_dict(b) for b in buildings]
 
 
+@audit_route_mutation(action="route.create_building", resource_type="hospital")
 @router.post("/campuses/{campus_id}/buildings", summary="Create building", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_building(
     campus_id: int,
@@ -439,6 +445,7 @@ def list_floors(
     return [_model_to_dict(f) for f in floors]
 
 
+@audit_route_mutation(action="route.create_floor", resource_type="hospital")
 @router.post("/buildings/{building_id}/floors", summary="Create floor", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_floor(
     building_id: int,
@@ -468,6 +475,7 @@ def list_departments(
     return [_model_to_dict(d) for d in depts]
 
 
+@audit_route_mutation(action="route.create_department", resource_type="hospital")
 @router.post("/{hospital_id}/departments", summary="Create department", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_department(
     hospital_id: int,
@@ -481,6 +489,7 @@ def create_department(
     return _model_to_dict(dept)
 
 
+@audit_route_mutation(action="route.update_department", resource_type="hospital")
 @router.put("/departments/{dept_id}", summary="Update department", dependencies=[Depends(require_permission("hospital:manage"))])
 def update_department(
     dept_id: int,
@@ -509,6 +518,7 @@ def list_clinics(
     return [_model_to_dict(c) for c in clinics]
 
 
+@audit_route_mutation(action="route.create_clinic", resource_type="hospital")
 @router.post("/departments/{dept_id}/clinics", summary="Create clinic", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_clinic(
     dept_id: int,
@@ -536,6 +546,7 @@ def list_rooms(
     return [_model_to_dict(r) for r in rooms]
 
 
+@audit_route_mutation(action="route.create_room", resource_type="hospital")
 @router.post("/departments/{dept_id}/rooms", summary="Create room", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_room(
     dept_id: int,
@@ -564,6 +575,7 @@ def list_beds(
     return [_model_to_dict(b) for b in beds]
 
 
+@audit_route_mutation(action="route.create_bed", resource_type="hospital")
 @router.post("/rooms/{room_id}/beds", summary="Create bed", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_bed(
     room_id: int,
@@ -645,6 +657,7 @@ def list_units(
     return [_model_to_dict(u) for u in units]
 
 
+@audit_route_mutation(action="route.create_unit", resource_type="hospital")
 @router.post("/{hospital_id}/units", summary="Create unit", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_unit(
     hospital_id: int,
@@ -671,6 +684,7 @@ def list_operation_theaters(
     return [_model_to_dict(ot) for ot in ots]
 
 
+@audit_route_mutation(action="route.create_operation_theater", resource_type="hospital")
 @router.post("/{hospital_id}/operation-theaters", summary="Create operation theater", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_operation_theater(
     hospital_id: int,
@@ -684,6 +698,7 @@ def create_operation_theater(
     return _model_to_dict(ot)
 
 
+@audit_route_mutation(action="route.update_ot_status", resource_type="hospital")
 @router.put("/operation-theaters/{ot_id}/status", summary="Update operation theater status", dependencies=[Depends(require_permission("hospital:manage"))])
 def update_ot_status(
     ot_id: int,
@@ -717,6 +732,7 @@ def list_equipment(
     return [_model_to_dict(e) for e in equipment]
 
 
+@audit_route_mutation(action="route.create_equipment", resource_type="hospital")
 @router.post("/{hospital_id}/equipment", summary="Create medical equipment", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_equipment(
     hospital_id: int,
@@ -730,6 +746,7 @@ def create_equipment(
     return _model_to_dict(equip)
 
 
+@audit_route_mutation(action="route.update_equipment", resource_type="hospital")
 @router.put("/equipment/{equip_id}", summary="Update medical equipment", dependencies=[Depends(require_permission("hospital:manage"))])
 def update_equipment(
     equip_id: int,
@@ -758,6 +775,7 @@ def list_cost_centers(
     return [_model_to_dict(cc) for cc in ccs]
 
 
+@audit_route_mutation(action="route.create_cost_center", resource_type="hospital")
 @router.post("/{hospital_id}/cost-centers", summary="Create cost center", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_cost_center(
     hospital_id: int,
@@ -792,6 +810,7 @@ def list_appointments(
     )
 
 
+@audit_route_mutation(action="route.create_appointment", resource_type="hospital")
 @router.post("/appointments", summary="Create hospital appointment", status_code=201, dependencies=[Depends(require_permission("hospital:appointment:write"))])
 def create_appointment(
     body: AppointmentCreate,

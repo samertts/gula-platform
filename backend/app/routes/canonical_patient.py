@@ -1,3 +1,4 @@
+from app.services.route_audit import audit_route_mutation
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -111,6 +112,7 @@ class SearchResponse(BaseModel):
 # ── POST / ──
 
 
+@audit_route_mutation(action="route.create_canonical", resource_type="canonical_patient")
 @router.post("", response_model=CanonicalPatientResponse, status_code=201)
 def create_canonical(
     data: CanonicalPatientCreate,
@@ -142,6 +144,7 @@ def get_canonical(
 # ── POST /merge ──
 
 
+@audit_route_mutation(action="route.merge", resource_type="canonical_patient")
 @router.post("/merge", response_model=MergeResult)
 def merge(
     data: CanonicalPatientMerge,
@@ -230,6 +233,7 @@ def search_canonical(
 # ── POST /link-patient ──
 
 
+@audit_route_mutation(action="route.create_patient_link", resource_type="canonical_patient")
 @router.post("/link-patient", response_model=LinkResponse)
 def create_patient_link(
     data: LinkPatientRequest,
@@ -258,6 +262,7 @@ def create_patient_link(
 # ── POST /link-citizen ──
 
 
+@audit_route_mutation(action="route.create_citizen_link", resource_type="canonical_patient")
 @router.post("/link-citizen", response_model=LinkResponse)
 def create_citizen_link(
     data: LinkCitizenRequest,

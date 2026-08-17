@@ -373,11 +373,16 @@ def _function_has_effectful_write(node: ast.FunctionDef | ast.AsyncFunctionDef) 
     return False
 
 
-def _function_has_audit(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+def _function_has_audit(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    audited_helpers: set[str] | None = None,
+) -> bool:
     for child in ast.walk(node):
         if isinstance(child, ast.Call):
             name = _call_name(child)
-            if name in {"log_action", "log_route_mutation", "audit_mutation"}:
+            if name in {"log_action", "log_route_mutation", "audit_mutation", "audit_route_mutation"}:
+                return True
+            if audited_helpers and name in audited_helpers:
                 return True
         if isinstance(child, ast.Name) and child.id in {"AuditLog", "AUDIT_DELEGATED"}:
             return True
@@ -403,10 +408,17 @@ def check_audit_log_coverage(root: pathlib.Path) -> list[dict[str, Any]]:
             if "_canonical_error" in text and "canonical_endpoint" in text:
                 continue
 
+            audited_helpers = {
+                function.name
+                for function in ast.walk(tree)
+                if isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef))
+                and function.name.startswith("_")
+                and _function_has_audit(function)
+            }
             unaudited = [
                 function for function in _route_write_functions(tree)
                 if _function_has_effectful_write(function)
-                and not _function_has_audit(function)
+                and not _function_has_audit(function, audited_helpers)
                 and "AUDIT_DELEGATED" not in text
             ]
             if unaudited:

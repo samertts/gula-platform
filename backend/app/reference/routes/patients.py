@@ -1,8 +1,12 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 
 from app.reference.infrastructure.dependencies import get_patient_service
 from app.reference.services import (
@@ -35,6 +39,7 @@ async def get_patient(
     return _patient_to_response(patient)
 
 
+@audit_route_mutation(action="route.create_patient", resource_type="patients")
 @router.post("")
 async def create_patient(
     name: str = Query(..., description="اسم المريض"),
@@ -45,6 +50,7 @@ async def create_patient(
     national_id: str | None = Query(None, description="الرقم الوطني"),
     address: str = Query("", description="العنوان"),
     service: PatientService = Depends(get_patient_service),
+    db: Session = Depends(get_db),
 ) -> dict:
     patient = PatientDomain(
         name=name,

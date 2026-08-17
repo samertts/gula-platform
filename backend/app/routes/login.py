@@ -1,3 +1,4 @@
+from app.services.route_audit import audit_route_mutation
 import hashlib
 import hmac
 import logging
@@ -242,6 +243,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     }
 
 
+@audit_route_mutation(action="route.logout", resource_type="login")
 @router.post("/logout")
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     """Logout with two-layer revocation:

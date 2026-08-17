@@ -1,6 +1,10 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+
+from app.database import get_db
 
 from app.reference.infrastructure.dependencies import get_order_service
 from app.reference.services import (
@@ -21,6 +25,7 @@ router = APIRouter(
 )
 
 
+@audit_route_mutation(action="route.create_order", resource_type="orders")
 @router.post("")
 async def create_order(
     patient_id: str = Query(..., description="معرف المريض"),
@@ -29,6 +34,7 @@ async def create_order(
     priority: Priority | None = Query(None, description="الأولوية"),
     notes: str = Query("", description="ملاحظات"),
     service: OrderService = Depends(get_order_service),
+    db: Session = Depends(get_db),
 ) -> dict:
     order = LabOrderDomain(
         patient_id=patient_id,

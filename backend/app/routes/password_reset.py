@@ -1,4 +1,5 @@
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 import contextlib
 from datetime import datetime, timedelta
@@ -77,6 +78,7 @@ async def reset_password(
     return {"message": "Password reset successful"}
 
 
+@audit_route_mutation(action="route.change_password", resource_type="password_reset")
 @router.post("/change-password")
 async def change_password(
     req: ChangePasswordRequest,

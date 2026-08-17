@@ -1,3 +1,4 @@
+from app.services.route_audit import audit_route_mutation
 from datetime import date
 from typing import Any
 
@@ -63,6 +64,7 @@ class NodeCreate(BaseModel):
     metadata_json: dict[str, Any] | None = None
 
 
+@audit_route_mutation(action="route.create_node", resource_type="governance_routes")
 @router.post("/nodes", dependencies=[admin_dep])
 def create_node(data: NodeCreate, db: Session = Depends(get_db)):
     _check_policy(GovernanceAction.CREATE_NODE)
@@ -111,6 +113,7 @@ def get_nodes_by_type(node_type: GovernanceNodeType, db: Session = Depends(get_d
     return db.query(GovernanceNode).filter(GovernanceNode.node_type == node_type).all()
 
 
+@audit_route_mutation(action="route.deactivate_node", resource_type="governance_routes")
 @router.post("/nodes/{node_id}/deactivate", dependencies=[admin_dep])
 def deactivate_node(node_id: int, db: Session = Depends(get_db)):
     _check_policy(GovernanceAction.DELETE_NODE)
@@ -129,6 +132,7 @@ class DelegationCreate(BaseModel):
     reason: str | None = None
 
 
+@audit_route_mutation(action="route.create_delegation", resource_type="governance_routes")
 @router.post("/delegations", dependencies=[admin_dep])
 def create_delegation(data: DelegationCreate, db: Session = Depends(get_db)):
     _check_policy(GovernanceAction.CREATE_DELEGATION)
@@ -142,6 +146,7 @@ def create_delegation(data: DelegationCreate, db: Session = Depends(get_db)):
     return delegation
 
 
+@audit_route_mutation(action="route.revoke_delegation", resource_type="governance_routes")
 @router.post("/delegations/{delegation_id}/revoke", dependencies=[admin_dep])
 def revoke_delegation(delegation_id: int, db: Session = Depends(get_db)):
     _check_policy(GovernanceAction.REVOKE_DELEGATION)
@@ -159,6 +164,7 @@ class ActingAppoint(BaseModel):
     reason: str | None = None
 
 
+@audit_route_mutation(action="route.create_acting_appointment", resource_type="governance_routes")
 @router.post("/acting-appointments", dependencies=[admin_dep])
 def create_acting_appointment(data: ActingAppoint, db: Session = Depends(get_db)):
     _check_policy(GovernanceAction.APPOINT_ACTING)
@@ -173,6 +179,7 @@ def create_acting_appointment(data: ActingAppoint, db: Session = Depends(get_db)
 # ── Phase 2: Health Number Governance ────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.issue_health_number", resource_type="governance_routes")
 @router.post("/health-numbers/issue", dependencies=[elevated_dep])
 def issue_health_number(citizen_ulid: str, national_id_hash: str | None = None, db: Session = Depends(get_db)):
     svc = HealthNumberGovernanceService(db)
@@ -190,6 +197,7 @@ def get_health_number(health_number: str, db: Session = Depends(get_db)):
     return hn
 
 
+@audit_route_mutation(action="route.report_lost", resource_type="governance_routes")
 @router.post("/health-numbers/{health_number}/lost", dependencies=[elevated_dep])
 def report_lost(health_number: str, reported_by: str, db: Session = Depends(get_db)):
     svc = HealthNumberGovernanceService(db)
@@ -200,6 +208,7 @@ def report_lost(health_number: str, reported_by: str, db: Session = Depends(get_
     return {"status": "reported_lost"}
 
 
+@audit_route_mutation(action="route.reissue_health_number", resource_type="governance_routes")
 @router.post("/health-numbers/{health_number}/reissue", dependencies=[admin_dep])
 def reissue_health_number(health_number: str, citizen_ulid: str, issued_by: str, db: Session = Depends(get_db)):
     svc = HealthNumberGovernanceService(db)
@@ -210,6 +219,7 @@ def reissue_health_number(health_number: str, citizen_ulid: str, issued_by: str,
     return {"new_health_number": new_hn}
 
 
+@audit_route_mutation(action="route.merge_identity", resource_type="governance_routes")
 @router.post("/health-numbers/merge", dependencies=[admin_dep])
 def merge_identity(primary_hn: str, secondary_hn: str, reason: str, decision_by: str, db: Session = Depends(get_db)):
     _check_policy(GovernanceAction.MERGE_IDENTITY)
@@ -219,6 +229,7 @@ def merge_identity(primary_hn: str, secondary_hn: str, reason: str, decision_by:
     return merge
 
 
+@audit_route_mutation(action="route.split_identity", resource_type="governance_routes")
 @router.post("/health-numbers/split", dependencies=[admin_dep])
 def split_identity(primary_hn: str, new_hn: str, reason: str, decision_by: str, db: Session = Depends(get_db)):
     _check_policy(GovernanceAction.SPLIT_IDENTITY)
@@ -272,6 +283,7 @@ class WorkerCreate(BaseModel):
     contact_email: str | None = None
 
 
+@audit_route_mutation(action="route.register_worker", resource_type="governance_routes")
 @router.post("/workers", dependencies=[elevated_dep])
 def register_worker(data: WorkerCreate, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
@@ -302,6 +314,7 @@ def get_workers_by_node(node_id: int, db: Session = Depends(get_db)):
     return svc.get_workers_by_node(node_id)
 
 
+@audit_route_mutation(action="route.add_license", resource_type="governance_routes")
 @router.post("/workers/{worker_id}/licenses", dependencies=[elevated_dep])
 def add_license(worker_id: int, license_number: str, license_type: str, issuing_authority: str, issued_date: date, expiry_date: date | None = None, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
@@ -310,6 +323,7 @@ def add_license(worker_id: int, license_number: str, license_type: str, issuing_
     return lic
 
 
+@audit_route_mutation(action="route.add_board_certification", resource_type="governance_routes")
 @router.post("/workers/{worker_id}/board-certifications", dependencies=[elevated_dep])
 def add_board_certification(worker_id: int, board_name: str, specialty: str, issuing_body: str, issued_date: date, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
@@ -318,6 +332,7 @@ def add_board_certification(worker_id: int, board_name: str, specialty: str, iss
     return board
 
 
+@audit_route_mutation(action="route.add_training", resource_type="governance_routes")
 @router.post("/workers/{worker_id}/trainings")
 def add_training(worker_id: int, training_name: str, training_type: str, completed: bool = False, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
@@ -326,6 +341,7 @@ def add_training(worker_id: int, training_name: str, training_type: str, complet
     return training
 
 
+@audit_route_mutation(action="route.assess_competency", resource_type="governance_routes")
 @router.post("/workers/{worker_id}/competencies")
 def assess_competency(worker_id: int, competency_name: str, level: str, db: Session = Depends(get_db)):
     svc = WorkforceGovernanceService(db)
@@ -335,6 +351,7 @@ def assess_competency(worker_id: int, competency_name: str, level: str, db: Sess
     return assessment
 
 
+@audit_route_mutation(action="route.record_productivity", resource_type="governance_routes")
 @router.post("/workers/{worker_id}/productivity")
 def record_productivity(
     worker_id: int,
@@ -382,6 +399,7 @@ class LabRegister(BaseModel):
     governorate: str | None = None
 
 
+@audit_route_mutation(action="route.register_lab", resource_type="governance_routes")
 @router.post("/laboratories", dependencies=[elevated_dep])
 def register_lab(data: LabRegister, db: Session = Depends(get_db)):
     _check_policy(GovernanceAction.REGISTER_LAB)
@@ -416,6 +434,7 @@ def get_lab_stats(lab_id: int, db: Session = Depends(get_db)):
     return svc.get_lab_stats(lab_id)
 
 
+@audit_route_mutation(action="route.register_equipment", resource_type="governance_routes")
 @router.post("/laboratories/{lab_id}/equipment", dependencies=[elevated_dep])
 def register_equipment(lab_id: int, equipment_code: str, name_ar: str, category: str, manufacturer: str | None = None, model: str | None = None, db: Session = Depends(get_db)):
     svc = LaboratoryGovernanceService(db)
@@ -424,6 +443,7 @@ def register_equipment(lab_id: int, equipment_code: str, name_ar: str, category:
     return equip
 
 
+@audit_route_mutation(action="route.register_analyzer", resource_type="governance_routes")
 @router.post("/laboratories/{lab_id}/analyzers", dependencies=[elevated_dep])
 def register_analyzer(lab_id: int, analyzer_code: str, name_ar: str, analyzer_type: str, manufacturer: str | None = None, model: str | None = None, db: Session = Depends(get_db)):
     svc = LaboratoryGovernanceService(db)
@@ -432,6 +452,7 @@ def register_analyzer(lab_id: int, analyzer_code: str, name_ar: str, analyzer_ty
     return analyzer
 
 
+@audit_route_mutation(action="route.record_qc", resource_type="governance_routes")
 @router.post("/laboratories/{lab_id}/qc", dependencies=[elevated_dep])
 def record_qc(lab_id: int, test_code: str, control_level: str, result_value: float, mean: float, sd: float, db: Session = Depends(get_db)):
     svc = LaboratoryGovernanceService(db)
@@ -440,6 +461,7 @@ def record_qc(lab_id: int, test_code: str, control_level: str, result_value: flo
     return qc
 
 
+@audit_route_mutation(action="route.record_eqa", resource_type="governance_routes")
 @router.post("/laboratories/{lab_id}/eqa", dependencies=[elevated_dep])
 def record_eqa(lab_id: int, test_code: str, scheme_name: str, round_number: str, target_value: float, submitted_result: float, db: Session = Depends(get_db)):
     svc = LaboratoryGovernanceService(db)
@@ -448,6 +470,7 @@ def record_eqa(lab_id: int, test_code: str, scheme_name: str, round_number: str,
     return eqa
 
 
+@audit_route_mutation(action="route.add_reagent", resource_type="governance_routes")
 @router.post("/laboratories/{lab_id}/reagents", dependencies=[elevated_dep])
 def add_reagent(lab_id: int, reagent_code: str, reagent_name_ar: str, quantity: float, unit: str, lot_number: str | None = None, minimum_stock_level: float | None = None, db: Session = Depends(get_db)):
     svc = LaboratoryGovernanceService(db)
@@ -468,6 +491,7 @@ def get_national_tests(db: Session = Depends(get_db)):
     return db.query(NationalTestDefinition).filter(NationalTestDefinition.is_active.is_(True)).all()
 
 
+@audit_route_mutation(action="route.define_national_test", resource_type="governance_routes")
 @router.post("/national-tests", dependencies=[admin_dep])
 def define_national_test(test_code: str, name_ar: str, category: str, is_national_essential: bool = False, db: Session = Depends(get_db)):
     svc = LaboratoryGovernanceService(db)
@@ -476,6 +500,7 @@ def define_national_test(test_code: str, name_ar: str, category: str, is_nationa
     return test
 
 
+@audit_route_mutation(action="route.designate_reference_lab", resource_type="governance_routes")
 @router.post("/reference-labs", dependencies=[admin_dep])
 def designate_reference_lab(lab_id: int, reference_domain: str, is_national: bool = False, db: Session = Depends(get_db)):
     _check_policy(GovernanceAction.DESIGNATE_REFERENCE)
@@ -488,6 +513,7 @@ def designate_reference_lab(lab_id: int, reference_domain: str, is_national: boo
 # ── Phase 6: Clinical Governance ─────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.create_clinical_policy", resource_type="governance_routes")
 @router.post("/clinical-policies", dependencies=[admin_dep])
 def create_clinical_policy(policy_code: str, title_ar: str, policy_type: ClinicalPolicyType, content_ar: str, db: Session = Depends(get_db)):
     svc = ClinicalGovernanceService(db)
@@ -502,6 +528,7 @@ def get_clinical_policies(policy_type: ClinicalPolicyType | None = None, db: Ses
     return svc.get_active_policies(policy_type)
 
 
+@audit_route_mutation(action="route.set_critical_result_policy", resource_type="governance_routes")
 @router.post("/critical-result-policies", dependencies=[admin_dep])
 def set_critical_result_policy(test_code: str, test_name_ar: str, critical_low: str | None = None, critical_high: str | None = None, db: Session = Depends(get_db)):
     svc = ClinicalGovernanceService(db)
@@ -510,6 +537,7 @@ def set_critical_result_policy(test_code: str, test_name_ar: str, critical_low: 
     return policy
 
 
+@audit_route_mutation(action="route.set_reference_range", resource_type="governance_routes")
 @router.post("/reference-ranges", dependencies=[admin_dep])
 def set_reference_range(test_code: str, low: str, high: str, unit: str, gender: str | None = None, db: Session = Depends(get_db)):
     svc = ClinicalGovernanceService(db)
@@ -518,6 +546,7 @@ def set_reference_range(test_code: str, low: str, high: str, unit: str, gender: 
     return rr
 
 
+@audit_route_mutation(action="route.set_westgard_policy", resource_type="governance_routes")
 @router.post("/westgard-policies", dependencies=[admin_dep])
 def set_westgard_policy(test_code: str, rules: list[str], db: Session = Depends(get_db)):
     svc = ClinicalGovernanceService(db)
@@ -526,6 +555,7 @@ def set_westgard_policy(test_code: str, rules: list[str], db: Session = Depends(
     return wp
 
 
+@audit_route_mutation(action="route.set_delta_check_policy", resource_type="governance_routes")
 @router.post("/delta-check-policies", dependencies=[admin_dep])
 def set_delta_check_policy(test_code: str, delta_percent: float, time_window_hours: int, action: str, db: Session = Depends(get_db)):
     svc = ClinicalGovernanceService(db)
@@ -534,6 +564,7 @@ def set_delta_check_policy(test_code: str, delta_percent: float, time_window_hou
     return dp
 
 
+@audit_route_mutation(action="route.create_approval_policy", resource_type="governance_routes")
 @router.post("/approval-policies", dependencies=[admin_dep])
 def create_approval_policy(policy_code: str, title_ar: str, context: str, db: Session = Depends(get_db)):
     svc = ClinicalGovernanceService(db)
@@ -545,6 +576,7 @@ def create_approval_policy(policy_code: str, title_ar: str, context: str, db: Se
 # ── Phase 8: Security Governance ─────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.create_security_policy", resource_type="governance_routes")
 @router.post("/security-policies", dependencies=[admin_dep])
 def create_security_policy(policy_code: str, title_ar: str, category: SecurityPolicyCategory, content_ar: str, db: Session = Depends(get_db)):
     svc = SecurityGovernanceService(db)
@@ -553,6 +585,7 @@ def create_security_policy(policy_code: str, title_ar: str, category: SecurityPo
     return sp
 
 
+@audit_route_mutation(action="route.create_break_glass_policy", resource_type="governance_routes")
 @router.post("/break-glass-policies", dependencies=[admin_dep])
 def create_break_glass_policy(policy_code: str, title_ar: str, allowed_reasons: list[str], db: Session = Depends(get_db)):
     svc = SecurityGovernanceService(db)
@@ -561,6 +594,7 @@ def create_break_glass_policy(policy_code: str, title_ar: str, allowed_reasons: 
     return bg
 
 
+@audit_route_mutation(action="route.log_audit_event", resource_type="governance_routes")
 @router.post("/audit-events")
 def log_audit_event(event_type: str, actor_id: str, action: str, severity: ThreatSeverity = ThreatSeverity.LOW, db: Session = Depends(get_db)):
     svc = SecurityGovernanceService(db)
@@ -578,6 +612,7 @@ def get_audit_events(event_type: str | None = None, limit: int = 50, db: Session
     return q.order_by(NationalAuditEvent.created_at.desc()).limit(limit).all()
 
 
+@audit_route_mutation(action="route.create_incident", resource_type="governance_routes")
 @router.post("/incidents", dependencies=[admin_dep])
 def create_incident(incident_id: str, title: str, category: str, severity: ThreatSeverity, db: Session = Depends(get_db)):
     svc = SecurityGovernanceService(db)
@@ -586,6 +621,7 @@ def create_incident(incident_id: str, title: str, category: str, severity: Threa
     return incident
 
 
+@audit_route_mutation(action="route.register_risk", resource_type="governance_routes")
 @router.post("/risks", dependencies=[admin_dep])
 def register_risk(risk_id: str, title_ar: str, category: str, likelihood: int, impact: int, db: Session = Depends(get_db)):
     svc = SecurityGovernanceService(db)
@@ -594,6 +630,7 @@ def register_risk(risk_id: str, title_ar: str, category: str, likelihood: int, i
     return risk
 
 
+@audit_route_mutation(action="route.classify_data", resource_type="governance_routes")
 @router.post("/data-classification", dependencies=[admin_dep])
 def classify_data(data_type: str, name_ar: str, classification_level: str, pii: bool = False, phi: bool = False, db: Session = Depends(get_db)):
     _check_policy(GovernanceAction.CLASSIFY_DATA)
@@ -604,6 +641,7 @@ def classify_data(data_type: str, name_ar: str, classification_level: str, pii: 
     return dc
 
 
+@audit_route_mutation(action="route.register_certificate", resource_type="governance_routes")
 @router.post("/certificates", dependencies=[admin_dep])
 def register_certificate(certificate_id: str, common_name: str, issuer: str, type: str, issued_date: date, expiry_date: date, db: Session = Depends(get_db)):
     svc = SecurityGovernanceService(db)
@@ -615,6 +653,7 @@ def register_certificate(certificate_id: str, common_name: str, issuer: str, typ
 # ── Phase 9: Interoperability Governance ─────────────────────────────────────
 
 
+@audit_route_mutation(action="route.register_protocol", resource_type="governance_routes")
 @router.post("/interop-protocols", dependencies=[admin_dep])
 def register_protocol(protocol_code: str, name_ar: str, protocol_type: InteropProtocolType, is_mandatory: bool = False, db: Session = Depends(get_db)):
     svc = InteroperabilityGovernanceService(db)
@@ -629,6 +668,7 @@ def list_protocols(protocol_type: InteropProtocolType | None = None, db: Session
     return svc.list_active_protocols(protocol_type)
 
 
+@audit_route_mutation(action="route.create_terminology_mapping", resource_type="governance_routes")
 @router.post("/terminology-mappings", dependencies=[admin_dep])
 def create_terminology_mapping(source_system: str, source_code: str, target_system: str, target_code: str, db: Session = Depends(get_db)):
     svc = InteroperabilityGovernanceService(db)
@@ -646,6 +686,7 @@ def lookup_terminology(source_system: str, source_code: str, db: Session = Depen
 # ── Phase 10: AI Governance ──────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.create_guardrail", resource_type="governance_routes")
 @router.post("/ai/guardrails", dependencies=[admin_dep])
 def create_guardrail(guardrail_code: str, name_ar: str, guardrail_type: AIGuardrailType, rules: dict, db: Session = Depends(get_db)):
     svc = AIGovernanceService(db)
@@ -654,6 +695,7 @@ def create_guardrail(guardrail_code: str, name_ar: str, guardrail_type: AIGuardr
     return g
 
 
+@audit_route_mutation(action="route.create_llm_policy", resource_type="governance_routes")
 @router.post("/ai/llm-policies", dependencies=[admin_dep])
 def create_llm_policy(policy_code: str, name_ar: str, llm_provider: str, model_name: str, requires_human_review: bool = False, db: Session = Depends(get_db)):
     svc = AIGovernanceService(db)
@@ -662,6 +704,7 @@ def create_llm_policy(policy_code: str, name_ar: str, llm_provider: str, model_n
     return lp
 
 
+@audit_route_mutation(action="route.log_ai_audit", resource_type="governance_routes")
 @router.post("/ai/audit", dependencies=[elevated_dep])
 def log_ai_audit(action: AIAuditAction, model_name: str, prompt: str | None = None, response: str | None = None, risk_level: AIRiskLevel | None = None, db: Session = Depends(get_db)):
     svc = AIGovernanceService(db)
@@ -670,6 +713,7 @@ def log_ai_audit(action: AIAuditAction, model_name: str, prompt: str | None = No
     return audit
 
 
+@audit_route_mutation(action="route.validate_ai_model", resource_type="governance_routes")
 @router.post("/ai/validate", dependencies=[admin_dep])
 def validate_ai_model(model_name: str, validation_type: str, passed: bool, accuracy: float | None = None, db: Session = Depends(get_db)):
     svc = AIGovernanceService(db)

@@ -6,6 +6,7 @@ and patient tasks through a unified RESTful interface.
 """
 
 from __future__ import annotations
+from app.services.route_audit import audit_route_mutation
 
 from datetime import date
 
@@ -109,6 +110,7 @@ def _practitioner_id(user: LabUser) -> str | None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.api_create_primary_care_encounter", resource_type="care_continuum")
 @router.post("/primary-care-encounters", summary="Create primary care encounter")
 def api_create_primary_care_encounter(
     data: dict,
@@ -148,6 +150,7 @@ def api_list_primary_care_encounters(
     )
 
 
+@audit_route_mutation(action="route.api_update_primary_care_encounter", resource_type="care_continuum")
 @router.put(
     "/primary-care-encounters/{encounter_id}",
     summary="Update primary care encounter",
@@ -174,6 +177,7 @@ def api_update_primary_care_encounter(
     return enc.to_dict()
 
 
+@audit_route_mutation(action="route.api_create_family_medicine_record", resource_type="care_continuum")
 @router.post("/family-medicine-records", summary="Create family medicine record")
 def api_create_family_medicine_record(
     data: dict,
@@ -196,6 +200,7 @@ def api_list_family_medicine_records(
     return list_family_medicine_records(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_community_clinic_record", resource_type="care_continuum")
 @router.post("/community-clinic-records", summary="Create community clinic record")
 def api_create_community_clinic_record(
     data: dict,
@@ -218,6 +223,7 @@ def api_list_community_clinic_records(
     return list_community_clinic_records(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_health_assessment", resource_type="care_continuum")
 @router.post("/health-assessments", summary="Create health assessment")
 def api_create_health_assessment(
     data: dict,
@@ -238,6 +244,7 @@ def api_list_health_assessments(
     return list_health_assessments(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_preventive_care_record", resource_type="care_continuum")
 @router.post("/preventive-care-records", summary="Create preventive care record")
 def api_create_preventive_care_record(
     data: dict,
@@ -265,6 +272,7 @@ def api_list_preventive_care_records(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.api_create_referral", resource_type="care_continuum")
 @router.post("/referrals", summary="Create referral request")
 def api_create_referral(
     data: dict,
@@ -274,6 +282,7 @@ def api_create_referral(
     return create_referral_request(db, data)
 
 
+@audit_route_mutation(action="route.api_accept_referral", resource_type="care_continuum")
 @router.put("/referrals/{referral_id}/accept", summary="Accept referral")
 def api_accept_referral(
     referral_id: str,
@@ -286,6 +295,7 @@ def api_accept_referral(
     return result
 
 
+@audit_route_mutation(action="route.api_reject_referral", resource_type="care_continuum")
 @router.put("/referrals/{referral_id}/reject", summary="Reject referral")
 def api_reject_referral(
     referral_id: str,
@@ -343,6 +353,7 @@ def api_get_referral_timeline(
     return get_referral_timeline(db, referral_id)
 
 
+@audit_route_mutation(action="route.api_create_cross_org_referral", resource_type="care_continuum")
 @router.post(
     "/referrals/cross-org", summary="Create cross-organization referral",
 )
@@ -354,6 +365,7 @@ def api_create_cross_org_referral(
     return create_cross_org_referral(db, data)
 
 
+@audit_route_mutation(action="route.api_create_referral_response", resource_type="care_continuum")
 @router.post(
     "/referrals/response", summary="Create referral response",
 )
@@ -384,6 +396,7 @@ def api_get_referral_analytics(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.api_create_care_journey", resource_type="care_continuum")
 @router.post("/care-journeys", summary="Create care journey")
 def api_create_care_journey(
     data: dict,
@@ -416,6 +429,7 @@ def api_list_care_journeys(
     return list_care_journeys(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_follow_up_plan", resource_type="care_continuum")
 @router.post("/follow-up-plans", summary="Create follow-up plan")
 def api_create_follow_up_plan(
     data: dict,
@@ -436,6 +450,7 @@ def api_list_follow_up_plans(
     return list_follow_up_plans(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_care_coordination", resource_type="care_continuum")
 @router.post("/care-coordination", summary="Create care coordination")
 def api_create_care_coordination(
     data: dict,
@@ -456,6 +471,7 @@ def api_list_care_coordination(
     return list_care_coordination(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_transition_of_care", resource_type="care_continuum")
 @router.post("/transitions-of-care", summary="Create transition of care")
 def api_create_transition_of_care(
     data: dict,
@@ -465,6 +481,7 @@ def api_create_transition_of_care(
     return create_transition_of_care(db, data)
 
 
+@audit_route_mutation(action="route.api_create_clinical_handover", resource_type="care_continuum")
 @router.post("/clinical-handovers", summary="Create clinical handover")
 def api_create_clinical_handover(
     data: dict,
@@ -474,6 +491,7 @@ def api_create_clinical_handover(
     return create_clinical_handover(db, data)
 
 
+@audit_route_mutation(action="route.api_create_home_care_plan", resource_type="care_continuum")
 @router.post("/home-care-plans", summary="Create home care plan")
 def api_create_home_care_plan(
     data: dict,
@@ -494,6 +512,7 @@ def api_list_home_care_plans(
     return list_home_care_plans(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_community_care_record", resource_type="care_continuum")
 @router.post("/community-care-records", summary="Create community care record")
 def api_create_community_care_record(
     data: dict,
@@ -521,6 +540,7 @@ def api_list_community_care_records(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.api_create_chronic_disease_registry", resource_type="care_continuum")
 @router.post(
     "/chronic-disease-registry", summary="Add chronic disease registry entry",
 )
@@ -564,6 +584,7 @@ def api_get_disease_specific_registry(
     return get_disease_specific_registry(db, disease_type, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_disease_management_plan", resource_type="care_continuum")
 @router.post(
     "/disease-management-plans", summary="Create disease management plan",
 )
@@ -588,6 +609,7 @@ def api_list_disease_management_plans(
     return list_disease_management_plans(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_risk_stratification", resource_type="care_continuum")
 @router.post(
     "/risk-stratifications", summary="Create risk stratification",
 )
@@ -612,6 +634,7 @@ def api_list_risk_stratifications(
     return list_risk_stratifications(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_self_monitoring_record", resource_type="care_continuum")
 @router.post(
     "/self-monitoring-records", summary="Create self-monitoring record",
 )
@@ -628,6 +651,7 @@ def api_create_self_monitoring_record(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.api_create_pregnancy_record", resource_type="care_continuum")
 @router.post("/pregnancy-records", summary="Create pregnancy record")
 def api_create_pregnancy_record(
     data: dict,
@@ -663,6 +687,7 @@ def api_list_pregnancy_records(
     return list_pregnancy_records(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_antenatal_care_visit", resource_type="care_continuum")
 @router.post(
     "/antenatal-care-visits", summary="Create antenatal care visit",
 )
@@ -674,6 +699,7 @@ def api_create_antenatal_care_visit(
     return create_antenatal_care_visit(db, data)
 
 
+@audit_route_mutation(action="route.api_create_delivery_record", resource_type="care_continuum")
 @router.post("/delivery-records", summary="Create delivery record")
 def api_create_delivery_record(
     data: dict,
@@ -683,6 +709,7 @@ def api_create_delivery_record(
     return create_delivery_record(db, data)
 
 
+@audit_route_mutation(action="route.api_create_postnatal_care_visit", resource_type="care_continuum")
 @router.post(
     "/postnatal-care-visits", summary="Create postnatal care visit",
 )
@@ -694,6 +721,7 @@ def api_create_postnatal_care_visit(
     return create_postnatal_care_visit(db, data)
 
 
+@audit_route_mutation(action="route.api_create_growth_monitoring", resource_type="care_continuum")
 @router.post("/growth-monitoring", summary="Create growth monitoring record")
 def api_create_growth_monitoring(
     data: dict,
@@ -703,6 +731,7 @@ def api_create_growth_monitoring(
     return create_growth_monitoring(db, data)
 
 
+@audit_route_mutation(action="route.api_create_breastfeeding_record", resource_type="care_continuum")
 @router.post(
     "/breastfeeding-records", summary="Create breastfeeding record",
 )
@@ -714,6 +743,7 @@ def api_create_breastfeeding_record(
     return create_breastfeeding_record(db, data)
 
 
+@audit_route_mutation(action="route.api_create_child_development_record", resource_type="care_continuum")
 @router.post(
     "/child-development-records",
     summary="Create child development record",
@@ -731,6 +761,7 @@ def api_create_child_development_record(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.api_create_vaccination_record", resource_type="care_continuum")
 @router.post("/vaccination-records", summary="Create vaccination record")
 def api_create_vaccination_record(
     data: dict,
@@ -753,6 +784,7 @@ def api_list_vaccination_records(
     return list_vaccination_records(db, patient_id, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_immunization_schedule", resource_type="care_continuum")
 @router.post(
     "/immunization-schedules", summary="Create immunization schedule",
 )
@@ -787,6 +819,7 @@ def api_get_missed_vaccinations(
     return get_missed_vaccinations(db, _lab_id(current_user))
 
 
+@audit_route_mutation(action="route.api_create_reminder_schedule", resource_type="care_continuum")
 @router.post("/reminder-schedules", summary="Create reminder schedule")
 def api_create_reminder_schedule(
     data: dict,
@@ -806,6 +839,7 @@ def api_get_immunization_coverage(
     return get_immunization_coverage(db, _lab_id(current_user))
 
 
+@audit_route_mutation(action="route.api_create_cold_chain_monitor", resource_type="care_continuum")
 @router.post(
     "/cold-chain-monitors", summary="Create cold chain monitor reading",
 )
@@ -822,6 +856,7 @@ def api_create_cold_chain_monitor(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.api_create_health_program", resource_type="care_continuum")
 @router.post("/health-programs", summary="Create health program")
 def api_create_health_program(
     data: dict,
@@ -841,6 +876,7 @@ def api_list_health_programs(
     return list_health_programs(db, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_program_enrollment", resource_type="care_continuum")
 @router.post(
     "/program-enrollments", summary="Enroll patient in health program",
 )
@@ -852,6 +888,7 @@ def api_create_program_enrollment(
     return create_program_enrollment(db, data)
 
 
+@audit_route_mutation(action="route.api_create_screening_campaign", resource_type="care_continuum")
 @router.post(
     "/screening-campaigns", summary="Create screening campaign",
 )
@@ -875,6 +912,7 @@ def api_list_screening_campaigns(
     return list_screening_campaigns(db, _lab_id(current_user), skip, limit)
 
 
+@audit_route_mutation(action="route.api_create_community_visit", resource_type="care_continuum")
 @router.post("/community-visits", summary="Create community visit")
 def api_create_community_visit(
     data: dict,
@@ -884,6 +922,7 @@ def api_create_community_visit(
     return create_community_visit(db, data)
 
 
+@audit_route_mutation(action="route.api_create_school_health_visit", resource_type="care_continuum")
 @router.post(
     "/school-health-visits", summary="Create school health visit",
 )
@@ -895,6 +934,7 @@ def api_create_school_health_visit(
     return create_school_health_visit(db, data)
 
 
+@audit_route_mutation(action="route.api_create_occupational_health_record", resource_type="care_continuum")
 @router.post(
     "/occupational-health-records",
     summary="Create occupational health record",
@@ -907,6 +947,7 @@ def api_create_occupational_health_record(
     return create_occupational_health_record(db, data)
 
 
+@audit_route_mutation(action="route.api_create_health_promotion_activity", resource_type="care_continuum")
 @router.post(
     "/health-promotion-activities",
     summary="Create health promotion activity",
@@ -924,6 +965,7 @@ def api_create_health_promotion_activity(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.api_create_patient_task", resource_type="care_continuum")
 @router.post("/patient-tasks", summary="Create patient task")
 def api_create_patient_task(
     data: dict,
@@ -948,6 +990,7 @@ def api_list_patient_tasks(
     )
 
 
+@audit_route_mutation(action="route.api_create_self_follow_up_task", resource_type="care_continuum")
 @router.post(
     "/self-follow-up-tasks", summary="Create self-follow-up task",
 )
@@ -959,6 +1002,7 @@ def api_create_self_follow_up_task(
     return create_self_follow_up_task(db, data)
 
 
+@audit_route_mutation(action="route.api_create_educational_material_assignment", resource_type="care_continuum")
 @router.post(
     "/educational-material-assignments",
     summary="Assign educational material to patient",

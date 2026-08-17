@@ -9,6 +9,7 @@ Endpoints:
 All endpoints require authentication. All service calls filter by
 current_user.lab_id (security invariant).
 """
+from app.services.route_audit import audit_route_mutation
 
 from decimal import Decimal
 
@@ -108,6 +109,7 @@ def _claim_to_response(claim: Claim) -> ClaimResponse:
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 
+@audit_route_mutation(action="route.create_claim", resource_type="claims")
 @router.post("", status_code=201, response_model=ClaimResponse)
 def create_claim(
     data: ClaimCreate,

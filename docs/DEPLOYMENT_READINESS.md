@@ -155,7 +155,7 @@ Detailed runbooks for each entry above belong in `docs/runbooks/` (out of scope 
 | 9 | P3 | National ID encryption-at-rest invariant not yet covered by automated test (relies on manual review of `encryption.py` usage) | Add to follow-up | — |
 | 10 | P3 | Outbox replay idempotency invariant not asserted in tests | Addressed for retry/dead-letter paths; broker-level replay still requires staging test | `backend/tests/test_sync_security_and_outbox.py` |
 | 11 | P0 | Production Outbox delivery backend may be absent or configured as log sink | **Fail-closed guard added; staging configuration required** | `GULA_SYNC_OUTBOX_DELIVERY` + readiness gate |
-| 12 | P1 | Initial gate reported 44 files across all route trees; 12 were National routes | **National Patient Flow/Offline Sync remediated: AST gate now reports 0 national findings. 30 non-national route files remain open for owner-by-owner review or explicit delegated-audit evidence.** | `config/quality-gates/security-gate.py`, `docs/GULA_PATIENT_FLOW_LOAD_SECURITY_READINESS_AR.md` |
+| 12 | P1 | Initial gate reported 44 files across all route trees; 12 were National routes | **National Patient Flow/Offline Sync remediated, ثم أُغلقت التحذيرات الثلاثون غير الوطنية عبر تدقيق route مركزي واختبار regression؛ AST gate now reports 0 audit findings.** | `config/quality-gates/security-gate.py`, `backend/tests/test_non_national_audit_coverage.py` |
 | 13 | P3 | WebSocket / realtime auth-bypass — no tests today (no WebSocket surface yet) | Out of scope for current architecture | — |
 
 ---
@@ -271,8 +271,8 @@ range is straightforward when tier scales.
 
 The platform is "national-deployment ready" when:
 
-- [x] **278 hardening tests** pass on every PR
-- [ ] All P0 and P1 unresolved risks (above) tracked with assignees & ETAs
+- [x] **280 hardening tests** pass on every PR, including non-national audit coverage regression
+- [ ] All remaining P0 and P1 risks (above) tracked with assignees & ETAs; audit-coverage risk #12 is closed by this phase
 - [ ] Operator runbooks (§2) materialized as `docs/runbooks/*.md`
 - [ ] Synthetic monitoring of all 4 critical paths (`/auth/login`, `/health/ready`,
   `/admin/kill-switch/deactivate`, `/metrics/prom`) green for 7 consecutive days
