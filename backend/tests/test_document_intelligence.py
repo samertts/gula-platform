@@ -4,12 +4,10 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi import FastAPI
-from httpx import ASGITransport, AsyncClient
-
 from app.document_intelligence.application.service import (
     DefaultClassifierService,
     DefaultEntityExtractionService,
@@ -33,9 +31,9 @@ from app.document_intelligence.domain.entities import (
     ExtractedEntity,
     ExtractedField,
     ExtractedTable,
-    GovernmentDocument,
     GovernanceEvent,
     GovernancePolicy,
+    GovernmentDocument,
     KnowledgeGraphEdge,
     OcrResult,
     PipelineHealth,
@@ -65,26 +63,26 @@ from app.document_intelligence.domain.enums import (
     OcrLanguage,
     ProcessingPhase,
     ProcessingPriority,
-    ReviewDecision,
     RetentionPolicy,
+    ReviewDecision,
     StorageBackend,
 )
 from app.document_intelligence.domain.repository import (
-    DocumentRepository,
-    GovernmentDocumentRepository,
-    ReviewRepository,
-    AnnotationRepository,
-    PreservationRepository,
-    GovernancePolicyRepository,
-    GovernanceEventRepository,
-    DocumentEventRepository,
-    LifecycleRepository,
-    GraphEdgeRepository,
     AccessControlRepository,
-    WebhookRepository,
-    RetentionRepository,
+    AnnotationRepository,
+    DocumentEventRepository,
+    DocumentRepository,
     DocumentVersionRepository,
+    GovernanceEventRepository,
+    GovernancePolicyRepository,
+    GovernmentDocumentRepository,
+    GraphEdgeRepository,
+    LifecycleRepository,
     PipelineHealthRepository,
+    PreservationRepository,
+    RetentionRepository,
+    ReviewRepository,
+    WebhookRepository,
 )
 from app.document_intelligence.exceptions import (
     DocumentIntelligenceError,
@@ -97,21 +95,22 @@ from app.document_intelligence.infrastructure.repository import (
     SqlDocumentRepository,
 )
 from app.document_intelligence.infrastructure.services import (
-    InfrastructureGovernmentRecordsService,
-    InfrastructureCollaborationService,
-    InfrastructureGovernanceService,
-    InfrastructureNationalArchiveService,
-    InfrastructureKnowledgeGraphService,
-    InfrastructureWebhookService,
-    InfrastructureObservabilityService,
     InfrastructureAccessControlService,
-    InfrastructureSemanticSearchService,
-    InfrastructureDocumentLifecycleService,
-    InfrastructureVersioningService,
+    InfrastructureCollaborationService,
     InfrastructureDocumentLifecycleManager,
+    InfrastructureDocumentLifecycleService,
     InfrastructureEventBusService,
+    InfrastructureGovernanceService,
+    InfrastructureGovernmentRecordsService,
+    InfrastructureKnowledgeGraphService,
+    InfrastructureNationalArchiveService,
+    InfrastructureObservabilityService,
+    InfrastructureSemanticSearchService,
+    InfrastructureVersioningService,
+    InfrastructureWebhookService,
 )
-
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 
 # ═══════════════════════════════════════════════════════════════════
 # DOMAIN ENTITY TESTS
@@ -308,20 +307,20 @@ class TestDefaultEntityExtractor:
 
     @pytest.mark.asyncio
     async def test_extract_health_id(self, extractor):
-        entities, fields, tables = await extractor.extract("Patient HN-2024123")
+        entities, _fields, _tables = await extractor.extract("Patient HN-2024123")
         health_ids = [e for e in entities if e.entity_type == EntityType.health_id]
         assert len(health_ids) > 0
         assert "HN-2024123" in health_ids[0].value
 
     @pytest.mark.asyncio
     async def test_extract_lab_values(self, extractor):
-        entities, fields, tables = await extractor.extract("Hemoglobin: 14.5 g/dL")
+        _entities, fields, _tables = await extractor.extract("Hemoglobin: 14.5 g/dL")
         assert len(fields) > 0
         assert fields[0].name == "Hemoglobin"
 
     @pytest.mark.asyncio
     async def test_extract_icd_code(self, extractor):
-        entities, fields, tables = await extractor.extract("Diagnosis: E11.9")
+        entities, _fields, _tables = await extractor.extract("Diagnosis: E11.9")
         icd_codes = [e for e in entities if e.entity_type == EntityType.icd_code]
         assert len(icd_codes) > 0
 
@@ -418,7 +417,7 @@ class MockRepo:
 
     async def save(self, *args, **kwargs):
         obj = args[0] if args else kwargs.get("obj")
-        if obj and hasattr(obj, 'id') and obj.id:
+        if obj and hasattr(obj, "id") and obj.id:
             key = f"{type(obj).__name__}:{obj.id}"
             self._store[key] = obj
         return obj
@@ -428,7 +427,7 @@ class MockRepo:
         if doc_id:
             # Check if it was stored
             for key, val in self._store.items():
-                if hasattr(val, 'id') and val.id == doc_id:
+                if hasattr(val, "id") and val.id == doc_id:
                     return val
             # Return a default ScannedDocument for lookups
             return ScannedDocument(

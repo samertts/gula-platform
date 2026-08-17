@@ -145,7 +145,7 @@ def test_orchestration_approval_requires_a_different_authorized_user(db):
 
 
 def test_provider_cannot_cross_entity_boundaries(db):
-    service, entity, rail, _provider, _rule = seed_advisory_route(db)
+    service, _entity, rail, _provider, _rule = seed_advisory_route(db)
     other = service.create_entity(
         code="GULA_INTL_X",
         legal_name="GULA International Entity X",

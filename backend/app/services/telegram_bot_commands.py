@@ -1,6 +1,7 @@
 import os
-import requests
+
 from sqlalchemy.orm import Session
+
 from app.services.critical_alerts import alert_statistics, get_critical_alerts
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
@@ -19,10 +20,10 @@ def handle_telegram_command(command: str, chat_id: str, db: Session) -> str:
             "• `/ping` - Test gateway connectivity"
         )
 
-    elif cmd == "/ping":
+    if cmd == "/ping":
         return "🏓 Pong! GULA Telegram Gateway is fully operational."
 
-    elif cmd == "/status":
+    if cmd == "/status":
         return (
             "🟢 *GULA Platform Status*\n\n"
             "• Environment: Production / Secure\n"
@@ -32,7 +33,7 @@ def handle_telegram_command(command: str, chat_id: str, db: Session) -> str:
             "• Uptime: 99.98%"
         )
 
-    elif cmd == "/alerts":
+    if cmd == "/alerts":
         # Using default lab_id=1 for system admin overview
         try:
             alerts_data = get_critical_alerts(db, lab_id=1, hours=24)
@@ -45,7 +46,7 @@ def handle_telegram_command(command: str, chat_id: str, db: Session) -> str:
                 msg += f"• *{a['patient_name']}* - {a['test_name']}: {a['value']} {a['unit']} ({a['flag']})\n"
             return msg
         except Exception as e:
-            return f"⚠️ Error fetching alerts: {str(e)}"
+            return f"⚠️ Error fetching alerts: {e!s}"
 
     elif cmd == "/stats":
         try:
@@ -57,7 +58,7 @@ def handle_telegram_command(command: str, chat_id: str, db: Session) -> str:
                 f"• Last 30d Critical: {stats.get('last_30d', 0)}"
             )
         except Exception as e:
-            return f"⚠️ Error fetching stats: {str(e)}"
+            return f"⚠️ Error fetching stats: {e!s}"
 
     else:
         return "❓ Unknown command. Type /help to see available monitoring commands."

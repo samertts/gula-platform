@@ -9,6 +9,8 @@ from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+
 from ..config import ENABLE_FINANCIAL_ENGINE
 from ..database import get_db
 from ..models.lab import Lab
@@ -305,7 +307,7 @@ def create_transaction(
         currency="IQD",
         status="pending",
         description=description,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(UTC),
     )
     db.add(txn)
     db.commit()
