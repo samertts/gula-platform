@@ -79,8 +79,8 @@ def _should_init_sentry() -> bool:
 def configure_sentry() -> None:
     import logging
 
-    _SENTRY_DSN = os.getenv("SENTRY_DSN")
-    if _SENTRY_DSN:
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
         try:
             import sentry_sdk
             from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -88,7 +88,7 @@ def configure_sentry() -> None:
             from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
             sentry_sdk.init(
-                dsn=_SENTRY_DSN,
+                dsn=sentry_dsn,
                 environment=os.getenv("ENVIRONMENT", "production"),
                 release=os.getenv("APP_VERSION", "unknown"),
                 integrations=[

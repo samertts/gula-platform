@@ -46,7 +46,8 @@ services:
   gula-demo-api:
     image: "${GULA_IMAGE_PREFIX:-local}/backend:${GULA_IMAGE_TAG:-local}"
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: gula-demo-api
     restart: unless-stopped
     security_opt:
@@ -54,6 +55,7 @@ services:
     environment:
       ENV: demo
       RUNTIME_MODE: api
+      PORT: 8000
       FEATURE_BACKGROUND_TASKS: "false"
       DEMO_MODE: "true"
       DEMO_DATA_ISOLATION_ACK: "true"

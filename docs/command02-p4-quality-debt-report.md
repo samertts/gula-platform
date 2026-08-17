@@ -237,3 +237,17 @@ python scripts/quality_changed_files_gate.py
 ```
 
 The command outputs, local result counts, and post-push PR/run verification recorded above are the evidence basis for this re-evaluation. Remote CI remains externally blocked and must not be represented as green.
+
+## Addendum — Re-evaluation on Current Command 03 Working State
+
+After the post-push baseline commit `25d0f0deafbefcfde76743223d90544bf63151d6`, the current local re-evaluation was rerun before Command 03 reporting. The five remaining `N806` findings in `startup_guard.py`, document-intelligence wiring, Sentry configuration, GIS, and risk-based authentication were corrected through local-only renames. The targeted startup, document-intelligence, and security regression subset passed with **111 passed and 53 warnings**, and the selected Ruff set `F401/F821/F841/RUF059/N806` now reports **All checks passed**.
+
+| Current metric | Current result |
+|---|---:|
+| Ruff `backend/app` | **617 diagnostics** |
+| Ruff `backend/tests` | **237 diagnostics** |
+| Selected correctness/dead-code/RUF/N806 set | **0 diagnostics** |
+| Changed-files gate | **PASS**; Ruff 89, MyPy 5,381, critical 631 |
+| Full backend regression after current changes | **2,719 passed, 4 skipped, 172 warnings** in 320.56s |
+
+The remaining broad Ruff and MyPy debt is unchanged in nature: legacy import architecture, naming/style debt, and SQLAlchemy typing/plugin limitations. No gate was disabled, no broad ignore was introduced, and no P5 or Command 10 work was started.
