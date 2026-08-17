@@ -6,6 +6,7 @@ from app.reference.domain.exceptions import CriticalResultError, ResultNotFoundE
 from app.reference.domain.interfaces import OrderRepository, ResultRepository
 from app.reference.domain.models import LabResultDomain
 from app.reference.domain.services import ResultValidationService
+from app.reference.domain.safety import ClinicalSafetyGuard
 
 
 class ResultService:
@@ -16,18 +17,27 @@ class ResultService:
         repository: ResultRepository,
         order_repo: OrderRepository,
         validation: ResultValidationService,
+        safety: ClinicalSafetyGuard = None,
     ) -> None:
         self._repository = repository
         self._order_repo = order_repo
         self._validation = validation
+        self._safety = safety or ClinicalSafetyGuard()
 
     async def submit_result(
         self,
         result: LabResultDomain,
     ) -> LabResultDomain:
         await self._validation.validate_result(result, self._order_repo)
+        
+        # Clinical Safety: Delta Check
+        delta_failed = await self._safety.perform_delta_check(result, self._repository)
+        if delta_failed:
+            result.notes = (result.notes or "") + " [تنبيه: فشل فحص التغير المفاجئ - Delta Check Failed]"
+            
         is_critical = self._validation.flag_critical(result)
         saved = await self._repository.save(result)
+        
         if is_critical:
             raise CriticalResultError(
                 analyte=result.analyte,

@@ -23,5 +23,6 @@ exec gunicorn \
   --timeout 60 \
   --bind "0.0.0.0:${PORT_VALUE}" \
   --access-logfile - \
-  --error-logfile -
+  --error-logfile - \
+  --preload
 

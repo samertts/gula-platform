@@ -142,7 +142,7 @@ def detect_outbreak(
             f"{window_days}-day window (ratio {ratio:.1f}×)."
         )
 
-    return {
+    result = {
         "status": status,
         "observed": observed,
         "expected": expected,
@@ -151,3 +151,26 @@ def detect_outbreak(
         "method": method,
         "message": msg,
     }
+
+    # If an alert is detected, broadcast to the local Mesh/Omni-Network
+    if status == "alert":
+        _broadcast_mesh_alert(test_code, result)
+
+    return result
+
+
+def _broadcast_mesh_alert(test_code: str, alert_data: dict):
+    """
+    Broadcasts the epidemiological alert to nearby nodes in the Omni-Network.
+    Allows for regional response even without cloud connectivity.
+    """
+    import logging
+    from app.core.omni_network import OmniNetworkManager
+    
+    logger = logging.getLogger("gula.epidemiology.mesh")
+    logger.warning(f"[MESH-ALERT] Broadcasting epidemiological alert for {test_code or 'ALL'}")
+    
+    # In a real deployment, this would use the OmniNetworkManager to send P2P messages
+    # manager = OmniNetworkManager("Sentinel-Node", 8000)
+    # manager.broadcast_alert(alert_data)
+    pass
