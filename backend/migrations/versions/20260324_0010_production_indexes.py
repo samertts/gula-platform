@@ -31,8 +31,10 @@ depends_on = None
 def _idx(name: str, table: str, columns: str, unique: bool = False) -> None:
     """Create index if it does not exist — idempotent."""
     unique_kw = "UNIQUE " if unique else ""
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+    # _idx is called only with migration-owned constant identifiers; no request input reaches this SQL.
     op.execute(
-        text(
+        text(  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             f"CREATE {unique_kw}INDEX IF NOT EXISTS {name} "
             f"ON {table} ({columns})"
         )

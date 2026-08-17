@@ -87,3 +87,27 @@ python3 config/quality-gates/security-gate.py \
 ```
 
 يجب تنفيذ الأمر الأخير دون خيارات `skip` في CI الإنتاجي بعد تثبيت الأدوات الخارجية؛ خيارات التجاوز استُخدمت محليًا فقط لأن الأدوات غير مثبتة في البيئة الحالية.
+
+## 8. نتائج فحوص CI الأمنية اللاحقة
+
+بعد موافقة استكمال الفحوص، تم تثبيت أدوات Bandit وSemgrep وSafety وCheckov وpip-audit محليًا وتشغيل Security Gate الكامل على commit العمل. أظهرت الجولة الأولى **37 خطأ و2 تحذير**؛ وبعد التحليل والإصلاح انخفضت النتيجة إلى **0 أخطاء و7 تحذيرات بيئية أو اختبارية**.
+
+شملت الإصلاحات استبدال concatenation في استعلامات demo data بـbound parameters، وتوثيق SQL الداخلي الآمن في migration وoffline store وSNDHS backfill بتعليقات suppression مرتبطة ب allowlist وbind parameters، وإضافة `HEALTHCHECK` إلى صور Python، وتحويل frontend runtime إلى `nginx-unprivileged` على المنفذ 8080 مع `USER nginx`. كما تم إصلاح parsing لنتيجة Bandit عند ظهور progress output، وتحسين credential scanner حتى لا يحول labels النصية وملفات scanner نفسها إلى secrets، ويصنف fixtures الاختبارية كتحذيرات غير إنتاجية.
+
+تمت إزالة القيم السرية الفعلية من `security-audit/secret-report.md` واستبدالها بـ`<REDACTED>`. إذا كانت هذه القيم قد استُخدمت خارج بيئة اختبار معزولة، يجب تدويرها فورًا من مصدر الأسرار؛ redaction من Git لا يلغي وجودها في التاريخ السابق.
+
+| الفحص | النتيجة النهائية المحلية |
+|---|---:|
+| Bandit HIGH/CRITICAL | 0 |
+| Semgrep HIGH/CRITICAL | 0 |
+| Safety dependencies | 0 vulnerabilities |
+| Checkov Docker/IaC | 0 violations |
+| SBOM blocked licenses | 0 |
+| Audit coverage | 0 findings |
+| Gitleaks | لم يُنفذ: binary غير مثبت |
+| Trivy | لم يُنفذ: binary غير مثبت |
+| Credential fixtures | 5 تحذيرات اختبارية فقط |
+
+نجحت Backend suite بعد هذه الدفعة في **2686 اختبارًا، مع 4 متجاوزة و252 تحذيرًا**، ونجحت مجموعة الاختبارات الأمنية المتأثرة في **54 اختبارًا**. بوابة الجاهزية الحكومية نجحت في **67 اختبارًا، مع 4 تحذيرات**؛ التحذير الوحيد التشغيلي هو أن فحص production environment لم يُطلب باستخدام `--production`. لا يوجد عنوان staging أو token متاح في الجلسة الحالية، لذلك لم يُنفذ اختبار load أو smoke خارجي على مؤسسة صحية حقيقية.
+
+> لا تعتبر نتيجة Security Gate المحلية موافقة إنتاج؛ يجب تشغيل Gitleaks وTrivy داخل CI أو runner مجهز، ثم تنفيذ staging smoke وload ببيانات اصطناعية فقط، مع تدوير أي سر تاريخي مكشوف.

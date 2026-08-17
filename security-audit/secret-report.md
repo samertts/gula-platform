@@ -10,17 +10,17 @@ Trivy secret scanning detected 0 secrets. Manual audit found the following expos
 **Severity:** Critical
 **File:** `.env`
 **Exposed Secrets:**
-- `DEV_SECRET_KEY=EItO8P9Jnsev63zd_2SuDe2tVx281tqpU0AeHU3WDTB3BwwB-lKmy-RQ-rzfDvLATUPFxZKMB7oRgdNzEmWdGg`
-- `REFRESH_TOKEN_SECRET=E1yd6C0kicg59HyDn2cHtGsN0quNZvw8v9jcHleMyO7W4Ep8oxQ5jB2Ruahd4rwPrho9ZMuoxNPorf-OnqFjmg`
-- `ENCRYPTION_KEY=Tldv7iHbu9VhJVi3BhPa9K9-pWpONQS9FFG-ROH7VzM=`
-- `NID_HMAC_KEY=b7bda54a64e6364fe52bec182703bb667f71373549e385bab7d2a3a29674187c`
-- `POSTGRES_PASSWORD=gula_dev_2026`
-- `REDIS_PASSWORD=gula_dev_2026`
+- `DEV_SECRET_KEY=<REDACTED — rotate in every environment>`
+- `REFRESH_TOKEN_SECRET=<REDACTED — rotate in every environment>`
+- `ENCRYPTION_KEY=<REDACTED — rotate in every environment>`
+- `NID_HMAC_KEY=<REDACTED — rotate in every environment>`
+- `POSTGRES_PASSWORD=<REDACTED — rotate in every environment>`
+- `REDIS_PASSWORD=<REDACTED — rotate in every environment>`
 
 ### SEC-02: Test Files with Real-Looking Secrets
 **Severity:** High
 **Files:** `backend/tests/test_*.py`
-**Pattern:** Multiple test files set `ENCRYPTION_KEY` to `6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=`
+**Pattern:** Multiple test files use a deterministic test-only encryption fixture; it is not a deployment secret and must remain isolated from production environments.
 
 ### SEC-03: Test Secret Values
 **Severity:** Low

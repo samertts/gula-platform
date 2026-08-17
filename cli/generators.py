@@ -1,4 +1,4 @@
-import importlib.resources
+import importlib.resources  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 import os
 import re
 from datetime import datetime
@@ -6,7 +6,9 @@ from datetime import datetime
 
 def _read_template(name: str) -> str:
     try:
-        from importlib.resources import files as _files
+        # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
+        # Runtime baseline is Python 3.12+; importlib.resources is part of the supported stdlib.
+        from importlib.resources import files as _files  # nosemgrep: python.lang.compatibility.python37.python37-compatibility-importlib2
 
         pkg = _files("cli") / "templates" / name
         if pkg.is_file():

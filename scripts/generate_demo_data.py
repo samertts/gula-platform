@@ -1000,9 +1000,10 @@ class DemoDataGenerator:
             }})
         with open(os.path.join(fhir_dir, "patients.json"), "w") as f:
             json.dump(bundle, f, indent=2, default=str)
-        org_rows = self.db.execute(text(
-            f"SELECT org_id, name_en, name_ar, org_type FROM organizations WHERE org_id LIKE '{DEMO_PREFIX}-%'"
-        )).fetchall()
+        org_rows = self.db.execute(
+            text("SELECT org_id, name_en, name_ar, org_type FROM organizations WHERE org_id LIKE :prefix"),
+            {"prefix": f"{DEMO_PREFIX}-%"},
+        ).fetchall()
         org_bundle: dict[str, Any] = {"resourceType": "Bundle", "type": "collection", "entry": []}
         for o in org_rows:
             org_bundle["entry"].append({"resource": {
@@ -1121,9 +1122,10 @@ class DemoDataGenerator:
                 f.write(f"- {k}: {v:,}\n")
 
         # ORGANIZATION_DIRECTORY.csv
-        org_rows = self.db.execute(text(
-            f"SELECT org_id, name_en, name_ar, org_type, governorate_id FROM organizations WHERE org_id LIKE '{DEMO_PREFIX}-%'"
-        )).fetchall()
+        org_rows = self.db.execute(
+            text("SELECT org_id, name_en, name_ar, org_type, governorate_id FROM organizations WHERE org_id LIKE :prefix"),
+            {"prefix": f"{DEMO_PREFIX}-%"},
+        ).fetchall()
         with open(os.path.join(self.output_dir, "ORGANIZATION_DIRECTORY.csv"), "w", newline="") as f:
             w = csv.writer(f)
             w.writerow(["OrgID", "NameEN", "NameAR", "Type", "Governorate"])
@@ -1138,9 +1140,10 @@ class DemoDataGenerator:
                 w.writerow([u["id"], u["username"], u["name_en"], u["role"], u["role_en"]])
 
         # SYNTHETIC_PATIENTS.csv
-        pat_rows = self.db.execute(text(
-            f"SELECT id, health_id, full_name, phone, gender, birth_date FROM patients WHERE lab_id={self.demo_lab_id or 0} LIMIT 5000"
-        )).fetchall()
+        pat_rows = self.db.execute(
+            text("SELECT id, health_id, full_name, phone, gender, birth_date FROM patients WHERE lab_id = :lab_id LIMIT 5000"),
+            {"lab_id": self.demo_lab_id or 0},
+        ).fetchall()
         with open(os.path.join(self.output_dir, "SYNTHETIC_PATIENTS.csv"), "w", newline="") as f:
             w = csv.writer(f)
             w.writerow(["ID", "HealthID", "FullName", "Phone", "Gender", "BirthDate"])

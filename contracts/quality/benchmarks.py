@@ -1136,10 +1136,10 @@ class TestNPlusOneDetection:
         n = 100
 
         async def _run():
+            placeholders = ",".join(f":id_{i}" for i in range(n))
+            # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
             await db_mock.execute(
-                "SELECT r.* FROM lab_results r JOIN lab_orders o ON r.order_id = o.id WHERE o.id IN ({})".format(
-                    ",".join(str(i) for i in range(n))
-                )
+                f"SELECT r.* FROM lab_results r JOIN lab_orders o ON r.order_id = o.id WHERE o.id IN ({placeholders})"
             )
             return True
 

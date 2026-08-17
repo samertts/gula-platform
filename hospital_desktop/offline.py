@@ -213,7 +213,9 @@ class OfflineDatabase:
         data["updated_at"] = now
 
         with self._lock:
-            existing = self._conn.execute(
+            # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+            # table is selected from a closed allowlist; entity_id is bound.
+            existing = self._conn.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
                 f"SELECT id FROM {table} WHERE id = ?", (entity_id,)
             ).fetchone()
 
@@ -224,12 +226,16 @@ class OfflineDatabase:
 
             if existing:
                 set_clause = ", ".join(f'"{k}" = :{k}' for k in data.keys())
-                self._conn.execute(
+                # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+                # table/set_clause are built only from validated allowlisted identifiers; values are bound.
+                self._conn.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
                     f"UPDATE {table} SET {set_clause} WHERE id = :id",
                     values,
                 )
             else:
-                self._conn.execute(
+                # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+                # table/columns/placeholders are built only from validated allowlisted identifiers.
+                self._conn.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
                     f"INSERT INTO {table} ({columns}) VALUES ({placeholders})",
                     values,
                 )
@@ -241,7 +247,9 @@ class OfflineDatabase:
     def get(self, entity_type: str, entity_id: str) -> dict | None:
         table = self._validate_entity_type(entity_type)
         with self._lock:
-            row = self._conn.execute(
+            # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+            # table is allowlisted and entity_id is bound.
+            row = self._conn.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
                 f"SELECT * FROM {table} WHERE id = ? AND deleted = 0",
                 (entity_id,),
             ).fetchone()
@@ -277,7 +285,9 @@ class OfflineDatabase:
                     params.append(value)
 
         with self._lock:
-            rows = self._conn.execute(
+            # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+            # table and where_clause use allowlisted identifiers/operators; all filter values are bound.
+            rows = self._conn.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
                 f"SELECT * FROM {table} WHERE {where_clause} ORDER BY updated_at DESC",
                 params,
             ).fetchall()
@@ -286,7 +296,7 @@ class OfflineDatabase:
     def delete(self, entity_type: str, entity_id: str):
         table = self._validate_entity_type(entity_type)
         with self._lock:
-            self._conn.execute(
+            self._conn.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
                 f"UPDATE {table} SET deleted = 1, updated_at = ? WHERE id = ?",
                 (datetime.now(timezone.utc).isoformat(), entity_id),
             )

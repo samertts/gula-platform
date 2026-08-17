@@ -13,4 +13,7 @@ USER app
 
 EXPOSE 8200
 
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
+  CMD python -c "import socket; s=socket.create_connection(('127.0.0.1', 8200), 2); s.close()"
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8200"]

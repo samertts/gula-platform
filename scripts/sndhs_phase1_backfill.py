@@ -194,8 +194,10 @@ def _backfill_one_batch(engine, *, batch_size: int, dry_run: bool) -> int:
         # Single UPDATE statement per batch via VALUES list keeps it tight.
         # Fall back to per-row update if VALUES isn't supported (sqlite).
         try:
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            # Batch SQL contains generated bind parameter names only; row values stay in execute params.
             c.execute(
-                text(
+                text(  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                     "UPDATE lab_orders AS lo "
                     "SET visit_id = v.vid::uuid "
                     "FROM (VALUES " +

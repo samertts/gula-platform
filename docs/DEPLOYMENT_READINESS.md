@@ -296,3 +296,11 @@ The platform was already well-tested. This phase makes that testing
 *adversarially deterministic* — every invariant in CLAUDE.md is now a
 contract that fails loudly in CI, not a comment that survives via
 discipline alone.
+
+## 10. CI security follow-up — 2026-08-18
+
+بعد commit `ad10e9f5` تم تشغيل Security Gate الكامل محليًا بعد تثبيت Bandit وSemgrep وSafety وCheckov وpip-audit. الجولة النهائية سجلت **0 أخطاء و7 تحذيرات**: تحذيران لأن Gitleaks وTrivy غير مثبتين، وخمسة تحذيرات تخص fixtures اختبارية لا تُنشر إلى production. سجلت الأدوات المتاحة **Bandit 0 HIGH/CRITICAL، Semgrep 0 HIGH/CRITICAL، Safety 0 vulnerabilities، Checkov 0 violations، وSBOM 0 blocked licenses**.
+
+أضيفت HEALTHCHECK إلى صور Python، وأصبح frontend runtime يستخدم nginx unprivileged مع `USER nginx` ومنفذ 8080. كما استُبدلت استعلامات demo data بـbound parameters، ووثقت الاستعلامات الداخلية ذات allowlist وbind parameters في migrations وoffline store وSNDHS backfill. يجب مراجعة هذه suppressions في code review وعدم نسخ نمط SQL الديناميكي إلى routes تستقبل input خارجيًا.
+
+لم يُشغّل load أو smoke خارجي على staging لعدم توفر `BASE_URL` و`AUTH_TOKEN` و`DEVICE_SESSION_TOKEN` و`HOSPITAL_ID` في الجلسة. لا يجوز وضع هذه القيم في Git أو المحادثة؛ تُمرر من secret manager أو CI protected variables عند تنفيذ staging. كما يجب تشغيل Gitleaks وTrivy على runner مجهز قبل اعتبار بوابة الإصدار مكتملة.
