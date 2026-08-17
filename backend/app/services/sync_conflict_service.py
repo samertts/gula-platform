@@ -232,6 +232,15 @@ def ingest_operation(
     if existing:
         if existing.payload_hash != digest or existing.idempotency_key != idempotency_key:
             raise ConflictError("IDEMPOTENCY_KEY_REUSE: operation payload differs")
+        log_action(
+            db,
+            "sync.operation.duplicate",
+            resource_type="sync_operation",
+            resource_id=None,
+            user_id=int(user_id) if user_id.isdigit() else None,
+            lab_id=lab_id,
+            details={"operation_id": operation_id, "existing_entity_id": existing.entity_id},
+        )
         return {"status": "duplicate", "operation_id": operation_id, "server_id": existing.entity_id, "server_version": existing.base_version}
 
     scoped_duplicate = db.query(NationalSyncOperationModel).filter(
@@ -242,6 +251,15 @@ def ingest_operation(
     if scoped_duplicate:
         if scoped_duplicate.payload_hash != digest:
             raise ConflictError("IDEMPOTENCY_KEY_REUSE: scoped payload differs")
+        log_action(
+            db,
+            "sync.operation.duplicate",
+            resource_type="sync_operation",
+            resource_id=None,
+            user_id=int(user_id) if user_id.isdigit() else None,
+            lab_id=lab_id,
+            details={"operation_id": scoped_duplicate.operation_id, "existing_entity_id": scoped_duplicate.entity_id, "reason": "scoped_idempotency"},
+        )
         return {"status": "duplicate", "operation_id": scoped_duplicate.operation_id, "server_id": scoped_duplicate.entity_id, "server_version": scoped_duplicate.base_version}
 
     record = NationalSyncOperationModel(

@@ -1,8 +1,10 @@
 # National-Scale Deployment Readiness — Phase 15
 
-**Date:** 2026-05-08
-**Stage:** Phase 9–15 hardening complete
-**Architectural blast radius:** zero (additive tests + docs only — no production code modified)
+**Date:** 2026-08-17
+**Stage:** Patient Flow / Offline Sync government-readiness follow-up
+**Architectural blast radius:** additive readiness gate, security coverage, staging load scenario, and Outbox fail-closed guard
+
+> هذه الوثيقة لا تمنح موافقة إنتاج حكومية تلقائية. يلزم اعتماد التغيير السريري والأمني والتشغيلي وخطة التعافي من الكوارث قبل أي rollout.
 
 This document is the operator-facing deployment readiness register for the
 GULA Platform. It complements `PRODUCTION_HARDENING.md` (Phases 1–8).
@@ -95,6 +97,17 @@ Operators MUST tick every item below before staged national rollout.
 - [ ] `make integrity-test WORKERS=200` zero corruption
 - [ ] Slow-query log enabled (>300ms threshold)
 
+### 1.9.1 Government Patient Flow and Offline Sync
+
+- [ ] `python3 scripts/government_readiness_gate.py --run-tests` passes on a clean non-protected branch.
+- [ ] `alembic heads` reports exactly one head and includes `20260817_0025`.
+- [ ] `GULA_SYNC_OUTBOX_DELIVERY` is set to `redis`, `broker`, or `push`; `log` is forbidden when `IS_PRODUCTION=true`.
+- [ ] `make patient-flow-load BASE_URL=... AUTH_TOKEN=... DEVICE_ID=... DEVICE_SESSION_TOKEN=... HOSPITAL_ID=... SCENARIO=smoke` passes against synthetic staging data.
+- [ ] Patient Flow/Sync load thresholds are met: error rate <1%, read p95 <500ms, write p95 <1000ms, and no unexpected device-session rejection.
+- [ ] Offline queue recovery is tested from IndexedDB v1 to v2, including encrypted legacy-row migration and the 5000-operation cap.
+- [ ] Clinical conflicts remain manual-review only; no last-write-wins or automatic medical merge is allowed.
+- [ ] The `services/device_bridge` pre-existing compilation failures are either fixed or explicitly excluded from the release candidate with owner and deadline.
+
 ### 1.10 AI / autonomy
 
 - [ ] `tests/test_ai_guardrails.py` — 27/27 pass
@@ -137,8 +150,10 @@ Detailed runbooks for each entry above belong in `docs/runbooks/` (out of scope 
 | 7 | P2 | Frontend test runner is `node:test` not Vitest | Sufficient for current scope | `frontend-v2/src/lib/__tests__/` |
 | 8 | P2 | Pre-existing `backend-test` CI flakiness when PG service container slow to start | Operational; flakiness not caused by this hardening phase | n/a |
 | 9 | P3 | National ID encryption-at-rest invariant not yet covered by automated test (relies on manual review of `encryption.py` usage) | Add to follow-up | — |
-| 10 | P3 | Outbox replay idempotency invariant not asserted in tests | Add to follow-up | — |
-| 11 | P3 | WebSocket / realtime auth-bypass — no tests today (no WebSocket surface yet) | Out of scope for current architecture | — |
+| 10 | P3 | Outbox replay idempotency invariant not asserted in tests | Addressed for retry/dead-letter paths; broker-level replay still requires staging test | `backend/tests/test_sync_security_and_outbox.py` |
+| 11 | P0 | Production Outbox delivery backend may be absent or configured as log sink | **Fail-closed guard added; staging configuration required** | `GULA_SYNC_OUTBOX_DELIVERY` + readiness gate |
+| 12 | P1 | National route audit gate reports 44 write-capable routes without direct audit markers | **Detected by expanded gate; requires route-by-route service audit review** | `config/quality-gates/security-gate.py` |
+| 13 | P3 | WebSocket / realtime auth-bypass — no tests today (no WebSocket surface yet) | Out of scope for current architecture | — |
 
 ---
 

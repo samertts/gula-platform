@@ -335,34 +335,36 @@ def check_exposed_credentials(root: pathlib.Path) -> list[dict[str, Any]]:
 def check_audit_log_coverage(root: pathlib.Path) -> list[dict[str, Any]]:
     logger.info("Checking audit log coverage...")
     findings: list[dict[str, Any]] = []
-    routes_dir = root / "backend" / "app" / "routes"
+    app_dir = root / "backend" / "app"
+    route_dirs = [path for path in app_dir.rglob("routes") if path.is_dir()]
 
-    for py_file in routes_dir.rglob("*.py"):
-        if py_file.name == "__init__.py":
-            continue
-        try:
-            text = py_file.read_text(encoding="utf-8")
-        except (OSError, UnicodeDecodeError):
-            continue
+    for routes_dir in route_dirs:
+        for py_file in routes_dir.rglob("*.py"):
+            if py_file.name == "__init__.py":
+                continue
+            try:
+                text = py_file.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
 
-        has_write_operation = any(
-            op in text for op in ("POST", "PUT", "PATCH", "DELETE")
-        ) or any(
-            method in text for method in ("@router.post", "@router.put", "@router.patch", "@router.delete")
-        )
+            has_write_operation = any(
+                op in text for op in ("POST", "PUT", "PATCH", "DELETE")
+            ) or any(
+                method in text for method in ("@router.post", "@router.put", "@router.patch", "@router.delete")
+            )
 
-        has_audit = "AuditLog" in text or "audit" in text.lower()
+            has_audit = "AuditLog" in text or "audit" in text.lower()
 
-        if has_write_operation and not has_audit:
-            findings.append({
-                "check": "audit_coverage",
-                "severity": "warning",
-                "file": str(py_file.relative_to(root)),
-                "message": (
-                    f"{py_file.relative_to(root)} has write operations "
-                    f"but no audit logging detected."
-                ),
-            })
+            if has_write_operation and not has_audit:
+                findings.append({
+                    "check": "audit_coverage",
+                    "severity": "warning",
+                    "file": str(py_file.relative_to(root)),
+                    "message": (
+                        f"{py_file.relative_to(root)} has write operations "
+                        f"but no audit logging detected."
+                    ),
+                })
 
     logger.info("  Audit coverage: %d file(s) without audit", len(findings))
     return findings

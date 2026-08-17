@@ -6,7 +6,7 @@ import pytest
 from app.domain.exceptions import ConflictError
 from app.national.sync_models import NationalSyncOutboxModel
 from app.national.api.routes.sync import _select_escalation_recipient
-from app.services.sync_conflict_service import _assert_device_scope, create_device_session
+from app.services.sync_conflict_service import _assert_device_scope, create_device_session, ingest_operation
 from app.tasks import sync_outbox
 from tests.conftest import auth_headers
 
@@ -59,6 +59,33 @@ def test_expired_device_session_is_rejected(db, make_lab, make_lab_user):
         _assert_device_scope(db, user, "er-device-002", token, 202)
 
 
+def test_sync_operation_is_idempotent_under_repeated_delivery(db, make_lab, make_lab_user):
+    lab = make_lab()
+    user = make_lab_user(lab.id, role="doctor")
+    _, token = create_device_session(db, current_user=user, device_id="er-idempotent-001", hospital_id=303)
+    operation = {
+        "operation_id": "op-idempotent-001",
+        "idempotency_key": "idem-idempotent-001",
+        "operation_type": "encounter.note",
+        "entity_type": "Encounter",
+        "entity_id": "encounter-local-001",
+        "priority": "routine",
+        "payload": {"hospital_id": 303, "note": "synthetic repeated delivery"},
+    }
+    first = ingest_operation(db, current_user=user, device_id="er-idempotent-001", device_token=token, operation=operation)
+    second = ingest_operation(db, current_user=user, device_id="er-idempotent-001", device_token=token, operation=operation)
+    assert first["status"] == "accepted"
+    assert second["status"] == "duplicate"
+    assert db.query(NationalSyncOutboxModel).count() == 1
+
+
+def test_outbox_log_sink_is_rejected_in_production(monkeypatch):
+    monkeypatch.setenv("IS_PRODUCTION", "true")
+    monkeypatch.delenv("GULA_SYNC_OUTBOX_DELIVERY", raising=False)
+    with pytest.raises(RuntimeError, match="delivery backend is not configured"):
+        sync_outbox.deliver_outbox_event(SimpleNamespace(event_id="evt-prod", event_type="clinical.conflict.created"))
+
+
 def test_outbox_failure_is_retried_with_backoff(db, monkeypatch):
     row = NationalSyncOutboxModel(
         event_id="evt-retry-001",
@@ -81,6 +108,27 @@ def test_outbox_failure_is_retried_with_backoff(db, monkeypatch):
     assert refreshed.attempts == 1
     assert refreshed.next_attempt_at is not None
     assert refreshed.last_error == "temporary delivery failure"
+
+
+def test_outbox_does_not_retry_before_backoff_deadline(db, monkeypatch):
+    row = NationalSyncOutboxModel(
+        event_id="evt-retry-future",
+        event_type="clinical.conflict.created",
+        aggregate_type="SyncConflict",
+        aggregate_id="conflict-future",
+        lab_id=1,
+        payload={},
+        status="failed",
+        attempts=1,
+        next_attempt_at=sync_outbox._now() + timedelta(hours=1),
+    )
+    db.add(row)
+    db.flush()
+    monkeypatch.setattr(sync_outbox, "SessionLocal", lambda: db)
+    result = __import__("asyncio").run(sync_outbox.handle_sync_outbox({"limit": 10}))
+    assert result["selected"] == 0
+    refreshed = db.query(NationalSyncOutboxModel).filter_by(event_id="evt-retry-future").one()
+    assert refreshed.status == "failed"
 
 
 def test_outbox_dead_letters_after_max_attempts(db, monkeypatch):

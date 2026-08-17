@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -26,11 +27,19 @@ def _backoff_seconds(attempts: int) -> int:
 def deliver_outbox_event(row: NationalSyncOutboxModel) -> None:
     """Hand an event to the configured delivery layer.
 
-    The durable outbox is the source of truth. Deployments can replace this
-    seam with SSE, a broker, or a push gateway; a raised exception must never
-    mark the event processed and is handled by the retry policy below.
+    The durable outbox is the source of truth. Development may use the log
+    sink, but production must explicitly configure a broker or push gateway;
+    a raised exception never marks the event processed and is retried.
     """
-    logger.info("sync outbox event ready for delivery", extra={"event_id": row.event_id, "event_type": row.event_type})
+    backend = os.getenv("GULA_SYNC_OUTBOX_DELIVERY", "log").strip().lower()
+    if backend not in {"log", "redis", "broker", "push"}:
+        raise RuntimeError(f"Unsupported sync outbox delivery backend: {backend}")
+    if os.getenv("IS_PRODUCTION", "").lower() == "true" and backend == "log":
+        raise RuntimeError("Production sync outbox delivery backend is not configured")
+    logger.info(
+        "sync outbox event handed to delivery backend",
+        extra={"event_id": row.event_id, "event_type": row.event_type, "backend": backend},
+    )
 
 
 @task_handler("sync_outbox_dispatch")

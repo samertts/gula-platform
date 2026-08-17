@@ -20,11 +20,11 @@ Q ?= @
         foundation-check foundation-ci \
         canary-deploy blue-green-deploy auto-rollback \
         dr-failover dr-failback dr-test dr-validate \
-        load-test stress-test spike-test soak-test recovery-test \
+        load-test patient-flow-load stress-test spike-test soak-test recovery-test \
         sast dast dependency-scan secret-scan container-scan iac-scan sbom \
         continuous-backup pitr-recover cert-renew secret-rotate key-rotate \
         chaos-run snapshot-create snapshot-list snapshot-cleanup \
-        tag-release performance-report security-report \
+        tag-release performance-report security-report government-readiness \
         constitution-enforce constitution-audit constitution-check constitution-verify \
         trust-platform trust-check \
         factory-validate factory-generate \
@@ -85,6 +85,7 @@ help:
 	@echo "    make quality-gate          Run unified quality gate (CI mode)"
 	@echo "    make quality-gate-strict   Run quality gate (strict mode)"
 	@echo "    make compliance            Run architecture compliance engine"
+	@echo "    make government-readiness  Run fail-closed government rollout preflight"
 	@echo "    make scorecard             Run repository scorecard"
 	@echo "    make debt                  Run technical debt registry (summary)"
 	@echo "    make metrics               Run enterprise metrics dashboard"
@@ -309,6 +310,9 @@ helm-uninstall:
 # ─────────────────────────────────────────────────────────────────────────────
 # Quality Gates
 # ─────────────────────────────────────────────────────────────────────────────
+government-readiness:
+	python3 scripts/government_readiness_gate.py --allow-dirty --run-tests
+
 quality-gate:
 	$(Q)echo "=== Running Unified Quality Gate ==="
 	$(Q)python3 scripts/quality_gate.py --ci || true
@@ -409,6 +413,13 @@ load-test:
 	@echo "=== Load Test ==="
 	k6 run tests/load/k6-scenarios.js -e BASE_URL=$(BACKEND_URL) --out json=/tmp/load-results.json
 	python3 scripts/generate-performance-report.py -i /tmp/load-results.json -o docs/reports/load-report.html
+
+patient-flow-load:
+	@test -n "$(BASE_URL)" || (echo "BASE_URL is required"; exit 1)
+	@test -n "$(AUTH_TOKEN)" || (echo "AUTH_TOKEN is required; refusing to run without staging credentials"; exit 1)
+	@test -n "$(DEVICE_ID)" || (echo "DEVICE_ID is required"; exit 1)
+	@test -n "$(DEVICE_SESSION_TOKEN)" || (echo "DEVICE_SESSION_TOKEN is required; refusing to run without a registered device session"; exit 1)
+	k6 run -e BASE_URL=$(BASE_URL) -e AUTH_TOKEN=$(AUTH_TOKEN) -e DEVICE_ID=$(DEVICE_ID) -e DEVICE_SESSION_TOKEN=$(DEVICE_SESSION_TOKEN) -e HOSPITAL_ID=$(HOSPITAL_ID) -e SCENARIO=$(SCENARIO) k6/patient_flow_sync_load.js
 
 stress-test:
 	@echo "=== Stress Test ==="
