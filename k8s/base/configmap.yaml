@@ -5,7 +5,7 @@ metadata:
   namespace: gula
 data:
   ENV: "production"
-  BASE_URL: "http://gula-platform.org"
+  BASE_URL: "https://gula-platform.org"
   ENABLE_API_DOCS: "false"
   MAX_REQUEST_BODY_MB: "10"
   JWT_EXPIRE_HOURS: "8"

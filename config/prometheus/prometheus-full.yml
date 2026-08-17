@@ -132,7 +132,7 @@ remote_write:
       max_shards: 10
     basic_auth:
       username: 'gula'
-      password: 'remote-write-password-placeholder'
+      password_file: /etc/prometheus/secrets/remote_write_password
     write_relabel_configs:
       - source_labels: [__name__]
         regex: 'gula_.*|otel_.*|slo_.*'

@@ -45,14 +45,6 @@
       "status": "non-operational"
     },
     {
-      "source": "src/components/auth/RoleGuard.tsx",
-      "kinds": [
-        "demo-surface"
-      ],
-      "classification": "demo-only",
-      "status": "non-operational"
-    },
-    {
       "source": "src/components/guide/GuideAssistant.tsx",
       "kinds": [
         "demo-surface"
@@ -161,6 +153,14 @@
       "kinds": [
         "endpoint-import",
         "react-query-read"
+      ],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/auth/NiamAuthPilotPage.tsx",
+      "kinds": [
+        "endpoint-import"
       ],
       "classification": "unbound",
       "status": "non-operational"
@@ -464,6 +464,26 @@
       "status": "non-operational"
     },
     {
+      "source": "src/pages/immunization/ImmunizationProgramPage.tsx",
+      "kinds": [
+        "direct-api-client",
+        "react-query-mutation",
+        "react-query-read"
+      ],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/immunization/VaccineInventoryPage.tsx",
+      "kinds": [
+        "direct-api-client",
+        "react-query-mutation",
+        "react-query-read"
+      ],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
       "source": "src/pages/integration/connectors/IntegrationConnectorsPage.tsx",
       "kinds": [
         "direct-api-client",
@@ -625,6 +645,15 @@
       "status": "non-operational"
     },
     {
+      "source": "src/pages/newborn/NewbornRegistrationPage.tsx",
+      "kinds": [
+        "direct-api-client",
+        "react-query-mutation"
+      ],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
       "source": "src/pages/niam/AdaptiveAuthPage.tsx",
       "kinds": [
         "direct-api-client",
@@ -668,6 +697,7 @@
       "source": "src/pages/niam/LifecyclePage.tsx",
       "kinds": [
         "direct-api-client",
+        "react-query-mutation",
         "react-query-read"
       ],
       "classification": "unbound",

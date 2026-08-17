@@ -43,7 +43,9 @@ def test_rate_limiter_returns_503_when_shared_cache_is_required(monkeypatch):
 
 @pytest.mark.integration
 def test_two_redis_wrappers_share_revocation_key():
-    url = os.getenv("COMMAND05_REDIS_URL", "redis://127.0.0.1:6380/0")
+    url = os.getenv("COMMAND05_REDIS_URL")
+    if not url:
+        pytest.skip("COMMAND05_REDIS_URL is required for the live Redis integration check")
     first = redis_client._RedisWrapper(url)
     second = redis_client._RedisWrapper(url)
     key = "gula:command05:test:shared-jti"

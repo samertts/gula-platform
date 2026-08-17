@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import os
 import sys
+import tempfile
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import urlparse
 
 
@@ -49,9 +51,12 @@ def validate_environment(env: dict[str, str] | None = None) -> list[Finding]:
     if _placeholder(redis_url):
         findings.append(Finding("REDIS_URL_MISSING", "REDIS_URL is missing or still a placeholder."))
 
-    origins = _csv("CORS_ALLOWED_ORIGINS", values)
+    origins = _csv("CORS_ORIGINS", values) or _csv("CORS_ALLOWED_ORIGINS", values)
     if not origins:
         findings.append(Finding("CORS_ORIGINS_MISSING", "CORS_ALLOWED_ORIGINS must contain the staging origin."))
+    trusted_hosts = _csv("TRUSTED_HOSTS", values)
+    if not trusted_hosts:
+        findings.append(Finding("TRUSTED_HOSTS_MISSING", "TRUSTED_HOSTS must contain the Staging API host."))
     for origin in origins:
         parsed = urlparse(origin)
         if parsed.scheme != "https" or not parsed.netloc or parsed.username or parsed.password:
@@ -82,6 +87,21 @@ def validate_environment(env: dict[str, str] | None = None) -> list[Finding]:
             findings.append(Finding("CONNECTOR_HTTPS_REQUIRED", f"Government connector must use HTTPS: {connector_url!r}."))
         if any(marker in connector_url.lower() for marker in ("production", "prod.", "live.")):
             findings.append(Finding("CONNECTOR_PRODUCTION_URL_FORBIDDEN", f"Connector URL appears to target production: {connector_url!r}."))
+
+    if _truthy(values.get("ACCOUNT_CREATION_STAGING_ONLY", "false")) and _truthy(values.get("PUBLIC_SELF_REGISTRATION_ENABLED", "false")):
+        findings.append(Finding("PUBLIC_REGISTRATION_CONFLICT", "PUBLIC_SELF_REGISTRATION_ENABLED must remain false while ACCOUNT_CREATION_STAGING_ONLY is true."))
+
+    anchor_dir = values.get("AUDIT_ANCHOR_DIR", "").strip()
+    if not anchor_dir:
+        findings.append(Finding("AUDIT_ANCHOR_DIR_MISSING", "AUDIT_ANCHOR_DIR must point to a writable Staging volume."))
+    else:
+        anchor_path = Path(anchor_dir).expanduser()
+        try:
+            anchor_path.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(prefix=".staging-preflight-", dir=anchor_path, delete=True):
+                pass
+        except OSError as exc:
+            findings.append(Finding("AUDIT_ANCHOR_DIR_NOT_WRITABLE", f"AUDIT_ANCHOR_DIR is not writable: {exc}"))
 
     allowlist = _csv("STAGING_EGRESS_ALLOWLIST", values)
     if nid_mode in {"shadow", "live"} and not allowlist:

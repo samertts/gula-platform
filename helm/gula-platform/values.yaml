@@ -30,7 +30,8 @@ serviceAccount:
   annotations:
     eks.amazonaws.com/role-arn: ""
     iam.gke.io/gcp-service-account: ""
-  automountServiceAccountToken: true
+  # Keep pod service-account tokens disabled by default; enable only for a workload that needs projected identity.
+  automountServiceAccountToken: false
 
 podSecurityContext:
   runAsNonRoot: true

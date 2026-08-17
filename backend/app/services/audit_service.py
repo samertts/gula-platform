@@ -23,14 +23,15 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 
-from ..config import AUDIT_ANCHOR_KEY
+from ..config import AUDIT_ANCHOR_KEY, ENV
 from ..models.audit_log import AuditLog
 
 logger = logging.getLogger("gula.audit")
 
 _GENESIS_HASH = "0" * 64
 
-_ANCHOR_DIR = Path(os.getenv("AUDIT_ANCHOR_DIR", "/app/data/anchors"))
+_DEFAULT_ANCHOR_DIR = "/tmp/gula/audit-anchors" if ENV in {"test", "development"} else "/app/data/anchors"
+_ANCHOR_DIR = Path(os.getenv("AUDIT_ANCHOR_DIR", _DEFAULT_ANCHOR_DIR)).expanduser()
 _ANCHOR_INTERVAL = 100
 
 _ANCHOR_KEY_VERSION = int(os.getenv("ANCHOR_KEY_VERSION", "1"))

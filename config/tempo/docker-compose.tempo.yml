@@ -6,7 +6,7 @@
 
 services:
   minio:
-    image: quay.io/minio/minio:latest
+    image: quay.io/minio/minio:RELEASE.2026-04-15T18-00-00Z
     container_name: tempo-minio
     command: server /data --console-address ":9001"
     environment:
@@ -21,7 +21,7 @@ services:
       - gula-net
 
   minio-init:
-    image: quay.io/minio/mc:latest
+    image: quay.io/minio/mc:RELEASE.2026-04-15T18-00-00Z
     depends_on:
       minio:
         condition: service_started

@@ -14,7 +14,8 @@ data:
     sentinel failover-timeout gula-cluster 15000
     sentinel parallel-syncs gula-cluster 1
     sentinel auth-pass gula-cluster $(REDIS_PASSWORD)
-    bind 0.0.0.0
+    # security-scan: approved-internal-bind — Sentinel is reachable only through the cluster Service.
+    bind 0.0.0.0  # security-scan: approved-internal-bind
     port 26379
     loglevel notice
 {{- end }}

@@ -231,7 +231,7 @@ services:
 
   # ── MinIO Client (mc) — one-shot setup container ───────────────────────────
   minio-setup:
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2026-04-15T18-00-00Z
     container_name: gula-minio-setup
     restart: "no"
     entrypoint: >

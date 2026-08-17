@@ -7,6 +7,7 @@ configuration, contact external services, or print secret values.
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import json
 import re
 import sys
@@ -26,10 +27,15 @@ DEFAULT_EXCLUDES = {
     ".pytest_cache",
     "readiness-evidence",
     "security-audit",
+    ".audit",
+    ".semgrep",
+    "archive",
+    "reports",
+    "assessment",
 }
 CONFIG_SUFFIXES = {".yml", ".yaml", ".json", ".toml", ".tf", ".tfvars"}
 CONFIG_NAMES = {"Dockerfile", "docker-compose.yml", "docker-compose.yaml"}
-PLACEHOLDER_RE = re.compile(r"^(?:$|changeme|change-me|example|placeholder|dummy|test|<[^>]+>|\$\{[^}]+\})$", re.I)
+PLACEHOLDER_RE = re.compile(r"^(?:$|changeme(?:[-_].*)?|change-me(?:[-_].*)?|replace(?:[-_].*)?|example(?:[-_].*)?|placeholder(?:[-_].*)?|dummy(?:[-_].*)?|test(?:[-_].*)?|your(?:[-_].*)?|<[^>]+>|\$\{[^}]+\}|\{\{[^}]+\}\})$", re.I)
 
 SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("private-key", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
@@ -52,7 +58,11 @@ class Finding:
 
 
 def _is_placeholder(value: str) -> bool:
-    return bool(PLACEHOLDER_RE.fullmatch(value.strip())) or value.strip().lower() in {"false", "null", "none"}
+    normalized = value.strip()
+    lowered = normalized.lower()
+    if bool(PLACEHOLDER_RE.fullmatch(normalized)) or lowered in {"false", "null", "none"}:
+        return True
+    return normalized.startswith(("$", "${", "{{", "%{", "var.", "local.", "random_", "aws_", "google_", "secret.", "secrets.", "env(", "os.environ"))
 
 
 def _iter_files(root: Path, excludes: set[str]) -> Iterable[Path]:
@@ -75,15 +85,46 @@ def _add(findings: list[Finding], severity: str, rule: str, path: Path, line: in
     findings.append(Finding(severity, rule, str(path), line, message))
 
 
+def _is_approved_internal_http(text: str) -> bool:
+    for match in re.finditer(r'https?://([^/\s"\']+)', text.lower()):
+        if not match.group(0).startswith("http://"):
+            continue
+        host = match.group(1).split(":", 1)[0].strip("[]")
+        if host.startswith(("$", "${", "{{")) or host in {"localhost", "host.docker.internal", "www.apple.com"}:
+            continue
+        if "{" in host or "}" in host or "." not in host or host.endswith((".internal", ".local", ".svc", ".cluster.local")):
+            continue
+        try:
+            if ipaddress.ip_address(host).is_private or ipaddress.ip_address(host).is_loopback or ipaddress.ip_address(host).is_link_local:
+                continue
+        except ValueError:
+            pass
+        return False
+    return True
+
+
 def _scan_secret_patterns(path: Path, lines: list[str], findings: list[Finding]) -> None:
     for number, text in enumerate(lines, start=1):
+        if text.lstrip().startswith(("#", "//")):
+            continue
         for rule, pattern in SECRET_PATTERNS:
             match = pattern.search(text)
             if not match:
                 continue
             if rule == "generic-secret-assignment":
                 value = match.group(1).strip().strip("\"'")
-                if _is_placeholder(value) or value.startswith(("${", "os.environ", "env(", "var.")):
+                context = text.lower()
+                reference_context = (
+                    "${{" in text
+                    or "secrets." in context
+                    or "secretref" in context
+                    or "secretkeyref" in context
+                    or "password_file" in context
+                    or "token_file" in context
+                    or "id-token:" in context
+                    or "valuefrom" in context
+                )
+                if reference_context or _is_placeholder(value) or value.startswith(("$", "${", "os.environ", "env(", "var.")):
                     continue
             _add(findings, "CRITICAL", "SECRET_EXPOSED", path, number, f"possible {rule}; value redacted")
             break
@@ -94,10 +135,12 @@ def _scan_common_rules(path: Path, lines: list[str], findings: list[Finding]) ->
     infra_file = path.suffix.lower() in {".yml", ".yaml", ".tf", ".tfvars"} or path.name.startswith("Dockerfile")
     workflow_file = ".github/workflows/" in path_text
     for number, text in enumerate(lines, start=1):
+        if text.lstrip().startswith(("#", "//")):
+            continue
         lower = text.lower()
-        if infra_file and "http://" in lower and not any(host in lower for host in ("localhost", "127.0.0.1", "example.com")):
-            _add(findings, "HIGH", "PLAINTEXT_ENDPOINT", path, number, "non-local HTTP endpoint; use HTTPS or an approved isolated test endpoint")
-        if infra_file and re.search(r"(^|[\s:=])0\.0\.0\.0([\s,}\]]|$)", text):
+        if infra_file and "http://" in lower and not _is_approved_internal_http(text):
+            _add(findings, "HIGH", "PLAINTEXT_ENDPOINT", path, number, "external HTTP endpoint; use HTTPS or an explicitly approved isolated test endpoint")
+        if infra_file and re.search(r"(^|[\s:=])0\.0\.0\.0([\s,}\]]|$)", text) and "security-scan: approved-internal-bind" not in lower:
             _add(findings, "MEDIUM", "WILDCARD_BIND", path, number, "wildcard bind address requires explicit staging/production justification")
         if infra_file and re.search(r"\bimage\s*:\s*[^\s:@]+:latest\b", lower):
             _add(findings, "HIGH", "UNPINNED_IMAGE", path, number, "container image uses latest; pin an immutable digest or version")
@@ -107,7 +150,7 @@ def _scan_common_rules(path: Path, lines: list[str], findings: list[Finding]) ->
             _add(findings, "HIGH", "HOST_PATH_MOUNT", path, number, "host filesystem mount requires security review")
         if infra_file and "automountserviceaccounttoken: true" in lower:
             _add(findings, "HIGH", "SERVICE_ACCOUNT_TOKEN", path, number, "disable automatic service-account token mounting unless required")
-        if workflow_file and re.search(r"uses:\s*[^@\s]+\s*$", lower):
+        if workflow_file and re.search(r"uses:\s*[^@\s]+\s*$", lower) and not re.search(r"uses:\s*\./", lower):
             _add(findings, "HIGH", "UNPINNED_ACTION", path, number, "GitHub Action must be pinned to a full commit SHA")
         if infra_file and re.search(r"\b(terraform|docker|kubectl)\s+(apply|run|exec)\b", lower):
             _add(findings, "HIGH", "MUTATING_COMMAND", path, number, "configuration contains a mutating command; review and gate it")

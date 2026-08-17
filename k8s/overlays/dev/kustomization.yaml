@@ -26,4 +26,4 @@ configMapGenerator:
     literals:
       - ENV=development
       - ENABLE_API_DOCS=true
-      - BASE_URL=http://dev.gula-platform.org
+      - BASE_URL=https://dev.gula-platform.org
