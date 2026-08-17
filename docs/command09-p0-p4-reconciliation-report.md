@@ -6,6 +6,7 @@
 **الفرع:** `chore/security-ddos-hardening-clean`
 **PR:** `#226`
 **HEAD قبل Command 09:** `478bad1f927543323236c98da5cbb6e0a123dc40`
+**Commit Command 09 بعد التنفيذ:** `c59beac5a599a59616f64fa536cb65c90d0fc7ac`
 **قرار P5:** `P5_BLOCKED_BY_PREREQUISITE`
 
 > **قرار الإغلاق:** Command 09 يُغلق على أنه **`NOT_P0_CANDIDATE_FOR_CLOSURE`** و**`P4_PARTIAL / UNVERIFIED`**. الاختبارات المحلية قوية وناجحة، لكن CI الحالي محجوب خارجياً، وPostgreSQL/Redis وRailway غير مثبتة، وdeployment HEAD في Vercel بحالة `BLOCKED`، وnative/device parity غير مثبتة، وبعض الموافقات البشرية لازمة. لا يُسمح بتحويل هذه الفجوات إلى `PASS` بالاستنتاج.
@@ -96,6 +97,8 @@
 بعد الإصلاحات المحددة، لم يظهر **explicit new critical-scope regression** في المقارنة الخاصة بـRuff، وأُغلقت regressions المباشرة التي ظهرت في ملفات Command 09. لكن البوابة الشاملة بقيت **`BLOCKED/FAIL`** للأسباب التالية: MyPy changed-files internal execution error، وrepository-wide diagnostics كثيرة على ملفات Commands 01–08 الجديدة مقابل main، وstrict identity/security diagnostics المتبقية التي تحتاج debt wave مستقلة. لا يجوز إعلان quality gate أخضر أو تخفيف strict policy لهذا السبب.[3]
 
 هذه النتيجة لا تعني وجود bypass أمني؛ تعني أن changed-files gate لا يزال حاجز جودة غير مغلق على مستوى الفرع الكامل، وأن فصل P4 عن quality gate ضروري.
+
+بعد push للـcommit `c59beac5` بقي PR #226 مفتوحاً، وبدأت checks جديدة على نفس SHA. القراءة الحالية لـQuality Gate run `32016959431` تُظهر job `quality-gate` بحالة `failure` مع `steps: []` خلال ثوانٍ قليلة، وهو متسق مع blocker الخارجي السابق وليس دليلاً على test failure داخل runner. كما ظهرت Formatting Check وPreview Deploy وConstitution Compliance على نفس SHA بحالة failure؛ لم تُجرَ إعادة تشغيل تلقائية أو تعديل في GitHub.
 
 ## 8. Database and migration state
 
