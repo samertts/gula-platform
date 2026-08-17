@@ -7,7 +7,7 @@ API_KEY ?= lablink-dev-key
 .PHONY: test run smoke
 
 test:
-	pytest -q
+	LABLINK_API_KEY=$${LABLINK_API_KEY:-lablink-dev-key} pytest -q
 
 run:
 	LABLINK_API_KEY=$(API_KEY) $(UVICORN) app.main:app --host $(HOST) --port $(PORT)

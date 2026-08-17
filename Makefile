@@ -9,7 +9,7 @@ Q ?= @
 
 .PHONY: help up down restart ps logs logs-backend logs-db logs-redis \
         health health-deep status backup restore \
-        lint test ci monitoring monitoring-down \
+        lint test device-bridge-test ci monitoring monitoring-down \
         db-shell redis-cli shell secrets-gen \
         scenario-test integrity-test metrics-token \
         self-audit self-audit-fix scale scale-down \
@@ -62,6 +62,7 @@ help:
 	@echo "  ── Development ───────────────────────────────────────────────────"
 	@echo "    make lint              Run pyflakes + flake8 on backend code"
 	@echo "    make test              Run backend pytest suite"
+	@echo "    make device-bridge-test Run standalone device bridge pytest suite"
 	@echo "    make ci                Run the full CI pipeline locally"
 	@echo "    make secrets-gen       Generate strong random secrets (.env)"
 	@echo "    make scenario-test     Real end-to-end scenario load test"
@@ -207,6 +208,9 @@ lint:
 
 test:
 	cd backend && python -m pytest tests/ -v
+
+device-bridge-test:
+	cd services/device_bridge && LABLINK_API_KEY=$${LABLINK_API_KEY:-lablink-dev-key} python -m pytest tests/ -q
 
 chaos:
 	@bash tests/chaos/chaos_test.sh all

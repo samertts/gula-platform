@@ -304,3 +304,25 @@ discipline alone.
 أضيفت HEALTHCHECK إلى صور Python، وأصبح frontend runtime يستخدم nginx unprivileged مع `USER nginx` ومنفذ 8080. كما استُبدلت استعلامات demo data بـbound parameters، ووثقت الاستعلامات الداخلية ذات allowlist وbind parameters في migrations وoffline store وSNDHS backfill. يجب مراجعة هذه suppressions في code review وعدم نسخ نمط SQL الديناميكي إلى routes تستقبل input خارجيًا.
 
 لم يُشغّل load أو smoke خارجي على staging لعدم توفر `BASE_URL` و`AUTH_TOKEN` و`DEVICE_SESSION_TOKEN` و`HOSPITAL_ID` في الجلسة. لا يجوز وضع هذه القيم في Git أو المحادثة؛ تُمرر من secret manager أو CI protected variables عند تنفيذ staging. كما يجب تشغيل Gitleaks وTrivy على runner مجهز قبل اعتبار بوابة الإصدار مكتملة.
+
+## 11. Device Bridge import isolation — 2026-08-18
+
+تمت معالجة أخطاء collection القديمة في `services/device_bridge`. كان السبب الرئيسي هو أن الخدمة تستخدم namespace علويًا باسم `app` مثل Backend، بينما كانت بعض وحداتها تستورد `backend.app._compat` رغم أن صورة الخدمة المستقلة لا تحتوي حزمة Backend. كما كانت اختبارات الخدمة تُجمع من pytest الجذري فتتنافس مع `backend.app` على نفس namespace.
+
+أصبحت وحدة الوقت محلية في `services/device_bridge/app/core/time.py`، واستُبدلت imports الأربعة من `backend.app._compat` بها. أضيف `DEFAULT_API_KEY` كقيمة توافق للاختبار فقط، بينما يظل runtime production رافضًا غياب `LABLINK_API_KEY` ولا يستخدم fallback إنتاجيًا.
+
+فُصلت `services/device_bridge/tests` عن `testpaths` الجذري، وأضيف target مستقل باسم `make device-bridge-test`. بذلك يشغل root pytest اختبارات Backend والمستودع، بينما تُشغل اختبارات الخدمة من مجلدها وبـnamespace الخاص بها. نجاح collection الجذري أصبح **2690 اختبارًا بلا أخطاء import**، ونجحت اختبارات device_bridge في **29 اختبارًا**.
+
+الأوامر المعتمدة هي:
+
+```bash
+# Backend وrepository suite
+pytest -q
+
+# Device Bridge المستقلة
+make device-bridge-test
+# أو
+cd services/device_bridge && make test
+```
+
+يجب عدم تشغيل اختبارات device_bridge مع `PYTHONPATH=backend`؛ فهذا يعيد namespace collision ويجعل `app.*` يشير إلى Backend بدل الخدمة. كما يجب تمرير `LABLINK_API_KEY` من secret manager في التشغيل الفعلي، وعدم استخدام قيمة الاختبار خارج بيئة test معزولة.

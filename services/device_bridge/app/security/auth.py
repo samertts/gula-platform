@@ -6,6 +6,9 @@ import sys
 from fastapi import Header, HTTPException
 
 API_KEY_ENV = "LABLINK_API_KEY"
+# Test/CLI compatibility constant only; production verification still requires
+# LABLINK_API_KEY in the environment and never falls back to this value.
+DEFAULT_API_KEY = "lablink-dev-key"
 
 
 def verify_api_key(x_api_key: str | None = Header(default=None)) -> str:

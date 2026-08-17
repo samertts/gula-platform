@@ -70,7 +70,10 @@ ignore_errors = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-testpaths = ["backend/tests", "services/device_bridge/tests", "tests"]
+# Backend and repository tests run from the root; device_bridge is a standalone
+# package and is executed from services/device_bridge to avoid the shared `app`
+# namespace colliding with backend.app.
+testpaths = ["backend/tests", "tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
