@@ -201,3 +201,64 @@ def test_allowed_patient_read_maps_minimal_fields_and_excludes_legacy_fields(mon
     assert "phone" not in payload["items"][0]
     assert "lab_id" not in payload["items"][0]
     assert "national_id_hash" not in payload["items"][0]
+
+
+def test_allowed_result_read_maps_minimal_fields_and_excludes_share_fields(monkeypatch):
+    service = ClinicalGatewayService(SimpleNamespace())
+    context = _context()
+
+    async def allow(_self, _actor, _request):
+        return AuthorizationDecision.allow()
+
+    monkeypatch.setattr(service_module.AuthorizationDecisionService, "authorize", allow)
+    monkeypatch.setattr(service, "_audit", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        service_module,
+        "get_order_by_id",
+        lambda **_kwargs: {
+            "results": [
+                {
+                    "id": 9,
+                    "test_name": "Glucose",
+                    "value": 5.2,
+                    "value_text": None,
+                    "unit": "mmol/L",
+                    "normal_range_low": 3.9,
+                    "normal_range_high": 6.1,
+                    "flag": "normal",
+                    "result_token": "secret",
+                    "result_link": "/r/secret",
+                    "interpretation": "normal",
+                    "created_at": datetime(2026, 1, 1),
+                },
+            ],
+        },
+    )
+
+    response = service.list_results(
+        context=context,
+        request_id=uuid4(),
+        correlation_id=uuid4(),
+        order_id=7,
+    )
+
+    payload = response.model_dump()
+    assert payload["items"] == [
+        {
+            "id": "9",
+            "order_id": "7",
+            "test_name": "Glucose",
+            "value": 5.2,
+            "value_text": None,
+            "unit": "mmol/L",
+            "normal_range_low": 3.9,
+            "normal_range_high": 6.1,
+            "flag": "normal",
+            "interpretation": "normal",
+            "created_at": datetime(2026, 1, 1),
+        },
+    ]
+    assert "result_token" not in payload["items"][0]
+    assert "result_link" not in payload["items"][0]
+    assert payload["total"] == 1
+    assert payload["limit"] == 1

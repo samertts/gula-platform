@@ -6,6 +6,7 @@ import {
   isPermissionGranted,
   parseClinicalOrderEnvelope,
   parseClinicalPatientEnvelope,
+  parseClinicalResultEnvelope,
   parseVerifiedWorkspaceScope,
   workspaceScopedReads,
 } from "./workspaceScopedReads";
@@ -82,6 +83,28 @@ describe("بوابة القراءة السريرية الموحدة", () => {
       },
     ]);
     expect(getSpy).toHaveBeenCalledWith("/api/v1/clinical/orders", { params: { limit: 50 } });
+    getSpy.mockRestore();
+  });
+
+  it("تتحقق من عقد results.read وترفض حقول المشاركة العامة", async () => {
+    expect(() =>
+      parseClinicalResultEnvelope({
+        ...baseEnvelope,
+        items: [{ id: "result-1", order_id: "7", test_name: "Glucose", value: 5.2, unit: "mmol/L", result_token: "secret" }],
+      }),
+    ).toThrowError(WorkspaceReadBlockedError);
+
+    const getSpy = vi.spyOn(apiClient.api, "get").mockResolvedValueOnce({
+      data: {
+        ...baseEnvelope,
+        items: [{ id: "result-1", order_id: "7", test_name: "Glucose", value: 5.2, unit: "mmol/L", flag: "normal" }],
+      },
+    } as never);
+
+    await expect(workspaceScopedReads.listResults("7")).resolves.toEqual([
+      { id: "result-1", order_id: "7", test_name: "Glucose", value: 5.2, unit: "mmol/L", flag: "normal" },
+    ]);
+    expect(getSpy).toHaveBeenCalledWith("/api/v1/clinical/orders/7/results");
     getSpy.mockRestore();
   });
 

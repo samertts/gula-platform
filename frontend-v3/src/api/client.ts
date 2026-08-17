@@ -244,6 +244,7 @@ const IDENTITY_AND_DECISION_ALLOWLIST = new Set([
 const MFA_READ_PATTERN = /^GET \/mfa\/(status|devices)$/;
 const SECURITY_READ_PATTERN = /^GET \/security\/status$/;
 const SESSION_READ_PATTERN = /^GET \/niam\/sessions\/account\/[^/]+$/;
+const CLINICAL_RESULTS_READ_PATTERN = /^GET \/api\/v1\/clinical\/orders\/\d+\/results$/;
 const INITIALIZATION_READ_ALLOWLIST = new Set([
   "GET /session",
   "GET /setup/status",
@@ -328,7 +329,7 @@ export function assertFrontendReadIsAllowed(method?: string, url?: string): void
 
   const key = toRequestKey(normalizedMethod, url);
   const workspaceDetail = /^GET \/niam\/workspaces\/[^/]+$/.test(key);
-  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || PHARMACY_READ_PATTERN.test(key) || CITIZEN_READ_PATTERN.test(key) || MFA_READ_PATTERN.test(key) || SECURITY_READ_PATTERN.test(key) || SESSION_READ_PATTERN.test(key)) return;
+  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || PHARMACY_READ_PATTERN.test(key) || CITIZEN_READ_PATTERN.test(key) || MFA_READ_PATTERN.test(key) || SECURITY_READ_PATTERN.test(key) || SESSION_READ_PATTERN.test(key) || CLINICAL_RESULTS_READ_PATTERN.test(key)) return;
   if (!INITIALIZATION_READ_ALLOWLIST.has(key) && !workspaceDetail) {
     throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }

@@ -14,6 +14,7 @@ from app.clinical_gateway.contracts import (
     ClinicalReadEnvelope,
     OrderRead,
     PatientRead,
+    ResultRead,
 )
 from app.clinical_gateway.rollout import ClinicalGatewayRollout
 from app.clinical_gateway.service import ClinicalGatewayAuditFailure, ClinicalGatewayService
@@ -210,6 +211,37 @@ def list_clinical_patients(
         ) from None
     except ClinicalGatewayBlocked as exc:
         _raise_safe(db=db, actor=actor, resource="patients", request_id=request_id, correlation_id=correlation_id, reason_code=exc.reason_code)
+
+
+@router.get(
+    "/orders/{order_id}/results",
+    response_model=ClinicalReadEnvelope[ResultRead],
+    responses={401: {"model": ClinicalGatewayErrorEnvelope}, 403: {"model": ClinicalGatewayErrorEnvelope}, 404: {"model": ClinicalGatewayErrorEnvelope}, 503: {"model": ClinicalGatewayErrorEnvelope}},
+)
+def list_clinical_results(
+    order_id: int,
+    request: Request,
+    actor: NiamActor = Depends(get_current_niam_actor_sync),
+    db: Session = Depends(get_db),
+):
+    service, context, request_id, correlation_id = _prepare(db=db, actor=actor, resource="results", request=request)
+    try:
+        response = service.list_results(
+            context=context,
+            request_id=request_id,
+            correlation_id=correlation_id,
+            order_id=order_id,
+        )
+        db.commit()
+        return response
+    except ClinicalGatewayAuditFailure:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=_error_envelope(ClinicalGatewayErrorCode.unavailable, "Clinical read gateway is unavailable.", request_id, correlation_id).model_dump(mode="json"),
+        ) from None
+    except ClinicalGatewayBlocked as exc:
+        _raise_safe(db=db, actor=actor, resource="results", request_id=request_id, correlation_id=correlation_id, reason_code=exc.reason_code, http_status=status.HTTP_404_NOT_FOUND if exc.reason_code == "not_found" else None)
 
 
 @router.get(

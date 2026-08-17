@@ -8,6 +8,7 @@ from app.clinical_gateway.contracts import (
     ClinicalWorkspaceContext,
     OrderRead,
     PatientRead,
+    ResultRead,
 )
 from pydantic import ValidationError
 
@@ -38,6 +39,23 @@ def test_page_request_normalizes_safe_name_search():
     request = ClinicalPageRequest(search="  Ali   Hassan ")
 
     assert request.search == "Ali Hassan"
+
+
+def test_result_read_excludes_sensitive_legacy_fields():
+    result = ResultRead(
+        id="result-1",
+        order_id="order-1",
+        test_name="Glucose",
+        value=5.2,
+        unit="mmol/L",
+        interpretation="normal",
+    )
+
+    assert "token" not in result.model_dump()
+    assert "result_link" not in result.model_dump()
+    assert "patient_phone" not in result.model_dump()
+    with pytest.raises(ValidationError):
+        ResultRead(id="result-1", order_id="order-1", test_name="Glucose", result_token="secret")
 
 
 def test_response_shapes_exclude_sensitive_legacy_fields():
