@@ -101,6 +101,8 @@ def decode_token(token: str) -> JWTClaims | None:
         payload = _shared_decode_access_token(token, SECRET_KEY, [JWT_ALGORITHM])
         if payload.get("type") != "access":
             return None
+        if not isinstance(payload.get("jti"), str) or not payload["jti"].strip():
+            return None
         return cast(JWTClaims, payload)
     except JWTError:
         return None
@@ -123,6 +125,8 @@ def decode_refresh_token(token: str) -> JWTClaims | None:
         if payload.get("type") != "refresh":
             return None
         jti = payload.get("jti")
+        if not isinstance(jti, str) or not jti.strip():
+            return None
         if jti and is_token_blacklisted(jti):
             return None
         return cast(JWTClaims, payload)

@@ -131,7 +131,17 @@ def check_production_environment(production: bool) -> list[Finding]:
 
 def run_optional_tests(root: pathlib.Path) -> list[Finding]:
     commands = [
-        [sys.executable, "-m", "pytest", "-q", "backend/tests/test_sync_security_and_outbox.py", "backend/tests/test_stress.py"],
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-q",
+            "backend/tests/test_platform_security_hardening.py",
+            "backend/tests/test_security_regression.py",
+            "backend/tests/test_sync_security_and_outbox.py",
+            "backend/tests/test_patient_flow_state_machine.py",
+            "backend/tests/test_stress.py",
+        ],
     ]
     findings: list[Finding] = []
     for command in commands:

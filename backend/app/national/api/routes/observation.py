@@ -31,11 +31,11 @@ from app.national.services.observation_service import (
 from app.national.services.observation_service import (
     update_observation as service_update_observation,
 )
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 
 # AUDIT_DELEGATED: observation_service records immutable before/after audit entries.
 
-router = APIRouter(prefix="/observations", tags=["Observations"])
+router = APIRouter(prefix="/observations", tags=["Observations"], dependencies=[Depends(require_permission("patients:read"))])
 
 
 class ObservationCreate(BaseModel):
@@ -139,7 +139,7 @@ class ObservationListResponse(BaseModel):
     limit: int
 
 
-@router.post("/", response_model=ObservationResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=ObservationResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission("patients:write"))])
 async def create_observation(
     data: ObservationCreate,
     db: Session = Depends(get_db),
@@ -162,7 +162,7 @@ async def get_observation(
     return observation
 
 
-@router.put("/{observation_id}", response_model=ObservationResponse)
+@router.put("/{observation_id}", response_model=ObservationResponse, dependencies=[Depends(require_permission("patients:write"))])
 async def update_observation(
     observation_id: str,
     data: ObservationUpdate,
@@ -177,7 +177,7 @@ async def update_observation(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Observation not found: {observation_id}") from e
 
 
-@router.delete("/{observation_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+@router.delete("/{observation_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None, dependencies=[Depends(require_permission("patients:write"))])
 async def delete_observation(
     observation_id: str,
     db: Session = Depends(get_db),

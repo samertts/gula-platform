@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.national.domain.medication_catalog import MedicationCatalog
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 from app.services.route_audit import audit_mutation
 
-router = APIRouter(prefix="/medication-catalog", tags=["Medication Catalog"])
+router = APIRouter(prefix="/medication-catalog", tags=["Medication Catalog"], dependencies=[Depends(require_permission("patients:read"))])
 
 
 class MedicationCatalogCreate(BaseModel):
@@ -139,7 +139,7 @@ def _get_medication_or_404(db: Session, medication_id: str) -> MedicationCatalog
     return med
 
 
-@router.post("/", response_model=MedicationCatalogResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=MedicationCatalogResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission("patients:write"))])
 async def create_medication(
     data: MedicationCatalogCreate,
     db: Session = Depends(get_db),
@@ -169,7 +169,7 @@ async def get_medication(
     return _get_medication_or_404(db, medication_id)
 
 
-@router.put("/{medication_id}", response_model=MedicationCatalogResponse)
+@router.put("/{medication_id}", response_model=MedicationCatalogResponse, dependencies=[Depends(require_permission("patients:write"))])
 async def update_medication(
     medication_id: str,
     data: MedicationCatalogUpdate,
@@ -196,7 +196,7 @@ async def update_medication(
     return med
 
 
-@router.delete("/{medication_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+@router.delete("/{medication_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None, dependencies=[Depends(require_permission("patients:write"))])
 async def delete_medication(
     medication_id: str,
     db: Session = Depends(get_db),

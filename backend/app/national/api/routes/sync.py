@@ -14,6 +14,7 @@ from app.database import SessionLocal, get_db
 from app.domain.exceptions import ConflictError, NotFoundError
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user, require_permission
+from app.security.rate_limit import rate_limit_user
 from app.services.audit_service import log_action
 
 # AUDIT_DELEGATED: sync_conflict_service audits sessions, operations, conflicts, notifications, and locks.
@@ -155,9 +156,11 @@ def _notification_view(item: NationalClinicalNotificationModel) -> dict[str, Any
 )
 def register_device_session(
     payload: DeviceSessionRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    rate_limit_user(request, current_user.id, max_per_minute=10)
     try:
         session, session_token = create_device_session(db, current_user=current_user, device_id=payload.device_id, hospital_id=payload.hospital_id)
         db.commit()
@@ -218,10 +221,12 @@ def sync_status(
 def ingest_batch(
     payload: SyncBatchRequest,
     background_tasks: BackgroundTasks,
+    request: Request,
     x_device_session: str = Header(min_length=20, alias="X-Device-Session"),
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    rate_limit_user(request, current_user.id, max_per_minute=60)
     results: list[dict[str, Any]] = []
     accepted = duplicate = conflict = rejected = 0
     try:

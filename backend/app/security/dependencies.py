@@ -23,6 +23,16 @@ logger = logging.getLogger("gula.security.auth")
 security = HTTPBearer(auto_error=False)
 
 
+def _strict_positive_int(value: object) -> int | None:
+    if isinstance(value, bool):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
 def _extract_token(
     credentials: HTTPAuthorizationCredentials | None,
     request: Request,
@@ -56,7 +66,7 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked",
         )
 
-    user_id = payload.get("user_id")
+    user_id = _strict_positive_int(payload.get("user_id"))
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload",
@@ -78,7 +88,11 @@ def get_current_user(
     # ── perm_version check ────────────────────────────────────────────────────
     # Fast path: compare against Redis (O(1)).  Falls back to DB value if Redis
     # has no entry for this user yet (e.g. first request after server restart).
-    token_perm_ver = int(payload.get("perm_ver", 1))
+    token_perm_ver = _strict_positive_int(payload.get("perm_ver", 1))
+    if token_perm_ver is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid permission version",
+        )
     authoritative_ver = get_perm_version(
         user.id,
         user.perm_version or 1,
@@ -93,6 +107,27 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Permissions updated — please log in again",
         )
+
+    # Claims are a scope assertion, never an authorization source. They must
+    # still match the authoritative user row so a stale token cannot be reused
+    # after an account moves institutions or changes role.
+    if isinstance(user, LabUser):
+        token_lab_id = _strict_positive_int(payload.get("lab_id"))
+        if token_lab_id != user.lab_id or payload.get("role") != user.role:
+            logger.warning(
+                "Token scope mismatch user=%s token_lab=%s db_lab=%s token_role=%s db_role=%s",
+                user.id, token_lab_id, user.lab_id, payload.get("role"), user.role,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token scope is stale",
+            )
+    else:
+        if payload.get("lab_id") not in (None, "") or payload.get("role") not in (None, "citizen", user.role):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token scope is invalid",
+            )
 
     # ── Lab active check (skip for master_admin) ──────────────────────────────
     if isinstance(user, LabUser) and user.role != "master_admin":

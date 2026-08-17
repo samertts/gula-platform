@@ -10,10 +10,10 @@ from app._compat import UTC
 from app.database import get_db
 from app.national.domain.health_card import HealthCard
 from app.national.enums import HealthCardStatus
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 from app.services.route_audit import audit_mutation
 
-router = APIRouter(prefix="/health-cards", tags=["Health Cards"])
+router = APIRouter(prefix="/health-cards", tags=["Health Cards"], dependencies=[Depends(require_permission("patients:read"))])
 
 
 class HealthCardIssue(BaseModel):
@@ -55,7 +55,7 @@ def _generate_card_number(db: Session) -> str:
     return f"HC-{uuid.uuid4().hex[:12].upper()}"
 
 
-@router.post("/", response_model=HealthCardResponse, status_code=201)
+@router.post("/", response_model=HealthCardResponse, status_code=201, dependencies=[Depends(require_permission("patients:write"))])
 async def issue_health_card(
     data: HealthCardIssue,
     db: Session = Depends(get_db),

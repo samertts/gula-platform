@@ -9,10 +9,10 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.national.domain.observation import Observation
 from app.national.domain.vital_signs import VitalSignsReference
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 from app.services.route_audit import audit_mutation
 
-router = APIRouter(prefix="/vital-signs", tags=["Vital Signs"])
+router = APIRouter(prefix="/vital-signs", tags=["Vital Signs"], dependencies=[Depends(require_permission("patients:read"))])
 
 
 class VitalSignsReferenceCreate(BaseModel):
@@ -123,7 +123,7 @@ async def list_vital_signs_reference(
     return VitalSignsReferenceListResponse(items=refs, total=len(refs))
 
 
-@router.post("/reference", response_model=VitalSignsReferenceResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/reference", response_model=VitalSignsReferenceResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission("patients:write"))])
 async def create_vital_signs_reference(
     data: VitalSignsReferenceCreate,
     db: Session = Depends(get_db),
@@ -144,7 +144,7 @@ async def create_vital_signs_reference(
     return ref
 
 
-@router.put("/reference/{code}", response_model=VitalSignsReferenceResponse)
+@router.put("/reference/{code}", response_model=VitalSignsReferenceResponse, dependencies=[Depends(require_permission("patients:write"))])
 async def update_vital_signs_reference(
     code: str,
     data: VitalSignsReferenceUpdate,
@@ -171,7 +171,7 @@ async def update_vital_signs_reference(
     return ref
 
 
-@router.delete("/reference/{code}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+@router.delete("/reference/{code}", status_code=status.HTTP_204_NO_CONTENT, response_model=None, dependencies=[Depends(require_permission("patients:write"))])
 async def delete_vital_signs_reference(
     code: str,
     db: Session = Depends(get_db),

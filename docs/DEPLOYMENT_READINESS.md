@@ -73,14 +73,17 @@ Operators MUST tick every item below before staged national rollout.
 
 ### 1.7 Security & compliance
 
-- [ ] `tests/test_security_regression.py` — 21/21 pass
+- [ ] `tests/test_security_regression.py` — 22/22 pass, including mandatory JWT `jti` and scope consistency
+- [ ] `tests/test_platform_security_hardening.py` — 12/12 pass, including RBAC, CORS, headers, and AuditLog tenant isolation
 - [ ] `tests/test_security.py` — existing suite green
 - [ ] `tests/test_compliance_integrity.py` — 20/20 pass
 - [ ] `gitleaks` + `bandit` + `safety` scans clean
 - [ ] `/compliance/audit-integrity` returns `intact` on synthetic restore
 - [ ] FHIR R4 Patient/Observation/DiagnosticReport responses validated
   against an external FHIR validator on staging
-- [ ] HSTS / CSP / X-Frame-Options headers verified at TLS edge
+- [ ] HSTS / CSP / X-Frame-Options / X-Content-Type-Options headers verified at TLS edge, including static assets
+- [ ] CSRF is tested with both `access_token` and `refresh_token` cookies, and CORS preflight includes only approved origins/headers
+- [ ] National security endpoints enforce `security:break_glass`, `audit:read`, `patients:read`, rate limits, and lab-scoped AuditLog queries
 
 ### 1.8 Disaster recovery
 

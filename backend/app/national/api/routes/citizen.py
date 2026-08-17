@@ -11,10 +11,10 @@ from app.national.domain.citizen import Citizen
 from app.national.exceptions import CitizenNotFoundError, DuplicateHealthNumberError
 from app.national.repositories.citizen_repository import CitizenRepository
 from app.national.services.citizen_service import CitizenService
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 from app.services.route_audit import audit_mutation
 
-router = APIRouter(prefix="/citizens", tags=["Citizens"])
+router = APIRouter(prefix="/citizens", tags=["Citizens"], dependencies=[Depends(require_permission("patients:read"))])
 
 
 class CitizenCreate(BaseModel):
@@ -96,7 +96,7 @@ def _get_citizen_service(db: Session = Depends(get_db)) -> CitizenService:
     return CitizenService(repo, db)
 
 
-@router.post("/", response_model=CitizenResponse, status_code=201)
+@router.post("/", response_model=CitizenResponse, status_code=201, dependencies=[Depends(require_permission("patients:write"))])
 async def create_citizen(
     data: CitizenCreate,
     service: CitizenService = Depends(_get_citizen_service),
@@ -131,7 +131,7 @@ async def get_citizen(
         raise HTTPException(status_code=404, detail="Resource not found") from e
 
 
-@router.put("/{citizen_id}", response_model=CitizenResponse)
+@router.put("/{citizen_id}", response_model=CitizenResponse, dependencies=[Depends(require_permission("patients:write"))])
 async def update_citizen(
     citizen_id: str,
     data: CitizenUpdate,

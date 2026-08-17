@@ -97,6 +97,16 @@ class TestStaleTokenRejection:
         token = jose_jwt.encode({"alg": JWT_ALGORITHM}, payload, jwk.OctKey.import_key(REFRESH_TOKEN_SECRET))
         assert decode_refresh_token(token) is None
 
+    def test_token_without_jti_claim_rejected(self):
+        payload = {
+            "user_id": 1, "lab_id": 1, "role": "admin",
+            "exp": datetime.now(UTC) + timedelta(hours=1),
+            "iat": datetime.now(UTC),
+            "type": "access",
+        }
+        token = jose_jwt.encode({"alg": JWT_ALGORITHM}, payload, jwk.OctKey.import_key(SECRET_KEY))
+        assert decode_token(token) is None
+
     def test_token_without_exp_claim_documents_jose_behavior(self):
         payload = {
             "user_id": 1, "lab_id": 1, "role": "admin",

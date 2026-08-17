@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.national.domain.advance_directive import AdvanceDirective
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 from app.services.route_audit import audit_mutation
 
-router = APIRouter(prefix="/advance-directives", tags=["Advance Directives"])
+router = APIRouter(prefix="/advance-directives", tags=["Advance Directives"], dependencies=[Depends(require_permission("patients:read"))])
 
 
 class AdvanceDirectiveCreate(BaseModel):
@@ -96,7 +96,7 @@ def _get_directive_or_404(db: Session, directive_id: str) -> AdvanceDirective:
     return directive
 
 
-@router.post("/", response_model=AdvanceDirectiveResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=AdvanceDirectiveResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission("patients:write"))])
 async def create_advance_directive(
     data: AdvanceDirectiveCreate,
     db: Session = Depends(get_db),
@@ -128,7 +128,7 @@ async def get_advance_directive(
     return _get_directive_or_404(db, directive_id)
 
 
-@router.put("/{directive_id}", response_model=AdvanceDirectiveResponse)
+@router.put("/{directive_id}", response_model=AdvanceDirectiveResponse, dependencies=[Depends(require_permission("patients:write"))])
 async def update_advance_directive(
     directive_id: str,
     data: AdvanceDirectiveUpdate,
@@ -155,7 +155,7 @@ async def update_advance_directive(
     return directive
 
 
-@router.delete("/{directive_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+@router.delete("/{directive_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None, dependencies=[Depends(require_permission("patients:write"))])
 async def delete_advance_directive(
     directive_id: str,
     db: Session = Depends(get_db),
@@ -194,7 +194,7 @@ async def get_advance_directives_by_patient(
     return AdvanceDirectiveListResponse(items=directives, total=total, skip=skip, limit=limit)
 
 
-@router.put("/{directive_id}/revoke", response_model=AdvanceDirectiveResponse)
+@router.post("/{directive_id}/revoke", response_model=AdvanceDirectiveResponse, dependencies=[Depends(require_permission("patients:write"))])
 async def revoke_advance_directive(
     directive_id: str,
     db: Session = Depends(get_db),

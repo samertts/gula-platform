@@ -35,11 +35,11 @@ from app.national.services.encounter_service import (
 from app.national.services.encounter_service import (
     update_encounter as service_update_encounter,
 )
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 
 # AUDIT_DELEGATED: encounter_service audits create/update/delete and flow transitions.
 
-router = APIRouter(prefix="/encounters", tags=["Encounters"])
+router = APIRouter(prefix="/encounters", tags=["Encounters"], dependencies=[Depends(require_permission("patients:read"))])
 
 
 class EncounterCreate(BaseModel):
@@ -180,7 +180,7 @@ def _to_fhir(encounter: Encounter) -> dict[str, Any]:
     }
 
 
-@router.post("/", response_model=EncounterResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=EncounterResponse, status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_permission("patients:write"))])
 async def create_encounter(
     data: EncounterCreate,
     db: Session = Depends(get_db),
@@ -205,7 +205,7 @@ async def get_encounter(
     return encounter
 
 
-@router.put("/{encounter_id}", response_model=EncounterResponse)
+@router.put("/{encounter_id}", response_model=EncounterResponse, dependencies=[Depends(require_permission("patients:write"))])
 async def update_encounter(
     encounter_id: str,
     data: EncounterUpdate,
@@ -223,7 +223,7 @@ async def update_encounter(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}") from e
 
 
-@router.delete("/{encounter_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+@router.delete("/{encounter_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None, dependencies=[Depends(require_permission("patients:write"))])
 async def delete_encounter(
     encounter_id: str,
     db: Session = Depends(get_db),
@@ -236,7 +236,7 @@ async def delete_encounter(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}") from e
 
 
-@router.put("/{encounter_id}/complete", response_model=EncounterResponse)
+@router.put("/{encounter_id}/complete", response_model=EncounterResponse, dependencies=[Depends(require_permission("patients:write"))])
 async def complete_encounter(
     encounter_id: str,
     db: Session = Depends(get_db),
@@ -252,7 +252,7 @@ async def complete_encounter(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}") from e
 
 
-@router.put("/{encounter_id}/cancel", response_model=EncounterResponse)
+@router.put("/{encounter_id}/cancel", response_model=EncounterResponse, dependencies=[Depends(require_permission("patients:write"))])
 async def cancel_encounter(
     encounter_id: str,
     db: Session = Depends(get_db),

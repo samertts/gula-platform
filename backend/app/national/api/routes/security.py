@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -8,7 +8,8 @@ from app.database import get_db
 from app.models.audit_log import AuditLog
 from app.national.security.break_glass import BreakGlassService
 from app.national.security.consent_enforcement import ConsentEnforcementService
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
+from app.security.rate_limit import rate_limit_user
 
 router = APIRouter(prefix="/security", tags=["Healthcare Security"])
 
@@ -49,21 +50,23 @@ class AuditLogResponse(BaseModel):
     @classmethod
     def from_orm(cls, log: AuditLog) -> AuditLogResponse:
         return cls(
-            id=log.id,
-            user_id=log.user_id,
+            id=str(log.id),
+            user_id=str(log.user_id) if log.user_id is not None else None,
             action=log.action,
             resource_type=log.resource_type,
-            resource_id=log.resource_id,
+            resource_id=str(log.resource_id) if log.resource_id is not None else None,
             details=str(log.details) if log.details else None,
             created_at=log.created_at.isoformat() if log.created_at else "",
         )
 
 
-@router.post("/break-glass", response_model=BreakGlassResponse)
+@router.post("/break-glass", response_model=BreakGlassResponse, dependencies=[Depends(require_permission("security:break_glass"))])
 async def request_break_glass(
     data: BreakGlassRequest,
+    request: Request,
     current_user=Depends(get_current_user),
 ):
+    rate_limit_user(request, current_user.id, max_per_minute=5)
     service = BreakGlassService()
     result = service.request_access(
         citizen_id=data.citizen_id,
@@ -81,11 +84,13 @@ async def request_break_glass(
     return BreakGlassResponse(granted=False, reason="Break glass access denied")
 
 
-@router.post("/consent/check", response_model=ConsentCheckResponse)
+@router.post("/consent/check", response_model=ConsentCheckResponse, dependencies=[Depends(require_permission("patients:read"))])
 async def check_consent(
     data: ConsentCheck,
+    request: Request,
     current_user=Depends(get_current_user),
 ):
+    rate_limit_user(request, current_user.id, max_per_minute=30)
     service = ConsentEnforcementService()
     result = await service.check_consent(citizen_id=data.citizen_id, scope=data.scope)
     return ConsentCheckResponse(
@@ -95,21 +100,28 @@ async def check_consent(
     )
 
 
-@router.get("/audit/{entity_type}/{entity_id}", response_model=list[AuditLogResponse])
+@router.get("/audit/{entity_type}/{entity_id}", response_model=list[AuditLogResponse], dependencies=[Depends(require_permission("audit:read"))])
 async def get_audit_log(
     entity_type: str,
     entity_id: str,
-    skip: int = 0,
-    limit: int = 50,
+    request: Request,
+    skip: int = Query(0, ge=0, le=100000),
+    limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    logs = (
+    rate_limit_user(request, current_user.id, max_per_minute=30)
+    query = (
         db.query(AuditLog)
         .filter(
             AuditLog.resource_type == entity_type,
             AuditLog.resource_id == entity_id,
         )
+    )
+    if getattr(current_user, "lab_id", None) is not None and current_user.role not in {"master_admin", "ministry_admin", "auditor"}:
+        query = query.filter(AuditLog.lab_id == current_user.lab_id)
+    logs = (
+        query
         .order_by(AuditLog.created_at.desc())
         .offset(skip)
         .limit(limit)

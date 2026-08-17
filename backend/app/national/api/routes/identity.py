@@ -11,12 +11,12 @@ from app.national.exceptions import ForeignerRegistrationError, NewbornRegistrat
 from app.national.repositories.citizen_repository import CitizenRepository
 from app.national.services.citizen_service import CitizenService
 from app.national.services.identity_service import IdentityService
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 from app.services.route_audit import audit_mutation
 
 # AUDIT_DELEGATED: _audit_identity records the citizen registration mutation.
 
-router = APIRouter(prefix="/identity", tags=["Identity"])
+router = APIRouter(prefix="/identity", tags=["Identity"], dependencies=[Depends(require_permission("patients:read"))])
 
 
 class NewbornRegister(BaseModel):
@@ -97,7 +97,7 @@ def _get_identity_service(db: Session = Depends(get_db)) -> IdentityService:
     return IdentityService(citizen_service, repo)
 
 
-@router.post("/newborn", response_model=IdentityResponse, status_code=201)
+@router.post("/newborn", response_model=IdentityResponse, status_code=201, dependencies=[Depends(require_permission("patients:write"))])
 async def register_newborn(
     data: NewbornRegister,
     service: IdentityService = Depends(_get_identity_service),
@@ -114,7 +114,7 @@ async def register_newborn(
         raise HTTPException(status_code=400, detail="Invalid request") from e
 
 
-@router.post("/foreigner", response_model=IdentityResponse, status_code=201)
+@router.post("/foreigner", response_model=IdentityResponse, status_code=201, dependencies=[Depends(require_permission("patients:write"))])
 async def register_foreigner(
     data: ForeignerRegister,
     service: IdentityService = Depends(_get_identity_service),
@@ -131,7 +131,7 @@ async def register_foreigner(
         raise HTTPException(status_code=400, detail="Invalid request") from e
 
 
-@router.post("/visitor", response_model=IdentityResponse, status_code=201)
+@router.post("/visitor", response_model=IdentityResponse, status_code=201, dependencies=[Depends(require_permission("patients:write"))])
 async def register_visitor(
     data: VisitorRegister,
     service: IdentityService = Depends(_get_identity_service),
@@ -146,7 +146,7 @@ async def register_visitor(
     )
 
 
-@router.post("/unknown", response_model=IdentityResponse, status_code=201)
+@router.post("/unknown", response_model=IdentityResponse, status_code=201, dependencies=[Depends(require_permission("patients:write"))])
 async def register_unknown(
     data: UnknownPatientRegister,
     service: IdentityService = Depends(_get_identity_service),

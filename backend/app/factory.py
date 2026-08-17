@@ -466,7 +466,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Request-ID",
-                       "X-Device-ID", "X-App-Version", "Idempotency-Key",
+                       "X-Device-ID", "X-Device-Session", "X-App-Version", "Idempotency-Key",
                        "X-GULA-Operation-ID", "X-GULA-Request-Fingerprint", "If-Match"],
         expose_headers=["X-Request-ID", "X-Response-Time", "X-API-Version"],
     )

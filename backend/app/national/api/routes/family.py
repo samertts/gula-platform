@@ -6,10 +6,10 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.national.domain.family import Family, FamilyMember
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 from app.services.route_audit import audit_mutation
 
-router = APIRouter(prefix="/families", tags=["Family Registry"])
+router = APIRouter(prefix="/families", tags=["Family Registry"], dependencies=[Depends(require_permission("patients:read"))])
 
 
 class FamilyCreate(BaseModel):
@@ -39,7 +39,7 @@ class FamilyMemberResponse(BaseModel):
     is_primary: bool = False
 
 
-@router.post("/", response_model=FamilyResponse, status_code=201)
+@router.post("/", response_model=FamilyResponse, status_code=201, dependencies=[Depends(require_permission("patients:write"))])
 async def create_family(
     data: FamilyCreate,
     db: Session = Depends(get_db),
@@ -89,7 +89,7 @@ async def get_family(
     )
 
 
-@router.post("/{family_id}/members", response_model=FamilyMemberResponse, status_code=201)
+@router.post("/{family_id}/members", response_model=FamilyMemberResponse, status_code=201, dependencies=[Depends(require_permission("patients:write"))])
 async def add_family_member(
     family_id: str,
     data: FamilyMemberAdd,
@@ -125,7 +125,7 @@ async def add_family_member(
     )
 
 
-@router.delete("/{family_id}/members/{member_id}", status_code=204, response_model=None)
+@router.delete("/{family_id}/members/{member_id}", status_code=204, response_model=None, dependencies=[Depends(require_permission("patients:write"))])
 async def remove_family_member(
     family_id: str,
     member_id: str,
