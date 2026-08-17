@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from fastapi import APIRouter
+
 """
 NIAM — National Identity & Access Management Platform.
 
@@ -29,7 +31,7 @@ It can be used by any current or future GULA sub-system.
 """
 
 
-def get_router():
+def get_router() -> APIRouter:
     from .api.router import router as _router
     return _router
 

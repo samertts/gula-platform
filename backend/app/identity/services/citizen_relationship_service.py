@@ -235,6 +235,8 @@ class CitizenRelationshipWorkflow:
         if source is None or not source.is_active or not source.is_verified:
             raise CitizenRelationshipConflict("Source account must be active and verified before activation")
         old_status = relationship.status
+        if relationship.version is None:
+            raise CitizenRelationshipConflict("Relationship version is required for activation")
         relationship.status = CitizenRelationshipStatus.active.value
         relationship.verified_at = _now()
         relationship.version += 1
@@ -271,6 +273,8 @@ class CitizenRelationshipWorkflow:
         }:
             raise CitizenRelationshipConflict(f"Cannot revoke relationship from {relationship.status}")
         old_status = relationship.status
+        if relationship.version is None:
+            raise CitizenRelationshipConflict("Relationship version is required for revocation")
         relationship.status = CitizenRelationshipStatus.revoked.value
         relationship.revoked_at = _now()
         relationship.revoked_reason = reason

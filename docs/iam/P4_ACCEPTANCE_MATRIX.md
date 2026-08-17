@@ -6,6 +6,8 @@
 
 **Current baseline:** `origin/main` at `36275eef70da7d146fb77ad25d2112fcc90becd7` on remediation branch `remediation/p4-closure-gates`.
 
+> **Latest independent reconciliation (2026-08-17):** The currently observed `origin/main` is `1e07b8d6`; the local P0/P4 verification report is recorded in [P0_P4_EVIDENCE_RECONCILIATION_2026-08-17.md](./P0_P4_EVIDENCE_RECONCILIATION_2026-08-17.md). It confirms that P4-25, P4-31, and P4-32 remain `BLOCKED`; this note is evidence tracking only and does not constitute review approval, merge approval, deployment approval, or P4 closure.
+
 ## Status vocabulary
 
 | Status | Meaning |

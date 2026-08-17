@@ -29,14 +29,20 @@ def _iter_api_routes(router_routes, prefix: str = ""):
 def _membership_routes() -> dict[tuple[str, str], APIRoute]:
     """Return membership routes after verifying they are included by the NIAM router.
 
-    FastAPI 0.139 keeps nested routers as lazy ``_IncludedRouter`` objects until
-    the application is assembled, so the API router's direct route list no longer
-    contains the endpoint objects themselves.
+    FastAPI represents nested routers differently across supported versions:
+    either as lazy ``_IncludedRouter`` wrappers or as materialized ``APIRoute``
+    instances.  Both forms must still expose the same protected lifecycle routes.
     """
-    assert any(
+    has_lazy_membership_router = any(
         getattr(route, "original_router", None) is memberships_api.router
         for route in router.routes
     )
+    has_materialized_membership_route = any(
+        isinstance(route, APIRoute)
+        and (route.path or "").startswith("/niam/memberships")
+        for route in router.routes
+    )
+    assert has_lazy_membership_router or has_materialized_membership_route
 
     routes: dict[tuple[str, str], APIRoute] = {}
     for route, path in _iter_api_routes(router.routes):

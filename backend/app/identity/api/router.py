@@ -56,5 +56,5 @@ router.include_router(compliance_routes.router, dependencies=_AUTH_REQUIRED)
 
 
 @router.get("/health")
-async def niam_health():
+async def niam_health() -> dict[str, str]:
     return {"status": "healthy", "domain": "niam", "version": "1.0.0"}

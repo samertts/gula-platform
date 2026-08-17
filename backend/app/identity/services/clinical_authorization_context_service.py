@@ -97,11 +97,17 @@ class ClinicalAuthorizationContextService:
             if binding.niam_organization_id is None or binding.niam_facility_id is None:
                 raise ClinicalFacilityScopeMismatch("The reviewed bridge has no canonical NIAM scope mapping")
             facility, organization, tenant = await self._get_active_operational_scope(binding)
+            if facility.id is None or organization.id is None or tenant.id is None or binding.mapping_version is None:
+                raise ClinicalFacilityScopeMismatch("The reviewed operational scope has incomplete identifiers")
+            if account.id is None or identity.id is None or identity.person_id is None:
+                raise ClinicalLegacyIdentityUnresolved("The reviewed canonical account or identity has incomplete identifiers")
             assignment = await self._get_matching_assignment(
                 person_id=identity.person_id,
                 facility_resource_id=facility.id,
                 organization_resource_id=organization.id,
             )
+            if assignment.id is None:
+                raise ClinicalActiveAssignmentUnavailable("The reviewed active assignment has no identifier")
             context = ClinicalAuthorizationContext(
                 legacy_lab_user_id=legacy_lab_user_id,
                 legacy_lab_id=legacy_lab_id,
@@ -170,7 +176,7 @@ class ClinicalAuthorizationContextService:
         rows = list(result.all())
         if len(rows) != 1:
             raise ClinicalLegacyIdentityUnresolved("The canonical account and active identity could not be proven")
-        return rows[0]
+        return rows[0][0], rows[0][1]
 
     async def _get_active_operational_scope(
         self,
@@ -191,7 +197,7 @@ class ClinicalAuthorizationContextService:
         rows = list(result.all())
         if len(rows) != 1:
             raise ClinicalFacilityScopeMismatch("The reviewed facility does not resolve to one active organization and tenant")
-        return rows[0]
+        return rows[0][0], rows[0][1], rows[0][2]
 
     async def _get_matching_assignment(
         self,
