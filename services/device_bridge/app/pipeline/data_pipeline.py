@@ -121,7 +121,7 @@ class DataPipeline:
         decision = self.router.decide(device_id=device_id, results=normalized_results)
 
         if decision.target in {"gula", "both"}:
-            response = await self.gula_client.send_results(normalized_results)
+            response = await self.gula_client.send_results(normalized_results, barcode=barcode)
             if response.get("status") == "failed":
                 self.retry_queue.enqueue(
                     {

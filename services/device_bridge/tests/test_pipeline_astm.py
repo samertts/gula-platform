@@ -10,9 +10,11 @@ class FakeGulaClient(GulaClient):
     def __init__(self) -> None:
         super().__init__(base_url="http://example.invalid", lab_id="LAB001")
         self.sent_batches = []
+        self.sent_barcodes = []
 
-    async def send_results(self, results):  # type: ignore[override]
+    async def send_results(self, results, *, barcode=None):  # type: ignore[override]
         self.sent_batches.append(results)
+        self.sent_barcodes.append(barcode)
         return {"status": "ok"}
 
 
@@ -30,10 +32,16 @@ def test_pipeline_processes_real_astm_frame() -> None:
     frame = build_frame(payload)
 
     results = asyncio.run(
-        pipeline.process_chunk(device_id="CBC-01", fallback_patient_id="FALLBACK", chunk=frame)
+        pipeline.process_chunk(
+            device_id="CBC-01",
+            fallback_patient_id="FALLBACK",
+            barcode="SAMPLE-001",
+            chunk=frame,
+        )
     )
 
     assert len(results) == 1
     assert results[0].patient_id == "12345"
     assert results[0].test_code == "HEMOGLOBIN"
     assert len(gula.sent_batches) == 1
+    assert gula.sent_barcodes == ["SAMPLE-001"]
