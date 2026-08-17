@@ -20,6 +20,8 @@
 | `professional_dual_verification` | تحقق طبيب بمصدر وزارة الصحة ومصدر نقابة الأطباء | `PROPOSED_NOT_IMPLEMENTED / OFF` | لا نطاق نشط | مصدران مستقلان موثقان، مطابقة الشخص، معالجة التعارض، وتدقيق |
 | `clinician_order_authoring` | إنشاء أوامر مختبر وتصوير ولقاح ووصفة | `PROPOSED_NOT_IMPLEMENTED / OFF` | لا نطاق نشط | تحقق مهني ثنائي، تعيين محدود النطاق، سياسة فعل صريحة، واختبارات رفض |
 | `citizen_account_request_by_physician` | طلب بدء حساب مواطن بواسطة طبيب مخول | `PROPOSED_NOT_IMPLEMENTED / OFF` | لا نطاق نشط | دورة حساب خادمية منفصلة، قبول/تحقق مواطن، وعدم التفعيل التلقائي |
+| `citizen_verified_entitlements` | حزمة استحقاقات المواطن بعد تحقق الهوية | `PROPOSED_NOT_IMPLEMENTED / OFF` | لا نطاق نشط | تحقق هوية ساري، تقييم استحقاق خادمي، ومراجعة رفض/انتهاء |
+| `ministry_service_constraint_policy` | قيود خدمة وزارية حسب النوع والمدينة والعدد والمدة | `PROPOSED_NOT_IMPLEMENTED / OFF` | لا نطاق نشط | تعيين سياسة موثق، نسخة مدققة، قرار خادمي ذري، وخطة عودة |
 
 ## قواعد لا تقبل الاستثناء
 
