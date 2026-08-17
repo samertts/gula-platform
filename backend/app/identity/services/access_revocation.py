@@ -57,8 +57,8 @@ async def revoke_account_access(
             version=WorkspaceSessionContext.version + 1,
         ),
     )
-    session_count = int(session_result.rowcount or 0)
-    context_count = int(context_result.rowcount or 0)
+    session_count = int(getattr(session_result, "rowcount", 0) or 0)
+    context_count = int(getattr(context_result, "rowcount", 0) or 0)
     await AuditService(session).record(
         AuditAction.session_revoked,
         actor_id=actor_id or "system",

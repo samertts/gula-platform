@@ -5,12 +5,15 @@ import json
 import logging
 import secrets
 from datetime import datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+
+if TYPE_CHECKING:
+    from .redis_client import _MemoryStore, _RedisWrapper
 from app.config import IS_PRODUCTION
 from app.models.mfa_device import MFADevice, MFASession
 from shared.auth.mfa import (
@@ -37,7 +40,7 @@ class MFAService:
     def __init__(self, db: Session):
         self._db = db
 
-    def _challenge_cache(self):
+    def _challenge_cache(self) -> _MemoryStore | _RedisWrapper:
         from .redis_client import cache
 
         if IS_PRODUCTION and not cache.is_shared:
@@ -105,7 +108,7 @@ class MFAService:
         except Exception as exc:
             logger.error("WebAuthn registration challenge cache failed for user %s", user_id)
             raise RuntimeError("WebAuthn challenge store unavailable") from exc
-        return options
+        return cast(dict[str, Any], options)
 
     def complete_webauthn_registration(self, user_id: int, credential: dict[str, Any],
                                         device_name: str = "Security Key") -> MFADevice:
@@ -148,7 +151,7 @@ class MFAService:
         except Exception as exc:
             logger.error("WebAuthn authentication challenge cache failed for user %s", user_id)
             raise RuntimeError("WebAuthn challenge store unavailable") from exc
-        return options
+        return cast(dict[str, Any], options)
 
     def complete_webauthn_authentication(self, user_id: int, credential: dict[str, Any]) -> bool:
         cache = self._challenge_cache()
@@ -207,10 +210,10 @@ class MFAService:
             )
             .values(is_verified=True),
         )
-        if result.rowcount != 1:
+        if getattr(result, "rowcount", 0) != 1:
             return None
         self._db.commit()
-        return candidate[0]
+        return cast(int, candidate[0])
 
     def get_user_devices(self, user_id: int) -> list[dict[str, Any]]:
         devices = self._db.query(MFADevice).filter(

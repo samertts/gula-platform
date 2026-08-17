@@ -1,7 +1,7 @@
 from pathlib import Path
 
 
-def test_gula_uvicorn_worker_has_conservative_defaults():
+def test_gula_uvicorn_worker_has_conservative_defaults() -> None:
     from gula_uvicorn_worker import GulaUvicornWorker
 
     assert GulaUvicornWorker.CONFIG_KWARGS["limit_concurrency"] == 400
@@ -10,7 +10,7 @@ def test_gula_uvicorn_worker_has_conservative_defaults():
     assert GulaUvicornWorker.CONFIG_KWARGS["limit_max_requests"] == 10000
 
 
-def test_start_script_exposes_memory_safe_runtime_knobs():
+def test_start_script_exposes_memory_safe_runtime_knobs() -> None:
     script = Path(__file__).parents[1] / "start_railway.sh"
     content = script.read_text()
 

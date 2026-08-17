@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from inspect import isawaitable
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -32,7 +33,7 @@ class NiamActor:
 
 
 def _session_is_idle(session: UserSession, now: datetime) -> bool:
-    last_activity = getattr(session, "last_activity_at", None)
+    last_activity = cast(datetime | None, getattr(session, "last_activity_at", None))
     if last_activity is None:
         return False
     if last_activity.tzinfo is None:
@@ -69,7 +70,11 @@ async def _touch_session_async(db: AsyncSession, session: UserSession, now: date
 
 
 def _raw_niam_token(request: Request, credentials: HTTPAuthorizationCredentials | None) -> str:
-    raw_token = credentials.credentials if credentials else request.cookies.get("access_token")
+    raw_token = (
+        credentials.credentials
+        if credentials
+        else cast(str | None, request.cookies.get("access_token"))
+    )
     if not raw_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     return raw_token
@@ -156,7 +161,10 @@ def serialize_workspace(workspace: Workspace) -> dict[str, object]:
 
 
 @router.get("")
-async def list_workspaces(actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+async def list_workspaces(
+    actor: NiamActor = Depends(get_current_niam_actor),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
     service = WorkspaceService(db)
     citizen = await service.ensure_citizen_workspace(actor.account)
     workspaces = await service.list_eligible(actor.account)
@@ -166,7 +174,11 @@ async def list_workspaces(actor: NiamActor = Depends(get_current_niam_actor), db
 
 
 @router.get("/{workspace_id}")
-async def get_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+async def get_workspace(
+    workspace_id: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
     service = WorkspaceService(db)
     workspaces = await service.list_eligible(actor.account)
     workspace = next((item for item in workspaces if item.id == workspace_id), None)
@@ -176,7 +188,11 @@ async def get_workspace(workspace_id: str, actor: NiamActor = Depends(get_curren
 
 
 @router.post("/{workspace_id}/switch")
-async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+async def switch_workspace(
+    workspace_id: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
     service = WorkspaceService(db)
     try:
         context = await service.switch(actor.account, actor.session.id, workspace_id)
@@ -194,7 +210,12 @@ async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_cur
             outcome="denied",
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace access denied") from exc
-    workspace = await db.get(Workspace, context.workspace_id)
+    workspace: Workspace | None = await db.get(Workspace, context.workspace_id)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Workspace context unavailable",
+        )
     await AuditService(db).record(
         AuditAction.workspace_switched,
         actor_id=actor.account.id,

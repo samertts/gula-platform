@@ -6,8 +6,17 @@ are deliberately conservative for memory-bound instances.
 """
 
 import os
+from typing import TYPE_CHECKING
 
 from uvicorn_worker import UvicornWorker
+
+if TYPE_CHECKING:
+
+    class _UvicornWorkerBase:
+        pass
+
+else:
+    _UvicornWorkerBase = UvicornWorker
 
 
 def _positive_int(name: str, default: int) -> int:
@@ -17,7 +26,7 @@ def _positive_int(name: str, default: int) -> int:
     return value
 
 
-class GulaUvicornWorker(UvicornWorker):
+class GulaUvicornWorker(_UvicornWorkerBase):
     """Uvicorn worker with bounded concurrency and keep-alive behavior."""
 
     CONFIG_KWARGS = {
