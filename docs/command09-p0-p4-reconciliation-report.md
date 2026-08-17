@@ -7,7 +7,8 @@
 **PR:** `#226`
 **HEAD قبل Command 09:** `478bad1f927543323236c98da5cbb6e0a123dc40`
 **Commit Command 09 بعد التنفيذ:** `c59beac5a599a59616f64fa536cb65c90d0fc7ac`
-**Continuation status:** working-tree fixes pending commit/push
+**Continuation commit:** `ba10a89757647c46862e9ab73812555e1e34acc4`
+**Continuation status:** pushed to PR #226; PR remains open
 **قرار P5:** `P5_BLOCKED_BY_PREREQUISITE`
 
 > **قرار الإغلاق:** Command 09 يُغلق على أنه **`NOT_P0_CANDIDATE_FOR_CLOSURE`** و**`P4_PARTIAL / UNVERIFIED`**. الاختبارات المحلية قوية وناجحة، لكن CI الحالي محجوب خارجياً، وPostgreSQL/Redis وRailway غير مثبتة، وdeployment HEAD في Vercel بحالة `BLOCKED`، وnative/device parity غير مثبتة، وبعض الموافقات البشرية لازمة. لا يُسمح بتحويل هذه الفجوات إلى `PASS` بالاستنتاج.
@@ -106,7 +107,7 @@
 
 هذه النتيجة لا تعني bypass أمني؛ بل تعني أن non-regression gate المحلي أصبح قابلاً للتنفيذ ونجح، بينما تبقى بوابات GitHub الحالية والـrunner الخارجي بحاجة إلى تحقق بعد push على SHA continuation الجديد.
 
-على SHA السابق `c59beac5` بقي PR #226 مفتوحاً، وكانت checks التاريخية تُظهر jobs تفشل مع `steps: []` خلال ثوانٍ قليلة، وهو نمط blocker خارجي وليس دليلاً على test failure داخل runner. بعد هذه continuation لم يُدفع SHA الجديد بعد؛ لذلك تبقى نتيجة GitHub current-head **غير مثبتة** إلى أن يُرفع commit continuation وتُقرأ checks الجديدة read-only.
+على SHA النهائي `ba10a89757647c46862e9ab73812555e1e34acc4` بقي PR #226 مفتوحاً. checks الجديدة، ومنها Changed Files Quality Gate run `32021802725` وIAM Hardening Gate run `32021802719` وFrontend E2E run `32021802777`، انتهت بالفشل خلال ثوانٍ مع `steps: []` في jobs؛ لذلك صُنفت **`BLOCKED_EXTERNAL`** وليست source test failures. لم تُجرَ إعادة تشغيل تلقائية أو تعديل في GitHub.
 
 ## 8. Database and migration state
 
@@ -173,7 +174,7 @@
 | Cross-tenant/default-deny local checks | **PASS ضمن الأدلة المحلية المحددة** |
 | Web/PWA local regression | **PASS** |
 | Backend full local regression | **PASS: 2719 passed, 4 skipped** |
-| CI current-head | **BLOCKED_EXTERNAL** |
+| CI current-head | **BLOCKED_EXTERNAL**؛ final SHA checks fail before steps (`32021802725`, `32021802719`, `32021802777`) |
 | Vercel current-head deployment | **BLOCKED_EXTERNAL** |
 | Railway/PostgreSQL/Redis production alignment | **UNVERIFIED** |
 | Native/device parity | **UNVERIFIED / NOT_BUILT** |
