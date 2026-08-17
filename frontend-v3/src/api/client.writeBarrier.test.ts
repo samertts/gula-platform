@@ -4,6 +4,7 @@ import {
   OperationalWriteBlockedError,
   assertFrontendReadIsAllowed,
   assertFrontendWriteIsAllowed,
+  isSafeRefreshRetryMethod,
 } from "./client";
 
 describe("حاجز الكتابات التشغيلية في frontend-v3", () => {
@@ -53,6 +54,15 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
     expect(() => assertFrontendReadIsAllowed("get", "/citizen-platform/me/medication-dispenses")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/pos/sales")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/inventory/stock-levels/adjust")).toThrow(OperationalWriteBlockedError);
+  });
+
+  it("لا يعيد refresh إرسال mutations الحساسة تلقائياً", () => {
+    expect(isSafeRefreshRetryMethod("GET")).toBe(true);
+    expect(isSafeRefreshRetryMethod("HEAD")).toBe(true);
+    expect(isSafeRefreshRetryMethod("OPTIONS")).toBe(true);
+    for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
+      expect(isSafeRefreshRetryMethod(method)).toBe(false);
+    }
   });
 
   it("يرفض قراءة REST غير مصنفة ويحصر الاستثناء في تهيئة الجلسة العامة", () => {

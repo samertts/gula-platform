@@ -205,7 +205,22 @@ function syntheticDemoDashboard(personaId: DemoPersonaId = "doctor") {
 }
 
 export type ApiMode = "live" | "demo";
-type RetryableRequest = InternalAxiosRequestConfig & { _retry?: boolean };
+type RetryableRequest = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+  _requestId?: string;
+  _correlationId?: string;
+};
+
+const SAFE_REFRESH_RETRY_METHODS = new Set(["get", "head", "options"]);
+
+export function isSafeRefreshRetryMethod(method?: string): boolean {
+  return SAFE_REFRESH_RETRY_METHODS.has((method ?? "").toLowerCase());
+}
+
+function createRequestId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
+  return `gula-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 type RestWriteMethod = "post" | "put" | "patch" | "delete";
 
 const IDENTITY_AND_DECISION_ALLOWLIST = new Set([
@@ -345,7 +360,15 @@ class ApiClient {
     this.instance.interceptors.request.use((config) => {
       assertFrontendReadIsAllowed(config.method, config.url);
       assertFrontendWriteIsAllowed(config.method, config.url);
-      return config;
+      const request = config as RetryableRequest;
+      const requestId = request._requestId ?? createRequestId();
+      const correlationId = request._correlationId ?? request.headers?.["X-Correlation-ID"]?.toString() ?? requestId;
+      request._requestId = requestId;
+      request._correlationId = correlationId;
+      request.headers = request.headers ?? {};
+      request.headers["X-Request-ID"] = requestId;
+      request.headers["X-Correlation-ID"] = correlationId;
+      return request;
     });
 
     this.instance.interceptors.response.use(
@@ -460,10 +483,14 @@ class ApiClient {
     const requestUrl = originalRequest?.url ?? "";
     const isAuthBootstrapRequest = /\/(login|register|register\/citizen|register\/staff|register\/doctor|auth\/refresh|auth\/forgot-password|auth\/recovery\/verify|auth\/reset-password|session)$/.test(requestUrl);
 
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthBootstrapRequest) {
+    const method = (originalRequest?.method ?? "get").toLowerCase();
+    const canRetryAfterRefresh = isSafeRefreshRetryMethod(method);
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isAuthBootstrapRequest && canRetryAfterRefresh) {
       originalRequest._retry = true;
-      const refreshed = await this.refreshToken();
+      const refreshed = await this.refreshToken(originalRequest._correlationId);
       if (refreshed) return this.instance(originalRequest);
+      this.clearSession();
+    } else if (error.response?.status === 401 && !isAuthBootstrapRequest && !canRetryAfterRefresh) {
       this.clearSession();
     }
 
@@ -473,17 +500,19 @@ class ApiClient {
           status: error.response?.status,
           url: requestUrl,
           method: originalRequest?.method?.toUpperCase(),
+          request_id: originalRequest?._requestId,
+          correlation_id: originalRequest?._correlationId,
         },
       }));
     }
     return Promise.reject(error);
   }
 
-  private async refreshToken(): Promise<boolean> {
+  private async refreshToken(correlationId?: string): Promise<boolean> {
     if (this.refreshPromise) return this.refreshPromise;
 
     this.refreshPromise = this.instance
-      .post("/auth/refresh", {})
+      .post("/auth/refresh", {}, correlationId ? { headers: { "X-Correlation-ID": correlationId } } : undefined)
       .then(() => true)
       .catch(() => false)
       .finally(() => { this.refreshPromise = null; });

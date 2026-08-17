@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { UserInfo, LoginRequest } from "@/types";
 import { authApi } from "@/api/endpoints";
 import { apiClient, setApiMode, type DemoPersonaId, type MembershipSummary, type WorkspaceSummary } from "@/api/client";
@@ -50,8 +50,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [workspace, setWorkspace] = useState<WorkspaceSummary | null>(null);
   const [workspaceContext, setWorkspaceContext] = useState<AuthSnapshot["workspaceContext"]>(null);
   const [error, setError] = useState<AuthStateError | null>(null);
+  const identityGenerationRef = useRef(0);
+  const permissionGenerationRef = useRef(0);
+  const identityInFlightRef = useRef<Promise<void> | null>(null);
+  const loginInFlightRef = useRef<Promise<void> | null>(null);
+  const logoutInFlightRef = useRef<Promise<void> | null>(null);
+  const workspaceSwitchInFlightRef = useRef<Promise<WorkspaceSummary> | null>(null);
 
-  const clearIdentity = (nextState: AuthState = AUTH_STATES.UNAUTHENTICATED) => {
+  const invalidatePendingRequests = () => {
+    identityGenerationRef.current += 1;
+    permissionGenerationRef.current += 1;
+  };
+
+  const clearIdentity = (nextState: AuthState = AUTH_STATES.UNAUTHENTICATED, invalidate = true) => {
+    if (invalidate) invalidatePendingRequests();
     setUser(null);
     setDemoMode(false);
     setMemberships([]);
@@ -62,7 +74,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState(nextState);
   };
 
-  const refreshScopedPermissions = async (membershipList: MembershipSummary[], activeWorkspace: WorkspaceSummary | null) => {
+  const refreshScopedPermissions = async (
+    membershipList: MembershipSummary[],
+    activeWorkspace: WorkspaceSummary | null,
+    generation = permissionGenerationRef.current,
+  ) => {
     if (!activeWorkspace?.organization_id) {
       setEffectivePermissions({});
       return;
@@ -78,9 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         department_id: activeWorkspace.department_id ?? undefined,
         workspace_id: activeWorkspace.id,
       });
+      if (generation !== permissionGenerationRef.current) return;
       setEffectivePermissions({ [organizationId]: result.permissions });
     } catch {
-      setEffectivePermissions({});
+      if (generation === permissionGenerationRef.current) setEffectivePermissions({});
     }
   };
 
@@ -90,9 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setEffectivePermissions({});
       return;
     }
+    const generation = ++permissionGenerationRef.current;
     const response = await apiClient.listMyMemberships();
+    if (generation !== permissionGenerationRef.current) return;
     setMemberships(response.memberships);
-    await refreshScopedPermissions(response.memberships, workspace);
+    await refreshScopedPermissions(response.memberships, workspace, generation);
   };
 
   const refreshWorkspaces = async () => {
@@ -106,32 +125,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshIdentity = async () => {
-    setState(AUTH_STATES.LOADING);
-    setError(null);
-    try {
-      const session = await authApi.session();
-      setUser(session.user);
-      setDemoMode(Boolean(session.demo_mode));
-      if (session.demo_mode) {
-        setMemberships([]);
+    if (identityInFlightRef.current) return identityInFlightRef.current;
+    const generation = ++identityGenerationRef.current;
+    const run = (async () => {
+      setState(AUTH_STATES.LOADING);
+      setError(null);
+      try {
+        const session = await authApi.session();
+        if (generation !== identityGenerationRef.current) return;
+        setUser(session.user);
+        setDemoMode(Boolean(session.demo_mode));
+        if (session.demo_mode) {
+          setMemberships([]);
+          setEffectivePermissions({});
+          setAvailableWorkspaces([]);
+          setState(AUTH_STATES.AUTHENTICATED);
+          return;
+        }
+        const membershipResponse = await apiClient.listMyMemberships();
+        if (generation !== identityGenerationRef.current) return;
+        setMemberships(membershipResponse.memberships);
         setEffectivePermissions({});
-        setAvailableWorkspaces([]);
-        setState(AUTH_STATES.AUTHENTICATED);
-        return;
+        const response = await apiClient.listWorkspaces();
+        if (generation !== identityGenerationRef.current) return;
+        setAvailableWorkspaces(response.workspaces);
+        setWorkspace(null);
+        setWorkspaceContext(null);
+        setState(stateForAuthorizedContext(session.user, response.workspaces, null));
+      } catch (caught) {
+        if (generation !== identityGenerationRef.current) return;
+        const info = classifyApiError(caught, "تعذر التحقق من الجلسة الحالية.");
+        setError(toStateError(info));
+        clearIdentity(info.status === 401 ? AUTH_STATES.UNAUTHENTICATED : info.kind === "OFFLINE" ? AUTH_STATES.ERROR : AUTH_STATES.UNAUTHENTICATED, false);
       }
-      const membershipResponse = await apiClient.listMyMemberships();
-      setMemberships(membershipResponse.memberships);
-      setEffectivePermissions({});
-      const response = await apiClient.listWorkspaces();
-      setAvailableWorkspaces(response.workspaces);
-      setWorkspace(null);
-      setWorkspaceContext(null);
-      setState(stateForAuthorizedContext(session.user, response.workspaces, null));
-    } catch (caught) {
-      const info = classifyApiError(caught, "تعذر التحقق من الجلسة الحالية.");
-      setError(toStateError(info));
-      clearIdentity(info.status === 401 ? AUTH_STATES.UNAUTHENTICATED : info.kind === "OFFLINE" ? AUTH_STATES.ERROR : AUTH_STATES.UNAUTHENTICATED);
-    }
+    })().finally(() => {
+      if (identityInFlightRef.current === run) identityInFlightRef.current = null;
+    });
+    identityInFlightRef.current = run;
+    return run;
   };
 
   useEffect(() => {
@@ -188,40 +219,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (data: LoginRequest) => {
+    if (loginInFlightRef.current) return loginInFlightRef.current;
+    invalidatePendingRequests();
     setState(AUTH_STATES.VERIFYING);
     setError(null);
     setApiMode("live");
-    try {
-      const response = await authApi.login(data);
-      window.sessionStorage.removeItem(DEMO_SESSION_KEY);
-      window.sessionStorage.removeItem(DEMO_PERSONA_KEY);
-      setUser(response.user);
-      setDemoMode(Boolean(response.demo_mode));
-      if (response.demo_mode) {
-        setState(AUTH_STATES.AUTHENTICATED);
-        return;
+    const run = (async () => {
+      try {
+        const response = await authApi.login(data);
+        window.sessionStorage.removeItem(DEMO_SESSION_KEY);
+        window.sessionStorage.removeItem(DEMO_PERSONA_KEY);
+        setUser(response.user);
+        setDemoMode(Boolean(response.demo_mode));
+        if (response.demo_mode) {
+          setState(AUTH_STATES.AUTHENTICATED);
+          return;
+        }
+        const membershipResponse = await apiClient.listMyMemberships();
+        setMemberships(membershipResponse.memberships);
+        setEffectivePermissions({});
+        const workspacesResponse = await apiClient.listWorkspaces();
+        setAvailableWorkspaces(workspacesResponse.workspaces);
+        setWorkspace(null);
+        setWorkspaceContext(null);
+        setState(stateForAuthorizedContext(response.user, workspacesResponse.workspaces, null));
+      } catch (caught) {
+        const info = authFailureMessage(caught);
+        const nextState = info.code === "LOCKED"
+          ? AUTH_STATES.LOCKED
+          : info.code === "VERIFICATION_REQUIRED" || info.code === "MFA_REQUIRED"
+            ? AUTH_STATES.VERIFYING
+            : /suspend|deactivat/i.test(info.code)
+              ? AUTH_STATES.SUSPENDED
+              : AUTH_STATES.ERROR;
+        setError(toStateError(info));
+        setState(nextState);
+        throw caught;
       }
-      const membershipResponse = await apiClient.listMyMemberships();
-      setMemberships(membershipResponse.memberships);
-      setEffectivePermissions({});
-      const workspacesResponse = await apiClient.listWorkspaces();
-      setAvailableWorkspaces(workspacesResponse.workspaces);
-      setWorkspace(null);
-      setWorkspaceContext(null);
-      setState(stateForAuthorizedContext(response.user, workspacesResponse.workspaces, null));
-    } catch (caught) {
-      const info = authFailureMessage(caught);
-      const nextState = info.code === "LOCKED"
-        ? AUTH_STATES.LOCKED
-        : info.code === "VERIFICATION_REQUIRED" || info.code === "MFA_REQUIRED"
-          ? AUTH_STATES.VERIFYING
-          : /suspend|deactivat/i.test(info.code)
-            ? AUTH_STATES.SUSPENDED
-            : AUTH_STATES.ERROR;
-      setError(toStateError(info));
-      setState(nextState);
-      throw caught;
-    }
+    })().finally(() => {
+      if (loginInFlightRef.current === run) loginInFlightRef.current = null;
+    });
+    loginInFlightRef.current = run;
+    return run;
   };
 
   const startDemo = async (persona: DemoPersonaId = DEFAULT_DEMO_PERSONA) => {
@@ -241,29 +280,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const switchWorkspace = async (workspaceId: string) => {
+    if (workspaceSwitchInFlightRef.current) return workspaceSwitchInFlightRef.current;
+    const generation = ++permissionGenerationRef.current;
     setError(null);
-    const response = await apiClient.switchWorkspace(workspaceId);
-    setWorkspace(response.workspace);
-    setWorkspaceContext(response.context);
-    const membershipResponse = await apiClient.listMyMemberships();
-    setMemberships(membershipResponse.memberships);
-    await refreshScopedPermissions(membershipResponse.memberships, response.workspace);
-    if (user) setState(AUTH_STATES.AUTHORIZED);
-    return response.workspace;
+    setWorkspace(null);
+    setWorkspaceContext(null);
+    setEffectivePermissions({});
+    setState(AUTH_STATES.WORKSPACE_REQUIRED);
+    const run = (async () => {
+      const response = await apiClient.switchWorkspace(workspaceId);
+      if (generation !== permissionGenerationRef.current) throw new Error("WORKSPACE_SWITCH_SUPERSEDED");
+      setWorkspace(response.workspace);
+      setWorkspaceContext(response.context);
+      const membershipResponse = await apiClient.listMyMemberships();
+      if (generation !== permissionGenerationRef.current) throw new Error("WORKSPACE_SWITCH_SUPERSEDED");
+      setMemberships(membershipResponse.memberships);
+      await refreshScopedPermissions(membershipResponse.memberships, response.workspace, generation);
+      if (user && generation === permissionGenerationRef.current) setState(AUTH_STATES.AUTHORIZED);
+      return response.workspace;
+    })().finally(() => {
+      if (workspaceSwitchInFlightRef.current === run) workspaceSwitchInFlightRef.current = null;
+    });
+    workspaceSwitchInFlightRef.current = run;
+    return run;
   };
 
   const logout = async () => {
+    if (logoutInFlightRef.current) return logoutInFlightRef.current;
+    invalidatePendingRequests();
     setState(AUTH_STATES.LOADING);
-    try {
-      if (demoMode) await authApi.endDemo();
-      else await authApi.logout();
-    } finally {
-      window.sessionStorage.removeItem(DEMO_SESSION_KEY);
-      window.sessionStorage.removeItem(DEMO_PERSONA_KEY);
-      setApiMode("live");
-      clearIdentity(AUTH_STATES.UNAUTHENTICATED);
-      setError(null);
-    }
+    const run = (async () => {
+      try {
+        if (demoMode) await authApi.endDemo();
+        else await authApi.logout();
+      } finally {
+        window.sessionStorage.removeItem(DEMO_SESSION_KEY);
+        window.sessionStorage.removeItem(DEMO_PERSONA_KEY);
+        setApiMode("live");
+        clearIdentity(AUTH_STATES.UNAUTHENTICATED, false);
+        setError(null);
+      }
+    })().finally(() => {
+      if (logoutInFlightRef.current === run) logoutInFlightRef.current = null;
+    });
+    logoutInFlightRef.current = run;
+    return run;
   };
 
   return (

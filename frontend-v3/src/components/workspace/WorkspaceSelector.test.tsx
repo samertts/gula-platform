@@ -16,6 +16,7 @@ function setAuthMode(demoMode: boolean, overrides: Partial<ReturnType<typeof use
     demoMode,
     state: demoMode ? "AUTHENTICATED" : "AUTHORIZED",
     availableWorkspaces: [],
+    memberships: [],
     workspace: null,
     error: null,
     switchWorkspace: vi.fn(),
