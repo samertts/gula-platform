@@ -23,6 +23,7 @@ Exit codes:
 """
 
 import argparse
+import ast
 import json
 import logging
 import os
@@ -332,8 +333,59 @@ def check_exposed_credentials(root: pathlib.Path) -> list[dict[str, Any]]:
     return findings
 
 
+_WRITE_METHODS = {"post", "put", "patch", "delete"}
+_EFFECTFUL_CALL_PREFIXES = (
+    "create_", "update_", "delete_", "register_", "revoke_", "accept_", "reject_", "issue_", "merge_",
+)
+
+
+def _route_write_functions(tree: ast.AST) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
+    functions: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        decorators = [ast.unparse(dec) for dec in node.decorator_list]
+        if any(any(f".{method}" in decorator for method in _WRITE_METHODS) for decorator in decorators):
+            functions.append(node)
+    return functions
+
+
+def _call_name(call: ast.Call) -> str:
+    if isinstance(call.func, ast.Name):
+        return call.func.id
+    if isinstance(call.func, ast.Attribute):
+        return call.func.attr
+    return ""
+
+
+def _function_has_effectful_write(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    for child in ast.walk(node):
+        if not isinstance(child, ast.Call):
+            continue
+        name = _call_name(child)
+        qualified = ast.unparse(child.func)
+        if qualified in {"db.add", "db.delete", "db.commit", "db.flush", "db.execute"}:
+            return True
+        if name == "soft_delete":
+            return True
+        if name.startswith(_EFFECTFUL_CALL_PREFIXES):
+            return True
+    return False
+
+
+def _function_has_audit(node: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    for child in ast.walk(node):
+        if isinstance(child, ast.Call):
+            name = _call_name(child)
+            if name in {"log_action", "log_route_mutation", "audit_mutation"}:
+                return True
+        if isinstance(child, ast.Name) and child.id in {"AuditLog", "AUDIT_DELEGATED"}:
+            return True
+    return False
+
+
 def check_audit_log_coverage(root: pathlib.Path) -> list[dict[str, Any]]:
-    logger.info("Checking audit log coverage...")
+    logger.info("Checking audit log coverage with AST analysis...")
     findings: list[dict[str, Any]] = []
     app_dir = root / "backend" / "app"
     route_dirs = [path for path in app_dir.rglob("routes") if path.is_dir()]
@@ -344,29 +396,32 @@ def check_audit_log_coverage(root: pathlib.Path) -> list[dict[str, Any]]:
                 continue
             try:
                 text = py_file.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
+                tree = ast.parse(text)
+            except (OSError, UnicodeDecodeError, SyntaxError):
                 continue
 
-            has_write_operation = any(
-                op in text for op in ("POST", "PUT", "PATCH", "DELETE")
-            ) or any(
-                method in text for method in ("@router.post", "@router.put", "@router.patch", "@router.delete")
-            )
+            if "_canonical_error" in text and "canonical_endpoint" in text:
+                continue
 
-            has_audit = "AuditLog" in text or "audit" in text.lower()
-
-            if has_write_operation and not has_audit:
+            unaudited = [
+                function for function in _route_write_functions(tree)
+                if _function_has_effectful_write(function)
+                and not _function_has_audit(function)
+                and "AUDIT_DELEGATED" not in text
+            ]
+            if unaudited:
+                names = ", ".join(f"{function.name}@{function.lineno}" for function in unaudited)
                 findings.append({
                     "check": "audit_coverage",
                     "severity": "warning",
                     "file": str(py_file.relative_to(root)),
+                    "line": unaudited[0].lineno,
                     "message": (
-                        f"{py_file.relative_to(root)} has write operations "
-                        f"but no audit logging detected."
+                        f"{py_file.relative_to(root)} has unaudited write functions: {names}."
                     ),
                 })
 
-    logger.info("  Audit coverage: %d file(s) without audit", len(findings))
+    logger.info("  Audit coverage: %d route file(s) without audit", len(findings))
     return findings
 
 

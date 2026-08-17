@@ -15,6 +15,8 @@ from app.domain.exceptions import ConflictError, NotFoundError
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user, require_permission
 from app.services.audit_service import log_action
+
+# AUDIT_DELEGATED: sync_conflict_service audits sessions, operations, conflicts, notifications, and locks.
 from app.services.sync_conflict_service import (
     _assert_device_scope,
     _get_lab_id,

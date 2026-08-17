@@ -33,6 +33,8 @@ from app.national.services.observation_service import (
 )
 from app.security.dependencies import get_current_user
 
+# AUDIT_DELEGATED: observation_service records immutable before/after audit entries.
+
 router = APIRouter(prefix="/observations", tags=["Observations"])
 
 
@@ -143,7 +145,7 @@ async def create_observation(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    observation = service_create_observation(db, data.model_dump(exclude_none=True))
+    observation = service_create_observation(db, data.model_dump(exclude_none=True), user=user)
     db.commit()
     return observation
 
@@ -168,7 +170,7 @@ async def update_observation(
     user=Depends(get_current_user),
 ):
     try:
-        observation = service_update_observation(db, observation_id, data.model_dump(exclude_none=True))
+        observation = service_update_observation(db, observation_id, data.model_dump(exclude_none=True), user=user)
         db.commit()
         return observation
     except Exception as e:
@@ -182,7 +184,7 @@ async def delete_observation(
     user=Depends(get_current_user),
 ):
     try:
-        service_delete_observation(db, observation_id)
+        service_delete_observation(db, observation_id, user=user)
         db.commit()
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Observation not found: {observation_id}") from e

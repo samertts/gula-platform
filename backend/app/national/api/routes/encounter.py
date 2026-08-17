@@ -37,6 +37,8 @@ from app.national.services.encounter_service import (
 )
 from app.security.dependencies import get_current_user
 
+# AUDIT_DELEGATED: encounter_service audits create/update/delete and flow transitions.
+
 router = APIRouter(prefix="/encounters", tags=["Encounters"])
 
 
@@ -186,7 +188,7 @@ async def create_encounter(
 ):
     encounter_data = data.model_dump(exclude_none=True)
     encounter_data["status"] = EncounterStatus.PLANNED
-    encounter = service_create_encounter(db, encounter_data)
+    encounter = service_create_encounter(db, encounter_data, user=user)
     db.commit()
     return encounter
 
@@ -213,7 +215,7 @@ async def update_encounter(
     try:
         encounter = service_update_encounter(
             db, encounter_id, data.model_dump(exclude_none=True),
-            lab_id=getattr(user, "lab_id", None),
+            lab_id=getattr(user, "lab_id", None), user=user,
         )
         db.commit()
         return encounter
@@ -228,7 +230,7 @@ async def delete_encounter(
     user=Depends(get_current_user),
 ):
     try:
-        service_delete_encounter(db, encounter_id, lab_id=getattr(user, "lab_id", None))
+        service_delete_encounter(db, encounter_id, lab_id=getattr(user, "lab_id", None), user=user)
         db.commit()
     except EncounterNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}") from e

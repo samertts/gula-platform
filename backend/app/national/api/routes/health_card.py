@@ -11,6 +11,7 @@ from app.database import get_db
 from app.national.domain.health_card import HealthCard
 from app.national.enums import HealthCardStatus
 from app.security.dependencies import get_current_user
+from app.services.route_audit import audit_mutation
 
 router = APIRouter(prefix="/health-cards", tags=["Health Cards"])
 
@@ -70,6 +71,15 @@ async def issue_health_card(
         is_active=True,
     )
     db.add(card)
+    db.flush()
+    audit_mutation(
+        db,
+        action="national.health_card.issue",
+        resource_type="HealthCard",
+        resource_id=card.id,
+        user=current_user,
+        after={"citizen_id": card.citizen_id, "health_number": card.health_number, "card_type": card.card_type, "status": card.status.value if card.status else None},
+    )
     db.commit()
     db.refresh(card)
     return HealthCardResponse.from_orm(card)

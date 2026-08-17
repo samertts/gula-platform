@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.national.domain.observation import Observation
 from app.national.exceptions import PatientNotFoundError
+from app.services.route_audit import audit_mutation
 
 
 def get_observation(db: Session, observation_id: str) -> Observation | None:
@@ -59,10 +60,18 @@ def get_vital_signs_by_patient(
     ).limit(limit).all()
 
 
-def create_observation(db: Session, data: dict[str, Any]) -> Observation:
+def create_observation(db: Session, data: dict[str, Any], user: Any = None) -> Observation:
     observation = Observation(**{k: v for k, v in data.items() if hasattr(Observation, k)})
     db.add(observation)
     db.flush()
+    audit_mutation(
+        db,
+        action="national.observation.create",
+        resource_type="Observation",
+        resource_id=observation.id,
+        user=user,
+        after={"patient_id": observation.patient_id, "encounter_id": observation.encounter_id, "code": observation.code, "status": observation.status},
+    )
     return observation
 
 
@@ -70,23 +79,44 @@ def update_observation(
     db: Session,
     observation_id: str,
     data: dict[str, Any],
+    user: Any = None,
 ) -> Observation:
     observation = get_observation(db, observation_id)
     if not observation:
         raise PatientNotFoundError(observation_id)
+    before = {"patient_id": observation.patient_id, "encounter_id": observation.encounter_id, "code": observation.code, "status": observation.status}
     for key, value in data.items():
         if hasattr(observation, key) and value is not None:
             setattr(observation, key, value)
     db.flush()
+    audit_mutation(
+        db,
+        action="national.observation.update",
+        resource_type="Observation",
+        resource_id=observation.id,
+        user=user,
+        before=before,
+        after={"patient_id": observation.patient_id, "encounter_id": observation.encounter_id, "code": observation.code, "status": observation.status},
+    )
     return observation
 
 
-def delete_observation(db: Session, observation_id: str) -> None:
+def delete_observation(db: Session, observation_id: str, user: Any = None) -> None:
     observation = get_observation(db, observation_id)
     if not observation:
         raise PatientNotFoundError(observation_id)
+    before = {"patient_id": observation.patient_id, "encounter_id": observation.encounter_id, "code": observation.code, "status": observation.status, "is_deleted": observation.is_deleted}
     observation.soft_delete()
     db.flush()
+    audit_mutation(
+        db,
+        action="national.observation.delete",
+        resource_type="Observation",
+        resource_id=observation.id,
+        user=user,
+        before=before,
+        after={"is_deleted": True},
+    )
 
 
 def search_observations(

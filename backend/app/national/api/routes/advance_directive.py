@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.national.domain.advance_directive import AdvanceDirective
 from app.security.dependencies import get_current_user
+from app.services.route_audit import audit_mutation
 
 router = APIRouter(prefix="/advance-directives", tags=["Advance Directives"])
 
@@ -106,6 +107,14 @@ async def create_advance_directive(
     directive = AdvanceDirective(**directive_data)
     db.add(directive)
     db.flush()
+    audit_mutation(
+        db,
+        action="national.advance_directive.create",
+        resource_type="AdvanceDirective",
+        resource_id=directive.id,
+        user=user,
+        after={"patient_id": directive.patient_id, "directive_type": directive.directive_type, "status": directive.status},
+    )
     db.commit()
     return directive
 
@@ -127,11 +136,21 @@ async def update_advance_directive(
     user=Depends(get_current_user),
 ):
     directive = _get_directive_or_404(db, directive_id)
+    before = {"directive_type": directive.directive_type, "status": directive.status, "title": directive.title}
     update_data = data.model_dump(exclude_none=True)
     for key, value in update_data.items():
         if hasattr(directive, key):
             setattr(directive, key, value)
     db.flush()
+    audit_mutation(
+        db,
+        action="national.advance_directive.update",
+        resource_type="AdvanceDirective",
+        resource_id=directive.id,
+        user=user,
+        before=before,
+        after={"directive_type": directive.directive_type, "status": directive.status, "title": directive.title},
+    )
     db.commit()
     return directive
 
@@ -143,8 +162,18 @@ async def delete_advance_directive(
     user=Depends(get_current_user),
 ):
     directive = _get_directive_or_404(db, directive_id)
+    before = {"directive_type": directive.directive_type, "status": directive.status, "is_deleted": directive.is_deleted}
     directive.soft_delete()
     db.flush()
+    audit_mutation(
+        db,
+        action="national.advance_directive.delete",
+        resource_type="AdvanceDirective",
+        resource_id=directive.id,
+        user=user,
+        before=before,
+        after={"is_deleted": True},
+    )
     db.commit()
 
 
@@ -172,9 +201,19 @@ async def revoke_advance_directive(
     user=Depends(get_current_user),
 ):
     directive = _get_directive_or_404(db, directive_id)
+    before = {"status": directive.status, "revoked_at": directive.revoked_at.isoformat() if directive.revoked_at else None}
     directive.status = "revoked"
     directive.revoked_at = datetime.now()
     directive.revoked_by = user.id
     db.flush()
+    audit_mutation(
+        db,
+        action="national.advance_directive.revoke",
+        resource_type="AdvanceDirective",
+        resource_id=directive.id,
+        user=user,
+        before=before,
+        after={"status": directive.status, "revoked_at": directive.revoked_at.isoformat() if directive.revoked_at else None},
+    )
     db.commit()
     return directive

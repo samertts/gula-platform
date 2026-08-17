@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.national.domain.medication_catalog import MedicationCatalog
 from app.security.dependencies import get_current_user
+from app.services.route_audit import audit_mutation
 
 router = APIRouter(prefix="/medication-catalog", tags=["Medication Catalog"])
 
@@ -147,6 +148,14 @@ async def create_medication(
     med = MedicationCatalog(**data.model_dump(exclude_none=True))
     db.add(med)
     db.flush()
+    audit_mutation(
+        db,
+        action="national.medication_catalog.create",
+        resource_type="MedicationCatalog",
+        resource_id=med.id,
+        user=user,
+        after={"medication_code": med.medication_code, "is_active": med.is_active},
+    )
     db.commit()
     return med
 
@@ -168,11 +177,21 @@ async def update_medication(
     user=Depends(get_current_user),
 ):
     med = _get_medication_or_404(db, medication_id)
+    before = {"medication_code": med.medication_code, "medication_name": med.medication_name, "is_active": med.is_active}
     update_data = data.model_dump(exclude_none=True)
     for key, value in update_data.items():
         if hasattr(med, key):
             setattr(med, key, value)
     db.flush()
+    audit_mutation(
+        db,
+        action="national.medication_catalog.update",
+        resource_type="MedicationCatalog",
+        resource_id=med.id,
+        user=user,
+        before=before,
+        after={"medication_code": med.medication_code, "medication_name": med.medication_name, "is_active": med.is_active},
+    )
     db.commit()
     return med
 
@@ -184,8 +203,18 @@ async def delete_medication(
     user=Depends(get_current_user),
 ):
     med = _get_medication_or_404(db, medication_id)
+    before = {"medication_code": med.medication_code, "medication_name": med.medication_name, "is_deleted": med.is_deleted}
     med.soft_delete()
     db.flush()
+    audit_mutation(
+        db,
+        action="national.medication_catalog.delete",
+        resource_type="MedicationCatalog",
+        resource_id=med.id,
+        user=user,
+        before=before,
+        after={"is_deleted": True},
+    )
     db.commit()
 
 

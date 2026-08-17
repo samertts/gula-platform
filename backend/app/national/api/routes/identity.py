@@ -12,6 +12,9 @@ from app.national.repositories.citizen_repository import CitizenRepository
 from app.national.services.citizen_service import CitizenService
 from app.national.services.identity_service import IdentityService
 from app.security.dependencies import get_current_user
+from app.services.route_audit import audit_mutation
+
+# AUDIT_DELEGATED: _audit_identity records the citizen registration mutation.
 
 router = APIRouter(prefix="/identity", tags=["Identity"])
 
@@ -76,6 +79,18 @@ class IdentityResponse(BaseModel):
     requires_merge: bool = False
 
 
+def _audit_identity(service: IdentityService, action: str, result: dict, user) -> None:
+    audit_mutation(
+        service.citizen_service._db,
+        action=action,
+        resource_type="Citizen",
+        resource_id=result["citizen"].id,
+        user=user,
+        after={"health_number": result["health_number"], "is_temporary": result.get("is_temporary", False), "requires_merge": result.get("requires_merge", False)},
+    )
+    service.citizen_service._db.commit()
+
+
 def _get_identity_service(db: Session = Depends(get_db)) -> IdentityService:
     repo = CitizenRepository(db)
     citizen_service = CitizenService(repo, db)
@@ -90,6 +105,7 @@ async def register_newborn(
 ):
     try:
         result = await service.register_newborn(data.model_dump())
+        _audit_identity(service, "national.identity.register_newborn", result, current_user)
         return IdentityResponse(
             citizen_id=result["citizen"].id,
             health_number=result["health_number"],
@@ -106,6 +122,7 @@ async def register_foreigner(
 ):
     try:
         result = await service.register_foreigner(data.model_dump())
+        _audit_identity(service, "national.identity.register_foreigner", result, current_user)
         return IdentityResponse(
             citizen_id=result["citizen"].id,
             health_number=result["health_number"],
@@ -121,6 +138,7 @@ async def register_visitor(
     current_user=Depends(get_current_user),
 ):
     result = await service.register_visitor(data.model_dump())
+    _audit_identity(service, "national.identity.register_visitor", result, current_user)
     return IdentityResponse(
         citizen_id=result["citizen"].id,
         health_number=result["health_number"],
@@ -135,6 +153,7 @@ async def register_unknown(
     current_user=Depends(get_current_user),
 ):
     result = await service.register_unknown_patient(data.model_dump())
+    _audit_identity(service, "national.identity.register_unknown", result, current_user)
     return IdentityResponse(
         citizen_id=result["citizen"].id,
         health_number=result["health_number"],

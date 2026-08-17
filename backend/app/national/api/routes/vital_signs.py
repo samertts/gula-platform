@@ -10,6 +10,7 @@ from app.database import get_db
 from app.national.domain.observation import Observation
 from app.national.domain.vital_signs import VitalSignsReference
 from app.security.dependencies import get_current_user
+from app.services.route_audit import audit_mutation
 
 router = APIRouter(prefix="/vital-signs", tags=["Vital Signs"])
 
@@ -131,6 +132,14 @@ async def create_vital_signs_reference(
     ref = VitalSignsReference(**data.model_dump(exclude_none=True))
     db.add(ref)
     db.flush()
+    audit_mutation(
+        db,
+        action="national.vital_signs_reference.create",
+        resource_type="VitalSignsReference",
+        resource_id=ref.id,
+        user=user,
+        after={"vital_sign_code": ref.vital_sign_code, "normal_range_low": ref.normal_range_low, "normal_range_high": ref.normal_range_high, "critical_low": ref.critical_low, "critical_high": ref.critical_high},
+    )
     db.commit()
     return ref
 
@@ -143,11 +152,21 @@ async def update_vital_signs_reference(
     user=Depends(get_current_user),
 ):
     ref = _get_reference_or_404(db, code)
+    before = {"vital_sign_code": ref.vital_sign_code, "normal_range_low": ref.normal_range_low, "normal_range_high": ref.normal_range_high, "critical_low": ref.critical_low, "critical_high": ref.critical_high}
     update_data = data.model_dump(exclude_none=True)
     for key, value in update_data.items():
         if hasattr(ref, key):
             setattr(ref, key, value)
     db.flush()
+    audit_mutation(
+        db,
+        action="national.vital_signs_reference.update",
+        resource_type="VitalSignsReference",
+        resource_id=ref.id,
+        user=user,
+        before=before,
+        after={"vital_sign_code": ref.vital_sign_code, "normal_range_low": ref.normal_range_low, "normal_range_high": ref.normal_range_high, "critical_low": ref.critical_low, "critical_high": ref.critical_high},
+    )
     db.commit()
     return ref
 
@@ -159,8 +178,18 @@ async def delete_vital_signs_reference(
     user=Depends(get_current_user),
 ):
     ref = _get_reference_or_404(db, code)
+    before = {"vital_sign_code": ref.vital_sign_code, "is_deleted": ref.is_deleted}
     ref.soft_delete()
     db.flush()
+    audit_mutation(
+        db,
+        action="national.vital_signs_reference.delete",
+        resource_type="VitalSignsReference",
+        resource_id=ref.id,
+        user=user,
+        before=before,
+        after={"is_deleted": True},
+    )
     db.commit()
 
 

@@ -25,8 +25,10 @@ from app.national.services.encounter_service import (
     transition_flow_state,
 )
 from app.security.dependencies import get_current_user, require_permission
-from app.services.audit_service import log_action
+from app.services.route_audit import audit_mutation
 from app.services.hospital_service import HospitalService
+
+# AUDIT_DELEGATED: transition_flow_state records immutable before/after audit entries.
 
 router = APIRouter(prefix="/patient-flow", tags=["Patient Flow"])
 
@@ -160,17 +162,23 @@ def create_arrival(
         )
         db.add(encounter)
         db.flush()
-        log_action(db, "encounter.arrival.create", encounter.id, current_user.lab_id, current_user.id, {
-            "patient_id": data.patient_id,
-            "hospital_id": data.hospital_id,
-            "idempotency_key": data.idempotency_key,
-        })
+        audit_mutation(
+            db,
+            action="encounter.arrival.create",
+            resource_type="Encounter",
+            resource_id=encounter.id,
+            user=current_user,
+            lab_id=current_user.lab_id,
+            after={"patient_id": data.patient_id, "hospital_id": data.hospital_id, "flow_state": "planned", "version": encounter.version},
+            details={"idempotency_key": data.idempotency_key},
+        )
         encounter = transition_flow_state(
             db,
             encounter.id,
             "arrived",
             current_user.id,
             expected_version=encounter.version,
+            lab_id=current_user.lab_id,
         )
         db.commit()
         return _response(encounter)
@@ -237,7 +245,9 @@ def transition(
             command.target_state,
             current_user.id,
             expected_version=command.expected_version,
+            lab_id=current_user.lab_id,
         )
+
         db.commit()
         return _response(updated)
     except EncounterNotFoundError as exc:

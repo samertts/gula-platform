@@ -12,7 +12,7 @@ from app.domain.exceptions import ConflictError
 from app.national.domain.encounter import Encounter
 from app.national.enums import EncounterStatus
 from app.national.exceptions import EncounterNotFoundError
-from app.services.audit_service import log_action
+from app.services.route_audit import audit_mutation
 
 
 FLOW_TRANSITIONS: dict[str, set[str]] = {
@@ -70,10 +70,19 @@ def get_encounters_by_patient(
     ).offset(skip).limit(limit).all()
 
 
-def create_encounter(db: Session, data: dict[str, Any]) -> Encounter:
+def create_encounter(db: Session, data: dict[str, Any], user: Any = None) -> Encounter:
     encounter = Encounter(**{k: v for k, v in data.items() if hasattr(Encounter, k)})
     db.add(encounter)
     db.flush()
+    audit_mutation(
+        db,
+        action="encounter.create",
+        resource_type="Encounter",
+        resource_id=encounter.id,
+        user=user,
+        lab_id=encounter.lab_id,
+        after={"patient_id": encounter.patient_id, "flow_state": encounter.flow_state, "status": str(encounter.status), "version": encounter.version},
+    )
     return encounter
 
 
@@ -120,10 +129,16 @@ def transition_flow_state(
         encounter.period_end = encounter.period_end or now
     encounter.version = (encounter.version or 1) + 1
     db.flush()
-    log_action(db, "encounter.flow_transition", encounter.id, encounter.lab_id, user_id, {
-        "before": before,
-        "after": {"flow_state": target_state, "status": str(encounter.status), "version": encounter.version},
-    })
+    audit_mutation(
+        db,
+        action="encounter.flow_transition",
+        resource_type="Encounter",
+        resource_id=encounter.id,
+        user=user_id,
+        lab_id=encounter.lab_id,
+        before=before,
+        after={"flow_state": target_state, "status": str(encounter.status), "version": encounter.version},
+    )
     return encounter
 
 
@@ -132,14 +147,27 @@ def update_encounter(
     encounter_id: str,
     data: dict[str, Any],
     lab_id: int | None = None,
+    user: Any = None,
 ) -> Encounter:
     encounter = get_encounter(db, encounter_id, lab_id=lab_id)
     if not encounter:
         raise EncounterNotFoundError(encounter_id)
+    before = {"flow_state": encounter.flow_state, "status": str(encounter.status), "version": encounter.version}
     for key, value in data.items():
         if hasattr(encounter, key) and value is not None:
             setattr(encounter, key, value)
+    encounter.version = (encounter.version or 1) + 1
     db.flush()
+    audit_mutation(
+        db,
+        action="encounter.update",
+        resource_type="Encounter",
+        resource_id=encounter.id,
+        user=user,
+        lab_id=encounter.lab_id,
+        before=before,
+        after={"flow_state": encounter.flow_state, "status": str(encounter.status), "version": encounter.version},
+    )
     return encounter
 
 
@@ -185,12 +213,24 @@ def cancel_encounter(
     )
 
 
-def delete_encounter(db: Session, encounter_id: str, lab_id: int | None = None) -> None:
+def delete_encounter(db: Session, encounter_id: str, lab_id: int | None = None, user: Any = None) -> None:
     encounter = get_encounter(db, encounter_id, lab_id=lab_id)
     if not encounter:
         raise EncounterNotFoundError(encounter_id)
+    before = {"flow_state": encounter.flow_state, "status": str(encounter.status), "version": encounter.version, "is_deleted": encounter.is_deleted}
     encounter.soft_delete()
+    encounter.version = (encounter.version or 1) + 1
     db.flush()
+    audit_mutation(
+        db,
+        action="encounter.delete",
+        resource_type="Encounter",
+        resource_id=encounter.id,
+        user=user,
+        lab_id=encounter.lab_id,
+        before=before,
+        after={"is_deleted": True, "version": encounter.version},
+    )
 
 
 def get_active_encounters_by_patient(

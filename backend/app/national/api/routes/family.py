@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.national.domain.family import Family, FamilyMember
 from app.security.dependencies import get_current_user
+from app.services.route_audit import audit_mutation
 
 router = APIRouter(prefix="/families", tags=["Family Registry"])
 
@@ -51,6 +52,16 @@ async def create_family(
         address=data.address,
     )
     db.add(family)
+    db.flush()
+    audit_mutation(
+        db,
+        action="national.family.create",
+        resource_type="Family",
+        resource_id=family.id,
+        user=current_user,
+        before=None,
+        after={"family_id_hash_present": bool(family.family_id_hash), "governorate": family.governorate},
+    )
     db.commit()
     db.refresh(family)
     return FamilyResponse(
@@ -95,6 +106,16 @@ async def add_family_member(
         is_primary=data.is_primary,
     )
     db.add(member)
+    db.flush()
+    audit_mutation(
+        db,
+        action="national.family.member.add",
+        resource_type="FamilyMember",
+        resource_id=member.id,
+        user=current_user,
+        before=None,
+        after={"family_id": family_id, "citizen_id": member.citizen_id, "relationship": member.relationship, "is_primary": member.is_primary},
+    )
     db.commit()
     db.refresh(member)
     return FamilyMemberResponse(
@@ -117,5 +138,15 @@ async def remove_family_member(
     ).first()
     if not member:
         raise HTTPException(status_code=404, detail="Family member not found")
+    before = {"family_id": member.family_id, "citizen_id": member.citizen_id, "relationship": member.relationship, "is_primary": member.is_primary}
     db.delete(member)
+    audit_mutation(
+        db,
+        action="national.family.member.delete",
+        resource_type="FamilyMember",
+        resource_id=member_id,
+        user=current_user,
+        before=before,
+        after=None,
+    )
     db.commit()

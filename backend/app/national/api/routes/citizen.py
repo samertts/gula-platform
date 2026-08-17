@@ -12,6 +12,7 @@ from app.national.exceptions import CitizenNotFoundError, DuplicateHealthNumberE
 from app.national.repositories.citizen_repository import CitizenRepository
 from app.national.services.citizen_service import CitizenService
 from app.security.dependencies import get_current_user
+from app.services.route_audit import audit_mutation
 
 router = APIRouter(prefix="/citizens", tags=["Citizens"])
 
@@ -103,6 +104,15 @@ async def create_citizen(
 ):
     try:
         citizen = await service.register_citizen(data.model_dump())
+        audit_mutation(
+            service._db,
+            action="national.citizen.create",
+            resource_type="Citizen",
+            resource_id=citizen.id,
+            user=current_user,
+            after={"health_number": citizen.health_number, "identity_status": citizen.identity_status},
+        )
+        service._db.commit()
         return CitizenResponse.from_orm(citizen)
     except DuplicateHealthNumberError as e:
         raise HTTPException(status_code=409, detail="Resource already exists") from e
@@ -129,7 +139,19 @@ async def update_citizen(
     current_user=Depends(get_current_user),
 ):
     try:
+        before = await service.get_citizen(citizen_id)
+        before_snapshot = {"health_number": before.health_number, "identity_status": before.identity_status}
         citizen = await service.update_citizen(citizen_id, data.model_dump(exclude_none=True))
+        audit_mutation(
+            service._db,
+            action="national.citizen.update",
+            resource_type="Citizen",
+            resource_id=citizen.id,
+            user=current_user,
+            before=before_snapshot,
+            after={"health_number": citizen.health_number, "identity_status": citizen.identity_status},
+        )
+        service._db.commit()
         return CitizenResponse.from_orm(citizen)
     except CitizenNotFoundError as e:
         raise HTTPException(status_code=404, detail="Resource not found") from e

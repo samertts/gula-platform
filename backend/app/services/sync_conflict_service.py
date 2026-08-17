@@ -22,6 +22,7 @@ from app.national.sync_models import (
     NationalSyncOutboxModel,
 )
 from app.services.audit_service import log_action
+from app.services.route_audit import audit_mutation
 
 
 _ALLOWED_OFFLINE_OPERATIONS = {
@@ -93,6 +94,15 @@ def create_device_session(
         existing.revoked = False
         existing.updated_at = now_utc()
         db.flush()
+        audit_mutation(
+            db,
+            action="sync.device_session.rotate",
+            resource_type="device_session",
+            resource_id=existing.id,
+            user=current_user,
+            lab_id=lab_id,
+            after={"device_id": device_id, "hospital_id": hospital_id, "expires_at": existing.expires_at.isoformat()},
+        )
         return existing, session_token
     session = NationalDeviceSessionModel(
         device_id=device_id,
@@ -313,6 +323,15 @@ def ingest_operation(
                 payload={"operation_id": operation_id, "version": updated.version, "flow_state": updated.flow_state},
             )
             db.flush()
+            audit_mutation(
+                db,
+                action="sync.operation.accepted",
+                resource_type="sync_operation",
+                resource_id=None,
+                user=current_user,
+                lab_id=lab_id,
+                after={"operation_id": operation_id, "entity_id": updated.id, "server_version": updated.version},
+            )
             return {"status": "accepted", "operation_id": operation_id, "server_id": updated.id, "server_version": updated.version, "event_id": event.event_id}
         record.status = "accepted"
         record.accepted_at = now_utc()
@@ -326,6 +345,15 @@ def ingest_operation(
             payload={"operation_id": operation_id, "operation_type": operation_type},
         )
         db.flush()
+        audit_mutation(
+            db,
+            action="sync.operation.accepted",
+            resource_type="sync_operation",
+            resource_id=None,
+            user=current_user,
+            lab_id=lab_id,
+            after={"operation_id": operation_id, "entity_id": record.entity_id, "operation_type": operation_type},
+        )
         return {"status": "accepted", "operation_id": operation_id, "server_id": record.entity_id, "event_id": event.event_id}
     except ConflictError as exc:
         record.status = "conflict"
@@ -482,6 +510,15 @@ def acquire_record_lock(db: Session, current_user: Any, *, resource_type: str, r
     record.status = "active"
     db.add(record)
     db.flush()
+    audit_mutation(
+        db,
+        action="sync.record_lock.acquire",
+        resource_type=resource_type,
+        resource_id=resource_id,
+        user=current_user,
+        lab_id=lab_id,
+        after={"device_id": device_id, "hospital_id": hospital_id, "expires_at": record.expires_at.isoformat()},
+    )
     return record, token
 
 
@@ -495,4 +532,13 @@ def heartbeat_record_lock(db: Session, current_user: Any, lock: NationalRecordLo
     lock.last_heartbeat_at = now_utc()
     lock.expires_at = now_utc() + timedelta(minutes=max(1, min(minutes, 5)))
     db.flush()
+    audit_mutation(
+        db,
+        action="sync.record_lock.heartbeat",
+        resource_type=lock.resource_type,
+        resource_id=lock.resource_id,
+        user=current_user,
+        lab_id=lock.lab_id,
+        after={"status": lock.status, "expires_at": lock.expires_at.isoformat()},
+    )
     return lock
