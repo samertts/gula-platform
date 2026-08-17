@@ -65,11 +65,18 @@ class SurveillanceSignal:
 class ImmunizationRecord:
     id: str = ""
     patient_id: str = ""
+    health_number: str = ""
+    newborn_id: str = ""
+    schedule_id: str = ""
     patient_name: str = ""
     vaccine: str = ""
     vaccine_code: str = ""
     dose_number: int = 1
     total_doses: int = 1
+    scheduled_date: str = ""
+    due_date: str = ""
+    status: str = "administered"
+    appointment_id: str = ""
     administration_date: str = ""
     administered_by: str = ""
     facility_id: str = ""
@@ -81,6 +88,120 @@ class ImmunizationRecord:
     manufacturer: str = ""
     is_boosted: bool = False
     adverse_event: str = ""
+    reminder_sent: bool = False
+    reminder_sent_at: str = ""
+    notes: str = ""
+
+
+@dataclass
+class ImmunizationSchedule:
+    id: str = ""
+    patient_id: str = ""
+    health_number: str = ""
+    newborn_id: str = ""
+    schedule_definition_id: str = ""
+    schedule_version: str = ""
+    vaccine: str = ""
+    vaccine_code: str = ""
+    dose_number: int = 1
+    total_doses: int = 1
+    due_date: str = ""
+    scheduled_date: str = ""
+    status: str = "scheduled"
+    facility_id: str = ""
+    appointment_id: str = ""
+    reminder_sent: bool = False
+    reminder_sent_at: str = ""
+    reminder_count: int = 0
+    contraindication_reason: str = ""
+    refusal_reason: str = ""
+    notes: str = ""
+    follow_up_status: str = "not_required"
+    follow_up_priority: str = "normal"
+    next_follow_up_date: str = ""
+    non_administration_reason: str = ""
+    non_administration_notes: str = ""
+
+
+@dataclass
+class ImmunizationFollowUpTask:
+    id: str = ""
+    schedule_id: str = ""
+    patient_id: str = ""
+    health_number: str = ""
+    vaccine: str = ""
+    due_date: str = ""
+    status: str = "pending"
+    priority: str = "normal"
+    reason: str = ""
+    next_action_at: str = ""
+    consent_verified: bool = False
+    preferred_channel: str = ""
+    last_attempt_at: str = ""
+    completed_at: str = ""
+    completed_by: str = ""
+    notes: str = ""
+
+
+@dataclass
+class ImmunizationAdverseEvent:
+    id: str = ""
+    record_id: str = ""
+    schedule_id: str = ""
+    patient_id: str = ""
+    health_number: str = ""
+    vaccine: str = ""
+    onset_at: str = ""
+    severity: str = "unknown"
+    symptoms: list[str] = field(default_factory=list)
+    treatment: str = ""
+    outcome: str = ""
+    investigation_status: str = "reported"
+    reported_by: str = ""
+    reported_at: str = ""
+    notes: str = ""
+
+
+@dataclass
+class VaccineCatalog:
+    id: str = ""
+    vaccine_code: str = ""
+    name: str = ""
+    name_ar: str = ""
+    unit: str = "dose"
+    manufacturer: str = ""
+    storage_min_c: float | None = None
+    storage_max_c: float | None = None
+    source_reference: str = ""
+    is_active: bool = True
+
+
+@dataclass
+class VaccineLot:
+    id: str = ""
+    catalog_id: str = ""
+    lot_number: str = ""
+    expiry_date: str = ""
+    received_at: str = ""
+    received_quantity: int = 0
+    available_quantity: int = 0
+    quarantined: bool = False
+    quarantine_reason: str = ""
+    storage_equipment_id: str = ""
+
+
+@dataclass
+class ColdChainReading:
+    id: str = ""
+    equipment_id: str = ""
+    reading_at: str = ""
+    temperature_c: float = 0.0
+    minimum_allowed_c: float | None = None
+    maximum_allowed_c: float | None = None
+    status: str = "within_range"
+    source: str = "manual"
+    recorded_by: str = ""
+    alert_acknowledged: bool = False
     notes: str = ""
 
 

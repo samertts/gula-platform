@@ -36,6 +36,10 @@ const SettingsPage = lazy(() => import("@/pages/settings/SettingsPage").then(m =
 const AccessibilityCenterPage = lazy(() => import("@/pages/settings/AccessibilityCenterPage").then(m => ({ default: m.AccessibilityCenterPage })));
 const ProfilePage = lazy(() => import("@/pages/profile/ProfilePage").then(m => ({ default: m.ProfilePage })));
 const SecurityPage = lazy(() => import("@/pages/security/SecurityPage").then(m => ({ default: m.SecurityPage })));
+const SecurityScannerPage = lazy(() => import("@/pages/security/SecurityScannerPage").then(m => ({ default: m.SecurityScannerPage })));
+const NewbornRegistrationPage = lazy(() => import("@/pages/newborn/NewbornRegistrationPage").then(m => ({ default: m.NewbornRegistrationPage })));
+const ImmunizationProgramPage = lazy(() => import("@/pages/immunization/ImmunizationProgramPage").then(m => ({ default: m.ImmunizationProgramPage })));
+const VaccineInventoryPage = lazy(() => import("@/pages/immunization/VaccineInventoryPage").then(m => ({ default: m.VaccineInventoryPage })));
 const AdminLabsPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminLabsPage })));
 const AdminUsersPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminUsersPage })));
 const AdminAuditPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminAuditPage })));
@@ -122,6 +126,9 @@ const readonlyRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'doctor
 const labRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'staff', 'lab_staff'];
 const financialRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'finance_controller', 'refund_reviewer', 'reconciler', 'finance_auditor', 'finance_operator', 'cashier'];
 const popularClinicRoles: UserRole[] = ['master_admin', 'ministry_admin', 'province_admin', 'admin', 'lab_admin', 'finance_controller', 'reconciler', 'finance_auditor', 'finance_operator', 'cashier', 'doctor', 'staff', 'lab_staff', 'technician', 'receptionist'];
+const newbornRegistrationRoles: UserRole[] = ['master_admin', 'admin', 'lab_admin', 'staff', 'midwife'];
+const immunizationRoles: UserRole[] = ['master_admin', 'ministry_admin', 'province_admin', 'admin', 'lab_admin', 'doctor', 'staff', 'midwife'];
+const vaccineInventoryRoles: UserRole[] = ['master_admin', 'ministry_admin', 'province_admin', 'admin', 'lab_admin', 'doctor', 'staff'];
 
 export const router = createBrowserRouter([
   {
@@ -169,6 +176,8 @@ export const router = createBrowserRouter([
       { path: "settings/accessibility", element: <LazyPage><AccessibilityCenterPage /></LazyPage> },
       { path: "profile", element: <LazyPage><ProfilePage /></LazyPage> },
       { path: "security", element: <RoleGuard roles={adminRoles}><LazyPage><SecurityPage /></LazyPage></RoleGuard> },
+      { path: "security/scanner", element: <RoleGuard roles={adminRoles}><LazyPage><SecurityScannerPage /></LazyPage></RoleGuard> },
+      { path: "newborn/register", element: <InstitutionalOnlyRoute><RoleGuard roles={newbornRegistrationRoles}><LazyPage><NewbornRegistrationPage /></LazyPage></RoleGuard></InstitutionalOnlyRoute> },
       { path: "admin/labs", element: <RoleGuard roles={adminRoles}><LazyPage><AdminLabsPage /></LazyPage></RoleGuard> },
       { path: "admin/users", element: <RoleGuard roles={adminRoles}><LazyPage><AdminUsersPage /></LazyPage></RoleGuard> },
       { path: "admin/audit", element: <RoleGuard roles={adminRoles}><LazyPage><AdminAuditPage /></LazyPage></RoleGuard> },
@@ -231,6 +240,8 @@ export const router = createBrowserRouter([
       { path: "pilot-platform", element: <RoleGuard roles={adminRoles}><LazyPage><PilotPlatformApiPageLazy /></LazyPage></RoleGuard> },
       { path: "platform", element: <RoleGuard roles={adminRoles}><LazyPage><PlatformPageLazy /></LazyPage></RoleGuard> },
       { path: "public-health", element: <RoleGuard roles={adminRoles}><LazyPage><PublicHealthApiPageLazy /></LazyPage></RoleGuard> },
+      { path: "public-health/immunization", element: <InstitutionalOnlyRoute><RoleGuard roles={immunizationRoles}><LazyPage><ImmunizationProgramPage /></LazyPage></RoleGuard></InstitutionalOnlyRoute> },
+      { path: "public-health/immunization/inventory", element: <InstitutionalOnlyRoute><RoleGuard roles={vaccineInventoryRoles}><LazyPage><VaccineInventoryPage /></LazyPage></RoleGuard></InstitutionalOnlyRoute> },
       { path: "admin", element: <Navigate to="/admin/labs" replace /> },
       { path: "*", element: <LegacyRouteBridge /> },
     ],

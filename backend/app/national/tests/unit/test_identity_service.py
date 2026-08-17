@@ -9,14 +9,11 @@ from app.national.services.identity_service import IdentityService
 
 
 @pytest.mark.asyncio
-async def test_register_newborn_success(sample_newborn_data):
-    mock_citizen_service = Mock()
-    mock_citizen_service.register_citizen = AsyncMock()
-    mock_repo = Mock()
-    service = IdentityService(mock_citizen_service, mock_repo)
-    result = await service.register_newborn(sample_newborn_data)
-    assert "citizen" in result
-    assert "health_number" in result
+async def test_register_newborn_rejects_legacy_parent_identifiers(sample_newborn_data):
+    """The endpoint now requires raw request-only NIDs, not stored parent IDs."""
+    service = IdentityService(Mock(), Mock())
+    with pytest.raises(NewbornRegistrationError):
+        await service.register_newborn(sample_newborn_data)
 
 
 @pytest.mark.asyncio

@@ -17,7 +17,7 @@ Status lifecycle:
 
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Integer, String, Text
+from sqlalchemy import Column, DateTime, Index, Integer, String, Text
 
 from app._compat import UTC
 
@@ -28,9 +28,14 @@ MAX_ATTEMPTS = 5  # after this, the event stays in 'failed' and alerts ops
 
 class OutboxEvent(Base):
     __tablename__ = "outbox_events"
+    __table_args__ = (
+        Index("ix_outbox_events_status_next_attempt_created", "status", "next_attempt_at", "created_at"),
+        Index("ix_outbox_events_type_status", "event_type", "status"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     event_type = Column(String(100), nullable=False, index=True)
+    lab_id = Column(Integer, nullable=True, index=True)
     aggregate_type = Column(String(100), nullable=True)  # e.g. "order", "result"
     aggregate_id = Column(Integer, nullable=True, index=True)
     payload = Column(Text, nullable=False)  # JSON string
@@ -43,3 +48,9 @@ class OutboxEvent(Base):
         index=True,
     )
     processed_at = Column(DateTime(timezone=True), nullable=True)
+    next_attempt_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    lease_until = Column(DateTime(timezone=True), nullable=True, index=True)
+    payload_hash = Column(String(64), nullable=True, index=True)
+    dead_letter_reason = Column(Text, nullable=True)
+    replayed_by = Column(String(160), nullable=True)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC), onupdate=lambda: datetime.now(UTC))

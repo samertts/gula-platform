@@ -11,6 +11,7 @@ export type UserRole =
   | 'finance_operator'
   | 'cashier'
   | 'doctor'
+  | 'midwife'
   | 'staff'
   | 'lab_staff'
   | 'technician'
@@ -55,7 +56,18 @@ export type Permission =
   | 'popular_clinics:report:daily'
   | 'popular_clinics:report:monthly'
   | 'popular_clinics:workforce:manage'
-  | 'popular_clinics:alerts:manage';
+  | 'popular_clinics:alerts:manage'
+  | 'newborn:register'
+  | 'newborn:read'
+  | 'immunization:read'
+  | 'immunization:write'
+  | 'immunization:schedule'
+  | 'immunization:administer'
+  | 'immunization:report'
+  | 'vaccine_inventory:read'
+  | 'vaccine_inventory:manage'
+  | 'vaccine_inventory:dispense'
+  | 'vaccine_inventory:report';
 
 export interface LabUser {
   id: number;

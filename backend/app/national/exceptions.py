@@ -126,6 +126,13 @@ class NewbornRegistrationError(NationalDomainError):
         super().__init__(f"Newborn registration failed: {reason}")
 
 
+class DuplicateNewbornRegistrationError(NewbornRegistrationError):
+    """Raised without embedding certificate or parent identity values in the message."""
+
+    def __init__(self) -> None:
+        super().__init__("A newborn record already exists for this birth certificate")
+
+
 class ForeignerRegistrationError(NationalDomainError):
     def __init__(self, reason: str) -> None:
         self.reason = reason

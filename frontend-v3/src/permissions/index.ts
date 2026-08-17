@@ -11,6 +11,7 @@ export const ROLE_LEVELS: Record<string, number> = {
   finance_operator: 35,
   cashier: 25,
   doctor: 40,
+  midwife: 30,
   technician: 20,
   staff: 20,
   lab_staff: 20,
@@ -32,6 +33,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "popular_clinics:dispense:approve", "popular_clinics:dispense:record", "popular_clinics:ticket:read", "popular_clinics:ticket:issue", "popular_clinics:ticket:cancel",
     "popular_clinics:payment:capture", "popular_clinics:payment:confirm", "popular_clinics:report:daily", "popular_clinics:report:monthly",
     "popular_clinics:workforce:manage", "popular_clinics:alerts:manage",
+    "newborn:register", "newborn:read", "immunization:read", "immunization:write",
+    "immunization:schedule", "immunization:administer", "immunization:report",
+    "vaccine_inventory:read", "vaccine_inventory:manage", "vaccine_inventory:dispense", "vaccine_inventory:report",
   ],
   ministry_admin: [
     "patients:read", "orders:read", "results:read", "lab:read",
@@ -39,6 +43,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "platform:manage_labs", "platform:manage_users", "platform:view_stats",
     "integration:read", "integration:audit", "payments:read",
     "popular_clinics:read", "popular_clinics:manage", "popular_clinics:patient:read", "popular_clinics:report:monthly",
+    "newborn:read", "immunization:read", "immunization:report",
+    "vaccine_inventory:read", "vaccine_inventory:report",
   ],
   province_admin: [
     "patients:read", "orders:read", "results:read", "lab:read",
@@ -46,6 +52,8 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "platform:manage_labs", "platform:manage_users", "platform:view_stats",
     "integration:read", "integration:audit", "payments:read",
     "popular_clinics:read", "popular_clinics:manage", "popular_clinics:patient:read", "popular_clinics:report:monthly",
+    "newborn:read", "immunization:read", "immunization:report",
+    "vaccine_inventory:read", "vaccine_inventory:report",
   ],
   admin: [
     "patients:read", "patients:write", "patients:delete",
@@ -58,6 +66,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "popular_clinics:read", "popular_clinics:manage", "popular_clinics:patient:read", "popular_clinics:clinical:write", "popular_clinics:prescription:write",
     "popular_clinics:dispense:approve", "popular_clinics:dispense:record", "popular_clinics:ticket:read", "popular_clinics:ticket:issue", "popular_clinics:ticket:cancel",
     "popular_clinics:payment:capture", "popular_clinics:payment:confirm", "popular_clinics:report:daily", "popular_clinics:report:monthly", "popular_clinics:workforce:manage",
+    "newborn:register", "newborn:read", "immunization:read", "immunization:write",
+    "immunization:schedule", "immunization:administer", "immunization:report",
+    "vaccine_inventory:read", "vaccine_inventory:manage", "vaccine_inventory:dispense", "vaccine_inventory:report",
   ],
     lab_admin: [
     "patients:read", "patients:write",
@@ -69,6 +80,9 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "popular_clinics:read", "popular_clinics:manage", "popular_clinics:patient:read", "popular_clinics:clinical:write", "popular_clinics:prescription:write",
     "popular_clinics:dispense:approve", "popular_clinics:dispense:record", "popular_clinics:ticket:read", "popular_clinics:ticket:issue", "popular_clinics:ticket:cancel",
     "popular_clinics:payment:capture", "popular_clinics:payment:confirm", "popular_clinics:report:daily", "popular_clinics:report:monthly", "popular_clinics:workforce:manage",
+    "newborn:register", "newborn:read", "immunization:read", "immunization:write",
+    "immunization:schedule", "immunization:administer", "immunization:report",
+    "vaccine_inventory:read", "vaccine_inventory:manage", "vaccine_inventory:dispense", "vaccine_inventory:report",
   ],
   finance_controller: [
 "dashboard:read", "audit:read", "payments:control:read", "payments:control:approve", "payments:control:apply", "popular_clinics:read", "popular_clinics:payment:confirm", "popular_clinics:report:daily", "popular_clinics:report:monthly"],
@@ -80,6 +94,10 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
   doctor: [
     "patients:read", "orders:read", "results:read", "dashboard:read",
     "popular_clinics:read", "popular_clinics:patient:read", "popular_clinics:clinical:write", "popular_clinics:prescription:write", "popular_clinics:ticket:read", "popular_clinics:report:monthly",
+    "newborn:read", "immunization:read", "immunization:write", "immunization:schedule", "immunization:administer",
+  ],
+  midwife: [
+    "patients:read", "newborn:register", "newborn:read", "immunization:read", "immunization:administer",
   ],
   technician: [
     "orders:read", "orders:write",
@@ -93,6 +111,7 @@ export const ROLE_PERMISSIONS: Record<string, string[]> = {
     "results:read", "results:write",
     "lab:read", "dashboard:read",
     "popular_clinics:read", "popular_clinics:patient:read", "popular_clinics:clinical:write", "popular_clinics:dispense:record",
+    "newborn:register", "newborn:read", "immunization:read", "immunization:schedule", "immunization:administer",
   ],
   lab_staff: [
     "orders:read", "orders:write",
@@ -180,6 +199,7 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
   ],
   clinical: [
     { label: "العيادات الطبية الشعبية", path: "/popular-clinics", icon: "Activity", permissions: ["popular_clinics:read"] },
+    { label: "مخزون اللقاحات وسلسلة التبريد", path: "/public-health/immunization/inventory", icon: "Snowflake", permissions: ["vaccine_inventory:read"] },
     { label: "الأسس السريرية", path: "/capabilities/clinical-foundation", icon: "Heart", permissions: ["dashboard:read"] },
     { label: "إدارة المستندات", path: "/capabilities/document-management", icon: "FileText", permissions: ["dashboard:read"] },
     { label: "إدارة الزيارات", path: "/capabilities/encounter-management", icon: "CalendarDays", permissions: ["dashboard:read"] },
@@ -216,6 +236,7 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
     { label: "الطوارئ", path: "/ems", icon: "Ambulance", permissions: ["system:admin"] },
     { label: "البيانات الصحية", path: "/health-data", icon: "Database", permissions: ["system:admin"] },
     { label: "التكامل", path: "/integration", icon: "Cable", permissions: ["system:admin"] },
+    { label: "فحص إعدادات الأمن", path: "/security/scanner", icon: "ShieldCheck", permissions: ["integration:read"] },
     { label: "منظومة القدرات الصحية", path: "/health-ecosystem", icon: "HeartPulse", permissions: ["dashboard:read"] },
     { label: "النواة", path: "/kernel", icon: "Cpu", permissions: ["system:admin"] },
     { label: "دورة حياة المنصة", path: "/lifecycle-platform", icon: "RefreshCw", permissions: ["system:admin"] },

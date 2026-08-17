@@ -28,9 +28,11 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
-from datetime import UTC, datetime
+import random
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -42,6 +44,9 @@ logger = logging.getLogger("gula.outbox")
 
 _BATCH_SIZE = 50  # events per worker cycle
 _POLL_SECS = 10  # seconds between worker polls
+_LEASE_SECS = 120
+_BASE_BACKOFF_SECS = 5
+_MAX_BACKOFF_SECS = 900
 
 
 # ─── Writer (called inside business transaction) ──────────────────────────────
@@ -60,17 +65,74 @@ def emit_to_outbox(
     This is what makes the Outbox Pattern work: if the outer transaction rolls
     back, the event is never saved either.
     """
+    payload_json = json.dumps(payload, ensure_ascii=False, sort_keys=True)
     event = OutboxEvent(
         event_type=event_type,
+        lab_id=int(payload["lab_id"]) if str(payload.get("lab_id", "")).isdigit() else None,
         aggregate_type=aggregate_type,
         aggregate_id=aggregate_id,
-        payload=json.dumps(payload, ensure_ascii=False),
+        payload=payload_json,
+        payload_hash=hashlib.sha256(payload_json.encode("utf-8")).hexdigest(),
+        next_attempt_at=datetime.now(UTC),
         status="pending",
         attempts=0,
         created_at=datetime.now(UTC),
     )
     db.add(event)
     db.flush()  # get id immediately; still inside caller's transaction
+    return event
+
+
+def outbox_metrics(db: Session, event_type_prefix: str | None = None, lab_id: int | None = None) -> dict[str, Any]:
+    """Return non-PII backlog metrics using database aggregates, not full-table loads."""
+    from sqlalchemy import case, func
+
+    query = db.query(OutboxEvent)
+    if event_type_prefix:
+        query = query.filter(OutboxEvent.event_type.like(f"{event_type_prefix}%"))
+    if lab_id is not None:
+        query = query.filter(OutboxEvent.lab_id == lab_id)
+    aggregate = query.with_entities(
+        func.count(OutboxEvent.id),
+        func.sum(case((OutboxEvent.status == "pending", 1), else_=0)),
+        func.sum(case(((OutboxEvent.status == "failed") & OutboxEvent.dead_letter_reason.is_(None), 1), else_=0)),
+        func.sum(case((OutboxEvent.status == "processing", 1), else_=0)),
+        func.sum(case((OutboxEvent.dead_letter_reason.is_not(None), 1), else_=0)),
+        func.min(case((OutboxEvent.status.in_(["pending", "failed", "processing"]), OutboxEvent.created_at), else_=None)),
+    ).one()
+    total, pending, failed, processing, dead_letter, oldest_created = aggregate
+    now = datetime.now(UTC)
+    if oldest_created is None:
+        oldest_age = 0
+    else:
+        normalized = oldest_created.replace(tzinfo=UTC) if oldest_created.tzinfo is None else oldest_created
+        oldest_age = int(max(0.0, (now - normalized).total_seconds()))
+    return {
+        "total": int(total or 0),
+        "pending": int(pending or 0),
+        "failed": int(failed or 0),
+        "processing": int(processing or 0),
+        "dead_letter": int(dead_letter or 0),
+        "oldest_pending_age_seconds": oldest_age,
+    }
+
+
+def replay_outbox_event(db: Session, event_id: int, replayed_by: str, lab_id: int | None = None) -> OutboxEvent:
+    """Move one dead-letter event back to the queue without changing its payload."""
+    event = db.query(OutboxEvent).filter(OutboxEvent.id == event_id).with_for_update().first()
+    if not event or (lab_id is not None and event.lab_id != lab_id):
+        raise LookupError("Outbox event not found")
+    if event.status == "done":
+        raise ValueError("Completed outbox events cannot be replayed")
+    event.status = "pending"
+    event.attempts = 0
+    event.next_attempt_at = datetime.now(UTC)
+    event.lease_until = None
+    event.dead_letter_reason = None
+    event.last_error = None
+    event.replayed_by = str(replayed_by)[:160]
+    db.commit()
+    db.refresh(event)
     return event
 
 
@@ -91,11 +153,20 @@ class OutboxWorker:
         now = datetime.now(UTC)
         summary = {"processed": 0, "failed": 0, "skipped": 0}
 
+        # Recover work claimed by a worker that died before completion.
+        db.query(OutboxEvent).filter(
+            OutboxEvent.status == "processing",
+            OutboxEvent.lease_until.is_not(None),
+            OutboxEvent.lease_until < now,
+        ).update({"status": "failed", "last_error": "processing lease expired", "next_attempt_at": now}, synchronize_session=False)
+        db.flush()
+
         events_to_process = (
             db.query(OutboxEvent)
             .filter(
                 OutboxEvent.status.in_(["pending", "failed"]),
                 OutboxEvent.attempts < MAX_ATTEMPTS,
+                (OutboxEvent.next_attempt_at.is_(None) | (OutboxEvent.next_attempt_at <= now)),
             )
             .order_by(OutboxEvent.created_at.asc())
             .limit(_BATCH_SIZE)
@@ -106,6 +177,7 @@ class OutboxWorker:
         for event in events_to_process:
             event.status = "processing"
             event.attempts = (event.attempts or 0) + 1
+            event.lease_until = now + timedelta(seconds=_LEASE_SECS)
             db.flush()
 
             try:
@@ -114,7 +186,10 @@ class OutboxWorker:
 
                 event.status = "done"
                 event.processed_at = now
+                event.lease_until = None
+                event.next_attempt_at = None
                 event.last_error = None
+                event.dead_letter_reason = None
 
                 logger.info(
                     "[OUTBOX] event_type=%s id=%d aggregate=%s/%s dispatched_to=%d handlers",
@@ -128,8 +203,10 @@ class OutboxWorker:
 
             except Exception as exc:
                 event.last_error = str(exc)[:500]
+                event.lease_until = None
                 if event.attempts >= MAX_ATTEMPTS:
                     event.status = "failed"
+                    event.dead_letter_reason = str(exc)[:500]
                     logger.error(
                         "[OUTBOX] PERMANENTLY FAILED event_type=%s id=%d after %d attempts: %s",
                         event.event_type,
@@ -139,7 +216,9 @@ class OutboxWorker:
                     )
                     summary["failed"] += 1
                 else:
-                    event.status = "failed"  # will be retried next cycle
+                    event.status = "failed"  # will be retried after exponential backoff
+                    delay = min(_MAX_BACKOFF_SECS, _BASE_BACKOFF_SECS * (2 ** max(0, event.attempts - 1)))
+                    event.next_attempt_at = now + timedelta(seconds=delay + random.uniform(0, max(1, delay * 0.2)))
                     logger.warning(
                         "[OUTBOX] attempt %d/%d failed event_type=%s id=%d: %s",
                         event.attempts,

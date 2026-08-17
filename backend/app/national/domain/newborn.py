@@ -9,10 +9,7 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy import Enum as SAEnum
-
 from app.national.base import TenantAuditEntity
-from app.national.enums import Gender
 
 
 class Newborn(TenantAuditEntity):
@@ -28,7 +25,7 @@ class Newborn(TenantAuditEntity):
 
     date_of_birth = Column(Date, nullable=False)
     birth_time = Column(DateTime(timezone=True), nullable=True)
-    gender = Column(SAEnum(Gender), nullable=False)
+    gender = Column(String(20), nullable=False)
 
     birth_weight_grams = Column(SmallInteger, nullable=True)
     birth_length_cm = Column(SmallInteger, nullable=True)

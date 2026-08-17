@@ -243,6 +243,7 @@ def import_all_models() -> None:
         EdgeTelemetry,
     )
     from .models.outbox import OutboxEvent  # noqa: F401
+    from .models.ehr_integration import EHRConnectorConfig, EHRSyncRecord  # noqa: F401
     from .models.subscription import (  # noqa: F401
         FeatureFlag,
         LabSubscription,
@@ -616,6 +617,8 @@ def _register_routes(app: FastAPI) -> None:
 
     from .routes import integrations as integrations_routes
     app.include_router(integrations_routes.router)
+    from .routes import ehr_sync as ehr_sync_routes
+    app.include_router(ehr_sync_routes.router)
 
     from .routes import edge as edge_routes
     app.include_router(edge_routes.router)

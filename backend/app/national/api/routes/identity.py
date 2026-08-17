@@ -3,31 +3,37 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.national.exceptions import ForeignerRegistrationError, NewbornRegistrationError
+from app.national.exceptions import (
+    DuplicateNewbornRegistrationError,
+    ForeignerRegistrationError,
+    NewbornRegistrationError,
+)
 from app.national.repositories.citizen_repository import CitizenRepository
 from app.national.services.citizen_service import CitizenService
 from app.national.services.identity_service import IdentityService
-from app.security.dependencies import get_current_user
+from app.security.dependencies import get_current_user, require_permission
 
 router = APIRouter(prefix="/identity", tags=["Identity"])
 
 
 class NewbornRegister(BaseModel):
-    birth_certificate_number: str
-    first_name: str = ""
-    last_name: str = ""
-    date_of_birth: date | None = None
+    birth_certificate_number: str = Field(min_length=3, max_length=50)
+    mother_national_id: str = Field(pattern=r"^\d{4,16}$")
+    father_national_id: str = Field(pattern=r"^\d{4,16}$")
+    first_name: str = Field(default="", max_length=100)
+    last_name: str = Field(default="", max_length=100)
+    date_of_birth: date
     gender: str = "unknown"
-    mother_id: str
-    mother_name: str | None = None
-    father_id: str | None = None
-    father_name: str | None = None
-    birth_weight_grams: int | None = None
-    hospital_id: str | None = None
+    birth_weight_grams: int | None = Field(default=None, ge=200, le=10000)
+    hospital_registration_number: str | None = Field(default=None, max_length=50)
+    birth_place: str | None = Field(default=None, max_length=200)
+    birth_place_type: str | None = Field(default=None, max_length=50)
+    delivery_method: str | None = Field(default=None, max_length=50)
+    notes: str | None = Field(default=None, max_length=2000)
 
 
 class ForeignerRegister(BaseModel):
@@ -72,6 +78,7 @@ class IdentityMergeRequest(BaseModel):
 class IdentityResponse(BaseModel):
     citizen_id: str
     health_number: str
+    newborn_id: str | None = None
     is_temporary: bool = False
     requires_merge: bool = False
 
@@ -79,21 +86,29 @@ class IdentityResponse(BaseModel):
 def _get_identity_service(db: Session = Depends(get_db)) -> IdentityService:
     repo = CitizenRepository(db)
     citizen_service = CitizenService(repo, db)
-    return IdentityService(citizen_service, repo)
+    return IdentityService(citizen_service, repo, db)
 
 
 @router.post("/newborn", response_model=IdentityResponse, status_code=201)
 async def register_newborn(
     data: NewbornRegister,
     service: IdentityService = Depends(_get_identity_service),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_permission("newborn:register")),
 ):
     try:
-        result = await service.register_newborn(data.model_dump())
+        payload = data.model_dump()
+        payload["actor_id"] = getattr(current_user, "id", None)
+        payload["lab_id"] = getattr(current_user, "lab_id", None)
+        payload["registered_by_hospital"] = getattr(current_user, "role", "") != "midwife"
+        result = await service.register_newborn(payload)
         return IdentityResponse(
             citizen_id=result["citizen"].id,
             health_number=result["health_number"],
+            newborn_id=result["newborn_id"],
+            is_temporary=True,
         )
+    except DuplicateNewbornRegistrationError as e:
+        raise HTTPException(status_code=409, detail="Newborn record already exists") from e
     except NewbornRegistrationError as e:
         raise HTTPException(status_code=400, detail="Invalid request") from e
 

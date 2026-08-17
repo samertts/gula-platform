@@ -10,14 +10,14 @@ interface RoleGuardProps {
 }
 
 export function RoleGuard({ children, roles, fallback = "/dashboard" }: RoleGuardProps) {
-  const { user, demoMode } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (demoMode && !roles.includes(user.role as UserRole)) {
+  if (!roles.includes(user.role as UserRole)) {
     return <Navigate to={fallback} replace />;
   }
 

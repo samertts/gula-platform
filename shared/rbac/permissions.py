@@ -11,6 +11,7 @@ class Role(Enum):
     DOCTOR = "doctor"
     PATHOLOGIST = "pathologist"
     NURSE = "nurse"
+    MIDWIFE = "midwife"
     RECEPTIONIST = "receptionist"
     CITIZEN = "citizen"
     MINISTRY = "ministry"
@@ -120,6 +121,7 @@ EXTENDED_ROLE_LEVELS: dict[str, int] = {
     "receptionist":        22,
 
     "doctor":             40,
+    "midwife":            30,
     "staff":              20,
     "lab_staff":          20,
     "technician":         20,
@@ -192,6 +194,17 @@ EXTENDED_ALL_PERMISSIONS: list[str] = [
     "popular_clinics:report:monthly",
     "popular_clinics:workforce:manage",
     "popular_clinics:alerts:manage",
+    "newborn:register",
+    "newborn:read",
+    "immunization:read",
+    "immunization:write",
+    "immunization:schedule",
+    "immunization:administer",
+    "immunization:report",
+    "vaccine_inventory:read",
+    "vaccine_inventory:manage",
+    "vaccine_inventory:dispense",
+    "vaccine_inventory:report",
 ]
 
 EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
@@ -203,6 +216,8 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "integration:read", "integration:audit",
         "payments:read",
         "popular_clinics:read", "popular_clinics:report:monthly",
+        "newborn:read", "immunization:read", "immunization:report",
+        "vaccine_inventory:read", "vaccine_inventory:report",
     ],
     "province_admin": [
         "patients:read", "orders:read", "results:read", "lab:read",
@@ -211,6 +226,8 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "integration:read",
         "popular_clinics:read", "popular_clinics:report:monthly", "popular_clinics:manage",
         "popular_clinics:workforce:manage",
+        "newborn:read", "immunization:read", "immunization:report",
+        "vaccine_inventory:read", "vaccine_inventory:report",
     ],
     "admin": [
         "patients:read", "patients:write", "patients:delete",
@@ -228,6 +245,9 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "popular_clinics:ticket:read", "popular_clinics:ticket:issue", "popular_clinics:ticket:cancel",
         "popular_clinics:payment:capture", "popular_clinics:payment:confirm", "popular_clinics:report:daily",
         "popular_clinics:report:monthly", "popular_clinics:workforce:manage", "popular_clinics:alerts:manage",
+        "newborn:register", "newborn:read", "immunization:read", "immunization:write",
+        "immunization:schedule", "immunization:administer", "immunization:report",
+        "vaccine_inventory:read", "vaccine_inventory:manage", "vaccine_inventory:dispense", "vaccine_inventory:report",
     ],
     "lab_admin": [
         "patients:read", "patients:write", "patients:delete",
@@ -245,6 +265,9 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "popular_clinics:ticket:read", "popular_clinics:ticket:issue", "popular_clinics:ticket:cancel",
         "popular_clinics:payment:capture", "popular_clinics:payment:confirm", "popular_clinics:report:daily",
         "popular_clinics:report:monthly", "popular_clinics:workforce:manage", "popular_clinics:alerts:manage",
+        "newborn:register", "newborn:read", "immunization:read", "immunization:write",
+        "immunization:schedule", "immunization:administer", "immunization:report",
+        "vaccine_inventory:read", "vaccine_inventory:manage", "vaccine_inventory:dispense", "vaccine_inventory:report",
     ],
     "finance_controller": [
         "dashboard:read", "audit:read", "payments:read", "payments:write",
@@ -283,6 +306,12 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "patients:read", "orders:read", "results:read", "dashboard:read", "ai:use", "ai:infer",
         "popular_clinics:read", "popular_clinics:patient:read", "popular_clinics:clinical:write",
         "popular_clinics:prescription:write", "popular_clinics:ticket:read", "popular_clinics:report:monthly",
+        "newborn:read", "immunization:read", "immunization:write", "immunization:schedule",
+        "immunization:administer", "vaccine_inventory:read", "vaccine_inventory:dispense",
+    ],
+    "midwife": [
+        "patients:read", "newborn:register", "newborn:read", "immunization:read",
+        "immunization:administer",
     ],
     "staff": [
         "patients:read", "patients:write",
@@ -291,6 +320,8 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "lab:read", "dashboard:read", "ai:use",
         "payments:read", "payments:write", "payments:cashier", "payments:refund:request", "payments:fx:quote",
         "payments:orchestration:route",
+        "newborn:register", "newborn:read", "immunization:read", "immunization:schedule",
+        "immunization:administer", "vaccine_inventory:read", "vaccine_inventory:dispense",
     ],
     "lab_staff": [
         "patients:read", "patients:write",
