@@ -11,7 +11,7 @@ from app.security.auth import _DUMMY_HASH
 
 
 @pytest.mark.asyncio
-async def test_authenticate_verifies_dummy_hash_for_unknown_login(monkeypatch):
+async def test_authenticate_verifies_dummy_hash_for_unknown_login(monkeypatch: pytest.MonkeyPatch) -> None:
     service = AccountService(AsyncMock())
     service.repo = AsyncMock()
     service.repo.find_by_login.return_value = None
@@ -24,7 +24,7 @@ async def test_authenticate_verifies_dummy_hash_for_unknown_login(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_authenticate_normalizes_phone_login_before_lookup(monkeypatch):
+async def test_authenticate_normalizes_phone_login_before_lookup(monkeypatch: pytest.MonkeyPatch) -> None:
     service = AccountService(AsyncMock())
     service.repo = AsyncMock()
     service.repo.find_by_login.return_value = None
@@ -37,7 +37,7 @@ async def test_authenticate_normalizes_phone_login_before_lookup(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_permanent_locked_account_is_not_unlocked_by_login_attempt(monkeypatch):
+async def test_permanent_locked_account_is_not_unlocked_by_login_attempt(monkeypatch: pytest.MonkeyPatch) -> None:
     service = AccountService(AsyncMock())
     session = AsyncMock()
     account = SimpleNamespace(
@@ -65,7 +65,7 @@ async def test_permanent_locked_account_is_not_unlocked_by_login_attempt(monkeyp
 
 
 @pytest.mark.asyncio
-async def test_refresh_session_uses_refresh_token_identifier(monkeypatch):
+async def test_refresh_session_uses_refresh_token_identifier(monkeypatch: pytest.MonkeyPatch) -> None:
     service = AuthenticationService(AsyncMock())
     service.session_repo = AsyncMock()
     service.account_repo = AsyncMock()

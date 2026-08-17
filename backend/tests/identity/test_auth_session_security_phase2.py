@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from types import SimpleNamespace
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -15,41 +16,41 @@ from fastapi import HTTPException
 
 
 class _AccountRepository:
-    account = None
+    account: Any = None
 
-    def __init__(self, session):
+    def __init__(self, session: Any) -> None:
         self.session = session
 
-    async def get_by_id(self, account_id: str):
+    async def get_by_id(self, account_id: str) -> Any:
         if self.account and self.account.id == account_id:
             return self.account
         return None
 
 
 class _AccountService:
-    account = None
+    account: Any = None
 
-    def __init__(self, session):
+    def __init__(self, session: Any) -> None:
         self.session = session
 
-    async def authenticate(self, login: str, password: str):
+    async def authenticate(self, login: str, password: str) -> Any:
         return self.account
 
 
 class _SessionRepository:
-    session_record = None
+    session_record: Any = None
 
-    def __init__(self, session):
+    def __init__(self, session: Any) -> None:
         self.session = session
-        self.created = []
-        self.deleted = []
+        self.created: list[Any] = []
+        self.deleted: list[str] = []
 
-    async def create(self, session):
+    async def create(self, session: Any) -> Any:
         self.created.append(session)
         self.session_record = session
         return session
 
-    async def find_by_refresh_token_jti(self, refresh_jti: str):
+    async def find_by_refresh_token_jti(self, refresh_jti: str) -> Any:
         session = self.session_record
         if session and session.is_active and session.refresh_token_jti == refresh_jti:
             return session
@@ -68,25 +69,25 @@ class _SessionRepository:
             return True
         return False
 
-    async def soft_delete(self, session_id: str):
+    async def soft_delete(self, session_id: str) -> None:
         session = self.session_record
         if session and session.id == session_id:
             session.is_active = False
             self.deleted.append(session_id)
 
-    async def get_by_uuid(self, session_uuid: str):
+    async def get_by_uuid(self, session_uuid: str) -> Any:
         return self.session_record if self.session_record and self.session_record.uuid == session_uuid else None
 
-    async def terminate_session(self, session_id: str, reason: str, terminated_by: str):
+    async def terminate_session(self, session_id: str, reason: str, terminated_by: str) -> None:
         if self.session_record and self.session_record.id == session_id:
             self.session_record.is_active = False
 
-    async def terminate_all_for_account(self, account_id: str, reason: str):
+    async def terminate_all_for_account(self, account_id: str, reason: str) -> None:
         if self.session_record and self.session_record.account_id == account_id:
             self.session_record.is_active = False
 
 
-def _build_service(monkeypatch, *, active_account: bool = True):
+def _build_service(monkeypatch: pytest.MonkeyPatch, *, active_account: bool = True) -> tuple[Any, Any, list[tuple[str, int]]]:
     account = SimpleNamespace(
         id="account-1",
         uuid="account-uuid-1",
@@ -135,7 +136,7 @@ def _build_service(monkeypatch, *, active_account: bool = True):
         lambda jti, seconds: blacklisted.append((jti, seconds)),
     )
 
-    async def no_op_workspace_provisioning(self, account):
+    async def no_op_workspace_provisioning(self: Any, account: Any) -> None:
         return None
 
     monkeypatch.setattr(
@@ -147,7 +148,7 @@ def _build_service(monkeypatch, *, active_account: bool = True):
 
 
 @pytest.mark.asyncio
-async def test_refresh_rotates_jti_blacklists_old_token_and_deactivates_old_session(monkeypatch):
+async def test_refresh_rotates_jti_blacklists_old_token_and_deactivates_old_session(monkeypatch: pytest.MonkeyPatch) -> None:
     service, old_session, blacklisted = _build_service(monkeypatch)
 
     result = await service.refresh_session("old-token")
@@ -163,7 +164,7 @@ async def test_refresh_rotates_jti_blacklists_old_token_and_deactivates_old_sess
 
 
 @pytest.mark.asyncio
-async def test_refresh_replay_is_rejected_after_rotation(monkeypatch):
+async def test_refresh_replay_is_rejected_after_rotation(monkeypatch: pytest.MonkeyPatch) -> None:
     service, _, _ = _build_service(monkeypatch)
 
     assert await service.refresh_session("old-token") is not None
@@ -171,7 +172,7 @@ async def test_refresh_replay_is_rejected_after_rotation(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_refresh_is_rejected_for_inactive_account_without_blacklisting(monkeypatch):
+async def test_refresh_is_rejected_for_inactive_account_without_blacklisting(monkeypatch: pytest.MonkeyPatch) -> None:
     service, old_session, blacklisted = _build_service(monkeypatch, active_account=False)
 
     assert await service.refresh_session("old-token") is None
@@ -180,7 +181,7 @@ async def test_refresh_is_rejected_for_inactive_account_without_blacklisting(mon
 
 
 @pytest.mark.asyncio
-async def test_refresh_is_rejected_for_locked_account_without_blacklisting(monkeypatch):
+async def test_refresh_is_rejected_for_locked_account_without_blacklisting(monkeypatch: pytest.MonkeyPatch) -> None:
     service, old_session, blacklisted = _build_service(monkeypatch)
     service.account_repo.account.status = "locked"
     service.account_repo.account.is_locked = True
@@ -190,7 +191,7 @@ async def test_refresh_is_rejected_for_locked_account_without_blacklisting(monke
     assert blacklisted == []
 
 
-def test_rate_limiter_rejects_after_window_budget_is_exhausted():
+def test_rate_limiter_rejects_after_window_budget_is_exhausted() -> None:
     key = f"phase2-rate-test-{uuid4()}"
     limiter = RateLimiter()
 
@@ -198,7 +199,7 @@ def test_rate_limiter_rejects_after_window_budget_is_exhausted():
     assert limiter.check(key, max_requests=1, window_seconds=60) is False
 
 
-def test_rate_limit_429_contains_retry_and_budget_headers():
+def test_rate_limit_429_contains_retry_and_budget_headers() -> None:
     with pytest.raises(HTTPException) as error:
         _raise_429("blocked", limit=3, reset_ts=int(datetime.now(UTC).timestamp()) + 30)
 

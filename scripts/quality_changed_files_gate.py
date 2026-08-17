@@ -155,7 +155,17 @@ def run_ruff(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
 def run_mypy(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
     if not paths:
         return ToolResult("mypy", scope, 0, (), "", "")
-    result = run(("mypy", "--show-error-codes", "--no-error-summary", *paths), repo)
+    result = run(
+        (
+            "mypy",
+            "--show-error-codes",
+            "--no-error-summary",
+            "--no-pretty",
+            "--no-incremental",
+            *paths,
+        ),
+        repo,
+    )
     execution_error = None if result.returncode in (0, 1) else result.stderr.strip()
     diagnostics = parse_mypy_text(repo, f"{result.stdout}\n{result.stderr}")
     return ToolResult(

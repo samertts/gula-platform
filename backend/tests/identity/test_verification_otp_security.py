@@ -13,7 +13,7 @@ def test_memory_cache_set_if_absent_is_atomic_under_concurrency() -> None:
     store = _MemoryStore()
 
     def claim() -> bool:
-        return store.set_if_absent("verification:consumed:test", "1", ex=60)
+        return bool(store.set_if_absent("verification:consumed:test", "1", ex=60))
 
     with ThreadPoolExecutor(max_workers=16) as executor:
         results = list(executor.map(lambda _index: claim(), range(64)))
@@ -22,7 +22,7 @@ def test_memory_cache_set_if_absent_is_atomic_under_concurrency() -> None:
     assert store.get("verification:consumed:test") == "1"
 
 
-def test_production_verification_rejects_unshared_cache(monkeypatch) -> None:
+def test_production_verification_rejects_unshared_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(verification_route, "IS_PRODUCTION", True)
     monkeypatch.setattr(verification_route, "cache", _MemoryStore())
 
@@ -32,7 +32,7 @@ def test_production_verification_rejects_unshared_cache(monkeypatch) -> None:
     assert exc_info.value.status_code == 503
 
 
-def test_production_verification_accepts_shared_cache(monkeypatch) -> None:
+def test_production_verification_accepts_shared_cache(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(verification_route, "IS_PRODUCTION", True)
     monkeypatch.setattr(verification_route, "cache", SimpleNamespace(is_shared=True))
 

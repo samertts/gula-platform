@@ -7,6 +7,7 @@
 **PR:** `#226`
 **HEAD قبل Command 09:** `478bad1f927543323236c98da5cbb6e0a123dc40`
 **Commit Command 09 بعد التنفيذ:** `c59beac5a599a59616f64fa536cb65c90d0fc7ac`
+**Continuation status:** working-tree fixes pending commit/push
 **قرار P5:** `P5_BLOCKED_BY_PREREQUISITE`
 
 > **قرار الإغلاق:** Command 09 يُغلق على أنه **`NOT_P0_CANDIDATE_FOR_CLOSURE`** و**`P4_PARTIAL / UNVERIFIED`**. الاختبارات المحلية قوية وناجحة، لكن CI الحالي محجوب خارجياً، وPostgreSQL/Redis وRailway غير مثبتة، وdeployment HEAD في Vercel بحالة `BLOCKED`، وnative/device parity غير مثبتة، وبعض الموافقات البشرية لازمة. لا يُسمح بتحويل هذه الفجوات إلى `PASS` بالاستنتاج.
@@ -19,7 +20,7 @@
 
 ## 2. التغييرات الآمنة المنفذة
 
-اقتصر التغيير البرمجي على إصلاحات type-safety وquality-gate محددة، وتغيير workflow واحد يزيل تجاهلاً خاطئاً للبوابات، وإضافة وثائق Command 09. لم يتغير schema أو migration أو permission policy أو token/session protocol.
+اقتصر التغيير البرمجي في هذه continuation على إصلاحات type-safety وquality-gate محددة، وإصلاح UTC timestamp warning، وجعل migration rehearsal قابلة للتوليد في offline window المحدد، مع إضافة وثائق Command 09. لم يتغير permission policy أو token/session protocol، ولم تُطبّق أي DDL على قاعدة بيانات فعلية.
 
 | المسار | التغيير | سبب الأمان | التحقق |
 |---|---|---|---|
@@ -28,7 +29,11 @@
 | `backend/app/identity/services/access_revocation.py` | قراءة محافظة لـ`rowcount` عبر `getattr` | يحافظ على bulk revocation والـtransaction دون type-unsafe attribute | security/identity tests ناجحة |
 | `backend/app/security/mfa_service.py` | typed challenge cache union، casts للـWebAuthn options، وقراءة محافظة لـCAS rowcount | لا يغيّر single-use challenge أو Redis/in-memory fail-closed boundary | auth infrastructure tests وRuff ناجحة |
 | `backend/gula_uvicorn_worker.py` | type-only base shim للمكتبة غير المعرّفة، مع بقاء runtime subclass الحقيقي | إزالة MyPy regression دون `type: ignore` أو تغيير defaults | runtime-config tests ناجحة |
-| `backend/tests/...` | return annotations وimport ordering في security/session/queue tests | إصلاح quality regression دون تغيير behavior | test suites وRuff ناجحة |
+| `backend/tests/...` | return/parameter annotations وimport ordering في security/session/queue/identity tests | إصلاح quality regression دون تغيير behavior | 88 focused tests وRuff ناجحة |
+| `backend/app/middleware.py` | ASGI/Starlette signatures دقيقة وgeneric tuple type | إزالة MyPy changed-file regressions دون تغيير rate-limit/headers/readiness behavior | Ruff وfull backend ناجحان |
+| `scripts/quality_changed_files_gate.py` | إضافة `--no-pretty` و`--no-incremental` إلى MyPy invocation | منع MyPy 2.3.0 formatter internal error مع إبقاء strict diagnostics والبوابة | gate النهائي `PASS` |
+| `backend/app/contracts/generator.py` | استبدال `datetime.utcnow()` بـUTC-aware `datetime.now(UTC)` | إزالة deprecation warning دون تغيير ISO contract timestamp | focused/full backend ناجحان |
+| `backend/migrations/versions/20250322_0000_create_base_schema.py` | offline guard لـinspect مع downgrade SQL صريح في offline mode | تحسين rehearsal دون تغيير online idempotency | Command 09 migration window upgrade/downgrade ناجحان |
 | `docs/command09-baseline.md` | baseline سلطوي محدث | يمنع خلط branch/CI/deployment/runtime | مراجعة المصدر الحالي |
 | `docs/command09-p0-reconciliation.md` | domain-by-domain P0 reconciliation | يربط كل حكم بدليل وblocker واضح | مراجعة تقارير Commands 01–08 |
 | `docs/command09-p4-acceptance-matrix.md` | مصفوفة P4 رسمية من 22 صفاً | تفصل P4 عن changed-files quality gate | مراجعة evidence والحوكمة |
@@ -46,7 +51,7 @@
 | Vercel HEAD deployment | `dpl_94iGV1XhgmrA2Lrfy7GJeX3oMHJf` مرتبط بـ`478bad1f` لكنه `BLOCKED` | `BLOCKED_EXTERNAL` |
 | Railway | لا connector ولا CLI ولا runtime read-only evidence | `UNVERIFIED` |
 | PostgreSQL/Redis | لا PostgreSQL أو `psql` أو Docker أو Redis runtime محلياً | `UNVERIFIED` |
-| Alembic | single head `20260816_0023` | `PASS` source/offline فقط |
+| Alembic | single head `20260816_0023`; Command 09 window offline upgrade/downgrade ناجح | `PASS` source وCommand 09 window فقط |
 | feature flags | public registration/email recovery/NID/financial engine defaults مغلقة | `PASS` كـsource defaults، لا live proof |
 | native toolchains | Flutter/Dart/Xcode/Swift/ADB غير متاحة؛ Gradle wrapper فقط متاح | `UNVERIFIED / NOT_BUILT` |
 
@@ -80,29 +85,32 @@
 
 | Suite | النتيجة |
 |---|---:|
-| Recovery + authorization context + auth infrastructure المركزية | **45 passed, 3 warnings** |
-| Final targeted identity/workspace/session/runtime/queue suite | **42 passed, 3 warnings** |
-| Backend full regression | **2719 passed, 4 skipped, 252 warnings** |
-| Performance/resilience/stress/backpressure | **110 passed, 3 warnings** |
+| Continuation focused identity/security/middleware suite | **88 passed** |
+| Backend full regression | **2719 passed, 4 skipped** |
+| Frontend Vitest | **68 passed** |
+| Frontend Playwright E2E | **55 passed** |
+| Frontend typecheck/lint/build | **PASS** |
+| Performance/resilience/stress/backpressure | **110 passed** بالأدلة السابقة، مع focused performance checks ناجحة |
 | Ruff critical identity/recovery/authorization scope | **PASS** |
-| Bandit targeted identity/recovery/authorization scope | **PASS** |
-| Alembic offline upgrade/downgrade rehearsal | **PASS**، 47 و16 SQL lines respectively |
+| Changed-files Ruff/MyPy non-regression gate | **PASS**؛ لا توجد زيادات، وcritical counts انخفضت |
+| Alembic Command 09 window offline upgrade/downgrade | **PASS**؛ `20260815_0022↔20260816_0023` |
+| Full historical base→head offline SQL | **BLOCKED/UNVERIFIED** بسبب legacy inspect في `20260815_0001` وما بعده، ولا تُعدّل عشرات migrations القديمة ضمن هذه الدفعة |
 
 التحذيرات لا تثبت security failure، لكنها quality debt موثق: deprecation في `datetime.utcnow()`، Starlette/httpx، SQLAlchemy cycle warning في test teardown، وSentry pending event behavior. لم يظهر في الاختبارات الحالية secret أو OTP أو token أو password في logs التي تم فحصها.
 
 ## 7. Quality debt وCI gate
 
-تم تشغيل full Ruff على backend، وكانت النتيجة **1039 finding**، معظمها legacy broad debt مثل RUF001/RUF003 وSIM/I001، ولذلك لم تُنفذ auto-fix واسعة قد تغيّر سلوك أجزاء غير مرتبطة. `.venv/bin/mypy` غير متوفر محلياً؛ أما changed-files gate فاستدعى MyPy العالمي وأظهر internal error في MyPy `2.3.0` مع diagnostics واسعة على branch مقارنة بـ`origin/main`.
+تم تشغيل full Ruff على backend، وبقيت broad repository debt خارج نطاق الإصلاح الآمن. أما changed-files gate فكان يتوقف سابقاً على MyPy `2.3.0` formatter internal error؛ عولج ذلك في invocation بإضافة `--no-pretty` و`--no-incremental` دون تخفيض strictness أو إخفاء diagnostics.
 
-بعد الإصلاحات المحددة، لم يظهر **explicit new critical-scope regression** في المقارنة الخاصة بـRuff، وأُغلقت regressions المباشرة التي ظهرت في ملفات Command 09. لكن البوابة الشاملة بقيت **`BLOCKED/FAIL`** للأسباب التالية: MyPy changed-files internal execution error، وrepository-wide diagnostics كثيرة على ملفات Commands 01–08 الجديدة مقابل main، وstrict identity/security diagnostics المتبقية التي تحتاج debt wave مستقلة. لا يجوز إعلان quality gate أخضر أو تخفيف strict policy لهذا السبب.[3]
+بعد الإصلاحات المحددة، أصبحت بوابة changed-files النهائية **`PASS`**: Ruff changed `93→79`، MyPy changed `5347→5211`، وcritical MyPy `635→631`، مع عدم وجود أي increase في المقارنة. بقيت diagnostics repository-wide كـlegacy debt تم تقليلها لا إخفاؤها، ولا يعني gate الأخضر المحلي أن CI أو production alignment مكتمل.[3]
 
-هذه النتيجة لا تعني وجود bypass أمني؛ تعني أن changed-files gate لا يزال حاجز جودة غير مغلق على مستوى الفرع الكامل، وأن فصل P4 عن quality gate ضروري.
+هذه النتيجة لا تعني bypass أمني؛ بل تعني أن non-regression gate المحلي أصبح قابلاً للتنفيذ ونجح، بينما تبقى بوابات GitHub الحالية والـrunner الخارجي بحاجة إلى تحقق بعد push على SHA continuation الجديد.
 
-بعد push للـcommit `c59beac5` بقي PR #226 مفتوحاً، وبدأت checks جديدة على نفس SHA. القراءة الحالية لـQuality Gate run `32016959431` تُظهر job `quality-gate` بحالة `failure` مع `steps: []` خلال ثوانٍ قليلة، وهو متسق مع blocker الخارجي السابق وليس دليلاً على test failure داخل runner. كما ظهرت Formatting Check وPreview Deploy وConstitution Compliance على نفس SHA بحالة failure؛ لم تُجرَ إعادة تشغيل تلقائية أو تعديل في GitHub.
+على SHA السابق `c59beac5` بقي PR #226 مفتوحاً، وكانت checks التاريخية تُظهر jobs تفشل مع `steps: []` خلال ثوانٍ قليلة، وهو نمط blocker خارجي وليس دليلاً على test failure داخل runner. بعد هذه continuation لم يُدفع SHA الجديد بعد؛ لذلك تبقى نتيجة GitHub current-head **غير مثبتة** إلى أن يُرفع commit continuation وتُقرأ checks الجديدة read-only.
 
 ## 8. Database and migration state
 
-المخطط المصدر له رأس Alembic واحد `20260816_0023` ووالده `20260815_0022`. تمت إعادة rehearsal offline للترقية والرجوع العكسي بنجاح، ولم تُنفذ أي DDL على PostgreSQL فعلية. لذلك فإن single-head/source rollback evidence هو `PASS`، بينما apply على PostgreSQL حقيقية وexisting-data/locks/isolation rollback تبقى `UNVERIFIED`.[1]
+المخطط المصدر له رأس Alembic واحد `20260816_0023` ووالده `20260815_0022`. بعد إصلاح offline guard في base migration، نجحت rehearsal الخاصة بنطاق Command 09 للترقية والرجوع العكسي (`20260815_0022↔20260816_0023`) دون DDL فعلي. أما full historical base→head offline generation فما زال يتوقف عند legacy migration تستخدم `inspect(MockConnection)`؛ لذلك لا يُعلن full-chain PASS. Apply على PostgreSQL حقيقية وexisting-data/locks/isolation rollback تبقى `UNVERIFIED`.[1]
 
 لا يمكن من هذه الجلسة الادعاء بأن production database في revision الصحيح أو أن row locks وtransaction isolation وaudit chain تعمل على PostgreSQL/Redis متعدد العمال.
 
@@ -169,14 +177,14 @@
 | Vercel current-head deployment | **BLOCKED_EXTERNAL** |
 | Railway/PostgreSQL/Redis production alignment | **UNVERIFIED** |
 | Native/device parity | **UNVERIFIED / NOT_BUILT** |
-| Full changed-files quality gate | **BLOCKED/FAIL** بسبب MyPy internal error وlegacy branch debt |
+| Full changed-files quality gate | **PASS محلياً** بعد إصلاح invocation؛ CI current-head يحتاج تحقق خارجي بعد push |
 | P4 | **PARTIAL / UNVERIFIED** |
 | P5 | **P5_BLOCKED_BY_PREREQUISITE** |
 | Overall Command 09 | **NOT_P0_CANDIDATE_FOR_CLOSURE** |
 
 ## 16. Required next actions — not performed automatically
 
-أولاً، على مالك GitHub إصلاح runner/policy/billing/execution settings ثم إعادة جميع checks على نفس SHA بعد commit Command 09. ثانياً، على مالك البنية توفير PostgreSQL/Redis staging ببيانات synthetic وإجراء migration apply/rollback وmulti-worker session/revocation/audit tests. ثالثاً، على مالكي Mobile/Desktop تشغيل current-head builds وdevice E2E. رابعاً، على Security Architecture/Product اعتماد bridge/cutover بين legacy وNIAM ورحلة account approval الكاملة. خامساً، على Vercel/Release owner معالجة deployment block دون تعطيل SSO، ثم إجراء read-only headers/runtime verification. سادساً، تُدار بقية MyPy/Ruff debt في موجة منفصلة ومحددة، لا عبر suppressions أو تعطيل gates.
+أولاً، على مالك GitHub إصلاح runner/policy/billing/execution settings ثم إعادة جميع checks على نفس SHA بعد commit Command 09. ثانياً، على مالك البنية توفير PostgreSQL/Redis staging ببيانات synthetic وإجراء migration apply/rollback وmulti-worker session/revocation/audit tests. ثالثاً، على مالكي Mobile/Desktop تشغيل current-head builds وdevice E2E. رابعاً، على Security Architecture/Product اعتماد bridge/cutover بين legacy وNIAM ورحلة account approval الكاملة. خامساً، على Vercel/Release owner معالجة deployment block دون تعطيل SSO، ثم إجراء read-only headers/runtime verification. سادساً، تُدار بقية MyPy/Ruff debt repository-wide وlegacy offline migration chain في موجات منفصلة ومحددة، لا عبر suppressions أو تعطيل gates.
 
 لا يبدأ Command 10 ولا P5 تلقائياً من هذه المهمة. يبدأ P5 فقط بعد `P4_COMPLETE` الموثق و`Governance Authorization` الصريح.
 

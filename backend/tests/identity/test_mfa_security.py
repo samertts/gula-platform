@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from app.security.mfa_service import MFAService
 
 
 class _ChallengeStore:
-    def __init__(self, value: str | None):
+    def __init__(self, value: str | None) -> None:
         self.value = value
         self.deleted_keys: list[str] = []
 
@@ -16,19 +18,19 @@ class _ChallengeStore:
 
 
 class _Query:
-    def filter(self, *args, **kwargs):
+    def filter(self, *args: Any, **kwargs: Any) -> _Query:
         return self
 
-    def first(self):
+    def first(self) -> None:
         return None
 
 
 class _DB:
-    def query(self, *args, **kwargs):
+    def query(self, *args: Any, **kwargs: Any) -> _Query:
         return _Query()
 
 
-def test_webauthn_challenge_is_consumed_before_unknown_credential(monkeypatch):
+def test_webauthn_challenge_is_consumed_before_unknown_credential(monkeypatch: pytest.MonkeyPatch) -> None:
     store = _ChallengeStore("single-use-challenge")
     service = MFAService(_DB())
     monkeypatch.setattr(service, "_challenge_cache", lambda: store)
@@ -38,7 +40,7 @@ def test_webauthn_challenge_is_consumed_before_unknown_credential(monkeypatch):
     assert store.value is None
 
 
-def test_mfa_challenge_cache_fails_closed_without_shared_backend(monkeypatch):
+def test_mfa_challenge_cache_fails_closed_without_shared_backend(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.security import mfa_service, redis_client
 
     class _UnsharedCache:

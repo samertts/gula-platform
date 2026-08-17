@@ -2,17 +2,19 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
+from typing import Any
 
+import pytest
 from app.security import auth as security_auth
 from app.security.redis_client import _MemoryStore
 
 
-def test_refresh_jti_consume_is_atomic_under_concurrency(monkeypatch):
+def test_refresh_jti_consume_is_atomic_under_concurrency(monkeypatch: pytest.MonkeyPatch) -> None:
     store = _MemoryStore()
     monkeypatch.setattr("app.security.redis_client.cache", store)
 
     def consume() -> bool:
-        return security_auth.consume_refresh_jti("same-refresh-jti", 60)
+        return bool(security_auth.consume_refresh_jti("same-refresh-jti", 60))
 
     with ThreadPoolExecutor(max_workers=16) as pool:
         results = list(pool.map(lambda _: consume(), range(64)))
@@ -20,7 +22,7 @@ def test_refresh_jti_consume_is_atomic_under_concurrency(monkeypatch):
     assert sum(results) == 1
 
 
-def test_refresh_jti_marker_expires_for_new_rotation_window(monkeypatch):
+def test_refresh_jti_marker_expires_for_new_rotation_window(monkeypatch: pytest.MonkeyPatch) -> None:
     store = _MemoryStore()
     monkeypatch.setattr("app.security.redis_client.cache", store)
 
@@ -28,19 +30,19 @@ def test_refresh_jti_marker_expires_for_new_rotation_window(monkeypatch):
     assert security_auth.consume_refresh_jti("expiring-jti", 1) is False
 
 
-def test_refresh_replay_revokes_token_family_and_audits_without_secret(monkeypatch):
+def test_refresh_replay_revokes_token_family_and_audits_without_secret(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.routes import mobile
 
-    calls = {}
+    calls: dict[str, Any] = {}
 
-    def fake_bump(user, db, **kwargs):
+    def fake_bump(user: Any, db: Any, **kwargs: Any) -> None:
         calls["bump"] = (user, db, kwargs)
 
-    def fake_audit(db, **kwargs):
+    def fake_audit(db: Any, **kwargs: Any) -> None:
         calls["audit"] = kwargs
 
     class _DB:
-        def commit(self):
+        def commit(self) -> None:
             calls["commit"] = True
 
     user = SimpleNamespace(id=17, role="staff")
@@ -62,7 +64,7 @@ def test_refresh_replay_revokes_token_family_and_audits_without_secret(monkeypat
     assert calls["commit"] is True
 
 
-def test_refresh_requires_shared_backend_in_production(monkeypatch):
+def test_refresh_requires_shared_backend_in_production(monkeypatch: pytest.MonkeyPatch) -> None:
     from app.routes import mobile
     from fastapi import HTTPException
 

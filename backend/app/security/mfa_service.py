@@ -108,7 +108,7 @@ class MFAService:
         except Exception as exc:
             logger.error("WebAuthn registration challenge cache failed for user %s", user_id)
             raise RuntimeError("WebAuthn challenge store unavailable") from exc
-        return cast(dict[str, Any], options)
+        return options
 
     def complete_webauthn_registration(self, user_id: int, credential: dict[str, Any],
                                         device_name: str = "Security Key") -> MFADevice:
@@ -151,7 +151,7 @@ class MFAService:
         except Exception as exc:
             logger.error("WebAuthn authentication challenge cache failed for user %s", user_id)
             raise RuntimeError("WebAuthn challenge store unavailable") from exc
-        return cast(dict[str, Any], options)
+        return options
 
     def complete_webauthn_authentication(self, user_id: int, credential: dict[str, Any]) -> bool:
         cache = self._challenge_cache()

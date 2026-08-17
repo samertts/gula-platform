@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -72,14 +73,14 @@ async def test_account_request_uses_trusted_client_ip(monkeypatch: pytest.Monkey
     captured: dict[str, object] = {}
 
     class _Service:
-        def __init__(self, _db):
+        def __init__(self, _db: Any) -> None:
             pass
 
-        async def submit(self, **kwargs):
+        async def submit(self, **kwargs: Any) -> None:
             captured.update(kwargs)
 
         @staticmethod
-        def public_result(result):
+        def public_result(result: Any) -> dict[str, object]:
             return {
                 "accepted": True,
                 "status": "pending_review",

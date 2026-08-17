@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import Any
 
 import pytest
 from app._compat import UTC
@@ -24,7 +25,7 @@ from app.security.recovery import (
 from shared.auth.passwords import hash_password, verify_password
 
 
-def _lab_user(db, email: str = "recovery@example.test") -> LabUser:
+def _lab_user(db: Any, email: str = "recovery@example.test") -> LabUser:
     lab = Lab(
         name="Recovery Test Lab",
         license_number=f"REC-{email}",
@@ -47,7 +48,7 @@ def _lab_user(db, email: str = "recovery@example.test") -> LabUser:
     return user
 
 
-def test_unknown_email_is_enumeration_resistant(db):
+def test_unknown_email_is_enumeration_resistant(db: Any) -> None:
     recovery, raw_token = request_password_recovery(
         db,
         email="unknown@example.test",
@@ -59,7 +60,7 @@ def test_unknown_email_is_enumeration_resistant(db):
     assert db.query(AccountRecoveryRequest).count() == 0
 
 
-def test_request_is_idempotent_and_raw_token_is_not_persisted(db):
+def test_request_is_idempotent_and_raw_token_is_not_persisted(db: Any) -> None:
     user = _lab_user(db)
     first, raw_token = request_password_recovery(
         db,
@@ -81,7 +82,7 @@ def test_request_is_idempotent_and_raw_token_is_not_persisted(db):
     assert len(first.token_digest or "") == 64
 
 
-def test_state_machine_verify_complete_replay_and_revocation(db):
+def test_state_machine_verify_complete_replay_and_revocation(db: Any) -> None:
     user = _lab_user(db)
     old_perm_version = user.perm_version
     recovery, raw_token = request_password_recovery(
@@ -112,7 +113,7 @@ def test_state_machine_verify_complete_replay_and_revocation(db):
     assert replay.value.code in {"INVALID_RECOVERY", "RECOVERY_NOT_ACTIVE"}
 
 
-def test_expired_recovery_is_terminal(db):
+def test_expired_recovery_is_terminal(db: Any) -> None:
     user = _lab_user(db, email="expired@example.test")
     recovery, raw_token = request_password_recovery(
         db,
@@ -131,7 +132,7 @@ def test_expired_recovery_is_terminal(db):
     assert recovery.state == EXPIRED
 
 
-def test_verification_attempt_limit_locks_request(db):
+def test_verification_attempt_limit_locks_request(db: Any) -> None:
     user = _lab_user(db, email="locked@example.test")
     recovery, raw_token = request_password_recovery(
         db,
@@ -152,7 +153,7 @@ def test_verification_attempt_limit_locks_request(db):
     assert recovery.state == LOCKED
 
 
-def test_pending_review_never_becomes_recovery_success(db):
+def test_pending_review_never_becomes_recovery_success(db: Any) -> None:
     user = _lab_user(db, email="review@example.test")
     recovery, raw_token = request_password_recovery(
         db,
@@ -171,7 +172,7 @@ def test_pending_review_never_becomes_recovery_success(db):
     assert recovery.state == PENDING_REVIEW
 
 
-def test_http_verify_then_reset_is_single_use(client, db):
+def test_http_verify_then_reset_is_single_use(client: Any, db: Any) -> None:
     user = _lab_user(db, email="http-recovery@example.test")
     recovery, raw_token = request_password_recovery(
         db,
@@ -208,7 +209,7 @@ def test_http_verify_then_reset_is_single_use(client, db):
     assert replay.status_code in (400, 403, 409)
 
 
-def test_high_risk_security_recovery_is_pending_review_and_owner_scoped(client, db):
+def test_high_risk_security_recovery_is_pending_review_and_owner_scoped(client: Any, db: Any) -> None:
     user = _lab_user(db, email="manual-review@example.test")
     login = client.post("/login", json={"email": user.email, "password": "OldPassword123!"})
     assert login.status_code == 200, login.text
@@ -233,7 +234,7 @@ def test_high_risk_security_recovery_is_pending_review_and_owner_scoped(client, 
     assert user.perm_version == 1
 
 
-def test_cross_account_recovery_token_cannot_verify_other_request(db):
+def test_cross_account_recovery_token_cannot_verify_other_request(db: Any) -> None:
     first = _lab_user(db, email="first-account@example.test")
     second = _lab_user(db, email="second-account@example.test")
     first_recovery, first_token = request_password_recovery(
@@ -255,7 +256,7 @@ def test_cross_account_recovery_token_cannot_verify_other_request(db):
     assert second_recovery.state == REQUESTED
 
 
-def test_password_policy_is_enforced_before_mutation(db):
+def test_password_policy_is_enforced_before_mutation(db: Any) -> None:
     user = _lab_user(db, email="policy@example.test")
     recovery, raw_token = request_password_recovery(
         db,

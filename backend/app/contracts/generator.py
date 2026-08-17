@@ -7,6 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from app._compat import UTC
+
 logger = logging.getLogger("gula.contracts")
 
 
@@ -20,7 +22,7 @@ class ContractGenerator:
     def __init__(self, app_name: str = "GULA Platform", app_version: str = "2.1.0"):
         self._app_name = app_name
         self._app_version = app_version
-        self._generated_at = datetime.utcnow().isoformat()
+        self._generated_at = datetime.now(UTC).isoformat()
 
     def generate_openapi(self, app=None) -> dict:
         from fastapi import FastAPI

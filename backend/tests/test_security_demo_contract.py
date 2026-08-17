@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from app.models.lab import Lab
 from app.models.lab_user import LabUser
@@ -8,7 +10,7 @@ from app.models.user import User
 from shared.auth.passwords import hash_password
 
 
-def test_auth_hardening_middleware_is_registered():
+def test_auth_hardening_middleware_is_registered() -> None:
     from app.main import app
 
     middleware_names = {middleware.cls.__name__ for middleware in app.user_middleware}
@@ -16,7 +18,7 @@ def test_auth_hardening_middleware_is_registered():
     assert "GlobalRateLimitMiddleware" in middleware_names
 
 
-def test_global_rate_limit_fails_closed_without_shared_cache(client, monkeypatch):
+def test_global_rate_limit_fails_closed_without_shared_cache(client: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     from app import middleware
     from app.security import redis_client
     from app.security.redis_client import _MemoryStore
@@ -29,13 +31,13 @@ def test_global_rate_limit_fails_closed_without_shared_cache(client, monkeypatch
     assert response.headers["Retry-After"] == "5"
 
 
-def test_failed_login_is_a_safe_401(client):
+def test_failed_login_is_a_safe_401(client: Any) -> None:
     response = client.post("/login", json={"email": "nobody@example.com", "password": "wrong-password"})
     assert response.status_code == 401
     assert "traceback" not in response.text.lower()
 
 
-def test_user_verification_round_trip(client, db):
+def test_user_verification_round_trip(client: Any, db: Any) -> None:
     user = User(
         email="citizen@example.com",
         phone="+9647701111111",
@@ -69,7 +71,7 @@ def test_user_verification_round_trip(client, db):
     assert logged_in.cookies.get("access_token")
 
 
-def test_verification_resend_is_throttled_and_code_is_single_use(client, db):
+def test_verification_resend_is_throttled_and_code_is_single_use(client: Any, db: Any) -> None:
     user = User(
         email="citizen-verification-replay@example.com",
         phone="+9647701111122",
@@ -110,7 +112,7 @@ def test_verification_resend_is_throttled_and_code_is_single_use(client, db):
     assert replay.status_code == 400
 
 
-def test_verification_provider_failure_never_succeeds(client, db, monkeypatch):
+def test_verification_provider_failure_never_succeeds(client: Any, db: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     user = User(
         email="citizen-verification-provider@example.com",
         phone="+9647701111144",
@@ -124,10 +126,10 @@ def test_verification_provider_failure_never_succeeds(client, db, monkeypatch):
     db.commit()
 
     class _FailureService:
-        def send_email(self, *_args, **_kwargs):
+        def send_email(self, *_args: Any, **_kwargs: Any) -> Any:
             return type("Delivery", (), {"success": False})()
 
-        def send_sms(self, *_args, **_kwargs):
+        def send_sms(self, *_args: Any, **_kwargs: Any) -> Any:
             return type("Delivery", (), {"success": False})()
 
     monkeypatch.setattr(
@@ -145,7 +147,7 @@ def test_verification_provider_failure_never_succeeds(client, db, monkeypatch):
     assert user.is_verified is False
 
 
-def test_verification_attempt_limit_is_server_authoritative(client, db):
+def test_verification_attempt_limit_is_server_authoritative(client: Any, db: Any) -> None:
     user = User(
         email="citizen-verification-attempts@example.com",
         phone="+9647701111133",
@@ -181,7 +183,7 @@ def test_verification_attempt_limit_is_server_authoritative(client, db):
     assert user.is_verified is False
 
 
-def test_verification_request_does_not_enumerate_unknown_identifier(client):
+def test_verification_request_does_not_enumerate_unknown_identifier(client: Any) -> None:
     response = client.post(
         "/auth/verification/request",
         json={"identifier": "unknown-verification@example.com"},
@@ -192,7 +194,7 @@ def test_verification_request_does_not_enumerate_unknown_identifier(client):
     }
 
 
-def test_cross_origin_cookie_write_is_rejected(client, db):
+def test_cross_origin_cookie_write_is_rejected(client: Any, db: Any) -> None:
     lab = Lab(name="CSRF Lab", is_active=True)
     db.add(lab)
     db.flush()
@@ -216,7 +218,7 @@ def test_cross_origin_cookie_write_is_rejected(client, db):
     assert rejected.status_code == 403
 
 
-def test_cross_origin_refresh_cookie_write_is_rejected(client, db):
+def test_cross_origin_refresh_cookie_write_is_rejected(client: Any, db: Any) -> None:
     lab = Lab(name="CSRF Refresh Lab", is_active=True)
     db.add(lab)
     db.flush()
@@ -244,12 +246,12 @@ def test_cross_origin_refresh_cookie_write_is_rejected(client, db):
     assert rejected.status_code == 403
 
 
-def test_demo_access_is_disabled_by_default(client):
+def test_demo_access_is_disabled_by_default(client: Any) -> None:
     response = client.post("/demo/access")
     assert response.status_code == 404
 
 
-def test_web_login_does_not_echo_bearer_tokens(client, db):
+def test_web_login_does_not_echo_bearer_tokens(client: Any, db: Any) -> None:
     user = User(
         email="web-session@example.com",
         phone="+9647701112222",
@@ -276,7 +278,7 @@ def test_web_login_does_not_echo_bearer_tokens(client, db):
     assert "HttpOnly" in response.headers.get("set-cookie", "")
 
 
-def test_malformed_verification_cache_is_safe_400(client, db):
+def test_malformed_verification_cache_is_safe_400(client: Any, db: Any) -> None:
     from app.routes import verification as verification_route
 
     identifier = "malformed-cache@example.com"
@@ -302,7 +304,7 @@ def test_malformed_verification_cache_is_safe_400(client, db):
     assert response.json()["detail"] == "Invalid or expired verification code"
 
 
-def test_web_refresh_hides_tokens_and_native_refresh_preserves_contract(client, db):
+def test_web_refresh_hides_tokens_and_native_refresh_preserves_contract(client: Any, db: Any) -> None:
     user = User(
         email="refresh-contract@example.com",
         phone="+9647701114444",
@@ -353,7 +355,7 @@ def test_web_refresh_hides_tokens_and_native_refresh_preserves_contract(client, 
     assert "reuse" in replay.json()["detail"].lower()
 
 
-def test_account_kind_prevents_legacy_id_collision_on_session_and_logout(client, db):
+def test_account_kind_prevents_legacy_id_collision_on_session_and_logout(client: Any, db: Any) -> None:
     lab = Lab(name="Namespace Lab", is_active=True)
     db.add(lab)
     db.flush()
@@ -398,7 +400,7 @@ def test_account_kind_prevents_legacy_id_collision_on_session_and_logout(client,
     assert citizen.perm_version == 2
 
 
-def test_unscoped_legacy_token_is_rejected(client):
+def test_unscoped_legacy_token_is_rejected(client: Any) -> None:
     from app.security.auth import create_token
 
     token = create_token({"user_id": 1, "role": "citizen", "perm_ver": 1})

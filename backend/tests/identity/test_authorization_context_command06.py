@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 from app.identity.api.roles import _resolve_trusted_scope
@@ -12,39 +13,45 @@ from app.identity.services.authorization_decision import AuthorizationRequest
 
 
 class _Result:
-    def __init__(self, *, rowcount: int = 0, scalar=None, rows=None):
+    def __init__(
+        self,
+        *,
+        rowcount: int = 0,
+        scalar: Any = None,
+        rows: list[Any] | None = None,
+    ) -> None:
         self.rowcount = rowcount
         self._scalar = scalar
         self._rows = list(rows or [])
 
-    def scalar_one_or_none(self):
+    def scalar_one_or_none(self) -> Any:
         return self._scalar
 
-    def scalars(self):
+    def scalars(self) -> _Result:
         return self
 
-    def all(self):
+    def all(self) -> list[Any]:
         return self._rows
 
 
 class _AuditSession:
-    def __init__(self):
+    def __init__(self) -> None:
         self.entries: list[IdentityAuditEntry] = []
         self.calls = 0
 
-    async def execute(self, _statement):
+    async def execute(self, _statement: Any) -> _Result:
         self.calls += 1
         return _Result(scalar=None, rows=self.entries if self.calls > 1 else [])
 
-    def add(self, entry):
+    def add(self, entry: IdentityAuditEntry) -> None:
         self.entries.append(entry)
 
-    async def flush(self):
+    async def flush(self) -> None:
         return None
 
 
 class _RevocationSession(_AuditSession):
-    async def execute(self, _statement):
+    async def execute(self, _statement: Any) -> _Result:
         self.calls += 1
         if self.calls == 1:
             return _Result(rowcount=2)
@@ -56,7 +63,7 @@ class _RevocationSession(_AuditSession):
 @pytest.mark.asyncio
 async def test_audit_context_is_first_class_and_chain_hashes_it() -> None:
     session = _AuditSession()
-    entry = await AuditService(session).record_event(
+    entry = await AuditService(cast(Any, session)).record_event(
         action="AUTHZ_DENY",
         actor_id="account-a",
         target_type="patient",
@@ -79,14 +86,14 @@ async def test_audit_context_is_first_class_and_chain_hashes_it() -> None:
     assert entry.reason_code == "CROSS_TENANT_DENIED"
     assert entry.request_id == "request-a"
     assert entry.correlation_id == "correlation-a"
-    assert await AuditService(session).verify_chain_integrity() == []
+    assert await AuditService(cast(Any, session)).verify_chain_integrity() == []
 
 
 @pytest.mark.asyncio
 async def test_access_revocation_invalidates_sessions_and_workspace_contexts() -> None:
     session = _RevocationSession()
     counts = await revoke_account_access(
-        session,
+        cast(Any, session),
         account_id="account-a",
         actor_id="admin-a",
         organization_id="org-a",
@@ -105,13 +112,13 @@ async def test_access_revocation_invalidates_sessions_and_workspace_contexts() -
 
 
 class _ScopeSession:
-    def __init__(self, workspace):
+    def __init__(self, workspace: Any) -> None:
         self.workspace = workspace
 
-    async def scalar(self, _statement):
+    async def scalar(self, _statement: Any) -> Any:
         return SimpleNamespace(is_active=True, workspace_id=self.workspace.id)
 
-    async def get(self, _model, _workspace_id):
+    async def get(self, _model: Any, _workspace_id: Any) -> Any:
         return self.workspace
 
 
@@ -131,7 +138,7 @@ async def test_trusted_scope_rejects_cross_workspace_request() -> None:
     with pytest.raises(Exception, match="Authorization scope mismatch"):
         await _resolve_trusted_scope(
             actor,
-            _ScopeSession(workspace),
+            cast(Any, _ScopeSession(workspace)),
             organization_id="org-a",
             facility_id="facility-a",
             department_id="department-a",
@@ -156,7 +163,7 @@ async def test_trusted_scope_rejects_cross_organization_request() -> None:
     with pytest.raises(Exception, match="Organization context mismatch"):
         await _resolve_trusted_scope(
             actor,
-            _ScopeSession(workspace),
+            cast(Any, _ScopeSession(workspace)),
             organization_id="org-b",
             facility_id=None,
             department_id=None,

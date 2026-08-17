@@ -1,20 +1,21 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from app.identity.api import auth as auth_api
 
 
 @pytest.mark.asyncio
-async def test_niam_login_uses_request_metadata_not_query_values(monkeypatch):
+async def test_niam_login_uses_request_metadata_not_query_values(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
     class _AuthenticationService:
-        def __init__(self, _db):
+        def __init__(self, _db: Any) -> None:
             pass
 
-        async def login(self, **kwargs):
+        async def login(self, **kwargs: Any) -> dict[str, str]:
             captured.update(kwargs)
             return {"session_uuid": "session-1"}
 
@@ -24,10 +25,10 @@ async def test_niam_login_uses_request_metadata_not_query_values(monkeypatch):
     request = SimpleNamespace(headers={"user-agent": "trusted-client/1.0"})
 
     class _Db:
-        def __init__(self):
+        def __init__(self) -> None:
             self.commits = 0
 
-        def commit(self):
+        def commit(self) -> None:
             self.commits += 1
 
     db = _Db()
@@ -46,14 +47,14 @@ async def test_niam_login_uses_request_metadata_not_query_values(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_niam_logout_is_account_scoped(monkeypatch):
+async def test_niam_logout_is_account_scoped(monkeypatch: pytest.MonkeyPatch) -> None:
     captured: dict[str, object] = {}
 
     class _AuthenticationService:
-        def __init__(self, _db):
+        def __init__(self, _db: Any) -> None:
             pass
 
-        async def logout(self, session_uuid, account_id=None):
+        async def logout(self, session_uuid: str, account_id: str | None = None) -> bool:
             captured.update({"session_uuid": session_uuid, "account_id": account_id})
             return account_id == "account-1" and session_uuid == "session-1"
 
@@ -61,10 +62,10 @@ async def test_niam_logout_is_account_scoped(monkeypatch):
     actor = SimpleNamespace(account=SimpleNamespace(id="account-1"))
 
     class _Db:
-        def __init__(self):
+        def __init__(self) -> None:
             self.commits = 0
 
-        def commit(self):
+        def commit(self) -> None:
             self.commits += 1
 
     db = _Db()
