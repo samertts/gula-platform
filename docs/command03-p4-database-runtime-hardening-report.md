@@ -6,7 +6,8 @@
 **Baseline commit:** `25d0f0deafbefcfde76743223d90544bf63151d6`
 **Base:** `origin/main` at `1e07b8d677c5f7c94d0fb387937eff959af9589d`
 **Execution date:** 2026-08-17
-**Status:** Final local and read-only external re-evaluation before commit/push
+**Status:** Final local and post-push read-only re-evaluation
+**Verified commit:** `ce993195c199a79218fd3e71e11d4ed9c27c2a7f`
 
 > **Safety boundary:** No production database connection, DDL, data mutation, migration execution against production, deployment, automatic merge, or P5/Command 04 work was performed.
 
@@ -147,12 +148,12 @@ No attempt was made to create or enable a Railway connector, and no deployment a
 
 ## 13. Vercel Status
 
-The enabled Vercel connector was used only for read-only inspection. The team contained one project named `gula-platform`, and the latest observed deployment for commit `25d0f0deafbefcfde76743223d90544bf63151d6` had state **`BLOCKED`**, target `null`, and an account-configuration error link. The Vercel build-log query returned **no error/stderr/exit events**, indicating that the deployment was blocked before a normal build failure was produced.
+The enabled Vercel connector was used only for read-only inspection. The team contained one project named `gula-platform`, and the latest observed deployment `dpl_h5eZjNo6ggSFp185yMLjeFE1jXNr` for verified commit `ce993195c199a79218fd3e71e11d4ed9c27c2a7f` had state **`BLOCKED`**, target `null`, and an account-configuration error link. The Vercel build-log query for the preceding blocked deployment returned **no error/stderr/exit events**, indicating that the deployment was blocked before a normal build failure was produced.
 
 | Vercel evidence | Result |
 |---|---|
 | Project | `gula-platform` |
-| Latest inspected commit | `25d0f0deafbefcfde76743223d90544bf63151d6` |
+| Latest inspected commit | `ce993195c199a79218fd3e71e11d4ed9c27c2a7f` |
 | Deployment state | **BLOCKED** |
 | Target | `null` |
 | Build errors | None recorded; build did not proceed normally |
@@ -162,7 +163,7 @@ The Vercel state is therefore **BLOCKED**, not PASS. No redeploy, project settin
 
 ## 14. Production Database Status
 
-**`UNVERIFIED`**. The command did not connect to, inspect, mutate, migrate, reset, truncate, or otherwise access a production database. No production migration revision, schema version, connectivity, health, or integrity assertion is made.
+**`UNVERIFIED`**. The command did not connect to, inspect, mutate, migrate, reset, truncate, or otherwise access a production database. No production migration revision, schema version, connectivity, health, or integrity assertion is made. The final post-push verification confirmed the branch and remote ref at `ce993195c199a79218fd3e71e11d4ed9c27c2a7f`; PR #226 remains open.
 
 This is intentional. A production read-only verification would require an explicitly authorized and correctly scoped database connector/environment; its absence cannot be converted into PASS.
 
@@ -199,7 +200,7 @@ The four live schema tests skipped for the explicitly missing migration database
 
 The repository CI workflow uses PostgreSQL 17 and Redis 7 service containers, Python 3.12, and Node 22 for its main backend path. The quality-gate workflow uses Python 3.14, and backend Dockerfiles use Python 3.14. This is a version-drift observation requiring governance/compatibility review rather than an automatic major-version change.
 
-The local environment passed the relevant suites. Remote GitHub Actions for the prior source commit were blocked externally before runner steps, and the latest Vercel deployment was blocked by account configuration before build events. Railway and production database alignment were not verifiable.
+The local environment passed the relevant suites. Post-push GitHub run listing for the verified SHA returned HTTP 403 (`Resource not accessible by integration`), so current remote CI cannot be independently classified as green or red from this session; prior PR runs were already evidenced as externally blocked before runner steps. The latest Vercel deployment for the verified SHA is blocked by account configuration before normal build events. Railway and production database alignment were not verifiable.
 
 | Alignment item | Status |
 |---|---|
