@@ -43,7 +43,7 @@ RUN mkdir -p /app/backend && ln -s /app/app /app/backend/app
 
 # Fail the image build on syntax errors in application or shared code.
 RUN chmod 755 /app/start_railway.sh && \
-    python -m compileall app/ shared/ railway_startup_probe.py
+    python -m compileall app/ shared/ backend/app/_compat.py railway_startup_probe.py
 
 # SECURITY: Drop root — run as unprivileged user.
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
@@ -52,7 +52,7 @@ USER appuser
 EXPOSE 10000
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=5 \
-    CMD python3 -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.getenv('PORT', '10000') + '/health', timeout=3)"
+    CMD-SHELL python3 -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.getenv('PORT', '10000') + '/health', timeout=3)"
 
 # Use the same PORT-aware command locally and on Railway. Railway's saved
 # Start Command must also point to /app/start_railway.sh when configured.
