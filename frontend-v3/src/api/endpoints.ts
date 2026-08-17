@@ -1334,10 +1334,10 @@ export type ClinicalNotification = {
 
 export const syncApi = {
   registerDevice: (data: { device_id: string; hospital_id: number }) =>
-    api.post<Record<string, unknown>>("/national/sync/devices/session", data).then((r) => r.data),
-  status: (deviceId: string) => api.get<Record<string, unknown>>("/national/sync/status", { params: { device_id: deviceId } }).then((r) => r.data),
-  pushBatch: (data: { device_id: string; operations: Record<string, unknown>[] }) =>
-    api.post<{ accepted_count: number; duplicate_count: number; conflict_count: number; rejected_count: number; results: { operation_id?: string; status?: string }[] }>("/national/sync/operations:batch", data).then((r) => r.data),
+    api.post<{ device_session_token: string; device_id: string; hospital_id: number; lab_id: number; policy_version: string; allowed_operation_types: string[]; expires_at: string }>("/national/sync/devices/session", data).then((r) => r.data),
+  status: (deviceId: string, deviceToken: string) => api.get<Record<string, unknown>>("/national/sync/status", { params: { device_id: deviceId }, headers: { "X-Device-Session": deviceToken } }).then((r) => r.data),
+  pushBatch: (data: { device_id: string; operations: Record<string, unknown>[] }, deviceToken: string) =>
+    api.post<{ accepted_count: number; duplicate_count: number; conflict_count: number; rejected_count: number; results: { operation_id?: string; status?: string }[] }>("/national/sync/operations:batch", data, { headers: { "X-Device-Session": deviceToken } }).then((r) => r.data),
   changes: (after?: string) => api.get<{ changes: Record<string, unknown>[] }>("/national/sync/changes", { params: after ? { after } : undefined }).then((r) => r.data),
   conflicts: (params?: { hospital_id?: number; status?: string; limit?: number }) =>
     api.get<SyncConflict[]>("/national/sync/conflicts", { params }).then((r) => r.data),

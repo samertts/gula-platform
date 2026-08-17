@@ -74,7 +74,7 @@ def create_device_session(
     device_id: str,
     hospital_id: int,
     expires_minutes: int = 480,
-) -> NationalDeviceSessionModel:
+) -> tuple[NationalDeviceSessionModel, str]:
     lab_id = _get_lab_id(current_user)
     user_id = _get_scope_user_id(current_user)
     if not device_id.strip():
@@ -82,7 +82,8 @@ def create_device_session(
     existing = db.query(NationalDeviceSessionModel).filter(
         NationalDeviceSessionModel.device_id == device_id,
     ).first()
-    session_hash = hashlib.sha256(secrets.token_urlsafe(32).encode()).hexdigest()
+    session_token = secrets.token_urlsafe(48)
+    session_hash = hashlib.sha256(session_token.encode()).hexdigest()
     if existing:
         existing.lab_id = lab_id
         existing.hospital_id = hospital_id
@@ -92,7 +93,7 @@ def create_device_session(
         existing.revoked = False
         existing.updated_at = now_utc()
         db.flush()
-        return existing
+        return existing, session_token
     session = NationalDeviceSessionModel(
         device_id=device_id,
         lab_id=lab_id,
@@ -104,18 +105,34 @@ def create_device_session(
     )
     db.add(session)
     db.flush()
-    log_action(db, "sync.device_session.create", session.id, lab_id, user_id, {
-        "device_id": device_id,
-        "hospital_id": hospital_id,
-        "expires_at": session.expires_at.isoformat(),
-    })
-    return session
+    log_action(
+        db,
+        "sync.device_session.create",
+        resource_type="device_session",
+        resource_id=None,
+        user_id=int(user_id) if user_id.isdigit() else None,
+        lab_id=lab_id,
+        details={
+            "session_id": session.id,
+            "device_id": device_id,
+            "hospital_id": hospital_id,
+            "expires_at": session.expires_at.isoformat(),
+        },
+    )
+    return session, session_token
 
 
-def _assert_device_scope(db: Session, current_user: Any, device_id: str, hospital_id: int | None = None) -> NationalDeviceSessionModel:
+def _assert_device_scope(
+    db: Session,
+    current_user: Any,
+    device_id: str,
+    device_token: str,
+    hospital_id: int | None = None,
+) -> NationalDeviceSessionModel:
     lab_id = _get_lab_id(current_user)
     session = db.query(NationalDeviceSessionModel).filter(
         NationalDeviceSessionModel.device_id == device_id,
+        NationalDeviceSessionModel.session_hash == hashlib.sha256(device_token.encode()).hexdigest(),
         NationalDeviceSessionModel.lab_id == lab_id,
         NationalDeviceSessionModel.revoked.is_(False),
         NationalDeviceSessionModel.expires_at > now_utc(),
@@ -190,6 +207,7 @@ def ingest_operation(
     *,
     current_user: Any,
     device_id: str,
+    device_token: str,
     operation: dict[str, Any],
 ) -> dict[str, Any]:
     lab_id = _get_lab_id(current_user)
@@ -205,7 +223,7 @@ def ingest_operation(
     hospital_id = payload.get("hospital_id")
     if hospital_id is not None:
         hospital_id = int(hospital_id)
-    _assert_device_scope(db, current_user, device_id, hospital_id)
+    _assert_device_scope(db, current_user, device_id, device_token, hospital_id)
     digest = payload_hash(payload)
 
     existing = db.query(NationalSyncOperationModel).filter(
@@ -319,7 +337,15 @@ def ingest_operation(
             payload={"conflict_id": conflict.id, "severity": conflict.severity, "resource_type": conflict.entity_type, "resource_id": conflict.entity_id},
         )
         create_conflict_notification(db, conflict=conflict, event=event, recipient_user_id=user_id)
-        log_action(db, "sync.conflict.created", conflict.id, lab_id, user_id, {"operation_id": operation_id, "severity": conflict.severity, "reason": str(exc)})
+        log_action(
+            db,
+            "sync.conflict.created",
+            resource_type="sync_conflict",
+            resource_id=None,
+            user_id=int(user_id) if user_id.isdigit() else None,
+            lab_id=lab_id,
+            details={"conflict_id": conflict.id, "operation_id": operation_id, "severity": conflict.severity, "reason": str(exc)},
+        )
         db.flush()
         return {"status": "conflict", "operation_id": operation_id, "conflict_id": conflict.id, "reason_code": record.rejection_code, "next_action": "review_required"}
 
@@ -356,7 +382,16 @@ def resolve_conflict(db: Session, current_user: Any, conflict_id: str, *, decisi
     conflict.resolved_by = _get_scope_user_id(current_user)
     conflict.resolved_at = now_utc()
     conflict.updated_at = now_utc()
-    log_action(db, "sync.conflict.resolved", conflict.id, lab_id, _get_scope_user_id(current_user), {"decision": decision, "reason_code": reason_code})
+    resolver_id = _get_scope_user_id(current_user)
+    log_action(
+        db,
+        "sync.conflict.resolved",
+        resource_type="sync_conflict",
+        resource_id=None,
+        user_id=int(resolver_id) if resolver_id.isdigit() else None,
+        lab_id=lab_id,
+        details={"conflict_id": conflict.id, "decision": decision, "reason_code": reason_code},
+    )
     db.flush()
     return conflict
 
@@ -384,7 +419,16 @@ def acknowledge_notification(db: Session, current_user: Any, notification_id: st
         notification.acknowledged_by = _get_scope_user_id(current_user)
         notification.status = "acknowledged"
         notification.updated_at = now_utc()
-        log_action(db, "clinical.notification.acknowledged", notification.id, notification.lab_id, _get_scope_user_id(current_user), {"conflict_id": notification.conflict_id})
+        ack_user_id = _get_scope_user_id(current_user)
+        log_action(
+            db,
+            "clinical.notification.acknowledged",
+            resource_type="clinical_notification",
+            resource_id=None,
+            user_id=int(ack_user_id) if ack_user_id.isdigit() else None,
+            lab_id=notification.lab_id,
+            details={"notification_id": notification.id, "conflict_id": notification.conflict_id},
+        )
         db.flush()
     return notification
 

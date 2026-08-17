@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -14,7 +14,9 @@ from app.database import SessionLocal, get_db
 from app.domain.exceptions import ConflictError, NotFoundError
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user, require_permission
+from app.services.audit_service import log_action
 from app.services.sync_conflict_service import (
+    _assert_device_scope,
     _get_lab_id,
     acquire_record_lock,
     acknowledge_notification,
@@ -49,6 +51,10 @@ class SyncBatchRequest(BaseModel):
     operations: list[dict[str, Any]] = Field(min_length=1, max_length=200)
 
 
+class NotificationEscalationRequest(BaseModel):
+    recipient_user_id: int | None = Field(default=None, gt=0)
+
+
 class ConflictResolutionRequest(BaseModel):
     decision: str = Field(min_length=3, max_length=64)
     reason_code: str = Field(min_length=3, max_length=64)
@@ -74,6 +80,29 @@ def _error(exc: Exception) -> HTTPException:
     if "locked" in text.lower() or "conflict" in text.lower() or "idempotency" in text.lower() or "version" in text.lower():
         return HTTPException(status_code=status.HTTP_409_CONFLICT, detail=text)
     return HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=text)
+
+
+def _select_escalation_recipient(db: Session, current_user: LabUser, requested_user_id: int | None = None) -> str:
+    lab_id = _get_lab_id(current_user)
+    if requested_user_id is not None:
+        recipient = db.query(LabUser).filter(
+            LabUser.id == requested_user_id,
+            LabUser.lab_id == lab_id,
+            LabUser.is_active.is_(True),
+        ).first()
+        if recipient is None:
+            raise ConflictError("Escalation recipient is not active or outside institutional scope")
+        return str(recipient.id)
+    for role in ("admin", "lab_admin", "supervisor", "department_head", "doctor"):
+        recipient = db.query(LabUser).filter(
+            LabUser.lab_id == lab_id,
+            LabUser.role == role,
+            LabUser.is_active.is_(True),
+            LabUser.id != current_user.id,
+        ).order_by(LabUser.id.asc()).first()
+        if recipient is not None:
+            return str(recipient.id)
+    raise ConflictError("No active escalation recipient is configured for this institution")
 
 
 def _conflict_view(item: NationalSyncConflictModel) -> dict[str, Any]:
@@ -128,9 +157,10 @@ def register_device_session(
     current_user: LabUser = Depends(get_current_user),
 ):
     try:
-        session = create_device_session(db, current_user=current_user, device_id=payload.device_id, hospital_id=payload.hospital_id)
+        session, session_token = create_device_session(db, current_user=current_user, device_id=payload.device_id, hospital_id=payload.hospital_id)
         db.commit()
         return {
+            "device_session_token": session_token,
             "device_id": session.device_id,
             "hospital_id": session.hospital_id,
             "lab_id": session.lab_id,
@@ -149,9 +179,11 @@ def register_device_session(
 )
 def sync_status(
     device_id: str,
+    x_device_session: str = Header(min_length=20, alias="X-Device-Session"),
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
+    _assert_device_scope(db, current_user, device_id, x_device_session)
     lab_id = _get_lab_id(current_user)
     pending = db.query(NationalSyncOperationModel).filter(
         NationalSyncOperationModel.lab_id == lab_id,
@@ -184,15 +216,17 @@ def sync_status(
 def ingest_batch(
     payload: SyncBatchRequest,
     background_tasks: BackgroundTasks,
+    x_device_session: str = Header(min_length=20, alias="X-Device-Session"),
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
     results: list[dict[str, Any]] = []
     accepted = duplicate = conflict = rejected = 0
     try:
+        _assert_device_scope(db, current_user, payload.device_id, x_device_session)
         for operation in payload.operations:
             try:
-                result = ingest_operation(db, current_user=current_user, device_id=payload.device_id, operation=operation)
+                result = ingest_operation(db, current_user=current_user, device_id=payload.device_id, device_token=x_device_session, operation=operation)
             except Exception as exc:
                 result = {
                     "status": "rejected",
@@ -337,6 +371,7 @@ def notification_ack(
 )
 def notification_escalate(
     notification_id: str,
+    payload: NotificationEscalationRequest | None = None,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
 ):
@@ -348,8 +383,17 @@ def notification_escalate(
         raise HTTPException(status_code=404, detail="Notification not found")
     item.status = "escalated"
     item.escalated_at = now_utc()
-    item.escalated_to = "senior_on_call"
+    item.escalated_to = _select_escalation_recipient(db, current_user, payload.recipient_user_id if payload else None)
     item.updated_at = now_utc()
+    log_action(
+        db,
+        "clinical.notification.escalated",
+        resource_type="clinical_notification",
+        resource_id=None,
+        user_id=current_user.id,
+        lab_id=item.lab_id,
+        details={"notification_id": item.id, "escalated_to": item.escalated_to, "severity": item.severity},
+    )
     db.commit()
     return _notification_view(item)
 

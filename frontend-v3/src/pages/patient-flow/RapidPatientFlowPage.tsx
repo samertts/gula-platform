@@ -42,6 +42,14 @@ function deviceId(): string {
   return created;
 }
 
+function deviceSessionToken(): string {
+  return window.localStorage.getItem("gula.emergency.deviceSessionToken") || "";
+}
+
+function saveDeviceSessionToken(token: string): void {
+  window.localStorage.setItem("gula.emergency.deviceSessionToken", token);
+}
+
 function operationId(): string {
   return crypto.randomUUID();
 }
@@ -87,7 +95,24 @@ export default function RapidPatientFlowPage() {
     const pending = await listOfflineOperations();
     if (pending.length === 0) return;
     try {
-      const result = await syncApi.pushBatch({ device_id: deviceId(), operations: pending });
+      let token = deviceSessionToken();
+      if (!token) {
+        const session = await syncApi.registerDevice({ device_id: deviceId(), hospital_id: hospitalId });
+        token = session.device_session_token;
+        saveDeviceSessionToken(token);
+      }
+      let result: Awaited<ReturnType<typeof syncApi.pushBatch>>;
+      try {
+        result = await syncApi.pushBatch({ device_id: deviceId(), operations: pending }, token);
+      } catch (cause) {
+        const responseStatus = (cause as { response?: { status?: number } }).response?.status;
+        if (responseStatus !== 409) throw cause;
+        window.localStorage.removeItem("gula.emergency.deviceSessionToken");
+        const session = await syncApi.registerDevice({ device_id: deviceId(), hospital_id: hospitalId });
+        token = session.device_session_token;
+        saveDeviceSessionToken(token);
+        result = await syncApi.pushBatch({ device_id: deviceId(), operations: pending }, token);
+      }
       for (const item of result.results as { operation_id?: string; status?: string }[]) {
         if (!item.operation_id) continue;
         if (item.status === "accepted" || item.status === "duplicate") {
@@ -144,10 +169,21 @@ export default function RapidPatientFlowPage() {
 
   const activeCount = useMemo(() => queue.filter((entry) => !["discharged", "cancelled"].includes(entry.flow_state)).length, [queue]);
 
-  const queueLocally = async (operation: OfflineOperation, text: string) => {
-    await enqueueOfflineOperation(operation);
-    await refreshOfflineQueue();
-    setMessage(`${text} تم الحفظ على هذا الجهاز وبانتظار المزامنة؛ لم يعتمد مركزيًا بعد.`);
+  const queueLocally = async (operation: OfflineOperation, text: string): Promise<boolean> => {
+    try {
+      await enqueueOfflineOperation(operation);
+      await refreshOfflineQueue();
+      setMessage(`${text} تم الحفظ على هذا الجهاز وبانتظار المزامنة؛ لم يعتمد مركزيًا بعد.`);
+      return true;
+    } catch (cause) {
+      const detail = cause instanceof Error ? cause.message : "";
+      if (detail.toLowerCase().includes("queue is full")) {
+        setError("امتلأ الطابور المحلي (5000 عملية). أوقف استقبال الحالات غير الحرجة، واتبع إجراء المؤسسة الورقي، ولا تغلق الشاشة قبل إبلاغ المشرف.");
+      } else {
+        setError("تعذر حفظ العملية محليًا. لا تغلق الشاشة، واتبع إجراء المؤسسة البديل وأبلغ المشرف فورًا.");
+      }
+      return false;
+    }
   };
 
   const registerArrival = async (event: FormEvent<HTMLFormElement>) => {
@@ -167,15 +203,19 @@ export default function RapidPatientFlowPage() {
       is_emergency: priority === "stat",
     };
     try {
+      let completed = false;
       if (!navigator.onLine) {
-        await queueLocally({ operation_id: id, idempotency_key: id, operation_type: "encounter.arrival", entity_type: "Encounter", priority: priority === "stat" ? "critical" : priority, payload, device_id: deviceId(), created_at: new Date().toISOString() }, "تم تسجيل الوصول محليًا.");
+        completed = await queueLocally({ operation_id: id, idempotency_key: id, operation_type: "encounter.arrival", entity_type: "Encounter", priority: priority === "stat" ? "critical" : priority, payload, device_id: deviceId(), created_at: new Date().toISOString() }, "تم تسجيل الوصول محليًا.");
       } else {
         await patientFlowApi.createArrival({ ...payload, idempotency_key: id });
         setMessage("تم تسجيل الوصول مركزيًا دون إنشاء سجل مكرر.");
         await refresh();
+        completed = true;
       }
-      setPatientId("");
-      setPriority("routine");
+      if (completed) {
+        setPatientId("");
+        setPriority("routine");
+      }
     } catch {
       if (!navigator.onLine) {
         await queueLocally({ operation_id: id, idempotency_key: id, operation_type: "encounter.arrival", entity_type: "Encounter", priority: priority === "stat" ? "critical" : priority, payload, device_id: deviceId(), created_at: new Date().toISOString() }, "تعذر الاتصال؛ تم تحويل العملية إلى الطابور المحلي.");
@@ -194,7 +234,8 @@ export default function RapidPatientFlowPage() {
     setError("");
     try {
       if (!navigator.onLine) {
-        await queueLocally({ operation_id: operationId(), idempotency_key: operationId(), operation_type: "encounter.transition", entity_type: "Encounter", entity_id: entry.id, base_version: entry.version, priority: entry.is_emergency ? "critical" : entry.priority || "routine", payload: { target_state: target, hospital_id: hospitalId }, device_id: deviceId(), created_at: new Date().toISOString() }, `تم حفظ انتقال ${STATE_LABEL[target]} محليًا.`);
+        const id = operationId();
+        await queueLocally({ operation_id: id, idempotency_key: id, operation_type: "encounter.transition", entity_type: "Encounter", entity_id: entry.id, base_version: entry.version, priority: entry.is_emergency ? "critical" : entry.priority || "routine", payload: { target_state: target, hospital_id: hospitalId }, device_id: deviceId(), created_at: new Date().toISOString() }, `تم حفظ انتقال ${STATE_LABEL[target]} محليًا.`);
       } else {
         await patientFlowApi.transition(entry.id, { target_state: target, expected_version: entry.version });
         setMessage(`تم نقل الحالة إلى: ${STATE_LABEL[target]}.`);
