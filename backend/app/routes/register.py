@@ -5,7 +5,7 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..config import NID_HMAC_KEY, PUBLIC_SELF_REGISTRATION_ENABLED
+from ..config import NID_HMAC_KEY
 from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
@@ -112,21 +112,20 @@ router = APIRouter(tags=["auth"])
 
 
 def _require_approved_onboarding() -> None:
-    """Block unauthenticated account creation unless operations explicitly enables it.
+    """Fail closed: public registration is not an account-creation channel.
 
-    Public registration is intentionally fail-closed. Citizen and institutional
-    applications are handled by approved onboarding workflows; authenticated
-    facility administrators can still create their own staff accounts.
+    Public applicants must use the review-gated NIAM account-request intake.
+    This guard is deliberately unconditional so configuration cannot re-enable
+    direct public account creation or mint a citizen/doctor identity.
     """
-    if not PUBLIC_SELF_REGISTRATION_ENABLED:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "APPROVED_ONBOARDING_REQUIRED",
-                "message": "Public account creation is handled through approved onboarding procedures.",
-                "message_ar": "إنشاء الحسابات العامة يخضع لإجراءات اعتماد وتحقق رسمية.",
-            },
-        )
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "ACCOUNT_REQUEST_REQUIRED",
+            "message": "Direct public registration is disabled. Submit an account request for review.",
+            "message_ar": "التسجيل العام المباشر معطل. أرسل طلب حساب للمراجعة.",
+        },
+    )
 
 
 # Roles that a lab admin is permitted to create for their own lab.
@@ -191,7 +190,7 @@ class LabRegisterRequest(BaseModel):
         return v
 
 
-@router.post("/register", status_code=201)
+@router.post("/register", status_code=410, deprecated=True)
 def register_lab(
     data: LabRegisterRequest, request: Request, response: Response, db: Session = Depends(get_db),
 ):
@@ -301,11 +300,11 @@ class CitizenRegisterRequest(BaseModel):
     def validate_nid(cls, v):
         v = v.strip()
         if v and not re.match(r"^[0-9]{10,14}$", v):
-            raise ValueError("National ID must be 10–14 digits")
+            raise ValueError("National ID must be 10-14 digits")
         return v
 
 
-@router.post("/register/citizen", status_code=201)
+@router.post("/register/citizen", status_code=410, deprecated=True)
 def register_citizen(
     data: CitizenRegisterRequest,
     request: Request,
@@ -561,19 +560,13 @@ class DoctorRegisterRequest(BaseModel):
         return v
 
 
-@router.post("/register/doctor", status_code=201)
+@router.post("/register/doctor", status_code=410, deprecated=True)
 def register_doctor(
     data: DoctorRegisterRequest,
     request: Request,
     db: Session = Depends(get_db),
 ):
-    """Doctor self-registration (no auth required).
-
-    Creates a User with role='doctor', is_active=True, is_verified=False.
-    A ministry or province admin must verify the account before the doctor
-    can access sensitive endpoints. The doctor's medical license number is
-    stored in plain text (public document) while the national ID is hashed.
-    """
+    """Deprecated public doctor registration; always requires account request intake."""
     rate_limit_auth(request)
     _require_approved_onboarding()
 

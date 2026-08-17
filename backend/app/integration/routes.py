@@ -158,17 +158,6 @@ async def api_catalog() -> dict[str, Any]:
     }
 
 
-@router.get("/connectors")
-async def list_integration_connectors() -> dict[str, Any]:
-    connectors = ConnectorRegistry.list_connectors()
-    statuses = ConnectorRegistry.get_status_all()
-    return {
-        "connectors": connectors,
-        "details": statuses,
-        "count": len(connectors),
-    }
-
-
 @router.get("/standards")
 async def standards_conformance() -> dict[str, Any]:
     from app.integration.standards import (

@@ -1,3 +1,0 @@
-GET	/clinical/quality/benchmarks	2
-GET	/integration/connectors	2
-POST	/clinical/quality/measurements	2

@@ -7880,10 +7880,10 @@
   {
     "path": "/clinical/quality/measurements",
     "method": "POST",
-    "operation_id": "record_quality_measurement_clinical_quality_measurements_post",
-    "summary": "Record Quality Measurement",
+    "operation_id": "create_indicator_measurement_clinical_quality_measurements_post",
+    "summary": "Create Indicator Measurement",
     "tags": [
-      "clinical quality"
+      "clinical"
     ],
     "security": [
       {
@@ -7950,10 +7950,10 @@
   {
     "path": "/clinical/quality/benchmarks",
     "method": "GET",
-    "operation_id": "get_clinical_benchmarks_clinical_quality_benchmarks_get",
-    "summary": "Get Clinical Benchmarks",
+    "operation_id": "list_benchmarks_clinical_quality_benchmarks_get",
+    "summary": "List Benchmarks",
     "tags": [
-      "clinical quality"
+      "clinical"
     ],
     "security": [
       {
@@ -18780,20 +18780,6 @@
     ]
   },
   {
-    "path": "/integration/connectors",
-    "method": "GET",
-    "operation_id": "list_connectors_integration_connectors_get",
-    "summary": "List Connectors",
-    "tags": [
-      "integration-connectors"
-    ],
-    "security": [
-      {
-        "HTTPBearer": []
-      }
-    ]
-  },
-  {
     "path": "/integration/standards",
     "method": "GET",
     "operation_id": "standards_conformance_integration_standards_get",
@@ -18870,6 +18856,20 @@
     "summary": "Integration Health",
     "tags": [
       "integration"
+    ],
+    "security": [
+      {
+        "HTTPBearer": []
+      }
+    ]
+  },
+  {
+    "path": "/integration/connectors",
+    "method": "GET",
+    "operation_id": "list_connectors_integration_connectors_get",
+    "summary": "List Connectors",
+    "tags": [
+      "integration-connectors"
     ],
     "security": [
       {

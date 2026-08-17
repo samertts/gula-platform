@@ -27,9 +27,6 @@ from ..services.order_service import (
     get_patient_history_by_id as _get_patient_history_by_id,
 )
 from ..services.order_service import (
-    get_patient_history_by_phone as _get_patient_history_by_phone,
-)
-from ..services.order_service import (
     get_public_result as _get_public_result,
 )
 from ..services.order_service import (
@@ -279,27 +276,23 @@ def get_patient_history_by_id_route(
     return result
 
 
-@router.get("/history/{phone}")
-def get_patient_history_route(
-    phone: str, request: Request, name: str | None = None, db: Session = Depends(get_db),
-):
-    """Get patient test history by phone number (public, rate limited).
-    Requires 'name' query param matching full patient name as verification.
+@router.get("/history/{phone}", status_code=410, deprecated=True)
+def get_patient_history_route(phone: str, name: str | None = None):
+    """Reject legacy phone/name history lookup.
 
-    Multi-tenant isolation: the phone number may belong to Patient records in
-    multiple labs (each lab keeps its own patient roster).  We aggregate results
-    across ALL labs where the phone+name pair matches, so the citizen sees their
-    complete history regardless of which lab they visited.  Only the patient's
-    own results are returned — no cross-patient data is possible.
+    Medical history is available through the authenticated citizen portal or a
+    separately authorized result-share token. Phone plus display name is not an
+    authentication factor and must never disclose longitudinal health records.
     """
-    rate_limit_public(request, max_per_minute=5)
-
-    result = _get_patient_history_by_phone(db=db, phone=phone, name=name)
-
-    if "error" in result:
-        raise HTTPException(status_code=result["status_code"], detail=result["error"])
-
-    return result
+    del phone, name
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "LEGACY_HISTORY_LOOKUP_DISABLED",
+            "message": "Phone-based public history lookup is disabled. Use an authenticated citizen session.",
+            "message_ar": "تم تعطيل البحث العام بالسجل عبر الهاتف. استخدم جلسة مواطن موثقة.",
+        },
+    )
 
 
 # ─── Clinical Intelligence ────────────────────────────────────────────────────

@@ -12,11 +12,11 @@
 
 ## القرار التنفيذي
 
-تم اكتشاف **2,029 عملية OpenAPI فعلية** في الوضع المحلي، و**2,034 مساراً runtime** بعد flattening للـrouters، و**2,353 decorator ثابتاً** في `backend/app`. كما جرى جرد **95 تعريف مسار في React/PWA** و**37 تعريف مسار في GoRouter desktop/mobile**. لم تظهر duplicate operation IDs في OpenAPI، لكن ظهرت **ثلاث مجموعات runtime مكررة لنفس method/path**، وهي مشكلة جودة وتحتاج إزالة أو توحيداً قبل اعتماد الجرد النهائي.
+تم اكتشاف **2,029 عملية OpenAPI فعلية** في الوضع المحلي، و**2,031 مساراً runtime** بعد flattening للـrouters، و**2,353 decorator ثابتاً** في `backend/app`. كما جرى جرد **95 تعريف مسار في React/PWA** و**37 تعريف مسار في GoRouter desktop/mobile**. لم تظهر duplicate operation IDs في OpenAPI، وبعد الإصلاح لم تعد هناك أي duplicate method/path في runtime inventory.
 
-أهم نتيجة أمنية هي وجود مسارات تسجيل عامة تتعارض مع قاعدة المشروع المعلنة: **No Public Registration؛ Account Request فقط؛ human type فقط**. كما يوجد مسار عام لسجل المريض يعتمد على الهاتف والاسم، إضافة إلى مسارات مشاركة نتائج تعتمد على token عام. لا يعني هذا التقرير أن كل هذه المسارات مستغلة حالياً، لكنه يثبت أنها تحتاج قراراً أمنياً/حوكمياً واضحاً ولا يجوز إعلانها PASS تلقائياً.
+أهم نتيجة أمنية عولجت هي وجود مسارات تسجيل عامة تتعارض مع قاعدة المشروع المعلنة: **No Public Registration؛ Account Request فقط؛ human type فقط**، وقد أصبحت هذه المسارات fail-closed وتعيد HTTP 410 دون إنشاء هوية. كما أُغلق مسار سجل المريض المعتمد على الهاتف والاسم بـHTTP 410، بينما بقيت مسارات مشاركة النتائج القائمة على token بحاجة إلى مراجعة مستقلة لسياسات entropy/expiry/revocation.
 
-> **الحكم الحالي:** جرد المسارات مكتمل محلياً، لكن المسارات العامة الحساسة وازدواجية runtime تحتاج معالجة ومراجعة أمنية قبل إعلان P4 كاملاً أو بدء P5. لا يغيّر هذا التقرير حالة `P4 SECURITY_BLOCKED — AUTHENTICATION_PARTIAL` ولا حالة `P5_BLOCKED_BY_PREREQUISITE`.
+> **الحكم الحالي:** تم تنفيذ إصلاحات التسجيل العام، phone-based history، وruntime duplicates، وثبتت باختبارات مستهدفة وfull backend regression. تبقى مراجعة token result sharing ومواد Android signing وقيود CI الخارجية مانعة لإعلان P4 كاملاً أو بدء P5. لا يغيّر هذا التقرير حالة `P4 SECURITY_BLOCKED — AUTHENTICATION_PARTIAL` ولا حالة `P5_BLOCKED_BY_PREREQUISITE`.
 
 ## 1. منهجية الجرد
 
@@ -31,15 +31,15 @@
 | decorators ثابتة | 2,353 | AST scan | قد تشمل تعريفات غير مركبة runtime |
 | include_router calls | 147 | AST scan | تشمل factory والـcomposition |
 | OpenAPI operations | 2,029 | local OpenAPI export | المسارات المركبة والقابلة للتصدير |
-| runtime APIRoute entries | 2,034 | runtime flattening | يشمل التكرار المضمّن |
+| runtime APIRoute entries | 2,031 | runtime flattening | بعد إزالة التكرارات |
 | OpenAPI operations مع security metadata | 1,885 | OpenAPI | metadata ليست بديلاً عن فحص dependencies |
 | OpenAPI operations بلا security metadata | 144 | OpenAPI | بعضها محمي داخلياً أو router-level |
-| runtime routes مع dependencies | 1,980 | runtime dependency tree | يشمل DB وBearer وactor وغيرها |
-| runtime routes بلا dependencies | 54 | runtime dependency tree | أعلى مجموعة تحتاج مراجعة |
+| runtime routes مع dependencies | 1,976 | runtime dependency tree | يشمل DB وBearer وactor وغيرها |
+| runtime routes بلا dependencies | 55 | runtime dependency tree | أعلى مجموعة تحتاج مراجعة |
 | React/PWA route declarations | 95 | `frontend-v3/src/routes/index.tsx` | جرد client-side فقط |
 | GoRouter desktop/mobile declarations | 37 | `mobile/desktop/lib/app_router.dart` | لا يثبت native build parity |
 | duplicate OpenAPI operation IDs | 0 | OpenAPI analysis | PASS لهذا الفحص المحدد |
-| duplicate runtime method/path groups | 3 | runtime analysis | finding مفتوح |
+| duplicate runtime method/path groups | 0 | runtime analysis | PASS بعد التوحيد |
 
 توزيع عمليات OpenAPI هو: **986 GET، 866 POST، 123 PUT، 49 DELETE، و5 PATCH**. مجموع هذه القيم يساوي 2,029 عملية.
 
@@ -78,24 +78,26 @@
 
 ### 4.1 مسارات لا تملك runtime dependencies
 
-وجد الفحص 54 مساراً بلا dependencies مباشرة في `APIRoute`. وتشمل `/health*` و`/test-types` و`/test-profiles` و`/app-updates` و`/tiers` وmetadata الخاصة بـOAuth2/SAML/FHIR، إضافة إلى `/contracts/*` و`/certification/*` وبعض health/metadata وAI/public-result endpoints. القائمة الكاملة موجودة في [`runtime-no-deps.tsv`](./runtime-no-deps.tsv).
+وجد الفحص 55 مساراً بلا dependencies مباشرة في `APIRoute`. وتشمل `/health*` و`/test-types` و`/test-profiles` و`/app-updates` و`/tiers` وmetadata الخاصة بـOAuth2/SAML/FHIR، إضافة إلى `/contracts/*` و`/certification/*` وبعض health/metadata وAI/public-result endpoints. القائمة الكاملة موجودة في [`runtime-no-deps.tsv`](./runtime-no-deps.tsv).
 
 غياب dependency لا يثبت وحده أن المسار غير محمي؛ بعض الوظائف تستدعي helper داخلياً أو تعتمد على توقيع webhook أو token logic. لكن وفق قاعدة **Default Deny** يجب أن تكون الحماية قابلة للإثبات في endpoint نفسه أو في router dependency موثق ومختبر، لا أن تعتمد على افتراضات من اسم المسار.
 
-### 4.2 التسجيل العام — finding حرج بالنسبة لسياسة المشروع
+### 4.2 التسجيل العام — أُغلق server-side مع بقاء المسارات deprecated
 
-| المسار | الدليل المصدر | السلوك المرصود | التقييم |
+تم تحويل `POST /register` و`POST /register/citizen` و`POST /register/doctor` إلى fail-closed guards غير قابلة لإعادة التفعيل عبر configuration، وتعيد HTTP 410 دون إنشاء Lab أو User أو Citizen. واجهة Web/PWA تستخدم بالفعل `/niam/account-requests/` مع `requested_account_type: "human"` وIdempotency-Key. بقيت handlers القديمة فقط للتوافق والإعلان عن deprecation، ولا تمثل قناة إنشاء حساب.
+
+| المسار | الدليل المصدر | السلوك المرصود بعد الإصلاح | التقييم |
 |---|---|---|---|
-| `POST /register` | `backend/app/routes/register.py:194-258` | ينشئ Lab وLabUser في حالة inactive/pending approval بعد كتابة قاعدة البيانات؛ لا يصدر token | **Public onboarding؛ تعارض مع Account Request-only policy** |
-| `POST /register/citizen` | `backend/app/routes/register.py:308-399` | ينشئ `User(role="citizen", is_active=True, is_verified=False)` ويمتد إلى mint citizen identity | **Public self-registration؛ تعارض مباشر مع No Public Registration** |
-| `POST /register/doctor` | `backend/app/routes/register.py:564-650` | موثق صراحةً `no auth required` وينشئ doctor فعالاً مع `is_verified=False` | **Public self-registration؛ تعارض مباشر مع السياسة** |
-| `POST /register/staff` | `backend/app/routes/register.py:439-504` | يعتمد على `get_current_user` ويتطلب role admin | **محمي مبدئياً؛ يحتاج اختبار tenant/role** |
+| `POST /register` | `backend/app/routes/register.py:194-258` | unconditional guard، HTTP 410، لا كتابة لقاعدة البيانات | **Fixed; deprecated compatibility path** |
+| `POST /register/citizen` | `backend/app/routes/register.py:308-399` | unconditional guard، HTTP 410، لا إنشاء User أو Citizen | **Fixed; deprecated compatibility path** |
+| `POST /register/doctor` | `backend/app/routes/register.py:563-574` | unconditional guard، HTTP 410، لا إنشاء Doctor | **Fixed; deprecated compatibility path** |
+| `POST /register/staff` | `backend/app/routes/register.py:439-504` | `get_current_user` وrole admin مع tenant lab scope | **Protected; regression PASS** |
 
-هذه ليست ملاحظة شكلية. حتى عندما تكون بعض الحسابات pending أو غير verified، فإن المسار العام يكتب سجلات هوية ويخلق حسابات جديدة، بينما متطلب المشروع ينص على أن التسجيل العام غير مسموح وأن المسار المقبول هو Account Request لشخص بشري فقط. يجب أن يكون القرار إما إزالة/تعطيل المسارات العامة أو تحويلها إلى account-request intake لا ينشئ حساباً قابلاً للدخول ولا يفعّل هوية مباشرة.
+لم يعد المسار العام يكتب سجلات هوية أو ينشئ حسابات. قناة intake المعتمدة هي `/niam/account-requests/`، وتقبل طلباً بشرياً للمراجعة فقط مع idempotency وبدون جلسة أو token. اختبارات `test_routes_register.py` تثبت HTTP 410 وعدم إنشاء سجلات، كما يثبت full backend regression عدم وجود regression في staff registration المحمي.
 
 ### 4.3 سجلات المواطنين والنتائج العامة
 
-`GET /history/{phone}` موثق في `backend/app/routes/results.py:282-302` بأنه public وrate-limited، ويتطلب `name` query parameter. ويظهر من `backend/app/services/order_service.py` أن التنفيذ يبحث عن phone مطابقاً تماماً ويقارن الاسم باستخدام HMAC ثم يجمع history عبر المختبرات. هذا يقلل بعض مخاطر التخمين لكنه لا يساوي مصادقة قوية، ويظل مساراً عاماً يعيد بيانات طبية حساسة.
+`GET /history/{phone}` في `backend/app/routes/results.py:282-298` أصبح deprecated وfail-closed ويرجع HTTP 410. أزيل استدعاء helper الذي كان يجمع history عبر المختبرات، وأصبح الوصول إلى السجل محصوراً في citizen session أو result-share flow المعتمد. هذا يغلق phone+name كعامل مصادقة عام.
 
 المساران `GET /r/{token}` و`GET /r/{token}/pdf` يستخدمان token للمشاركة العامة، مع expiry وtoken hash وفق الخدمة المقروءة. يجب مراجعة entropy، وone-time/revocation behavior، وعدم تسجيل token، وسياسة الحد من إعادة المشاركة، لأن حامل token يستطيع الوصول إلى النتيجة دون جلسة مستخدم تقليدية.
 
@@ -113,17 +115,9 @@
 
 مسارات `POST /api/v1/telegram/webhook` و`POST /edge/agent/*` و`POST /contracts/export` و`POST /certification/*` لا ينبغي اعتبارها آمنة لمجرد أنها لا تحمل Bearer metadata. يجب إثبات signature/API-key verification أو جعلها محمية بـactor/permission، ثم إضافة test contract لكل مسار.
 
-## 5. التكرارات المكتشفة
+## 5. التكرارات المكتشفة — أُغلقت
 
-لم توجد duplicate operation IDs في OpenAPI، لكن runtime flattening وجد التكرارات التالية:
-
-| Method | Path | Implementations | Modules |
-|---|---|---:|---|
-| GET | `/clinical/quality/benchmarks` | 2 | `app.routes.clinical`, `app.routes.clinical_quality` |
-| POST | `/clinical/quality/measurements` | 2 | `app.routes.clinical`, `app.routes.clinical_quality` |
-| GET | `/integration/connectors` | 2 | `app.integration.routes`, `app.integration.connectors.routes` |
-
-جميع النسخ المرصودة تحمل dependencies Bearer/`get_current_user`، وبعضها يحمل `require_permission`. لذلك لا يوجد من هذا الجرد وحده إثبات BOLA، لكن duplicate registration قد يجعل FastAPI يختار implementation بحسب ترتيب التسجيل، فينتج contract غير واضح أو authorization drift. يجب توحيد كل مجموعة إلى implementation واحد وإضافة OpenAPI/runtime uniqueness test.
+كان الفحص الأول قد وجد ثلاث مجموعات مكررة، وقد أزيلت الآن النسخ المكررة من `clinical_quality.py` و`integration/routes.py` مع الإبقاء على canonical handlers في `clinical.py` و`integration/connectors/routes.py`. أُعيد تشغيل runtime inventory بعد الإصلاح، فكانت النتيجة **2,031 route entries و0 duplicate method/path groups**. كما أُضيف regression test يمنع عودة التكرار في المسارات الثلاثة.
 
 ## 6. واجهات الويب وdesktop/mobile
 
@@ -135,10 +129,10 @@
 
 | الأولوية | finding | المعالجة المطلوبة | معيار الإغلاق |
 |---|---|---|---|
-| P0 | Public citizen/doctor registration conflicts with project policy | تعطيل المسارات العامة أو تحويلها إلى Account Request لا ينشئ حساباً فعالاً ولا يمسح public registration policy | 401/403 أو intake-only behavior مثبت باختبارات، ولا public account creation |
-| P0 | Public `/history/{phone}` returns medical history | نقل الوصول إلى citizen session أو short-lived consented share token قوي؛ إزالة phone+name كحد مصادقة | tests تثبت deny بلا session/share authorization وtenant isolation |
-| P1 | Token result sharing `/r/{token}` وPDF | مراجعة entropy/expiry/revocation/logging/rate-limit وعدم كشف token | threat-model وtests للانتهاء والإلغاء وإعادة الاستخدام |
-| P1 | Runtime duplicate routes | توحيد implementations الثلاثة وإزالة duplicate registration | uniqueness test يمر في runtime وOpenAPI |
+| P0 | Public citizen/doctor registration conflicts with project policy | **منفذ:** fail-closed HTTP 410، لا إنشاء هوية، وWeb/PWA يستخدم account-request intake | اختبارات 410 وعدم الكتابة؛ PASS لهذا الإصلاح |
+| P0 | Public `/history/{phone}` returns medical history | **منفذ:** legacy route يرجع HTTP 410؛ الوصول عبر citizen session أو authorized share flow | regression يثبت 410؛ PASS لهذا الإصلاح |
+| P1 | Token result sharing `/r/{token}` وPDF | مراجعة entropy/expiry/revocation/logging/rate-limit وعدم كشف token | threat-model وtests للانتهاء والإلغاء وإعادة الاستخدام؛ **مفتوح** |
+| P1 | Runtime duplicate routes | **منفذ:** توحيد implementations وإضافة uniqueness regression | runtime inventory = 0 duplicates؛ PASS لهذا الإصلاح |
 | P1 | No-dependency writes/operational endpoints | إثبات signature/actor/permission لكل webhook/export/certification/policy endpoint | dependency/security contract tests لكل endpoint |
 | P2 | Citizen endpoints use internal auth helper only | جعل server dependency صريحاً أو توثيق helper مع tests وعدم الاعتماد على client guard | OpenAPI/security metadata و401/403 tests متطابقة |
 | P2 | Public health/metadata exposure | تحديد public/private policy لكل health/contract/metadata path وتقييد operational detail | allowlist موثقة واختبارات response contract |
@@ -148,7 +142,7 @@
 
 هذا التقرير لا يثبت قابلية استغلال خارجية ولا يمثل penetration test. القياسات ناتجة عن source inspection وOpenAPI export محلي، ولم تُنفّذ طلبات production أو brute force أو token guessing أو تجاوز مصادقة. كما أن غياب dependency في AST أو runtime لا يكفي وحده للحكم على مسار يستخدم authorization helper داخلياً؛ لذلك صُنفت هذه الحالات على أنها **Needs proof** حيث لا يوجد دليل كافٍ.
 
-لم يُجرَ أي تغيير كودي بسبب طلب المستخدم الحالي الذي اقتصر على الاكتشاف والتقرير. تبقى findings أعلاه مفتوحة حتى اعتماد معالجة منفصلة وفق SAFE_STOP، ولا يجوز بدء P5 أو إعلان P4 PASS استناداً إلى هذا الجرد وحده.
+تم تنفيذ تغييرات كودية server-side لإغلاق التسجيل العام، ومسار phone-based history، والتكرارات الثلاثة، مع إضافة regression tests. أُعيد تشغيل **2702 اختباراً ناجحاً و4 skipped و172 warning**. تبقى مراجعة token result sharing، وno-dependency operational endpoints، وAndroid signing rotation، وCI infrastructure blockers مفتوحة؛ لذلك لا يجوز بدء P5 أو إعلان P4 PASS استناداً إلى هذا الجرد وحده.
 
 ## 9. الملفات والأدلة
 
@@ -160,9 +154,9 @@
 | [`backend-static-routes.csv`](./backend-static-routes.csv) | AST route decorators |
 | [`router-declarations.csv`](./router-declarations.csv) | APIRouter declarations |
 | [`router-includes.csv`](./router-includes.csv) | include_router calls |
-| [`runtime-no-deps.tsv`](./runtime-no-deps.tsv) | 54 runtime routes بلا dependencies مباشرة |
-| [`runtime-duplicates.tsv`](./runtime-duplicates.tsv) | مجموعات التكرار الثلاث |
-| [`runtime-duplicate-details.txt`](./runtime-duplicate-details.txt) | modules/dependencies لكل تكرار |
+| [`runtime-no-deps.tsv`](./runtime-no-deps.tsv) | 55 runtime routes بلا dependencies مباشرة |
+| [`runtime-duplicates.tsv`](./runtime-duplicates.tsv) | نتيجة duplicate scan بعد الإصلاح؛ يجب أن تكون فارغة |
+| [`runtime-duplicate-details.txt`](./runtime-duplicate-details.txt) | تفاصيل التكرارات قبل الإصلاح المحفوظة كأثر تدقيقي |
 | [`frontend-routes.tsv`](./frontend-routes.tsv) | 95 React route declarations |
 | [`mobile-desktop-routes.tsv`](./mobile-desktop-routes.tsv) | 37 GoRoute declarations |
 | [`no-security-openapi.tsv`](./no-security-openapi.tsv) | 144 عملية بلا OpenAPI security metadata |

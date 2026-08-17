@@ -133,7 +133,7 @@
           "required": true
         },
         "responses": {
-          "201": {
+          "410": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -151,7 +151,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/register/citizen": {
@@ -172,7 +173,7 @@
           "required": true
         },
         "responses": {
-          "201": {
+          "410": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -190,7 +191,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/register/staff": {
@@ -244,7 +246,7 @@
           "auth"
         ],
         "summary": "Register Doctor",
-        "description": "Doctor self-registration (no auth required).\n\nCreates a User with role='doctor', is_active=True, is_verified=False.\nA ministry or province admin must verify the account before the doctor\ncan access sensitive endpoints. The doctor's medical license number is\nstored in plain text (public document) while the national ID is hashed.",
+        "description": "Deprecated public doctor registration; always requires account request intake.",
         "operationId": "register_doctor_register_doctor_post",
         "requestBody": {
           "content": {
@@ -257,7 +259,7 @@
           "required": true
         },
         "responses": {
-          "201": {
+          "410": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -275,7 +277,8 @@
               }
             }
           }
-        }
+        },
+        "deprecated": true
       }
     },
     "/auth/verification/request": {
@@ -1175,8 +1178,9 @@
           "results"
         ],
         "summary": "Get Patient History Route",
-        "description": "Get patient test history by phone number (public, rate limited).\nRequires 'name' query param matching full patient name as verification.\n\nMulti-tenant isolation: the phone number may belong to Patient records in\nmultiple labs (each lab keeps its own patient roster).  We aggregate results\nacross ALL labs where the phone+name pair matches, so the citizen sees their\ncomplete history regardless of which lab they visited.  Only the patient's\nown results are returned — no cross-patient data is possible.",
+        "description": "Reject legacy phone/name history lookup.\n\nMedical history is available through the authenticated citizen portal or a\nseparately authorized result-share token. Phone plus display name is not an\nauthentication factor and must never disclose longitudinal health records.",
         "operationId": "get_patient_history_route_history__phone__get",
+        "deprecated": true,
         "parameters": [
           {
             "name": "phone",
@@ -1205,7 +1209,7 @@
           }
         ],
         "responses": {
-          "200": {
+          "410": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -28556,15 +28560,15 @@
     "/clinical/quality/measurements": {
       "post": {
         "tags": [
-          "clinical quality"
+          "clinical"
         ],
-        "summary": "Record Quality Measurement",
-        "operationId": "record_quality_measurement_clinical_quality_measurements_post",
+        "summary": "Create Indicator Measurement",
+        "operationId": "create_indicator_measurement_clinical_quality_measurements_post",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/MeasurementRecord"
+                "$ref": "#/components/schemas/IndicatorMeasurementCreate"
               }
             }
           },
@@ -28884,10 +28888,10 @@
     "/clinical/quality/benchmarks": {
       "get": {
         "tags": [
-          "clinical quality"
+          "clinical"
         ],
-        "summary": "Get Clinical Benchmarks",
-        "operationId": "get_clinical_benchmarks_clinical_quality_benchmarks_get",
+        "summary": "List Benchmarks",
+        "operationId": "list_benchmarks_clinical_quality_benchmarks_get",
         "security": [
           {
             "HTTPBearer": []
@@ -70265,34 +70269,6 @@
         ]
       }
     },
-    "/integration/connectors": {
-      "get": {
-        "tags": [
-          "integration-connectors"
-        ],
-        "summary": "List Connectors",
-        "operationId": "list_connectors_integration_connectors_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "additionalProperties": true,
-                  "type": "object",
-                  "title": "Response List Connectors Integration Connectors Get"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ]
-      }
-    },
     "/integration/standards": {
       "get": {
         "tags": [
@@ -70488,6 +70464,34 @@
                   "additionalProperties": true,
                   "type": "object",
                   "title": "Response Integration Health Integration Health Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/integration/connectors": {
+      "get": {
+        "tags": [
+          "integration-connectors"
+        ],
+        "summary": "List Connectors",
+        "operationId": "list_connectors_integration_connectors_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response List Connectors Integration Connectors Get"
                 }
               }
             }
@@ -126664,95 +126668,6 @@
           "title"
         ],
         "title": "MaintenanceRecordRequest"
-      },
-      "MeasurementRecord": {
-        "properties": {
-          "indicator_id": {
-            "type": "string",
-            "title": "Indicator Id"
-          },
-          "measurement_date": {
-            "type": "string",
-            "title": "Measurement Date"
-          },
-          "period_start": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Period Start"
-          },
-          "period_end": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Period End"
-          },
-          "numerator_value": {
-            "type": "number",
-            "title": "Numerator Value"
-          },
-          "denominator_value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Denominator Value"
-          },
-          "result_value": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Result Value"
-          },
-          "notes": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Notes"
-          },
-          "measured_by": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Measured By"
-          }
-        },
-        "type": "object",
-        "required": [
-          "indicator_id",
-          "measurement_date",
-          "numerator_value"
-        ],
-        "title": "MeasurementRecord"
       },
       "MedAdminCreate": {
         "properties": {

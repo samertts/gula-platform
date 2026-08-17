@@ -70,8 +70,48 @@ def test_openapi_generation_has_unique_operation_ids_and_canonical_security_rout
     assert len(operations) == len(set(operations))
     assert "/auth/change-password" in schema["paths"]
     assert "/integration/connectors" in schema["paths"]
+    for path in ("/register", "/register/citizen", "/register/doctor"):
+        operation = schema["paths"][path]["post"]
+        assert operation.get("deprecated") is True, path
+        assert "410" in operation["responses"], path
+    history_operation = schema["paths"]["/history/{phone}"]["get"]
+    assert history_operation.get("deprecated") is True
+    assert "410" in history_operation["responses"]
     assert "/lims/orders/{order_id}/fhir-bundle" in schema["paths"]
     assert "application/fhir+json" in str(schema["paths"]["/lims/orders/{order_id}/fhir-bundle"])
+
+
+def test_canonical_quality_and_connector_routes_are_unique() -> None:
+    from app.main import app
+    from fastapi.routing import APIRoute
+
+    target_paths = {
+        "/clinical/quality/benchmarks",
+        "/clinical/quality/measurements",
+        "/integration/connectors",
+    }
+    seen: dict[tuple[str, str], int] = {}
+
+    def iter_routes(routes: Sequence[object], prefix: str = "") -> Iterator[APIRoute]:
+        for route in routes:
+            if isinstance(route, APIRoute):
+                yield route
+                continue
+            original_router = getattr(route, "original_router", None)
+            if original_router is not None:
+                include_context = getattr(route, "include_context", None)
+                included_prefix = getattr(include_context, "prefix", None) or prefix
+                yield from iter_routes(original_router.routes, included_prefix)
+
+    for route in iter_routes(app.routes):
+        if route.path not in target_paths:
+            continue
+        for method in route.methods or set():
+            key = (method, route.path)
+            seen[key] = seen.get(key, 0) + 1
+
+    assert seen
+    assert all(count == 1 for count in seen.values()), seen
 
 
 def test_person_and_device_routes_require_server_side_actor() -> None:
