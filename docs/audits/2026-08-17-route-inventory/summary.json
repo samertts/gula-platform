@@ -1,0 +1,7 @@
+{
+  "generated_at": "2026-08-17",
+  "backend_static": {"python_files": 1883, "router_declarations": 201, "route_decorators": 2353, "include_router_calls": 147, "parse_errors": 0},
+  "openapi": {"operations": 2029, "get": 986, "post": 866, "put": 123, "patch": 5, "delete": 49, "duplicate_operation_ids": 0, "with_security_metadata": 1885, "without_security_metadata": 144},
+  "runtime": {"apiroute_entries": 2034, "with_dependencies": 1980, "without_dependencies": 54, "auth_named_dependency": 1711, "duplicate_method_path_groups": 3},
+  "client": {"frontend_route_declarations": 95, "mobile_desktop_route_declarations": 37}
+}

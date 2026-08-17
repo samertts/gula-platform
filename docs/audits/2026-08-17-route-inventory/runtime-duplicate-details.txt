@@ -1,0 +1,9 @@
+=== GET /clinical/quality/benchmarks (2) ===
+{"name": "list_benchmarks", "operation_id": null, "dependencies": ["<fastapi.security.http.HTTPBearer object at 0x7f91cbd1c080>", "get_current_user", "get_db"], "security_requirements": [], "endpoint_module": "app.routes.clinical", "endpoint": "list_benchmarks"}
+{"name": "get_clinical_benchmarks", "operation_id": null, "dependencies": ["<fastapi.security.http.HTTPBearer object at 0x7f91cbd1c080>", "get_current_user", "get_db"], "security_requirements": [], "endpoint_module": "app.routes.clinical_quality", "endpoint": "get_clinical_benchmarks"}
+=== GET /integration/connectors (2) ===
+{"name": "list_integration_connectors", "operation_id": null, "dependencies": ["<fastapi.security.http.HTTPBearer object at 0x7f91cbd1c080>", "get_current_user", "get_db", "require_permission.<locals>.checker"], "security_requirements": [], "endpoint_module": "app.integration.routes", "endpoint": "list_integration_connectors"}
+{"name": "list_connectors", "operation_id": null, "dependencies": ["<fastapi.security.http.HTTPBearer object at 0x7f91cbd1c080>", "get_current_user", "get_db", "require_permission.<locals>.checker"], "security_requirements": [], "endpoint_module": "app.integration.connectors.routes", "endpoint": "list_connectors"}
+=== POST /clinical/quality/measurements (2) ===
+{"name": "create_indicator_measurement", "operation_id": null, "dependencies": ["<fastapi.security.http.HTTPBearer object at 0x7f91cbd1c080>", "get_current_user", "get_db"], "security_requirements": [], "endpoint_module": "app.routes.clinical", "endpoint": "create_indicator_measurement"}
+{"name": "record_quality_measurement", "operation_id": null, "dependencies": ["<fastapi.security.http.HTTPBearer object at 0x7f91cbd1c080>", "get_current_user", "get_db"], "security_requirements": [], "endpoint_module": "app.routes.clinical_quality", "endpoint": "record_quality_measurement"}
