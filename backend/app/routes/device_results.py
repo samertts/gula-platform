@@ -9,12 +9,28 @@ from ..models.lab_order import LabOrder
 from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..models.sample import Sample
-from ..security.dependencies import get_current_user
+from ..models.service_account import ServiceAccount
+from ..security.dependencies import require_service_account
 from ..security.rate_limit import rate_limit_public
+from ..security.rbac import get_permissions_for_role
+from ..security.service_accounts import has_service_account_scope
 from ..services.audit_service import log_action
 from ..services.interpretation import get_flag
 
 router = APIRouter(prefix="/device", tags=["device"])
+
+
+def _require_device_results_actor(
+    actor: LabUser | ServiceAccount = Depends(require_service_account),
+) -> LabUser | ServiceAccount:
+    """Allow a lab-scoped service account or a human with patients:write."""
+    if isinstance(actor, ServiceAccount):
+        if actor.lab_id is None or not has_service_account_scope(actor, "integration:results:write"):
+            raise HTTPException(status_code=403, detail="Device result scope required")
+        return actor
+    if "patients:write" not in get_permissions_for_role(actor.role):
+        raise HTTPException(status_code=403, detail="Permission required: patients:write")
+    return actor
 
 
 class DeviceResult(BaseModel):
@@ -36,7 +52,7 @@ class DeviceSubmission(BaseModel):
 def receive_device_results(
     data: DeviceSubmission,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    actor: LabUser | ServiceAccount = Depends(_require_device_results_actor),
     db: Session = Depends(get_db),
 ):
     """Receive results from a lab analyzer device.
@@ -57,7 +73,7 @@ def receive_device_results(
         .join(LabOrder)
         .filter(
             Sample.barcode == data.barcode,
-            LabOrder.lab_id == current_user.lab_id,
+            LabOrder.lab_id == actor.lab_id,
         )
         .first()
     )
@@ -117,8 +133,8 @@ def receive_device_results(
         action="device_results",
         resource_type="lab_order",
         resource_id=order.id,
-        user_id=current_user.id,
-        user_role=current_user.role,
+        user_id=actor.id,
+        user_role=getattr(actor, "role", "service_account"),
         details=f"Device {data.device_id or 'unknown'}: {len(created)} results via barcode {data.barcode}",
     )
     db.commit()

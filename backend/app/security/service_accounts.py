@@ -21,6 +21,7 @@ ALLOWED_SERVICE_ACCOUNT_SCOPES = frozenset(
         "patients:read",
         "integration:events:write",
         "integration:identity:write",
+        "integration:results:write",
         "interop:pixm:read",
         "interop:mhd:read",
         "interop:mhd:write",
@@ -107,6 +108,8 @@ def validate_api_key(db: Session, api_key: str) -> ServiceAccount | None:
         return None
     accounts = db.query(ServiceAccount).filter(ServiceAccount.is_active.is_(True)).all()
     for account in accounts:
+        if not account.api_key_hash:
+            continue
         if verify_password(api_key, account.api_key_hash):
             if account.expires_at and account.expires_at < datetime.now(UTC):
                 return None

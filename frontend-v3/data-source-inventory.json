@@ -720,6 +720,14 @@
       "status": "non-operational"
     },
     {
+      "source": "src/pages/patient-flow/RapidPatientFlowPage.tsx",
+      "kinds": [
+        "endpoint-import"
+      ],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
       "source": "src/pages/patients/PatientsPage.tsx",
       "kinds": [
         "react-query-read",
@@ -732,6 +740,16 @@
       "source": "src/pages/pharmacy/PharmacyPage.tsx",
       "kinds": [
         "direct-api-client",
+        "react-query-read"
+      ],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/pharmacy/PharmacyPosPanel.tsx",
+      "kinds": [
+        "endpoint-import",
+        "react-query-mutation",
         "react-query-read"
       ],
       "classification": "unbound",
@@ -812,6 +830,14 @@
       "kinds": [
         "endpoint-import",
         "react-query-read"
+      ],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/sync/ConflictInboxPage.tsx",
+      "kinds": [
+        "endpoint-import"
       ],
       "classification": "unbound",
       "status": "non-operational"

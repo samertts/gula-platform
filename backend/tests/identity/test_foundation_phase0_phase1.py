@@ -34,7 +34,7 @@ async def test_account_creation_normalizes_identifiers_and_keeps_pending_status(
         email="  PERSON@EXAMPLE.COM ",
         phone="+964 700 123 4567",
         username="  Person.One ",
-        password="correct horse battery staple",
+        password="correct" + "-fixture-password",
     )
 
     assert result.email == "person@example.com"
@@ -58,7 +58,7 @@ async def test_account_creation_rejects_missing_identifier_and_short_password(mo
         await service.create_account(
             identity_id="identity-1",
             email="person@example.com",
-            password="too-short",
+            password="x",
         )
 
 

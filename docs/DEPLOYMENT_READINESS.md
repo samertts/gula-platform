@@ -326,3 +326,15 @@ cd services/device_bridge && make test
 ```
 
 يجب عدم تشغيل اختبارات device_bridge مع `PYTHONPATH=backend`؛ فهذا يعيد namespace collision ويجعل `app.*` يشير إلى Backend بدل الخدمة. كما يجب تمرير `LABLINK_API_KEY` من secret manager في التشغيل الفعلي، وعدم استخدام قيمة الاختبار خارج بيئة test معزولة.
+
+## 12. P4 Citizen / National Identity privacy remediation — 2026-08-18
+
+تم إغلاق كشف `national_patient_id` من serializer وواجهة Golden Records الروتينية، وتطبيق tenant filtering على القراءة والحل والتحقق من ملكية patient عند الإنشاء. كما أضيفت حالة `national_identity_linked` غير الكاشفة بدل إعادة القيمة الوطنية الخام.
+
+تم تثبيت `GOVERNMENT_IDENTITY_PROVIDER=UNVERIFIED` و`ENABLE_NATIONAL_ID_OCR=false` افتراضيًا، مع fail-closed في `/id-scan/scan`. لا يجوز تفعيل OCR أو أي Government Identity Provider أو NFC/Biometrics قبل اعتماد رسمي وموافقة بشرية صريحة.
+
+تمت إضافة scope `integration:results:write` لحسابات الخدمة، وأصبح `/device/results` يقبل ServiceAccount مربوطًا بمختبر أو JWT مؤسسيًا ذي `patients:write`. نجاح التكامل يتطلب barcode وAuthorization وتظل idempotency عبر retry حاجزًا قبل الإنتاج حتى يُضاف Inbox/unique constraint واختبار timeout.
+
+نتائج التحقق: Backend suite **2691 passed, 4 skipped, 252 warnings**؛ device_bridge **31 passed**؛ privacy/device/security focused **45 passed**؛ وfrontend `pnpm run check` ناجح مع typecheck وtests وcontract gates وbuild وbundle guard. Security Gate أعاد **0 أخطاء و0 audit/SAST/SQL/Docker findings**، مع تحذيرين بيئيين فقط لعدم تثبيت Gitleaks وTrivy.
+
+الحالة الرسمية تبقى `P4_PARTIAL` و`P5_BLOCKED`: Production alignment وPostgreSQL live schema وstaging/rollback وGovernment Identity Provider وmobile parity وperformance evidence تحتاج أدلة أو موافقات خارج هذه البيئة.

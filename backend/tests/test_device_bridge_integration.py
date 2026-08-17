@@ -1,6 +1,7 @@
 from app.models.lab_order import LabOrder
 from app.models.patient import Patient
 from app.models.sample import Sample
+
 from tests.conftest import auth_headers
 
 
@@ -84,3 +85,33 @@ def test_device_bridge_cannot_submit_to_another_lab_sample(
     db.refresh(sample)
     assert order.status == "pending"
     assert sample.status == "collected"
+
+
+def test_device_bridge_accepts_lab_scoped_service_account(
+    client, db, make_lab
+):
+    from app.security.service_accounts import create_service_account
+
+    lab = make_lab("Device Service Account Lab")
+    order, sample = _create_device_fixture(db, lab.id, "SAMPLE-DEVICE-SA-001")
+    _account, api_key = create_service_account(
+        db,
+        name="synthetic-device-bridge",
+        description="Synthetic integration test only",
+        scopes=["integration:results:write"],
+        lab_id=lab.id,
+    )
+
+    response = client.post(
+        "/device/results",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={
+            "barcode": sample.barcode,
+            "device_id": "CBC-SA-01",
+            "results": [{"test_name": "GLUCOSE", "value": 95.0, "unit": "mg/dL"}],
+        },
+    )
+
+    assert response.status_code == 200
+    db.refresh(order)
+    assert order.status == "completed"

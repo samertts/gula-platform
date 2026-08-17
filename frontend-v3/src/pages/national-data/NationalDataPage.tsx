@@ -36,8 +36,9 @@ function extractList<T>(data: unknown): T[] {
 
 interface GoldenRecord {
   id: string;
-  patient_name: string;
-  national_id: string;
+  patient_id: number | null;
+  citizen_id: string | null;
+  national_identity_linked: boolean;
   confidence_score: number;
   status: string;
 }
@@ -108,8 +109,17 @@ export function NationalDataPage() {
 
   const goldenRecordColumns: ColumnDef<GoldenRecord>[] = [
     { accessorKey: "id", header: "معرف السجل" },
-    { accessorKey: "patient_name", header: "اسم المريض" },
-    { accessorKey: "national_id", header: "الرقم الوطني" },
+    { accessorKey: "patient_id", header: "معرف المريض" },
+    { accessorKey: "citizen_id", header: "معرف المواطن" },
+    {
+      accessorKey: "national_identity_linked",
+      header: "حالة الهوية الوطنية",
+      cell: ({ row }) => (
+        <Badge variant={row.original.national_identity_linked ? "secondary" : "outline"}>
+          {row.original.national_identity_linked ? "مرتبطة بصلاحية" : "غير مرتبطة"}
+        </Badge>
+      ),
+    },
     {
       accessorKey: "confidence_score",
       header: "درجة الثقة",

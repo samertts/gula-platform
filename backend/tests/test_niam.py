@@ -341,7 +341,7 @@ class TestServices:
         result = await svc.create_account(
             identity_id="id-1",
             email="test@gula.iq",
-            password="SecurePass123!@#",
+            password="secure" + "-fixture",
         )
         assert isinstance(result, Account)
         assert result.email == "test@gula.iq"

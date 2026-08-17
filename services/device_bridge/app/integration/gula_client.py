@@ -62,7 +62,10 @@ class GulaClient:
                     headers=headers,
                 )
                 response.raise_for_status()
-                return response.json()
+                payload = response.json()
+                if not isinstance(payload, dict):
+                    return {"status": "failed", "error": "invalid_response"}
+                return payload
         except Exception as exc:
             logger.warning("GULA send failed", extra={"error": str(exc), "lab_id": self.lab_id})
             return {"status": "failed", "error": str(exc)}

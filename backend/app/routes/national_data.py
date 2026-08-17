@@ -1,4 +1,3 @@
-from app.services.route_audit import audit_route_mutation
 from datetime import datetime
 from typing import Any
 
@@ -6,8 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.services.route_audit import audit_route_mutation
+
 from ..database import get_db
 from ..models.lab_user import LabUser
+from ..models.patient import Patient
 from ..national_data.models.ai_data.DeidentificationJob import DeidentificationJob
 from ..national_data.models.ai_data.FeatureStore import FeatureStore
 from ..national_data.models.ai_data.FeatureValue import FeatureValue
@@ -290,6 +292,10 @@ def list_golden_records(
     db: Session = Depends(get_db),
 ):
     query = db.query(GoldenRecord).filter(~~GoldenRecord.is_deleted)
+    if current_user.role != "master_admin":
+        query = query.join(Patient, Patient.id == GoldenRecord.patient_id).filter(
+            Patient.lab_id == current_user.lab_id,
+        )
     total = query.count()
     records = query.order_by(GoldenRecord.confidence_score.desc()).offset(skip).limit(limit).all()
     return {"total": total, "records": [_golden_to_dict(r) for r in records]}
@@ -302,6 +308,18 @@ def create_golden_record(
     current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
+    if data.patient_id is not None:
+        patient = db.query(Patient).filter(Patient.id == data.patient_id).first()
+        if patient is None or (
+            current_user.role != "master_admin" and patient.lab_id != current_user.lab_id
+        ):
+            raise HTTPException(status_code=404, detail="Patient not found")
+    if data.national_patient_id and current_user.role != "master_admin":
+        raise HTTPException(
+            status_code=403,
+            detail="Restricted national identity linking requires authorized authority",
+        )
+
     record = DataPlatformService.create_golden_record(
         db=db,
         patient_id=data.patient_id,
@@ -323,10 +341,15 @@ def resolve_golden_record(
     current_user: LabUser = Depends(require_permission("patients:write")),
     db: Session = Depends(get_db),
 ):
-    record = db.query(GoldenRecord).filter(
+    resolve_query = db.query(GoldenRecord).filter(
         GoldenRecord.id == golden_record_id,
         ~GoldenRecord.is_deleted,
-    ).first()
+    )
+    if current_user.role != "master_admin":
+        resolve_query = resolve_query.join(Patient, Patient.id == GoldenRecord.patient_id).filter(
+            Patient.lab_id == current_user.lab_id,
+        )
+    record = resolve_query.first()
     if not record:
         raise HTTPException(status_code=404, detail="Golden record not found")
     record.is_active_golden = 1
@@ -908,8 +931,8 @@ def _golden_to_dict(r: GoldenRecord) -> dict:
     return {
         "id": r.id,
         "patient_id": r.patient_id,
-        "national_patient_id": r.national_patient_id,
         "citizen_id": r.citizen_id,
+        "national_identity_linked": bool(r.national_patient_id),
         "confidence_score": r.confidence_score,
         "matching_algorithm": r.matching_algorithm,
         "is_active_golden": r.is_active_golden,

@@ -16,6 +16,7 @@ import re
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from sqlalchemy.orm import Session
 
+from ..config import ENABLE_NATIONAL_ID_OCR, GOVERNMENT_IDENTITY_PROVIDER
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
@@ -148,6 +149,12 @@ async def scan_national_id(
     The user should confirm the extracted data before it's used.
     The image is NOT stored - only extracted text fields are returned.
     """
+    if not ENABLE_NATIONAL_ID_OCR or GOVERNMENT_IDENTITY_PROVIDER == "UNVERIFIED":
+        raise HTTPException(
+            status_code=503,
+            detail="National identity capture is not activated for this environment",
+        )
+
     # Rate limit OCR requests (CPU-intensive operation)
     if request:
         rate_limit_auth(request, max_per_minute=5)

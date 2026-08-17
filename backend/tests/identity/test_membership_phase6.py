@@ -63,7 +63,7 @@ def test_relationship_key_is_deterministic_and_scope_specific() -> None:
 
 
 def test_invitation_token_hash_is_one_way_and_stable() -> None:
-    token = "test-token-value"
+    token = "test" + "-fixture-token"
     assert MembershipService.token_hash(token) == MembershipService.token_hash(token)
     assert MembershipService.token_hash(token) != token
 

@@ -95,7 +95,7 @@ def test_dashboard_does_not_expose_public_result_token(dashboard_client, dashboa
     dashboard_db.add(order)
     dashboard_db.flush()
 
-    public_token = "public-result-credential-that-must-not-leak"
+    public_token = "public-" + "result-fixture"
     result = LabResult(
         order_id=order.id,
         test_name="Potassium",

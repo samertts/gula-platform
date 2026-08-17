@@ -93,6 +93,14 @@ elif IS_PRODUCTION and not BASE_URL.startswith("https://"):
     sys.exit("BASE_URL must use HTTPS in production")
 PLATFORM_NAME_AR = "منصة غولا الصحية"
 
+# Government identity integrations are not considered authoritative until an
+# approved provider and governance decision are present. OCR is candidate data
+# capture only and remains disabled by default, especially in production.
+GOVERNMENT_IDENTITY_PROVIDER = os.getenv("GOVERNMENT_IDENTITY_PROVIDER", "UNVERIFIED").strip().upper() or "UNVERIFIED"
+ENABLE_NATIONAL_ID_OCR = os.getenv("ENABLE_NATIONAL_ID_OCR", "false").lower() == "true"
+if IS_PRODUCTION and ENABLE_NATIONAL_ID_OCR and GOVERNMENT_IDENTITY_PROVIDER == "UNVERIFIED":
+    sys.exit("ENABLE_NATIONAL_ID_OCR requires an approved GOVERNMENT_IDENTITY_PROVIDER")
+
 # ─── Telegram access control ─────────────────────────────────────────────────
 # Only this Telegram numeric user ID may send messages to the platform.
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()

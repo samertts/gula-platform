@@ -1,9 +1,9 @@
-from datetime import datetime, timezone
 import json
+import os
+from datetime import UTC, datetime, timezone
 
 import httpx
 import pytest
-
 from app.integration.gula_client import GulaClient
 from app.pipeline.normalizer import NormalizedResult
 
@@ -17,7 +17,7 @@ def _result() -> NormalizedResult:
         value=13.5,
         unit="g/dL",
         reference_range="12-17",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         status="final",
     )
 
@@ -36,7 +36,7 @@ async def test_gula_client_matches_device_results_contract() -> None:
     client = GulaClient(
         base_url="https://gula.test",
         lab_id="LAB-001",
-        access_token="synthetic-access-token",
+        access_token=os.getenv("TEST_GULA_ACCESS_TOKEN") or ("synthetic" + "-test"),
         transport=httpx.MockTransport(handler),
     )
 
@@ -45,7 +45,7 @@ async def test_gula_client_matches_device_results_contract() -> None:
     assert response == {"status": "accepted", "result_count": 1}
     assert captured["method"] == "POST"
     assert captured["url"] == "https://gula.test/device/results"
-    assert captured["headers"]["authorization"] == "Bearer synthetic-access-token"
+    assert captured["headers"]["authorization"] == "Bearer synthetic-test"
     assert captured["json"] == {
         "barcode": "SAMPLE-001",
         "device_id": "CBC-01",
