@@ -158,6 +158,64 @@ async def get_own_health_summary(
         raise HTTPException(status_code=500, detail="Internal server error") from exc
 
 
+@router.get("/me/family")
+async def get_own_family(
+    relationship: CitizenRelationship = Depends(get_authorized_citizen_relationship),
+    sdk: Any = Depends(_get_sdk),
+) -> dict[str, Any]:
+    try:
+        members = sdk.family.get_family_members(relationship.citizen_id)
+        return {
+            "members": [
+                {
+                    "id": getattr(member, "member_id", None),
+                    "full_name": getattr(member, "full_name", None),
+                    "relationship": getattr(member, "relationship", None),
+                    "status": getattr(member, "status", None),
+                }
+                for member in members
+            ],
+            "total": len(members),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
+@router.get("/me/notifications")
+def get_own_notifications(
+    unread_only: bool = Query(False),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    relationship: CitizenRelationship = Depends(get_authorized_citizen_relationship),
+    sdk: Any = Depends(_get_sdk),
+) -> dict[str, Any]:
+    try:
+        notifications = sdk.notifications.get_notifications(
+            relationship.citizen_id,
+            unread_only=unread_only,
+            skip=skip,
+            limit=limit,
+        )
+        return {
+            "notifications": [
+                {
+                    "id": item.id,
+                    "title": item.title,
+                    "title_ar": item.title_ar,
+                    "message": item.message,
+                    "message_ar": item.message_ar,
+                    "type": item.alert_type,
+                    "is_read": item.is_read,
+                    "created_at": item.created_at,
+                }
+                for item in notifications
+            ],
+            "total": len(notifications),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Internal server error") from exc
+
+
 @router.get("/me/appointments")
 async def get_own_appointments(
     status: str | None = Query(None),

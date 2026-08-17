@@ -114,6 +114,32 @@ def test_canonical_quality_and_connector_routes_are_unique() -> None:
     assert all(count == 1 for count in seen.values()), seen
 
 
+def test_citizen_family_and_notifications_routes_require_relationship_guard() -> None:
+    from app.citizen_platform.routes import require_citizen_relationship
+    from app.main import app
+    from fastapi.routing import APIRoute
+
+    expected = {"/citizen-platform/me/family", "/citizen-platform/me/notifications"}
+    found: dict[str, APIRoute] = {}
+
+    def iter_routes(routes: Sequence[object]) -> Iterator[APIRoute]:
+        for route in routes:
+            if isinstance(route, APIRoute):
+                yield route
+                continue
+            original_router = getattr(route, "original_router", None)
+            if original_router is not None:
+                yield from iter_routes(original_router.routes)
+
+    for route in iter_routes(app.routes):
+        if route.path in expected:
+            found[route.path] = route
+    assert set(found) == expected
+    for path, route in found.items():
+        dependency_calls = {getattr(dependency.call, "__name__", "") for dependency in route.dependant.dependencies}
+        assert require_citizen_relationship.__name__ in dependency_calls, path
+
+
 def test_person_and_device_routes_require_server_side_actor() -> None:
     from app.identity.api.workspaces import get_current_niam_actor
     from app.main import app
