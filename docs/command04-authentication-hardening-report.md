@@ -158,7 +158,7 @@ Vercel `BLOCKED` ليس فشلاً في هذا الكود وفق القراءة 
 [22]: https://github.com/samertts/gula-platform/pull/226 "Command 04 pull request"
 
 **التوقيع:** Manus AI
-**الحالة:** هذا التقرير محدث محلياً بعد SAFE_STOP، وسيُثبت في commit منفصل فقط بعد اكتمال الاختبارات؛ PR #226 remains open for review. لا يوجد force-push أو history rewrite.
+**الحالة:** هذا التقرير محدث بعد SAFE_STOP وreassessment المحلي؛ سيُثبت مع الإصلاحات الحالية في PR #226. لا يوجد force-push أو history rewrite.
 
 ## 11. SAFE_STOP Addendum — Android Signing Material
 
@@ -193,3 +193,42 @@ Vercel `BLOCKED` ليس فشلاً في هذا الكود وفق القراءة 
 | Production/DB/deployment mutation | **NONE** |
 
 The security suite covers authentication, refresh replay, session scope, MFA, recovery, verification, membership, workspace, audit integrity, CSRF, rate limiting, runtime isolation, production configuration, headers, clinical authorization, LIMS/radiology tenant isolation, and token forgery. These results establish local regression safety; they do not substitute for external key rotation, Git-history containment, native release builds, PostgreSQL/Redis rehearsal, or production deployment evidence.
+
+## 13. Blocker Reassessment — 2026-08-17
+
+أُعيدت مراجعة أسباب الحظر بعد طلب الاستمرار. أُصلحت regressions داخلية قابلة للإصلاح في ملفات الاختبارات فقط: أضيفت annotations المطلوبة لاختبار cross-account device fingerprint والدالة المحلية التي تفحص routes، وأزيلت imports المكررة وI001/F811 من `test_niam.py`. لم يتغير authorization behavior أو production configuration بسبب هذه الإصلاحات.
+
+| الفحص المحلي بعد الإصلاح | النتيجة |
+|---|---:|
+| Full backend regression | **2723 passed, 4 skipped, 172 warnings** خلال **317.53 ثانية** |
+| Targeted NIAM/security review tests | **50 passed, 1 warning** |
+| Changed-files Ruff/MyPy quality gate | **PASS**؛ لا توجد MyPy regressions جديدة |
+| Ruff على الاختبارين المعدلين | **PASS** |
+| Frontend lint/typecheck/build | **PASS** |
+| Frontend unit tests | **68 passed / 19 files** |
+| Workflow/compose YAML validation | **PASS** |
+| Secret guard | **PASS** |
+| Python syntax/compile gates | **PASS** |
+| `git diff --check` | **PASS** |
+
+ظل constitution diagnostic المحلي يعرض Rule 5 وRule 10 وRule 15 كفشل واسع النطاق: **421 duplicate blocks** وlegacy flake8/pyflakes findings و**1998 potentially unused symbols** عبر 123 ملف Python. هذه النتائج ليست regression ناتجة عن إصلاحات IAM الأخيرة، ولا يجوز حلها بإيقاف القاعدة أو `noqa` واسع أو حذف آمن غير مثبت؛ لذلك بقيت موثقة كـlegacy debt خارج scope Command 04 بدلاً من تزوير PASS. كما أن workflow نفسه لا يجعل نتيجة enforcer blocking، إذ ينفذ الأمر مع `|| echo "FAILED"`، بينما فشل GitHub المرصود حدث قبل أي step.
+
+### CI runner evidence
+
+تم فحص jobs الخاصة بالـSHA `79113e58d7ba8c8cf830486db88c9d9c954f25b0` عبر GitHub Actions metadata. jobs الفاشلة في IAM Hardening وQuality Gate وFrontend/PWA وAndroid/iOS/Flutter وCodeQL وSecurity Hardening وغيرها كانت جميعها `runner_id=0` و`steps=[]`، مع إكمال الفشل خلال ثوانٍ وعدم وجود failed logs. هذا يثبت **pre-execution runner/infrastructure blocker** وليس failure في source step يمكن إصلاحه من داخل المستودع [23] [24] [25] [26]. لا يجوز تحويل هذه النتيجة إلى PASS حتى يعمل runner فعلياً ويصدر logs وartifacts.
+
+| سبب الحظر | ما أمكن إصلاحه محلياً | الحالة الحالية |
+|---|---|---|
+| Changed-files MyPy regression | تم إصلاح annotations والتحقق بالـquality gate | **CLOSED LOCALLY** |
+| Targeted import/functional lint | تم إصلاح I001/F811 في الملف المعدل | **CLOSED LOCALLY** |
+| GitHub Actions jobs بلا runner | لا يوجد تغيير مصدر يعالج runner allocation أو GitHub infrastructure | **BLOCKED_EXTERNAL** |
+| Android signing key/password exposure | أزيلت الملفات، وأصبح signing CI-only وfail-closed | **EXTERNAL ROTATION REQUIRED** |
+| Git history containment | لم ينفذ بسبب منع force-push وغياب governance authorization | **GOVERNANCE BLOCKED** |
+| Vercel/SSO and native toolchains | لا صلاحية/بيئة كافية لإثباتها من sandbox | **UNVERIFIED** |
+
+لا يمكن إلغاء الحظر الأمني أو الادعاء بتحقق كافة الشروط قبل تنفيذ **تدوير/إبطال Android production signing key، تدوير CI secrets، وhistory containment المعتمد**. وبالمثل، لا يمكن إلغاء حظر CI من داخل الكود ما دام GitHub لا يخصص runner. لذلك يبقى قرار Command 04 **`SECURITY_BLOCKED — AUTHENTICATION_PARTIAL`**، ويبقى P5 **`P5_BLOCKED_BY_PREREQUISITE`**.
+
+[23]: https://github.com/samertts/gula-platform/actions/runs/32056253766 "IAM Hardening Gate — runner pre-execution failure"
+[24]: https://github.com/samertts/gula-platform/actions/runs/32056253725 "Quality Gate — runner pre-execution failure"
+[25]: https://github.com/samertts/gula-platform/actions/runs/32056253729 "Android CI/CD — runner pre-execution failure"
+[26]: https://github.com/samertts/gula-platform/actions/runs/32056253730 "Security Hardening — runner pre-execution failure"

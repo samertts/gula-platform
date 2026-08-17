@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Iterator, Sequence
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -78,7 +79,9 @@ def test_person_and_device_routes_require_server_side_actor() -> None:
     from app.main import app
     from fastapi.routing import APIRoute
 
-    def iter_routes(routes, prefix: str = ""):
+    def iter_routes(
+        routes: Sequence[object], prefix: str = ""
+    ) -> Iterator[tuple[APIRoute, str]]:
         for route in routes:
             if isinstance(route, APIRoute):
                 path = f"{prefix.rstrip('/')}{route.path or '/'}"
