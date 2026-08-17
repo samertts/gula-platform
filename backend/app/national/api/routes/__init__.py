@@ -12,6 +12,7 @@ from .identity import router as identity_router
 from .interop import router as interop_router
 from .medication_catalog import router as medication_catalog_router
 from .observation import router as observation_router
+from .patient_flow import router as patient_flow_router
 from .reference import router as reference_router
 from .referral import router as referral_router
 from .security import router as security_router
@@ -30,6 +31,7 @@ national_router.include_router(identity_router)
 national_router.include_router(interop_router)
 national_router.include_router(medication_catalog_router)
 national_router.include_router(observation_router)
+national_router.include_router(patient_flow_router)
 national_router.include_router(reference_router)
 national_router.include_router(referral_router)
 national_router.include_router(security_router)

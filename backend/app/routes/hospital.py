@@ -16,10 +16,14 @@ from ..hospital.models import (
     OperationTheater,
 )
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, require_permission
 from ..services.hospital_service import HospitalService
 
-router = APIRouter(prefix="/hospital", tags=["hospital"])
+router = APIRouter(
+    prefix="/hospital",
+    tags=["hospital"],
+    dependencies=[Depends(require_permission("hospital:read"))],
+)
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
@@ -55,7 +59,7 @@ class HospitalCreate(BaseModel):
     @field_validator("hospital_type")
     @classmethod
     def validate_type(cls, v):
-        allowed = {"general", "specialized", "teaching", "private"}
+        allowed = {"general", "specialized", "teaching"}
         if v not in allowed:
             raise ValueError(f"hospital_type must be one of {allowed}")
         return v
@@ -217,14 +221,51 @@ class CostCenterCreate(NestedCreate):
 
 
 class AppointmentCreate(BaseModel):
-    patient_id: int
-    provider_id: int | None = None
-    facility_id: int | None = None
+    patient_id: str | int
+    hospital_id: int
+    provider_id: str | int | None = None
+    facility_id: str | None = None
     appointment_type: str
     scheduled_date: datetime
     duration_minutes: int = 30
     reason: str | None = None
     notes: str | None = None
+    idempotency_key: str | None = None
+
+    @field_validator("patient_id", mode="before")
+    @classmethod
+    def normalize_patient_id(cls, value):
+        normalized = str(value).strip() if value is not None else ""
+        if not normalized:
+            raise ValueError("patient_id is required")
+        if len(normalized) > 26:
+            raise ValueError("patient_id is too long")
+        return normalized
+
+    @field_validator("provider_id", mode="before")
+    @classmethod
+    def normalize_provider_id(cls, value):
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        return normalized or None
+
+    @field_validator("duration_minutes")
+    @classmethod
+    def validate_duration(cls, value):
+        if value < 5 or value > 480:
+            raise ValueError("duration_minutes must be between 5 and 480")
+        return value
+
+    @field_validator("idempotency_key")
+    @classmethod
+    def validate_idempotency_key(cls, value):
+        if value is None:
+            return None
+        normalized = value.strip()
+        if not normalized or len(normalized) > 64:
+            raise ValueError("idempotency_key must be 1-64 characters")
+        return normalized
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────────
@@ -280,7 +321,7 @@ def get_hospital(
     return _model_to_dict(HospitalService.get_hospital(db, hospital_id, current_user.lab_id))
 
 
-@router.post("/", summary="Create hospital", status_code=201)
+@router.post("/", summary="Create hospital", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_hospital(
     body: HospitalCreate,
     db: Session = Depends(get_db),
@@ -292,7 +333,7 @@ def create_hospital(
     return _model_to_dict(hospital)
 
 
-@router.put("/{hospital_id}", summary="Update hospital")
+@router.put("/{hospital_id}", summary="Update hospital", dependencies=[Depends(require_permission("hospital:manage"))])
 def update_hospital(
     hospital_id: int,
     body: HospitalUpdate,
@@ -308,7 +349,7 @@ def update_hospital(
     return _model_to_dict(hospital)
 
 
-@router.delete("/{hospital_id}", summary="Deactivate hospital")
+@router.delete("/{hospital_id}", summary="Deactivate hospital", dependencies=[Depends(require_permission("hospital:manage"))])
 def deactivate_hospital(
     hospital_id: int,
     db: Session = Depends(get_db),
@@ -331,7 +372,7 @@ def list_campuses(
     return [_model_to_dict(c) for c in campuses]
 
 
-@router.post("/{hospital_id}/campuses", summary="Create campus", status_code=201)
+@router.post("/{hospital_id}/campuses", summary="Create campus", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_campus(
     hospital_id: int,
     body: CampusCreate,
@@ -344,7 +385,7 @@ def create_campus(
     return _model_to_dict(campus)
 
 
-@router.put("/campuses/{campus_id}", summary="Update campus")
+@router.put("/campuses/{campus_id}", summary="Update campus", dependencies=[Depends(require_permission("hospital:manage"))])
 def update_campus(
     campus_id: int,
     body: CampusCreate,
@@ -372,7 +413,7 @@ def list_buildings(
     return [_model_to_dict(b) for b in buildings]
 
 
-@router.post("/campuses/{campus_id}/buildings", summary="Create building", status_code=201)
+@router.post("/campuses/{campus_id}/buildings", summary="Create building", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_building(
     campus_id: int,
     body: BuildingCreate,
@@ -398,7 +439,7 @@ def list_floors(
     return [_model_to_dict(f) for f in floors]
 
 
-@router.post("/buildings/{building_id}/floors", summary="Create floor", status_code=201)
+@router.post("/buildings/{building_id}/floors", summary="Create floor", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_floor(
     building_id: int,
     body: FloorCreate,
@@ -427,7 +468,7 @@ def list_departments(
     return [_model_to_dict(d) for d in depts]
 
 
-@router.post("/{hospital_id}/departments", summary="Create department", status_code=201)
+@router.post("/{hospital_id}/departments", summary="Create department", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_department(
     hospital_id: int,
     body: DepartmentCreate,
@@ -440,7 +481,7 @@ def create_department(
     return _model_to_dict(dept)
 
 
-@router.put("/departments/{dept_id}", summary="Update department")
+@router.put("/departments/{dept_id}", summary="Update department", dependencies=[Depends(require_permission("hospital:manage"))])
 def update_department(
     dept_id: int,
     body: DepartmentCreate,
@@ -468,7 +509,7 @@ def list_clinics(
     return [_model_to_dict(c) for c in clinics]
 
 
-@router.post("/departments/{dept_id}/clinics", summary="Create clinic", status_code=201)
+@router.post("/departments/{dept_id}/clinics", summary="Create clinic", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_clinic(
     dept_id: int,
     body: ClinicCreate,
@@ -495,7 +536,7 @@ def list_rooms(
     return [_model_to_dict(r) for r in rooms]
 
 
-@router.post("/departments/{dept_id}/rooms", summary="Create room", status_code=201)
+@router.post("/departments/{dept_id}/rooms", summary="Create room", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_room(
     dept_id: int,
     body: RoomCreate,
@@ -523,7 +564,7 @@ def list_beds(
     return [_model_to_dict(b) for b in beds]
 
 
-@router.post("/rooms/{room_id}/beds", summary="Create bed", status_code=201)
+@router.post("/rooms/{room_id}/beds", summary="Create bed", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_bed(
     room_id: int,
     body: BedCreate,
@@ -539,7 +580,7 @@ def create_bed(
 # ── Bed Assignment Operations ──────────────────────────────────────────────────
 
 
-@router.post("/beds/{bed_id}/assign", summary="Assign patient to bed")
+@router.post("/beds/{bed_id}/assign", summary="Assign patient to bed", dependencies=[Depends(require_permission("hospital:admit"))])
 def assign_bed(
     bed_id: int,
     body: BedAssign,
@@ -553,7 +594,7 @@ def assign_bed(
     return _model_to_dict(bed)
 
 
-@router.post("/beds/{bed_id}/discharge", summary="Discharge patient from bed")
+@router.post("/beds/{bed_id}/discharge", summary="Discharge patient from bed", dependencies=[Depends(require_permission("hospital:discharge"))])
 def discharge_bed(
     bed_id: int,
     body: BedDischarge,
@@ -566,7 +607,7 @@ def discharge_bed(
     return _model_to_dict(bed)
 
 
-@router.post("/beds/{bed_id}/transfer", summary="Transfer patient to another bed")
+@router.post("/beds/{bed_id}/transfer", summary="Transfer patient to another bed", dependencies=[Depends(require_permission("hospital:transfer"))])
 def transfer_bed(
     bed_id: int,
     body: BedTransfer,
@@ -604,7 +645,7 @@ def list_units(
     return [_model_to_dict(u) for u in units]
 
 
-@router.post("/{hospital_id}/units", summary="Create unit", status_code=201)
+@router.post("/{hospital_id}/units", summary="Create unit", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_unit(
     hospital_id: int,
     body: UnitCreate,
@@ -630,7 +671,7 @@ def list_operation_theaters(
     return [_model_to_dict(ot) for ot in ots]
 
 
-@router.post("/{hospital_id}/operation-theaters", summary="Create operation theater", status_code=201)
+@router.post("/{hospital_id}/operation-theaters", summary="Create operation theater", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_operation_theater(
     hospital_id: int,
     body: OperationTheaterCreate,
@@ -643,7 +684,7 @@ def create_operation_theater(
     return _model_to_dict(ot)
 
 
-@router.put("/operation-theaters/{ot_id}/status", summary="Update operation theater status")
+@router.put("/operation-theaters/{ot_id}/status", summary="Update operation theater status", dependencies=[Depends(require_permission("hospital:manage"))])
 def update_ot_status(
     ot_id: int,
     status: str,
@@ -676,7 +717,7 @@ def list_equipment(
     return [_model_to_dict(e) for e in equipment]
 
 
-@router.post("/{hospital_id}/equipment", summary="Create medical equipment", status_code=201)
+@router.post("/{hospital_id}/equipment", summary="Create medical equipment", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_equipment(
     hospital_id: int,
     body: EquipmentCreate,
@@ -689,7 +730,7 @@ def create_equipment(
     return _model_to_dict(equip)
 
 
-@router.put("/equipment/{equip_id}", summary="Update medical equipment")
+@router.put("/equipment/{equip_id}", summary="Update medical equipment", dependencies=[Depends(require_permission("hospital:manage"))])
 def update_equipment(
     equip_id: int,
     body: EquipmentCreate,
@@ -717,7 +758,7 @@ def list_cost_centers(
     return [_model_to_dict(cc) for cc in ccs]
 
 
-@router.post("/{hospital_id}/cost-centers", summary="Create cost center", status_code=201)
+@router.post("/{hospital_id}/cost-centers", summary="Create cost center", status_code=201, dependencies=[Depends(require_permission("hospital:manage"))])
 def create_cost_center(
     hospital_id: int,
     body: CostCenterCreate,
@@ -751,7 +792,7 @@ def list_appointments(
     )
 
 
-@router.post("/appointments", summary="Create hospital appointment", status_code=201)
+@router.post("/appointments", summary="Create hospital appointment", status_code=201, dependencies=[Depends(require_permission("hospital:appointment:write"))])
 def create_appointment(
     body: AppointmentCreate,
     db: Session = Depends(get_db),

@@ -26,6 +26,7 @@ from ..hospital.models import (
 )
 from ..models.patient import Patient
 from ..national.domain.appointment import Appointment
+from ..national.enums import AppointmentStatus
 from ..services.audit_service import log_action
 
 
@@ -41,6 +42,8 @@ class HospitalService:
         user_id: int,
         data: dict[str, Any],
     ) -> HospitalMaster:
+        if data.get("hospital_type") not in {"general", "specialized", "teaching"}:
+            raise ConflictError("Only government hospital types are allowed")
         existing = db.query(HospitalMaster).filter(
             HospitalMaster.lab_id == lab_id,
             HospitalMaster.code == data["code"],
@@ -69,6 +72,8 @@ class HospitalService:
         ).first()
         if not hospital:
             raise NotFoundError("Hospital not found")
+        if "hospital_type" in data and data["hospital_type"] not in {"general", "specialized", "teaching"}:
+            raise ConflictError("Only government hospital types are allowed")
         for k, v in data.items():
             setattr(hospital, k, v)
         hospital.updated_by = user_id
@@ -316,21 +321,59 @@ class HospitalService:
         from_bed_id: int, to_bed_id: int,
         reason: str | None = None,
     ) -> dict[str, Any]:
-        source = HospitalService.discharge_bed(db, lab_id, user_id, from_bed_id, reason)
+        """Transfer a patient atomically without clearing the source first.
+
+        A transfer is not a discharge: the source assignment is closed with a
+        transfer reason, the target assignment is opened, and both bed states are
+        changed in the same transaction. The route commits once the service
+        returns, so any exception leaves the session rollback-able.
+        """
+        if from_bed_id == to_bed_id:
+            raise ConflictError("Source and target beds must be different")
+
+        source = HospitalService._get_entity(db, Bed, from_bed_id, lab_id)
         target = HospitalService._get_entity(db, Bed, to_bed_id, lab_id)
+        if source.status != "occupied" or source.current_patient_id is None:
+            raise ConflictError("Source bed is not occupied by a patient")
         if target.status != "available":
             raise ConflictError(f"Target bed is {target.status}")
+
         patient_id = source.current_patient_id
+        active_assignment = db.query(BedAssignment).filter(
+            BedAssignment.bed_id == from_bed_id,
+            BedAssignment.patient_id == patient_id,
+            BedAssignment.discharge_date.is_(None),
+            BedAssignment.lab_id == lab_id,
+            ~BedAssignment.is_deleted,
+        ).order_by(BedAssignment.admission_date.desc()).first()
+        if active_assignment is None:
+            raise ConflictError("Source bed has no active assignment for the current patient")
+
+        now = datetime.now(UTC)
+        transfer_reason = reason or f"Transferred from bed {from_bed_id}"
+        active_assignment.discharge_date = now
+        active_assignment.discharge_reason = transfer_reason
+        active_assignment.discharged_by = user_id
+
+        source.status = "cleaning"
+        source.current_patient_id = None
         target.status = "occupied"
         target.current_patient_id = patient_id
-        assignment = BedAssignment(
-            lab_id=lab_id, created_by=user_id,
-            bed_id=to_bed_id, patient_id=patient_id,
-            reason=reason or "Transferred",
-            admission_date=datetime.now(UTC),
-        )
-        db.add(assignment)
+        db.add(BedAssignment(
+            lab_id=lab_id,
+            created_by=user_id,
+            bed_id=to_bed_id,
+            patient_id=patient_id,
+            reason=transfer_reason,
+            admission_date=now,
+        ))
         db.flush()
+        log_action(db, "bed.transfer", to_bed_id, lab_id, user_id, {
+            "from_bed": from_bed_id,
+            "to_bed": to_bed_id,
+            "patient_id": patient_id,
+            "reason": transfer_reason,
+        })
         return {"from_bed": from_bed_id, "to_bed": to_bed_id, "patient_id": patient_id}
 
     @staticmethod
@@ -457,15 +500,19 @@ class HospitalService:
             ),
             ~Room.is_deleted,
         ).scalar() or 0
-        bed_count = db.query(func.count(Bed.id)).filter(
-            Bed.lab_id == lab_id,
+        bed_scope = db.query(Bed).join(
+            Room, Bed.room_id == Room.id,
+        ).join(
+            HospitalDepartment, Room.department_id == HospitalDepartment.id,
+        ).filter(
+            HospitalDepartment.hospital_id == hospital_id,
+            HospitalDepartment.lab_id == lab_id,
+            ~HospitalDepartment.is_deleted,
+            ~Room.is_deleted,
             ~Bed.is_deleted,
-        ).scalar() or 0
-        occupied_beds = db.query(func.count(Bed.id)).filter(
-            Bed.lab_id == lab_id,
-            Bed.status == "occupied",
-            ~Bed.is_deleted,
-        ).scalar() or 0
+        )
+        bed_count = bed_scope.count()
+        occupied_beds = bed_scope.filter(Bed.status == "occupied").count()
         equipment_count = db.query(func.count(MedicalEquipment.id)).filter(
             MedicalEquipment.hospital_id == hospital_id,
             MedicalEquipment.lab_id == lab_id,
@@ -506,16 +553,80 @@ class HospitalService:
         patient_id: int | None = None, skip: int = 0, limit: int = 50,
     ) -> list[Appointment]:
         q = db.query(Appointment).filter(Appointment.lab_id == lab_id)
+        if hospital_id is not None:
+            q = q.filter(Appointment.hospital_id == hospital_id)
         if patient_id is not None:
-            q = q.filter(Appointment.patient_id == patient_id)
+            # National Appointment.patient_id is a 26-character identifier. Do
+            # not silently coerce a local integer patient id into another domain.
+            q = q.filter(Appointment.patient_id == str(patient_id))
         return q.order_by(Appointment.scheduled_date.desc()).offset(skip).limit(limit).all()
 
     @staticmethod
     def create_appointment(
         db: Session, lab_id: int, user_id: int, data: dict[str, Any],
     ) -> Appointment:
-        apt = Appointment(lab_id=lab_id, **data)
+        hospital_id = data.get("hospital_id")
+        if hospital_id is None:
+            raise ConflictError("hospital_id is required for government hospital appointments")
+        HospitalService.get_hospital(db, int(hospital_id), lab_id)
+
+        patient_id = str(data.get("patient_id") or "").strip()
+        if not patient_id:
+            raise NotFoundError("patient_id is required")
+        from ..national.domain.patient import Patient as NationalPatient
+        patient = db.query(NationalPatient).filter(
+            NationalPatient.id == patient_id,
+            NationalPatient.lab_id == lab_id,
+            ~NationalPatient.is_deleted,
+        ).first()
+        if patient is None:
+            raise NotFoundError("National patient not found")
+
+        scheduled_date = data.get("scheduled_date")
+        duration_minutes = int(data.get("duration_minutes") or 30)
+        if duration_minutes < 5 or duration_minutes > 480:
+            raise ConflictError("duration_minutes must be between 5 and 480")
+        if scheduled_date is None:
+            raise ConflictError("scheduled_date is required")
+        idempotency_key = data.get("idempotency_key")
+        if idempotency_key:
+            existing = db.query(Appointment).filter(
+                Appointment.lab_id == lab_id,
+                Appointment.hospital_id == int(hospital_id),
+                Appointment.idempotency_key == idempotency_key,
+            ).first()
+            if existing is not None:
+                return existing
+
+        provider_id = data.get("practitioner_id") or data.get("provider_id")
+        conflict_query = db.query(Appointment).filter(
+            Appointment.lab_id == lab_id,
+            Appointment.hospital_id == int(hospital_id),
+            Appointment.patient_id == patient_id,
+            Appointment.scheduled_date == scheduled_date,
+            Appointment.status.notin_([
+                AppointmentStatus.CANCELLED,
+                AppointmentStatus.ENTERED_IN_ERROR,
+            ]),
+        )
+        if provider_id:
+            conflict_query = conflict_query.filter(Appointment.practitioner_id == str(provider_id))
+        if conflict_query.first() is not None:
+            raise ConflictError("A non-cancelled appointment already exists for this slot")
+
+        payload = dict(data)
+        payload.pop("provider_id", None)
+        payload["patient_id"] = patient_id
+        payload["hospital_id"] = int(hospital_id)
+        if provider_id:
+            payload["practitioner_id"] = str(provider_id)
+        apt = Appointment(lab_id=lab_id, **payload)
         db.add(apt)
         db.flush()
-        log_action(db, "appointment.create", apt.id, lab_id, user_id, data)
+        log_action(db, "appointment.create", apt.id, lab_id, user_id, {
+            "hospital_id": int(hospital_id),
+            "patient_id": patient_id,
+            "scheduled_date": scheduled_date.isoformat() if hasattr(scheduled_date, "isoformat") else str(scheduled_date),
+            "idempotency_key": idempotency_key,
+        })
         return apt

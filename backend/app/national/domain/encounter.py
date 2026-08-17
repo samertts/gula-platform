@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, JSON, String, Text
 from sqlalchemy import Enum as SAEnum
 
 from app.national.base import TenantAuditEntity
@@ -10,6 +10,16 @@ class Encounter(TenantAuditEntity):
 
     encounter_type = Column(SAEnum(EncounterType), nullable=False)
     status = Column(SAEnum(EncounterStatus), nullable=False, default=EncounterStatus.PLANNED)
+    # Operational flow state is intentionally separate from the FHIR status. It
+    # captures the short, high-throughput government-hospital workflow without
+    # overloading FHIR's broader lifecycle semantics.
+    flow_state = Column(String(30), nullable=False, default="planned")
+    hospital_id = Column(Integer, nullable=True, index=True)
+    idempotency_key = Column(String(64), nullable=True, index=True)
+    arrival_at = Column(DateTime(timezone=True), nullable=True)
+    triage_at = Column(DateTime(timezone=True), nullable=True)
+    admission_at = Column(DateTime(timezone=True), nullable=True)
+    discharge_at = Column(DateTime(timezone=True), nullable=True)
 
     patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="RESTRICT"), nullable=False, index=True)
     citizen_id = Column(String(26), ForeignKey("national_citizens.id", ondelete="RESTRICT"), nullable=True, index=True)
@@ -44,5 +54,6 @@ class Encounter(TenantAuditEntity):
         Index("ix_national_encounters_facility", "facility_id"),
         Index("ix_national_encounters_period", "period_start"),
         Index("ix_national_encounters_status", "status"),
+        Index("ix_national_encounters_flow_state", "flow_state"),
         {"extend_existing": True},
     )

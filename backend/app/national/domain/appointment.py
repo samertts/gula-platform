@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy import Enum as SAEnum
 
 from app.national.base import TenantAuditEntity
@@ -15,6 +15,9 @@ class Appointment(TenantAuditEntity):
 
     practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
     facility_id = Column(String(26), ForeignKey("national_facilities.id", ondelete="RESTRICT"), nullable=True, index=True)
+    # The national facility registry and the hospital operations registry use
+    # different identifiers. Keep the local hospital scope explicit.
+    hospital_id = Column(Integer, nullable=True, index=True)
     department_id = Column(String(26), ForeignKey("national_departments.id", ondelete="RESTRICT"), nullable=True, index=True)
 
     appointment_type = Column(String(50), nullable=False)
@@ -28,6 +31,7 @@ class Appointment(TenantAuditEntity):
 
     cancellation_reason = Column(String(500), nullable=True)
     no_show = Column(Boolean, default=False)
+    idempotency_key = Column(String(64), nullable=True, index=True)
 
     __table_args__ = (
         Index("ix_national_appointments_patient", "patient_id"),
@@ -35,5 +39,10 @@ class Appointment(TenantAuditEntity):
         Index("ix_national_appointments_scheduled", "scheduled_date"),
         Index("ix_national_appointments_status", "status"),
         Index("ix_national_appointments_facility_date", "facility_id", "scheduled_date"),
+        Index("ix_national_appointments_hospital_date", "hospital_id", "scheduled_date"),
+        UniqueConstraint(
+            "lab_id", "hospital_id", "idempotency_key",
+            name="uq_national_appointments_hospital_idempotency",
+        ),
         {"extend_existing": True},
     )

@@ -86,6 +86,8 @@ class EncounterResponse(BaseModel):
     id: str
     encounter_type: str
     status: str
+    flow_state: str
+    hospital_id: int | None
     patient_id: str
     citizen_id: str | None
     organization_id: str | None
@@ -105,6 +107,11 @@ class EncounterResponse(BaseModel):
     is_emergency: bool | None
     disposition: str | None
     notes: str | None
+    arrival_at: datetime | None
+    triage_at: datetime | None
+    admission_at: datetime | None
+    discharge_at: datetime | None
+    version: int
     is_deleted: bool
     created_at: datetime | None
     updated_at: datetime | None
@@ -190,7 +197,7 @@ async def get_encounter(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    encounter = service_get_encounter(db, encounter_id)
+    encounter = service_get_encounter(db, encounter_id, lab_id=getattr(user, "lab_id", None))
     if not encounter:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}")
     return encounter
@@ -204,7 +211,10 @@ async def update_encounter(
     user=Depends(get_current_user),
 ):
     try:
-        encounter = service_update_encounter(db, encounter_id, data.model_dump(exclude_none=True))
+        encounter = service_update_encounter(
+            db, encounter_id, data.model_dump(exclude_none=True),
+            lab_id=getattr(user, "lab_id", None),
+        )
         db.commit()
         return encounter
     except EncounterNotFoundError as e:
@@ -218,7 +228,7 @@ async def delete_encounter(
     user=Depends(get_current_user),
 ):
     try:
-        service_delete_encounter(db, encounter_id)
+        service_delete_encounter(db, encounter_id, lab_id=getattr(user, "lab_id", None))
         db.commit()
     except EncounterNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}") from e
@@ -231,7 +241,9 @@ async def complete_encounter(
     user=Depends(get_current_user),
 ):
     try:
-        encounter = service_complete_encounter(db, encounter_id, user.id)
+        encounter = service_complete_encounter(
+            db, encounter_id, user.id, lab_id=getattr(user, "lab_id", None),
+        )
         db.commit()
         return encounter
     except EncounterNotFoundError as e:
@@ -245,7 +257,9 @@ async def cancel_encounter(
     user=Depends(get_current_user),
 ):
     try:
-        encounter = service_cancel_encounter(db, encounter_id, user.id)
+        encounter = service_cancel_encounter(
+            db, encounter_id, user.id, lab_id=getattr(user, "lab_id", None),
+        )
         db.commit()
         return encounter
     except EncounterNotFoundError as e:
@@ -260,7 +274,10 @@ async def get_encounters_by_patient(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    encounters = service_get_encounters_by_patient(db, patient_id, skip=skip, limit=limit)
+    encounters = service_get_encounters_by_patient(
+        db, patient_id, skip=skip, limit=limit,
+        lab_id=getattr(user, "lab_id", None),
+    )
     return EncounterListResponse(
         items=encounters,
         total=len(encounters),
@@ -287,6 +304,7 @@ async def search_encounters(
         db,
         patient_id=patient_id,
         encounter_type=encounter_type,
+        lab_id=getattr(user, "lab_id", None),
         status=status,
         facility_id=facility_id,
         practitioner_id=practitioner_id,
@@ -309,7 +327,7 @@ async def get_encounter_fhir(
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
 ):
-    encounter = service_get_encounter(db, encounter_id)
+    encounter = service_get_encounter(db, encounter_id, lab_id=getattr(user, "lab_id", None))
     if not encounter:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Encounter not found: {encounter_id}")
     return _to_fhir(encounter)

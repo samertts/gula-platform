@@ -160,6 +160,17 @@ EXTENDED_ALL_PERMISSIONS: list[str] = [
     "subscriptions:manage",
     "subscriptions:read",
     "subscriptions:usage",
+    "hospital:read",
+    "hospital:manage",
+    "hospital:flow:read",
+    "hospital:flow:write",
+    "hospital:triage",
+    "hospital:admit",
+    "hospital:transfer",
+    "hospital:discharge",
+    "hospital:appointment:read",
+    "hospital:appointment:write",
+    "consent:manage",
 ]
 
 EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
@@ -169,11 +180,15 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "dashboard:read", "audit:read",
         "platform:manage_labs", "platform:manage_users", "platform:view_stats",
         "payments:read",
+        "hospital:read", "hospital:manage", "hospital:flow:read", "hospital:flow:write",
+        "hospital:triage", "hospital:admit", "hospital:transfer", "hospital:discharge",
+        "hospital:appointment:read", "hospital:appointment:write", "consent:manage",
     ],
     "province_admin": [
         "patients:read", "orders:read", "results:read", "lab:read",
         "dashboard:read", "audit:read",
         "platform:manage_labs", "platform:manage_users", "platform:view_stats",
+        "hospital:read", "hospital:flow:read", "hospital:appointment:read",
     ],
     "admin": [
         "patients:read", "patients:write", "patients:delete",
@@ -182,6 +197,9 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "staff:manage", "lab:read", "lab:manage",
         "dashboard:read", "audit:read",
         "platform:manage_users",
+        "hospital:read", "hospital:manage", "hospital:flow:read", "hospital:flow:write",
+        "hospital:triage", "hospital:admit", "hospital:transfer", "hospital:discharge",
+        "hospital:appointment:read", "hospital:appointment:write", "consent:manage",
         "payments:read", "payments:write", "payments:cashier", "payments:refund:request",
         "payments:refund:approve", "payments:refund:process", "payments:reconcile", "payments:fx:quote",
         "payments:orchestration:route", "payments:control:read", "payments:control:request", "subscriptions:read", "subscriptions:usage",
@@ -193,6 +211,9 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
         "staff:manage", "lab:read", "lab:manage",
         "dashboard:read", "audit:read",
         "platform:manage_users",
+        "hospital:read", "hospital:manage", "hospital:flow:read", "hospital:flow:write",
+        "hospital:triage", "hospital:admit", "hospital:transfer", "hospital:discharge",
+        "hospital:appointment:read", "hospital:appointment:write", "consent:manage",
         "payments:read", "payments:write", "payments:cashier", "payments:refund:request",
         "payments:refund:approve", "payments:refund:process", "payments:reconcile", "payments:fx:quote",
         "payments:orchestration:route", "payments:control:read", "payments:control:request", "subscriptions:read", "subscriptions:usage",
@@ -223,9 +244,13 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
     ],
     "doctor": [
         "patients:read", "orders:read", "results:read", "dashboard:read",
+        "hospital:read", "hospital:flow:read", "hospital:flow:write",
+        "hospital:triage", "hospital:admit", "hospital:transfer", "hospital:discharge",
+        "hospital:appointment:read", "hospital:appointment:write",
     ],
     "staff": [
         "patients:read", "patients:write",
+        "hospital:read", "hospital:flow:read", "hospital:appointment:read",
         "orders:read", "orders:write",
         "results:read", "results:write",
         "lab:read", "dashboard:read",
@@ -234,6 +259,7 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
     ],
     "lab_staff": [
         "patients:read", "patients:write",
+        "hospital:read", "hospital:flow:read", "hospital:appointment:read",
         "orders:read", "orders:write",
         "results:read", "results:write",
         "lab:read", "dashboard:read",
@@ -242,6 +268,7 @@ EXTENDED_ROLE_PERMISSIONS: dict[str, list[str]] = {
     ],
     "technician": [
         "orders:read", "orders:write",
+        "hospital:read", "hospital:flow:read",
         "results:read", "results:write",
         "lab:read", "dashboard:read",
     ],

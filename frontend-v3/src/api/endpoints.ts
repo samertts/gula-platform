@@ -1268,6 +1268,41 @@ export const hospitalApi = {
   getDashboard: (hospitalId: number) => api.get<Record<string, unknown>>(`/hospital/${hospitalId}/dashboard`).then((r) => r.data),
 };
 
+// ── Government Patient Flow ──
+export type PatientFlowRecord = {
+  id: string;
+  patient_id: string;
+  hospital_id: number | null;
+  encounter_type: string;
+  status: string;
+  flow_state: string;
+  priority: string | null;
+  is_emergency: boolean;
+  version: number;
+  period_start: string | null;
+  arrival_at: string | null;
+  triage_at: string | null;
+  admission_at: string | null;
+  discharge_at: string | null;
+};
+
+export const patientFlowApi = {
+  queue: (hospitalId: number, params?: { flow_state?: string; limit?: number }) =>
+    api.get<PatientFlowRecord[]>("/national/patient-flow/queue", { params: { hospital_id: hospitalId, ...params } }).then((r) => r.data),
+  createArrival: (data: {
+    patient_id: string;
+    hospital_id: number;
+    encounter_type?: string;
+    priority?: string;
+    reason_code?: string;
+    reason_description?: string;
+    is_emergency?: boolean;
+    idempotency_key?: string;
+  }) => api.post<PatientFlowRecord>("/national/patient-flow/arrivals", data).then((r) => r.data),
+  transition: (encounterId: string, data: { target_state: string; expected_version?: number }) =>
+    api.post<PatientFlowRecord>(`/national/patient-flow/${encounterId}/transition`, data).then((r) => r.data),
+};
+
 // ── National Data ──
 export const nationalDataApi = {
   // Patients

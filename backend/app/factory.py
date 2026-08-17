@@ -573,6 +573,8 @@ def _register_routes(app: FastAPI) -> None:
     app.include_router(claims_routes.router)
 
     app.include_router(national_identity.router)
+    from .national.api.routes import national_router
+    app.include_router(national_router)
     app.include_router(insurance.router)
 
     app.include_router(ai_routes.router)
