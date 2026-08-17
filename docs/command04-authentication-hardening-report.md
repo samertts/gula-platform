@@ -232,3 +232,23 @@ The security suite covers authentication, refresh replay, session scope, MFA, re
 [24]: https://github.com/samertts/gula-platform/actions/runs/32056253725 "Quality Gate — runner pre-execution failure"
 [25]: https://github.com/samertts/gula-platform/actions/runs/32056253729 "Android CI/CD — runner pre-execution failure"
 [26]: https://github.com/samertts/gula-platform/actions/runs/32056253730 "Security Hardening — runner pre-execution failure"
+
+## 14. CI Rerun Evidence After Internal Fixes
+
+بعد دفع commit `33664e8df0aee1dc43528abbd09d14b5d8d8c95b`، أُعيد تشغيل jobs الفاشلة فقط في جميع workflows ذات الصلة، ثم فُحصت المحاولة الثانية `run_attempt=2`. النتيجة لم تتغير: كل job انتهى خلال 2–6 ثوانٍ تقريباً بحالة `failure` و`runner_id=0` و`steps=[]`. أما jobs التابعة لها التي تعتمد على تلك النتائج فكانت `skipped`؛ ولا يجوز اعتبار skipped دليلاً على PASS.
+
+| workflow | current run | attempt-2 job evidence | النتيجة |
+|---|---|---|---|
+| IAM Hardening Gate | [32060318297][27] | job `95480208126` | failure قبل التنفيذ؛ runner_id=0؛ steps=0 |
+| Changed Files Quality Gate | [32060318338][28] | job `95480211103` | failure قبل التنفيذ؛ runner_id=0؛ steps=0 |
+| Security Hardening | [32060318515][29] | job `95480200904` | failure قبل التنفيذ؛ runner_id=0؛ steps=0 |
+| Mobile Android CI/CD | [32060318319][30] | job `95480218440` | failure قبل التنفيذ؛ runner_id=0؛ steps=0 |
+| Preview Deploy | [32060318363][31] | job `95480242914` | failure قبل التنفيذ؛ runner_id=0؛ steps=0 |
+
+إعادة التشغيل لم تُظهر أي source-level failure جديد، ولم تغيّر الحكم المحلي: quality gate وfull backend regression وsecret guard ما زالت ناجحة محلياً، بينما GitHub runner allocation غير متاح. لذلك لا يوجد إصلاح آمن إضافي داخل الكود يمكنه تحويل هذه النتائج إلى PASS، ولا يجوز تعطيل jobs أو تغيير شروطها لإخفاء الحظر.
+
+[27]: https://github.com/samertts/gula-platform/actions/runs/32060318297 "IAM Hardening Gate — SHA 33664e8d rerun"
+[28]: https://github.com/samertts/gula-platform/actions/runs/32060318338 "Changed Files Quality Gate — SHA 33664e8d rerun"
+[29]: https://github.com/samertts/gula-platform/actions/runs/32060318515 "Security Hardening — SHA 33664e8d rerun"
+[30]: https://github.com/samertts/gula-platform/actions/runs/32060318319 "Android CI/CD — SHA 33664e8d rerun"
+[31]: https://github.com/samertts/gula-platform/actions/runs/32060318363 "Preview Deploy — SHA 33664e8d rerun"
