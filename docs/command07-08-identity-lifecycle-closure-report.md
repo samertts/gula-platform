@@ -5,7 +5,7 @@
 **Repository:** `samertts/gula-platform`
 **Branch:** `chore/security-ddos-hardening-clean`
 **Baseline commit:** `ef84866ce786937514887efed78a17540a39a7a2`
-**Candidate commit:** `3d25125cb6e4d9bc69f32c13350af279b4afdaf9`
+**Candidate commit:** `ab1e2a681d22cf83a04e7107866e7bcb90f37d6a`
 
 ## Executive summary
 
@@ -78,8 +78,8 @@ The following final checks were covered by existing backend tests and focused re
 |---|---:|
 | TypeScript | **0 errors** |
 | ESLint | **0 errors/warnings** |
-| Vitest unit suite excluding Playwright files | **63 tests passed, 17 files** |
-| Playwright `e2e/auth.spec.ts` | **8/8 passed** |
+| Vitest unit suite excluding Playwright files | **68 tests passed, 19 files** |
+| Playwright full local suite | **55/55 passed** |
 | Vite/PWA build | **PASS**, service worker generated |
 | Auth, API error, workspace, storage-barrier regressions | **PASS** |
 | Keyboard/semantic focus review | **PARTIAL**; existing accessible labels/roles and focus rings preserved, full screen-reader matrix needs browser CI |
@@ -151,3 +151,15 @@ The exact next action is a human-approved CI/staging verification gate: run Andr
 [8]: `../backend/tests/identity/test_authorization_context_command06.py` — server-side context and revocation evidence.
 [9]: `/home/ubuntu/.mcp/tool-results/2026-08-17_07-48-11.519455690_vercel_get_project_deployment_protection_33817840.json` — Vercel deployment protection read-only result.
 [10]: `/home/ubuntu/.mcp/tool-results/2026-08-17_07-48-25.490851603_vercel_list_deployments_a82a8533.json` — Vercel deployments read-only result.
+
+## 12. Follow-up execution after the initial closure commit
+
+A read-only GitHub Actions review and representative rerun were performed for commit `856e2734fa07f818875c4c49e956b4960b3ff392`. Actions is enabled for the private repository and allows all actions. Nevertheless, the rerun jobs for Formatting, CI Syntax, Android, iOS, and Flutter completed with `runner_id: 0`, an empty runner name, zero reported steps, and no accessible logs through the configured GitHub integration. The outcome is classified as **`BLOCKED_EXTERNAL`**, not as a source-code failure. A human with repository Actions/check-run access must inspect runner service and billing/policy diagnostics before treating those checks as required evidence.
+
+The local reproduction separated code failures from environment failures. `npm ci --dry-run` succeeds against the existing `frontend-v3/package-lock.json`. The changed Web files pass TypeScript, ESLint, targeted unit tests, and the Vite build. Repository-wide Prettier and Ruff-format checks still report legacy formatting outside the Command 07–08 change set; broad auto-formatting was intentionally not committed because it would create an unrelated high-volume diff.
+
+The correct offline Alembic rehearsal was executed with the actual adjacent revisions: upgrade `20260815_0022:20260816_0023` and downgrade `20260816_0023:20260815_0022`. Both generated SQL successfully without connecting to a database. No local PostgreSQL server, Docker/Podman runtime, `psql`, or `pg_isready` is available, so live/staging PostgreSQL remains **`UNVERIFIED`**.
+
+Additional safe Web/PWA evidence was added. The recovery page now uses a tested helper that removes query and fragment material from recovery deep links before replacing browser history; the error classifier has explicit 401/403/409/422/429/5xx/offline coverage; and the locale contract verifies supported locale identity and direction declarations. These changes do not create a client-side authorization path.
+
+The complete local Vitest suite excluding Playwright files passed **68/68 tests across 19 files**. The complete local Playwright suite passed **55/55 tests** across authentication, recovery, navigation, responsive layouts, workspace safety, billing/insurance, FHIR, reporting, and RTL surfaces. TypeScript, targeted ESLint, and the PWA build also passed after the minimal-diff reapplication.

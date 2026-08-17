@@ -30,3 +30,11 @@ A cross-tenant read or write, authorization bypass, stale privilege after revoca
 ## Planned implementation order
 
 The implementation will proceed in this order: first harden the Web/PWA auth state and API client; next add regression tests for refresh/logout/context races and error states; then run backend lifecycle and security suites; then run available Web/PWA quality gates; finally classify Android/iOS/Flutter and production evidence without inventing results. Any backend dependency discovered during frontend work will be documented as `BACKEND_DEPENDENCY` rather than implemented as a client-side bypass.
+
+## Follow-up verification after the initial closure commit
+
+A read-only GitHub Actions review was performed for commit `856e2734fa07f818875c4c49e956b4960b3ff392`. The repository Actions permission is enabled and allows all actions, but the representative reruns for Formatting, CI Syntax, Android, iOS, and Flutter completed with `runner_id: 0`, an empty runner name, zero reported steps, and no accessible logs through the configured GitHub integration. These runs are therefore classified as `BLOCKED_EXTERNAL`; source changes must not be inferred from an unavailable job log.
+
+The local reproduction separated code from environment. `npm ci --dry-run` succeeds against the existing `frontend-v3/package-lock.json`; changed Web files pass TypeScript, ESLint, unit tests, and Vite build. Repository-wide Prettier and Ruff-format checks still identify legacy formatting outside the Command 07–08 change set, so broad auto-formatting was intentionally not committed.
+
+The correct offline Alembic range rehearsal is `20260815_0022:20260816_0023` for upgrade and `20260816_0023:20260815_0022` for downgrade. Both generated SQL successfully without a database connection. No local PostgreSQL server, Docker, psql, or pg_isready tool is available; live/staging PostgreSQL remains `UNVERIFIED`.

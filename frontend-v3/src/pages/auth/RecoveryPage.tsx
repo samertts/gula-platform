@@ -20,6 +20,11 @@ function createIdempotencyKey(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+export function sanitizeRecoveryUrl(url: string): string {
+  const parsed = new URL(url, "https://gula.invalid");
+  return parsed.pathname || "/recover";
+}
+
 export function RecoveryPage() {
   const { t } = useTranslation();
   const { isRTL } = useLocale();
@@ -41,7 +46,7 @@ export function RecoveryPage() {
       setToken(queryToken);
       setStep("verify");
       // Remove recovery material from browser history and referrer surfaces.
-      window.history.replaceState({}, document.title, window.location.pathname);
+      window.history.replaceState({}, document.title, sanitizeRecoveryUrl(window.location.href));
     }
     if (queryRequestId) setRequestId(queryRequestId);
   }, []);
