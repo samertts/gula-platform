@@ -48,6 +48,11 @@ class LabResult(Base):
     # NULL on results created before the clinical engine was introduced.
     clinical_engine_version = Column(String(20), nullable=True)
 
+    review_status = Column(String(24), nullable=False, default="UNREVIEWED", index=True)
+    reviewed_by = Column(String(26), nullable=True, index=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    review_note = Column(String(1000), nullable=True)
+
     # Optimistic locking — increment on every mutation.
     # If the caller's version no longer matches DB, the caller receives HTTP 409.
     version = Column(Integer, nullable=False, default=1)

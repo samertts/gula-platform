@@ -76,3 +76,22 @@ def test_context_denies_write_without_permission_even_with_context():
 
     with pytest.raises(ClinicalGatewayBlocked, match="clinical_permission_required"):
         context.require_operation("create")
+
+
+def test_context_allows_shift_start_only_with_server_permission():
+    context = ClinicalAccessContext.from_gateway(
+        _gateway_context(),
+        purpose="workflow.shift.start",
+        permissions=frozenset({"shift:start"}),
+    )
+    context.require_operation("shift_start")
+
+
+def test_context_denies_task_create_without_assignment_and_patient_scope():
+    context = ClinicalAccessContext.from_gateway(
+        _gateway_context(),
+        purpose="workflow.task.create",
+        permissions=frozenset({"task:create"}),
+    )
+    with pytest.raises(ClinicalGatewayBlocked, match="shift_assignment_and_patient_scope_required"):
+        context.require_operation("task_create")

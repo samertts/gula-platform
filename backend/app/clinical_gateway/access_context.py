@@ -12,6 +12,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from uuid import UUID, uuid4
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -19,6 +20,7 @@ from app.clinical_gateway.context import ClinicalGatewayContext, ClinicalGateway
 
 
 WRITE_OPERATIONS = frozenset({"create", "update", "delete", "sign", "approve", "publish", "validate"})
+WORKFLOW_BOOTSTRAP_OPERATIONS = frozenset({"shift_start", "shift_end", "patient_assign", "task_create"})
 
 
 @dataclass(frozen=True)
@@ -43,6 +45,7 @@ class ClinicalAccessContext:
     issued_at: datetime
     expires_at: datetime | None
     correlation_id: UUID
+    gateway_context: ClinicalGatewayContext | None = None
 
     @classmethod
     def from_gateway(
@@ -78,6 +81,7 @@ class ClinicalAccessContext:
             issued_at=now,
             expires_at=None,
             correlation_id=correlation_id or uuid4(),
+            gateway_context=context,
         )
 
     @classmethod
@@ -90,6 +94,7 @@ class ClinicalAccessContext:
         purpose: str,
         permissions: frozenset[str] = frozenset(),
         correlation_id: UUID | None = None,
+        require_task: bool = True,
     ) -> "ClinicalAccessContext":
         """Derive patient/shift/task proof from server-side nursing workflow rows."""
         if patient_id <= 0:
@@ -108,7 +113,7 @@ class ClinicalAccessContext:
                 db.query(NursingShift)
                 .filter(
                     NursingShift.lab_id == context.legacy_user.lab_id,
-                    NursingShift.nurse_id == str(context.legacy_user.id),
+                    or_(NursingShift.nurse_id == str(context.legacy_user.id), NursingShift.clinician_user_id == str(context.legacy_user.id)),
                     NursingShift.is_deleted.is_(False),
                     NursingShift.start_time <= now,
                     (NursingShift.end_time.is_(None) | (NursingShift.end_time > now)),
@@ -119,7 +124,7 @@ class ClinicalAccessContext:
                 db.query(PatientAssignment)
                 .filter(
                     PatientAssignment.lab_id == context.legacy_user.lab_id,
-                    PatientAssignment.nurse_id == str(context.legacy_user.id),
+                    or_(PatientAssignment.nurse_id == str(context.legacy_user.id), PatientAssignment.clinician_user_id == str(context.legacy_user.id)),
                     PatientAssignment.patient_id == patient_id,
                     PatientAssignment.is_active.is_(True),
                     PatientAssignment.is_deleted.is_(False),
@@ -138,14 +143,14 @@ class ClinicalAccessContext:
                     NursingTask.status.notin_(("completed", "cancelled", "voided")),
                 )
                 .all()
-            )
+            ) if require_task else []
         except Exception as exc:
             raise ClinicalGatewayBlocked("workflow_context_unavailable") from exc
         if len(active_shifts) != 1:
             raise ClinicalGatewayBlocked("active_shift_missing_or_ambiguous")
         if len(assignments) != 1:
             raise ClinicalGatewayBlocked("patient_assignment_missing_or_ambiguous")
-        if len(tasks) != 1:
+        if require_task and len(tasks) != 1:
             raise ClinicalGatewayBlocked("clinical_task_missing_or_ambiguous")
         return replace(
             base,
@@ -157,6 +162,28 @@ class ClinicalAccessContext:
 
     def require_operation(self, operation: str) -> None:
         """Fail closed for writes until shift/assignment/task are durable."""
+        if operation not in WRITE_OPERATIONS and operation not in WORKFLOW_BOOTSTRAP_OPERATIONS:
+            raise ClinicalGatewayBlocked("unknown_clinical_operation")
+        if operation == "shift_start":
+            if "shift:start" not in self.permissions:
+                raise ClinicalGatewayBlocked("clinical_permission_required")
+            return
+        if operation == "shift_end":
+            if "shift:end" not in self.permissions:
+                raise ClinicalGatewayBlocked("clinical_permission_required")
+            return
+        if operation == "patient_assign":
+            if "patient:assign" not in self.permissions:
+                raise ClinicalGatewayBlocked("clinical_permission_required")
+            if not self.shift_id or self.patient_scope == "workspace_read":
+                raise ClinicalGatewayBlocked("shift_and_patient_scope_required")
+            return
+        if operation == "task_create":
+            if "task:create" not in self.permissions:
+                raise ClinicalGatewayBlocked("clinical_permission_required")
+            if not (self.shift_id and self.assignment_id) or self.patient_scope == "workspace_read":
+                raise ClinicalGatewayBlocked("shift_assignment_and_patient_scope_required")
+            return
         if operation in WRITE_OPERATIONS and not (self.shift_id and self.assignment_id and self.task_id):
             raise ClinicalGatewayBlocked("clinical_shift_assignment_task_required")
         if operation in WRITE_OPERATIONS and self.patient_scope == "workspace_read":
