@@ -1,0 +1,45 @@
+name: Mobile Expo Speech Quality
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'mobile-expo/**'
+      - '.github/workflows/mobile-expo.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'mobile-expo/**'
+      - '.github/workflows/mobile-expo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Expo SDK 54 Typecheck and Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile-expo
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup Node
+        uses: actions/setup-node@1e60f620b9541dca7a7b8f6d0e7a3f2cbf3e8c2d
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile-expo/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test -- --runInBand

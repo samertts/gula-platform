@@ -1,0 +1,43 @@
+{
+  "expo": {
+    "name": "GULA Mobile",
+    "slug": "gula-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "newArchEnabled": true,
+    "scheme": "gula",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "org.gula.platform.mobile",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "يستخدم GULA الميكروفون فقط أثناء ضغطك على زر الإملاء الصوتي لإنشاء مسودة قابلة للمراجعة.",
+        "NSSpeechRecognitionUsageDescription": "يستخدم GULA التعرف على الكلام لتحويل إملائك إلى نص قابل للمراجعة، ولا يحفظ التسجيل الصوتي."
+      }
+    },
+    "android": {
+      "package": "org.gula.platform.mobile",
+      "permissions": ["android.permission.RECORD_AUDIO"]
+    },
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "اسمح لـ GULA باستخدام الميكروفون أثناء الإملاء الصوتي.",
+          "speechRecognitionPermission": "اسمح لـ GULA باستخدام التعرف على الكلام لإنشاء مسودة قابلة للمراجعة.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.as",
+            "com.samsung.android.bixby.agent"
+          ]
+        }
+      ]
+    ],
+    "extra": {
+      "gula": {
+        "clinicalVoiceDraftOnly": true,
+        "audioPersistence": false,
+        "analyticsCapture": false
+      }
+    }
+  }
+}
