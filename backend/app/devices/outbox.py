@@ -229,7 +229,9 @@ def process_batch(
             message.next_attempt_at = now
             delivered += 1
         except Exception as exc:  # pragma: no cover - exercised by focused tests
-            mark_failure(db, message, str(exc), now=now)
+            # Provider messages are untrusted and may echo credentials or clinical payloads.
+            # Keep only the exception class in the durable outbox audit field.
+            mark_failure(db, message, f"dispatcher failure: {type(exc).__name__}", now=now)
             if message.status == "dead_letter":
                 dead_letter += 1
             else:
