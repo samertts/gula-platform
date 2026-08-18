@@ -27,7 +27,7 @@ Revises     : (none — initial migration)
 Create Date : 2025-03-22
 """
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
@@ -40,6 +40,11 @@ depends_on    = None
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _table_exists(table: str) -> bool:
+    # Offline SQL generation has no inspectable connection. The initial
+    # migration is intended for a fresh schema, so emit the CREATE statements
+    # in offline mode; preserve idempotent inspection for online upgrades.
+    if context.is_offline_mode():
+        return False
     return inspect(op.get_bind()).has_table(table)
 
 

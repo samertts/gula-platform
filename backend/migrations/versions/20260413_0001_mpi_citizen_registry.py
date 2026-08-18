@@ -14,7 +14,7 @@ All three are idempotent (guarded by `_has_table`) so re-running is safe.
 Partial unique index on `citizens.nid_hash` (WHERE nid_hash IS NOT NULL)
 is created via raw DDL for PostgreSQL portability.
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
@@ -28,11 +28,15 @@ depends_on    = None
 # ─── Idempotency helpers (copied from 20260407_0001_claims_tables.py) ─────────
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     return inspect(bind).has_table(name)
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     if not inspect(bind).has_table(table):
         return False
@@ -41,6 +45,8 @@ def _has_column(table: str, column: str) -> bool:
 
 
 def _index_exists(index: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     inspector = inspect(bind)
     for table in inspector.get_table_names():

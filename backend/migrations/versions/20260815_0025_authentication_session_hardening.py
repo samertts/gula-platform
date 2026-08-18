@@ -6,7 +6,7 @@ Revises: 20260815_0024
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision = "20260815_0025"
 down_revision = "20260815_0024"
@@ -20,10 +20,14 @@ _COLUMNS = (
 
 
 def _has_table(table: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return bool(sa.inspect(op.get_bind()).has_table(table))
 
 
 def _columns(table: str) -> set[str]:
+    if context.is_offline_mode():
+        return set()
     if not _has_table(table):
         return set()
     return {item["name"] for item in sa.inspect(op.get_bind()).get_columns(table)}
@@ -31,6 +35,12 @@ def _columns(table: str) -> set[str]:
 
 def upgrade() -> None:
     table = "niam_sessions"
+    if context.is_offline_mode():
+        for name, column_type, nullable in _COLUMNS:
+            op.add_column(table, sa.Column(name, column_type, nullable=nullable))
+        op.create_index("ix_niam_sessions_refresh_family_id", table, ["refresh_family_id"])
+        op.create_index("ix_niam_sessions_refresh_replaced_by_jti", table, ["refresh_replaced_by_jti"])
+        return
     if not _has_table(table):
         return
     existing = _columns(table)
@@ -58,6 +68,12 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     table = "niam_sessions"
+    if context.is_offline_mode():
+        op.drop_index("ix_niam_sessions_refresh_replaced_by_jti", table_name=table)
+        op.drop_index("ix_niam_sessions_refresh_family_id", table_name=table)
+        for name, _, _ in reversed(_COLUMNS):
+            op.drop_column(table, name)
+        return
     if not _has_table(table):
         return
     existing = _columns(table)

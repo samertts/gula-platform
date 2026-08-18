@@ -52,6 +52,14 @@ jobs:
           IMAGE_TAG: ${{ github.event.inputs.image_tag }}
         run: |
           TAG="$IMAGE_TAG"
+          if [ -z "$TAG" ] || [[ "$TAG" == latest || "$TAG" == latest-* ]]; then
+            echo "Refusing canary deployment with mutable or empty image tag: '$TAG'" >&2
+            exit 1
+          fi
+          if ! [[ "$TAG" =~ ^[A-Za-z0-9._-]{7,128}$ ]]; then
+            echo "Refusing canary deployment with malformed image tag: '$TAG'" >&2
+            exit 1
+          fi
           IMAGE="$IMAGE_PREFIX/backend:$TAG"
 
           kubectl set image deployment/gula-backend-canary gula-backend="${IMAGE}" \

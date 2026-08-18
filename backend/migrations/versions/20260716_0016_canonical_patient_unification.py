@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import Union
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 from sqlalchemy import inspect
 
 revision: str = "20260716_0016"
@@ -22,6 +22,8 @@ down_revision: Union[str, None] = "20260716_0015"
 
 
 def _table_exists(table: str) -> bool:
+    if context.is_offline_mode():
+        return True
     return inspect(op.get_bind()).has_table(table)
 
 

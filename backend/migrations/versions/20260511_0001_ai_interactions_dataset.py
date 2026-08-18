@@ -53,7 +53,7 @@ is global (no lab_id) — it is shared reference data.
 """
 from __future__ import annotations
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 from sqlalchemy.dialects import postgresql
@@ -69,10 +69,14 @@ depends_on    = None
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _table_exists(table: str) -> bool:
+    if context.is_offline_mode():
+        return True
     return inspect(op.get_bind()).has_table(table)
 
 
 def _index_exists(index: str) -> bool:
+    if context.is_offline_mode():
+        return False
     inspector = inspect(op.get_bind())
     for table in inspector.get_table_names():
         if any(i["name"] == index for i in inspector.get_indexes(table)):
@@ -81,6 +85,8 @@ def _index_exists(index: str) -> bool:
 
 
 def _pg() -> bool:
+    if context.is_offline_mode():
+        return True
     return op.get_bind().dialect.name == "postgresql"
 
 

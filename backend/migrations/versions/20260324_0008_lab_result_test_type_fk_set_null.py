@@ -13,7 +13,7 @@ Revises     : 20260324_0007
 Create Date : 2026-03-24
 """
 
-from alembic import op
+from alembic import context, op
 from sqlalchemy import inspect
 
 revision      = "20260324_0008"
@@ -23,6 +23,8 @@ depends_on    = None
 
 
 def _fk_exists(table: str, name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return any(
         fk["name"] == name
         for fk in inspect(op.get_bind()).get_foreign_keys(table)
@@ -30,6 +32,8 @@ def _fk_exists(table: str, name: str) -> bool:
 
 
 def _table_exists(table: str) -> bool:
+    if context.is_offline_mode():
+        return True
     return inspect(op.get_bind()).has_table(table)
 
 

@@ -17,18 +17,22 @@ from __future__ import annotations
 from typing import Union
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision: str = "20260716_0015"
 down_revision: Union[str, None] = "20260716_0014"
 
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     conn = op.get_bind()
     return conn.dialect.has_table(conn, name)
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     conn = op.get_bind()
     if not conn.dialect.has_table(conn, table):
         return False

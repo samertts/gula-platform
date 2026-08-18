@@ -244,3 +244,79 @@ SAFE_STOP: لا تشغيل migration، لا production DB، لا deployment أو
 - [x] تشغيل بوابات التحقق المناسبة للتغيير التوثيقي؛ `git diff --check` ناجح.
 - [x] إنشاء commit للتغييرات الجديدة فقط: `a5426da2`.
 - [x] رفع الفرع والتحقق من تطابق SHA ونظافة الشجرة؛ التطابق مؤكد.
+
+
+## إصلاح العوائق المتبقية قبل الجاهزية الرسمية
+
+- [ ] جرد workflows وDockerfiles وRegistry references للخدمات الثماني.
+- [ ] إضافة أو تقوية CI لبناء الصور من commit محدد وإنتاج SBOM وprovenance.
+- [ ] منع `:latest` في manifests، وتحديثها إلى digest فعلي بعد توفر Registry.
+- [ ] إضافة بوابة تمنع الصور غير الموقعة أو من Registry غير معتمد.
+- [ ] إصلاح أو عزل اعتماد Alembic القديم على `inspect` في offline mode.
+- [ ] تشغيل البوابات المحلية وإعادة فحص scanner والاختبارات.
+- [ ] تحديث تقرير Go/No-Go وتحديد ما يتطلب Staging فعلياً.
+
+
+## دورة التدقيق الشامل المستمرة — 2026-08-18
+
+- [ ] جرد حالة Git الحالية والفروع والـPRs وملفات CI دون تعديل الفروع المحمية.
+- [x] مسح migrations كاملة بحثاً عن introspection أو SQL/بيانات غير محمية في offline وonline.
+- [x] التحقق من سلامة تعريفات القيود والفهارس في PostgreSQL، SQLite، وMockConnection.
+- [x] مراجعة Outbox وEHR وNID والتحصين لعزل المستأجر ومنع فقد البيانات والتكرار.
+- [x] تشغيل اختبارات backend المستهدفة ثم المجموعة الأوسع وتوثيق أي فشل.
+- [x] فحص الأسرار والإعدادات وDocker/Kubernetes/Helm وGitHub Actions بحثاً عن صور أو مراجع غير مثبتة.
+- [x] مراجعة PII/HMAC/السجلات وRBAC وfail-closed Redis ومسارات break-glass.
+- [x] توثيق كل إصلاح مع اختبار إثبات، وعدم تنفيذ production migration أو deployment أو merge أثناء SAFE_STOP.
+
+
+## الدورة المتقدمة — 2026-08-18
+
+- [x] جرد كل مصادر صور الحاويات في Kustomize وHelm وCI ومطابقة tags مع آلية البناء.
+- [ ] تحديد ما يمكن تثبيته فعلياً عبر digest أو commit tag موثق دون تخمين.
+- [x] مراجعة مهلات اختبارات Staging واتصالات PostgreSQL/Redis/NID لمنع التعليق.
+- [ ] فحص Helm/Kustomize render محلياً إن كانت الأدوات متاحة وتوثيق أي اختلاف.
+- [x] إعادة تشغيل security scanner والاختبارات بعد أي إصلاح مثبت.
+- [x] إبقاء الإصلاحات غير القابلة للإثبات معلّمة للمراجعة البشرية وعدم تنفيذ نشر أو merge.
+
+- [x] إضافة وتشغيل regression tests لتوافق lock pins في Dependency Guardian.
+
+- [x] إضافة حواجز blue-green وcanary لرفض image tags المتحركة قبل kubectl.
+
+- [x] توحيد اسم CI مع `workflow_run` trigger الخاص بـblue-green والتحقق من YAML.
+
+
+## GULA Speech-to-Text Command 01
+
+- [ ] فحص Expo SDK وReact Native وpackage.json وapp config والتهيئة الأصلية وCI.
+- [ ] التحقق من توافق `expo-speech-recognition` مع الإصدار الحالي دون ترقية Expo.
+- [ ] تصميم SpeechRecognitionService/Adapter مستقل عن المكتبة.
+- [ ] تنفيذ Provider وhook وحالات permission/recognition وواجهات RTL مع fallback يدوي.
+- [ ] إضافة Android/iOS permissions وconfig plugin أو prebuild عند الحاجة فقط.
+- [ ] تطبيق privacy/lifecycle safeguards ومنع التسجيل الخلفي أو الحفظ أو الكتابة السريرية المباشرة.
+- [ ] إضافة اختبارات unit/integration لكل حالات speech المذكورة في Command 01.
+- [ ] تشغيل lint/typecheck/tests/build المتاح وتوثيق ما يتطلب Development Build أو أجهزة حقيقية.
+- [ ] إعداد تقرير Command 01 بحالة `READY` أو `PARTIAL` أو `BLOCKED` أو `UNVERIFIED`.
+- [ ] عدم ترقية Expo، عدم تشغيل Cloud Speech، عدم تخزين الصوت، وعدم تغيير production.
+
+
+## GULA Speech-to-Text Command 01
+
+- [ ] فحص Expo SDK وReact Native وpackage.json وapp config والتهيئة الأصلية وCI.
+- [ ] التحقق من توافق `expo-speech-recognition` مع الإصدار الحالي دون ترقية Expo.
+- [ ] تصميم SpeechRecognitionService/Adapter مستقل عن المكتبة.
+- [ ] تنفيذ Provider وhook وحالات permission/recognition وواجهات RTL مع fallback يدوي.
+- [ ] إضافة Android/iOS permissions وconfig plugin أو prebuild عند الحاجة فقط.
+- [ ] تطبيق privacy/lifecycle safeguards ومنع التسجيل الخلفي أو الحفظ أو الكتابة السريرية المباشرة.
+- [ ] إضافة اختبارات unit/integration لكل حالات speech المذكورة في Command 01.
+- [ ] تشغيل lint/typecheck/tests/build المتاح وتوثيق ما يتطلب Development Build أو أجهزة حقيقية.
+- [ ] إعداد تقرير Command 01 بحالة `READY` أو `PARTIAL` أو `BLOCKED` أو `UNVERIFIED`.
+- [ ] عدم ترقية Expo، عدم تشغيل Cloud Speech، عدم تخزين الصوت، وعدم تغيير production.
+
+
+## رفع التغييرات إلى GitHub
+
+- [ ] فحص حالة Git والفروع والـremote والملفات غير المتتبعة.
+- [ ] استبعاد الأسرار والملفات المؤقتة وartifacts من commit.
+- [ ] مراجعة diff وتشغيل فحوصات مناسبة للتغييرات المرشحة.
+- [ ] إنشاء commit واضح على فرع آمن دون force-push أو تعديل main.
+- [ ] push إلى GitHub والتحقق من commit والفرع والـPR عند الحاجة.

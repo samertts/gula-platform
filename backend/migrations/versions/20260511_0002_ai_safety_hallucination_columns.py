@@ -67,7 +67,7 @@ return defaults).
 """
 from __future__ import annotations
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
@@ -86,10 +86,14 @@ depends_on    = None
 # backend/migrations/helpers.py is tracked separately in directive §17A.
 
 def _table_exists(table: str) -> bool:
+    if context.is_offline_mode():
+        return True
     return inspect(op.get_bind()).has_table(table)
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     insp = inspect(op.get_bind())
     if not insp.has_table(table):
         return False
@@ -97,6 +101,8 @@ def _has_column(table: str, column: str) -> bool:
 
 
 def _index_exists(index: str) -> bool:
+    if context.is_offline_mode():
+        return False
     inspector = inspect(op.get_bind())
     for table in inspector.get_table_names():
         if any(i["name"] == index for i in inspector.get_indexes(table)):
@@ -105,6 +111,8 @@ def _index_exists(index: str) -> bool:
 
 
 def _pg() -> bool:
+    if context.is_offline_mode():
+        return True
     return op.get_bind().dialect.name == "postgresql"
 
 

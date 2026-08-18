@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Sequence, Union
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -21,6 +21,8 @@ _TABLE = "niam_citizen_relationships"
 
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     return bind.dialect.has_table(bind, name)
 

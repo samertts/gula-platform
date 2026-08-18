@@ -27,7 +27,7 @@ columns — those are removed by 0001/0003/0004 downgrades.
 Revision ID : 20260505_0006
 Revises     : 20260505_0005
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
@@ -39,10 +39,14 @@ depends_on    = None
 
 
 def _pg() -> bool:
+    if context.is_offline_mode():
+        return True
     return op.get_bind().dialect.name == "postgresql"
 
 
 def _index_exists(name: str, table: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     if bind.dialect.name != "postgresql":
         return name in {ix["name"] for ix in inspect(bind).get_indexes(table)}
@@ -54,6 +58,8 @@ def _index_exists(name: str, table: str) -> bool:
 
 
 def _constraint_exists(name: str, table: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     if bind.dialect.name != "postgresql":
         return False
@@ -66,6 +72,8 @@ def _constraint_exists(name: str, table: str) -> bool:
 
 
 def _assert_pre_conditions() -> None:
+    if context.is_offline_mode():
+        return
     bind = op.get_bind()
 
     # 1. Every lab_orders row must have a visit_id.

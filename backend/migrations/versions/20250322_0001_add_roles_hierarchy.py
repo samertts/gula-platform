@@ -10,7 +10,7 @@ Revises    : (initial)
 Create Date: 2025-03-22
 """
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
@@ -22,6 +22,8 @@ depends_on = None
 
 def _has_column(table: str, column: str) -> bool:
     """Return True if column already exists (idempotent migrations)."""
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     insp = inspect(bind)
     cols = [c["name"] for c in insp.get_columns(table)]
@@ -66,6 +68,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        op.drop_column("lab_users", "created_by")
+        op.drop_index("ix_lab_users_province_id", table_name="lab_users")
+        op.drop_column("lab_users", "province_id")
+        op.drop_index("ix_lab_users_national_id_hash", table_name="lab_users")
+        op.drop_column("lab_users", "national_id_hash")
+        return
     bind = op.get_bind()
     insp = inspect(bind)
     indexes = {i["name"] for i in insp.get_indexes("lab_users")}

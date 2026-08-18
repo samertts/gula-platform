@@ -15,7 +15,7 @@ Revises    : 20250322_0001
 Create Date: 2025-03-22
 """
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
@@ -26,12 +26,16 @@ depends_on = None
 
 
 def _index_exists(table: str, index_name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     insp = inspect(bind)
     return any(i["name"] == index_name for i in insp.get_indexes(table))
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     insp = inspect(bind)
     return column in [c["name"] for c in insp.get_columns(table)]
@@ -105,6 +109,21 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        op.execute(text("DROP TRIGGER IF EXISTS trg_audit_logs_no_update ON audit_logs;"))
+        op.execute(text("DROP TRIGGER IF EXISTS trg_audit_logs_no_delete ON audit_logs;"))
+        op.execute(text("DROP FUNCTION IF EXISTS audit_logs_deny_mutation();"))
+        op.drop_index("ix_lab_orders_doctor_user_id", "lab_orders")
+        op.drop_column("lab_orders", "doctor_user_id")
+        for idx, tbl in [
+            ("ix_audit_logs_user_created", "audit_logs"),
+            ("ix_lab_users_role", "lab_users"),
+            ("ix_lab_results_order_id", "lab_results"),
+            ("ix_lab_orders_created_at", "lab_orders"),
+            ("ix_lab_orders_lab_id", "lab_orders"),
+        ]:
+            op.drop_index(idx, tbl)
+        return
     if _is_postgresql():
         op.execute(text("DROP TRIGGER IF EXISTS trg_audit_logs_no_update ON audit_logs;"))
         op.execute(text("DROP TRIGGER IF EXISTS trg_audit_logs_no_delete ON audit_logs;"))

@@ -33,7 +33,7 @@ Schema
 Revision ID : 20260505_0005
 Revises     : 20260505_0004
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 from sqlalchemy.dialects import postgresql
@@ -46,6 +46,8 @@ depends_on    = None
 
 
 def _table_exists(table: str) -> bool:
+    if context.is_offline_mode():
+        return True
     return inspect(op.get_bind()).has_table(table)
 
 

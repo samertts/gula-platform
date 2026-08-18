@@ -10,7 +10,7 @@ Revision ID: 20260329_0011
 Revises    : 20260324_0010
 Create Date: 2026-03-29
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
@@ -21,11 +21,15 @@ depends_on    = None
 
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     return inspect(bind).has_table(name)
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     cols = [c["name"] for c in inspect(bind).get_columns(table)]
     return column in cols

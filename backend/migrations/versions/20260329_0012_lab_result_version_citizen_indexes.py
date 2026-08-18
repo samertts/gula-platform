@@ -13,7 +13,7 @@ Changes:
 4. Add index on lab_results(flag) WHERE flag != 'normal' — fast critical/
    abnormal result queries for citizen health record endpoint.
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy.engine.reflection import Inspector
 
@@ -26,17 +26,23 @@ depends_on = None
 
 
 def _table_exists(conn, table: str) -> bool:
+    if context.is_offline_mode():
+        return True
     inspector = Inspector.from_engine(conn)
     return table in inspector.get_table_names()
 
 
 def _column_exists(conn, table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     inspector = Inspector.from_engine(conn)
     cols = [c["name"] for c in inspector.get_columns(table)]
     return column in cols
 
 
 def _index_exists(conn, index: str) -> bool:
+    if context.is_offline_mode():
+        return False
     inspector = Inspector.from_engine(conn)
     for table in inspector.get_table_names():
         idx_names = [i["name"] for i in inspector.get_indexes(table)]

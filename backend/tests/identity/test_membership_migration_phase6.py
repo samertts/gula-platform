@@ -19,7 +19,10 @@ def _database_url() -> str:
 
 
 def test_membership_tables_constraints_and_foreign_keys_exist() -> None:
-    engine = create_engine(_database_url())
+    engine = create_engine(
+        _database_url(),
+        connect_args={"connect_timeout": int(os.getenv("MIGRATION_DB_CONNECT_TIMEOUT", "5"))},
+    )
     try:
         inspector = inspect(engine)
         tables = set(inspector.get_table_names())

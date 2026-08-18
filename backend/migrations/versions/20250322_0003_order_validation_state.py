@@ -13,7 +13,7 @@ Revises    : 20250322_0002
 Create Date: 2025-03-22
 """
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
@@ -24,6 +24,8 @@ depends_on = None
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     return column in [c["name"] for c in inspect(bind).get_columns(table)]
 
@@ -50,6 +52,12 @@ def upgrade():
 
     # Extend status check — existing "pending/completed/cancelled" plus new workflow states
     # PostgreSQL: add a partial index to speed up "pending" queries on the dashboard
+    if context.is_offline_mode():
+        op.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_lab_orders_status_pending "
+            "ON lab_orders (lab_id, created_at DESC) WHERE status = 'pending'"
+        ))
+        return
     bind = op.get_bind()
     dialect_name = bind.dialect.name
     if dialect_name == "postgresql":

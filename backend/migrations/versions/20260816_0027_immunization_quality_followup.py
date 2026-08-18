@@ -10,7 +10,7 @@ normal staging/change-control procedures after the target schema is verified.
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision = "20260816_0027"
 down_revision = "20260815_0026"
@@ -19,14 +19,20 @@ depends_on = None
 
 
 def _inspect():
+    if context.is_offline_mode():
+        return None
     return sa.inspect(op.get_bind())
 
 
 def _has_table(table: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return bool(_inspect().has_table(table))
 
 
 def _columns(table: str) -> set[str]:
+    if context.is_offline_mode():
+        return set()
     return {item["name"] for item in _inspect().get_columns(table)} if _has_table(table) else set()
 
 
@@ -36,6 +42,9 @@ def _add_column_if_missing(table: str, column: sa.Column) -> None:
 
 
 def _create_index_if_missing(name: str, table: str, columns: list[str]) -> None:
+    if context.is_offline_mode():
+        op.create_index(name, table, columns)
+        return
     if not _has_table(table):
         return
     indexes = {item["name"] for item in _inspect().get_indexes(table)}

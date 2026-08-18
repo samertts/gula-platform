@@ -18,7 +18,10 @@ def _database_url() -> str:
 
 
 def test_phase10b_clinical_scope_mapping_and_read_permissions_exist() -> None:
-    engine = create_engine(_database_url())
+    engine = create_engine(
+        _database_url(),
+        connect_args={"connect_timeout": int(os.getenv("MIGRATION_DB_CONNECT_TIMEOUT", "5"))},
+    )
     try:
         inspector = inspect(engine)
         tables = set(inspector.get_table_names())

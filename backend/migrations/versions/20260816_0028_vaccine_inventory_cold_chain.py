@@ -9,7 +9,7 @@ Prepared locally; not executed by this change set.
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision = "20260816_0028"
 down_revision = "20260816_0027"
@@ -18,6 +18,8 @@ depends_on = None
 
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return bool(sa.inspect(op.get_bind()).has_table(name))
 
 

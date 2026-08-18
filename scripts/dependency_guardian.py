@@ -30,7 +30,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import re
 import shutil
 import subprocess
@@ -38,7 +37,9 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
+
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
 
 logging.basicConfig(
     level=logging.INFO,
@@ -126,7 +127,7 @@ class FileReport:
         return (
             self.parse_error is None
             and len(self.unpinned) == 0
-            and len(self.no_min_bound) == 0
+            and (len(self.no_min_bound) == 0 or self.label.endswith("-lock"))
             and len(self.audit_vulns) == 0
             and self.audit_error is None
         )
@@ -565,6 +566,34 @@ def _extract_bounds(specifier: str) -> list[Tuple[str, str]]:
     return result
 
 
+def _specifier_entries_are_compatible(specifiers: list[str]) -> bool:
+    """Return true when an explicit pin satisfies every manifest constraint.
+
+    A lock file commonly uses ``==x.y.z`` while source manifests use
+    ``>=x.y.z``. Those strings differ but are not a dependency conflict when
+    the exact pinned version satisfies all constraints. Without this check the
+    guardian reports a false positive for every locked package.
+    """
+    exact_versions = [
+        version
+        for specifier in specifiers
+        for operator, version in _extract_bounds(specifier)
+        if operator in {"==", "==="} and "*" not in version
+    ]
+    if not exact_versions:
+        return False
+    try:
+        return any(
+            all(
+                SpecifierSet(specifier).contains(version, prereleases=True)
+                for specifier in specifiers
+            )
+            for version in exact_versions
+        )
+    except InvalidSpecifier:
+        return False
+
+
 def detect_conflicts(python_reports: list[FileReport]) -> list[Conflict]:
     pyproject_deps = parse_pyproject_deps(PYPROJECT)
 
@@ -589,7 +618,7 @@ def detect_conflicts(python_reports: list[FileReport]) -> list[Conflict]:
             continue
         specs = [e[1] for e in entries]
         unique_specs = list(set(specs))
-        if len(unique_specs) <= 1:
+        if len(unique_specs) <= 1 or _specifier_entries_are_compatible(specs):
             continue
         conflicts.append(Conflict(
             package=pkg_name,

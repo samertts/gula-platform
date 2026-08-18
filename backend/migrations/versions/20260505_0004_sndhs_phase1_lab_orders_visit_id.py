@@ -17,7 +17,7 @@ This step is purely metadata and safe at any time.
 Revision ID : 20260505_0004
 Revises     : 20260505_0003
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 from sqlalchemy.dialects import postgresql
@@ -30,14 +30,20 @@ depends_on    = None
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return any(c["name"] == column for c in inspect(op.get_bind()).get_columns(table))
 
 
 def _pg() -> bool:
+    if context.is_offline_mode():
+        return True
     return op.get_bind().dialect.name == "postgresql"
 
 
 def _index_exists(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     if bind.dialect.name != "postgresql":
         return name in {ix["name"] for ix in inspect(bind).get_indexes("lab_orders")}

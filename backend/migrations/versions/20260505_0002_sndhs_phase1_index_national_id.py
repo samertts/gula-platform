@@ -15,7 +15,7 @@ Notes
 Revision ID : 20260505_0002
 Revises     : 20260505_0001
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
@@ -27,10 +27,14 @@ depends_on    = None
 
 
 def _pg() -> bool:
+    if context.is_offline_mode():
+        return True
     return op.get_bind().dialect.name == "postgresql"
 
 
 def _index_exists(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     if bind.dialect.name != "postgresql":
         # Other dialects: best-effort via inspector

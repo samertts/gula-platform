@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -19,6 +19,8 @@ depends_on = None
 
 
 def _drop_table_indexes(table_name: str) -> None:
+    if context.is_offline_mode():
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     unique_constraints = {
@@ -32,9 +34,12 @@ def _drop_table_indexes(table_name: str) -> None:
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    tables = inspector.get_table_names()
+    if context.is_offline_mode():
+        tables = set()
+    else:
+        bind = op.get_bind()
+        inspector = sa.inspect(bind)
+        tables = set(inspector.get_table_names())
     now = datetime.now(UTC)
 
     if "niam_roles" not in tables:
@@ -207,6 +212,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        for table_name in ("niam_role_assignments", "niam_role_permissions", "niam_permissions", "niam_roles"):
+            op.drop_table(table_name)
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     for table_name in ("niam_role_assignments", "niam_role_permissions", "niam_permissions", "niam_roles"):

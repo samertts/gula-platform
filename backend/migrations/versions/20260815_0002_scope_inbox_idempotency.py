@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Union
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision: str = "20260815_0002"
 down_revision: Union[str, None] = "20260815_0001"
@@ -22,6 +22,10 @@ _NEW_CONSTRAINT = "uq_integration_inbox_tenant_idempotency_key"
 
 
 def upgrade() -> None:
+    if context.is_offline_mode():
+        op.drop_constraint(_OLD_CONSTRAINT, _TABLE, type_="unique")
+        op.create_unique_constraint(_NEW_CONSTRAINT, _TABLE, ["tenant_id", "idempotency_key"])
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if _TABLE not in inspector.get_table_names():
@@ -52,6 +56,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        op.drop_constraint(_NEW_CONSTRAINT, _TABLE, type_="unique")
+        op.create_unique_constraint(_OLD_CONSTRAINT, _TABLE, ["idempotency_key"])
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if _TABLE not in inspector.get_table_names():

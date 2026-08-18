@@ -11,7 +11,7 @@ Migration is idempotent (uses IF NOT EXISTS / manual existence checks).
 
 from typing import Sequence, Union
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -30,6 +30,8 @@ INDEXES = [
 
 
 def _index_exists(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     conn = op.get_bind()
     if conn.dialect.name != "postgresql":
         # SQLite doesn't have pg_indexes; check via inspection or return False (CREATE INDEX IF NOT EXISTS or try/except handles it)

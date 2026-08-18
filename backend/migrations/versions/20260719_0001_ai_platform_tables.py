@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 from sqlalchemy.dialects import postgresql
 
 revision: str = "20260719_0001"
@@ -21,11 +21,15 @@ depends_on: str | None = None
 
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     conn = op.get_bind()
     return conn.dialect.has_table(conn, name)
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     from sqlalchemy import inspect
 
     insp = inspect(op.get_bind())
@@ -33,6 +37,8 @@ def _has_column(table: str, column: str) -> bool:
 
 
 def _has_index(table: str, index: str) -> bool:
+    if context.is_offline_mode():
+        return False
     from sqlalchemy import inspect
 
     insp = inspect(op.get_bind())
@@ -40,6 +46,8 @@ def _has_index(table: str, index: str) -> bool:
 
 
 def _enable_pgvector() -> None:
+    if context.is_offline_mode():
+        return
     conn = op.get_bind()
     if conn.dialect.name != "postgresql":
         return

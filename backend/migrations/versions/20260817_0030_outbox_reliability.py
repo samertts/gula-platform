@@ -5,7 +5,7 @@ Prepared locally; not executed by this change set.
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision = "20260817_0030"
 down_revision = "20260816_0029"
@@ -14,6 +14,8 @@ depends_on = None
 
 
 def _columns() -> set[str]:
+    if context.is_offline_mode():
+        return {"status", "event_type", "created_at"}
     inspector = sa.inspect(op.get_bind())
     return {column["name"] for column in inspector.get_columns("outbox_events")} if inspector.has_table("outbox_events") else set()
 
@@ -34,7 +36,7 @@ def upgrade() -> None:
         op.add_column("outbox_events", sa.Column("replayed_by", sa.String(160), nullable=True))
     if "updated_at" not in existing:
         op.add_column("outbox_events", sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True))
-    indexes = {index["name"] for index in sa.inspect(op.get_bind()).get_indexes("outbox_events")}
+    indexes = set() if context.is_offline_mode() else {index["name"] for index in sa.inspect(op.get_bind()).get_indexes("outbox_events")}
     if "ix_outbox_events_status_next_attempt_created" not in indexes:
         op.create_index("ix_outbox_events_status_next_attempt_created", "outbox_events", ["status", "next_attempt_at", "created_at"])
     if "ix_outbox_events_type_status" not in indexes:

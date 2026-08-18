@@ -6,7 +6,7 @@ Revises: 20260814_0001
 
 from __future__ import annotations
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -17,6 +17,9 @@ depends_on = None
 
 
 def _create_if_missing(name: str, columns: list[sa.Column], constraints: list[sa.Constraint]) -> None:
+    if context.is_offline_mode():
+        op.create_table(name, *columns, *constraints)
+        return
     bind = op.get_bind()
     if name in sa.inspect(bind).get_table_names():
         return
@@ -101,12 +104,16 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    bind = op.get_bind()
     tables = (
         "niam_organization_ownerships",
         "niam_organization_representatives",
         "niam_admin_units",
     )
+    if context.is_offline_mode():
+        for table in tables:
+            op.drop_table(table)
+        return
+    bind = op.get_bind()
     for table in tables:
         if table not in sa.inspect(bind).get_table_names():
             continue

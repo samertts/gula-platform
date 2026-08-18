@@ -5,7 +5,7 @@ Prepared locally; not executed by this change set.
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision = "20260817_0032"
 down_revision = "20260817_0031"
@@ -14,6 +14,10 @@ depends_on = None
 
 
 def upgrade() -> None:
+    if context.is_offline_mode():
+        op.add_column("outbox_events", sa.Column("lab_id", sa.Integer(), nullable=True))
+        op.create_index("ix_outbox_events_lab_id", "outbox_events", ["lab_id"])
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if not inspector.has_table("outbox_events"):
@@ -27,6 +31,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        op.drop_index("ix_outbox_events_lab_id", table_name="outbox_events")
+        op.drop_column("outbox_events", "lab_id")
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if not inspector.has_table("outbox_events"):

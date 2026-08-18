@@ -6,7 +6,7 @@ Revises: 20260814_0002
 
 from __future__ import annotations
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -17,9 +17,12 @@ depends_on = None
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    tables = inspector.get_table_names()
+    if context.is_offline_mode():
+        tables = set()
+    else:
+        bind = op.get_bind()
+        inspector = sa.inspect(bind)
+        tables = set(inspector.get_table_names())
 
     if "niam_workspaces" not in tables:
         op.create_table(
@@ -82,6 +85,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        op.drop_table("niam_workspace_contexts")
+        op.drop_table("niam_workspaces")
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if "niam_workspace_contexts" in inspector.get_table_names():

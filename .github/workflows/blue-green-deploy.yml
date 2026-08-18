@@ -83,6 +83,14 @@ jobs:
           else
             TAG="${GITHUB_SHA::7}"
           fi
+          if [ -z "$TAG" ] || [[ "$TAG" == latest || "$TAG" == latest-* ]]; then
+            echo "Refusing deployment with mutable or empty image tag: '$TAG'" >&2
+            exit 1
+          fi
+          if ! [[ "$TAG" =~ ^[A-Za-z0-9._-]{7,128}$ ]]; then
+            echo "Refusing deployment with malformed image tag: '$TAG'" >&2
+            exit 1
+          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "Deploying image tag: $TAG"
 

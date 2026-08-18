@@ -47,6 +47,9 @@ app.kubernetes.io/component: {{ .component }}
 {{- $repository := .repository | default "backend" -}}
 {{- $tag := .tag | default .Values.global.imageTag -}}
 {{- $pullPolicy := .pullPolicy | default .Values.global.imagePullPolicy -}}
+{{- if and (eq (.Values.global.environment | default "production") "production") (eq $tag "latest") -}}
+{{- fail (printf "refusing production render with mutable image tag latest for %s; provide an immutable tag or digest" $repository) -}}
+{{- end -}}
 image: "{{ $registry }}/{{ $repository }}:{{ $tag }}"
 imagePullPolicy: "{{ $pullPolicy }}"
 {{- end -}}

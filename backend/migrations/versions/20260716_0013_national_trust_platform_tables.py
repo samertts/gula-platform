@@ -7,7 +7,7 @@ Create Date: 2026-07-16
 
 from typing import Sequence, Union
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy import inspect
 
@@ -18,6 +18,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def _table_exists(table: str) -> bool:
+    if context.is_offline_mode():
+        return True
     return inspect(op.get_bind()).has_table(table)
 
 

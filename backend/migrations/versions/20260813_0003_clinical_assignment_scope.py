@@ -6,7 +6,7 @@ Revises: 20260813_0002
 
 from __future__ import annotations
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -22,6 +22,12 @@ _FACILITY_COLUMN = "clinical_facility_resource_id"
 
 
 def upgrade() -> None:
+    if context.is_offline_mode():
+        op.add_column(_TABLE, sa.Column(_ORG_COLUMN, sa.Integer(), nullable=True))
+        op.create_index(f"ix_{_TABLE}_{_ORG_COLUMN}", _TABLE, [_ORG_COLUMN])
+        op.add_column(_TABLE, sa.Column(_FACILITY_COLUMN, sa.Integer(), nullable=True))
+        op.create_index(f"ix_{_TABLE}_{_FACILITY_COLUMN}", _TABLE, [_FACILITY_COLUMN])
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if _TABLE not in inspector.get_table_names():
@@ -61,6 +67,12 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        op.drop_index(f"ix_{_TABLE}_{_FACILITY_COLUMN}", table_name=_TABLE)
+        op.drop_index(f"ix_{_TABLE}_{_ORG_COLUMN}", table_name=_TABLE)
+        op.drop_column(_TABLE, _FACILITY_COLUMN)
+        op.drop_column(_TABLE, _ORG_COLUMN)
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if _TABLE not in inspector.get_table_names():

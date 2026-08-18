@@ -22,7 +22,7 @@ Design rules:
   - Indexes cover the hot paths: device lookup by fingerprint, task pulls by
     (status, priority, dispatched_at), telemetry by (device_id, ts)
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
@@ -34,10 +34,14 @@ depends_on    = None
 
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return inspect(op.get_bind()).has_table(name)
 
 
 def _index_exists(index: str) -> bool:
+    if context.is_offline_mode():
+        return False
     insp = inspect(op.get_bind())
     for tbl in insp.get_table_names():
         if any(i["name"] == index for i in insp.get_indexes(tbl)):

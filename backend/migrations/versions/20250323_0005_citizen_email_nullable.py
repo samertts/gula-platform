@@ -12,7 +12,7 @@ Revises     : 20250323_0004
 Create Date : 2025-03-23
 """
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
@@ -27,6 +27,8 @@ def _pg() -> bool:
 
 
 def _table_exists(table: str) -> bool:
+    if context.is_offline_mode():
+        return True
     return inspect(op.get_bind()).has_table(table)
 
 

@@ -6,7 +6,7 @@ Revises: 20260815_0021
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision = "20260815_0022"
 down_revision = "20260815_0021"
@@ -15,6 +15,8 @@ depends_on = None
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     conn = op.get_bind()
     if not conn.dialect.has_table(conn, table):
         return False
@@ -22,6 +24,11 @@ def _has_column(table: str, column: str) -> bool:
 
 
 def upgrade() -> None:
+    if context.is_offline_mode():
+        op.add_column("users", sa.Column("reset_token", sa.String(length=255), nullable=True))
+        op.create_index("ix_users_reset_token", "users", ["reset_token"])
+        op.add_column("users", sa.Column("reset_token_expires", sa.DateTime(timezone=True), nullable=True))
+        return
     if not _has_column("users", "reset_token"):
         op.add_column(
             "users",
@@ -36,6 +43,11 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        op.drop_column("users", "reset_token_expires")
+        op.drop_index("ix_users_reset_token", table_name="users")
+        op.drop_column("users", "reset_token")
+        return
     if _has_column("users", "reset_token_expires"):
         op.drop_column("users", "reset_token_expires")
     if _has_column("users", "reset_token"):

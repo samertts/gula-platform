@@ -32,7 +32,7 @@ Operational properties
 Revision ID : 20260505_0001
 Revises     : 20260503_0001
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 from sqlalchemy.dialects import postgresql
@@ -47,11 +47,15 @@ depends_on    = None
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     insp = inspect(op.get_bind())
     return any(c["name"] == column for c in insp.get_columns(table))
 
 
 def _pg() -> bool:
+    if context.is_offline_mode():
+        return True
     return op.get_bind().dialect.name == "postgresql"
 
 

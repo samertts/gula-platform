@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from hashlib import sha256
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 revision = "20260814_0006"
@@ -19,14 +19,20 @@ depends_on = None
 
 
 def _inspector():
+    if context.is_offline_mode():
+        return None
     return sa.inspect(op.get_bind())
 
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return name in _inspector().get_table_names()
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return any(item["name"] == column for item in _inspector().get_columns(table))
 
 
@@ -209,6 +215,18 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        op.drop_table("niam_security_incidents")
+        op.drop_table("niam_consents")
+        op.drop_index("ix_niam_comp_checks_organization_id", table_name="niam_comp_checks")
+        op.drop_column("niam_comp_checks", "organization_id")
+        for column in (
+            "data_classification", "source", "correlation_id", "request_id", "reason_code", "decision",
+            "workspace_id", "department_id", "facility_id", "actor_identity_id", "category", "event_version", "event_type",
+        ):
+            op.drop_index(f"ix_niam_audit_entries_{column}", table_name="niam_audit_entries")
+            op.drop_column("niam_audit_entries", column)
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     if "niam_security_incidents" in inspector.get_table_names():

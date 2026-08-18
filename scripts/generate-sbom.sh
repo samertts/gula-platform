@@ -30,8 +30,8 @@ readonly REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly SBOM_DIR="${SBOM_DIR:-${REPO_ROOT}/reports/sbom}"
 mkdir -p "${SBOM_DIR}"
 
-# Container image
-readonly CONTAINER_IMAGE="${CONTAINER_IMAGE:-ghcr.io/samertts/gula-platform/backend:latest}"
+# Container image. It must be supplied by CI/Staging as an immutable tag or digest.
+readonly CONTAINER_IMAGE="${CONTAINER_IMAGE:-}"
 
 # Artifact store configuration
 readonly ARTIFACT_STORE_URL="${ARTIFACT_STORE_URL:-}"
@@ -49,14 +49,20 @@ log_error() { echo "[${TIMESTAMP}] [ERROR] ${SCRIPT_NAME}: $*" >&2; }
 # ==============================================================================
 
 check_prerequisites() {
+  local require_syft="${1:-false}"
   local missing=0
 
-  for tool in jq pip3 npm syft; do
+  for tool in jq pip3 npm; do
     if ! command -v "${tool}" &>/dev/null; then
       log_error "Required tool not found: ${tool}"
       missing=1
     fi
   done
+
+  if [[ "${require_syft}" == true ]] && ! command -v syft &>/dev/null; then
+    log_error "Required tool not found: syft (needed for container SBOM generation)"
+    missing=1
+  fi
 
   # pip-licenses is optional but recommended
   if ! python3 -m pip_licenses --version &>/dev/null; then
@@ -170,6 +176,15 @@ generate_node_sbom() {
 }
 
 generate_container_sbom() {
+  if [[ -z "${CONTAINER_IMAGE}" ]]; then
+    log_error "CONTAINER_IMAGE is required for container SBOM generation and must be an immutable tag or digest."
+    return 1
+  fi
+  if [[ "${CONTAINER_IMAGE}" == *:latest || "${CONTAINER_IMAGE}" == *:latest@* ]]; then
+    log_error "Refusing container SBOM generation for mutable image reference: ${CONTAINER_IMAGE}"
+    return 1
+  fi
+
   log_info "Generating container image SBOM..."
 
   local container_sbom="${SBOM_DIR}/sbom-container-${VERSION}.json"
@@ -415,7 +430,11 @@ main() {
   log_info "Version: ${VERSION}"
   log_info "Output: ${SBOM_DIR}"
 
-  check_prerequisites
+  if [[ "${do_all}" == true || "${do_container}" == true ]]; then
+    check_prerequisites true
+  else
+    check_prerequisites false
+  fi
 
   if [[ "${do_all}" == true ]]; then
     generate_python_sbom

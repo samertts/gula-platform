@@ -8,7 +8,7 @@ Tables created:
   1. claims       — top-level insurance claim per patient/order
   2. claim_items  — line items (tests) within a claim
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
@@ -21,17 +21,23 @@ depends_on    = None
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     return inspect(bind).has_table(name)
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     cols = [c["name"] for c in inspect(bind).get_columns(table)]
     return column in cols
 
 
 def _index_exists(index: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     inspector = inspect(bind)
     for table in inspector.get_table_names():

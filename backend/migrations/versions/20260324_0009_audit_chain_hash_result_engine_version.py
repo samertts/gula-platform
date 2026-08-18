@@ -15,7 +15,7 @@ Revises     : 20260324_0008
 Create Date : 2026-03-24
 """
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
@@ -26,10 +26,14 @@ depends_on    = None
 
 
 def _col_exists(table: str, col: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return col in [c["name"] for c in inspect(op.get_bind()).get_columns(table)]
 
 
 def _table_exists(table: str) -> bool:
+    if context.is_offline_mode():
+        return True
     return inspect(op.get_bind()).has_table(table)
 
 

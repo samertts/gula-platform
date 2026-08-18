@@ -16,7 +16,7 @@ on:
           - dry-run
           - arm
   workflow_run:
-    workflows: ["CI Pipeline"]
+    workflows: ["CI - Build, Test & Security Scan"]
     types: [completed]
 
 concurrency:

@@ -48,7 +48,7 @@ Tables created:
   8. fin_market_benchmarks   — per-test-type market reference (price + TAT)
   9. fin_clinical_behavior   — doctor-level over-testing / deviation profile
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 from sqlalchemy.dialects import postgresql
@@ -63,11 +63,15 @@ depends_on    = None
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     return inspect(bind).has_table(name)
 
 
 def _index_exists(index: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     inspector = inspect(bind)
     for table in inspector.get_table_names():

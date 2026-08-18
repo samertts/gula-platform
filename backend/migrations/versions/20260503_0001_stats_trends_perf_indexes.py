@@ -20,7 +20,7 @@ and common dashboard/reporting queries.
 6. ix_lab_orders_lab_created   — (lab_orders.lab_id, lab_orders.created_at DESC)
    Covers order-count queries by lab scoped to time windows.
 """
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy.engine.reflection import Inspector
 
@@ -32,6 +32,8 @@ depends_on = None
 
 
 def _index_exists(conn, index_name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     inspector = Inspector.from_engine(conn)
     for table in inspector.get_table_names():
         for idx in inspector.get_indexes(table):
@@ -41,6 +43,8 @@ def _index_exists(conn, index_name: str) -> bool:
 
 
 def _table_exists(conn, table: str) -> bool:
+    if context.is_offline_mode():
+        return True
     return table in Inspector.from_engine(conn).get_table_names()
 
 

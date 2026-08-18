@@ -6,7 +6,7 @@ Revises: 20260814_0003
 
 from __future__ import annotations
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 
@@ -17,6 +17,8 @@ depends_on = None
 
 
 def _drop_table_indexes(table_name: str) -> None:
+    if context.is_offline_mode():
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     unique_constraints = {
@@ -30,9 +32,12 @@ def _drop_table_indexes(table_name: str) -> None:
 
 
 def upgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    tables = inspector.get_table_names()
+    if context.is_offline_mode():
+        tables = set()
+    else:
+        bind = op.get_bind()
+        inspector = sa.inspect(bind)
+        tables = set(inspector.get_table_names())
 
     if "niam_memberships" not in tables:
         op.create_table(
@@ -155,6 +160,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        for table_name in ("niam_membership_applications", "niam_membership_invitations", "niam_memberships"):
+            op.drop_table(table_name)
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     for table_name in ("niam_membership_applications", "niam_membership_invitations", "niam_memberships"):

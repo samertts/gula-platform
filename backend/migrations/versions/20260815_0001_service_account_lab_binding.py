@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Union
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision: str = "20260815_0001"
 down_revision: Union[str, None] = "20260814_0010"
@@ -17,6 +17,8 @@ depends_on = None
 
 
 def _has_column(table: str, column: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     if not sa.inspect(bind).has_table(table):
         return False
@@ -24,6 +26,10 @@ def _has_column(table: str, column: str) -> bool:
 
 
 def upgrade() -> None:
+    if context.is_offline_mode():
+        op.add_column("service_accounts", sa.Column("lab_id", sa.Integer(), nullable=True))
+        op.create_index("ix_service_accounts_lab_id", "service_accounts", ["lab_id"])
+        return
     if not _has_column("service_accounts", "lab_id"):
         column = sa.Column(
             "lab_id",
@@ -43,6 +49,10 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if context.is_offline_mode():
+        op.drop_index("ix_service_accounts_lab_id", table_name="service_accounts")
+        op.drop_column("service_accounts", "lab_id")
+        return
     bind = op.get_bind()
     indexes = {item["name"] for item in sa.inspect(bind).get_indexes("service_accounts")}
     if "ix_service_accounts_lab_id" in indexes:

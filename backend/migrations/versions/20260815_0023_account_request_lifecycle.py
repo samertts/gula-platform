@@ -8,7 +8,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision = "20260815_0023"
 down_revision = "20260815_0022"
@@ -57,14 +57,20 @@ _PERMISSION_ROWS = (
 
 
 def _has_table(table: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return bool(sa.inspect(op.get_bind()).has_table(table))
 
 
 def _columns(table: str) -> set[str]:
+    if context.is_offline_mode():
+        return set()
     return {item["name"] for item in sa.inspect(op.get_bind()).get_columns(table)} if _has_table(table) else set()
 
 
 def _indexes(table: str) -> set[str]:
+    if context.is_offline_mode():
+        return set()
     return {item["name"] for item in sa.inspect(op.get_bind()).get_indexes(table)} if _has_table(table) else set()
 
 

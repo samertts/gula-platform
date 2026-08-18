@@ -4,6 +4,9 @@
 {{- $registry := $global.imageRegistry -}}
 {{- $tag := $global.imageTag -}}
 {{- $pullPolicy := $global.imagePullPolicy -}}
+{{- if and (eq ($global.environment | default "production") "production") (eq $tag "latest") -}}
+{{- fail "refusing production render with mutable global.imageTag=latest; provide an immutable image tag or digest" -}}
+{{- end -}}
 {{- $meshEnabled := .Values.serviceMesh.linkerd.enabled -}}
 {{- $meshInject := .Values.serviceMesh.linkerd.autoInject -}}
 {{- range $svc, $config := .Values.microservices }}

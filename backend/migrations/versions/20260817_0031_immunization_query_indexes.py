@@ -5,7 +5,7 @@ Prepared locally; not executed by this change set.
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 revision = "20260817_0031"
 down_revision = "20260817_0030"
@@ -28,6 +28,11 @@ _INDEXES = {
 
 
 def upgrade() -> None:
+    if context.is_offline_mode():
+        for table_name, indexes in _INDEXES.items():
+            for index_name, columns in indexes.items():
+                op.create_index(index_name, table_name, columns)
+        return
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     for table_name, indexes in _INDEXES.items():

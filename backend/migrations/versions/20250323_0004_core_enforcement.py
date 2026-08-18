@@ -19,7 +19,7 @@ Revises     : 20250322_0003
 Create Date : 2025-03-23
 """
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
@@ -36,16 +36,22 @@ def _pg() -> bool:
 
 
 def _has_column(table: str, col: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     return col in [c["name"] for c in inspect(bind).get_columns(table)]
 
 
 def _table_exists(table: str) -> bool:
+    if context.is_offline_mode():
+        return False
     bind = op.get_bind()
     return inspect(bind).has_table(table)
 
 
 def _constraint_exists(table: str, name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     if not _pg():
         return False
     bind = op.get_bind()
@@ -60,6 +66,8 @@ def _constraint_exists(table: str, name: str) -> bool:
 
 
 def _trigger_exists(trigger: str, table: str) -> bool:
+    if context.is_offline_mode():
+        return False
     if not _pg():
         return False
     bind = op.get_bind()

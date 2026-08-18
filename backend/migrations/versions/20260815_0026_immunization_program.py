@@ -11,7 +11,7 @@ by Alembic. It is not executed by this change set.
 from __future__ import annotations
 
 import sqlalchemy as sa
-from alembic import op
+from alembic import context, op
 
 
 revision = "20260815_0026"
@@ -21,10 +21,14 @@ depends_on = None
 
 
 def _has_table(table: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return bool(sa.inspect(op.get_bind()).has_table(table))
 
 
 def _columns(table: str) -> set[str]:
+    if context.is_offline_mode():
+        return set()
     if not _has_table(table):
         return set()
     return {column["name"] for column in sa.inspect(op.get_bind()).get_columns(table)}
@@ -36,6 +40,9 @@ def _add_column_if_missing(table: str, column: sa.Column[object]) -> None:
 
 
 def _create_index_if_missing(name: str, table: str, columns: list[str], unique: bool = False) -> None:
+    if context.is_offline_mode():
+        op.create_index(name, table, columns, unique=unique)
+        return
     if not _has_table(table):
         return
     existing = {index["name"] for index in sa.inspect(op.get_bind()).get_indexes(table)}

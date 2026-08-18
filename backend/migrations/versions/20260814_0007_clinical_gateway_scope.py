@@ -7,7 +7,7 @@ Revises: 20260814_0006
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 
 revision = "20260814_0007"
@@ -19,14 +19,20 @@ _TABLE = "clinical_lab_facility_bindings"
 
 
 def _inspector():
+    if context.is_offline_mode():
+        return None
     return sa.inspect(op.get_bind())
 
 
 def _has_table(name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return name in _inspector().get_table_names()
 
 
 def _has_column(table: str, name: str) -> bool:
+    if context.is_offline_mode():
+        return False
     return any(item["name"] == name for item in _inspector().get_columns(table))
 
 
@@ -46,7 +52,7 @@ def upgrade() -> None:
                 op.add_column(_TABLE, sa.Column(name, column_type, nullable=True))
                 op.create_index(f"ix_{_TABLE}_{name}", _TABLE, [name])
 
-    if _has_table("niam_permissions"):
+    if not context.is_offline_mode() and _has_table("niam_permissions"):
         permissions = [
             ("P10PATIENTSREAD0000001", "patients.read", "Read Clinical Patients", "قراءة المرضى السريرية", "high"),
             ("P10ORDERSREAD00000001", "orders.read", "Read Clinical Orders", "قراءة الطلبات السريرية", "high"),
