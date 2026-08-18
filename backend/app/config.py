@@ -225,6 +225,14 @@ MAX_REQUEST_BODY_MB = int(os.getenv("MAX_REQUEST_BODY_MB", "10"))
 # ─── Rate Limiting ───────────────────────────────────────────────────────────
 RATE_LIMIT_AUTH = int(os.getenv("RATE_LIMIT_AUTH", "10"))
 RATE_LIMIT_PUBLIC = int(os.getenv("RATE_LIMIT_PUBLIC", "30"))
+# Coarse IP guard for every non-health request. Route-specific limits remain
+# stricter for auth, AI, public lookup, and authenticated operations.
+RATE_LIMIT_GLOBAL = int(os.getenv("RATE_LIMIT_GLOBAL", "300"))
+RATE_LIMIT_GLOBAL_WINDOW_SECONDS = int(
+    os.getenv("RATE_LIMIT_GLOBAL_WINDOW_SECONDS", "60"),
+)
+if RATE_LIMIT_GLOBAL < 1 or RATE_LIMIT_GLOBAL_WINDOW_SECONDS < 1:
+    sys.exit("RATE_LIMIT_GLOBAL and RATE_LIMIT_GLOBAL_WINDOW_SECONDS must be positive")
 
 # ─── Startup Guard Timeout ───────────────────────────────────────────────────
 # Maximum seconds the startup guard waits for all validation steps before
