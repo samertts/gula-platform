@@ -49,7 +49,7 @@ function joinText(existingText: string, draftText: string, mode: VoiceTextMode):
 export function SpeechRecognitionProvider({
   children,
   sessionKey,
-  initialLocale = 'ar-IQ',
+  initialLocale = 'ar',
 }: SpeechRecognitionProviderProps) {
   const [service] = useState(() => new SpeechRecognitionService());
   const [snapshot, setSnapshot] = useState<SpeechSnapshot>(() => service.getSnapshot());
@@ -65,7 +65,7 @@ export function SpeechRecognitionProvider({
     service.setLocale(initialLocale);
   }, [service, sessionKey, initialLocale]);
 
-  const start = useCallback((options?: SpeechStartOptions) => service.start({ locale: initialLocale, ...options }), [service, initialLocale]);
+  const start = useCallback((options?: SpeechStartOptions) => service.start(options), [service]);
   const stop = useCallback(() => service.stop(), [service]);
   const cancel = useCallback(() => service.cancel(), [service]);
   const reset = useCallback(() => service.reset(), [service]);
@@ -76,8 +76,8 @@ export function SpeechRecognitionProvider({
   const setLocale = useCallback((locale: SpeechLocale) => service.setLocale(locale), [service]);
   const retry = useCallback(() => {
     service.reset();
-    return service.start({ locale: initialLocale });
-  }, [service, initialLocale]);
+    return service.start();
+  }, [service]);
   const refreshCapabilities = useCallback(async () => {
     await service.refreshCapabilities();
   }, [service]);

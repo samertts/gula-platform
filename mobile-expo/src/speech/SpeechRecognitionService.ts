@@ -77,7 +77,7 @@ function joinClinicalText(previous: string, next: string): string {
 export class SpeechRecognitionService {
   private state: SpeechRecognitionState = SpeechRecognitionState.IDLE;
   private permission: SpeechPermissionState = SpeechPermissionState.UNKNOWN;
-  private locale: SpeechLocale = 'ar-IQ';
+  private locale: SpeechLocale = 'ar';
   private interimText = '';
   private finalText = '';
   private durationMs = 0;

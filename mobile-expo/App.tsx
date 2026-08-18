@@ -89,7 +89,7 @@ function VoiceDraftScreen() {
             >
               <Text style={styles.saveButtonText}>حفظ المسودة بعد المراجعة</Text>
             </Pressable>
-            {savedAt && <Text style={styles.success}>تم اعتماد المسودة محلياً للمراجعة اللاحقة: {new Date(savedAt).toLocaleTimeString('ar-IQ')}</Text>}
+            {savedAt && <Text style={styles.success}>تم اعتماد المسودة محلياً للمراجعة اللاحقة: {new Date(savedAt).toLocaleTimeString('ar')}</Text>}
           </View>
 
           <Text style={styles.manualFallback}>إذا لم تتوفر الخدمة أو رفضت الصلاحية، يبقى الإدخال اليدوي متاحاً دون تعطيل التطبيق.</Text>
@@ -101,7 +101,7 @@ function VoiceDraftScreen() {
 
 export default function App() {
   return (
-    <SpeechRecognitionProvider sessionKey="authenticated-user-session" initialLocale="ar-IQ">
+    <SpeechRecognitionProvider sessionKey="demo-local-session" initialLocale="ar">
       <VoiceDraftScreen />
     </SpeechRecognitionProvider>
   );

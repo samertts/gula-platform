@@ -28,12 +28,11 @@ export type SpeechPermissionState =
   (typeof SpeechPermissionState)[keyof typeof SpeechPermissionState];
 
 export const SUPPORTED_LOCALE_CANDIDATES = [
-  'ar-IQ',
   'ar',
   'en-US',
   'ku',
   'tk',
-  'fa',
+  'syr',
 ] as const;
 
 export type SpeechLocale = (typeof SUPPORTED_LOCALE_CANDIDATES)[number];
