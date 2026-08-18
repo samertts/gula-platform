@@ -1,0 +1,59 @@
+name: Mobile Expo Speech Quality
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'mobile-expo/**'
+      - '.github/workflows/mobile-expo.yml'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'mobile-expo/**'
+      - '.github/workflows/mobile-expo.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Expo SDK 54 Typecheck and Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile-expo
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile-expo/package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test -- --runInBand
+
+      - name: Validate public Expo config
+        run: |
+          npx expo config --type public --json > /tmp/gula-expo-config.json
+          node scripts/validate-expo-config.cjs
+
+      - name: Dependency audit report
+        run: npm audit --omit=dev --json > /tmp/gula-mobile-expo-audit.json || true
+
+      - name: Enforce dependency audit policy
+        run: node scripts/validate-npm-audit.cjs
+
+      - name: Expo Doctor
+        run: npm run doctor -- --verbose
