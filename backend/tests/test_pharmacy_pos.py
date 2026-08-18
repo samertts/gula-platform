@@ -2,12 +2,20 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
+import pytest
 from app.billing.models import BillingInvoice
 from app.ehr.models.medication import MedicationDispense
 from app.models.lab import Lab
 from app.models.patient import Patient
 from app.national import domain as _national_domain_models
-from app.pharmacy.models import DrugBatch, DrugCatalog, PharmacySale, StockLevel
+from app.pharmacy.models import (
+    DrugBatch,
+    DrugCatalog,
+    DrugSubstitutionRequest,
+    DrugSubstitutionRule,
+    PharmacySale,
+    StockLevel,
+)
 from app.pharmacy.services import PharmacyService
 
 # Importing these classes registers the cross-domain NationalBase tables before
@@ -113,3 +121,100 @@ def test_pos_sale_is_idempotent_and_does_not_double_decrement(db: Any) -> None:
     assert db.query(PharmacySale).filter(PharmacySale.lab_id == lab.id).count() == 1
     stock = db.query(StockLevel).filter(StockLevel.lab_id == lab.id, StockLevel.batch_id == first.lines[0].batch_id).one()
     assert stock.quantity == 1
+
+
+def test_approved_substitution_is_consumed_by_pos_and_audited(db: Any) -> None:
+    lab, patient, original, _first_batch, _second_batch = _seed_pos(db)
+    alternative = DrugCatalog(
+        lab_id=lab.id,
+        code="SYN-ALT-500",
+        name="Synthetic Alternative",
+        name_ar="بديل اصطناعي",
+        generic_name="Paracetamol",
+        strength_value="500",
+        strength_unit="mg",
+        is_active=True,
+        requires_prescription=False,
+    )
+    db.add(alternative)
+    db.flush()
+    alt_batch = DrugBatch(
+        lab_id=lab.id,
+        drug_catalog_id=alternative.id,
+        batch_number="ALT-BATCH-001",
+        expiry_date=date.today() + timedelta(days=180),
+        quantity_initial=4,
+        quantity_remaining=4,
+        cost_price=Decimal("3.00"),
+        selling_price=Decimal("6.00"),
+        is_quarantined=False,
+    )
+    db.add(alt_batch)
+    db.flush()
+    db.add(StockLevel(
+        lab_id=lab.id,
+        drug_catalog_id=alternative.id,
+        batch_id=alt_batch.id,
+        quantity=4,
+        reserved_quantity=0,
+        available_quantity=4,
+    ))
+    rule = DrugSubstitutionRule(
+        lab_id=lab.id,
+        original_drug_catalog_id=original.id,
+        alternative_drug_catalog_id=alternative.id,
+        equivalence_type="generic",
+        approval_level="pharmacist",
+        requires_patient_consent=True,
+        is_active=True,
+        created_by=None,
+        updated_by=None,
+    )
+    db.add(rule)
+    db.flush()
+    service = PharmacyService(db, user_id=None, lab_id=lab.id)
+    with pytest.raises(ValueError, match="patient or prescription context"):
+        service.create_substitution_request({
+            "rule_id": rule.id,
+            "quantity": 1,
+            "patient_consent": True,
+        })
+    request = service.create_substitution_request({
+        "rule_id": rule.id,
+        "patient_id": str(patient.id),
+        "citizen_id": "SYNTHETIC-CITIZEN-SUB-001",
+        "quantity": 1,
+        "reason": "original medication unavailable",
+        "patient_consent": True,
+        "patient_notified": True,
+    })
+    assert request.status == "pending"
+    assert request.quantity == 1
+    service.approve_substitution(request.id)
+    with pytest.raises(ValueError, match="sale quantity must match"):
+        service.create_pos_sale({
+            "patient_id": str(patient.id),
+            "citizen_id": "SYNTHETIC-CITIZEN-SUB-001",
+            "billing_patient_id": patient.id,
+            "idempotency_key": "pos-substitution-quantity-mismatch",
+            "lines": [{"substitution_request_id": request.id, "quantity": 2}],
+        })
+    sale = service.create_pos_sale({
+        "patient_id": str(patient.id),
+        "citizen_id": "SYNTHETIC-CITIZEN-SUB-001",
+        "billing_patient_id": patient.id,
+        "idempotency_key": "pos-substitution-001",
+        "lines": [{"substitution_request_id": request.id, "quantity": 1}],
+    })
+    db.refresh(request)
+    db.refresh(sale)
+    assert request.status == "consumed"
+    assert request.consumed_sale_id == sale.id
+    assert sale.lines[0].drug_catalog_id == alternative.id
+    assert sale.lines[0].metadata_["original_drug_catalog_id"] == original.id
+    assert db.query(StockLevel).filter(StockLevel.batch_id == alt_batch.id).one().quantity == 3
+    assert db.query(MedicationDispense).filter(
+        MedicationDispense.citizen_id == "SYNTHETIC-CITIZEN-SUB-001",
+        MedicationDispense.medication_code == alternative.code,
+    ).count() == 1
+    assert db.query(DrugSubstitutionRequest).filter(DrugSubstitutionRequest.id == request.id).one().status == "consumed"

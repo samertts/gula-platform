@@ -19,6 +19,8 @@ from app.pharmacy.models import (
     DrugBatch,
     DrugCatalog,
     DrugReturn,
+    DrugSubstitutionRequest,
+    DrugSubstitutionRule,
     DrugSupplier,
     InventoryForecast,
     InventoryTransfer,
@@ -434,6 +436,161 @@ class PharmacyService:
             q = q.filter(DispenseRecord.lab_id == self.lab_id)
         return q.order_by(DispenseRecord.dispensed_at.desc()).all()
 
+    def list_substitution_candidates(self, original_drug_id: str, quantity: int = 1) -> list[dict[str, Any]]:
+        if self.lab_id is None:
+            raise ValueError("institutional pharmacy context is required")
+        if quantity <= 0:
+            raise ValueError("quantity must be positive")
+        original = self.get_drug(original_drug_id)
+        if original is None:
+            raise ValueError("original drug not found")
+        rules = self.db.query(DrugSubstitutionRule).filter(
+            DrugSubstitutionRule.lab_id == self.lab_id,
+            DrugSubstitutionRule.original_drug_catalog_id == original.id,
+            DrugSubstitutionRule.is_active.is_(True),
+            ~DrugSubstitutionRule.is_deleted,
+        ).order_by(DrugSubstitutionRule.equivalence_type, DrugSubstitutionRule.id).all()
+        candidates: list[dict[str, Any]] = []
+        for rule in rules:
+            alternative = self.get_drug(rule.alternative_drug_catalog_id)
+            if alternative is None or not alternative.is_active:
+                continue
+            stock_query = self.db.query(func.coalesce(func.sum(StockLevel.available_quantity), 0)).join(
+                DrugBatch, DrugBatch.id == StockLevel.batch_id,
+            ).filter(
+                StockLevel.lab_id == self.lab_id,
+                StockLevel.drug_catalog_id == alternative.id,
+                ~StockLevel.is_deleted,
+                DrugBatch.lab_id == self.lab_id,
+                ~DrugBatch.is_deleted,
+                DrugBatch.is_quarantined.is_(False),
+                DrugBatch.expiry_date >= date.today(),
+            )
+            available = int(stock_query.scalar() or 0)
+            candidates.append({
+                "rule_id": rule.id,
+                "original_drug_catalog_id": original.id,
+                "alternative_drug_catalog_id": alternative.id,
+                "equivalence_type": rule.equivalence_type,
+                "approval_level": rule.approval_level,
+                "requires_patient_consent": bool(rule.requires_patient_consent),
+                "available_quantity": available,
+                "eligible": available >= quantity,
+                "original": {"code": original.code, "name": original.name, "name_ar": original.name_ar},
+                "alternative": {"code": alternative.code, "name": alternative.name, "name_ar": alternative.name_ar,
+                                 "strength_value": alternative.strength_value, "strength_unit": alternative.strength_unit,
+                                 "form": str(alternative.form.value if hasattr(alternative.form, "value") else alternative.form or ""),
+                                 "route": str(alternative.route.value if hasattr(alternative.route, "value") else alternative.route or "")},
+            })
+        return candidates
+
+    def create_substitution_request(self, data: dict[str, Any]) -> DrugSubstitutionRequest:
+        if self.lab_id is None:
+            raise ValueError("institutional pharmacy context is required")
+        rule_id = str(data.get("rule_id") or "")
+        rule = self.db.query(DrugSubstitutionRule).filter(
+            DrugSubstitutionRule.id == rule_id,
+            DrugSubstitutionRule.lab_id == self.lab_id,
+            DrugSubstitutionRule.is_active.is_(True),
+            ~DrugSubstitutionRule.is_deleted,
+        ).first()
+        if rule is None:
+            raise ValueError("active substitution rule not found")
+        quantity = int(data.get("quantity") or 0)
+        if quantity <= 0:
+            raise ValueError("substitution quantity must be positive")
+        if not any(data.get(field) for field in ("patient_id", "citizen_id", "prescription_id")):
+            raise ValueError("patient or prescription context is required for substitution")
+        patient_consent = bool(data.get("patient_consent", False))
+        if rule.requires_patient_consent and not patient_consent:
+            raise ValueError("patient consent is required before substitution")
+        original = self.get_drug(rule.original_drug_catalog_id)
+        alternative = self.get_drug(rule.alternative_drug_catalog_id)
+        if original is None or alternative is None:
+            raise ValueError("substitution drugs are not available")
+        eligible = next(
+            (candidate for candidate in self.list_substitution_candidates(original.id, quantity) if candidate["rule_id"] == rule.id),
+            None,
+        )
+        if eligible is None or not eligible["eligible"]:
+            raise ValueError("alternative stock is insufficient for requested substitution quantity")
+        request = DrugSubstitutionRequest(
+            lab_id=self.lab_id,
+            rule_id=rule.id,
+            original_drug_catalog_id=original.id,
+            alternative_drug_catalog_id=alternative.id,
+            prescription_id=data.get("prescription_id"),
+            patient_id=data.get("patient_id"),
+            citizen_id=data.get("citizen_id"),
+            quantity=quantity,
+            status="pending",
+            reason=str(data.get("reason") or "original medication unavailable"),
+            approval_level=rule.approval_level,
+            patient_consent=patient_consent,
+            patient_notified_at=datetime.now(UTC) if data.get("patient_notified") else None,
+            created_by=self.user_id,
+            updated_by=self.user_id,
+            metadata_={"synthetic": True, "source": "pharmacy_substitution"},
+        )
+        self.db.add(request)
+        self.db.flush()
+        self._audit("pharmacy.substitution.request", "substitution_request", request.id, f"Requested {original.code} -> {alternative.code}")
+        return request
+
+    def approve_substitution(self, request_id: str) -> DrugSubstitutionRequest:
+        if self.lab_id is None:
+            raise ValueError("institutional pharmacy context is required")
+        request = self.db.query(DrugSubstitutionRequest).filter(
+            DrugSubstitutionRequest.id == request_id,
+            DrugSubstitutionRequest.lab_id == self.lab_id,
+            ~DrugSubstitutionRequest.is_deleted,
+        ).with_for_update().first()
+        if request is None:
+            raise ValueError("substitution request not found")
+        if request.status != "pending":
+            raise ValueError("substitution request is not pending")
+        rule = self.db.query(DrugSubstitutionRule).filter(
+            DrugSubstitutionRule.id == request.rule_id,
+            DrugSubstitutionRule.lab_id == self.lab_id,
+            DrugSubstitutionRule.is_active.is_(True),
+        ).first()
+        if rule is None:
+            raise ValueError("substitution rule is inactive")
+        if rule.requires_patient_consent and not request.patient_consent:
+            raise ValueError("patient consent is required before approval")
+        eligible = next(
+            (candidate for candidate in self.list_substitution_candidates(request.original_drug_catalog_id, request.quantity) if candidate["rule_id"] == rule.id),
+            None,
+        )
+        if eligible is None or not eligible["eligible"]:
+            raise ValueError("alternative stock is insufficient for approval")
+        request.status = "approved"
+        request.approved_by = str(self.user_id) if self.user_id is not None else None
+        request.approved_at = datetime.now(UTC)
+        request.updated_by = self.user_id
+        self._audit("pharmacy.substitution.approve", "substitution_request", request.id, "Approved substitution")
+        self.db.flush()
+        return request
+
+    def reject_substitution(self, request_id: str, reason: str) -> DrugSubstitutionRequest:
+        if self.lab_id is None:
+            raise ValueError("institutional pharmacy context is required")
+        request = self.db.query(DrugSubstitutionRequest).filter(
+            DrugSubstitutionRequest.id == request_id,
+            DrugSubstitutionRequest.lab_id == self.lab_id,
+            ~DrugSubstitutionRequest.is_deleted,
+        ).with_for_update().first()
+        if request is None:
+            raise ValueError("substitution request not found")
+        if request.status != "pending":
+            raise ValueError("substitution request is not pending")
+        request.status = "rejected"
+        request.reason = f"{request.reason}; rejected: {reason.strip()}"
+        request.updated_by = self.user_id
+        self._audit("pharmacy.substitution.reject", "substitution_request", request.id, "Rejected substitution")
+        self.db.flush()
+        return request
+
     def create_pos_sale(self, data: dict[str, Any], request_id: str | None = None) -> PharmacySale:
         """Create an institution-scoped POS sale as one atomic database unit.
 
@@ -471,13 +628,48 @@ class PharmacyService:
         cost_total = Decimal("0.00")
         requested_patient_id = data.get("patient_id")
         requested_citizen_id = data.get("citizen_id")
+        used_substitution_ids: set[str] = set()
 
         for raw_line in raw_lines:
             quantity = int(raw_line.get("quantity", 0))
             if quantity <= 0:
                 raise ValueError("sale quantity must be positive")
 
-            drug_id = raw_line.get("drug_catalog_id")
+            substitution_request = None
+            substitution_request_id = str(raw_line.get("substitution_request_id") or "").strip()
+            if substitution_request_id:
+                if substitution_request_id in used_substitution_ids:
+                    raise ValueError("a substitution request can only be used once per sale")
+                substitution_request = self.db.query(DrugSubstitutionRequest).filter(
+                    DrugSubstitutionRequest.id == substitution_request_id,
+                    DrugSubstitutionRequest.lab_id == self.lab_id,
+                    DrugSubstitutionRequest.status == "approved",
+                    DrugSubstitutionRequest.consumed_sale_id.is_(None),
+                    ~DrugSubstitutionRequest.is_deleted,
+                ).with_for_update().first()
+                if substitution_request is None:
+                    raise ValueError("substitution request is not approved or was already consumed")
+                rule = self.db.query(DrugSubstitutionRule).filter(
+                    DrugSubstitutionRule.id == substitution_request.rule_id,
+                    DrugSubstitutionRule.lab_id == self.lab_id,
+                    DrugSubstitutionRule.is_active.is_(True),
+                    ~DrugSubstitutionRule.is_deleted,
+                ).first()
+                if rule is None:
+                    raise ValueError("substitution rule is inactive")
+                if substitution_request.quantity != quantity:
+                    raise ValueError("sale quantity must match the approved substitution quantity")
+                if substitution_request.patient_id and str(substitution_request.patient_id) != str(requested_patient_id or ""):
+                    raise ValueError("substitution request belongs to another patient")
+                if substitution_request.citizen_id and str(substitution_request.citizen_id) != str(requested_citizen_id or ""):
+                    raise ValueError("substitution request belongs to another citizen")
+                if substitution_request.prescription_id and str(substitution_request.prescription_id) != str(raw_line.get("prescription_id") or ""):
+                    raise ValueError("substitution request belongs to another prescription")
+                used_substitution_ids.add(substitution_request_id)
+                drug_id = substitution_request.alternative_drug_catalog_id
+            else:
+                drug_id = raw_line.get("drug_catalog_id")
+
             barcode = str(raw_line.get("barcode") or "").strip() or None
             if drug_id is None and barcode:
                 drug = self.db.query(DrugCatalog).filter(
@@ -540,6 +732,8 @@ class PharmacyService:
                     "dosage_instruction": raw_line.get("dosage_instruction"),
                     "route": raw_line.get("route"),
                     "frequency": raw_line.get("frequency"),
+                    "substitution_request": substitution_request,
+                    "original_drug_catalog_id": substitution_request.original_drug_catalog_id if substitution_request else None,
                 })
                 remaining -= allocated
 
@@ -636,6 +830,19 @@ class PharmacyService:
                 updated_by=self.user_id,
                 metadata_={"synthetic": True},
             )
+            if item["substitution_request"] is not None:
+                substitution_request = item["substitution_request"]
+                substitution_request.consumed_sale_id = sale.id
+                substitution_request.status = "consumed"
+                substitution_request.version += 1
+                substitution_request.updated_by = self.user_id
+                sale_line.metadata_ = {
+                    "synthetic": True,
+                    "substitution_request_id": substitution_request.id,
+                    "original_drug_catalog_id": item["original_drug_catalog_id"],
+                    "alternative_drug_catalog_id": drug.id,
+                    "equivalence_type": "approved",
+                }
             self.db.add(sale_line)
             self.db.flush()
 
