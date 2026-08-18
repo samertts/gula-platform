@@ -68,7 +68,13 @@
 | Offline Security | BLOCKED — يتطلب ربط dataset المشفر بسياسة Duty وsync/conflict الموجودة واختبار جهاز فعلي. |
 | Emergency Access | PASS جزئياً — جلسة موقتة وسبب وتدقيق منفذة؛ يلزم مراجعة مستقلة للسياسة التشغيلية. |
 | Cross-tenant Isolation | PASS جزئياً — فحص المؤسسة والمنشأة في الخدمة؛ يلزم اختبارات PostgreSQL RLS/tenant middleware. |
-| Clinical Mutation Authorization | BLOCKED — يجب استدعاء `DoctorDutyService.authorize` عند كل route/service يكتب وصفة أو ملاحظة أو نتيجة أو طلباً. |
+| Clinical Mutation Authorization | PASS جزئياً — الأوامر السريرية وملاحظات السجل مربوطة بـDuty guard؛ تبقى مسارات سريرية أخرى بحاجة إلى حصر وربط في Staging. |
+
+## الإغلاق المحلي المضاف
+
+أضيف Guard مشترك في `app.security.clinical_duty_guard`، وتم تطبيقه على عمليات إنشاء وإلغاء وإكمال الأوامر السريرية، وعلى إنشاء SOAP وProgress وNursing وConsultation وOperation وEmergency notes. يتطلب كل mutation ترويسة `X-Duty-Context-ID`، ويتحقق الخادم من ملكية السياق وحالته ووقت انتهائه ونطاق المريض قبل أي كتابة. المعرّفات الصحية المؤقتة غير القابلة للتحقق رقمياً تُرفض بدلاً من تخطي scope.
+
+لم تُطبق السياسة على مسارات إدارة المصطلحات أو المعرفة العامة لأنها ليست عمليات patient-record mutation؛ أما بقية المسارات السريرية غير المفحوصة فتظل ضمن قائمة Staging حتى تُربط بعقد patient/facility واضح دون تخمين.
 
 ## قيود السلامة
 

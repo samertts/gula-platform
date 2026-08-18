@@ -303,6 +303,20 @@ class DoctorDutyService:
             duty_lifecycle.revoke(context.id)
         self.db.flush()
 
+    def authorize_context(self, *, context_id: str, user_id: int, patient_id: int | None, resource_type: str = "clinical.mutation", purpose: str = "clinical_mutation") -> ClinicalAccessContext:
+        """Authorize a mutation against the caller-selected context, never UI state."""
+        context = self.db.query(DutyContext).filter(DutyContext.id == context_id, DutyContext.user_id == user_id).one_or_none()
+        if context is None or context.status not in ACTIVE_DUTY_STATES or context.expires_at <= self.now:
+            raise DutyAuthorizationError("DUTY_CONTEXT_DENIED")
+        result = self.authorize(ClinicalRequest(
+            user_id=user_id, purpose=purpose, organization_id=context.organization_id,
+            facility_id=context.facility_id, department_id=context.department_id, ward_id=context.ward_id,
+            patient_id=patient_id, resource_type=resource_type,
+        ))
+        if result.duty_context_id != context.id:
+            raise DutyAuthorizationError("DUTY_CONTEXT_DENIED")
+        return result
+
     def authorize(self, request: ClinicalRequest) -> ClinicalAccessContext:
         """Authorize a read or mutation at execution time; never from UI state."""
         context = self._active_context(request.user_id, lock=True)

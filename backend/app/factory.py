@@ -472,7 +472,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
         allow_headers=["Authorization", "Content-Type", "X-Request-ID",
                        "X-Device-ID", "X-App-Version", "Idempotency-Key",
                        "X-GULA-Operation-ID", "X-GULA-Request-Fingerprint", "If-Match",
-                       "X-CSRF-Token"],
+                       "X-Duty-Context-ID", "X-CSRF-Token"],
         expose_headers=["X-Request-ID", "X-Response-Time", "X-API-Version"],
     )
 

@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
+from app.security.clinical_duty_guard import require_clinical_duty
 
 logger = logging.getLogger("gula.routes.clinical_documentation")
 
@@ -158,9 +159,11 @@ def _store_document(doc_type: str, data: dict) -> dict:
 @router.post("/soap-notes", status_code=201)
 def create_soap_note(
     data: SoapNoteCreate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_clinical_duty(request, current_user, db, data.patient_id)
     return _store_document("soap_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
 
 
@@ -172,9 +175,11 @@ def create_soap_note(
 @router.post("/progress-notes", status_code=201)
 def create_progress_note(
     data: ProgressNoteCreate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_clinical_duty(request, current_user, db, data.patient_id)
     return _store_document("progress_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
 
 
@@ -186,9 +191,11 @@ def create_progress_note(
 @router.post("/nursing-notes", status_code=201)
 def create_nursing_note(
     data: NursingNoteCreate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_clinical_duty(request, current_user, db, data.patient_id)
     return _store_document("nursing_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
 
 
@@ -200,9 +207,11 @@ def create_nursing_note(
 @router.post("/consultation-notes", status_code=201)
 def create_consultation_note(
     data: ConsultationNoteCreate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_clinical_duty(request, current_user, db, data.patient_id)
     return _store_document("consultation_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
 
 
@@ -214,9 +223,11 @@ def create_consultation_note(
 @router.post("/operation-notes", status_code=201)
 def create_operation_note(
     data: OperationNoteCreate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_clinical_duty(request, current_user, db, data.patient_id)
     return _store_document("operation_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
 
 
@@ -228,9 +239,11 @@ def create_operation_note(
 @router.post("/emergency-notes", status_code=201)
 def create_emergency_note(
     data: EmergencyNoteCreate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_clinical_duty(request, current_user, db, data.patient_id)
     return _store_document("emergency_note", {**data.model_dump(exclude_none=True), "created_by": current_user.id})
 
 

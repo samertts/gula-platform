@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -12,6 +12,7 @@ from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
+from app.security.clinical_duty_guard import require_clinical_duty
 
 logger = logging.getLogger("gula.routes.clinical_orders")
 
@@ -94,9 +95,11 @@ def _next_id() -> str:
 @router.post("", status_code=201)
 def create_order(
     data: ClinicalOrderCreate,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    require_clinical_duty(request, current_user, db, data.patient_id)
     if data.order_type not in _ORDER_TYPES:
         raise HTTPException(
             status_code=422,
@@ -165,12 +168,14 @@ def get_order(
 @router.put("/{order_id}/cancel")
 def cancel_order(
     order_id: str,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     order = _FAKE_ORDERS.get(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    require_clinical_duty(request, current_user, db, str(order.get("patient_id", "")))
     if order["status"] in ("completed", "cancelled"):
         raise HTTPException(
             status_code=422,
@@ -185,12 +190,14 @@ def cancel_order(
 @router.put("/{order_id}/complete")
 def complete_order(
     order_id: str,
+    request: Request,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     order = _FAKE_ORDERS.get(order_id)
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+    require_clinical_duty(request, current_user, db, str(order.get("patient_id", "")))
     if order["status"] == "cancelled":
         raise HTTPException(
             status_code=422,

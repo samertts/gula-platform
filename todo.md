@@ -333,3 +333,21 @@ SAFE_STOP: لا تشغيل migration، لا production DB، لا deployment أو
 - [ ] إضافة اختبارات التعدد المؤسسي والتزامن وBreak-Glass وcross-tenant.
 - [ ] تشغيل الفحوصات وتوثيق ما يحتاج PostgreSQL/Redis/Staging وأجهزة حقيقية.
 - [ ] عدم تغيير production أو تنفيذ migration إنتاجية أو نشر أو merge تلقائي.
+
+## Staging Closure for DOCTOR_DUTY_READY
+
+- [ ] تدقيق كل clinical mutation وربطه بتفويض Duty وقت التنفيذ.
+- [ ] تشغيل PostgreSQL وRedis الحقيقيين في Staging مع اختبارات tenant/organization/facility isolation.
+- [ ] اختبار التزامن، انتهاء الوردية، السحب، handover، ورفض الطلبات القديمة.
+- [ ] اختبار Offline dataset المشفر والمزامنة وحل التعارضات وعدم إنشاء Offline Duty جديدة.
+- [ ] اختبار Speech وclinical notifications على أجهزة/متصفحات اختبار مع الإيقاف الفوري عند تغيير السياق.
+- [ ] جمع أدلة الاختبارات وإصدار قرار DOCTOR_DUTY_READY أو إبقاء الحالة PARTIAL/BLOCKED.
+
+
+## تنفيذ إغلاق DOCTOR_DUTY_READY محلياً
+
+- [ ] جرد mutations السريرية ومسارات الكتابة ومواضع التفويض الحالية.
+- [ ] تحديد المسارات التي يمكن ربطها محلياً دون تغيير contract أو Production.
+- [ ] إضافة اختبارات رفض بعد انتهاء Duty وعبر tenant/facility/ward.
+- [ ] تشغيل اختبارات PostgreSQL/Redis وOffline/Speech فقط إن توفرت بيئة Staging المعزولة.
+- [ ] توثيق الحواجز الخارجية وعدم إعلان DOCTOR_DUTY_READY قبل اجتيازها.
