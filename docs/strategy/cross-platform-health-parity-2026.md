@@ -9,7 +9,7 @@
 
 | السطح | المواطن/الأسرة | الطبيب/المختبري | المؤسسة | الحالة المثبتة |
 |---|---|---|---|---|
-| Web/PWA | Citizen Workspace، family، notifications، account-request UI | Clinical Workspace للمرضى والطلبات، Lab Operations مع بيانات اصطناعية معزولة | Institution Workspace وروابط الوحدات | **PASS محلياً**: TypeScript/build، اختبارات العقد، ESLint، bundle budget |
+| Web/PWA | Citizen Workspace، family، notifications، account-request UI | Clinical Workspace للمرضى والطلبات، `results.read` لعرض DTO النتائج، Lab Operations مع بيانات اصطناعية معزولة | Institution Workspace وروابط الوحدات | **PASS محلياً للعقود والواجهة**: TypeScript/build، اختبارات العقد، ESLint، bundle budget؛ E2E الإنتاجي UNVERIFIED |
 | Android Kotlin/Compose | لا توجد أدلة parity محدثة للدفعات الجديدة | لا توجد أدلة parity محدثة للدفعات الجديدة | signing CI-only، لا يوجد keystore متتبع | **UNVERIFIED**: CI infrastructure وrotation الخارجيان غير مغلقين |
 | Flutter Android/iOS | لا توجد أدلة parity محدثة للدفعات الجديدة | لا توجد أدلة parity محدثة للدفعات الجديدة | لا يوجد إثبات تشغيل متطابق للدفعات الجديدة | **UNVERIFIED**: native CI لم ينفذ بنجاح |
 | Flutter Desktop | لا توجد أدلة parity محدثة للدفعات الجديدة | لا توجد أدلة parity محدثة للدفعات الجديدة | surface موجود في route/workflow، لكن parity الوظيفية غير مثبتة | **UNVERIFIED** |
@@ -18,7 +18,7 @@
 
 ## ما تم إثباته محلياً
 
-أثبتت Web/PWA دفعات المواطن والمساحة السريرية ومساحة المؤسسة عبر TypeScript وVite build وESLint واختبارات بوابة القراءة السريرية وbundle budget. في المقابل، النتائج التفصيلية للمختبر بقيت محجوبة لأن عقد `results.read` وDTO minimal وسجل التدقيق لم يُعتمد بعد. كما أن شاشة تشغيل المختبر تعرض بيانات اصطناعية معزولة وتوضح ذلك للمستخدم بدلاً من الإيحاء بأنها بيانات إنتاجية.
+أثبتت Web/PWA دفعات المواطن والمساحة السريرية ومساحة المؤسسة عبر TypeScript وVite build وESLint واختبارات بوابة القراءة السريرية وbundle budget. وأصبحت النتائج التفصيلية للمختبر متاحة داخل Clinical Workspace من خلال عقد `results.read` وDTO minimal وسجل التدقيق، مع اختيار طلب مصرح به فقط ومنع حقول المشاركة العامة. كما أن شاشة تشغيل المختبر تعرض بيانات اصطناعية معزولة وتوضح ذلك للمستخدم بدلاً من الإيحاء بأنها بيانات إنتاجية.
 
 ## فجوات التكافؤ
 
