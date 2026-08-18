@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+
 def test_smart_app_launch_discovery(client: TestClient):
     resp = client.get("/.well-known/smart-configuration")
     assert resp.status_code == 200

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, status
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from ..security.rbac import require_role
-from ..config import APP_VERSION
 
 logger = logging.getLogger("gula.advanced_integrations")
 
