@@ -227,6 +227,10 @@ class PrescriptionItem(TenantAuditEntity):
     instructions = Column(Text, nullable=True)
     substitution_allowed = Column(Boolean, default=True)
     status = Column(String(50), nullable=False, default="active")
+    substituted_from_drug_id = Column(String(26), ForeignKey("pharmacy_drug_catalog.id", ondelete="SET NULL"), nullable=True, index=True)
+    substitution_reason = Column(String(500), nullable=True)
+    substituted_by = Column(String(26), nullable=True)
+    substituted_at = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
     metadata_ = Column("metadata", JSON, nullable=True)
 

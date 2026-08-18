@@ -12,6 +12,9 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.billing.service import BillingService
 from app.ehr.models.medication import MedicationDispense
+from app.national.domain.practitioner import Practitioner
+from app.national.enums import PractitionerRole
+from app.models.lab_user import LabUser
 from app.pharmacy.enums import DispenseStatus, PrescriptionStatus, StockMovementType
 from app.pharmacy.models import (
     DispenseQueue,
@@ -35,6 +38,10 @@ from app.pharmacy.models import (
 from app.services.audit_service import log_action
 
 logger = logging.getLogger("gula.pharmacy.services")
+
+
+class PharmacyAuthorizationBlocked(Exception):
+    """Raised when a pharmacy command lacks server-derived clinical proof."""
 
 
 class PharmacyService:
@@ -202,8 +209,34 @@ class PharmacyService:
 
     # ── Prescription Workflow ──────────────────────────────────────────────────
 
+    def _resolve_server_practitioner_id(self, *, allowed_roles: tuple[PractitionerRole, ...]) -> str:
+        user = self.db.query(LabUser).filter(LabUser.id == self.user_id, LabUser.lab_id == self.lab_id, LabUser.is_active.is_(True)).one_or_none()
+        if user is None or not user.national_id_hash:
+            raise PharmacyAuthorizationBlocked("server_practitioner_mapping_required")
+        practitioners = (
+            self.db.query(Practitioner)
+            .filter(
+                Practitioner.national_id_hash == user.national_id_hash,
+                Practitioner.is_active.is_(True),
+                Practitioner.is_verified.is_(True),
+                Practitioner.role.in_(allowed_roles),
+            )
+            .all()
+        )
+        if len(practitioners) != 1:
+            raise PharmacyAuthorizationBlocked("server_practitioner_mapping_missing_or_ambiguous")
+        return str(practitioners[0].id)
+
     def create_prescription(self, data: dict[str, Any]) -> Prescription:
-        rx = Prescription(**{k: v for k, v in data.items() if hasattr(Prescription, k)})
+        payload = dict(data)
+        client_prescriber_id = payload.pop("prescriber_id", None)
+        prescriber_id = self._resolve_server_practitioner_id(
+            allowed_roles=(PractitionerRole.DOCTOR, PractitionerRole.SPECIALIST, PractitionerRole.CONSULTANT, PractitionerRole.RESIDENT),
+        )
+        if client_prescriber_id is not None and str(client_prescriber_id) != prescriber_id:
+            raise PharmacyAuthorizationBlocked("client_prescriber_id_not_authoritative")
+        payload["prescriber_id"] = prescriber_id
+        rx = Prescription(**{k: v for k, v in payload.items() if hasattr(Prescription, k)})
         if self.lab_id:
             rx.lab_id = self.lab_id
         self.db.add(rx)
@@ -233,10 +266,15 @@ class PharmacyService:
         original = self.get_prescription(rx_id)
         if not original:
             return None
+        prescriber_id = self._resolve_server_practitioner_id(
+            allowed_roles=(PractitionerRole.DOCTOR, PractitionerRole.SPECIALIST, PractitionerRole.CONSULTANT, PractitionerRole.RESIDENT),
+        )
+        if original.prescriber_id != prescriber_id:
+            raise PharmacyAuthorizationBlocked("renewal_prescriber_mismatch")
         renewal = Prescription(
             patient_id=original.patient_id,
             encounter_id=original.encounter_id,
-            prescriber_id=original.prescriber_id,
+            prescriber_id=prescriber_id,
             prescription_number=f"{original.prescription_number}-R{int(original.prescription_number.split('-R')[-1]) + 1 if '-R' in original.prescription_number else 1}",
             status=PrescriptionStatus.ACTIVE,
             intent=original.intent,
@@ -293,16 +331,32 @@ class PharmacyService:
         self._audit("pharmacy.rx.add_item", "prescription_item", item.id, f"Item added to RX {rx_id}")
         return item
 
-    def substitute_prescription_item(self, rx_id: str, item_id: str, new_drug_id: str) -> PrescriptionItem | None:
+    def substitute_prescription_item(self, rx_id: str, item_id: str, new_drug_id: str, reason: str) -> PrescriptionItem | None:
+        if not reason or not reason.strip():
+            raise PharmacyAuthorizationBlocked("substitution_reason_required")
+        self._resolve_server_practitioner_id(allowed_roles=(PractitionerRole.PHARMACIST,))
+        rx = self.get_prescription(rx_id)
         item = self.db.query(PrescriptionItem).filter(
             PrescriptionItem.id == item_id,
             PrescriptionItem.prescription_id == rx_id,
+            ~PrescriptionItem.is_deleted,
         ).first()
-        if not item:
+        if not rx or not item:
             return None
+        if not rx.substitution_allowed or not item.substitution_allowed:
+            raise PharmacyAuthorizationBlocked("substitution_not_allowed")
         new_drug = self.get_drug(new_drug_id)
-        if not new_drug:
+        original_drug = self.get_drug(item.drug_catalog_id) if item.drug_catalog_id else None
+        if not new_drug or not original_drug:
             return None
+        original_generic = (original_drug.generic_name or "").strip().casefold()
+        new_generic = (new_drug.generic_name or "").strip().casefold()
+        if not original_generic or original_generic != new_generic:
+            raise PharmacyAuthorizationBlocked("non_equivalent_substitution")
+        item.substituted_from_drug_id = item.drug_catalog_id
+        item.substitution_reason = reason.strip()
+        item.substituted_by = str(self.user_id) if self.user_id is not None else None
+        item.substituted_at = datetime.now(UTC)
         item.drug_catalog_id = new_drug_id
         item.medication_code = new_drug.code
         item.medication_name = new_drug.name

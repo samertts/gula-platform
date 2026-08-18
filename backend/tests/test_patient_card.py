@@ -148,16 +148,18 @@ def lab_with_patient(db, make_lab, make_lab_user):
     return {"lab": lab, "user": user, "patient": patient, "order": order}
 
 
-def test_get_card_returns_payload_and_token(client, lab_with_patient):
+def test_get_card_returns_minimum_disclosure_without_token(client, lab_with_patient):
     fix = lab_with_patient
     headers = auth_headers(fix["user"].id, fix["lab"].id, role="admin")
 
     r = client.get(f"/patient-card/{fix['patient'].id}", headers=headers)
     assert r.status_code == 200
     body = r.json()
-    assert body["card"]["health_id"] == "GULA-TESTID0001"
+    assert body["card"]["health_id_masked"].endswith("0001")
     assert body["card"]["full_name"] == "أحمد محمود"
-    assert body["token"]
+    assert "token" not in body
+    assert "health_id" not in body["card"]
+    assert "phone" not in body["card"]
     assert body["qr_url"].endswith("/qr.png")
 
 
