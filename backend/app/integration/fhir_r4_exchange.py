@@ -7,6 +7,7 @@ clinical gateway remains blocked by P4/P5 governance.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -123,13 +124,38 @@ def synthetic_bundle() -> dict[str, Any]:
         "id": "synthetic-bundle-001",
         "type": "collection",
         "meta": _synthetic_meta(),
-        "entry": [{"resource": resource} for resource in (patient, organization, request, specimen, observation, report)],
+        "entry": [
+            {"resource": resource}
+            for resource in (patient, organization, request, specimen, observation, report)
+        ],
     }
 
 
 def _is_synthetic(resource: dict[str, Any]) -> bool:
-    tags = resource.get("meta", {}).get("tag", [])
-    return any(tag.get("system") == SYNTHETIC_TAG_SYSTEM and tag.get("code") == SYNTHETIC_TAG_CODE for tag in tags)
+    meta = resource.get("meta")
+    if not isinstance(meta, dict):
+        return False
+    tags = meta.get("tag")
+    if not isinstance(tags, list):
+        return False
+    return any(
+        isinstance(tag, dict)
+        and tag.get("system") == SYNTHETIC_TAG_SYSTEM
+        and tag.get("code") == SYNTHETIC_TAG_CODE
+        for tag in tags
+    )
+
+
+def _safe_audit_resource_id(resource_id: str) -> str:
+    """Keep audit records synthetic without retaining arbitrary caller input."""
+    if (
+        isinstance(resource_id, str)
+        and len(resource_id) <= 128
+        and resource_id.startswith("synthetic-")
+        and all(character.isalnum() or character == "-" for character in resource_id)
+    ):
+        return resource_id
+    return "<redacted>"
 
 
 def validate_synthetic_bundle(bundle: dict[str, Any]) -> list[str]:
@@ -139,6 +165,8 @@ def validate_synthetic_bundle(bundle: dict[str, Any]) -> list[str]:
         errors.append("resourceType must be Bundle")
     if bundle.get("type") != "collection":
         errors.append("bundle type must be collection")
+    if not isinstance(bundle.get("id"), str) or not bundle["id"]:
+        errors.append("bundle id is required")
     if not _is_synthetic(bundle):
         errors.append("bundle must be explicitly tagged as synthetic")
     entries = bundle.get("entry")
@@ -168,13 +196,15 @@ def capability_statement() -> dict[str, Any]:
         "status": "draft",
         "fhirVersion": FHIR_R4,
         "format": ["json"],
-        "rest": [{
-            "mode": "server",
-            "resource": [
-                {"type": resource_type, "interaction": [{"code": "read"}, {"code": "search"}]}
-                for resource_type in READ_ONLY_RESOURCE_TYPES
-            ],
-        }],
+        "rest": [
+            {
+                "mode": "server",
+                "resource": [
+                    {"type": resource_type, "interaction": [{"code": "read"}, {"code": "search"}]}
+                    for resource_type in READ_ONLY_RESOURCE_TYPES
+                ],
+            }
+        ],
     }
 
 
@@ -186,20 +216,47 @@ class SyntheticFHIRReadOnlyExchange:
     audit: AuditRecorder = field(default_factory=InMemoryAuditRecorder)
     _bundle: dict[str, Any] = field(default_factory=synthetic_bundle)
 
-    def read_bundle(self, *, resource_type: str = "Bundle", resource_id: str = "synthetic-bundle-001") -> dict[str, Any]:
+    def read_bundle(
+        self, *, resource_type: str = "Bundle", resource_id: str = "synthetic-bundle-001"
+    ) -> dict[str, Any]:
         if not self.enabled:
-            self.audit.record(action="fhir.synthetic.read", outcome="denied", resource_type=resource_type, resource_id=resource_id)
+            self.audit.record(
+                action="fhir.synthetic.read",
+                outcome="denied",
+                resource_type=resource_type,
+                resource_id=_safe_audit_resource_id(resource_id),
+            )
             raise FHIRExchangeBlocked("synthetic FHIR exchange is disabled by server policy")
         errors = validate_synthetic_bundle(self._bundle)
         if errors:
-            self.audit.record(action="fhir.synthetic.read", outcome="rejected", resource_type=resource_type, resource_id=resource_id)
+            self.audit.record(
+                action="fhir.synthetic.read",
+                outcome="rejected",
+                resource_type=resource_type,
+                resource_id=_safe_audit_resource_id(resource_id),
+            )
             raise FHIRContractError("; ".join(errors))
         if resource_type != "Bundle" or resource_id != self._bundle["id"]:
-            self.audit.record(action="fhir.synthetic.read", outcome="not_found", resource_type=resource_type, resource_id=resource_id)
+            self.audit.record(
+                action="fhir.synthetic.read",
+                outcome="not_found",
+                resource_type=resource_type,
+                resource_id=_safe_audit_resource_id(resource_id),
+            )
             raise KeyError(f"synthetic resource not found: {resource_type}/{resource_id}")
-        self.audit.record(action="fhir.synthetic.read", outcome="allowed", resource_type=resource_type, resource_id=resource_id)
-        return self._bundle
+        self.audit.record(
+            action="fhir.synthetic.read",
+            outcome="allowed",
+            resource_type=resource_type,
+            resource_id=resource_id,
+        )
+        return deepcopy(self._bundle)
 
     def write(self, *_: Any, **__: Any) -> None:
-        self.audit.record(action="fhir.synthetic.write", outcome="denied", resource_type="unknown", resource_id="unknown")
+        self.audit.record(
+            action="fhir.synthetic.write",
+            outcome="denied",
+            resource_type="unknown",
+            resource_id="<redacted>",
+        )
         raise FHIRExchangeBlocked("synthetic exchange is read-only")

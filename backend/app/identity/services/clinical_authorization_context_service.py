@@ -84,30 +84,55 @@ class ClinicalAuthorizationContextService:
         expected_niam_facility_id: str | None = None,
     ) -> ClinicalAuthorizationContext:
         if legacy_lab_user_id <= 0 or legacy_lab_id <= 0:
-            raise ClinicalLegacyIdentityUnresolved("Legacy account and laboratory identifiers must be positive")
+            raise ClinicalLegacyIdentityUnresolved(
+                "Legacy account and laboratory identifiers must be positive"
+            )
 
         try:
             link = await self._get_migrated_link(legacy_lab_user_id)
             account, identity = await self._get_active_account_identity(link.canonical_account_id)
             binding = await self.scope_bridge.resolve_active_binding(legacy_lab_id)
-            if expected_niam_organization_id is not None and binding.niam_organization_id != expected_niam_organization_id:
-                raise ClinicalFacilityScopeMismatch("The reviewed organization mapping does not match the active NIAM workspace")
-            if expected_niam_facility_id is not None and binding.niam_facility_id != expected_niam_facility_id:
-                raise ClinicalFacilityScopeMismatch("The reviewed facility mapping does not match the active NIAM workspace")
+            if (
+                expected_niam_organization_id is not None
+                and binding.niam_organization_id != expected_niam_organization_id
+            ):
+                raise ClinicalFacilityScopeMismatch(
+                    "The reviewed organization mapping does not match the active NIAM workspace"
+                )
+            if (
+                expected_niam_facility_id is not None
+                and binding.niam_facility_id != expected_niam_facility_id
+            ):
+                raise ClinicalFacilityScopeMismatch(
+                    "The reviewed facility mapping does not match the active NIAM workspace"
+                )
             if binding.niam_organization_id is None or binding.niam_facility_id is None:
-                raise ClinicalFacilityScopeMismatch("The reviewed bridge has no canonical NIAM scope mapping")
+                raise ClinicalFacilityScopeMismatch(
+                    "The reviewed bridge has no canonical NIAM scope mapping"
+                )
             facility, organization, tenant = await self._get_active_operational_scope(binding)
-            if facility.id is None or organization.id is None or tenant.id is None or binding.mapping_version is None:
-                raise ClinicalFacilityScopeMismatch("The reviewed operational scope has incomplete identifiers")
+            if (
+                facility.id is None
+                or organization.id is None
+                or tenant.id is None
+                or binding.mapping_version is None
+            ):
+                raise ClinicalFacilityScopeMismatch(
+                    "The reviewed operational scope has incomplete identifiers"
+                )
             if account.id is None or identity.id is None or identity.person_id is None:
-                raise ClinicalLegacyIdentityUnresolved("The reviewed canonical account or identity has incomplete identifiers")
+                raise ClinicalLegacyIdentityUnresolved(
+                    "The reviewed canonical account or identity has incomplete identifiers"
+                )
             assignment = await self._get_matching_assignment(
                 person_id=identity.person_id,
                 facility_resource_id=facility.id,
                 organization_resource_id=organization.id,
             )
             if assignment.id is None:
-                raise ClinicalActiveAssignmentUnavailable("The reviewed active assignment has no identifier")
+                raise ClinicalActiveAssignmentUnavailable(
+                    "The reviewed active assignment has no identifier"
+                )
             context = ClinicalAuthorizationContext(
                 legacy_lab_user_id=legacy_lab_user_id,
                 legacy_lab_id=legacy_lab_id,
@@ -153,14 +178,22 @@ class ClinicalAuthorizationContextService:
         result = await self.session.execute(stmt)
         links = list(result.scalars().all())
         if not links:
-            raise ClinicalLegacyIdentityUnresolved("No migrated canonical account link exists for this laboratory user")
+            raise ClinicalLegacyIdentityUnresolved(
+                "No migrated canonical account link exists for this laboratory user"
+            )
         if len(links) != 1:
-            raise ClinicalAuthorizationContextAmbiguous("More than one migrated canonical account link exists")
+            raise ClinicalAuthorizationContextAmbiguous(
+                "More than one migrated canonical account link exists"
+            )
         return links[0]
 
-    async def _get_active_account_identity(self, account_id: str | None) -> tuple[Account, IdentityRecord]:
+    async def _get_active_account_identity(
+        self, account_id: str | None
+    ) -> tuple[Account, IdentityRecord]:
         if not account_id:
-            raise ClinicalLegacyIdentityUnresolved("The migrated legacy account link has no canonical account")
+            raise ClinicalLegacyIdentityUnresolved(
+                "The migrated legacy account link has no canonical account"
+            )
         stmt = (
             select(Account, IdentityRecord)
             .join(IdentityRecord, IdentityRecord.id == Account.identity_id)
@@ -175,7 +208,9 @@ class ClinicalAuthorizationContextService:
         result = await self.session.execute(stmt)
         rows = list(result.all())
         if len(rows) != 1:
-            raise ClinicalLegacyIdentityUnresolved("The canonical account and active identity could not be proven")
+            raise ClinicalLegacyIdentityUnresolved(
+                "The canonical account and active identity could not be proven"
+            )
         return rows[0][0], rows[0][1]
 
     async def _get_active_operational_scope(
@@ -196,7 +231,9 @@ class ClinicalAuthorizationContextService:
         result = await self.session.execute(stmt)
         rows = list(result.all())
         if len(rows) != 1:
-            raise ClinicalFacilityScopeMismatch("The reviewed facility does not resolve to one active organization and tenant")
+            raise ClinicalFacilityScopeMismatch(
+                "The reviewed facility does not resolve to one active organization and tenant"
+            )
         return rows[0][0], rows[0][1], rows[0][2]
 
     async def _get_matching_assignment(
@@ -217,10 +254,14 @@ class ClinicalAuthorizationContextService:
         )
         result = await self.session.execute(stmt)
         candidates = list(result.scalars().all())
-        person_candidates = [assignment for assignment in candidates if assignment.person_id == person_id]
+        person_candidates = [
+            assignment for assignment in candidates if assignment.person_id == person_id
+        ]
         if not person_candidates:
             if candidates:
-                raise ClinicalIdentityAssignmentMismatch("No active clinical assignment belongs to the canonical identity person")
+                raise ClinicalIdentityAssignmentMismatch(
+                    "No active clinical assignment belongs to the canonical identity person"
+                )
             raise ClinicalActiveAssignmentUnavailable("No active clinical assignment is available")
 
         scoped = [
@@ -230,9 +271,13 @@ class ClinicalAuthorizationContextService:
             and assignment.clinical_organization_resource_id == organization_resource_id
         ]
         if not scoped:
-            raise ClinicalFacilityScopeMismatch("The active person assignment does not match the reviewed facility scope")
+            raise ClinicalFacilityScopeMismatch(
+                "The active person assignment does not match the reviewed facility scope"
+            )
         if len(scoped) != 1:
-            raise ClinicalAuthorizationContextAmbiguous("More than one active clinical assignment matches this scope")
+            raise ClinicalAuthorizationContextAmbiguous(
+                "More than one active clinical assignment matches this scope"
+            )
         return scoped[0]
 
     async def _record_decision(

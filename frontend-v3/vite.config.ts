@@ -96,7 +96,7 @@ export default defineConfig({
     },
   },
   server: {
-    allowedHosts: true,
+    allowedHosts: ['localhost', '127.0.0.1'],
     proxy: {
       '/api/v1/demo': {
         target: 'http://localhost:3000',

@@ -34,12 +34,10 @@ def _membership_routes() -> dict[tuple[str, str], APIRoute]:
     instances.  Both forms must still expose the same protected lifecycle routes.
     """
     has_lazy_membership_router = any(
-        getattr(route, "original_router", None) is memberships_api.router
-        for route in router.routes
+        getattr(route, "original_router", None) is memberships_api.router for route in router.routes
     )
     has_materialized_membership_route = any(
-        isinstance(route, APIRoute)
-        and (route.path or "").startswith("/niam/memberships")
+        isinstance(route, APIRoute) and (route.path or "").startswith("/niam/memberships")
         for route in router.routes
     )
     assert has_lazy_membership_router or has_materialized_membership_route

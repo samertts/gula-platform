@@ -40,20 +40,24 @@ class CitizenRelationshipUnsupported(CitizenRelationshipWorkflowError):
     pass
 
 
-REVOCATION_REASON_CODES = frozenset({
-    "user_request",
-    "verification_failed",
-    "policy_change",
-    "duplicate",
-    "security_event",
-    "administrative_correction",
-})
+REVOCATION_REASON_CODES = frozenset(
+    {
+        "user_request",
+        "verification_failed",
+        "policy_change",
+        "duplicate",
+        "security_event",
+        "administrative_correction",
+    }
+)
 
 
 def _workflow_key() -> bytes:
     key = os.getenv("GULA_RELATION_WORKFLOW_KEY") or AUDIT_ANCHOR_KEY
     if not key or len(key) < 32:
-        raise RuntimeError("GULA_RELATION_WORKFLOW_KEY or AUDIT_ANCHOR_KEY must be at least 32 characters")
+        raise RuntimeError(
+            "GULA_RELATION_WORKFLOW_KEY or AUDIT_ANCHOR_KEY must be at least 32 characters"
+        )
     return key.encode("utf-8")
 
 
@@ -144,8 +148,15 @@ class CitizenRelationshipWorkflow:
         patient = None
         if patient_id is not None:
             patient = self.db.query(Patient).filter(Patient.id == patient_id).first()
-            if patient is None or patient.citizen_id != citizen_id or not patient.is_active or patient.is_merged:
-                raise CitizenRelationshipConflict("Patient record is not linked to the selected citizen")
+            if (
+                patient is None
+                or patient.citizen_id != citizen_id
+                or not patient.is_active
+                or patient.is_merged
+            ):
+                raise CitizenRelationshipConflict(
+                    "Patient record is not linked to the selected citizen"
+                )
 
         payload = {
             "source_kind": source_kind,
@@ -166,7 +177,9 @@ class CitizenRelationshipWorkflow:
         )
         if existing_by_key:
             if existing_by_key.request_fingerprint != fingerprint:
-                raise CitizenRelationshipConflict("Idempotency-Key was reused for a different request")
+                raise CitizenRelationshipConflict(
+                    "Idempotency-Key was reused for a different request"
+                )
             return existing_by_key
 
         duplicate = (
@@ -178,14 +191,21 @@ class CitizenRelationshipWorkflow:
                 CitizenRelationship.patient_id == patient_id,
                 CitizenRelationship.relationship_type == relationship_type,
                 CitizenRelationship.purpose == purpose,
-                CitizenRelationship.status.in_((CitizenRelationshipStatus.pending.value, CitizenRelationshipStatus.active.value)),
+                CitizenRelationship.status.in_(
+                    (
+                        CitizenRelationshipStatus.pending.value,
+                        CitizenRelationshipStatus.active.value,
+                    )
+                ),
             )
             .with_for_update()
             .first()
         )
         if duplicate:
             if duplicate.request_fingerprint != fingerprint:
-                raise CitizenRelationshipConflict("An equivalent active relationship already exists with different scope")
+                raise CitizenRelationshipConflict(
+                    "An equivalent active relationship already exists with different scope"
+                )
             return duplicate
 
         relationship = CitizenRelationship(
@@ -230,10 +250,14 @@ class CitizenRelationshipWorkflow:
         if relationship.status == CitizenRelationshipStatus.active.value:
             return relationship
         if relationship.status != CitizenRelationshipStatus.pending.value:
-            raise CitizenRelationshipConflict(f"Cannot activate relationship from {relationship.status}")
+            raise CitizenRelationshipConflict(
+                f"Cannot activate relationship from {relationship.status}"
+            )
         source = self.db.query(User).filter(User.id == relationship.legacy_user_id).first()
         if source is None or not source.is_active or not source.is_verified:
-            raise CitizenRelationshipConflict("Source account must be active and verified before activation")
+            raise CitizenRelationshipConflict(
+                "Source account must be active and verified before activation"
+            )
         old_status = relationship.status
         if relationship.version is None:
             raise CitizenRelationshipConflict("Relationship version is required for activation")
@@ -242,7 +266,9 @@ class CitizenRelationshipWorkflow:
         relationship.version += 1
         relationship.metadata_ = {
             **(relationship.metadata_ or {}),
-            "verification_reference_digest": _digest(f"verification:{verification_reference.strip()}"),
+            "verification_reference_digest": _digest(
+                f"verification:{verification_reference.strip()}"
+            ),
             "verified_by_legacy_user_id": self.actor.id,
         }
         self.db.flush()
@@ -271,7 +297,9 @@ class CitizenRelationshipWorkflow:
             CitizenRelationshipStatus.pending.value,
             CitizenRelationshipStatus.active.value,
         }:
-            raise CitizenRelationshipConflict(f"Cannot revoke relationship from {relationship.status}")
+            raise CitizenRelationshipConflict(
+                f"Cannot revoke relationship from {relationship.status}"
+            )
         old_status = relationship.status
         if relationship.version is None:
             raise CitizenRelationshipConflict("Relationship version is required for revocation")
