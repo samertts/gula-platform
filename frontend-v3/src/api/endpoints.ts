@@ -372,6 +372,72 @@ export const batchApi = {
     api.post<Record<string, unknown>>("/batch/orders", data).then((r) => r.data),
 };
 
+// ── Canonical clinical command contracts ──
+export interface ClinicalEncounterRecord {
+  id: string;
+  encounter_type: string;
+  status: string;
+  patient_id: string;
+  citizen_id?: string | null;
+  facility_id: string;
+  practitioner_id: string;
+  period_start?: string | null;
+  period_end?: string | null;
+  duration_minutes?: number | null;
+  reason_code?: string | null;
+  reason_description?: string | null;
+  priority: string;
+  is_emergency: boolean;
+  disposition?: string | null;
+  notes?: string | null;
+}
+
+export interface ClinicalWorkflowRecord {
+  id: string;
+  patient_id?: number | null;
+  shift_id?: string | null;
+  status?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  completed_at?: string | null;
+  task_type?: string | null;
+  priority?: string | null;
+  description?: string | null;
+}
+
+export interface PatientCardHistoryResponse {
+  patient?: Record<string, unknown>;
+  orders?: Record<string, unknown>[];
+  timeline?: Record<string, unknown>[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export const clinicalEncounterApi = {
+  create: (data: {
+    patient_id: number;
+    encounter_type: string;
+    reason_code?: string;
+    reason_description?: string;
+    priority?: string;
+    is_emergency?: boolean;
+  }) => api.post<ClinicalEncounterRecord>("/api/v1/clinical/encounters", data).then((r) => r.data),
+  start: (encounterId: string) => api.post<ClinicalEncounterRecord>(`/api/v1/clinical/encounters/${encounterId}/start`).then((r) => r.data),
+  complete: (encounterId: string, data?: { disposition?: string; notes?: string }) => api.post<ClinicalEncounterRecord>(`/api/v1/clinical/encounters/${encounterId}/complete`, data ?? {}).then((r) => r.data),
+};
+
+export const clinicalWorkflowApi = {
+  startShift: (data: { shift_type: string; department_id?: number }) => api.post<ClinicalWorkflowRecord>("/api/v1/clinical/workflow/shifts/start", data).then((r) => r.data),
+  endShift: (shiftId: string) => api.post<ClinicalWorkflowRecord>(`/api/v1/clinical/workflow/shifts/${shiftId}/end`).then((r) => r.data),
+  assignPatient: (data: { shift_id: string; patient_id: number; encounter_id?: string; assignment_type?: string }) => api.post<ClinicalWorkflowRecord>("/api/v1/clinical/workflow/patient-assignments", data).then((r) => r.data),
+  createTask: (data: { patient_id: number; task_type: string; description: string; priority?: string; encounter_id?: string; due_time?: string }) => api.post<ClinicalWorkflowRecord>("/api/v1/clinical/workflow/tasks", data).then((r) => r.data),
+  completeTask: (taskId: string, data?: { notes?: string }) => api.post<ClinicalWorkflowRecord>(`/api/v1/clinical/workflow/tasks/${taskId}/complete`, data ?? {}).then((r) => r.data),
+};
+
+export const clinicalResultsReviewApi = {
+  review: (orderId: number, resultId: number, data: { expected_version: number; decision: "ACCEPTED" | "REJECTED"; note?: string }) => api.post<Record<string, unknown>>(`/api/v1/clinical/orders/${orderId}/results/${resultId}/review`, data).then((r) => r.data),
+};
+
 // ── Patient Card ──
 export const patientCardApi = {
   get: (patientId: number) =>
@@ -381,9 +447,9 @@ export const patientCardApi = {
   scan: (token: string) =>
     api.post<Record<string, unknown>>("/patient-card/scan", { token }).then((r) => r.data),
   history: (patientId: number, params?: { limit?: number }) =>
-    api.get<{ scans: { scanned_at: string; scanner_ip?: string }[] }>(`/patient-card/${patientId}/history`, { params }).then((r) => r.data),
+    api.get<PatientCardHistoryResponse>(`/patient-card/${patientId}/history`, { params }).then((r) => r.data),
   print: (patientId: number) =>
-    api.get<PatientCard>(`/patient-card/${patientId}/print`).then((r) => r.data),
+    api.get<Blob>(`/patient-card/${patientId}/print`, { responseType: "blob" }).then((r) => r.data),
 };
 
 // ── ID Scan ──
