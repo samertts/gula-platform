@@ -44,6 +44,9 @@ jobs:
       - name: Unit tests
         run: npm test -- --runInBand
 
+      - name: Image parser security regression
+        run: npm run test:security
+
       - name: Validate public Expo config
         run: |
           npx expo config --type public --json > /tmp/gula-expo-config.json
