@@ -65,3 +65,21 @@
 ## Definition of baseline completion
 
 تمت قراءة ملف المتطلبات حتى السطر 1966، وحفظ الحالة الحالية، وتحديد أن العمل التالي يبدأ من inventory/canonical registry ثم context/authorization ثم durable document/order migrations، مع الاحتفاظ بـSAFE_STOP للحواجز الخارجية.
+
+
+## ملحق تنفيذ P4/P0 — 18 آب/أغسطس 2026
+
+بعد تنفيذ دفعة Clinical Gateway وواجهة frontend parity، أصبحت عقود الأوامر canonical التالية مثبتة في `frontend-v3/src/api/endpoints.ts`: دورة Encounter (create/start/complete)، دورة workflow (shift/assignment/task)، ومراجعة نتائج المختبر (`results.review`). كما صُححت عقود بطاقة المريض بحيث تعكس استجابة التاريخ التجميعية وتتعامل مع الطباعة كـHTML/Blob بدلاً من نموذج JSON.
+
+| الفحص | النتيجة | الدليل |
+|---|---|---|
+| Frontend tests | ناجح: 70 اختباراً في 19 ملفاً | `/tmp/gula-p4-frontend-parity-tests.log` |
+| Frontend lint | ناجح دون warnings مسموحة | `/tmp/gula-p4-frontend-parity-lint.log` |
+| Frontend build/PWA | ناجح | `/tmp/gula-p4-frontend-parity-build.log` |
+| Backend full regression | ناجح: 2727 passed، 4 skipped، 172 warnings خلال 327.08 ثانية | `/tmp/gula-p4-full-regression.log` |
+| Public secret guard | ناجح، لا أسرار عامة محتملة في الملفات المتتبعة | `python3 scripts/security/check_public_secrets.py` |
+| JSON registry validation | ناجح | `python3 -m json.tool docs/architecture/canonical-domain-registry-2026.json` |
+
+تم تحديث `docs/architecture/canonical-domain-registry-2026.json` لإضافة حالة `REVIEW_CANONICAL_ADDED` لمراجعة النتائج، و`EHR_DURABLE_QUERIES` لسجل أدوية المواطن، و`ENCOUNTER_WORKFLOW_CONTRACTS_ADDED` لعقود parity المرتبطة بـEncounter وShift وAssignment.
+
+لا تغيّر هذه النتائج حالة الحواجز الخارجية: تدوير مفتاح توقيع Android الإنتاجي وتطهير Git history بعد التدوير ما زالا يتطلبان جهة مخولة خارج هذه الجلسة. لذلك يبقى `P4 = SECURITY_BLOCKED`، ويبقى `P5 = BLOCKED`، كما تبقى Department وReferral وAppointment وDiagnosticReport وAuditEvent وConsent فجوات canonicalization أو governance موثقة وليست مكتملة.
