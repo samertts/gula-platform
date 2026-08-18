@@ -34,12 +34,13 @@ android {
 
     signingConfigs {
         create("release") {
-            val propsFile = rootProject.file("signing.properties")
+            val externalPropsPath = System.getenv("GULA_ANDROID_SIGNING_PROPERTIES")
+            val propsFile = externalPropsPath?.let(::file) ?: rootProject.file("signing.properties")
             if (propsFile.exists()) {
                 val props = Properties().apply {
                     load(FileInputStream(propsFile))
                 }
-                storeFile = file(props.getProperty("storeFile"))
+                storeFile = rootProject.file(props.getProperty("storeFile"))
                 storePassword = props.getProperty("storePassword")
                 keyAlias = props.getProperty("keyAlias")
                 keyPassword = props.getProperty("keyPassword")
@@ -48,7 +49,7 @@ android {
     }
 
         defaultConfig {
-            applicationId = "io.gula.android"
+            applicationId = "iq.gula.lab"
             minSdk = 26
             targetSdk = 35
             versionCode = 20500
