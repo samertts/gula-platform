@@ -224,6 +224,15 @@ def import_all_models() -> None:
         TestType,
         User,
     )
+    from .models.doctor_duty import (  # noqa: F401
+        ClinicalAccessContext,
+        DoctorDuty,
+        DutyAuditEvent,
+        DutyBreakGlass,
+        DutyContext,
+        DutyHandover,
+        ShiftContext,
+    )
     from .models import popular_clinic as popular_clinic_models  # noqa: F401
     from .models.ai_interaction import (  # noqa: F401
         AIFeedback,
@@ -644,6 +653,8 @@ def _register_routes(app: FastAPI) -> None:
     from .routes import clinical_orders as clinical_orders_routes
     from .routes import clinical_quality as clinical_quality_routes
     app.include_router(clinical_routes.router)
+    from .routes import doctor_duty as doctor_duty_routes
+    app.include_router(doctor_duty_routes.router)
     app.include_router(clinical_orders_routes.router)
     app.include_router(clinical_documentation_routes.router)
     app.include_router(clinical_quality_routes.router)

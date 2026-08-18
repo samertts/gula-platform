@@ -320,3 +320,16 @@ SAFE_STOP: لا تشغيل migration، لا production DB، لا deployment أو
 - [ ] مراجعة diff وتشغيل فحوصات مناسبة للتغييرات المرشحة.
 - [ ] إنشاء commit واضح على فرع آمن دون force-push أو تعديل main.
 - [ ] push إلى GitHub والتحقق من commit والفرع والـPR عند الحاجة.
+
+
+## Doctor Duty Context Command
+
+- [ ] قراءة بقية الملف واستخراج متطلبات الاختبارات والمخرجات.
+- [ ] جرد نماذج الهوية والتنظيم والمرفق والقسم والورديات الحالية.
+- [ ] تصميم DutyContext وShiftContext وClinicalAccessContext مع Default Deny.
+- [ ] تنفيذ server-side start/end/revoke/handover وserver-authoritative time.
+- [ ] عزل patient scope والـcache والـoffline والـnotifications والـSpeech حسب Duty.
+- [ ] إضافة audit events ورفض mutations بعد انتهاء الصلاحية.
+- [ ] إضافة اختبارات التعدد المؤسسي والتزامن وBreak-Glass وcross-tenant.
+- [ ] تشغيل الفحوصات وتوثيق ما يحتاج PostgreSQL/Redis/Staging وأجهزة حقيقية.
+- [ ] عدم تغيير production أو تنفيذ migration إنتاجية أو نشر أو merge تلقائي.
