@@ -791,7 +791,11 @@ def _register_routes(app: FastAPI) -> None:
     app.include_router(get_niam_router())
 
     from .clinical_gateway.routes import router as clinical_gateway_router
+    from .clinical_gateway.documentation_routes import router as clinical_documentation_gateway_router
+    from .clinical_gateway.order_command_routes import router as clinical_order_command_router
     app.include_router(clinical_gateway_router)
+    app.include_router(clinical_documentation_gateway_router)
+    app.include_router(clinical_order_command_router)
 
     from .routes.authorization import router as authorization_router
     app.include_router(authorization_router)
