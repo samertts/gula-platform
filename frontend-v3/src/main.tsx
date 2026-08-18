@@ -13,9 +13,6 @@ if ('serviceWorker' in navigator && !import.meta.env.DEV) {
         window.location.reload();
       }
     },
-    onOfflineReady() {
-      console.log('المنصة جاهزة للعمل بدون اتصال بالإنترنت.');
-    },
   });
 }
 

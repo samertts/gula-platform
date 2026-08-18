@@ -738,6 +738,16 @@
       "status": "non-operational"
     },
     {
+      "source": "src/pages/pharmacy/PharmacyPosPanel.tsx",
+      "kinds": [
+        "endpoint-import",
+        "react-query-mutation",
+        "react-query-read"
+      ],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
       "source": "src/pages/pilot-platform/PilotPlatformApiPage.tsx",
       "kinds": [
         "direct-api-client",
