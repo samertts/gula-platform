@@ -55,6 +55,7 @@ export default function PharmacyPosPanel() {
         rule_id: candidate.rule_id,
         patient_id: patientId.trim() || undefined,
         citizen_id: citizenId.trim() || undefined,
+        quantity: line.quantity,
         reason: "original medication unavailable",
         patient_consent: patientConsent,
         patient_notified: patientConsent,

@@ -496,6 +496,11 @@ class PharmacyService:
         ).first()
         if rule is None:
             raise ValueError("active substitution rule not found")
+        quantity = int(data.get("quantity") or 0)
+        if quantity <= 0:
+            raise ValueError("substitution quantity must be positive")
+        if not any(data.get(field) for field in ("patient_id", "citizen_id", "prescription_id")):
+            raise ValueError("patient or prescription context is required for substitution")
         patient_consent = bool(data.get("patient_consent", False))
         if rule.requires_patient_consent and not patient_consent:
             raise ValueError("patient consent is required before substitution")
@@ -503,6 +508,12 @@ class PharmacyService:
         alternative = self.get_drug(rule.alternative_drug_catalog_id)
         if original is None or alternative is None:
             raise ValueError("substitution drugs are not available")
+        eligible = next(
+            (candidate for candidate in self.list_substitution_candidates(original.id, quantity) if candidate["rule_id"] == rule.id),
+            None,
+        )
+        if eligible is None or not eligible["eligible"]:
+            raise ValueError("alternative stock is insufficient for requested substitution quantity")
         request = DrugSubstitutionRequest(
             lab_id=self.lab_id,
             rule_id=rule.id,
@@ -511,6 +522,7 @@ class PharmacyService:
             prescription_id=data.get("prescription_id"),
             patient_id=data.get("patient_id"),
             citizen_id=data.get("citizen_id"),
+            quantity=quantity,
             status="pending",
             reason=str(data.get("reason") or "original medication unavailable"),
             approval_level=rule.approval_level,
@@ -546,6 +558,12 @@ class PharmacyService:
             raise ValueError("substitution rule is inactive")
         if rule.requires_patient_consent and not request.patient_consent:
             raise ValueError("patient consent is required before approval")
+        eligible = next(
+            (candidate for candidate in self.list_substitution_candidates(request.original_drug_catalog_id, request.quantity) if candidate["rule_id"] == rule.id),
+            None,
+        )
+        if eligible is None or not eligible["eligible"]:
+            raise ValueError("alternative stock is insufficient for approval")
         request.status = "approved"
         request.approved_by = str(self.user_id) if self.user_id is not None else None
         request.approved_at = datetime.now(UTC)
@@ -610,11 +628,18 @@ class PharmacyService:
         cost_total = Decimal("0.00")
         requested_patient_id = data.get("patient_id")
         requested_citizen_id = data.get("citizen_id")
+        used_substitution_ids: set[str] = set()
 
         for raw_line in raw_lines:
+            quantity = int(raw_line.get("quantity", 0))
+            if quantity <= 0:
+                raise ValueError("sale quantity must be positive")
+
             substitution_request = None
             substitution_request_id = str(raw_line.get("substitution_request_id") or "").strip()
             if substitution_request_id:
+                if substitution_request_id in used_substitution_ids:
+                    raise ValueError("a substitution request can only be used once per sale")
                 substitution_request = self.db.query(DrugSubstitutionRequest).filter(
                     DrugSubstitutionRequest.id == substitution_request_id,
                     DrugSubstitutionRequest.lab_id == self.lab_id,
@@ -624,15 +649,26 @@ class PharmacyService:
                 ).with_for_update().first()
                 if substitution_request is None:
                     raise ValueError("substitution request is not approved or was already consumed")
-                if substitution_request.patient_id and requested_patient_id and substitution_request.patient_id != requested_patient_id:
+                rule = self.db.query(DrugSubstitutionRule).filter(
+                    DrugSubstitutionRule.id == substitution_request.rule_id,
+                    DrugSubstitutionRule.lab_id == self.lab_id,
+                    DrugSubstitutionRule.is_active.is_(True),
+                    ~DrugSubstitutionRule.is_deleted,
+                ).first()
+                if rule is None:
+                    raise ValueError("substitution rule is inactive")
+                if substitution_request.quantity != quantity:
+                    raise ValueError("sale quantity must match the approved substitution quantity")
+                if substitution_request.patient_id and str(substitution_request.patient_id) != str(requested_patient_id or ""):
                     raise ValueError("substitution request belongs to another patient")
+                if substitution_request.citizen_id and str(substitution_request.citizen_id) != str(requested_citizen_id or ""):
+                    raise ValueError("substitution request belongs to another citizen")
+                if substitution_request.prescription_id and str(substitution_request.prescription_id) != str(raw_line.get("prescription_id") or ""):
+                    raise ValueError("substitution request belongs to another prescription")
+                used_substitution_ids.add(substitution_request_id)
                 drug_id = substitution_request.alternative_drug_catalog_id
             else:
                 drug_id = raw_line.get("drug_catalog_id")
-
-            quantity = int(raw_line.get("quantity", 0))
-            if quantity <= 0:
-                raise ValueError("sale quantity must be positive")
 
             barcode = str(raw_line.get("barcode") or "").strip() or None
             if drug_id is None and barcode:
@@ -798,6 +834,7 @@ class PharmacyService:
                 substitution_request = item["substitution_request"]
                 substitution_request.consumed_sale_id = sale.id
                 substitution_request.status = "consumed"
+                substitution_request.version += 1
                 substitution_request.updated_by = self.user_id
                 sale_line.metadata_ = {
                     "synthetic": True,

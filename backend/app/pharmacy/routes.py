@@ -4,7 +4,7 @@ from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -1354,6 +1354,7 @@ class SubstitutionRequestCreate(BaseModel):
     prescription_id: str | None = None
     patient_id: str | None = None
     citizen_id: str | None = None
+    quantity: int = Field(default=1, ge=1, le=10000)
     reason: str = "original medication unavailable"
     patient_consent: bool = False
     patient_notified: bool = False

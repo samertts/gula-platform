@@ -58,6 +58,7 @@ def upgrade() -> None:
             sa.Column("prescription_id", sa.String(26), nullable=True),
             sa.Column("patient_id", sa.String(26), nullable=True),
             sa.Column("citizen_id", sa.String(26), nullable=True),
+            sa.Column("quantity", sa.Integer(), nullable=False, server_default="1"),
             sa.Column("status", sa.String(32), nullable=False, server_default="pending"),
             sa.Column("reason", sa.String(500), nullable=False),
             sa.Column("approval_level", sa.String(32), nullable=False, server_default="pharmacist"),
@@ -65,7 +66,7 @@ def upgrade() -> None:
             sa.Column("approved_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("patient_consent", sa.Boolean(), nullable=False, server_default=sa.false()),
             sa.Column("patient_notified_at", sa.DateTime(timezone=True), nullable=True),
-            sa.Column("consumed_sale_id", sa.String(26), nullable=True),
+            sa.Column("consumed_sale_id", sa.String(26), sa.ForeignKey("pharmacy_sales.id", ondelete="SET NULL"), nullable=True),
             sa.Column("metadata", sa.JSON(), nullable=True),
             sa.Column("created_by", sa.Integer(), nullable=True),
             sa.Column("updated_by", sa.Integer(), nullable=True),
@@ -74,6 +75,8 @@ def upgrade() -> None:
             sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
+            sa.CheckConstraint("quantity > 0", name="ck_pharmacy_substitution_request_quantity_positive"),
+            sa.CheckConstraint("status IN ('pending', 'approved', 'rejected', 'consumed')", name="ck_pharmacy_substitution_request_status"),
             sa.PrimaryKeyConstraint("id"),
         )
         op.create_index("ix_pharmacy_substitution_request_rule", "pharmacy_drug_substitution_requests", ["lab_id", "rule_id"])

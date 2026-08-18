@@ -926,6 +926,7 @@ class DrugSubstitutionRequest(TenantAuditEntity):  # type: ignore[misc]
     prescription_id = Column(String(26), nullable=True, index=True)
     patient_id = Column(String(26), nullable=True, index=True)
     citizen_id = Column(String(26), nullable=True, index=True)
+    quantity = Column(Integer, nullable=False, default=1)
     status = Column(String(32), nullable=False, default="pending")
     reason = Column(String(500), nullable=False)
     approval_level = Column(String(32), nullable=False, default="pharmacist")
@@ -933,10 +934,17 @@ class DrugSubstitutionRequest(TenantAuditEntity):  # type: ignore[misc]
     approved_at = Column(DateTime(timezone=True), nullable=True)
     patient_consent = Column(Boolean, nullable=False, default=False)
     patient_notified_at = Column(DateTime(timezone=True), nullable=True)
-    consumed_sale_id = Column(String(26), nullable=True, index=True)
+    consumed_sale_id = Column(
+        String(26),
+        ForeignKey("pharmacy_sales.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     metadata_ = Column("metadata", JSON, nullable=True)
 
     __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_pharmacy_substitution_request_quantity_positive"),
+        CheckConstraint("status IN ('pending', 'approved', 'rejected', 'consumed')", name="ck_pharmacy_substitution_request_status"),
         Index("ix_pharmacy_substitution_request_status", "lab_id", "status"),
         Index("ix_pharmacy_substitution_request_patient", "lab_id", "patient_id"),
         {"extend_existing": True},

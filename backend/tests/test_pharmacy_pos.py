@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
+import pytest
 from app.billing.models import BillingInvoice
 from app.ehr.models.medication import MedicationDispense
 from app.models.lab import Lab
@@ -172,16 +173,32 @@ def test_approved_substitution_is_consumed_by_pos_and_audited(db: Any) -> None:
     db.add(rule)
     db.flush()
     service = PharmacyService(db, user_id=None, lab_id=lab.id)
+    with pytest.raises(ValueError, match="patient or prescription context"):
+        service.create_substitution_request({
+            "rule_id": rule.id,
+            "quantity": 1,
+            "patient_consent": True,
+        })
     request = service.create_substitution_request({
         "rule_id": rule.id,
         "patient_id": str(patient.id),
         "citizen_id": "SYNTHETIC-CITIZEN-SUB-001",
+        "quantity": 1,
         "reason": "original medication unavailable",
         "patient_consent": True,
         "patient_notified": True,
     })
     assert request.status == "pending"
+    assert request.quantity == 1
     service.approve_substitution(request.id)
+    with pytest.raises(ValueError, match="sale quantity must match"):
+        service.create_pos_sale({
+            "patient_id": str(patient.id),
+            "citizen_id": "SYNTHETIC-CITIZEN-SUB-001",
+            "billing_patient_id": patient.id,
+            "idempotency_key": "pos-substitution-quantity-mismatch",
+            "lines": [{"substitution_request_id": request.id, "quantity": 2}],
+        })
     sale = service.create_pos_sale({
         "patient_id": str(patient.id),
         "citizen_id": "SYNTHETIC-CITIZEN-SUB-001",

@@ -1714,6 +1714,7 @@ export type PharmacySubstitutionRequest = {
   prescription_id?: string;
   patient_id?: string;
   citizen_id?: string;
+  quantity: number;
   reason?: string;
   patient_consent: boolean;
   patient_notified: boolean;
@@ -1724,12 +1725,14 @@ export type PharmacySubstitutionRecord = {
   rule_id: string;
   original_drug_catalog_id: string;
   alternative_drug_catalog_id: string;
+  quantity: number;
   status: string;
   reason: string;
   approval_level: string;
   patient_consent: boolean;
   approved_by?: string | null;
   consumed_sale_id?: string | null;
+  version: number;
 };
 
 export type PharmacyPosSummary = {
