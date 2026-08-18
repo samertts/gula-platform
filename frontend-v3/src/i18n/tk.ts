@@ -49,32 +49,43 @@ const tk = {
   },
   loginPage: {
     welcome: "GULA-a hoş geldiňiz",
-    headline: "Adamlar we guramalar üçin bitewi platforma, ynsanperwer tejribe we ygtybarly gorag bilen.",
+    headline:
+      "Adamlar we guramalar üçin bitewi platforma, ynsanperwer tejribe we ygtybarly gorag bilen.",
     citizenTitle: "Raýat girişi",
-    citizenDescription: "Şahsy giňişligiňize we size elýeterli hyzmatlara howpsuz giriň.",
+    citizenDescription:
+      "Şahsy giňişligiňize we size elýeterli hyzmatlara howpsuz giriň.",
     institutionTitle: "Edara girişi",
-    institutionDescription: "Degişli tassyklama tamamlanandan soň guramalar we edaralar üçin.",
+    institutionDescription:
+      "Degişli tassyklama tamamlanandan soň guramalar we edaralar üçin.",
     chooseAccess: "Giriş görnüşiňizi saýlaň",
     loginCitizen: "Raýat giňişligine girmek",
     loginInstitution: "Edara giňişligine girmek",
     emailOrPhone: "E-poçta ýa-da telefon belgisi",
     secureAccess: "Ygtybarly giriş",
     demoTitle: "Synag gurşawyny öwreniň",
-    demoDescription: "Bu gurşawdaky ähli maglumatlar we iş akymlary emeli we hakyky platformadan doly aýrydyr.",
+    demoDescription:
+      "Bu gurşawdaky ähli maglumatlar we iş akymlary emeli we hakyky platformadan doly aýrydyr.",
     startDemo: "Howpsuz synagy açmak",
     demoLoading: "Synag gurşawy taýýarlanýar...",
-    accountProcedure: "Täze hasap islegleri gözden geçirilýär we degişli tassyklamadan geçýär.",
+    accountProcedure:
+      "Täze hasap islegleri gözden geçirilýär we degişli tassyklamadan geçýär.",
     requestAccount: "Hasap soramak",
     backToChoice: "Giriş görnüşleriniň saýlawyna dolanmak",
     accessibility: "Kömek gerekmi? Goldaw topary bilen habarlaşyň.",
   },
   onboarding: {
-    citizenVerify: "Şahsyýetiňizi tassyklanan milli ýa-da mobil tassyklama prosesi arkaly tassyklaň.",
-    citizenAccess: "Giriş diňe tassyklama karary ulgamda ýazga alnandan soň berilýär.",
-    institutionDocuments: "Gurluşyň ygtyýarnamasyny we bellenen dolandyryjynyň maglumatlaryny onboarding toparyna tabşyryň.",
-    institutionAccess: "Edara girişi diňe guramaçylyk tassyklamasydan soň işjeňleşýär.",
-    selfServiceUnavailable: "Bu açyk sahypada özbaşdak hasap döretmek elýeterli däl; bu platformany tassyklanmadyk şahsyýetlerden we rugsatsyz edara girişinden goraýar.",
-    existingStaff: "Bar bolan edara işgärleri tassyklanan edara dolandyryjysy arkaly giriş alýarlar.",
+    citizenVerify:
+      "Şahsyýetiňizi tassyklanan milli ýa-da mobil tassyklama prosesi arkaly tassyklaň.",
+    citizenAccess:
+      "Giriş diňe tassyklama karary ulgamda ýazga alnandan soň berilýär.",
+    institutionDocuments:
+      "Gurluşyň ygtyýarnamasyny we bellenen dolandyryjynyň maglumatlaryny onboarding toparyna tabşyryň.",
+    institutionAccess:
+      "Edara girişi diňe guramaçylyk tassyklamasydan soň işjeňleşýär.",
+    selfServiceUnavailable:
+      "Bu açyk sahypada özbaşdak hasap döretmek elýeterli däl; bu platformany tassyklanmadyk şahsyýetlerden we rugsatsyz edara girişinden goraýar.",
+    existingStaff:
+      "Bar bolan edara işgärleri tassyklanan edara dolandyryjysy arkaly giriş alýarlar.",
   },
   common: {
     loading: "Ýüklenýär...",
@@ -117,6 +128,28 @@ const tk = {
     openAllSections: "Ähli bölümleri aç",
     more: "Köp",
     current: "Häzirki sahypa",
+    skipToContent: "Esasy mazmuna geç",
+    changeLanguage: "Dili üýtget",
+    closeSections: "Bölümleri ýap",
+    expandSidebar: "Nawigasiýany giňelt",
+    collapseSidebar: "Nawigasiýany daralt",
+    operationsCenter: "Operasiýa merkezi",
+    userFallback: "GULA ulanyjysy",
+    readOnly: "Diňe okamak",
+    syntheticReadOnly:
+      "Sintetik diňe-okamak sessiýasy; ýazmak amallary we daşarky integrasiýalar ýapyk.",
+    groups: {
+      main: "Esasy",
+      lab: "Laboratoriýa",
+      admin: "Dolandyryş",
+      tools: "Gurallar",
+      niam: "Milli şahsyýet",
+      enterprise: "Kärhana",
+      clinical: "Kliniki",
+      national: "Milli",
+      systems: "Ulgamlar",
+      settings: "Sazlamalar",
+    },
   },
 };
 

@@ -49,32 +49,43 @@ const en = {
   },
   loginPage: {
     welcome: "Welcome to GULA",
-    headline: "A unified platform for people and organizations, designed with human care and trusted protection.",
+    headline:
+      "A unified platform for people and organizations, designed with human care and trusted protection.",
     citizenTitle: "Citizen sign in",
-    citizenDescription: "Securely access your personal space and the services available to you.",
+    citizenDescription:
+      "Securely access your personal space and the services available to you.",
     institutionTitle: "Institution sign in",
-    institutionDescription: "For organizations and institutions after appropriate verification.",
+    institutionDescription:
+      "For organizations and institutions after appropriate verification.",
     chooseAccess: "Choose the access path that fits you",
     loginCitizen: "Enter citizen space",
     loginInstitution: "Enter institution space",
     emailOrPhone: "Email address or mobile number",
     secureAccess: "Secure access",
     demoTitle: "Explore the demonstration environment",
-    demoDescription: "All data and workflows are synthetic and completely isolated from the live platform.",
+    demoDescription:
+      "All data and workflows are synthetic and completely isolated from the live platform.",
     startDemo: "Open secure demonstration",
     demoLoading: "Preparing the demonstration environment...",
-    accountProcedure: "New account requests are subject to review and appropriate verification.",
+    accountProcedure:
+      "New account requests are subject to review and appropriate verification.",
     requestAccount: "Request an account",
     backToChoice: "Back to access selection",
     accessibility: "Need assistance? Contact the support team.",
   },
   onboarding: {
-    citizenVerify: "Verify identity through the approved national or mobile-verification process.",
-    citizenAccess: "Receive access only after the verification decision is recorded.",
-    institutionDocuments: "Submit the facility licence and designated administrator details to onboarding.",
-    institutionAccess: "Institutional access activates only after organisational approval.",
-    selfServiceUnavailable: "Self-service account creation is unavailable on this public page. This protects the platform from unverified identities and unauthorised institutional access.",
-    existingStaff: "Existing institution staff receive access through their approved facility administrator.",
+    citizenVerify:
+      "Verify identity through the approved national or mobile-verification process.",
+    citizenAccess:
+      "Receive access only after the verification decision is recorded.",
+    institutionDocuments:
+      "Submit the facility licence and designated administrator details to onboarding.",
+    institutionAccess:
+      "Institutional access activates only after organisational approval.",
+    selfServiceUnavailable:
+      "Self-service account creation is unavailable on this public page. This protects the platform from unverified identities and unauthorised institutional access.",
+    existingStaff:
+      "Existing institution staff receive access through their approved facility administrator.",
   },
   patient: {
     title: "Patients",
@@ -218,26 +229,75 @@ const en = {
     openAllSections: "Open all sections",
     more: "More",
     current: "Current page",
+    skipToContent: "Skip to main content",
+    changeLanguage: "Change language",
+    closeSections: "Close sections",
+    expandSidebar: "Expand navigation",
+    collapseSidebar: "Collapse navigation",
+    operationsCenter: "Operations center",
+    userFallback: "GULA user",
+    readOnly: "Read-only",
+    syntheticReadOnly:
+      "Synthetic read-only session; write operations and external integrations are blocked.",
+    groups: {
+      main: "Main",
+      lab: "Laboratory",
+      admin: "Administration",
+      tools: "Tools",
+      niam: "National identity",
+      enterprise: "Enterprise",
+      clinical: "Clinical",
+      national: "National",
+      systems: "Systems",
+      settings: "Settings",
+    },
   },
   legal: {
     privacyTitle: "Privacy notice",
     termsTitle: "Terms of service",
-    privacySummary: "This page records the current product-level privacy notice boundary for GULA Platform.",
-    termsSummary: "This page records the current product-level terms boundary for GULA Platform.",
-    reviewNotice: "Draft operational notice — legal review is required before this document is treated as a final legal policy or jurisdiction-specific compliance statement.",
+    privacySummary:
+      "This page records the current product-level privacy notice boundary for GULA Platform.",
+    termsSummary:
+      "This page records the current product-level terms boundary for GULA Platform.",
+    reviewNotice:
+      "Draft operational notice — legal review is required before this document is treated as a final legal policy or jurisdiction-specific compliance statement.",
     backToLogin: "Back to access",
     otherDocument: "Open the other document",
     privacy: {
-      collection: { title: "Information handled", body: "GULA may handle account, session, workspace, organization, and service information required to provide an authenticated platform. Clinical data remains subject to the approved GULA clinical system-of-record controls." },
-      use: { title: "Purpose of use", body: "Information is used to authenticate users, enforce server-side authorization, provide requested services, maintain auditability, and protect platform security. This page does not define a legal retention period." },
-      sharing: { title: "Disclosure boundary", body: "No government, provider, or external disclosure integration is claimed by this page. Any future disclosure requires a documented contract, authorization, security review, and legal review." },
-      rights: { title: "Requests and review", body: "Requests concerning access, correction, consent, or deletion must follow the approved support and governance process once the responsible policy owner has published it." },
+      collection: {
+        title: "Information handled",
+        body: "GULA may handle account, session, workspace, organization, and service information required to provide an authenticated platform. Clinical data remains subject to the approved GULA clinical system-of-record controls.",
+      },
+      use: {
+        title: "Purpose of use",
+        body: "Information is used to authenticate users, enforce server-side authorization, provide requested services, maintain auditability, and protect platform security. This page does not define a legal retention period.",
+      },
+      sharing: {
+        title: "Disclosure boundary",
+        body: "No government, provider, or external disclosure integration is claimed by this page. Any future disclosure requires a documented contract, authorization, security review, and legal review.",
+      },
+      rights: {
+        title: "Requests and review",
+        body: "Requests concerning access, correction, consent, or deletion must follow the approved support and governance process once the responsible policy owner has published it.",
+      },
     },
     terms: {
-      access: { title: "Authorized access", body: "Access is granted through the canonical identity and session system and remains subject to verified membership, workspace context, effective capabilities, and backend authorization." },
-      acceptableUse: { title: "Acceptable use", body: "Users must not bypass authorization, enumerate tenant data, submit credentials or secrets through unsupported channels, or use demonstration data as real clinical data." },
-      clinicalBoundary: { title: "Clinical boundary", body: "GULA remains the clinical system of record and policy enforcement point. This page does not authorize any specialized service to approve clinical results." },
-      changes: { title: "Changes and approval", body: "Operational changes must be reviewed and approved by the responsible product, security, and legal owners before they are represented as final terms." },
+      access: {
+        title: "Authorized access",
+        body: "Access is granted through the canonical identity and session system and remains subject to verified membership, workspace context, effective capabilities, and backend authorization.",
+      },
+      acceptableUse: {
+        title: "Acceptable use",
+        body: "Users must not bypass authorization, enumerate tenant data, submit credentials or secrets through unsupported channels, or use demonstration data as real clinical data.",
+      },
+      clinicalBoundary: {
+        title: "Clinical boundary",
+        body: "GULA remains the clinical system of record and policy enforcement point. This page does not authorize any specialized service to approve clinical results.",
+      },
+      changes: {
+        title: "Changes and approval",
+        body: "Operational changes must be reviewed and approved by the responsible product, security, and legal owners before they are represented as final terms.",
+      },
     },
   },
   validation: {
