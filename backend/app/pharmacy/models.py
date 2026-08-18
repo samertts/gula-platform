@@ -872,3 +872,84 @@ class PharmacySaleLine(TenantAuditEntity):  # type: ignore[misc]
         Index("ix_pharmacy_sale_lines_sale_drug", "sale_id", "drug_catalog_id"),
         {"extend_existing": True},
     )
+
+
+class DrugSubstitutionRule(TenantAuditEntity):  # type: ignore[misc]
+    """Institution-approved mapping between a requested drug and an equivalent."""
+
+    __tablename__ = "pharmacy_drug_substitution_rules"
+
+    original_drug_catalog_id = Column(
+        String(26),
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    alternative_drug_catalog_id = Column(
+        String(26),
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    equivalence_type = Column(String(32), nullable=False, default="generic")
+    approval_level = Column(String(32), nullable=False, default="pharmacist")
+    requires_patient_consent = Column(Boolean, nullable=False, default=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    notes = Column(Text, nullable=True)
+    metadata_ = Column("metadata", JSON, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "lab_id",
+            "original_drug_catalog_id",
+            "alternative_drug_catalog_id",
+            name="uq_pharmacy_substitution_rule_pair",
+        ),
+        CheckConstraint(
+            "original_drug_catalog_id <> alternative_drug_catalog_id",
+            name="ck_pharmacy_substitution_rule_distinct_drugs",
+        ),
+        Index("ix_pharmacy_substitution_rule_active", "lab_id", "is_active"),
+        {"extend_existing": True},
+    )
+
+
+class DrugSubstitutionRequest(TenantAuditEntity):  # type: ignore[misc]
+    """Auditable approval record consumed by a pharmacy POS sale."""
+
+    __tablename__ = "pharmacy_drug_substitution_requests"
+
+    rule_id = Column(
+        String(26),
+        ForeignKey("pharmacy_drug_substitution_rules.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    original_drug_catalog_id = Column(String(26), nullable=False, index=True)
+    alternative_drug_catalog_id = Column(String(26), nullable=False, index=True)
+    prescription_id = Column(String(26), nullable=True, index=True)
+    patient_id = Column(String(26), nullable=True, index=True)
+    citizen_id = Column(String(26), nullable=True, index=True)
+    quantity = Column(Integer, nullable=False, default=1)
+    status = Column(String(32), nullable=False, default="pending")
+    reason = Column(String(500), nullable=False)
+    approval_level = Column(String(32), nullable=False, default="pharmacist")
+    approved_by = Column(String(26), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    patient_consent = Column(Boolean, nullable=False, default=False)
+    patient_notified_at = Column(DateTime(timezone=True), nullable=True)
+    consumed_sale_id = Column(
+        String(26),
+        ForeignKey("pharmacy_sales.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    metadata_ = Column("metadata", JSON, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_pharmacy_substitution_request_quantity_positive"),
+        CheckConstraint("status IN ('pending', 'approved', 'rejected', 'consumed')", name="ck_pharmacy_substitution_request_status"),
+        Index("ix_pharmacy_substitution_request_status", "lab_id", "status"),
+        Index("ix_pharmacy_substitution_request_patient", "lab_id", "patient_id"),
+        {"extend_existing": True},
+    )

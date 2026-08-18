@@ -84,3 +84,12 @@ class ResultRepository(ABC):
         offset: int = 0,
     ) -> tuple[Sequence[LabResultDomain], int]:
         ...
+
+    @abstractmethod
+    async def list_by_patient_analyte(
+        self,
+        patient_id: str,
+        analyte: str,
+        limit: int = 5,
+    ) -> Sequence[LabResultDomain]:
+        ...

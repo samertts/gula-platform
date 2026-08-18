@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>كيف يعمل تدفق التصفية؟</title>
+  <style>
+    * { box-sizing: border-box; }
+    .slide-container { width: 1280px; min-height: 720px; background: #f0f9ff; color: #082f49; font-family: "Noto Sans Arabic", "Segoe UI", Arial, sans-serif; }
+    .frame { min-height: 720px; padding-top: 52px; padding-left: 64px; padding-right: 64px; }
+    .eyebrow { color: #0284c7; font-size: 14px; font-weight: 800; letter-spacing: .08em; }
+    h1 { margin: 12px 0 0; font-size: 38px; line-height: 1.2; font-weight: 800; letter-spacing: -.02em; }
+    .lead { margin-top: 10px; color: #456b82; font-size: 18px; line-height: 1.55; }
+    .rule { min-height: 1px; margin-top: 24px; border-top: 1px dashed #7fc4e6; }
+    /* tightened spacing to avoid vertical overflow */
+    .flow { display: grid; grid-template-columns: 1fr 42px 1fr 42px 1fr 42px 1fr 42px 1fr; gap: 0; align-items: center; min-height: 220px; margin-top: 12px; direction: rtl; }
+    .stage { min-height: 140px; border: 1px solid #b9dff2; background: rgba(255,255,255,.68); padding-top: 12px; padding-left: 12px; padding-right: 12px; }
+    .stage.blue { border-color: #72bce1; background: #e5f5fe; }
+    .stage.dark { border-color: #0c4a6e; background: #082f49; color: #ffffff; }
+    .stage-number { color: #0284c7; font-size: 13px; font-weight: 800; }
+    .dark .stage-number { color: #bae6fd; }
+    .stage h2 { margin: 12px 0 0; font-size: 21px; line-height: 1.3; font-weight: 800; }
+    .stage p { margin-top: 10px; color: #4f7185; font-size: 15px; line-height: 1.45; }
+    .dark p { color: #d7edf9; }
+    .arrow { color: #0284c7; font-size: 30px; text-align: center; font-weight: 700; }
+    /* reduce vertical footprint of modes slightly */
+    .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+    .mode { min-height: 120px; border-top: 3px solid #0284c7; border-bottom: 1px dashed #9dd3ec; background: rgba(255,255,255,.58); padding-top: 12px; padding-left: 18px; padding-right: 18px; }
+    .mode.live { border-top-color: #082f49; }
+    .mode h3 { margin: 0; font-size: 19px; font-weight: 800; }
+    .mode p { margin-top: 8px; color: #456b82; font-size: 15px; line-height: 1.5; }
+    .guardrail { margin-top: 12px; min-height: 48px; border-top: 1px solid #72bce1; background: #e0f2fe; color: #0c4a6e; font-size: 16px; font-weight: 800; line-height: 48px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <div class="frame">
+      <div class="eyebrow">MOBILE NAV · FILTER PIPELINE</div>
+      <h1>كيف يعمل تدفق التصفية؟</h1>
+      <p class="lead">التنقل يعرض فقط ما يمكن أن يكون مرئيًا؛ قرار الوصول النهائي يبقى خادميًا.</p>
+      <div class="rule"></div>
+      <div class="flow" aria-label="تدفق تصفية عناصر الشريط السفلي">
+        <section class="stage blue"><div class="stage-number">01</div><h2>AuthContext</h2><p>تحديد persona الحالية والدور ووضع demo أو live.</p></section>
+        <div class="arrow">←</div>
+        <section class="stage"><div class="stage-number">02</div><h2>المجموعة الأساسية</h2><p>Citizen أو Institutional وفق الدور؛ لا مسارات جديدة.</p></section>
+        <div class="arrow">←</div>
+        <section class="stage"><div class="stage-number">03</div><h2>بوابة الدور</h2><p>استبعاد عنصر لا يطابق `roles` قبل عرضه.</p></section>
+        <div class="arrow">←</div>
+        <section class="stage"><div class="stage-number">04</div><h2>بوابة الصلاحيات</h2><p>فحص `permissions` من بيانات NAV_ITEMS canonical.</p></section>
+        <div class="arrow">←</div>
+        <section class="stage dark"><div class="stage-number">05</div><h2>4 عناصر + المزيد</h2><p>شريط ثابت بخمسة مواضع؛ المزيد يفتح Sidebar الحالي.</p></section>
+      </div>
+      <div class="modes">
+        <section class="mode"><h3>Demo mode</h3><p>تستخدم الواجهة صلاحيات الدور التجريبي فقط. لا تمنح صلاحية ولا تغيّر تفويضًا.</p></section>
+        <section class="mode live"><h3>Live mode</h3><p>غياب `effectivePermissions` المنعكسة من الخادم يعني إخفاء الرابط المقيد، وليس fallback محليًا.</p></section>
+      </div>
+      <div class="guardrail">NAV_ITEMS هو المصدر canonical · Backend authorization هو الحد النهائي</div>
+    </div>
+  </div>
+</body>
+</html>

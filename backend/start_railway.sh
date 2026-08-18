@@ -40,5 +40,6 @@ exec gunicorn \
   --max-requests-jitter "${GUNICORN_MAX_REQUESTS_JITTER_VALUE}" \
   --bind "0.0.0.0:${PORT_VALUE}" \
   --access-logfile - \
-  --error-logfile -
+  --error-logfile - \
+  --preload
 

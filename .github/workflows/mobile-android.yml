@@ -14,13 +14,13 @@ on:
         default: false
         type: boolean
     secrets:
-      ANDROID_KEYSTORE_BASE64:
+      GULA_ANDROID_UPLOAD_KEY_BASE64:
         required: false
-      ANDROID_KEYSTORE_PASSWORD:
+      GULA_ANDROID_UPLOAD_KEY_PASSWORD:
         required: false
-      ANDROID_KEY_ALIAS:
+      GULA_ANDROID_UPLOAD_KEY_ALIAS:
         required: false
-      ANDROID_KEY_PASSWORD:
+      GULA_ANDROID_UPLOAD_KEY_ENTRY_PASSWORD:
         required: false
       PLAY_SERVICE_ACCOUNT_KEY:
         required: false
@@ -201,6 +201,7 @@ jobs:
   assemble-debug:
     name: Assemble Debug APK
     needs: [unit-test]
+    if: ${{ inputs.build_type != 'release' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     defaults:
@@ -243,6 +244,7 @@ jobs:
   assemble-release:
     name: Assemble Release AAB + APK
     needs: [unit-test, instrumented-test]
+    if: ${{ always() && needs.unit-test.result == 'success' && (needs.instrumented-test.result == 'success' || needs.instrumented-test.result == 'skipped') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -269,7 +271,7 @@ jobs:
 
       - name: Decode keystore
         env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_BASE64 }}
         run: |
           umask 077
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
@@ -277,17 +279,27 @@ jobs:
 
       - name: Assemble release AAB
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew bundleRelease
+          KEYSTORE_PASSWORD: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_ALIAS }}
+        run: |
+          set -eu
+          ./gradlew bundleRelease \
+            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/mobile/android/keystore.jks" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEYSTORE_PASSWORD"
 
       - name: Assemble release APK
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+          KEYSTORE_PASSWORD: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_ALIAS }}
+        run: |
+          set -eu
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/mobile/android/keystore.jks" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEYSTORE_PASSWORD"
 
       - name: Upload release AAB
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -306,9 +318,10 @@ jobs:
           retention-days: 30
 
   upload-to-play-store:
-    name: Upload to Google Play Store
+    name: Disabled automatic Google Play upload (manual Internal testing only)
     needs: [assemble-release]
-    if: startsWith(github.ref, 'refs/tags/v')
+    # Publishing is intentionally disabled. Upload is performed manually to Internal testing after key rotation and review.
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:
@@ -334,7 +347,7 @@ jobs:
 
       - name: Decode keystore
         env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_BASE64 }}
         run: |
           umask 077
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > keystore.jks
@@ -352,11 +365,11 @@ jobs:
         run: |
           echo "$PLAY_SERVICE_ACCOUNT_KEY" | base64 -d > play-service-account.json
 
-      - name: Upload to Google Play (alpha track)
+      - name: Upload to Google Play (internal track — disabled)
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEYSTORE_PASSWORD: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.GULA_ANDROID_UPLOAD_KEY_ENTRY_PASSWORD }}
         run: |
           ./gradlew publishReleaseBundle \
             -Pandroid.injected.signing.store.file=keystore.jks \
@@ -364,7 +377,7 @@ jobs:
             -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
             -Pandroid.injected.signing.key.password=$KEY_PASSWORD \
             -PserviceAccountJsonFile=play-service-account.json \
-            -Ptrack=alpha
+            -Ptrack=internal
 
       - name: Promote to beta on tag
         if: startsWith(github.ref, 'refs/tags/v')
@@ -376,9 +389,9 @@ jobs:
           chmod 600 play-service-account.json
           bundle exec fastlane run supply \
             --json_key play-service-account.json \
-            --package_name "io.gula.android" \
-            --track alpha \
-            --promote_from_track alpha \
+            --package_name "iq.gula.lab" \
+            --track internal \
+            --promote_from_track internal \
             --track beta
 
       - name: Remove release signing material

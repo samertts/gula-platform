@@ -3,14 +3,12 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-
 from app.identity.models.citizen_relationship import CitizenRelationshipStatus
 from app.identity.services import citizen_relationship_service as workflow_module
 from app.identity.services.citizen_relationship_service import (
     CitizenRelationshipConflict,
     CitizenRelationshipWorkflow,
 )
-
 
 _SCOPE = {"resources": ["dashboard", "profile", "health-summary:read"]}
 
@@ -145,6 +143,18 @@ def test_activation_requires_verified_source_and_then_changes_state(monkeypatch)
     assert activated.status == CitizenRelationshipStatus.active.value
     assert activated.version == 2
     assert activated.allows("profile") is True
+
+
+def test_activation_rejects_missing_version_without_mutating_state(monkeypatch):
+    db = _FakeDb(_source(), _citizen())
+    workflow = _workflow(monkeypatch, db)
+    relationship = _create(workflow, db, key="c2-idempotency-key-0005")
+    relationship.version = None
+
+    with pytest.raises(CitizenRelationshipConflict, match="version"):
+        workflow.activate(relationship.id, verification_reference="review-0005")
+
+    assert relationship.status == CitizenRelationshipStatus.pending.value
 
 
 def test_revocation_is_scoped_and_idempotent(monkeypatch):

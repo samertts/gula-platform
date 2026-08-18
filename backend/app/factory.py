@@ -616,6 +616,9 @@ def _register_routes(app: FastAPI) -> None:
     from .routes import integrations as integrations_routes
     app.include_router(integrations_routes.router)
 
+    from .routes import advanced_integrations as advanced_integrations_routes
+    app.include_router(advanced_integrations_routes.router)
+
     from .routes import edge as edge_routes
     app.include_router(edge_routes.router)
 

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>الوصول والحركة في الهاتف</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .slide-container { width: 1280px; min-height: 720px; background: #f0f9ff; color: #082f49; font-family: "Noto Sans Arabic", "Segoe UI", Arial, sans-serif; }
+    .frame { min-height: 720px; padding-top: 52px; padding-left: 72px; padding-right: 72px; }
+    .eyebrow { color: #0284c7; font-size: 14px; font-weight: 800; letter-spacing: .08em; }
+    h1 { margin: 12px 0 0; font-size: 42px; line-height: 1.2; font-weight: 800; letter-spacing: -.03em; }
+    .lead { width: 810px; margin-top: 12px; color: #426579; font-size: 18px; line-height: 1.65; }
+    .divider { min-height: 1px; margin-top: 16px; border-top: 1px dashed #7dd3fc; }
+    .nav-zone { display: grid; grid-template-columns: 310px 1fr; gap: 50px; min-height: 200px; padding-top: 20px; direction: ltr; align-items: center; }
+    .callout { direction: rtl; min-height: 150px; border-top: 4px solid #0284c7; background: rgba(255,255,255,.62); padding-top: 8px; padding-left: 24px; padding-right: 24px; }
+    .callout h2 { margin: 0; color: #082f49; font-size: 23px; font-weight: 800; }
+    .callout p { margin: 12px 0 0; color: #426579; font-size: 16px; line-height: 1.65; }
+    .nav-demo { min-height: 120px; border-top: 1px solid #b5dff2; border-bottom: 1px solid #b5dff2; background: rgba(255,255,255,.72); display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding-top: 12px; padding-left: 16px; padding-right: 16px; align-items: start; }
+    .nav-item { direction: rtl; position: relative; min-height: 74px; text-align: center; color: #52768c; font-size: 14px; font-weight: 700; padding-top: 28px; }
+    .nav-item::before { content: ""; position: absolute; top: 7px; right: calc(50% - 13px); width: 26px; min-height: 26px; border: 2px solid #7aa9c0; border-radius: 50%; }
+    .nav-item.active { color: #0369a1; }
+    .nav-item.active::before { border-color: #0284c7; background: #bae6fd; }
+    .nav-item.active::after { content: ""; position: absolute; top: 0; right: calc(50% - 27px); width: 54px; min-height: 4px; background: #0284c7; }
+    .nav-item.more::before { border-radius: 5px; }
+    .specs { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; min-height: 180px; padding-top: 12px; }
+    .spec { min-height: 80px; border-top: 1px dashed #9ccce4; padding-top: 8px; }
+    .spec strong { display: inline-block; min-width: 156px; color: #0369a1; font-size: 16px; font-weight: 800; }
+    .spec span { color: #31556b; font-size: 16px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <main class="frame">
+      <div class="eyebrow">ACCESSIBILITY · MOBILE UX</div>
+      <h1>الوصول والحركة في الهاتف</h1>
+      <p class="lead">التحسينات تجعل حالة التنقل قابلة للإدراك بصريًا ولقارئات الشاشة، مع احترام تفضيل المستخدم لتقليل الحركة.</p>
+      <div class="divider"></div>
+      <section class="nav-zone" aria-label="مخطط شريط التنقل المحسن">
+        <aside class="callout">
+          <h2>الحالة النشطة ليست لونًا فقط</h2>
+          <p>المسار الحالي يحصل على مؤشر علوي، واسم دلالي، و<code>aria-current=&quot;page&quot;</code>.</p>
+        </aside>
+        <div class="nav-demo" aria-label="تمثيل لشريط سفلي من خمسة مواضع">
+          <div class="nav-item active">الرئيسية</div>
+          <div class="nav-item">المرضى</div>
+          <div class="nav-item">الطلبات</div>
+          <div class="nav-item">النتائج</div>
+          <div class="nav-item more">المزيد</div>
+        </div>
+      </section>
+      <section class="specs" aria-label="مواصفات الوصول والحركة">
+        <div class="spec"><strong>aria-current</strong><span>يعرّف الصفحة الحالية حتى في المسارات المتداخلة، مثل <code>/orders/123</code>.</span></div>
+        <div class="spec"><strong>aria-expanded</strong><span>زر «المزيد» يعلن لقارئ الشاشة ما إذا كانت القائمة الجانبية مفتوحة.</span></div>
+        <div class="spec"><strong>focus-visible</strong><span>حلقة تركيز ظاهرة تدعم لوحة المفاتيح ولا تظهر كضوضاء بصرية عند اللمس.</span></div>
+        <div class="spec"><strong>reduced-motion</strong><span>تُزال التحويلات غير الضرورية عند طلب المستخدم تقليل الحركة، مع الحفاظ على الحالة الواضحة.</span></div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

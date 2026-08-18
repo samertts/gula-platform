@@ -47,7 +47,7 @@ export interface JwtPayload {
 }
 
 
-export type AccessibilityLanguage = "ar-IQ" | "ar" | "en" | "ku" | "tk" | "syr" | "fa";
+export type AccessibilityLanguage = "ar" | "en" | "ku" | "tk" | "syr";
 export type AccessibilityFontSize = "small" | "medium" | "large" | "x-large";
 export type ColorBlindMode = "none" | "protanopia" | "deuteranopia" | "tritanopia" | "monochrome";
 

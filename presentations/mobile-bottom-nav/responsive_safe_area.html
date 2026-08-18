@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>التصميم المتجاوب والمساحات الآمنة</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .slide-container { width: 1280px; min-height: 720px; background: #f0f9ff; color: #082f49; font-family: "Noto Sans Arabic", "Segoe UI", Arial, sans-serif; }
+    .frame { min-height: 720px; padding-top: 50px; padding-left: 72px; padding-right: 72px; }
+    .eyebrow { color: #0284c7; font-size: 14px; font-weight: 800; letter-spacing: .09em; }
+    h1 { margin: 11px 0 0; font-size: 40px; line-height: 1.2; font-weight: 800; letter-spacing: -.025em; }
+    .lead { max-width: 870px; margin-top: 11px; color: #4b6d81; font-size: 18px; line-height: 1.58; }
+    .divider { margin-top: 23px; border-top: 1px dashed #7dc8eb; }
+    /* Reduced main vertical footprint */
+    .main { display: grid; grid-template-columns: 335px 1fr; gap: 48px; min-height: 428px; padding-top: 20px; direction: ltr; }
+    .phone-area { position: relative; min-height: 395px; }
+    .phone { position: absolute; top: 0; left: 35px; width: 250px; min-height: 360px; border: 8px solid #082f49; background: #e8f6fd; }
+    .phone-header { min-height: 42px; border-bottom: 1px solid #a9d9ef; background: rgba(255,255,255,.72); }
+    .content-lines { min-height: 220px; padding-top: 18px; padding-left: 12px; padding-right: 12px; }
+    .line { min-height: 13px; margin-bottom: 13px; background: #c6eafa; }
+    .line.short { width: 62%; background: #9ed9f6; }
+    .data-surface { min-height: 64px; margin-top: 14px; border-top: 3px solid #7dd3fc; background: rgba(255,255,255,.56); }
+    .bottom-nav { min-height: 62px; display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; padding-top: 10px; padding-left: 9px; padding-right: 9px; border-top: 1px solid #86cbe8; background: rgba(255,255,255,.86); }
+    .nav-slot { min-height: 38px; background: #d9f1fc; }
+    .nav-slot.active { background: #0284c7; }
+    .safe-area { min-height: 34px; border-top: 2px dashed #f59e0b; background: #fff7df; color: #8a5200; font-size: 11px; font-weight: 800; line-height: 32px; text-align: center; }
+    .dimension { position: absolute; left: 0; top: 280px; width: 32px; min-height: 100px; border-left: 1px solid #f59e0b; border-right: 1px solid #f59e0b; color: #8a5200; font-size: 11px; writing-mode: vertical-rl; text-align: center; padding-top: 6px; }
+    .specs { direction: rtl; display: grid; grid-template-columns: 1fr 1fr; gap: 0 34px; align-content: start; }
+    .spec { min-height: 160px; border-top: 3px solid #0284c7; padding-top: 14px; }
+    .spec:nth-child(2) { border-top-color: #075985; }
+    .spec:nth-child(3) { border-top-color: #38bdf8; }
+    .spec:nth-child(4) { border-top-color: #082f49; }
+    .spec-kicker { color: #0284c7; font-size: 13px; font-weight: 800; letter-spacing: .06em; }
+    .spec h2 { margin: 8px 0 0; font-size: 22px; line-height: 1.35; font-weight: 800; }
+    .spec p { margin: 10px 0 0; color: #45687d; font-size: 15.5px; line-height: 1.64; }
+    .surface-strip { min-height: 44px; margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #9bd4ec; border-bottom: 1px solid #9bd4ec; }
+    .light-surface { background: rgba(255,255,255,.84); color: #31556b; font-size: 13px; font-weight: 800; line-height: 46px; text-align: center; }
+    .dark-surface { background: #082f49; color: #e0f2fe; font-size: 13px; font-weight: 800; line-height: 46px; text-align: center; }
+    .guardrail { min-height: 58px; margin-top: 0; border-top: 1px dashed #7dc8eb; color: #0c4a6e; font-size: 16px; font-weight: 800; line-height: 58px; text-align: center; direction: rtl; }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <main class="frame">
+      <div class="eyebrow">RESPONSIVE · SAFE AREA · SURFACES</div>
+      <h1>التصميم المتجاوب والمساحات الآمنة</h1>
+      <p class="lead">شريط التنقل السفلي يعمل كواجهة هاتف فقط، ويحترم الحواف الآمنة والمظهر الداكن من دون أن يتحول إلى مصدر بيانات سريرية.</p>
+      <div class="divider"></div>
+      <section class="main">
+        <div class="phone-area" aria-label="مخطط هاتف يوضح شريط التنقل والمساحة الآمنة">
+          <div class="dimension">safe-area inset</div>
+          <div class="phone">
+            <div class="phone-header"></div>
+            <div class="content-lines"><div class="line short"></div><div class="line"></div><div class="data-surface"></div><div class="data-surface"></div></div>
+            <div class="bottom-nav"><div class="nav-slot active"></div><div class="nav-slot"></div><div class="nav-slot"></div><div class="nav-slot"></div><div class="nav-slot"></div></div>
+            <div class="safe-area">env(safe-area-inset-bottom)</div>
+          </div>
+        </div>
+        <section class="specs" aria-label="قواعد التصميم المتجاوب">
+          <article class="spec">
+            <div class="spec-kicker">01 · BREAKPOINT</div>
+            <h2>مخصص لشاشات الهاتف</h2>
+            <p>الشريط ثابت أسفل الشاشة ويظهر تحت breakpoint الهاتف فقط؛ المحتوى المكتبي يبقى مع Sidebar.</p>
+          </article>
+          <article class="spec">
+            <div class="spec-kicker">02 · SAFE AREA</div>
+            <h2>حواف الأجهزة محمية</h2>
+            <p>يُضاف inset سفلي لتجنب تغطية زر أو آخر سطح محتوى في الأجهزة ذات الحواف الآمنة.</p>
+          </article>
+          <article class="spec">
+            <div class="spec-kicker">03 · SURFACE SYSTEM</div>
+            <h2>سطح خفيف في الوضعين</h2>
+            <p>خلفية شبه شفافة وحدود دقيقة تفصل الشريط عن المحتوى من دون طبقات ثقيلة.</p>
+            <div class="surface-strip"><div class="light-surface">Light surface</div><div class="dark-surface">Dark surface</div></div>
+          </article>
+          <article class="spec">
+            <div class="spec-kicker">04 · DATA BOUNDARY</div>
+            <h2>لا جلب سريري من التنقل</h2>
+            <p>لا polling ولا عداد تنبيهات ولا بيانات مريض. الشريط يستهلك حالة المصادقة والصلاحيات المنعكسة فقط.</p>
+          </article>
+        </section>
+      </section>
+      <div class="guardrail">المظهر المتجاوب يحسن العرض فقط · لا يغيّر الصلاحيات أو يفعّل أي إجراء سريري</div>
+    </main>
+  </div>
+</body>
+</html>

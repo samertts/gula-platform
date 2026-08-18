@@ -1,11 +1,12 @@
+// CVE-2026-59903: Netty 4.1.137.Final preserves existing Vary headers.
 buildscript {
     configurations.classpath {
         resolutionStrategy {
-            force("io.netty:netty-codec-http2:4.1.136.Final")
-            force("io.netty:netty-handler:4.1.136.Final")
-            force("io.netty:netty-handler-proxy:4.1.136.Final")
-            force("io.netty:netty-codec-http:4.1.136.Final")
-            force("io.netty:netty-codec:4.1.136.Final")
+            force("io.netty:netty-codec-http2:4.1.137.Final")
+            force("io.netty:netty-handler:4.1.137.Final")
+            force("io.netty:netty-handler-proxy:4.1.137.Final")
+            force("io.netty:netty-codec-http:4.1.137.Final")
+            force("io.netty:netty-codec:4.1.137.Final")
             force("com.google.protobuf:protobuf-java:3.25.5")
             force("com.google.protobuf:protobuf-kotlin:3.25.5")
             force("com.google.guava:guava:33.4.0-jre")
@@ -46,11 +47,11 @@ plugins {
 allprojects {
     configurations.all {
         resolutionStrategy {
-            force("io.netty:netty-codec-http2:4.1.136.Final")
-            force("io.netty:netty-handler:4.1.136.Final")
-            force("io.netty:netty-handler-proxy:4.1.136.Final")
-            force("io.netty:netty-codec-http:4.1.136.Final")
-            force("io.netty:netty-codec:4.1.136.Final")
+            force("io.netty:netty-codec-http2:4.1.137.Final")
+            force("io.netty:netty-handler:4.1.137.Final")
+            force("io.netty:netty-handler-proxy:4.1.137.Final")
+            force("io.netty:netty-codec-http:4.1.137.Final")
+            force("io.netty:netty-codec:4.1.137.Final")
             force("com.google.protobuf:protobuf-java:3.25.5")
             force("com.google.protobuf:protobuf-kotlin:3.25.5")
             force("com.google.guava:guava:33.4.0-jre")
