@@ -28,3 +28,22 @@
 صفحة Security and quality Overview الجديدة توضّح أن **Code scanning alerts: Disabled** لأن Advanced Security متاح للـOrganizations فقط. لذلك فإن أرقام CodeQL التاريخية المذكورة في السياق السابق لا يمكن التحقق منها من واجهة هذا repository الحالية، ولا يمكن إغلاقها من هذه الصفحة دون تفعيل Advanced Security على مستوى Organization.
 
 **Overview URL:** https://github.com/samertts/gula-platform/security
+
+## Current open alert inventory
+
+أحدث صفحة Dependabot على GitHub تعرض **8 Open / 82 Closed**، والفحص مذكور للـcommit `8946d21` بتاريخ 15 أغسطس 2026. التنبيهات المفتوحة هي:
+
+| Alert | Package | Severity | Manifest |
+|---:|---|---|---|
+| #478 | image-size — ICNS parser infinite loop | High | `mobile-expo/package-lock.json` |
+| #477 | image-size — JXL/HEIF parser infinite loops | High | `mobile-expo/package-lock.json` |
+| #474 | PostCSS — attacker-controlled sourceMappingURL arbitrary file read | High | `mobile-expo/package-lock.json` |
+| #475 | PostCSS — source-map path traversal disclosure | High | `mobile-expo/package-lock.json` |
+| #473 | uuid — missing buffer bounds check | Moderate | `mobile-expo/package-lock.json` |
+| #476 | PostCSS — incomplete sourceMappingURL fix | Moderate | `mobile-expo/package-lock.json` |
+| #471 | Netty — CORS Vary header cache poisoning/information disclosure | Moderate | `mobile/android/settings.gradle.kts` |
+| #472 | PostCSS — XSS through unescaped `</style>` | Moderate | `mobile-expo/package-lock.json` |
+
+هذه الأرقام ما زالت تظهر لأن PR #241 لم يُدمج في `main` بعد؛ الإصلاحات المقابلة موجودة في hotfix head `b11916f6` ثم evidence commit `de9d9bee`.
+
+Dependabot URL: https://github.com/samertts/gula-platform/security/dependabot
