@@ -85,9 +85,18 @@ export default defineConfig({
     cssCodeSplit: false,
     sourcemap: false,
     reportCompressedSize: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/') || id.includes('/node_modules/react-router-dom/')) return 'react';
+          if (id.includes('/node_modules/@tanstack/react-query/')) return 'query';
+          if (id.includes('/node_modules/i18next/') || id.includes('/node_modules/react-i18next/')) return 'i18n';
+        },
+      },
+    },
   },
   server: {
-    allowedHosts: true,
+    allowedHosts: ['localhost', '127.0.0.1'],
     proxy: {
       '/api/v1/demo': {
         target: 'http://localhost:3000',
