@@ -29,3 +29,9 @@ Run URL: https://github.com/samertts/gula-platform/actions/runs/32218061732
 Run `32218123745` لـMobile Expo Speech Quality على head `53dbd95e8e2e60409bcfe096cb35837825d4fa86` فشل خلال 4 ثوانٍ. وظيفة `Expo SDK 54 Typecheck and Unit Tests` لم تبدأ أي خطوة، وannotation GitHub نفسها تشير إلى فشل دفعات الحساب أو الحاجة لرفع spending limit.
 
 Run URL: https://github.com/samertts/gula-platform/actions/runs/32218123745
+
+## Changed Files Quality Gate on latest head
+
+Run `32218175811` لـChanged Files Quality Gate على head `30ef06517ee5acc9ef1d65752b834142a8cbd9d7` فشل خلال 4 ثوانٍ. وظيفة `Ruff/MyPy changed-files non-regression` لم تبدأ أي خطوة، وannotation الرسمية كانت نفس رسالة GitHub عن فشل الدفعات أو spending limit. لا توجد نتيجة Ruff أو MyPy آلية يمكن إصلاحها من هذا run.
+
+Run URL: https://github.com/samertts/gula-platform/actions/runs/32218175811
