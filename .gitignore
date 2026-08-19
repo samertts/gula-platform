@@ -20,6 +20,8 @@ coverage.xml
 # Node
 node_modules/
 dist/
+!mobile-expo/vendor/image-size/dist/
+!mobile-expo/vendor/image-size/dist/**
 build/
 
 # Logs
