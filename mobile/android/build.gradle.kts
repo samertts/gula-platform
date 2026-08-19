@@ -1,5 +1,9 @@
 // CVE-2026-59903: Netty 4.1.137.Final preserves existing Vary headers.
 buildscript {
+    dependencies {
+        classpath("io.netty:netty-codec-http:4.1.137.Final")
+    }
+
     configurations.classpath {
         resolutionStrategy {
             force("io.netty:netty-codec-http2:4.1.137.Final")
