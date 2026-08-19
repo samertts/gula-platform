@@ -56,7 +56,7 @@ allprojects {
             force("com.google.protobuf:protobuf-kotlin:3.25.5")
             force("com.google.guava:guava:33.4.0-jre")
             force("org.jdom:jdom2:2.0.6.1")
-            force("org.bouncycastle:bcprov-jdk18on:1.80.2")
+            force("org.bouncycastle:bcprov-jdk18on:1.84")
             force("org.bitbucket.b_c:jose4j:0.9.6")
             force("org.apache.commons:commons-compress:1.26.0")
             force("org.apache.httpcomponents:httpclient:4.5.14")

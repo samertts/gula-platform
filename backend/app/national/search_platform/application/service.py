@@ -94,6 +94,8 @@ class SearchPlatformService:
 
         try:
             results, total = await self.index_adapter.search(search_query)
+        except NotImplementedError:
+            raise
         except Exception as exc:
             raise SearchExecutionError(str(exc)) from exc
 
@@ -252,6 +254,8 @@ class SearchPlatformService:
                 count = await self.index_adapter.rebuild_index(t)
                 results[t] = count
                 total += count
+            except NotImplementedError:
+                raise
             except Exception as exc:
                 raise IndexAdapterError(f"Failed to rebuild index {t}: {exc}") from exc
         self._publish_event(IndexRebuilt(
@@ -271,6 +275,8 @@ class SearchPlatformService:
     ) -> None:
         try:
             await self.index_adapter.index_document(index_type, document_id, data)
+        except NotImplementedError:
+            raise
         except Exception as exc:
             raise IndexAdapterError(f"Failed to index document {index_type}/{document_id}: {exc}") from exc
         self._publish_event(DocumentIndexed(
@@ -283,6 +289,8 @@ class SearchPlatformService:
     async def remove_from_index(self, index_type: str, document_id: str) -> None:
         try:
             await self.index_adapter.remove_document(index_type, document_id)
+        except NotImplementedError:
+            raise
         except Exception as exc:
             raise IndexAdapterError(f"Failed to remove document {index_type}/{document_id}: {exc}") from exc
     async def get_search_stats(self) -> dict[str, Any]:

@@ -22,7 +22,7 @@ jobs:
       - name: Install ruff
         run: pip install ruff
       - name: Check Python formatting
-        run: ruff format --check backend/app/ shared/ scripts/ || echo "Formatting issues found — run 'ruff format backend/app/ shared/ scripts/' to fix"
+        run: ruff format --check backend/app/ shared/ scripts/
 
   prettier:
     name: Prettier (TypeScript/JSON/MD)
@@ -34,6 +34,6 @@ jobs:
         with:
           node-version: "24"
       - name: Install prettier
-        run: npm install prettier --save-dev 2>/dev/null || npx prettier --version
+        run: npm install --no-save --no-package-lock prettier
       - name: Check formatting
-        run: npx prettier --check "**/*.{ts,tsx,json,md}" --ignore-path .gitignore 2>/dev/null || echo "Formatting check skipped (prettier not fully configured)"
+        run: npx prettier --check "**/*.{ts,tsx,json,md}" --ignore-path .gitignore
