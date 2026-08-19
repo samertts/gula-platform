@@ -239,6 +239,7 @@ def import_all_models() -> None:
         DevicePrintJob,
         DeviceProtocolProfile,
         IntegratedDevice,
+        WearableMeasurement,
     )
     from .capabilities.fhir_interoperability.models import FHIRResourceRecord  # noqa: F401
     from .models.outbox import OutboxEvent  # noqa: F401
