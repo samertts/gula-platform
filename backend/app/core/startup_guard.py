@@ -855,16 +855,14 @@ async def run_startup_guard() -> None:
         await asyncio.wait_for(_run_core_validation(), timeout=STARTUP_TIMEOUT)
     except TimeoutError:
         elapsed = (time.perf_counter() - t0) * 1000
-        logger.warning(
-            "[STARTUP GUARD] Startup validation did not complete within %ds (%.0fms elapsed) — "
-            "system starts in PARTIAL READY state. Some dependencies may be unavailable.",
-            STARTUP_TIMEOUT,
-            elapsed,
-        )
-        system_ready = True
+        # A timeout means mandatory dependency verification is incomplete.  Do
+        # not advertise readiness or accept clinical traffic in this state.
+        system_ready = False
         _readiness_reason = "partial_startup_timeout"
-        logger.info(
-            "[STARTUP GUARD] === System PARTIALLY READY (%.0fms, timeout) — accepting traffic ===",
+        logger.error(
+            "[STARTUP GUARD] Startup validation did not complete within %ds (%.0fms elapsed) — "
+            "system remains UNREADY and clinical traffic is rejected until validation succeeds.",
+            STARTUP_TIMEOUT,
             elapsed,
         )
         return

@@ -22,6 +22,7 @@ from .authorization import (
     UserTypeEnum,
 )
 from .canonical_patient import CanonicalPatient, CitizenLink, PatientLink
+from .clinical_command import ClinicalCommandReceipt
 from .clinical_scope import ClinicalEhrFacilityBinding, ClinicalLabFacilityBinding
 from .consent import Consent
 from .edge import (
@@ -64,6 +65,7 @@ __all__ = [
     "BreakGlassSession",
     "CanonicalPatient",
     "CitizenLink",
+    "ClinicalCommandReceipt",
     "ClinicalEhrFacilityBinding",
     "ClinicalLabFacilityBinding",
     "Consent",
