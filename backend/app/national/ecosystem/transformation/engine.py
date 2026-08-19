@@ -33,7 +33,12 @@ class SchemaRegistry:
         self._versions: dict[str, list[dict]] = {}
 
     def register_schema(self, name: str, schema: dict, version: str = "1.0.0") -> dict:
-        entry = {"name": name, "schema": schema, "version": version, "created_at": datetime.utcnow().isoformat()}
+        entry = {
+            "name": name,
+            "schema": schema,
+            "version": version,
+            "created_at": datetime.utcnow().isoformat(),
+        }
         self._schemas[name] = entry
         if name not in self._versions:
             self._versions[name] = []
@@ -140,7 +145,7 @@ class ValueMapper:
                 try:
                     parsed = datetime.strptime(str(result), source_fmt)
                     result = parsed.strftime(target_fmt)
-                except (ValueError, TypeError):
+                except ValueError, TypeError:
                     pass
         return result
 
@@ -158,14 +163,24 @@ class TransformationEngine:
     def value_mapper(self) -> ValueMapper:
         return self._value_mapper
 
-    def transform(self, source_data: Any, source_format: str, target_format: str, mapping_rules: MappingRule | None = None) -> Any:
+    def transform(
+        self,
+        source_data: Any,
+        source_format: str,
+        target_format: str,
+        mapping_rules: MappingRule | None = None,
+    ) -> Any:
         intermediate = self._normalize(source_data, source_format)
         if mapping_rules:
             intermediate = self.map_fields(intermediate, mapping_rules)
         return self._serialize(intermediate, target_format)
 
     def validate(self, data: Any, schema: dict) -> tuple[bool, list[str]]:
-        return self._schema_registry.validate_against_schema(data, schema.get("name", "")) if isinstance(schema, dict) and "name" in schema else self._schema_validator(data, schema)
+        return (
+            self._schema_registry.validate_against_schema(data, schema.get("name", ""))
+            if isinstance(schema, dict) and "name" in schema
+            else self._schema_validator(data, schema)
+        )
 
     def map_fields(self, data: Any, rules: MappingRule) -> Any:
         if isinstance(data, dict):
@@ -174,7 +189,9 @@ class TransformationEngine:
                 value = self._get_nested(data, src_field)
                 if value is not None:
                     if src_field in rules.value_mappings:
-                        value = self._value_mapper.map_values(value, rules.value_mappings[src_field])
+                        value = self._value_mapper.map_values(
+                            value, rules.value_mappings[src_field]
+                        )
                     for condition in rules.condition_transforms:
                         if condition.get("source_field") == src_field:
                             value = self._apply_condition_transform(value, condition)
@@ -205,7 +222,11 @@ class TransformationEngine:
 
     def _serialize(self, data: Any, fmt: str) -> Any:
         if fmt in ("json", "application/json"):
-            return json.dumps(data, ensure_ascii=False, default=str) if isinstance(data, (dict, list)) else data
+            return (
+                json.dumps(data, ensure_ascii=False, default=str)
+                if isinstance(data, (dict, list))
+                else data
+            )
         if fmt in ("xml", "application/xml", "text/xml"):
             return self._dict_to_xml(data)
         if fmt in ("csv", "text/csv"):
@@ -242,9 +263,17 @@ class TransformationEngine:
             return transform_value
         if condition_type == "contains" and isinstance(value, str) and condition_value in value:
             return transform_value
-        if condition_type == "starts_with" and isinstance(value, str) and value.startswith(str(condition_value)):
+        if (
+            condition_type == "starts_with"
+            and isinstance(value, str)
+            and value.startswith(str(condition_value))
+        ):
             return transform_value
-        if condition_type == "ends_with" and isinstance(value, str) and value.endswith(str(condition_value)):
+        if (
+            condition_type == "ends_with"
+            and isinstance(value, str)
+            and value.endswith(str(condition_value))
+        ):
             return transform_value
         if condition_type == "is_empty" and not value:
             return transform_value
@@ -280,12 +309,12 @@ class TransformationEngine:
         if condition_type == "greater_than":
             try:
                 return float(value) > float(condition_value)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 return False
         if condition_type == "less_than":
             try:
                 return float(value) < float(condition_value)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 return False
         if condition_type == "is_empty":
             return not value
@@ -312,7 +341,12 @@ class TransformationEngine:
             for part in parts:
                 if part == "{source}":
                     result += str(value)
-                elif isinstance(part, str) and part.startswith("{") and part.endswith("}") and isinstance(value, dict):
+                elif (
+                    isinstance(part, str)
+                    and part.startswith("{")
+                    and part.endswith("}")
+                    and isinstance(value, dict)
+                ):
                     result += str(value.get(part[1:-1], ""))
                 else:
                     result += str(part)
@@ -402,6 +436,7 @@ class TransformationEngine:
     def _xml_to_dict(self, data: Any) -> Any:
         if isinstance(data, str):
             from defusedxml.ElementTree import fromstring as safe_xml_parse
+
             root = safe_xml_parse(data)
             return self._element_to_dict(root)
         return data
@@ -432,6 +467,7 @@ class TransformationEngine:
     def _dict_to_xml(self, data: Any) -> str:
         if isinstance(data, dict):
             from xml.etree import ElementTree
+
             root_name = next(iter(data.keys())) if data else "root"
             root = ElementTree.Element(root_name)
             self._build_xml(root, data[root_name] if data else data)
@@ -440,6 +476,7 @@ class TransformationEngine:
 
     def _build_xml(self, parent: Any, data: Any) -> None:
         from xml.etree import ElementTree
+
         if isinstance(data, dict):
             for key, value in data.items():
                 child = ElementTree.SubElement(parent, key)
@@ -460,6 +497,7 @@ class TransformationEngine:
         if isinstance(data, str):
             import csv
             import io
+
             reader = csv.DictReader(io.StringIO(data))
             return list(reader)
         return data if isinstance(data, list) else []
@@ -467,6 +505,7 @@ class TransformationEngine:
     def _dict_to_csv(self, data: Any) -> str:
         import csv
         import io
+
         if isinstance(data, list) and data:
             output = io.StringIO()
             writer = csv.DictWriter(output, fieldnames=data[0].keys())
@@ -493,6 +532,7 @@ class CompressionEngine:
         if algorithm == "lz4":
             try:
                 import lz4.frame
+
                 return lz4.frame.compress(raw)
             except ImportError:
                 logger.warning("lz4 not installed, falling back to gzip")
@@ -509,6 +549,7 @@ class CompressionEngine:
         if algorithm == "lz4":
             try:
                 import lz4.frame
+
                 return lz4.frame.decompress(data)
             except ImportError:
                 logger.warning("lz4 not installed, falling back to gzip")
@@ -524,7 +565,10 @@ class EncryptionEngine:
             import base64
 
             from cryptography.fernet import Fernet
-            derived_key = base64.urlsafe_b64encode(hashlib.sha256(key.encode() if isinstance(key, str) else key).digest())
+
+            derived_key = base64.urlsafe_b64encode(
+                hashlib.sha256(key.encode() if isinstance(key, str) else key).digest()
+            )
             f = Fernet(derived_key)
             return f.encrypt(data.encode()).decode()
         if algorithm == "RSA":
@@ -532,7 +576,10 @@ class EncryptionEngine:
             from cryptography.hazmat.primitives import hashes as crypto_hashes
             from cryptography.hazmat.primitives.asymmetric import padding
             from cryptography.hazmat.primitives.serialization import load_pem_public_key
-            public_key = load_pem_public_key(key.encode() if isinstance(key, str) else key, backend=default_backend())
+
+            public_key = load_pem_public_key(
+                key.encode() if isinstance(key, str) else key, backend=default_backend()
+            )
             encrypted = public_key.encrypt(
                 data.encode(),
                 padding.OAEP(
@@ -550,7 +597,10 @@ class EncryptionEngine:
             import base64
 
             from cryptography.fernet import Fernet
-            derived_key = base64.urlsafe_b64encode(hashlib.sha256(key.encode() if isinstance(key, str) else key).digest())
+
+            derived_key = base64.urlsafe_b64encode(
+                hashlib.sha256(key.encode() if isinstance(key, str) else key).digest()
+            )
             f = Fernet(derived_key)
             return f.decrypt(data.encode()).decode()
         if algorithm == "RSA":
@@ -558,7 +608,12 @@ class EncryptionEngine:
             from cryptography.hazmat.primitives import hashes as crypto_hashes
             from cryptography.hazmat.primitives.asymmetric import padding
             from cryptography.hazmat.primitives.serialization import load_pem_private_key
-            private_key = load_pem_private_key(key.encode() if isinstance(key, str) else key, password=None, backend=default_backend())
+
+            private_key = load_pem_private_key(
+                key.encode() if isinstance(key, str) else key,
+                password=None,
+                backend=default_backend(),
+            )
             decrypted = private_key.decrypt(
                 bytes.fromhex(data),
                 padding.OAEP(
@@ -578,6 +633,7 @@ class DigitalSignature:
         from cryptography.hazmat.primitives import hashes as crypto_hashes
         from cryptography.hazmat.primitives.asymmetric import padding
         from cryptography.hazmat.primitives.serialization import load_pem_private_key
+
         key = load_pem_private_key(private_key.encode(), password=None, backend=default_backend())
         signature = key.sign(
             data.encode(),
@@ -592,6 +648,7 @@ class DigitalSignature:
         from cryptography.hazmat.primitives import hashes as crypto_hashes
         from cryptography.hazmat.primitives.asymmetric import padding
         from cryptography.hazmat.primitives.serialization import load_pem_public_key
+
         try:
             key = load_pem_public_key(public_key.encode(), backend=default_backend())
             key.verify(
@@ -618,7 +675,7 @@ class IntegrityValidator:
         if algorithm == "sha512":
             return hashlib.sha512(raw).hexdigest()
         if algorithm == "md5":
-            return hashlib.md5(raw, usedforsecurity=False).hexdigest()
+            raise ValueError("md5 is not supported; use sha256, sha384, or sha512")
         raise ValueError(f"unsupported hash algorithm: {algorithm}")
 
     @staticmethod

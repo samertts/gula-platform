@@ -7,9 +7,9 @@ import uuid
 from datetime import date, datetime, timedelta
 from uuid import UUID
 
-from app._compat import UTC
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
 from app.database import SessionLocal
 from app.models.lab import Lab
 from app.models.lab_order import LabOrder
@@ -23,8 +23,8 @@ logger = logging.getLogger("gula.bootstrap.demo_data")
 
 
 def _deterministic_uuid(seed: str) -> UUID:
-    h = hashlib.md5(seed.encode(), usedforsecurity=False)
-    return uuid.UUID(h.hexdigest())
+    digest = hashlib.sha3_256(seed.encode()).hexdigest()[:32]
+    return uuid.UUID(digest)
 
 
 DEMO_PATIENTS: list[dict] = [
@@ -95,7 +95,9 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
 
         existing_patients = db.query(Patient).count()
         if existing_patients > 5:
-            logger.info("Demo data appears to already exist (%d patients) — skipping", existing_patients)
+            logger.info(
+                "Demo data appears to already exist (%d patients) — skipping", existing_patients
+            )
             return counts
 
         for index, pd in enumerate(DEMO_PATIENTS, start=1):
@@ -147,11 +149,15 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
 
         for i, patient in enumerate(patients):
             test = TEST_TYPES_POOL[i % len(TEST_TYPES_POOL)]
-            existing_order = db.query(LabOrder).filter(
-                LabOrder.lab_id == lab.id,
-                LabOrder.patient_id == patient.id,
-                LabOrder.doctor_name == "GULA Demo System",
-            ).first()
+            existing_order = (
+                db.query(LabOrder)
+                .filter(
+                    LabOrder.lab_id == lab.id,
+                    LabOrder.patient_id == patient.id,
+                    LabOrder.doctor_name == "GULA Demo System",
+                )
+                .first()
+            )
             if existing_order:
                 continue
 
@@ -178,8 +184,10 @@ def seed_demo_data(db: Session | None = None) -> dict[str, int]:
             counts["samples"] += 1
 
             import random
+
             result_value = round(
-                random.uniform(test["low"] * 0.8, test["high"] * 1.2), 1,
+                random.uniform(test["low"] * 0.8, test["high"] * 1.2),
+                1,
             )
             token = generate_token()
             result = LabResult(
