@@ -49,6 +49,7 @@ import type {
   DeviceGatewayMetricRecord,
   DeviceGatewayMonitoringSnapshot,
   DeviceGatewayRecord,
+  WearableBaselineSummary,
   DeviceOutboxRecord,
   AccessibilityPreferences,
   AccessibilityResponse,
@@ -501,6 +502,10 @@ export const deviceIntegrationApi = {
     api.post<DeviceIntegrationPrinterJob>("/device-integration/printer-jobs", data).then((r) => r.data),
   monitoring: () =>
     api.get<DeviceGatewayMonitoringSnapshot>("/device-integration/monitoring").then((r) => r.data),
+  baselineSummary: (patientId: number, metricCode: string, limit = 28) =>
+    api.get<WearableBaselineSummary>("/device-integration/wearables/baseline-summary", {
+      params: { patient_id: patientId, metric_code: metricCode, limit },
+    }).then((r) => r.data),
   gateways: (params?: { status?: string; limit?: number }) =>
     api.get<{ total: number; gateways: DeviceGatewayRecord[] }>("/device-integration/gateways", { params }).then((r) => r.data),
   registerGateway: (data: Record<string, unknown>) =>

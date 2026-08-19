@@ -1,5 +1,6 @@
 """Order and Result service - business logic layer for lab orders and results."""
 
+import hashlib
 import json
 import logging
 import secrets
@@ -332,12 +333,39 @@ def create_order(
     idempotency_key: str | None = None,
 ) -> dict:
     """Create a new order with results. Returns response dict."""
-    # Server-side idempotency
+    # Server-side idempotency. The fingerprint prevents a caller from
+    # accidentally reusing a key for a different clinical payload.
+    cache_key = None
+    request_fingerprint = None
     if idempotency_key:
         cache_key = f"idempotency:order:{lab_id}:{idempotency_key}"
+        request_fingerprint = hashlib.sha256(
+            json.dumps(
+                {
+                    "patient_id": patient_id,
+                    "doctor_user_id": doctor_user_id,
+                    "results": results_data,
+                },
+                sort_keys=True,
+                default=str,
+            ).encode("utf-8"),
+        ).hexdigest()
         cached = _cache.get(cache_key)
         if cached:
-            return json.loads(cached)
+            envelope = json.loads(cached)
+            if envelope.get("fingerprint") != request_fingerprint:
+                return {"error": "Idempotency key was already used with a different payload", "status_code": 409}
+            if envelope.get("status") == "processing":
+                return {"error": "A request with this idempotency key is already processing", "status_code": 409}
+            return envelope["response"]
+        claim = json.dumps({"fingerprint": request_fingerprint, "status": "processing"})
+        if not _cache.set_if_absent(cache_key, claim, ex=300):
+            cached = _cache.get(cache_key)
+            if cached:
+                envelope = json.loads(cached)
+                if envelope.get("fingerprint") != request_fingerprint:
+                    return {"error": "Idempotency key was already used with a different payload", "status_code": 409}
+                return {"error": "A request with this idempotency key is already processing", "status_code": 409}
 
     # Validate patient exists
     patient = db.query(Patient).filter(Patient.id == patient_id, Patient.lab_id == lab_id).first()
@@ -434,10 +462,16 @@ def create_order(
         "critical_alerts": critical_alerts or None,
     }
 
-    # Cache under idempotency key
-    if idempotency_key:
-        cache_key = f"idempotency:order:{lab_id}:{idempotency_key}"
-        _cache.set(cache_key, json.dumps(response_body, default=str), ex=86400)
+    # Cache the completed response under the claimed idempotency key.
+    if cache_key and request_fingerprint:
+        _cache.set(
+            cache_key,
+            json.dumps(
+                {"fingerprint": request_fingerprint, "status": "completed", "response": response_body},
+                default=str,
+            ),
+            ex=86400,
+        )
 
     # Emit events
     _emit_order_events(
@@ -496,6 +530,99 @@ def list_orders(
         "total": total,
         "orders": [order_to_dict(o, include_results=include_results) for o in orders],
     }
+
+
+def update_result(
+    db: Session,
+    result_id: int,
+    lab_id: int,
+    user_id: int,
+    user_role: str,
+    expected_version: int,
+    value: float | None = None,
+    value_text: str | None = None,
+    unit: str | None = None,
+    normal_range_low: float | None = None,
+    normal_range_high: float | None = None,
+    ip_address: str | None = None,
+) -> dict:
+    """Update a result using atomic optimistic locking.
+
+    Results are scoped through their parent order, cannot be changed after the
+    order is locked, and require the caller to send the version observed when
+    the result was read. A stale writer receives a 409-safe response.
+    """
+    if user_role not in {"admin", "master_admin", "doctor", "technician", "pathologist"}:
+        return {"error": "Insufficient permissions to update laboratory results", "status_code": 403}
+    if expected_version < 1:
+        return {"error": "If-Match version must be a positive integer", "status_code": 400}
+
+    result = (
+        db.query(LabResult)
+        .join(LabOrder, LabResult.order_id == LabOrder.id)
+        .filter(LabResult.id == result_id, LabOrder.lab_id == lab_id)
+        .first()
+    )
+    if result is None:
+        return {"error": "Result not found", "status_code": 404}
+
+    # Recompute the clinical flag from the proposed numeric value and ranges.
+    proposed_value = value if value is not None else result.value
+    proposed_low = normal_range_low if normal_range_low is not None else result.normal_range_low
+    proposed_high = normal_range_high if normal_range_high is not None else result.normal_range_high
+    proposed_flag = result.flag
+    if proposed_value is not None and proposed_low is not None and proposed_high is not None:
+        proposed_flag = get_flag(
+            proposed_value,
+            proposed_low,
+            proposed_high,
+            test_name=result.test_name,
+        )
+
+    from sqlalchemy import select
+
+    open_order_ids = select(LabOrder.id).where(
+        LabOrder.id == LabResult.order_id,
+        LabOrder.lab_id == lab_id,
+        LabOrder.locked_at.is_(None),
+    )
+    rows_updated = (
+        db.query(LabResult)
+        .filter(
+            LabResult.id == result_id,
+            LabResult.version == expected_version,
+            LabResult.order_id.in_(open_order_ids),
+        )
+        .update(
+            {
+                "value": value,
+                "value_text": value_text,
+                "unit": unit,
+                "normal_range_low": normal_range_low,
+                "normal_range_high": normal_range_high,
+                "flag": proposed_flag,
+                "version": LabResult.version + 1,
+            },
+            synchronize_session="fetch",
+        )
+    )
+    if rows_updated == 0:
+        db.rollback()
+        return {"error": "Result version is stale or its order is locked", "status_code": 409}
+
+    log_action(
+        db,
+        action="update",
+        resource_type="lab_result",
+        resource_id=result_id,
+        user_id=user_id,
+        user_role=user_role,
+        details=f"Updated laboratory result with CAS version {expected_version}",
+        ip_address=ip_address,
+    )
+    db.commit()
+    updated = db.query(LabResult).filter(LabResult.id == result_id).first()
+    return {"result": result_to_dict(updated), "version": updated.version}
 
 
 def validate_order(

@@ -17,11 +17,11 @@ import os
 import subprocess
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -35,7 +35,7 @@ from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
 from ..models.patient import Patient
 from ..security.dependencies import get_current_user
-from ..services.audit_service import get_latest_anchor, verify_audit_chain
+from ..services.audit_service import get_latest_anchor, log_action, verify_audit_chain
 
 logger = logging.getLogger("gula.compliance")
 
@@ -564,40 +564,50 @@ def get_dhis2_aggregate(
     Data exported: total tests by type, result flag distribution, monthly counts.
     No patient PII is included in this response.
     """
-    from sqlalchemy import text
+    # Aggregate test counts through the ORM so the endpoint does not rely on
+    # PostgreSQL-only SQL and never assumes lab_results has a lab_id column.
+    abnormal_high = case((LabResult.flag.in_(["high", "critical_high"]), 1), else_=0)
+    abnormal_low = case((LabResult.flag.in_(["low", "critical_low"]), 1), else_=0)
+    normal = case(((LabResult.flag == "normal") | (LabResult.flag.is_(None)), 1), else_=0)
+    test_counts = (
+        db.query(
+            LabResult.test_name,
+            func.count(LabResult.id).label("count"),
+            func.sum(abnormal_high).label("abnormal_high"),
+            func.sum(abnormal_low).label("abnormal_low"),
+            func.sum(normal).label("normal"),
+        )
+        .join(LabOrder, LabOrder.id == LabResult.order_id)
+        .filter(LabOrder.lab_id == current_user.lab_id)
+        .group_by(LabResult.test_name)
+        .order_by(func.count(LabResult.id).desc())
+        .limit(50)
+        .all()
+    )
 
-    # Aggregate test counts by type (no patient data)
-    test_counts = db.execute(
-        text("""
-        SELECT lab_results.test_name, COUNT(*) as count,
-               SUM(CASE WHEN lab_results.flag IN ('high', 'critical_high') THEN 1 ELSE 0 END) as abnormal_high,
-               SUM(CASE WHEN lab_results.flag IN ('low', 'critical_low') THEN 1 ELSE 0 END) as abnormal_low,
-               SUM(CASE WHEN lab_results.flag = 'normal' OR lab_results.flag IS NULL THEN 1 ELSE 0 END) as normal
-        FROM lab_results
-        JOIN lab_orders ON lab_orders.id = lab_results.order_id
-        WHERE lab_orders.lab_id = :lab_id
-        GROUP BY lab_results.test_name
-        ORDER BY count DESC
-        LIMIT 50
-    """),
-        {"lab_id": current_user.lab_id},
-    ).fetchall()
+    # Monthly order counts for trend analysis. The cutoff is bound as a
+    # parameter, keeping this query portable across supported database engines.
+    cutoff = datetime.now(UTC) - timedelta(days=365)
+    year_expr = func.extract("year", LabOrder.created_at).label("year")
+    month_expr = func.extract("month", LabOrder.created_at).label("month")
+    monthly_counts = (
+        db.query(year_expr, month_expr, func.count(LabOrder.id).label("order_count"))
+        .filter(LabOrder.lab_id == current_user.lab_id, LabOrder.created_at >= cutoff)
+        .group_by(year_expr, month_expr)
+        .order_by(year_expr, month_expr)
+        .all()
+    )
 
-    # Monthly order counts for trend analysis
-    monthly_counts = db.execute(
-        text("""
-        SELECT
-            EXTRACT(YEAR FROM created_at) as year,
-            EXTRACT(MONTH FROM created_at) as month,
-            COUNT(*) as order_count
-        FROM lab_orders
-        WHERE lab_id = :lab_id
-          AND created_at >= NOW() - INTERVAL '12 months'
-        GROUP BY year, month
-        ORDER BY year, month
-    """),
-        {"lab_id": current_user.lab_id},
-    ).fetchall()
+    log_action(
+        db,
+        action="dhis2.aggregate.export",
+        resource_type="dhis2_aggregate",
+        user_id=current_user.id,
+        user_role=current_user.role,
+        lab_id=current_user.lab_id,
+        details={"contains_patient_pii": False, "test_type_limit": 50},
+    )
+    db.commit()
 
     total_patients = (
         db.query(func.count(Patient.id)).filter(Patient.lab_id == current_user.lab_id).scalar() or 0

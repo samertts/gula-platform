@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
@@ -22,10 +23,12 @@ from .models import (
     DevicePrintJob,
     DeviceProtocolProfile,
     IntegratedDevice,
+    WearableMeasurement,
 )
 from .outbox import enqueue_message
 from .outbox import list_messages as list_outbox_messages
 from .outbox import summarize as summarize_outbox
+from app.models.patient import Patient
 from .schemas import (
     ConnectorRegisterRequest,
     ConnectorStatusUpdateRequest,
@@ -37,6 +40,7 @@ from .schemas import (
     GatewayRegistrationRequest,
     PrinterJobRequest,
     ProtocolProfileRequest,
+    WearableMeasurementIngestRequest,
 )
 
 PROTOCOL_CATALOG = [
@@ -964,3 +968,198 @@ def acknowledge_gateway_alert(db: Session, lab_id: int, alert_id: int, actor_use
     db.commit()
     db.refresh(alert)
     return alert
+
+
+_WEARABLE_EXPECTED_UNITS = {
+    "heart_rate": {"bpm"},
+    "respiratory_rate": {"breaths/min", "bpm"},
+    "spo2": {"%"},
+    "temperature": {"C", "°C", "F", "°F"},
+    "systolic_bp": {"mmHg"},
+    "diastolic_bp": {"mmHg"},
+    "blood_glucose": {"mg/dL", "mmol/L"},
+    "steps": {"count"},
+    "weight": {"kg", "lb"},
+}
+
+
+def ingest_wearable_measurement(
+    db: Session,
+    lab_id: int,
+    payload: WearableMeasurementIngestRequest,
+) -> tuple[WearableMeasurement, bool]:
+    """Persist a canonical wearable reading with tenant and idempotency guards.
+
+    Provider payloads must be normalized by a governed adapter before calling this
+    function. The API stores only the safe canonical fields and provenance summary.
+    """
+    if not payload.simulation_only:
+        raise ValueError("live wearable adapters require provider authentication and are not enabled yet")
+    if payload.quality_status == "invalid":
+        raise ValueError("invalid wearable measurements are not accepted")
+    expected_units = _WEARABLE_EXPECTED_UNITS.get(payload.metric_code, set())
+    if payload.unit not in expected_units:
+        raise ValueError(f"unit {payload.unit!r} is not valid for {payload.metric_code}")
+
+    patient = (
+        db.query(Patient)
+        .filter(Patient.id == payload.patient_id, Patient.lab_id == lab_id)
+        .first()
+    )
+    if patient is None:
+        raise LookupError("patient is not registered in this laboratory")
+
+    device_id = None
+    if payload.device_uid:
+        device = get_device(db, lab_id, payload.device_uid)
+        if device is None:
+            raise LookupError("wearable device is not registered in this laboratory")
+        device_id = device.id
+        device.last_seen_at = payload.measured_at
+        device.status = "connected"
+
+    source = payload.source.strip().lower()
+    existing = (
+        db.query(WearableMeasurement)
+        .filter(
+            WearableMeasurement.lab_id == lab_id,
+            WearableMeasurement.source == source,
+            WearableMeasurement.source_event_id == payload.source_event_id,
+        )
+        .first()
+    )
+    if existing is not None:
+        if (
+            existing.patient_id != payload.patient_id
+            or existing.metric_code != payload.metric_code
+            or existing.value != payload.value
+            or existing.unit != payload.unit
+        ):
+            raise ValueError("source event id was already used with a different measurement")
+        return existing, True
+
+    measurement = WearableMeasurement(
+        lab_id=lab_id,
+        patient_id=payload.patient_id,
+        device_id=device_id,
+        source=source,
+        metric_code=payload.metric_code,
+        value=payload.value,
+        unit=payload.unit,
+        measured_at=payload.measured_at,
+        quality_score=payload.quality_score,
+        quality_status=payload.quality_status,
+        source_event_id=payload.source_event_id,
+        provenance=payload.provenance,
+        simulation_only=True,
+    )
+    db.add(measurement)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        existing = (
+            db.query(WearableMeasurement)
+            .filter(
+                WearableMeasurement.lab_id == lab_id,
+                WearableMeasurement.source == source,
+                WearableMeasurement.source_event_id == payload.source_event_id,
+            )
+            .first()
+        )
+        if existing is None:
+            raise
+        return existing, True
+    db.refresh(measurement)
+    return measurement, False
+
+
+def list_wearable_measurements(
+    db: Session,
+    lab_id: int,
+    *,
+    patient_id: int,
+    metric_code: str | None = None,
+    limit: int = 100,
+) -> tuple[int, list[WearableMeasurement]]:
+    query = db.query(WearableMeasurement).filter(
+        WearableMeasurement.lab_id == lab_id,
+        WearableMeasurement.patient_id == patient_id,
+    )
+    if metric_code:
+        query = query.filter(WearableMeasurement.metric_code == metric_code)
+    total = query.count()
+    rows = query.order_by(WearableMeasurement.measured_at.desc()).limit(limit).all()
+    return total, rows
+
+
+
+def clinician_baseline_summary(
+    db: Session,
+    lab_id: int,
+    patient_id: int,
+    metric_code: str,
+    *,
+    limit: int = 28,
+) -> dict:
+    """Return an advisory baseline summary for a clinician dashboard.
+
+    This endpoint is deliberately read-only: it reports personal deviation and
+    evidence quality, never diagnoses a condition or changes a care plan.
+    """
+    from app.chronic_care.baselines import build_baseline, evaluate_against_baseline
+
+    if limit < 7 or limit > 180:
+        raise ValueError("limit must be between 7 and 180")
+    patient = db.query(Patient).filter(Patient.id == patient_id, Patient.lab_id == lab_id).first()
+    if patient is None:
+        raise LookupError("patient not found in this laboratory")
+    rows = (
+        db.query(WearableMeasurement)
+        .filter(
+            WearableMeasurement.lab_id == lab_id,
+            WearableMeasurement.patient_id == patient_id,
+            WearableMeasurement.metric_code == metric_code,
+            WearableMeasurement.quality_status.in_(["good", "unknown"]),
+        )
+        .order_by(WearableMeasurement.measured_at.desc())
+        .limit(limit)
+        .all()
+    )
+    if not rows:
+        raise LookupError("no valid measurements found for this metric")
+
+    chronological = list(reversed(rows))
+    baseline = build_baseline(metric_code, [row.value for row in chronological], min_samples=7)
+    latest = rows[0]
+    evaluation = evaluate_against_baseline(baseline, latest.value)
+    return {
+        "patient_id": patient_id,
+        "metric_code": metric_code,
+        "measurement_count": len(rows),
+        "latest": {
+            "value": latest.value,
+            "unit": latest.unit,
+            "measured_at": latest.measured_at,
+            "quality_score": latest.quality_score,
+            "source": latest.source,
+        },
+        "baseline": {
+            "status": baseline.status,
+            "median": baseline.median,
+            "mad": baseline.mad,
+            "lower_bound": baseline.lower_bound,
+            "upper_bound": baseline.upper_bound,
+            "confidence": baseline.confidence,
+            "generated_at": baseline.generated_at,
+        },
+        "evaluation": {
+            "is_anomaly": evaluation.is_anomaly,
+            "severity": evaluation.severity,
+            "deviation_score": evaluation.deviation_score,
+            "confidence": evaluation.confidence,
+            "explanation": evaluation.explanation,
+            "requires_clinician_review": evaluation.requires_clinician_review,
+            "advisory_only": True,
+        },
+    }

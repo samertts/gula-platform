@@ -35,6 +35,9 @@ from ..services.order_service import (
 from ..services.order_service import (
     validate_order as _validate_order,
 )
+from ..services.order_service import (
+    update_result as _update_result,
+)
 
 router = APIRouter(tags=["results"])
 
@@ -69,6 +72,54 @@ class CreateOrderRequest(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     results: list[ResultItem]
+
+
+class UpdateResultRequest(BaseModel):
+    value: float | None = None
+    value_text: str | None = None
+    unit: str | None = None
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
+
+
+@router.patch("/results/{result_id}")
+def update_result_route(
+    result_id: int,
+    data: UpdateResultRequest,
+    request: Request,
+    if_match: str | None = Header(default=None, alias="If-Match"),
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update an unlocked laboratory result with optimistic concurrency control.
+
+    The caller must send the version observed on read as ``If-Match``. A stale
+    concurrent writer receives HTTP 409 and must refresh before retrying.
+    """
+    if if_match is None:
+        raise HTTPException(status_code=428, detail="If-Match header is required")
+    try:
+        expected_version = int(if_match.strip().strip('"'))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="If-Match must contain a numeric result version") from None
+
+    result = _update_result(
+        db=db,
+        result_id=result_id,
+        lab_id=current_user.lab_id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        expected_version=expected_version,
+        value=data.value,
+        value_text=data.value_text,
+        unit=data.unit,
+        normal_range_low=data.normal_range_low,
+        normal_range_high=data.normal_range_high,
+        ip_address=get_client_ip(request),
+    )
+    if "error" in result:
+        raise HTTPException(status_code=result["status_code"], detail=result["error"])
+    return result
 
 
 @router.get("/test-profiles")
