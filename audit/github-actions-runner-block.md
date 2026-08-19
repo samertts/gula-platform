@@ -23,3 +23,9 @@ Run URL: https://github.com/samertts/gula-platform/actions/runs/32160878437
 Run `32218061732` لـCI Pipeline على head `f16f83ec86eeebb394144d6002ab6a5bcdc06cb7` بتاريخ 19 أغسطس 2026 فشل خلال 4 ثوانٍ. ظهرت وظيفة Syntax Gate فقط لمدة 3 ثوانٍ، بينما بقية الوظائف لم تبدأ عملياً. Annotation الرسمية بقيت: **"The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings."** لا توجد إشارة إلى فشل في hardening أو الاختبارات.
 
 Run URL: https://github.com/samertts/gula-platform/actions/runs/32218061732
+
+## Mobile Expo workflow on latest head
+
+Run `32218123745` لـMobile Expo Speech Quality على head `53dbd95e8e2e60409bcfe096cb35837825d4fa86` فشل خلال 4 ثوانٍ. وظيفة `Expo SDK 54 Typecheck and Unit Tests` لم تبدأ أي خطوة، وannotation GitHub نفسها تشير إلى فشل دفعات الحساب أو الحاجة لرفع spending limit.
+
+Run URL: https://github.com/samertts/gula-platform/actions/runs/32218123745
