@@ -83,3 +83,18 @@
 تم تحديث `docs/architecture/canonical-domain-registry-2026.json` لإضافة حالة `REVIEW_CANONICAL_ADDED` لمراجعة النتائج، و`EHR_DURABLE_QUERIES` لسجل أدوية المواطن، و`ENCOUNTER_WORKFLOW_CONTRACTS_ADDED` لعقود parity المرتبطة بـEncounter وShift وAssignment.
 
 لا تغيّر هذه النتائج حالة الحواجز الخارجية: تدوير مفتاح توقيع Android الإنتاجي وتطهير Git history بعد التدوير ما زالا يتطلبان جهة مخولة خارج هذه الجلسة. لذلك يبقى `P4 = SECURITY_BLOCKED`، ويبقى `P5 = BLOCKED`، كما تبقى Department وReferral وAppointment وDiagnosticReport وAuditEvent وConsent فجوات canonicalization أو governance موثقة وليست مكتملة.
+
+
+## ملحق إصلاحات ما بعد main — 19 آب/أغسطس 2026
+
+تم تشخيص فشل regression واحد سببه وجود رأسي Alembic مستقلين بعد إضافة wearable measurements إلى main. أُضيفت migration merge additive-only باسم `20260819_0003_merge_clinical_and_wearable_heads.py` لضم `20260818_0005` و`20260819_0002` دون تعديل migrations منشورة أو حذف بيانات.
+
+| الفحص | النتيجة |
+|---|---|
+| Migration integrity بعد الإصلاح | 9/9 ناجحة |
+| Backend full regression النهائي | 2752 ناجحاً، 4 متخطاة، 173 تحذيراً، دون فشل |
+| Frontend بعد main | 72 اختباراً ناجحاً في 20 ملفاً، lint وbuild ناجحان |
+| Device/outbox/idempotency/rate-limit targeted suite | 31 اختباراً ناجحاً |
+| Secret guard | ناجح |
+
+تم أيضاً دمج آخر تحديثات `main` التي تضمنت chronic-care advisory وwearable measurements، مع توثيق أن هذه المخرجات **غير تشخيصية** وتتطلب سياقاً سريرياً، وأن تكامل الأجهزة يبقى محصوراً بالمؤسسة وبوضع simulation حيث ينص العقد الحالي.
