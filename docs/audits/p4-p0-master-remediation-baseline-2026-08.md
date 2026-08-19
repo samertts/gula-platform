@@ -98,3 +98,8 @@
 | Secret guard | ناجح |
 
 تم أيضاً دمج آخر تحديثات `main` التي تضمنت chronic-care advisory وwearable measurements، مع توثيق أن هذه المخرجات **غير تشخيصية** وتتطلب سياقاً سريرياً، وأن تكامل الأجهزة يبقى محصوراً بالمؤسسة وبوضع simulation حيث ينص العقد الحالي.
+
+
+## ملحق تقوية القياسات والاعتماديات — 19 آب/أغسطس 2026
+
+تم استبدال `Field(finite=True)` deprecated في عقد WearableMeasurement بتحقق صريح متوافق مع Pydantic 2 باستخدام `math.isfinite`، مع إضافة اختبارات رفض `NaN` و`Infinity`. نجحت اختبارات wearable بنتيجة 8/8، ونجح فحص اعتماديات frontend الإنتاجية عبر `pnpm audit --prod` دون vulnerabilities معلنة: 0 info، 0 low، 0 moderate، 0 high، و0 critical ضمن 190 dependency.

@@ -1,5 +1,9 @@
 from datetime import datetime, timezone
 
+import pytest
+from pydantic import ValidationError
+
+from app.devices.schemas import WearableMeasurementIngestRequest
 from app.models.patient import Patient
 from tests.conftest import auth_headers
 
@@ -203,6 +207,25 @@ def test_signed_wearable_webhook_rejects_expired_timestamp(client, db, make_lab,
     )
     assert response.status_code == 401
     assert "Expired webhook signature" in response.text
+
+
+def test_wearable_contract_rejects_non_finite_values():
+    payload = {
+        "patient_id": 1,
+        "source": "synthetic-wearable",
+        "metric_code": "heart_rate",
+        "value": float("nan"),
+        "unit": "bpm",
+        "measured_at": datetime.now(timezone.utc),
+        "source_event_id": "evt-nan",
+        "simulation_only": True,
+    }
+    with pytest.raises(ValidationError):
+        WearableMeasurementIngestRequest.model_validate(payload)
+
+    payload["value"] = float("inf")
+    with pytest.raises(ValidationError):
+        WearableMeasurementIngestRequest.model_validate(payload)
 
 
 def test_wearable_baseline_summary_is_advisory_and_tenant_scoped(client, db, make_lab, make_lab_user):

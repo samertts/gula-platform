@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime
 from typing import Any, Literal
 
@@ -510,7 +511,7 @@ class WearableMeasurementIngestRequest(BaseModel):
     device_uid: str | None = Field(None, min_length=3, max_length=96)
     source: str = Field(..., min_length=2, max_length=64, pattern=r"^[A-Za-z0-9._:-]+$")
     metric_code: WearableMetricCode
-    value: float = Field(..., finite=True)
+    value: float
     unit: str = Field(..., min_length=1, max_length=32)
     measured_at: datetime
     source_event_id: str = Field(..., min_length=3, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")
@@ -518,6 +519,13 @@ class WearableMeasurementIngestRequest(BaseModel):
     quality_status: Literal["good", "suspect", "invalid", "unknown"] = "unknown"
     provenance: dict[str, Any] | None = None
     simulation_only: bool = True
+
+    @field_validator("value")
+    @classmethod
+    def validate_finite_value(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("value must be finite")
+        return value
 
     @field_validator("provenance")
     @classmethod
