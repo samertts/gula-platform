@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from math import isfinite, sqrt
+from datetime import UTC, datetime
+from math import isfinite
 from statistics import median
-from typing import Iterable
 
 
 @dataclass(frozen=True)
@@ -81,7 +81,7 @@ def build_baseline(
             if ready
             else f"Need {min_samples - len(cleaned)} additional valid samples before alerting"
         ),
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
     )
 
 
@@ -111,7 +111,9 @@ def evaluate_against_baseline(
 
     robust_sigma = max(1.4826 * baseline.mad, 1e-9)
     score = abs(numeric_value - baseline.median) / robust_sigma
-    outside = numeric_value < (baseline.lower_bound or numeric_value) or numeric_value > (baseline.upper_bound or numeric_value)
+    outside = numeric_value < (baseline.lower_bound or numeric_value) or numeric_value > (
+        baseline.upper_bound or numeric_value
+    )
     confident = baseline.confidence >= alert_confidence_threshold
     anomaly = outside and confident
     severity = "high" if anomaly and score >= 7 else "moderate" if anomaly else "normal"

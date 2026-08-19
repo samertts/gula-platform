@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
@@ -107,7 +107,7 @@ class InfrastructureDocumentLifecycleManager:
         doc = await self._doc_repo.get(document_id)
         if not doc:
             raise DocumentIntelligenceError("Document not found")
-        start = datetime.utcnow()
+        start = datetime.now(UTC)
         start + timedelta(days=365 * 7)
         await self._retention.save(document_id, RetentionPolicy.standard_7y)
         await self._lifecycle.save(DocumentLifecycleRecord(
@@ -189,7 +189,7 @@ class InfrastructureGovernmentRecordsService:
         for status_name in (
             "draft", "submitted", "under_review", "approved", "implemented", "completed",
         ):
-            items.append({"status": status_name, "timestamp": datetime.utcnow().isoformat()})
+            items.append({"status": status_name, "timestamp": datetime.now(UTC).isoformat()})
         return items
 
     async def validate_government_format(self, doc: GovernmentDocument) -> dict[str, Any]:
@@ -202,8 +202,8 @@ class InfrastructureGovernmentRecordsService:
 
     async def generate_reference_number(self, authority: str, category: str) -> str:
         prefix = "".join(w[0].upper() for w in authority.split() if w)[:4]
-        seq = int(datetime.utcnow().timestamp() * 1000) % 100000
-        return f"{prefix}-{category}-{seq:05d}-{datetime.utcnow().year}"
+        seq = int(datetime.now(UTC).timestamp() * 1000) % 100000
+        return f"{prefix}-{category}-{seq:05d}-{datetime.now(UTC).year}"
 
 
 class InfrastructureCollaborationService:
@@ -229,7 +229,7 @@ class InfrastructureCollaborationService:
         review.comments = comments
         if changes:
             review.suggested_changes = changes
-        review.completed_at = datetime.utcnow()
+        review.completed_at = datetime.now(UTC)
         return await self._review_repo.update(review)
 
     async def get_reviews(self, document_id: UUID) -> list[DocumentReview]:
@@ -257,7 +257,7 @@ class InfrastructureCollaborationService:
         session = self._sessions.get(session_id)
         if not session:
             raise DocumentIntelligenceError(f"Session {session_id} not found")
-        session.participants.append({"user_id": user_id, "joined_at": datetime.utcnow().isoformat()})
+        session.participants.append({"user_id": user_id, "joined_at": datetime.now(UTC).isoformat()})
         return session
 
     async def get_session(self, session_id: UUID) -> CollaborationSession | None:
@@ -353,7 +353,7 @@ class InfrastructureNationalArchiveService:
             original_checksum=doc.checksum_sha256,
             preservation_checksum=doc.checksum_sha256,
             preservation_location=doc.storage_path,
-            next_integrity_check=datetime.utcnow() + timedelta(days=90),
+            next_integrity_check=datetime.now(UTC) + timedelta(days=90),
         )
         return await self._preservation.save(record)
 
@@ -368,7 +368,7 @@ class InfrastructureNationalArchiveService:
             "original_checksum": record.original_checksum,
             "current_checksum": current_checksum,
             "intact": current_checksum == record.original_checksum,
-            "checked_at": datetime.utcnow().isoformat(),
+            "checked_at": datetime.now(UTC).isoformat(),
         }
 
     async def restore_from_archive(self, document_id: UUID) -> ScannedDocument:

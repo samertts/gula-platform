@@ -79,6 +79,9 @@ norecursedirs = ["archive", "docs", "frontend", "frontend-v2", "node_modules",
 addopts = "-ra --strict-markers --strict-config -v --tb=short"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+filterwarnings = [
+    "error::pydantic.warnings.PydanticDeprecatedSince20",
+]
 markers = [
     "unit: isolated logic tests (no DB, no network)",
     "integration: tests that require a DB session",

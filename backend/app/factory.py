@@ -79,8 +79,8 @@ def _should_init_sentry() -> bool:
 def configure_sentry() -> None:
     import logging
 
-    _SENTRY_DSN = os.getenv("SENTRY_DSN")
-    if _SENTRY_DSN:
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
         try:
             import sentry_sdk
             from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -88,7 +88,7 @@ def configure_sentry() -> None:
             from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
             sentry_sdk.init(
-                dsn=_SENTRY_DSN,
+                dsn=sentry_dsn,
                 environment=os.getenv("ENVIRONMENT", "production"),
                 release=os.getenv("APP_VERSION", "unknown"),
                 integrations=[
@@ -108,6 +108,26 @@ def import_all_models() -> None:
 
     Called once at startup. Must be idempotent.
     """
+    from .billing.models import (  # noqa: F401
+        BillingAuditEvent,
+        BillingInvoice,
+        BillingInvoiceLine,
+        BillingPayment,
+        InsuranceCoverage,
+    )
+    from .capabilities.fhir_interoperability.models import FHIRResourceRecord  # noqa: F401
+    from .devices.models import (  # noqa: F401
+        DeviceConnector,
+        DeviceEvent,
+        DeviceGateway,
+        DeviceGatewayAlert,
+        DeviceGatewayMetricSnapshot,
+        DeviceOutboxMessage,
+        DevicePrintJob,
+        DeviceProtocolProfile,
+        IntegratedDevice,
+        WearableMeasurement,
+    )
     from .document_intelligence.infrastructure.models import (  # noqa: F401
         AccessControlModel,
         ClassificationResultModel,
@@ -181,14 +201,6 @@ def import_all_models() -> None:
         Transportation,
         Workstation,
     )
-    from .billing.models import (  # noqa: F401
-        BillingAuditEvent,
-        BillingInvoice,
-        BillingInvoiceLine,
-        BillingPayment,
-        InsuranceCoverage,
-    )
-    from .models.claim import Claim, ClaimItem  # noqa: F401
     from .models import (  # noqa: F401
         AuditLog,
         AuthorizationAudit,
@@ -220,6 +232,7 @@ def import_all_models() -> None:
         AIUnresolvedQuestion,
         MedicalTerminologyNormalized,
     )
+    from .models.claim import Claim, ClaimItem  # noqa: F401
     from .models.edge import (  # noqa: F401
         EdgeDevice,
         EdgeEvent,
@@ -229,21 +242,7 @@ def import_all_models() -> None:
         EdgeTask,
         EdgeTelemetry,
     )
-    from .devices.models import (  # noqa: F401
-        DeviceConnector,
-        DeviceEvent,
-        DeviceGateway,
-        DeviceGatewayAlert,
-        DeviceGatewayMetricSnapshot,
-        DeviceOutboxMessage,
-        DevicePrintJob,
-        DeviceProtocolProfile,
-        IntegratedDevice,
-        WearableMeasurement,
-    )
-    from .capabilities.fhir_interoperability.models import FHIRResourceRecord  # noqa: F401
     from .models.outbox import OutboxEvent  # noqa: F401
-    from .payments import models as payment_models  # noqa: F401
     from .models.subscription import (  # noqa: F401
         FeatureFlag,
         LabSubscription,
@@ -343,6 +342,8 @@ def import_all_models() -> None:
         PressureInjuryAssessment,
         ShiftHandover,
     )
+    from .payments import models as payment_models  # noqa: F401
+    from .payments import subscription_models  # noqa: F401
     from .pharmacy.models import (  # noqa: F401
         AllergyRule,
         ClinicalGuideline,
@@ -368,7 +369,6 @@ def import_all_models() -> None:
         Warehouse,
         WasteRecord,
     )
-    from .payments import subscription_models  # noqa: F401
     from .radiology.ai import AIAnalysisJob  # noqa: F401
     from .radiology.models import (  # noqa: F401
         MPPS,
@@ -409,9 +409,9 @@ def _build_middleware_stack(app: FastAPI) -> None:
         RequestTimingMiddleware,
         SecurityHeadersMiddleware,
     )
-    from .security.csrf import CSRFMiddleware
 
     from .config import MAX_REQUEST_BODY_MB
+    from .security.csrf import CSRFMiddleware
 
     app.add_middleware(MaxBodySizeMiddleware, max_size_mb=MAX_REQUEST_BODY_MB)
     app.add_middleware(GlobalRateLimitMiddleware)
@@ -496,16 +496,18 @@ def _register_routes(app: FastAPI) -> None:
     In openapi mode, we still register routes (they define the OpenAPI schema)
     but skip any route module that requires DB/AI/external service imports.
     """
+    from .billing import routes as billing_routes
     from .routes import (
         admin,
         admin_log_level,
+        app_updates,
         batch,
+        cds_hooks,
         compliance,
         critical_alerts,
-        cds_hooks,
         dashboard,
-        device_results,
         demo,
+        device_results,
         ehr,
         ehr_fhir,
         id_scan,
@@ -527,9 +529,7 @@ def _register_routes(app: FastAPI) -> None:
         setup,
         test_results,
         verification,
-        app_updates,
     )
-    from .billing import routes as billing_routes
     from .routes import ai as ai_routes
     from .routes import citizen_portal as citizen_portal_routes
     from .routes import citizen_relationship_admin as citizen_relationship_admin_routes
@@ -558,11 +558,11 @@ def _register_routes(app: FastAPI) -> None:
     from .financial import register_routes as register_financial_routes
     register_financial_routes(app)
 
-    from .payments.routes import router as payments_router
+    from .payments.control_routes import router as payments_control_router
     from .payments.fx_routes import router as payments_fx_router
     from .payments.orchestration_routes import router as payments_orchestration_router
+    from .payments.routes import router as payments_router
     from .payments.subscription_routes import router as payments_subscription_router
-    from .payments.control_routes import router as payments_control_router
     app.include_router(payments_router)
     app.include_router(payments_fx_router)
     app.include_router(payments_orchestration_router)
@@ -625,8 +625,10 @@ def _register_routes(app: FastAPI) -> None:
 
     from .devices.routes import router as device_integration_router
     app.include_router(device_integration_router)
-
+    from .chronic_care.routes import router as chronic_care_router
+    app.include_router(chronic_care_router)
     from .capabilities.fhir_interoperability.routes import router as fhir_interoperability_router
+
     app.include_router(fhir_interoperability_router)
 
     from .routes import patient_card as patient_card_routes
@@ -698,9 +700,6 @@ def _register_routes(app: FastAPI) -> None:
 
     from .contracts.routes import router as contracts_router
     app.include_router(contracts_router)
-
-    from .integration.connectors.routes import router as connectors_router
-    app.include_router(connectors_router)
 
     from .routes import hospital as hospital_routes
     app.include_router(hospital_routes.router)
