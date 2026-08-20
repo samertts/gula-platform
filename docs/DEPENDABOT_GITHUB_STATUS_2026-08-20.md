@@ -52,3 +52,13 @@ After an additional three-minute wait, GitHub still reports `Dependency file che
 Because GitHub identifies `mobile/android/settings.gradle.kts` as the manifest for the UTP path, the patched release is now declared directly in that settings buildscript classpath and forced there as `io.netty:netty-codec-http:4.1.137.Final`. The existing root and app-level constraints remain in place, so the actual Gradle build classpath and project configurations resolve the patched version.
 
 Local gates after this change: `npm run test:security` passed; Gradle `help` and `buildEnvironment` passed and showed Netty `4.1.137.Final`; Ruff on changed Python files passed; `git diff --check` passed. GitHub server-side status remains pending until the refreshed scan completes.
+
+
+## After d41057d8
+
+The settings-level Netty pin was pushed to `main` as commit `d41057d8`, and local Gradle gates passed. GitHub's Dependabot page, however, still displays the prior `Dependency file check in progress for commit e7652fe…` message and the same `1 Open` / `89 Closed` counts. The page has not yet reflected the new commit or produced a final result for alert #471. GitHub's push hook also reported one moderate vulnerability, so the alert remains open and is not being marked closed by assumption.
+
+
+## GitHub refresh limit
+
+The Dependabot management menu now reports: `Refresh Dependabot alerts — Refreshed recently, available again in about 1 hour.` Therefore another manual refresh cannot be triggered at this time. The page still shows the stale in-progress check for `e7652fe` and `1 Open`; no UI action was used to dismiss or suppress the alert.

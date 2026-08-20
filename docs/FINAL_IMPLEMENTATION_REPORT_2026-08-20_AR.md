@@ -20,7 +20,7 @@
 | Pydantic v2 | إضافة بوابة `PydanticDeprecatedSince20` كخطأ في إعدادات pytest، واستبدال `finite` المهجور بـ `FiniteFloat` في مخطط الأجهزة. | لا توجد أخطاء Pydantic في التشغيل الكامل |
 | التواريخ وRedis | استبدال `datetime.utcnow()` في الخدمات الرئيسية بـ `datetime.now(UTC)`، واستبدال `setex` بـ `set(..., ex=ttl)` في الإحصاءات. | suite ناجح؛ بقيت تحذيرات عامة مولدة/اعتمادية موثقة أدناه |
 | OpenAPI | إزالة التسجيل المكرر لراوتر connectors، وتعيين operation IDs فريدة لمسارات تغيير كلمة المرور. | آخر تحقق ناجح: 1774 مساراً، منها مسارات chronic-care |
-| Dependabot وAndroid | تثبيت Netty 4.1.137.Final في resolution strategies، إضافة قيد مباشر في app dependencies، وإضافة declaration في buildscript classpath؛ كما تم الحفاظ على إصلاحات PostCSS وuuid وBouncy Castle وimage-size السابقة. | Gradle `help` و`dependencyInsight` ناجحان، واختبار parser الأمني ناجح |
+| Dependabot وAndroid | تثبيت Netty 4.1.137.Final في resolution strategies، إضافة قيد مباشر في app dependencies وroot buildscript، ثم إضافة pin صريح داخل `mobile/android/settings.gradle.kts` نفسه لأن GitHub يعرّف هذا الملف كـ manifest لمسار UTP؛ كما تم الحفاظ على إصلاحات PostCSS وuuid وBouncy Castle وimage-size السابقة. | Gradle `help` و`buildEnvironment` ناجحان ويعرضان Netty 4.1.137.Final، واختبار parser الأمني ناجح |
 | CI والتوثيق | إبقاء بوابات CI fail-closed، حذف أداة التحقق المؤقتة `scripts/check_chronic_openapi.py`، وتحديث سجل Dependabot الخارجي وسجل GitHub المرئي. | Git status نظيف وdiff check ناجح |
 
 ## الاختبارات النهائية
@@ -48,14 +48,15 @@
 | [`ed2a395e`](https://github.com/samertts/gula-platform/commit/ed2a395e) | إضافة قيد Netty مباشر قابل للاكتشاف في Android dependencies |
 | [`20504436`](https://github.com/samertts/gula-platform/commit/20504436) | تثبيت Netty في buildscript classpath |
 | [`317d1936`](https://github.com/samertts/gula-platform/commit/317d1936) | توثيق حالة تحقق GitHub Dependabot |
+| [`d41057d8`](https://github.com/samertts/gula-platform/commit/d41057d8) | إضافة pin صريح لـ Netty داخل settings buildscript والـ manifest الذي يحدده Dependabot |
 
 ## حالة Dependabot بعد الدفع
 
-أبلغ GitHub أثناء عمليات الدفع عن وجود تنبيه Moderate واحد، وهو [Dependabot alert #471](https://github.com/samertts/gula-platform/security/dependabot/471): **Netty Vulnerable to Cache Poisoning and Information Disclosure via CORS Vary Header Overwrite**. تفاصيل GitHub تشير إلى أن `io.netty:netty-codec-http` المتعدي يأتي عبر `com.google.testing.platform:core 0.0.9-alpha04` و`com.android.tools.utp:android-test-plugin-host-emulator-control 32.3.1`، وأن `4.1.136.Final` متأثرة و`4.1.137.Final` هي النسخة المصححة. أضيفت قيود صريحة للنسخة المصححة في Android، لكن صفحة GitHub كانت لا تزال تعرض `1 Open` و`89 Closed` وتقول إن فحص dependency file قيد التنفيذ. واجهة GitHub API أعادت HTTP 403 بسبب صلاحيات integration، ولذلك تم التحقق من الصفحة عبر جلسة GitHub الموثقة في المتصفح.
+أبلغ GitHub أثناء عمليات الدفع عن وجود تنبيه Moderate واحد، وهو [Dependabot alert #471](https://github.com/samertts/gula-platform/security/dependabot/471): **Netty Vulnerable to Cache Poisoning and Information Disclosure via CORS Vary Header Overwrite**. تفاصيل GitHub تشير إلى أن `io.netty:netty-codec-http` المتعدي يأتي عبر `com.google.testing.platform:core 0.0.9-alpha04` و`com.android.tools.utp:android-test-plugin-host-emulator-control 32.3.1`، وأن `4.1.136.Final` متأثرة و`4.1.137.Final` هي النسخة المصححة. أضيفت قيود صريحة للنسخة المصححة في Android، بما فيها pin داخل `settings.gradle.kts`، ونجحت بوابات Gradle المحلية. بعد دفع `d41057d8`، كانت صفحة GitHub لا تزال تعرض نتيجة الفحص القديمة `e7652fe` مع `1 Open` و`89 Closed` وتقول إن فحص dependency file قيد التنفيذ. كما تعرض قائمة الإدارة أن إعادة الفحص اليدوي متاحة مجدداً بعد نحو ساعة. أبلغ push hook عن تنبيه Moderate واحد، ولذلك لم أعتبر #471 مغلقاً ولم أستخدم dismiss أو أي نجاح كاذب. واجهة GitHub API أعادت HTTP 403 بسبب صلاحيات integration، ولذلك تم التحقق من الصفحة عبر جلسة GitHub الموثقة في المتصفح.
 
 ## ما يلزم قبل الإطلاق الإنتاجي
 
-أولاً، يجب انتظار اكتمال تحليل Dependabot ثم إعادة فتح [صفحة التنبيه](https://github.com/samertts/gula-platform/security/dependabot/471). إذا بقي التنبيه مفتوحاً، ينبغي قبول Security Update PR الذي ينشئه Dependabot أو تعديل مصدر UTP/Android Test Plugin الذي يطلب `4.1.136.Final`، ثم إعادة بناء Android والتحقق من dependency graph. لا ينبغي إغلاق التنبيه يدوياً باعتباره غير ذي صلة.
+أولاً، يجب انتظار اكتمال تحليل Dependabot الجديد ثم إعادة فتح [صفحة التنبيه](https://github.com/samertts/gula-platform/security/dependabot/471) بعد إتاحة زر Refresh مجدداً. إذا بقي التنبيه مفتوحاً رغم pin داخل settings ونجاح `buildEnvironment` على `4.1.137.Final`، ينبغي مراجعة Security Update PR أو مصدر UTP/Android Test Plugin الذي يطلب `4.1.136.Final`، ثم إعادة بناء Android والتحقق من dependency graph. لا ينبغي إغلاق التنبيه يدوياً باعتباره غير ذي صلة.
 
 ثانياً، يجب معالجة التحذيرات الـ167 المتبقية على دفعات صغيرة، بدءاً بالتحذيرات التي تأتي من كود التطبيق أو نماذج SQLAlchemy، ثم تثبيت سياسة CI أدق بدلاً من تجاهل `DeprecationWarning` على مستوى المشروع بأكمله.
 
@@ -65,4 +66,4 @@
 
 ## ملفات التوثيق
 
-يوجد سجل تحقق Dependabot المرئي في [`docs/DEPENDABOT_GITHUB_STATUS_2026-08-20.md`](./DEPENDABOT_GITHUB_STATUS_2026-08-20.md). هذا السجل يحافظ على الدليل الزمني لحالة GitHub ولا يدّعي إغلاق التنبيه قبل اكتمال الفحص.
+يوجد سجل تحقق Dependabot المرئي في [`docs/DEPENDABOT_GITHUB_STATUS_2026-08-20.md`](./DEPENDABOT_GITHUB_STATUS_2026-08-20.md). هذا السجل يحافظ على الدليل الزمني لحالة GitHub، بما في ذلك قيد إعادة الفحص لمدة ساعة، ولا يدّعي إغلاق التنبيه قبل اكتمال الفحص.
