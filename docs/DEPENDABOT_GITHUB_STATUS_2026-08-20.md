@@ -18,3 +18,37 @@ This finding must be rechecked after GitHub finishes dependency-file analysis; i
 The authenticated GitHub Security page still displayed `1 Open` and `89 Closed`, with alert #471 remaining Moderate. GitHub was still showing dependency-file checking in progress for the earlier analyzed commit, so the status is not yet a completed post-scan result for `20504436`. The page continues to identify the transitive path through `com.google.testing.platform:core 0.0.9-alpha04` and `com.android.tools.utp:android-test-plugin-host-emulator-control 32.3.1`, with affected Netty `4.1.136.Final` and patched `4.1.137.Final`.
 
 Source: https://github.com/samertts/gula-platform/security/dependabot/471
+
+
+## Forced refresh
+
+On 20 August 2026, the repository's authenticated GitHub Security page was used to select **Refresh Dependabot alerts**. GitHub confirmed: `Refresh queued, it may take several minutes to see changes reflected in your alerts.` The alert was intentionally not dismissed; its open state remains the source of truth until the refreshed dependency graph confirms the patched version.
+
+
+## Refreshed scan status
+
+After the forced refresh, GitHub now reports: `Dependency file check in progress for commit e7652fe…`. The page still shows `1 Open` and `89 Closed`, with alert #471 listed as Moderate. This confirms that the refresh is analyzing the latest default-branch commit rather than the previously stale `d8d4805` graph; the result is still pending.
+
+Source: https://github.com/samertts/gula-platform/security/dependabot
+
+
+## Post-wait verification
+
+After an additional wait, the GitHub page still reports `Dependency file check in progress for commit e7652fe…` and still lists `1 Open` / `89 Closed`. The scan has not produced a final alert state yet.
+
+
+## Extended-wait verification
+
+After a further two-minute wait, GitHub still reports `Dependency file check in progress for commit e7652fe…`; the list remains `1 Open` and `89 Closed`, and alert #471 remains Moderate. The repository-side Gradle graph is patched and verified, but GitHub's server-side scan has not returned a final state yet.
+
+
+## Third extended-wait verification
+
+After an additional three-minute wait, GitHub still reports `Dependency file check in progress for commit e7652fe…` and continues to list `1 Open` / `89 Closed`. No final result has been published by GitHub yet.
+
+
+## Local remediation applied
+
+Because GitHub identifies `mobile/android/settings.gradle.kts` as the manifest for the UTP path, the patched release is now declared directly in that settings buildscript classpath and forced there as `io.netty:netty-codec-http:4.1.137.Final`. The existing root and app-level constraints remain in place, so the actual Gradle build classpath and project configurations resolve the patched version.
+
+Local gates after this change: `npm run test:security` passed; Gradle `help` and `buildEnvironment` passed and showed Netty `4.1.137.Final`; Ruff on changed Python files passed; `git diff --check` passed. GitHub server-side status remains pending until the refreshed scan completes.
