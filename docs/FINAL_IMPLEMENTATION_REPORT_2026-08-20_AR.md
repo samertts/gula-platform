@@ -6,7 +6,7 @@
 
 ## النتيجة التنفيذية
 
-اكتملت الإصلاحات الحرجة وشرائح الأمان والرعاية المزمنة المطلوبة، وأُعيد تشغيل مجموعة اختبارات backend الكاملة بنجاح، ثم دُفعت جميع التغييرات المحلية إلى الفرع `main`. أصبحت شجرة Git نظيفة ومتزامنة مع `origin/main` عند آخر تحقق، ولم يُستخدم أي نجاح كاذب لإخفاء فشل أو تحذير أمني.
+اكتملت الإصلاحات الحرجة وشرائح الأمان والرعاية المزمنة المطلوبة، وأُعيد تشغيل مجموعة اختبارات backend الكاملة بنجاح. أُضيف commit أمني نهائي `fba4203d` يضم فحص التبعيات الشامل، وتحديث lockfile، وإزالة التبعيات غير المستخدمة؛ وبعد دفعه تصبح شجرة Git متزامنة مع `origin/main`. لم يُستخدم أي نجاح كاذب لإخفاء فشل أو تحذير أمني.
 
 > **ملاحظة أمنية مهمة:** ما زال GitHub يعرض تنبيهاً واحداً مفتوحاً بدرجة Moderate متعلقاً بـ Netty، بينما كانت عملية فحص ملف التبعيات قيد التنفيذ. لذلك لا أعتبر حالة Dependabot صفراً ولا أوصي بإطلاق بيانات صحية حقيقية قبل إعادة التحقق من التنبيه بعد اكتمال فحص GitHub.
 
@@ -22,6 +22,7 @@
 | OpenAPI | إزالة التسجيل المكرر لراوتر connectors، وتعيين operation IDs فريدة لمسارات تغيير كلمة المرور. | آخر تحقق ناجح: 1774 مساراً، منها مسارات chronic-care |
 | Dependabot وAndroid | تثبيت Netty 4.1.137.Final في resolution strategies، إضافة قيد مباشر في app dependencies وroot buildscript، ثم إضافة pin صريح داخل `mobile/android/settings.gradle.kts` نفسه لأن GitHub يعرّف هذا الملف كـ manifest لمسار UTP؛ كما تم الحفاظ على إصلاحات PostCSS وuuid وBouncy Castle وimage-size السابقة. | Gradle `help` و`buildEnvironment` ناجحان ويعرضان Netty 4.1.137.Final، واختبار parser الأمني ناجح |
 | CI والتوثيق | إبقاء بوابات CI fail-closed، حذف أداة التحقق المؤقتة `scripts/check_chronic_openapi.py`، وتحديث سجل Dependabot الخارجي وسجل GitHub المرئي. | Git status نظيف وdiff check ناجح |
+| التدقيق الإضافي للتبعيات | فحص Python وNode/Expo وpnpm وAndroid/Maven، مع إعادة OSV على النسخ المحلولة فعلياً. | **صفر ثغرات مؤكدة؛ 531 حزمة Maven مفحوصة**؛ التفاصيل في [تقرير التدقيق](./DEPENDENCY_SECURITY_AUDIT_2026-08-20_AR.md) |
 
 ## الاختبارات النهائية
 
@@ -33,6 +34,10 @@
 | `git diff --check` | **ناجح** |
 | Gradle `help` | **ناجح** |
 | Gradle `dependencyInsight` لـ Netty | **ناجح**؛ لا فشل في إعداد Gradle |
+| pip-audit | **صفر ثغرات مؤكدة** في ملفات Python المفحوصة |
+| npm/pnpm audit | **صفر ثغرات مؤكدة** في المشاريع المقفلة المفحوصة |
+| OSV على Maven/Android | **531 حزمة محلولة، صفر findings** |
+| ui-refresh frozen install وdrizzle-kit | **ناجح**؛ `drizzle-kit 0.31.10` و`drizzle-orm 0.45.2` |
 | اختبارات chronic-care safety السابقة | **3/3 ناجحة** |
 
 التحذيرات المتبقية وعددها 167 لم تمنع الاختبارات، ولا تشير نتيجة التشغيل الأخيرة إلى فشل بوابة Pydantic. يظهر جزء من التحذيرات في مواقع مولدة مثل `<string>` أو في اعتماديات/مسارات اختبارية؛ لذلك ينبغي تنظيفها تدريجياً قبل رفع معيار CI إلى `-W error` لكل تحذيرات الإهمال، مع عدم تحويلها إلى تجاهل عام.
@@ -49,6 +54,7 @@
 | [`20504436`](https://github.com/samertts/gula-platform/commit/20504436) | تثبيت Netty في buildscript classpath |
 | [`317d1936`](https://github.com/samertts/gula-platform/commit/317d1936) | توثيق حالة تحقق GitHub Dependabot |
 | [`d41057d8`](https://github.com/samertts/gula-platform/commit/d41057d8) | إضافة pin صريح لـ Netty داخل settings buildscript والـ manifest الذي يحدده Dependabot |
+| `fba4203d` | تدقيق تبعيات شامل؛ تحديث wouter/esbuild وlockfile؛ إزالة Cornerstone غير المستخدمة؛ توثيق النتائج وإضافة تجاهل Gradle المؤقت |
 
 ## حالة Dependabot بعد الدفع
 
@@ -66,4 +72,4 @@
 
 ## ملفات التوثيق
 
-يوجد سجل تحقق Dependabot المرئي في [`docs/DEPENDABOT_GITHUB_STATUS_2026-08-20.md`](./DEPENDABOT_GITHUB_STATUS_2026-08-20.md). هذا السجل يحافظ على الدليل الزمني لحالة GitHub، بما في ذلك قيد إعادة الفحص لمدة ساعة، ولا يدّعي إغلاق التنبيه قبل اكتمال الفحص.
+يوجد سجل تحقق Dependabot المرئي في [`docs/DEPENDABOT_GITHUB_STATUS_2026-08-20.md`](./DEPENDABOT_GITHUB_STATUS_2026-08-20.md)، كما يوجد تقرير التبعيات الكامل في [`docs/DEPENDENCY_SECURITY_AUDIT_2026-08-20_AR.md`](./DEPENDENCY_SECURITY_AUDIT_2026-08-20_AR.md). يحافظ السجلان على الدليل الزمني لحالة GitHub ونتائج الفحص المحلي، ولا يدّعيان إغلاق التنبيه قبل اكتمال فحص GitHub.
