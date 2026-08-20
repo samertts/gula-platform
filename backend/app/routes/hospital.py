@@ -1,11 +1,13 @@
 from datetime import date, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
+from ..clinical.command_guard import ClinicalCommandGuard
 from ..database import get_db
+from ..domain.exceptions import ConflictError, NotFoundError
 from ..hospital.models import (
     Bed,
     BedAssignment,
@@ -170,6 +172,30 @@ class UnitCreate(NestedCreate):
         return v
 
 
+class OperationTheaterStatusUpdate(BaseModel):
+    status: str
+    surgery_id: int | None = None
+
+
+class SurgicalSafetyChecklistComplete(BaseModel):
+    surgery_id: int
+    patient_id: int
+    procedure_name: str
+    procedure_site: str
+    planned_laterality: str = "not_applicable"
+    patient_identity_confirmed: bool
+    procedure_confirmed: bool
+    site_marked: bool
+    consent_verified: bool
+    anesthesia_assessment_complete: bool
+    allergy_reviewed: bool
+    antibiotic_prophylaxis_confirmed: bool
+    blood_products_confirmed: bool
+    imaging_reviewed: bool
+    team_time_out_completed: bool
+    notes: str | None = None
+
+
 class OperationTheaterCreate(NestedCreate):
     department_id: int | None = None
     theater_type: str
@@ -249,6 +275,64 @@ def _paginated_response(items: list, total: int, skip: int, limit: int) -> dict:
         "skip": skip,
         "limit": limit,
     }
+
+
+def _run_hospital_command(
+    *,
+    operation: str,
+    resource_type: str,
+    resource_id: int,
+    state_before: str,
+    version_before: int,
+    current_user: LabUser,
+    db: Session,
+    if_match: str | None,
+    idempotency_key: str | None,
+    mutation,
+):
+    """Run a state-changing hospital command with durable safety evidence."""
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=current_user.lab_id,
+        actor_role=current_user.role,
+    )
+    guard.require_expected_version(if_match, current_version=version_before, resource_name=resource_type)
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation=operation,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        idempotency_key=key,
+        payload={"if_match": if_match},
+    )
+    try:
+        result, state_after, version_after = mutation()
+        guard.complete(
+            receipt,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            state_before=state_before,
+            state_after=state_after,
+            version_before=version_before,
+            version_after=version_after,
+        )
+        db.commit()
+    except (HTTPException, ConflictError, NotFoundError) as exc:
+        db.rollback()
+        guard.reject(
+            operation=operation,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason=str(getattr(exc, "detail", exc)),
+        )
+        db.commit()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return result
 
 
 # ── Hospital CRUD ──────────────────────────────────────────────────────────────
@@ -545,12 +629,36 @@ def assign_bed(
     body: BedAssign,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    bed = HospitalService.assign_bed(
-        db, current_user.lab_id, current_user.id, bed_id,
-        body.patient_id, body.reason, body.diagnosis,
+    bed = HospitalService._get_entity(db, Bed, bed_id, current_user.lab_id)
+    assigned = _run_hospital_command(
+        operation="hospital.bed.assign",
+        resource_type="hospital_bed",
+        resource_id=bed_id,
+        state_before=bed.status,
+        version_before=bed.version,
+        current_user=current_user,
+        db=db,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+        mutation=lambda: (
+            HospitalService.assign_bed(
+                db,
+                current_user.lab_id,
+                current_user.id,
+                bed_id,
+                body.patient_id,
+                expected_version=bed.version,
+                reason=body.reason,
+                diagnosis=body.diagnosis,
+            ),
+            "occupied",
+            bed.version,
+        ),
     )
-    return _model_to_dict(bed)
+    return _model_to_dict(assigned)
 
 
 @router.post("/beds/{bed_id}/discharge", summary="Discharge patient from bed")
@@ -559,11 +667,34 @@ def discharge_bed(
     body: BedDischarge,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    bed = HospitalService.discharge_bed(
-        db, current_user.lab_id, current_user.id, bed_id, body.discharge_reason,
+    bed = HospitalService._get_entity(db, Bed, bed_id, current_user.lab_id)
+    discharged = _run_hospital_command(
+        operation="hospital.bed.discharge",
+        resource_type="hospital_bed",
+        resource_id=bed_id,
+        state_before=bed.status,
+        version_before=bed.version,
+        current_user=current_user,
+        db=db,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+        mutation=lambda: (
+            HospitalService.discharge_bed(
+                db,
+                current_user.lab_id,
+                current_user.id,
+                bed_id,
+                expected_version=bed.version,
+                discharge_reason=body.discharge_reason,
+            ),
+            "cleaning",
+            bed.version,
+        ),
     )
-    return _model_to_dict(bed)
+    return _model_to_dict(discharged)
 
 
 @router.post("/beds/{bed_id}/transfer", summary="Transfer patient to another bed")
@@ -572,10 +703,41 @@ def transfer_bed(
     body: BedTransfer,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    target_if_match: str | None = Header(None, alias="X-Target-Bed-If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    return HospitalService.transfer_bed(
-        db, current_user.lab_id, current_user.id,
-        bed_id, body.to_bed_id, body.reason,
+    source = HospitalService._get_entity(db, Bed, bed_id, current_user.lab_id)
+    target = HospitalService._get_entity(db, Bed, body.to_bed_id, current_user.lab_id)
+    ClinicalCommandGuard.require_expected_version(
+        target_if_match,
+        current_version=target.version,
+        resource_name="target hospital bed",
+    )
+    return _run_hospital_command(
+        operation="hospital.bed.transfer",
+        resource_type="hospital_bed",
+        resource_id=bed_id,
+        state_before=source.status,
+        version_before=source.version,
+        current_user=current_user,
+        db=db,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+        mutation=lambda: (
+            HospitalService.transfer_bed(
+                db,
+                current_user.lab_id,
+                current_user.id,
+                bed_id,
+                body.to_bed_id,
+                from_expected_version=source.version,
+                to_expected_version=target.version,
+                reason=body.reason,
+            ),
+            "cleaning",
+            source.version,
+        ),
     )
 
 
@@ -643,20 +805,81 @@ def create_operation_theater(
     return _model_to_dict(ot)
 
 
+@router.post(
+    "/operation-theaters/{ot_id}/surgical-safety-checklists",
+    summary="Complete surgical safety checklist",
+    status_code=201,
+)
+def complete_surgical_safety_checklist(
+    ot_id: int,
+    body: SurgicalSafetyChecklistComplete,
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+):
+    theater = HospitalService._get_entity(db, OperationTheater, ot_id, current_user.lab_id)
+    checklist = _run_hospital_command(
+        operation="hospital.surgical_safety_checklist.complete",
+        resource_type="hospital_operation_theater",
+        resource_id=ot_id,
+        state_before=theater.status,
+        version_before=theater.version,
+        current_user=current_user,
+        db=db,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+        mutation=lambda: (
+            HospitalService.complete_surgical_safety_checklist(
+                db,
+                current_user.lab_id,
+                current_user.id,
+                {"operation_theater_id": ot_id, **body.model_dump()},
+            ),
+            theater.status,
+            theater.version,
+        ),
+    )
+    return _model_to_dict(checklist)
+
+
 @router.put("/operation-theaters/{ot_id}/status", summary="Update operation theater status")
 def update_ot_status(
     ot_id: int,
-    status: str,
+    body: OperationTheaterStatusUpdate,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    ot = HospitalService._get_entity(db, OperationTheater, ot_id, current_user.lab_id)
-    allowed = {"available", "in_use", "cleaning", "maintenance"}
-    if status not in allowed:
-        raise HTTPException(status_code=400, detail=f"Status must be one of {allowed}")
-    ot.status = status
-    db.flush()
-    return _model_to_dict(ot)
+    theater = HospitalService._get_entity(db, OperationTheater, ot_id, current_user.lab_id)
+    if body.status not in {"available", "in_use", "cleaning", "maintenance"}:
+        raise HTTPException(status_code=400, detail="Unsupported operation theater status")
+    updated = _run_hospital_command(
+        operation="hospital.operation_theater.status_change",
+        resource_type="hospital_operation_theater",
+        resource_id=ot_id,
+        state_before=theater.status,
+        version_before=theater.version,
+        current_user=current_user,
+        db=db,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+        mutation=lambda: (
+            HospitalService.update_operation_theater_status(
+                db,
+                current_user.lab_id,
+                current_user.id,
+                ot_id,
+                expected_version=theater.version,
+                next_status=body.status,
+                surgery_id=body.surgery_id,
+            ),
+            body.status,
+            theater.version,
+        ),
+    )
+    return _model_to_dict(updated)
 
 
 # ── Medical Equipment CRUD ─────────────────────────────────────────────────────

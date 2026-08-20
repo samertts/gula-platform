@@ -33,6 +33,10 @@ class InvalidIncidentStateError(EMSException):
     pass
 
 
+class EMSWorkflowError(EMSException):
+    """Raised when an emergency clinical workflow safety rule is violated."""
+
+
 class TriageNotFoundError(EMSException):
     pass
 

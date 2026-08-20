@@ -22,11 +22,27 @@ from ..hospital.models import (
     MedicalEquipment,
     OperationTheater,
     Room,
+    SurgicalSafetyChecklist,
     Unit,
 )
 from ..models.patient import Patient
 from ..national.domain.appointment import Appointment
 from ..services.audit_service import log_action
+
+_BED_TRANSITIONS: dict[str, set[str]] = {
+    "available": {"occupied", "reserved", "maintenance"},
+    "occupied": {"cleaning"},
+    "reserved": {"available", "occupied"},
+    "cleaning": {"available", "maintenance"},
+    "maintenance": {"available"},
+}
+
+_THEATER_TRANSITIONS: dict[str, set[str]] = {
+    "available": {"in_use", "maintenance"},
+    "in_use": {"cleaning"},
+    "cleaning": {"available", "maintenance"},
+    "maintenance": {"available"},
+}
 
 
 class HospitalService:
@@ -260,19 +276,36 @@ class HospitalService:
 
     @staticmethod
     def assign_bed(
-        db: Session, lab_id: int, user_id: int, bed_id: int, patient_id: int,
-        reason: str | None = None, diagnosis: str | None = None,
+        db: Session,
+        lab_id: int,
+        user_id: int,
+        bed_id: int,
+        patient_id: int,
+        *,
+        expected_version: int,
+        reason: str | None = None,
+        diagnosis: str | None = None,
     ) -> Bed:
-        bed = HospitalService._get_entity(db, Bed, bed_id, lab_id)
+        bed = db.query(Bed).filter(
+            Bed.id == bed_id,
+            Bed.lab_id == lab_id,
+            ~Bed.is_deleted,
+        ).with_for_update().first()
+        if not bed:
+            raise NotFoundError("Bed not found")
+        if bed.version != expected_version:
+            raise ConflictError("Bed version conflict")
         patient = db.query(Patient).filter(
             Patient.id == patient_id, Patient.lab_id == lab_id,
         ).first()
         if not patient:
             raise NotFoundError("Patient not found")
-        if bed.status != "available":
-            raise ConflictError(f"Bed is currently {bed.status}")
+        if "occupied" not in _BED_TRANSITIONS.get(bed.status, set()):
+            raise ConflictError(f"Bed cannot transition from {bed.status} to occupied")
+        state_before = bed.status
         bed.status = "occupied"
         bed.current_patient_id = patient_id
+        bed.version += 1
         assignment = BedAssignment(
             lab_id=lab_id, created_by=user_id,
             bed_id=bed_id, patient_id=patient_id,
@@ -281,57 +314,284 @@ class HospitalService:
         )
         db.add(assignment)
         db.flush()
-        log_action(db, "bed.assign", bed_id, lab_id, user_id, {
-            "patient_id": patient_id, "reason": reason,
-        })
+        log_action(
+            db,
+            action="bed.assign",
+            resource_type="hospital_bed",
+            resource_id=str(bed_id),
+            user_id=user_id,
+            user_role="hospital_staff",
+            lab_id=lab_id,
+            details={
+                "patient_id": patient_id,
+                "reason": reason,
+                "state_before": state_before,
+                "state_after": bed.status,
+                "version": bed.version,
+            },
+        )
         return bed
 
     @staticmethod
     def discharge_bed(
-        db: Session, lab_id: int, user_id: int, bed_id: int,
+        db: Session,
+        lab_id: int,
+        user_id: int,
+        bed_id: int,
+        *,
+        expected_version: int,
         discharge_reason: str | None = None,
     ) -> Bed:
-        bed = HospitalService._get_entity(db, Bed, bed_id, lab_id)
-        if bed.status != "occupied":
+        bed = db.query(Bed).filter(
+            Bed.id == bed_id,
+            Bed.lab_id == lab_id,
+            ~Bed.is_deleted,
+        ).with_for_update().first()
+        if not bed:
+            raise NotFoundError("Bed not found")
+        if bed.version != expected_version:
+            raise ConflictError("Bed version conflict")
+        if "cleaning" not in _BED_TRANSITIONS.get(bed.status, set()):
             raise ConflictError("Bed is not currently occupied")
         active_assignment = db.query(BedAssignment).filter(
             BedAssignment.bed_id == bed_id,
             BedAssignment.discharge_date.is_(None),
-        ).first()
+        ).with_for_update().first()
         if active_assignment:
             active_assignment.discharge_date = datetime.now(UTC)
             active_assignment.discharge_reason = discharge_reason
             active_assignment.discharged_by = user_id
+        state_before = bed.status
         bed.status = "cleaning"
         bed.current_patient_id = None
+        bed.version += 1
         db.flush()
-        log_action(db, "bed.discharge", bed_id, lab_id, user_id, {
-            "discharge_reason": discharge_reason,
-        })
+        log_action(
+            db,
+            action="bed.discharge",
+            resource_type="hospital_bed",
+            resource_id=str(bed_id),
+            user_id=user_id,
+            user_role="hospital_staff",
+            lab_id=lab_id,
+            details={
+                "discharge_reason": discharge_reason,
+                "state_before": state_before,
+                "state_after": bed.status,
+                "version": bed.version,
+            },
+        )
         return bed
 
     @staticmethod
     def transfer_bed(
-        db: Session, lab_id: int, user_id: int,
-        from_bed_id: int, to_bed_id: int,
+        db: Session,
+        lab_id: int,
+        user_id: int,
+        from_bed_id: int,
+        to_bed_id: int,
+        *,
+        from_expected_version: int,
+        to_expected_version: int,
         reason: str | None = None,
     ) -> dict[str, Any]:
-        source = HospitalService.discharge_bed(db, lab_id, user_id, from_bed_id, reason)
-        target = HospitalService._get_entity(db, Bed, to_bed_id, lab_id)
-        if target.status != "available":
-            raise ConflictError(f"Target bed is {target.status}")
+        if from_bed_id == to_bed_id:
+            raise ConflictError("Source and target beds must be different")
+        beds = db.query(Bed).filter(
+            Bed.id.in_([from_bed_id, to_bed_id]),
+            Bed.lab_id == lab_id,
+            ~Bed.is_deleted,
+        ).order_by(Bed.id).with_for_update().all()
+        by_id = {bed.id: bed for bed in beds}
+        source, target = by_id.get(from_bed_id), by_id.get(to_bed_id)
+        if source is None or target is None:
+            raise NotFoundError("Bed not found")
+        if source.version != from_expected_version or target.version != to_expected_version:
+            raise ConflictError("Bed version conflict")
+        if source.status != "occupied" or source.current_patient_id is None:
+            raise ConflictError("Source bed is not currently occupied")
+        if "occupied" not in _BED_TRANSITIONS.get(target.status, set()):
+            raise ConflictError(f"Target bed cannot transition from {target.status} to occupied")
         patient_id = source.current_patient_id
+        active_assignment = db.query(BedAssignment).filter(
+            BedAssignment.bed_id == source.id,
+            BedAssignment.discharge_date.is_(None),
+        ).with_for_update().first()
+        if active_assignment is None:
+            raise ConflictError("Source bed has no active assignment")
+        now = datetime.now(UTC)
+        active_assignment.discharge_date = now
+        active_assignment.discharge_reason = reason or "Transferred"
+        active_assignment.discharged_by = user_id
+        source.status = "cleaning"
+        source.current_patient_id = None
+        source.version += 1
         target.status = "occupied"
         target.current_patient_id = patient_id
-        assignment = BedAssignment(
-            lab_id=lab_id, created_by=user_id,
-            bed_id=to_bed_id, patient_id=patient_id,
+        target.version += 1
+        db.add(BedAssignment(
+            lab_id=lab_id,
+            created_by=user_id,
+            bed_id=to_bed_id,
+            patient_id=patient_id,
             reason=reason or "Transferred",
-            admission_date=datetime.now(UTC),
-        )
-        db.add(assignment)
+            admission_date=now,
+        ))
         db.flush()
-        return {"from_bed": from_bed_id, "to_bed": to_bed_id, "patient_id": patient_id}
+        log_action(
+            db,
+            action="bed.transfer",
+            resource_type="hospital_bed",
+            resource_id=str(from_bed_id),
+            user_id=user_id,
+            user_role="hospital_staff",
+            lab_id=lab_id,
+            details={
+                "to_bed_id": to_bed_id,
+                "patient_id": patient_id,
+                "reason": reason,
+                "source_state_after": source.status,
+                "target_state_after": target.status,
+                "source_version": source.version,
+                "target_version": target.version,
+            },
+        )
+        return {
+            "from_bed": from_bed_id,
+            "to_bed": to_bed_id,
+            "patient_id": patient_id,
+            "from_version": source.version,
+            "to_version": target.version,
+        }
+
+    @staticmethod
+    def update_operation_theater_status(
+        db: Session,
+        lab_id: int,
+        user_id: int,
+        ot_id: int,
+        *,
+        expected_version: int,
+        next_status: str,
+        surgery_id: int | None = None,
+    ) -> OperationTheater:
+        theater = db.query(OperationTheater).filter(
+            OperationTheater.id == ot_id,
+            OperationTheater.lab_id == lab_id,
+            ~OperationTheater.is_deleted,
+        ).with_for_update().first()
+        if theater is None:
+            raise NotFoundError("Operation theater not found")
+        if theater.version != expected_version:
+            raise ConflictError("Operation theater version conflict")
+        if next_status not in _THEATER_TRANSITIONS.get(theater.status, set()):
+            raise ConflictError(f"Illegal operation theater transition: {theater.status} -> {next_status}")
+        if next_status == "in_use" and surgery_id is None:
+            raise ConflictError("A surgery identifier is required before a theater enters use")
+        if next_status != "in_use" and surgery_id is not None:
+            raise ConflictError("A surgery identifier is only accepted when a theater enters use")
+        if next_status == "in_use":
+            checklist = db.query(SurgicalSafetyChecklist).filter(
+                SurgicalSafetyChecklist.lab_id == lab_id,
+                SurgicalSafetyChecklist.operation_theater_id == ot_id,
+                SurgicalSafetyChecklist.surgery_id == surgery_id,
+                SurgicalSafetyChecklist.completed_at.isnot(None),
+                ~SurgicalSafetyChecklist.is_deleted,
+            ).with_for_update().first()
+            if checklist is None:
+                raise ConflictError("A completed surgical safety checklist is required before theater use")
+        state_before = theater.status
+        theater.status = next_status
+        theater.current_surgery_id = surgery_id if next_status == "in_use" else None
+        theater.version += 1
+        theater.updated_by = user_id
+        db.flush()
+        log_action(
+            db,
+            action="operation_theater.status_changed",
+            resource_type="hospital_operation_theater",
+            resource_id=str(ot_id),
+            user_id=user_id,
+            user_role="hospital_staff",
+            lab_id=lab_id,
+            details={
+                "state_before": state_before,
+                "state_after": next_status,
+                "surgery_id": surgery_id,
+                "version": theater.version,
+            },
+        )
+        return theater
+
+    @staticmethod
+    def complete_surgical_safety_checklist(
+        db: Session,
+        lab_id: int,
+        user_id: int,
+        data: dict[str, Any],
+    ) -> SurgicalSafetyChecklist:
+        theater_id = int(data["operation_theater_id"])
+        theater = db.query(OperationTheater).filter(
+            OperationTheater.id == theater_id,
+            OperationTheater.lab_id == lab_id,
+            ~OperationTheater.is_deleted,
+        ).with_for_update().first()
+        if theater is None:
+            raise NotFoundError("Operation theater not found")
+        if theater.status != "available":
+            raise ConflictError("Safety checklist may only be completed for an available theater")
+        required_checks = (
+            "patient_identity_confirmed",
+            "procedure_confirmed",
+            "site_marked",
+            "consent_verified",
+            "anesthesia_assessment_complete",
+            "allergy_reviewed",
+            "antibiotic_prophylaxis_confirmed",
+            "blood_products_confirmed",
+            "imaging_reviewed",
+            "team_time_out_completed",
+        )
+        missing = [field for field in required_checks if not data.get(field, False)]
+        if missing:
+            raise ConflictError(f"Surgical safety checklist is incomplete: {', '.join(missing)}")
+        laterality = str(data.get("planned_laterality") or "not_applicable")
+        if laterality not in {"left", "right", "bilateral", "midline", "not_applicable"}:
+            raise ConflictError("Unsupported surgical laterality")
+        checklist = SurgicalSafetyChecklist(
+            lab_id=lab_id,
+            created_by=user_id,
+            operation_theater_id=theater_id,
+            surgery_id=int(data["surgery_id"]),
+            patient_id=int(data["patient_id"]),
+            procedure_name=str(data["procedure_name"]).strip(),
+            procedure_site=str(data["procedure_site"]).strip(),
+            planned_laterality=laterality,
+            completed_at=datetime.now(UTC),
+            completed_by=user_id,
+            notes=data.get("notes"),
+            **{field: True for field in required_checks},
+        )
+        if not checklist.procedure_name or not checklist.procedure_site:
+            raise ConflictError("Procedure name and site are required")
+        db.add(checklist)
+        db.flush()
+        log_action(
+            db,
+            action="surgery.safety_checklist.completed",
+            resource_type="hospital_surgical_safety_checklist",
+            resource_id=str(checklist.id),
+            user_id=user_id,
+            user_role="hospital_staff",
+            lab_id=lab_id,
+            details={
+                "operation_theater_id": theater_id,
+                "surgery_id": checklist.surgery_id,
+                "patient_id": checklist.patient_id,
+                "procedure_site": checklist.procedure_site,
+            },
+        )
+        return checklist
 
     @staticmethod
     def bed_occupancy_stats(db: Session, lab_id: int, hospital_id: int | None = None) -> dict[str, Any]:

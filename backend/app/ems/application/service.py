@@ -28,6 +28,7 @@ from app.ems.domain.enums import (
 from app.ems.exceptions import (
     AmbulanceNotAvailableError,
     AmbulanceNotFoundError,
+    EMSWorkflowError,
     IncidentNotFoundError,
     InvalidIncidentStateError,
     ePCRNotFoundError,
@@ -46,12 +47,49 @@ from app.ems.infrastructure.models import (
     ePCRModel,
 )
 from app.national.events.base import NationalDomainEvent
+from app.services.audit_service import log_action
+
+_INCIDENT_TRANSITIONS: dict[str, set[str]] = {
+    "pending": {"dispatched", "cancelled"},
+    "dispatched": {"en_route", "cancelled"},
+    "en_route": {"on_scene", "cancelled"},
+    "on_scene": {"transporting", "completed"},
+    "transporting": {"at_destination"},
+    "at_destination": {"completed"},
+    "completed": set(),
+    "cancelled": set(),
+}
 
 
 class EMSService:
-    def __init__(self, db: Session, event_bus: Any = None):
+    def __init__(
+        self,
+        db: Session,
+        event_bus: Any = None,
+        *,
+        actor_user_id: int | None = None,
+        actor_lab_id: int | None = None,
+        actor_role: str | None = None,
+    ):
         self.db = db
         self.event_bus = event_bus
+        self.actor_user_id = actor_user_id
+        self.actor_lab_id = actor_lab_id
+        self.actor_role = actor_role or "system"
+
+    def _audit(self, action: str, resource_type: str, resource_id: str, details: dict[str, Any]) -> None:
+        if self.actor_user_id is None or self.actor_lab_id is None:
+            return
+        log_action(
+            self.db,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            user_id=self.actor_user_id,
+            user_role=self.actor_role,
+            lab_id=self.actor_lab_id,
+            details=details,
+        )
 
     def _emit(self, event: NationalDomainEvent) -> None:
         if self.event_bus:
@@ -87,50 +125,107 @@ class EMSService:
         query = query.order_by(EmergencyIncidentModel.created_at.desc()).offset(skip).limit(limit)
         return [self._incident_from_model(m) for m in query.all()]
 
-    def update_incident_status(self, incident_id: str, new_status: str) -> EmergencyIncident:
-        model = self.db.query(EmergencyIncidentModel).filter_by(id=incident_id).first()
-        if not model or model.is_deleted:
+    def update_incident_status(
+        self,
+        incident_id: str,
+        new_status: str,
+        *,
+        expected_version: int,
+    ) -> EmergencyIncident:
+        model = self.db.query(EmergencyIncidentModel).filter(
+            EmergencyIncidentModel.id == incident_id,
+            EmergencyIncidentModel.is_deleted.isnot(True),
+        ).with_for_update().first()
+        if not model:
             raise IncidentNotFoundError(f"Incident {incident_id} not found")
-        valid_transitions = {
-            "pending": ["dispatched", "cancelled"],
-            "dispatched": ["en_route", "cancelled"],
-            "en_route": ["on_scene", "cancelled"],
-            "on_scene": ["transporting", "completed"],
-            "transporting": ["at_destination"],
-            "at_destination": ["completed"],
-        }
-        if new_status not in valid_transitions.get(model.status, []):
+        if model.version != expected_version:
+            raise EMSWorkflowError("emergency incident version conflict")
+        if new_status not in _INCIDENT_TRANSITIONS.get(model.status, set()):
             raise InvalidIncidentStateError(f"Cannot transition from {model.status} to {new_status}")
-        setattr(model, f"{new_status}_time", datetime.now(UTC))
+        state_before = model.status
+        timestamp_field = f"{new_status}_time"
+        if hasattr(model, timestamp_field):
+            setattr(model, timestamp_field, datetime.now(UTC))
         model.status = new_status
         model.updated_at = datetime.now(UTC)
-        self.db.commit()
-        self.db.refresh(model)
+        model.version += 1
+        self.db.flush()
+        self._audit(
+            "ems.incident.status_changed",
+            "ems_incident",
+            model.id,
+            {"state_before": state_before, "state_after": new_status, "version": model.version},
+        )
         return self._incident_from_model(model)
 
-    def dispatch_incident(self, incident_id: str, ambulance_id: str, crew_ids: list[str] | None = None) -> DispatchAssignment:
-        incident = self.db.query(EmergencyIncidentModel).filter_by(id=incident_id).first()
+    def dispatch_incident(
+        self,
+        incident_id: str,
+        ambulance_id: str,
+        *,
+        crew_ids: list[str] | None,
+        incident_expected_version: int,
+        ambulance_expected_version: int,
+    ) -> DispatchAssignment:
+        incident = self.db.query(EmergencyIncidentModel).filter(
+            EmergencyIncidentModel.id == incident_id,
+            EmergencyIncidentModel.is_deleted.isnot(True),
+        ).with_for_update().first()
         if not incident:
             raise IncidentNotFoundError()
-        ambulance = self.db.query(AmbulanceModel).filter_by(id=ambulance_id).first()
+        ambulance = self.db.query(AmbulanceModel).filter(
+            AmbulanceModel.id == ambulance_id,
+            AmbulanceModel.is_deleted.isnot(True),
+        ).with_for_update().first()
         if not ambulance:
             raise AmbulanceNotFoundError()
-        if ambulance.status != AmbulanceStatus.AVAILABLE.value:
-            raise AmbulanceNotAvailableError(f"Ambulance {ambulance_id} is currently {ambulance.status}")
+        if incident.version != incident_expected_version or ambulance.version != ambulance_expected_version:
+            raise EMSWorkflowError("dispatch resource version conflict")
+        if incident.status != IncidentStatus.PENDING.value:
+            raise EMSWorkflowError("only pending incidents can be dispatched")
+        if ambulance.status != AmbulanceStatus.AVAILABLE.value or ambulance.vehicle_status != "active":
+            raise AmbulanceNotAvailableError(f"Ambulance {ambulance_id} is currently unavailable")
+        if not crew_ids:
+            raise EMSWorkflowError("a dispatch requires at least one available crew member")
+        crew = self.db.query(AmbulanceCrewModel).filter(
+            AmbulanceCrewModel.id.in_(crew_ids),
+            AmbulanceCrewModel.is_deleted.isnot(True),
+        ).with_for_update().all()
+        if len(crew) != len(set(crew_ids)) or any(not member.is_active or not member.is_available for member in crew):
+            raise EMSWorkflowError("all dispatched crew members must be active and available")
+        state_before = incident.status
+        now = datetime.now(UTC)
         ambulance.status = AmbulanceStatus.EN_ROUTE.value
+        ambulance.version += 1
         incident.status = IncidentStatus.DISPATCHED.value
-        incident.dispatch_time = datetime.now(UTC)
-        incident.updated_at = datetime.now(UTC)
+        incident.dispatch_time = now
+        incident.updated_at = now
+        incident.version += 1
+        for member in crew:
+            member.is_available = False
+            member.version += 1
         dispatch = DispatchAssignmentModel(
+            lab_id=incident.lab_id,
             incident_id=incident_id,
             ambulance_id=ambulance_id,
             status=DispatchStatus.ASSIGNED.value,
-            assigned_at=datetime.now(UTC),
-            created_by="",
+            assigned_at=now,
+            created_by=str(self.actor_user_id or ""),
         )
         self.db.add(dispatch)
-        self.db.commit()
-        self.db.refresh(dispatch)
+        self.db.flush()
+        self._audit(
+            "ems.dispatch.assigned",
+            "ems_dispatch_assignment",
+            dispatch.id,
+            {
+                "incident_id": incident_id,
+                "ambulance_id": ambulance_id,
+                "crew_ids": sorted(crew_ids),
+                "state_before": state_before,
+                "state_after": incident.status,
+            },
+        )
         return self._dispatch_from_model(dispatch)
 
     # ---- Ambulance Management ----
@@ -204,21 +299,55 @@ class EMSService:
 
     # ---- Triage ----
 
-    def record_triage(self, data: dict[str, Any]) -> TriageAssessment:
-        if data.get("ambulatory") and data.get("respiratory_rate", 30) < 30:
+    def record_triage(
+        self,
+        data: dict[str, Any],
+        *,
+        incident_expected_version: int,
+    ) -> TriageAssessment:
+        incident_id = str(data.get("incident_id") or "")
+        if not incident_id:
+            raise EMSWorkflowError("triage requires an emergency incident")
+        incident = self.db.query(EmergencyIncidentModel).filter(
+            EmergencyIncidentModel.id == incident_id,
+            EmergencyIncidentModel.is_deleted.isnot(True),
+        ).with_for_update().first()
+        if incident is None:
+            raise IncidentNotFoundError()
+        if incident.version != incident_expected_version:
+            raise EMSWorkflowError("emergency incident version conflict")
+        if incident.status in {IncidentStatus.COMPLETED.value, IncidentStatus.CANCELLED.value}:
+            raise EMSWorkflowError("triage cannot be recorded for a closed incident")
+        respiratory_rate = data.get("respiratory_rate")
+        if respiratory_rate is not None and not 0 <= int(respiratory_rate) <= 120:
+            raise EMSWorkflowError("respiratory rate is outside the accepted clinical range")
+        gcs = data.get("glasgow_coma_scale")
+        if gcs is not None and not 3 <= int(gcs) <= 15:
+            raise EMSWorkflowError("Glasgow coma scale must be between 3 and 15")
+        if data.get("ambulatory") and (respiratory_rate is None or int(respiratory_rate) < 30):
             category = TriageCategory.MINOR.value
-        elif data.get("respiratory_rate", 0) > 30:
+        elif respiratory_rate is not None and int(respiratory_rate) > 30:
             category = TriageCategory.IMMEDIATE.value
         elif not data.get("ambulatory"):
             category = TriageCategory.DELAYED.value
         else:
             category = TriageCategory.MINOR.value
-        data["category"] = category
-        model = TriageAssessmentModel(**{k: v for k, v in data.items() if hasattr(TriageAssessmentModel, k)})
-        model.assessed_at = datetime.now(UTC)
+        model = TriageAssessmentModel(**{
+            **{k: v for k, v in data.items() if hasattr(TriageAssessmentModel, k)},
+            "lab_id": incident.lab_id,
+            "category": category,
+            "assessed_by": str(self.actor_user_id or data.get("assessed_by") or ""),
+            "assessed_at": datetime.now(UTC),
+        })
+        incident.version += 1
         self.db.add(model)
-        self.db.commit()
-        self.db.refresh(model)
+        self.db.flush()
+        self._audit(
+            "ems.triage.recorded",
+            "ems_triage_assessment",
+            model.id,
+            {"incident_id": incident_id, "category": category, "incident_version": incident.version},
+        )
         triage = self._triage_from_model(model)
         self._emit(create_triage_event(triage))
         return triage
@@ -247,14 +376,34 @@ class EMSService:
         query = query.offset(skip).limit(limit)
         return [self._epcr_from_model(m) for m in query.all()]
 
-    def submit_epcr(self, epcr_id: str) -> ePCR:
-        model = self.db.query(ePCRModel).filter_by(id=epcr_id).first()
+    def submit_epcr(self, epcr_id: str, *, expected_version: int) -> ePCR:
+        model = self.db.query(ePCRModel).filter(
+            ePCRModel.id == epcr_id,
+            ePCRModel.is_deleted.isnot(True),
+        ).with_for_update().first()
         if not model:
             raise ePCRNotFoundError()
+        if model.version != expected_version:
+            raise EMSWorkflowError("ePCR version conflict")
+        if model.status != "draft":
+            raise EMSWorkflowError("only a draft ePCR can be submitted")
+        if not model.chief_complaint or not model.narrative:
+            raise EMSWorkflowError("ePCR submission requires chief complaint and clinical narrative")
+        if not model.destination_facility or not model.submitting_crew_member:
+            raise EMSWorkflowError("ePCR submission requires destination and submitting crew member")
+        if not model.signatures:
+            raise EMSWorkflowError("ePCR submission requires a recorded signature")
+        state_before = model.status
         model.status = "completed"
         model.updated_at = datetime.now(UTC)
-        self.db.commit()
-        self.db.refresh(model)
+        model.version += 1
+        self.db.flush()
+        self._audit(
+            "ems.epcr.submitted",
+            "ems_epcr",
+            model.id,
+            {"state_before": state_before, "state_after": model.status, "version": model.version},
+        )
         return self._epcr_from_model(model)
 
     # ---- Hospital Status ----
