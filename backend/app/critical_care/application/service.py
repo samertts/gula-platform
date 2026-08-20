@@ -677,11 +677,6 @@ class CriticalCareService:
         if not bed or not bed.has_infusion_pump:
             raise ICUWorkflowError("Assigned ICU bed has no verified infusion pump")
         high_alert = {"insulin", "heparin", "norepinephrine", "epinephrine", "potassium chloride", "propofol", "fentanyl", "midazolam"}
-        if medication.casefold() in high_alert:
-            verifier = str(data.get("verified_by", "")).strip()
-            if not verifier or verifier == initiated_by:
-                raise ICUValidationError("High-alert infusions require an independent second verifier")
-            self._require_time(data, "verified_at")
         duplicate = (
             self.db.query(ContinuousInfusionModel)
             .filter(
@@ -689,7 +684,7 @@ class CriticalCareService:
                 ContinuousInfusionModel.patient_id == patient_id,
                 ContinuousInfusionModel.admission_id == data["admission_id"],
                 ContinuousInfusionModel.medication == medication,
-                ContinuousInfusionModel.status == "active",
+                ContinuousInfusionModel.status.in_(["awaiting_verification", "active"]),
             )
             .with_for_update()
             .first()
@@ -697,8 +692,28 @@ class CriticalCareService:
         if duplicate:
             raise ICUWorkflowError("An active infusion for this medication already exists")
         model = ContinuousInfusionModel(**{k: v for k, v in data.items() if hasattr(ContinuousInfusionModel, k)})
-        model.status = "active"
+        model.status = "awaiting_verification" if medication.casefold() in high_alert else "active"
         self.db.add(model)
+        self.db.flush()
+        return model
+
+    def verify_infusion_safely(self, infusion_id: str, lab_id: int, verified_by: str) -> ContinuousInfusionModel:
+        model = (
+            self.db.query(ContinuousInfusionModel)
+            .filter(ContinuousInfusionModel.id == infusion_id, ContinuousInfusionModel.lab_id == lab_id)
+            .with_for_update()
+            .first()
+        )
+        if not model:
+            raise InfusionNotFoundError()
+        if model.status != "awaiting_verification":
+            raise ICUWorkflowError("Only an infusion awaiting verification can be activated")
+        if not verified_by.strip() or verified_by == model.initiated_by:
+            raise ICUValidationError("High-alert infusion verification requires an independent clinical actor")
+        model.verified_by = verified_by
+        model.verified_at = datetime.now(UTC)
+        model.status = "active"
+        model.version += 1
         self.db.flush()
         return model
 

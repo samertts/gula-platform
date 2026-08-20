@@ -388,8 +388,11 @@ async def start_infusion(
         idempotency_key=key, payload=body,
     )
     try:
+        infusion_body = {
+            key: value for key, value in body.items() if key not in {"initiated_by", "verified_by", "verified_at"}
+        }
         infusion = CriticalCareService(db).start_infusion_safely(
-            {**body, "lab_id": lab_id, "initiated_by": str(current_user.id)},
+            {**infusion_body, "lab_id": lab_id, "initiated_by": str(current_user.id)},
         )
         guard.complete(
             receipt, resource_type="icu_infusion", resource_id=infusion.id,
@@ -407,6 +410,55 @@ async def start_infusion(
         _raise_icu_error(exc)
     db.refresh(infusion)
     return _infusion_to_dict(infusion)
+
+
+@router.post("/infusions/{infusion_id}/verify")
+async def verify_infusion(
+    infusion_id: str,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> dict[str, Any]:
+    """Independently activate a high-alert infusion after its initiator has recorded it."""
+    lab_id = _lab_id(current_user)
+    infusion = (
+        db.query(ContinuousInfusionModel)
+        .filter(ContinuousInfusionModel.id == infusion_id, ContinuousInfusionModel.lab_id == lab_id)
+        .with_for_update()
+        .first()
+    )
+    if not infusion:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    guard = _guard(db, current_user)
+    version_before = infusion.version
+    state_before = infusion.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="infusion")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="icu.infusion.verify", resource_type="icu_infusion", resource_id=infusion.id,
+        idempotency_key=key, payload={"infusion_id": infusion_id},
+    )
+    try:
+        verified = CriticalCareService(db).verify_infusion_safely(
+            infusion_id, lab_id, str(current_user.id),
+        )
+        guard.complete(
+            receipt, resource_type="icu_infusion", resource_id=verified.id,
+            state_before=state_before, state_after=verified.status,
+            version_before=version_before, version_after=verified.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="icu.infusion.verify", resource_type="icu_infusion", resource_id=infusion_id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        _raise_icu_error(exc)
+    db.refresh(verified)
+    return _infusion_to_dict(verified)
 
 
 @router.post("/infusions/{infusion_id}/stop")

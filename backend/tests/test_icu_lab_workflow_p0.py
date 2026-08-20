@@ -105,27 +105,25 @@ def test_icu_vitals_require_a_live_admission_and_strict_chronology(db):
 
 def test_high_alert_infusion_requires_independent_verification_and_cannot_stop_twice(db):
     service, admission = _admit_icu_patient(db)
-    command = {
-        "lab_id": LAB_ID,
-        "patient_id": admission.patient_id,
-        "admission_id": admission.id,
-        "medication": "insulin",
-        "rate": "2 ml/hr",
-        "initiated_by": "nurse-1",
-        "start_time": datetime.now(UTC),
-    }
-    with pytest.raises(ICUValidationError):
-        service.start_infusion_safely(command)
-
     infusion = service.start_infusion_safely(
         {
-            **command,
-            "verified_by": "nurse-2",
-            "verified_at": datetime.now(UTC),
+            "lab_id": LAB_ID,
+            "patient_id": admission.patient_id,
+            "admission_id": admission.id,
+            "medication": "insulin",
+            "rate": "2 ml/hr",
+            "initiated_by": "nurse-1",
+            "start_time": datetime.now(UTC),
         }
     )
-    assert infusion.status == "active"
-    assert infusion.verified_by == "nurse-2"
+    assert infusion.status == "awaiting_verification"
+
+    with pytest.raises(ICUValidationError):
+        service.verify_infusion_safely(infusion.id, LAB_ID, "nurse-1")
+
+    verified = service.verify_infusion_safely(infusion.id, LAB_ID, "nurse-2")
+    assert verified.status == "active"
+    assert verified.verified_by == "nurse-2"
 
     stopped = service.stop_infusion_safely(infusion.id, LAB_ID)
     assert stopped.status == "stopped"
