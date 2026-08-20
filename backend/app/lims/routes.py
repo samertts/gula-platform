@@ -1791,13 +1791,55 @@ def generate_report(
     data: ReportGenerateRequest,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    report = ReportService.generate_report(
-        db, data.order_id, _lab_id(current_user), data.report_number,
-        current_user.id, data.locale,
-        title=data.title, title_ar=data.title_ar,
+    lab_id = _lab_id(current_user)
+    order = db.query(lims_models.Order).filter(
+        lims_models.Order.order_id == data.order_id,
+        lims_models.Order.lab_id == lab_id,
+        lims_models.Order.is_deleted.is_(False),
+    ).with_for_update().first()
+    if not order:
+        raise HTTPException(404, detail="LIMS order not found")
+    guard = ClinicalCommandGuard(
+        db, actor_user_id=current_user.id, lab_id=lab_id, actor_role=current_user.role,
     )
-    db.commit()
+    version_before = order.version
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="LIMS order")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="report.generate", resource_type="lims_order", resource_id=order.id,
+        idempotency_key=key, payload=data.model_dump(),
+    )
+    try:
+        existing = db.query(lims_models.LabReport).filter(
+            lims_models.LabReport.lab_id == lab_id,
+            lims_models.LabReport.report_number == data.report_number,
+            lims_models.LabReport.is_deleted.is_(False),
+        ).first()
+        if existing:
+            raise HTTPException(409, detail="Report number already exists")
+        report = ReportService.generate_report(
+            db, data.order_id, lab_id, data.report_number, current_user.id, data.locale,
+            title=data.title, title_ar=data.title_ar,
+        )
+        guard.complete(
+            receipt, resource_type="lims_report", resource_id=report.id,
+            state_before=order.order_status, state_after="draft",
+            version_before=version_before, version_after=order.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="report.generate", resource_type="lims_order", resource_id=order.id,
+            state_before=order.order_status, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(422, detail=str(exc)) from exc
     db.refresh(report)
     return report
 
@@ -1840,16 +1882,51 @@ def finalize_report(
     report_id: int,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    lab_id = _lab_id(current_user)
     report = db.query(lims_models.LabReport).filter(
         lims_models.LabReport.id == report_id,
-        lims_models.LabReport.lab_id == _lab_id(current_user),
-    ).first()
+        lims_models.LabReport.lab_id == lab_id,
+        lims_models.LabReport.is_deleted.is_(False),
+    ).with_for_update().first()
     if not report:
         raise HTTPException(404, detail="Report not found")
-
-    report = ReportService.finalize(db, report, current_user.id)
-    db.commit()
+    guard = ClinicalCommandGuard(
+        db, actor_user_id=current_user.id, lab_id=lab_id, actor_role=current_user.role,
+    )
+    version_before = report.version
+    state_before = report.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="laboratory report")
+    key = guard.require_idempotency_key(idempotency_key)
+    if current_user.role not in {"master_admin", "admin", "lab_admin"}:
+        guard.reject(
+            operation="report.finalize", resource_type="lims_report", resource_id=report.id,
+            state_before=state_before, version_before=version_before, reason="senior_authority_required",
+        )
+        db.commit()
+        raise HTTPException(403, detail="Senior laboratory authority is required to finalize a report")
+    receipt = guard.claim(
+        operation="report.finalize", resource_type="lims_report", resource_id=report.id,
+        idempotency_key=key, payload={"report_id": report_id},
+    )
+    try:
+        report = ReportService.finalize(db, report, current_user.id)
+        guard.complete(
+            receipt, resource_type="lims_report", resource_id=report.id,
+            state_before=state_before, state_after=report.status,
+            version_before=version_before, version_after=report.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="report.finalize", resource_type="lims_report", resource_id=report_id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        raise HTTPException(422, detail=str(exc)) from exc
     db.refresh(report)
     return report
 
@@ -1860,16 +1937,52 @@ def correct_report(
     data: dict,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    lab_id = _lab_id(current_user)
     report = db.query(lims_models.LabReport).filter(
         lims_models.LabReport.id == report_id,
-        lims_models.LabReport.lab_id == _lab_id(current_user),
-    ).first()
+        lims_models.LabReport.lab_id == lab_id,
+        lims_models.LabReport.is_deleted.is_(False),
+    ).with_for_update().first()
     if not report:
         raise HTTPException(404, detail="Report not found")
-
-    report = ReportService.correct(db, report, data.get("reason", ""), current_user.id)
-    db.commit()
+    guard = ClinicalCommandGuard(
+        db, actor_user_id=current_user.id, lab_id=lab_id, actor_role=current_user.role,
+    )
+    version_before = report.version
+    state_before = report.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="laboratory report")
+    key = guard.require_idempotency_key(idempotency_key)
+    if current_user.role not in {"master_admin", "admin", "lab_admin"}:
+        guard.reject(
+            operation="report.correct", resource_type="lims_report", resource_id=report.id,
+            state_before=state_before, version_before=version_before, reason="senior_authority_required",
+        )
+        db.commit()
+        raise HTTPException(403, detail="Senior laboratory authority is required to correct a report")
+    receipt = guard.claim(
+        operation="report.correct", resource_type="lims_report", resource_id=report.id,
+        idempotency_key=key, payload=data,
+    )
+    try:
+        report = ReportService.correct(db, report, str(data.get("reason", "")), current_user.id)
+        guard.complete(
+            receipt, resource_type="lims_report", resource_id=report.id,
+            state_before=state_before, state_after=report.status,
+            version_before=version_before, version_after=report.version,
+            reason=report.correction_reason,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="report.correct", resource_type="lims_report", resource_id=report_id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        raise HTTPException(422, detail=str(exc)) from exc
     db.refresh(report)
     return report
 

@@ -523,10 +523,20 @@ class ReportService:
         report: LabReport,
         user_id: int,
     ) -> LabReport:
+        if report.status != "draft":
+            raise ValueError("Only draft reports can be finalized")
+        released_results = db.query(Result).filter(
+            Result.lab_id == report.lab_id,
+            Result.order_id == report.order_id,
+            Result.is_deleted.is_(False),
+        ).all()
+        if not released_results or any(result.validation_status != "released" for result in released_results):
+            raise ValueError("All order results must be released before finalizing a laboratory report")
         report.status = "final"
         report.finalized_by = user_id
         report.finalized_at = datetime.now(UTC)
         report.updated_by = user_id
+        report.version += 1
         db.flush()
         return report
 
@@ -537,10 +547,15 @@ class ReportService:
         reason: str,
         user_id: int,
     ) -> LabReport:
+        if report.status != "final":
+            raise ValueError("Only finalized reports can be corrected")
+        if not reason or not reason.strip():
+            raise ValueError("A correction reason is required")
         report.status = "corrected"
         report.corrected_by = user_id
         report.corrected_at = datetime.now(UTC)
-        report.correction_reason = reason
+        report.correction_reason = reason.strip()
         report.updated_by = user_id
+        report.version += 1
         db.flush()
         return report

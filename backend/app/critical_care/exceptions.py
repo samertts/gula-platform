@@ -51,3 +51,11 @@ class CarePlanNotFoundError(CriticalCareException):
 
 class RoundNotFoundError(CriticalCareException):
     pass
+
+
+class ICUWorkflowError(CriticalCareException):
+    """Raised when a safety-critical ICU state transition is not permitted."""
+
+
+class ICUValidationError(CriticalCareException):
+    """Raised when a safety-critical ICU command lacks required clinical data."""
