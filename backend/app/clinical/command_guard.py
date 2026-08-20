@@ -78,7 +78,7 @@ class ClinicalCommandGuard:
         return expected_version
 
     @staticmethod
-    def _fingerprint(operation: str, resource_type: str, resource_id: int, payload: Any) -> str:
+    def _fingerprint(operation: str, resource_type: str, resource_id: str | int, payload: Any) -> str:
         canonical = json.dumps(
             {
                 "operation": operation,
@@ -98,7 +98,7 @@ class ClinicalCommandGuard:
         *,
         operation: str,
         resource_type: str,
-        resource_id: int,
+        resource_id: str | int,
         idempotency_key: str,
         payload: Any,
     ) -> ClinicalCommandReceipt:
@@ -137,7 +137,7 @@ class ClinicalCommandGuard:
             idempotency_key=idempotency_key,
             request_fingerprint=fingerprint,
             resource_type=resource_type,
-            resource_id=resource_id,
+            resource_id=str(resource_id),
             status="claimed",
         )
         self.db.add(receipt)
@@ -162,7 +162,7 @@ class ClinicalCommandGuard:
         *,
         operation: str,
         resource_type: str,
-        resource_id: int,
+        resource_id: str | int,
         state_before: str | None,
         version_before: int,
         reason: str,
@@ -172,7 +172,7 @@ class ClinicalCommandGuard:
             self.db,
             action=f"clinical.{operation}.rejected",
             resource_type=resource_type,
-            resource_id=resource_id,
+            resource_id=str(resource_id),
             user_id=self.actor_user_id,
             user_role=self.actor_role,
             lab_id=self.lab_id,
@@ -189,7 +189,7 @@ class ClinicalCommandGuard:
         receipt: ClinicalCommandReceipt,
         *,
         resource_type: str,
-        resource_id: int,
+        resource_id: str | int,
         state_before: str | None,
         state_after: str | None,
         version_before: int,
@@ -199,14 +199,14 @@ class ClinicalCommandGuard:
         """Finish the receipt and emit a structured, tamper-evident audit event."""
         receipt.status = "completed"
         receipt.resource_type = resource_type
-        receipt.resource_id = resource_id
+        receipt.resource_id = str(resource_id)
         receipt.completed_at = datetime.now(UTC)
         self.db.flush()
         log_action(
             self.db,
             action=f"clinical.{receipt.operation}",
             resource_type=resource_type,
-            resource_id=resource_id,
+            resource_id=str(resource_id),
             user_id=self.actor_user_id,
             user_role=self.actor_role,
             lab_id=self.lab_id,

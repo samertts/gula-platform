@@ -25,7 +25,7 @@ def upgrade() -> None:
         sa.Column("idempotency_key", sa.String(length=128), nullable=False),
         sa.Column("request_fingerprint", sa.String(length=64), nullable=False),
         sa.Column("resource_type", sa.String(length=64), nullable=False),
-        sa.Column("resource_id", sa.Integer(), nullable=True),
+        sa.Column("resource_id", sa.String(length=64), nullable=True),
         sa.Column("status", sa.String(length=24), nullable=False, server_default="claimed"),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),

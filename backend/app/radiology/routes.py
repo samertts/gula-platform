@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import or_
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.clinical.command_guard import ClinicalCommandGuard
 from app.database import get_db
 from app.models.lab_user import LabUser
 from app.models.patient import Patient
@@ -26,7 +28,7 @@ from app.radiology.pacs import (
     ImageSharingService,
     ImageViewerService,
 )
-from app.radiology.services import RadiologyService
+from app.radiology.services import RadiologyService, RadiologyWorkflowError
 from app.security.dependencies import get_current_user
 
 logger = logging.getLogger("gula.radiology.routes")
@@ -144,6 +146,7 @@ class RadiologyReportFinalize(BaseModel):
 class RadiologyReportAmend(BaseModel):
     findings: str
     impression: str
+    reason: str
     conclusion: str | None = None
     recommendation: str | None = None
     amended_by: str | None = None
@@ -234,8 +237,15 @@ def _to_dict(obj: Any) -> dict[str, Any]:
     return {}
 
 
-def _get_radiology_service(db: Session) -> RadiologyService:
-    return RadiologyService(db)
+def _get_radiology_service(db: Session, current_user: LabUser | None = None) -> RadiologyService:
+    if current_user is None:
+        return RadiologyService(db)
+    return RadiologyService(
+        db,
+        actor_user_id=current_user.id,
+        actor_lab_id=current_user.lab_id,
+        actor_role=current_user.role,
+    )
 
 
 def _get_storage_service(db: Session) -> DICOMStorageService:
@@ -269,6 +279,197 @@ def _tenant_patient_keys(db: Session, current_user: LabUser) -> set[str]:
         if health_id:
             keys.add(str(health_id))
     return keys
+
+
+def _run_exam_status_command(
+    *,
+    exam_id: str,
+    requested_status: ExamStatus,
+    db: Session,
+    current_user: LabUser,
+    if_match: str | None,
+    idempotency_key: str | None,
+):
+    """Run an examination state transition under a durable clinical command."""
+    svc = _get_radiology_service(db, current_user)
+    existing = svc.get_exam(exam_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Exam not found")
+    _patient_for_user(db, current_user, existing.patient_id)
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=current_user.lab_id,
+        actor_role=current_user.role,
+    )
+    state_before = existing.status.value if hasattr(existing.status, "value") else str(existing.status)
+    version_before = existing.version
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="radiology examination")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="radiology.exam.status_change",
+        resource_type="radiology_exam",
+        resource_id=exam_id,
+        idempotency_key=key,
+        payload={"status": requested_status.value, "if_match": if_match},
+    )
+    try:
+        exam = svc.update_exam_status(exam_id, requested_status, expected_version=version_before)
+        if exam is None:
+            raise HTTPException(status_code=404, detail="Exam not found")
+        state_after = exam.status.value if hasattr(exam.status, "value") else str(exam.status)
+        guard.complete(
+            receipt,
+            resource_type="radiology_exam",
+            resource_id=exam_id,
+            state_before=state_before,
+            state_after=state_after,
+            version_before=version_before,
+            version_after=exam.version,
+        )
+        db.commit()
+    except (HTTPException, RadiologyWorkflowError) as exc:
+        db.rollback()
+        guard.reject(
+            operation="radiology.exam.status_change",
+            resource_type="radiology_exam",
+            resource_id=exam_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason=str(getattr(exc, "detail", exc)),
+        )
+        db.commit()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return exam
+
+
+def _run_report_command(
+    *,
+    report_id: str,
+    operation: str,
+    mutation: Callable[[RadiologyService, int], object | None],
+    db: Session,
+    current_user: LabUser,
+    if_match: str | None,
+    idempotency_key: str | None,
+):
+    """Run a report state change under durable idempotency and audit controls."""
+    svc = _get_radiology_service(db, current_user)
+    existing = svc.get_report(report_id)
+    if existing is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    _patient_for_user(db, current_user, existing.patient_id)
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=current_user.lab_id,
+        actor_role=current_user.role,
+    )
+    state_before = existing.status.value if hasattr(existing.status, "value") else str(existing.status)
+    version_before = existing.version
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="radiology report")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation=operation,
+        resource_type="radiology_report",
+        resource_id=report_id,
+        idempotency_key=key,
+        payload={"if_match": if_match},
+    )
+    try:
+        report = mutation(svc, version_before)
+        if report is None:
+            raise HTTPException(status_code=404, detail="Report not found")
+        state_after = report.status.value if hasattr(report.status, "value") else str(report.status)
+        guard.complete(
+            receipt,
+            resource_type="radiology_report",
+            resource_id=report_id,
+            state_before=state_before,
+            state_after=state_after,
+            version_before=version_before,
+            version_after=report.version,
+        )
+        db.commit()
+    except (HTTPException, RadiologyWorkflowError) as exc:
+        db.rollback()
+        guard.reject(
+            operation=operation,
+            resource_type="radiology_report",
+            resource_id=report_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason=str(getattr(exc, "detail", exc)),
+        )
+        db.commit()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return report
+
+
+def _run_critical_finding_command(
+    *,
+    finding_id: str,
+    operation: str,
+    mutation: Callable[[RadiologyService, int], object | None],
+    db: Session,
+    current_user: LabUser,
+    if_match: str | None,
+    idempotency_key: str | None,
+):
+    """Run a critical-finding transition with immutable command evidence."""
+    finding = _critical_finding_for_user(db, current_user, finding_id)
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=current_user.lab_id,
+        actor_role=current_user.role,
+    )
+    state_before = finding.status.value if hasattr(finding.status, "value") else str(finding.status)
+    version_before = finding.version
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="critical finding")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation=operation,
+        resource_type="radiology_critical_finding",
+        resource_id=finding_id,
+        idempotency_key=key,
+        payload={"if_match": if_match},
+    )
+    svc = _get_radiology_service(db, current_user)
+    try:
+        updated = mutation(svc, version_before)
+        if updated is None:
+            raise HTTPException(status_code=404, detail="Critical finding not found")
+        state_after = updated.status.value if hasattr(updated.status, "value") else str(updated.status)
+        guard.complete(
+            receipt,
+            resource_type="radiology_critical_finding",
+            resource_id=finding_id,
+            state_before=state_before,
+            state_after=state_after,
+            version_before=version_before,
+            version_after=updated.version,
+        )
+        db.commit()
+    except (HTTPException, RadiologyWorkflowError) as exc:
+        db.rollback()
+        guard.reject(
+            operation=operation,
+            resource_type="radiology_critical_finding",
+            resource_id=finding_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason=str(getattr(exc, "detail", exc)),
+        )
+        db.commit()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return updated
 
 
 def _critical_finding_for_user(db: Session, current_user: LabUser, finding_id: str):
@@ -646,15 +847,17 @@ def update_exam_status(
     data: RadiologyExamStatusUpdate,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_radiology_service(db)
-    existing = svc.get_exam(exam_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Exam not found")
-    _patient_for_user(db, current_user, existing.patient_id)
-    exam = svc.update_exam_status(exam_id, data.status)
-    if not exam:
-        raise HTTPException(status_code=404, detail="Exam not found")
+    exam = _run_exam_status_command(
+        exam_id=exam_id,
+        requested_status=data.status,
+        db=db,
+        current_user=current_user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+    )
     return _to_dict(exam)
 
 
@@ -889,22 +1092,26 @@ def save_report_draft(
     data: RadiologyReportDraftUpdate,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_radiology_service(db)
-    existing = svc.get_report(report_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Report not found")
-    _patient_for_user(db, current_user, existing.patient_id)
-    report = svc.save_report_draft(
+    report = _run_report_command(
         report_id=report_id,
-        findings=data.findings,
-        impression=data.impression,
-        conclusion=data.conclusion,
-        recommendation=data.recommendation,
-        body_text=data.body_text,
+        operation="radiology.report.draft_save",
+        mutation=lambda svc, version: svc.save_report_draft(
+            report_id,
+            expected_version=version,
+            findings=data.findings,
+            impression=data.impression,
+            conclusion=data.conclusion,
+            recommendation=data.recommendation,
+            body_text=data.body_text,
+        ),
+        db=db,
+        current_user=current_user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
     )
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
     return _to_dict(report)
 
 
@@ -914,15 +1121,25 @@ def finalize_report(
     data: RadiologyReportFinalize,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_radiology_service(db)
-    existing = svc.get_report(report_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Report not found")
-    _patient_for_user(db, current_user, existing.patient_id)
-    report = svc.finalize_report(report_id, radiologist_id=data.radiologist_id)
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
+    # A caller may not nominate another user as the reporting radiologist.
+    if data.radiologist_id is not None and data.radiologist_id != str(current_user.id):
+        raise HTTPException(status_code=403, detail="A user may only finalize a report under their own identity")
+    report = _run_report_command(
+        report_id=report_id,
+        operation="radiology.report.finalize",
+        mutation=lambda svc, version: svc.finalize_report(
+            report_id,
+            expected_version=version,
+            radiologist_id=str(current_user.id),
+        ),
+        db=db,
+        current_user=current_user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+    )
     return _to_dict(report)
 
 
@@ -932,22 +1149,29 @@ def amend_report(
     data: RadiologyReportAmend,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_radiology_service(db)
-    existing = svc.get_report(report_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Report not found")
-    _patient_for_user(db, current_user, existing.patient_id)
-    report = svc.amend_report(
+    if data.amended_by is not None and data.amended_by != str(current_user.id):
+        raise HTTPException(status_code=403, detail="A user may only amend a report under their own identity")
+    report = _run_report_command(
         report_id=report_id,
-        findings=data.findings,
-        impression=data.impression,
-        conclusion=data.conclusion,
-        recommendation=data.recommendation,
-        amended_by=data.amended_by,
+        operation="radiology.report.amend",
+        mutation=lambda svc, version: svc.amend_report(
+            report_id,
+            expected_version=version,
+            findings=data.findings,
+            impression=data.impression,
+            reason=data.reason,
+            conclusion=data.conclusion,
+            recommendation=data.recommendation,
+            amended_by=str(current_user.id),
+        ),
+        db=db,
+        current_user=current_user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
     )
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
     return _to_dict(report)
 
 
@@ -956,15 +1180,22 @@ def verify_report(
     report_id: str,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_radiology_service(db)
-    existing = svc.get_report(report_id)
-    if not existing:
-        raise HTTPException(status_code=404, detail="Report not found")
-    _patient_for_user(db, current_user, existing.patient_id)
-    report = svc.verify_report(report_id)
-    if not report:
-        raise HTTPException(status_code=404, detail="Report not found")
+    report = _run_report_command(
+        report_id=report_id,
+        operation="radiology.report.verify",
+        mutation=lambda svc, version: svc.verify_report(
+            report_id,
+            expected_version=version,
+            verified_by=str(current_user.id),
+        ),
+        db=db,
+        current_user=current_user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+    )
     return _to_dict(report)
 
 
@@ -1327,27 +1558,66 @@ def create_critical_finding(
     data: CriticalFindingCreate,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_radiology_service(db)
+    svc = _get_radiology_service(db, current_user)
     exam = svc.get_exam(data.exam_id)
     if exam is None:
         raise HTTPException(status_code=404, detail="Exam not found")
     _patient_for_user(db, current_user, exam.patient_id)
     if data.report_id:
         report = svc.get_report(data.report_id)
-        if report is None:
-            raise HTTPException(status_code=404, detail="Report not found")
+        if report is None or report.exam_id != data.exam_id:
+            raise HTTPException(status_code=404, detail="Report not found for examination")
         _patient_for_user(db, current_user, report.patient_id)
-    finding = svc.create_critical_finding(
-        exam_id=data.exam_id,
-        finding_type=data.finding_type,
-        finding_description=data.finding_description,
-        report_id=data.report_id,
-        notified_by=data.notified_by,
-        notified_to=data.notified_to,
-        notes=data.notes,
-        metadata=data.metadata,
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=current_user.lab_id,
+        actor_role=current_user.role,
     )
+    version_before = exam.version
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="radiology examination")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="radiology.critical_finding.create",
+        resource_type="radiology_exam",
+        resource_id=exam.id,
+        idempotency_key=key,
+        payload=data.model_dump(),
+    )
+    try:
+        finding = svc.create_critical_finding(
+            exam_id=data.exam_id,
+            finding_type=data.finding_type,
+            finding_description=data.finding_description,
+            report_id=data.report_id,
+            notes=data.notes,
+            metadata=data.metadata,
+        )
+        guard.complete(
+            receipt,
+            resource_type="radiology_critical_finding",
+            resource_id=finding.id,
+            state_before=f"exam_version={version_before}",
+            state_after="critical_finding_pending",
+            version_before=version_before,
+            version_after=exam.version,
+        )
+        db.commit()
+    except RadiologyWorkflowError as exc:
+        db.rollback()
+        guard.reject(
+            operation="radiology.critical_finding.create",
+            resource_type="radiology_exam",
+            resource_id=exam.id,
+            state_before=f"exam_version={version_before}",
+            version_before=version_before,
+            reason=str(exc),
+        )
+        db.commit()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return _to_dict(finding)
 
 
@@ -1357,36 +1627,57 @@ def acknowledge_critical_finding(
     data: CriticalFindingAcknowledge,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    # Scope first so a caller cannot infer a foreign finding from an identity error.
     _critical_finding_for_user(db, current_user, finding_id)
-    svc = _get_radiology_service(db)
-    finding = svc.acknowledge_critical_finding(
+    if data.acknowledged_by != str(current_user.id):
+        raise HTTPException(status_code=403, detail="A critical finding may only be acknowledged under the caller identity")
+    finding = _run_critical_finding_command(
         finding_id=finding_id,
-        acknowledged_by=data.acknowledged_by,
-        notes=data.notes,
+        operation="radiology.critical_finding.acknowledge",
+        mutation=lambda svc, version: svc.acknowledge_critical_finding(
+            finding_id,
+            expected_version=version,
+            acknowledged_by=str(current_user.id),
+            notes=data.notes,
+        ),
+        db=db,
+        current_user=current_user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
     )
-    if not finding:
-        raise HTTPException(status_code=404, detail="Critical finding not found")
     return _to_dict(finding)
 
 
-@router.post("/critical-findings/notify")
+@router.post("/critical-findings/{finding_id}/notify")
 def notify_critical_finding(
-    finding_id: str = Query(...),
-    notified_by: str = Query(...),
-    notified_to: str = Query(...),
+    finding_id: str,
+    data: CriticalFindingNotify,
     db: Session = Depends(get_db),
     current_user: LabUser = Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    # Scope first so a caller cannot infer a foreign finding from an identity error.
     _critical_finding_for_user(db, current_user, finding_id)
-    svc = _get_radiology_service(db)
-    finding = svc.notify_critical_finding(
+    if data.notified_by != str(current_user.id):
+        raise HTTPException(status_code=403, detail="A critical finding may only be notified under the caller identity")
+    finding = _run_critical_finding_command(
         finding_id=finding_id,
-        notified_by=notified_by,
-        notified_to=notified_to,
+        operation="radiology.critical_finding.notify",
+        mutation=lambda svc, version: svc.notify_critical_finding(
+            finding_id,
+            expected_version=version,
+            notified_by=str(current_user.id),
+            notified_to=data.notified_to,
+        ),
+        db=db,
+        current_user=current_user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
     )
-    if not finding:
-        raise HTTPException(status_code=404, detail="Critical finding not found")
     return _to_dict(finding)
 
 

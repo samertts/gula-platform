@@ -27,7 +27,9 @@ class ClinicalCommandReceipt(Base):
     idempotency_key = Column(String(128), nullable=False)
     request_fingerprint = Column(String(64), nullable=False)
     resource_type = Column(String(64), nullable=False)
-    resource_id = Column(Integer, nullable=True)
+    # LIMS uses numeric IDs while pharmacy and radiology use UUID-like strings.
+    # A canonical textual resource key permits one durable guard across domains.
+    resource_id = Column(String(64), nullable=True)
     status = Column(String(24), nullable=False, default="claimed")
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)

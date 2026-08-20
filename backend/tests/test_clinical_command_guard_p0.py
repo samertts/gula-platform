@@ -75,7 +75,7 @@ def test_duplicate_clinical_command_never_repeats_side_effect(db):
 
     stored = db.query(ClinicalCommandReceipt).one()
     assert stored.status == "completed"
-    assert stored.resource_id == 42
+    assert stored.resource_id == "42"
 
     with pytest.raises(HTTPException) as replay:
         guard.claim(
@@ -87,6 +87,34 @@ def test_duplicate_clinical_command_never_repeats_side_effect(db):
         )
     assert replay.value.status_code == 409
     assert db.query(ClinicalCommandReceipt).count() == 1
+
+
+def test_clinical_command_accepts_textual_resource_ids(db):
+    actor = _actor(db)
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=actor.id,
+        lab_id=actor.lab_id,
+        actor_role=actor.role,
+    )
+    receipt = guard.claim(
+        operation="radiology.report.finalize",
+        resource_type="radiology_report",
+        resource_id="RAD-REPORT-01",
+        idempotency_key="text-resource-key",
+        payload={"action": "finalize"},
+    )
+    guard.complete(
+        receipt,
+        resource_type="radiology_report",
+        resource_id="RAD-REPORT-01",
+        state_before="draft",
+        state_after="final",
+        version_before=1,
+        version_after=2,
+    )
+    db.commit()
+    assert db.query(ClinicalCommandReceipt).one().resource_id == "RAD-REPORT-01"
 
 
 def test_public_phone_history_is_disabled_by_default(client):
