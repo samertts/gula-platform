@@ -8,6 +8,7 @@ from app.core.release_capabilities import (
     CapabilityDecision,
     ReleasePolicyConfig,
     decide_release_capability,
+    phase1_policy_from_environment,
     require_release_capability,
 )
 from fastapi import HTTPException
@@ -44,6 +45,33 @@ class TestReleaseCapabilityPolicy:
 
         assert decision.allowed is False
         assert decision.reason == "not_enabled_for_release"
+
+    def test_environment_policy_defaults_to_no_enabled_capabilities(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("GULA_RELEASE_ENABLED_CAPABILITIES", raising=False)
+        monkeypatch.delenv("GULA_RELEASE_APPROVED_TENANT_IDS", raising=False)
+
+        policy = phase1_policy_from_environment()
+
+        assert policy.enabled_capability_keys == frozenset()
+        assert policy.approved_tenant_ids == frozenset()
+
+    def test_environment_policy_parses_only_explicit_valid_tenants(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv(
+            "GULA_RELEASE_ENABLED_CAPABILITIES",
+            "phase1.lims.orders, phase1.lims.sample_tracking",
+        )
+        monkeypatch.setenv("GULA_RELEASE_APPROVED_TENANT_IDS", "7, invalid, -3, 12")
+
+        policy = phase1_policy_from_environment()
+
+        assert policy.enabled_capability_keys == frozenset(
+            {"phase1.lims.orders", "phase1.lims.sample_tracking"}
+        )
+        assert policy.approved_tenant_ids == frozenset({7, 12})
 
     def test_unknown_capability_is_rejected_even_if_tenant_has_entitlement(self) -> None:
         decision = decide_release_capability(

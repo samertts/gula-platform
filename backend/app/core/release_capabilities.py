@@ -13,6 +13,7 @@ server-side source of the release decision.
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Literal
@@ -128,6 +129,41 @@ PHASE1_CAPABILITIES: dict[str, CapabilityDefinition] = {
         requires_tenant_approval=True,
     ),
 }
+
+
+def _csv_environment_values(name: str) -> frozenset[str]:
+    """Read a comma-separated policy value without treating blank values as enabled."""
+
+    return frozenset(value.strip() for value in os.getenv(name, "").split(",") if value.strip())
+
+
+def _approved_tenant_ids_from_environment() -> frozenset[int]:
+    """Parse approved tenants fail-closed; malformed values grant no approval."""
+
+    tenant_ids: set[int] = set()
+    for raw_value in _csv_environment_values("GULA_RELEASE_APPROVED_TENANT_IDS"):
+        try:
+            tenant_id = int(raw_value)
+        except ValueError:
+            logger.error("release capability policy ignored malformed tenant identifier")
+            continue
+        if tenant_id > 0:
+            tenant_ids.add(tenant_id)
+    return frozenset(tenant_ids)
+
+
+def phase1_policy_from_environment() -> ReleasePolicyConfig:
+    """Load an explicit Phase-1 release policy; missing configuration denies writes."""
+
+    return ReleasePolicyConfig(
+        release_name=os.getenv("GULA_RELEASE_POLICY_NAME", "phase1"),
+        policy_version=os.getenv("GULA_RELEASE_POLICY_VERSION", "phase1-default-deny-v1"),
+        enabled_capability_keys=_csv_environment_values("GULA_RELEASE_ENABLED_CAPABILITIES"),
+        emergency_disabled_capability_keys=_csv_environment_values(
+            "GULA_RELEASE_EMERGENCY_DISABLED_CAPABILITIES"
+        ),
+        approved_tenant_ids=_approved_tenant_ids_from_environment(),
+    )
 
 
 def decide_release_capability(
