@@ -651,8 +651,10 @@ def _register_routes(app: FastAPI) -> None:
 
     from .devices.routes import router as device_integration_router
     app.include_router(device_integration_router)
-
+    from .chronic_care.routes import router as chronic_care_router
+    app.include_router(chronic_care_router)
     from .capabilities.fhir_interoperability.routes import router as fhir_interoperability_router
+
     app.include_router(fhir_interoperability_router)
 
     from .routes import patient_card as patient_card_routes
@@ -724,9 +726,6 @@ def _register_routes(app: FastAPI) -> None:
 
     from .contracts.routes import router as contracts_router
     app.include_router(contracts_router)
-
-    from .integration.connectors.routes import router as connectors_router
-    app.include_router(connectors_router)
 
     from .routes import hospital as hospital_routes
     app.include_router(hospital_routes.router)

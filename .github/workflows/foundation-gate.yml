@@ -20,7 +20,7 @@ jobs:
       - name: Architecture compliance
         run: |
           pip install pyyaml
-          python scripts/architecture_compliance_engine.py 2>/dev/null || echo "Architecture check skipped"
+          python scripts/architecture_compliance_engine.py
       - name: Dependency audit
         run: |
           cd backend
@@ -28,4 +28,5 @@ jobs:
           echo "Backend dependencies: OK"
       - name: Build check
         run: |
-          docker compose config -q 2>/dev/null && echo "Docker Compose: valid" || echo "Docker Compose check skipped"
+          docker compose config -q
+          echo "Docker Compose: valid"

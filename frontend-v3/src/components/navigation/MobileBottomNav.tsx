@@ -139,7 +139,8 @@ export function MobileBottomNav({
           size="default"
           onClick={onOpenMenu}
           aria-expanded={isMenuOpen}
-          aria-label={t("mobileNav.openAllSections")}
+          aria-label={t("mobileNav.more")}
+          title={t("mobileNav.openAllSections")}
           className="flex h-auto min-h-12 min-w-0 w-full flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] font-semibold text-muted-foreground motion-safe:active:scale-[0.98] motion-reduce:transition-none hover:bg-slate-100 hover:text-[#0F172A] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:hover:bg-white/10 dark:hover:text-white"
         >
           <Menu className="h-5 w-5" aria-hidden="true" />

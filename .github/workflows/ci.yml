@@ -171,7 +171,7 @@ jobs:
           finally:
               conn.close()
           PYEOF
-          alembic downgrade -1 || echo "Downgrade not possible (base migration)"
+          alembic downgrade -1
           alembic upgrade head
           echo "Migration round-trip: OK"
 

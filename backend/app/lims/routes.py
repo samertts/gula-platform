@@ -935,7 +935,11 @@ def order_fhir(
     return order_to_fhir_service_request(lims_order)
 
 
-@router.get("/orders/{order_id}/fhir-bundle", response_class=FHIRJSONResponse)
+@router.get(
+    "/orders/{order_id}/fhir-bundle",
+    response_class=JSONResponse,
+    status_code=200,
+)
 def order_fhir_bundle(
     order_id: int,
     current_user: LabUser = Depends(require_permission("orders:read")),
