@@ -3,7 +3,6 @@ from fastapi.responses import Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
-from ..config import ENABLE_PUBLIC_PATIENT_HISTORY
 from ..database import get_db
 from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser
@@ -26,9 +25,6 @@ from ..services.order_service import (
 )
 from ..services.order_service import (
     get_patient_history_by_id as _get_patient_history_by_id,
-)
-from ..services.order_service import (
-    get_patient_history_by_phone as _get_patient_history_by_phone,
 )
 from ..services.order_service import (
     get_public_result as _get_public_result,
@@ -343,30 +339,23 @@ def get_patient_history_by_id_route(
     return result
 
 
-@router.get("/history/{phone}")
-def get_patient_history_route(
-    phone: str, request: Request, name: str | None = None, db: Session = Depends(get_db),
-):
-    """Legacy public history lookup, disabled by default for patient privacy.
+@router.get("/history/{phone}", status_code=410, deprecated=True)
+def get_patient_history_route(phone: str, name: str | None = None):
+    """Reject legacy phone/name history lookup.
 
-    Phone number and name are not sufficient proof of ownership for longitudinal
-    health data.  Production access must move to the authenticated citizen portal
-    with consent and one-time verification before this migration flag is enabled.
+    Medical history is available through the authenticated citizen portal or a
+    separately authorized result-share token. Phone plus display name is not an
+    authentication factor and must never disclose longitudinal health records.
     """
-    if not ENABLE_PUBLIC_PATIENT_HISTORY:
-        raise HTTPException(
-            status_code=410,
-            detail={
-                "error": "public_patient_history_disabled",
-                "message": "Public patient-history lookup is disabled. Use the authenticated citizen portal.",
-                "message_ar": "تم تعطيل الوصول العام إلى تاريخ المريض. استخدم بوابة المواطن الموثقة.",
-            },
-        )
-    rate_limit_public(request, max_per_minute=5)
-    result = _get_patient_history_by_phone(db=db, phone=phone, name=name)
-    if "error" in result:
-        raise HTTPException(status_code=result["status_code"], detail=result["error"])
-    return result
+    del phone, name
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "LEGACY_HISTORY_LOOKUP_DISABLED",
+            "message": "Phone-based public history lookup is disabled. Use an authenticated citizen session.",
+            "message_ar": "تم تعطيل البحث العام بالسجل عبر الهاتف. استخدم جلسة مواطن موثقة.",
+        },
+    )
 
 
 # ─── Clinical Intelligence ────────────────────────────────────────────────────

@@ -57,6 +57,14 @@ actor APIClient {
         let _: EmptyResponse = try await performRequest(endpoint, body: body)
     }
 
+    /// Logout without refresh/retry: the captured access token is sent to the
+    /// server before local credentials are cleared by AuthManager.
+    func serverLogout(accessToken: String) async throws {
+        var request = try buildRequest(.logout)
+        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
+        _ = try await performDataRequest(request)
+    }
+
     func requestData(_ endpoint: APIEndpoint) async throws -> Data {
         var urlRequest = try buildRequest(endpoint)
         try await injectAuth(&urlRequest)
@@ -233,6 +241,9 @@ actor APIClient {
         guard let newToken = json?["access_token"] as? String else {
             throw APIError.authentication
         }
+        if let newRefreshToken = json?["refresh_token"] as? String, !newRefreshToken.isEmpty {
+            KeychainManager.shared.set(key: "refresh_token", value: newRefreshToken)
+        }
 
         KeychainManager.shared.set(key: "access_token", value: newToken)
         let requests = pendingRequests
@@ -259,6 +270,27 @@ actor APIClient {
         try await refreshAccessToken(refreshToken: refreshToken)
     }
 
+    func requestPasswordRecovery(email: String) async throws {
+        let _: EmptyResponse = try await performRequest(
+            APIEndpoint.forgotPassword,
+            body: ForgotPasswordRequest(email: email),
+        )
+    }
+
+    func verifyPasswordRecovery(token: String, requestId: String? = nil) async throws -> RecoveryVerificationResponse {
+        try await performRequest(
+            APIEndpoint.verifyRecovery,
+            body: RecoveryVerifyRequest(token: token, requestId: requestId),
+        )
+    }
+
+    func resetPassword(token: String, newPassword: String, requestId: String? = nil) async throws {
+        try await requestVoid(
+            APIEndpoint.resetPassword,
+            body: ResetPasswordRequest(token: token, newPassword: newPassword, requestId: requestId),
+        )
+    }
+
     func registerDeviceToken(token: String, platform: String) async throws {
         let _: EmptyResponse = try await performRequest(
             APIEndpoint.registerDevice(token: token, platform: platform),
@@ -282,4 +314,24 @@ struct AnyEncodable: Encodable {
 struct DeviceTokenRequest: Encodable {
     let deviceToken: String
     let platform: String
+}
+
+struct ForgotPasswordRequest: Encodable {
+    let email: String
+}
+
+struct RecoveryVerifyRequest: Encodable {
+    let token: String
+    let requestId: String?
+}
+
+struct ResetPasswordRequest: Encodable {
+    let token: String
+    let newPassword: String
+    let requestId: String?
+}
+
+struct RecoveryVerificationResponse: Decodable {
+    let status: String
+    let message: String
 }

@@ -53,7 +53,7 @@ def active_subscription(db, *, lab_id: int = 12):
 
 
 def test_subscription_approval_issues_exactly_one_idempotent_billing_cycle(db):
-    service, plan, subscription = active_subscription(db)
+    service, _plan, subscription = active_subscription(db)
 
     initial_cycles = db.query(SubscriptionBillingCycle).filter_by(subscription_id=subscription.id).all()
     replay = service.generate_current_cycle(

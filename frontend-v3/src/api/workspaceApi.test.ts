@@ -33,6 +33,18 @@ describe("workspace API contract gates", () => {
     expect(() => assertFrontendWriteIsAllowed("delete", "/niam/memberships/member-1")).toThrow(OperationalWriteBlockedError);
   });
 
+  it("allows identity lifecycle contracts while keeping direct mutations blocked", () => {
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/account-requests/")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/niam/sessions/account/account-1")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/sessions/session-1/terminate")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/sessions/account/account-1/terminate-all")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/mfa/status")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/mfa/devices")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/mfa/totp/setup")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("delete", "/mfa/devices/1")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/niam/sessions/account/account-1/other")).toThrow(OperationalWriteBlockedError);
+  });
+
   it("continues to block direct clinical reads", () => {
     expect(() => assertFrontendReadIsAllowed("get", "/patients")).toThrow(OperationalReadBlockedError);
     expect(() => assertFrontendReadIsAllowed("get", "/lims/orders")).toThrow(OperationalReadBlockedError);

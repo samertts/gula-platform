@@ -107,7 +107,7 @@ def test_dashboard_does_not_expose_public_result_token(dashboard_client, dashboa
     dashboard_db.add(result)
     dashboard_db.commit()
 
-    token = create_token({"user_id": user.id, "lab_id": lab.id, "role": "admin"})
+    token = create_token({"user_id": user.id, "lab_id": lab.id, "role": "admin", "account_kind": "lab"})
     response = dashboard_client.get("/dashboard", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 200

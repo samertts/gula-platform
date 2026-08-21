@@ -5,9 +5,8 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app._compat import UTC
+from app.identity.events import IdentityEventBus, event_bus
 from app.identity.models.account import Account, AccountStatus, AccountType
 from app.identity.models.assignment import Assignment, AssignmentStatus
 from app.identity.models.audit import AuditAction, IdentityAuditEntry
@@ -18,23 +17,21 @@ from app.identity.models.enterprise_account import EnterpriseAccount
 from app.identity.models.identity import IdentityRecord, IdentityType
 from app.identity.models.license import LicenseStatus, ProfessionalLicense
 from app.identity.models.machine_identity import MachineIdentity
-from app.identity.models.niam_organization import NIAMOrganization, ORG_TYPES
+from app.identity.models.niam_organization import ORG_TYPES, NIAMOrganization
 from app.identity.models.person import Person
 from app.identity.models.policy import IdentityPolicy
 from app.identity.models.session import UserSession
-from app.identity.services.person_service import PersonService
-from app.identity.services.account_service import AccountService
-from app.identity.services.authentication_service import AuthenticationService
-from app.identity.services.session_service import SessionService
-from app.identity.services.device_service import DeviceService
-from app.identity.services.audit_service import AuditService
-from app.identity.repositories.person_repository import PersonRepository
+from app.identity.policy_engine import PolicyContext, PolicyEngine
 from app.identity.repositories.account_repository import AccountRepository
+from app.identity.repositories.person_repository import PersonRepository
 from app.identity.repositories.session_repository import SessionRepository
-from app.identity.repositories.device_repository import DeviceRepository
-from app.identity.repositories.organization_repository import OrganizationRepository
-from app.identity.policy_engine import PolicyEngine, PolicyContext
-from app.identity.events import IdentityEventBus, event_bus
+from app.identity.services.account_service import AccountService
+from app.identity.services.audit_service import AuditService
+from app.identity.services.authentication_service import AuthenticationService
+from app.identity.services.device_service import DeviceOwnershipError, DeviceService
+from app.identity.services.person_service import PersonService
+from app.identity.services.session_service import SessionService
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.fixture
@@ -392,6 +389,28 @@ class TestServices:
         assert result.device_fingerprint == "fp-new-device"
 
     @pytest.mark.asyncio
+    async def test_device_service_rejects_cross_account_fingerprint(
+        self, mock_session: MagicMock
+    ) -> None:
+        svc = DeviceService(mock_session)
+        existing = Device(
+            id="device-1",
+            person_id="person-1",
+            account_id="account-1",
+            device_fingerprint="fp-existing",
+            is_active=True,
+        )
+        svc.repo.find_by_fingerprint = AsyncMock(return_value=existing)
+
+        with pytest.raises(DeviceOwnershipError):
+            await svc.register_device(
+                person_id="person-2",
+                account_id="account-2",
+                device_fingerprint="fp-existing",
+            )
+        mock_session.flush.assert_not_awaited()
+
+    @pytest.mark.asyncio
     async def test_audit_service_record(self, mock_session):
         svc = AuditService(mock_session)
         mock_result = MagicMock()
@@ -517,27 +536,27 @@ class TestModelsImports:
 
     def test_models_init_exports(self):
         from app.identity.models import (
-            Person,
-            IdentityType,
-            IdentityRecord,
-            NIAMOrganization,
-            EnterpriseAccount,
             Account,
             AccountStatus,
             AccountType,
-            Employment,
-            EmploymentStatus,
             Assignment,
             AssignmentStatus,
-            ProfessionalLicense,
-            LicenseStatus,
             Credential,
             CredentialType,
-            UserSession,
             Device,
-            MachineIdentity,
-            IdentityPolicy,
+            Employment,
+            EmploymentStatus,
+            EnterpriseAccount,
             IdentityAuditEntry,
+            IdentityPolicy,
+            IdentityRecord,
+            IdentityType,
+            LicenseStatus,
+            MachineIdentity,
+            NIAMOrganization,
+            Person,
+            ProfessionalLicense,
+            UserSession,
         )
         assert Person is not None
         assert IdentityType is not None
@@ -548,14 +567,14 @@ class TestModelsImports:
 
     def test_services_init_exports(self):
         from app.identity.services import (
-            PersonService,
-            IdentityService,
             AccountService,
-            AuthenticationService,
-            SessionService,
-            DeviceService,
-            AuthorizationService,
             AuditService,
+            AuthenticationService,
+            AuthorizationService,
+            DeviceService,
+            IdentityService,
+            PersonService,
+            SessionService,
         )
         assert PersonService is not None
         assert AuthenticationService is not None
@@ -563,14 +582,14 @@ class TestModelsImports:
 
     def test_repositories_init_exports(self):
         from app.identity.repositories import (
-            PersonRepository,
+            AccountRepository,
+            AssignmentRepository,
+            DeviceRepository,
+            EmploymentRepository,
             IdentityRepository,
             OrganizationRepository,
-            AccountRepository,
-            EmploymentRepository,
-            AssignmentRepository,
+            PersonRepository,
             SessionRepository,
-            DeviceRepository,
         )
         assert PersonRepository is not None
         assert OrganizationRepository is not None

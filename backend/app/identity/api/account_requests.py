@@ -11,8 +11,9 @@ from app.database import get_db
 from app.identity.services.account_request_service import (
     AccountRequestConfigurationError,
     AccountRequestService,
+    IdempotencyConflictError,
 )
-from app.security.rate_limit import rate_limit_auth
+from app.security.rate_limit import get_client_ip, rate_limit_auth
 
 router = APIRouter(prefix="/account-requests", tags=["NIAM Account Requests"])
 
@@ -60,10 +61,15 @@ async def submit_account_request(
             display_name=body.display_name,
             requested_account_type=body.requested_account_type,
             idempotency_key=idempotency_key,
-            source_ip=request.client.host if request.client else None,
+            source_ip=get_client_ip(request),
             request_id=str(getattr(request.state, "request_id", "")) or None,
             user_agent=request.headers.get("user-agent"),
         )
+    except IdempotencyConflictError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Idempotency key cannot be reused with a different request.",
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)

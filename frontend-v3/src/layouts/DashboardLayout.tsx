@@ -14,18 +14,18 @@ import {
 import { Sidebar } from "./Sidebar";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useLocale } from "@/contexts/LocaleContext";
+import { localeOptions } from "@/i18n/locales";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui";
 import { GuideAssistant } from "@/components/guide/GuideAssistant";
 import { DemoEnvironmentBadge, GulaBrand } from "@/components/shared/GulaBrand";
 import { WorkspaceSelector } from "@/components/workspace/WorkspaceSelector";
 import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
-import { localeOptions } from "@/i18n/locales";
 
 export function DashboardLayout() {
   const { theme, setTheme } = useTheme();
   const { locale, setLocale, isRTL } = useLocale();
-  const { user, demoMode } = useAuth();
+  const { user, demoMode, state: authState, error: authError } = useAuth();
   const { t } = useTranslation();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -172,6 +172,11 @@ export function DashboardLayout() {
           </div>
         </header>
 
+        {(authState === "SESSION_EXPIRED" || authState === "ERROR" || authError) && (
+          <div role="alert" className="border-b border-amber-500/25 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-950 dark:bg-amber-950/30 dark:text-amber-100 md:px-7">
+            {authError?.message || (authState === "SESSION_EXPIRED" ? "انتهت الجلسة أو أُبطلت. أعد تسجيل الدخول." : "الخدمة أو الاتصال غير متاحين حالياً. لم تُعرض بيانات قديمة على أنها حالية.")}
+          </div>
+        )}
         {demoMode && showDemoNotice && (
           <div
             role="status"

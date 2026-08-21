@@ -10,11 +10,20 @@ test.describe("Navigation & Routing", () => {
         await route.fallback();
         return;
       }
-      if (pathname === "/api/session" || pathname === "/api/login" || pathname === "/api/auth/refresh") {
+      if (
+        pathname === "/api/session" ||
+        pathname === "/api/login" ||
+        pathname === "/api/auth/refresh" ||
+        pathname.startsWith("/api/niam/")
+      ) {
         await route.fallback();
         return;
       }
-      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({}) });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({}),
+      });
     });
     await setupAuthenticatedPage(page);
   });

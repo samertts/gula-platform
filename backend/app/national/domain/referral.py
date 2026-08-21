@@ -37,6 +37,9 @@ class Referral(TenantAuditEntity):
     response_notes = Column(Text, nullable=True)
 
     encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
+    # Additive bridge to the care-continuum canonical aggregate. Legacy rows may
+    # remain null until a server-side mapping is proven and audited.
+    canonical_referral_id = Column(String(26), nullable=True, index=True)
 
     __table_args__ = (
         Index("ix_national_referrals_patient", "patient_id"),

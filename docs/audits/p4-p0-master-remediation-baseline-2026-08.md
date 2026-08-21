@@ -1,0 +1,183 @@
+# GULA P4/P0 Master Remediation Baseline
+
+**تاريخ baseline:** 18 آب/أغسطس 2026
+
+**مصدر المتطلبات:** `/home/ubuntu/upload/pasted_content.txt`
+
+**الفرع:** `chore/security-ddos-hardening-clean`
+
+**HEAD المحلي والبعيد:** `0cff2733` — `docs(audit): document complete doctor journey gaps`
+
+## حالة Git
+
+الفرع المحلي يتطابق مع `origin/chore/security-ddos-hardening-clean`، وworking tree نظيف وقت baseline. لن يُستخدم force-push، ولن تُحذف migrations أو بيانات.
+
+## حالة CI الحالية
+
+آخر نتائج workflows المرئية عبر GitHub على SHA أقدم `8ff68c4d8d335a5f7a8ddf20641f5e32b93f0367` كانت فاشلة في Changed Files Quality Gate وCI Pipeline وMobile iOS وIAM Hardening Gate وFormatting Check وFrontend Bundle Budget وConstitution Compliance وMobile Android وFrontend PWA وQuality Gate. يجب إعادة تشغيل CI بعد كل دفعة، ولا تعتبر نتائج SHA القديم دليلاً على حالة HEAD الحالي.
+
+استعلام PR status rollup تعذر بسبب `Resource not accessible by integration`، لذلك لا توجد موافقة على إغلاق P4 من هذا الاستعلام.
+
+## حالة قاعدة البيانات والهجرات
+
+`alembic` غير موجود في بيئة shell الحالية، لذلك migration heads وcurrent غير مثبتين بعد. هذا blocker تحقق بيئي، وليس دليلاً على عدم وجود migrations. يجب تثبيت/استعمال البيئة الرسمية أو تشغيل الأمر من virtualenv المشروع قبل كتابة migration جديدة.
+
+## المسارات المسجلة فعلياً
+
+`backend/app/factory.py` يسجل فعلياً:
+
+- `/patient-card`.
+- `/clinical/orders` عبر `clinical_orders_routes`.
+- `/clinical/documentation` عبر `clinical_documentation_routes`.
+- `/pharmacy`.
+- `/api/v1/clinical` عبر `clinical_gateway_router`.
+
+وجود canonical router لا يعطل legacy routers تلقائياً.
+
+## حارس الأسرار
+
+`python3 scripts/security/check_public_secrets.py` نجح ولم يكتشف أسراراً عامة في الملفات المتتبعة. هذا لا يعالج حادثة مفتاح Android التاريخية؛ تدوير المفتاح وتطهير Git history ما زالا خارجياً ومطلوبين.
+
+## حالة الدومينات
+
+| المجال | الوضع في baseline | الخطر |
+|---|---|---|
+| ClinicalDocument | legacy in-memory routes موجودة، canonical durable غير مثبتة لهذا المسار | Critical candidate |
+| ClinicalOrder | legacy in-memory routes موجودة، canonical read أقوى من write | Critical candidate |
+| ClinicalAccessContext | بوابة القراءة تملك context resolver؛ shift/task/assignment المركزي غير مكتمل كدورة تشغيلية | High / incomplete |
+| Patient Card | lab-scoped مع HMAC/rate-limit/audit، لكنه يعرض phone/health_id ويعيد token | High |
+| Prescription | DB service مع lab filter جزئي، prescriber/state/substitution policy غير مكتملة | High |
+| Encounter | readiness prototype فقط، check-in/triage/close محجوبة | Blocked |
+| Results | `results.read` canonical محلياً؛ review/validate/ack lifecycle غير مكتمل | High / incomplete |
+| Appointment/Referral | نماذج متعددة ومسارات citizen/national؛ canonical doctor journey غير مثبت | High / incomplete |
+| Patient Identity | health_id/patient_id/national_id surfaces متعددة؛ canonical privacy policy غير مكتملة على كل المسارات | High |
+| Demo Patient Management | local synthetic state ظاهر بمظهر تشغيلي | Operational blocker |
+| Native parity | Web/PWA مثبتة محلياً، Android/iOS/Desktop runtime evidence غير مثبت | Unverified |
+| Android signing | incident خارجي لم يُغلق | SECURITY_BLOCKED |
+| P5 | لا يُفتح | BLOCKED |
+
+## قواعد التنفيذ
+
+لن تُعدّل Production أو Production database، ولن تُحذف migrations تاريخية، ولن تُعطّل authorization، ولن تُحوّل security failure إلى warning، ولن تُقبل client-provided actor/prescriber/organization/facility/workspace/tenant كحقيقة، ولن تُستخدم mock data لإثبات workflow.
+
+أي إصلاح واسع يغير schema أو state machine سيُنفذ أولاً على models/migrations/tests محلياً، ثم يُتوقف قبل أي تشغيل Production. أي بقاء لـCritical/High أو test gap في authorization/clinical writes/prescription/patient identity/encounter يبقي P4 PARTIAL/BLOCKED.
+
+## Definition of baseline completion
+
+تمت قراءة ملف المتطلبات حتى السطر 1966، وحفظ الحالة الحالية، وتحديد أن العمل التالي يبدأ من inventory/canonical registry ثم context/authorization ثم durable document/order migrations، مع الاحتفاظ بـSAFE_STOP للحواجز الخارجية.
+
+
+## ملحق تنفيذ P4/P0 — 18 آب/أغسطس 2026
+
+بعد تنفيذ دفعة Clinical Gateway وواجهة frontend parity، أصبحت عقود الأوامر canonical التالية مثبتة في `frontend-v3/src/api/endpoints.ts`: دورة Encounter (create/start/complete)، دورة workflow (shift/assignment/task)، ومراجعة نتائج المختبر (`results.review`). كما صُححت عقود بطاقة المريض بحيث تعكس استجابة التاريخ التجميعية وتتعامل مع الطباعة كـHTML/Blob بدلاً من نموذج JSON.
+
+| الفحص | النتيجة | الدليل |
+|---|---|---|
+| Frontend tests | ناجح: 70 اختباراً في 19 ملفاً | `/tmp/gula-p4-frontend-parity-tests.log` |
+| Frontend lint | ناجح دون warnings مسموحة | `/tmp/gula-p4-frontend-parity-lint.log` |
+| Frontend build/PWA | ناجح | `/tmp/gula-p4-frontend-parity-build.log` |
+| Backend full regression | ناجح: 2727 passed، 4 skipped، 172 warnings خلال 327.08 ثانية | `/tmp/gula-p4-full-regression.log` |
+| Public secret guard | ناجح، لا أسرار عامة محتملة في الملفات المتتبعة | `python3 scripts/security/check_public_secrets.py` |
+| JSON registry validation | ناجح | `python3 -m json.tool docs/architecture/canonical-domain-registry-2026.json` |
+
+تم تحديث `docs/architecture/canonical-domain-registry-2026.json` لإضافة حالة `REVIEW_CANONICAL_ADDED` لمراجعة النتائج، و`EHR_DURABLE_QUERIES` لسجل أدوية المواطن، و`ENCOUNTER_WORKFLOW_CONTRACTS_ADDED` لعقود parity المرتبطة بـEncounter وShift وAssignment.
+
+لا تغيّر هذه النتائج حالة الحواجز الخارجية: تدوير مفتاح توقيع Android الإنتاجي وتطهير Git history بعد التدوير ما زالا يتطلبان جهة مخولة خارج هذه الجلسة. لذلك يبقى `P4 = SECURITY_BLOCKED`، ويبقى `P5 = BLOCKED`، كما تبقى Department وReferral وAppointment وDiagnosticReport وAuditEvent وConsent فجوات canonicalization أو governance موثقة وليست مكتملة.
+
+
+## ملحق إصلاحات ما بعد main — 19 آب/أغسطس 2026
+
+تم تشخيص فشل regression واحد سببه وجود رأسي Alembic مستقلين بعد إضافة wearable measurements إلى main. أُضيفت migration merge additive-only باسم `20260821_0001_merge_clinical_and_wearable_heads.py` لضم `20260818_0005` و`20260819_0004` بعد دمج سلسلة research/search الجديدة، دون تعديل migrations منشورة أو حذف بيانات.
+
+| الفحص | النتيجة |
+|---|---|
+| Migration integrity بعد الإصلاح | 9/9 ناجحة |
+| Backend full regression النهائي | 2752 ناجحاً، 4 متخطاة، 173 تحذيراً، دون فشل |
+| Frontend بعد main | 72 اختباراً ناجحاً في 20 ملفاً، lint وbuild ناجحان |
+| Device/outbox/idempotency/rate-limit targeted suite | 31 اختباراً ناجحاً |
+| Secret guard | ناجح |
+
+تم أيضاً دمج آخر تحديثات `main` التي تضمنت chronic-care advisory وwearable measurements، مع توثيق أن هذه المخرجات **غير تشخيصية** وتتطلب سياقاً سريرياً، وأن تكامل الأجهزة يبقى محصوراً بالمؤسسة وبوضع simulation حيث ينص العقد الحالي.
+
+
+## ملحق تقوية القياسات والاعتماديات — 19 آب/أغسطس 2026
+
+تم استبدال `Field(finite=True)` deprecated في عقد WearableMeasurement بتحقق صريح متوافق مع Pydantic 2 باستخدام `math.isfinite`، مع إضافة اختبارات رفض `NaN` و`Infinity`. نجحت اختبارات wearable بنتيجة 8/8، ونجح فحص اعتماديات frontend الإنتاجية عبر `pnpm audit --prod` دون vulnerabilities معلنة: 0 info، 0 low، 0 moderate، 0 high، و0 critical ضمن 190 dependency.
+
+
+## ملحق إصلاحات main اللاحقة — 21 آب/أغسطس 2026
+
+بعد تحرك `main`، ظهر تعارض migration جديد بسبب وجود `20260819_0003_research_entities.py`، فتم نقل merge migration إلى revision فريد `20260821_0001_merge_clinical_and_wearable_heads.py` وربطه بالرأس الفعلي `20260819_0004`. كما تم إصلاح عقد OpenAPI لمسار `/lims/orders/{order_id}/fhir-bundle` باستخدام `FHIRJSONResponse` كي يعلن `application/fhir+json` فعلياً.
+
+تم أيضاً إصلاح اسم accessibility لزر قائمة الهاتف ليستخدم `mobileNav.openAllSections`، مع إبقاء النص المرئي المختصر. بعد ذلك نجح backend regression بنتيجة **2753 ناجحاً و4 متخطاة و142 تحذيراً**، ونجحت frontend suite بنتيجة **72/72**، كما نجح lint وbuild.
+
+
+## ملحق تدقيق AuditEvent وConsent — 21 آب/أغسطس 2026
+
+أظهر التدقيق أن فجوتي `AuditEvent` و`Consent` ليستا غير مبنيتين بالكامل. توجد خدمة `CanonicalAuditService` على `IdentityAuditEntry` مع hash chaining، redaction، organization/facility/department/workspace context، ومسارات read/export/integrity محكومة بصلاحيات NIAM وبدون mutation endpoint. وتوجد خدمة `NiamConsentService` على `NiamConsent` تفرض purpose allow-list، scope غير فارغ، resource domain، expiry بحد أقصى 72 ساعة، versioning، supersession، withdrawal، وتسجيل الأحداث في audit canonical.
+
+تم تحديث canonical registry لتعكس ذلك بدقة. بقيت حالة `PARTIAL` لأن `audit_logs` و`niam_lifecycle_consents` يمثلان أسطح توافق/legacy تحتاج خطة توحيد وترحيل منفصلة؛ لم يتم اعتبار وجود الخدمة canonical سبباً لإغلاق الترحيل الكامل.
+
+
+## ملحق Referral tenant containment — 21 آب/أغسطس 2026
+
+تم إغلاق مسار أمني عملي في referral domain دون إنشاء نموذج مكرر. أصبحت عمليات إنشاء referral وcross-organization وresponse، والانتقالات accept/reject/complete، وtimeline وanalytics تتطلب `lab_id` مشتقاً من جلسة المؤسسة على الخادم. يتم رفض scope المفقود أو المتعارض كـ403، ويُحقن `lab_id` في السجلات الجديدة ولا يُقبل كسلطة من العميل. كما أصبحت ReferralTimeline نفسها tenant-scoped، وتُصفّى transitions وtimeline بالـlab_id.
+
+أضيفت تغطية اختبارية صريحة لرفض scope المفقود والمتعارض، ولإثبات أن timeline يحمل المؤسسة الصحيحة. بقيت canonicalization بين care-continuum وnational وinsurance وnursing surfaces، إضافة إلى server-derived practitioner/facility mapping، كمتطلبات لاحقة ولم يُعلن إغلاقها.
+
+
+## ملحق Appointment canonical lifecycle — 21 آب/أغسطس 2026
+
+أضيفت بوابة `/api/v1/clinical/appointments` فوق خدمة scheduling الوطنية الموجودة، بدلاً من إنشاء state machine ثانية. البوابة تفرض ClinicalAccessContext مع shift/assignment/task proof على الكتابة، وتشتق patient mapping وworkspace وorganization وfacility وdepartment وtenant من الخادم. لا تقبل practitioner_id أو facility_id أو resource_id أو created_by من العميل، وتستخدم idempotency key وoptimistic version checks.
+
+أضيفت أعمدة scope nullable وidempotency إلى `national_scheduling_appointments` عبر migration additive-only `20260822_0001`. nullable مؤقتة لتسهيل backfill؛ السجلات القديمة التي لا تملك scope لا تُقرأ أو تُكتب عبر canonical gateway. أضيفت اختبارات لعقد الطلب، منع authority fields، minimum disclosure، وdeny عند scope غير المحلول. ما زال احتواء legacy write routes وتكافؤ Web/Mobile/Desktop مطلوباً قبل إغلاق المجال نهائياً.
+
+
+## ملحق DiagnosticReport canonical aggregate — 22 آب/أغسطس 2026
+
+أضيف نموذج durable باسم `ClinicalDiagnosticReport` ومسار canonical باسم `/api/v1/clinical/diagnostic-reports`. ينشئ المسار تقريراً موحداً من `LabOrder` أو `RadiologyReport` عبر source mapping فريد، ويشتق patient وorganization وfacility وworkspace وtenant وlegacy lab من `ClinicalAccessContext` بدلاً من قبولها من العميل. كما أضيفت migration additive-only رقم `20260822_0002` مع فهارس scope/status وunique source mapping، وسُجل النموذج والـrouter في app factory.
+
+تتطلب عملية finalize مراجعة جميع نتائج `LabOrder` وقبولها (`review_status=ACCEPTED`) قبل الإصدار، أو أن يكون مصدر الأشعة في حالة `FINAL`/`AMENDED`. ولا يسمح amendment إلا من `FINAL` أو `AMENDED` مع reason غير فارغ وoptimistic version check. استبعد safe DTO حقول `legacy_lab_id` و`tenant_id` و`correlation_id` و`source_metadata` وأي أسرار مصدرية.
+
+| الفحص | النتيجة | الدليل |
+|---|---|---|
+| DiagnosticReport targeted tests | ناجح: 6/6 | `backend/tests/test_clinical_diagnostic_report.py` |
+| Migration/OpenAPI smoke | ناجح: 10/10 | `/tmp/gula-diagnostic-report-smoke.log` |
+| Python compile | ناجح | ملفات model/service/routes/migration/factory |
+| Canonical registry JSON | محدث | `docs/architecture/canonical-domain-registry-2026.json` |
+
+لم يُعلن إغلاق المجال بالكامل: توحيد أسطح FHIR/LIMS القديمة واحتواء كتاباتها وتكافؤ Web/Mobile/Desktop ما زالت مطلوبة. كما تبقى تدوير production Android signing key وتطهير Git history بعد التدوير حاجزين خارجيين؛ لذلك يظل `P4 = SECURITY_BLOCKED` و`P5 = BLOCKED`.
+
+
+## ملحق Referral canonical bridge وlegacy containment — 22 آب/أغسطس 2026
+
+أضيفت migration additive-only `20260822_0003` لإضافة `canonical_referral_id` nullable/index إلى `national_referrals` و`ins_referrals`. أضيفت `CanonicalReferralMappingService` لربط السجلات القديمة بـ`ReferralRequest` فقط بعد تحقق `lab_id`، mapping وحيد للمريض الوطني من legacy patient ID، وmapping practitioner من LabUser إلى National Practitioner عبر `national_id_hash`. لا يُفترض أي تطابق بين integer facility IDs والموارد الوطنية؛ وجود facility legacy غير مربوط يوقف العملية بـ`server_facility_mapping_required` بدلاً من إنشاء مرجع غير موثوق.
+
+أصبح إنشاء referral canonical يرفض authority fields من العميل، بما فيها practitioner/facility/organization/workspace/tenant/status/direction، ويشتق referring practitioner من هوية المستخدم على الخادم. احتُويت جميع Insurance Referral write routes ومسار Nursing in-memory referral بـHTTP 410 مع `Deprecation: true` و`Cache-Control: no-store` و`Link` إلى `/care-continuum/referrals`. تبقى compatibility reads مفصولة بـ`lab_id` ولا تُعتبر canonical writes.
+
+| الفحص | النتيجة | الدليل |
+|---|---|---|
+| Referral canonical/containment tests | ناجح: 18/18 | `backend/tests/test_referral_canonicalization.py` و`test_care_continuum_referral_scope.py` |
+| Migration/OpenAPI targeted suite | ناجح: 27/27 | `/tmp/gula-referral-targeted-2.log` ونتيجة migration suite |
+| Python compile | ناجح | bridge service, routes, models, migration |
+| Facility/practitioner safety | fail-closed | `CanonicalReferralMappingError` و`ReferralScopeError` |
+
+هذه الدفعة لا تعلن اكتمال Referral بالكامل: national placeholder/workflow stubs وfacility mapping review وWeb/Mobile/Desktop parity ما زالت تحتاج evidence منفصلة. تبقى حالة `P4 = SECURITY_BLOCKED` و`P5 = BLOCKED` بسبب مفتاح توقيع Android الإنتاجي والتفويض الخارجي المطلوب.
+
+
+## ملحق Appointment containment وcross-platform parity — 22 آب/أغسطس 2026
+
+أضيفت واجهات TypeScript `clinicalAppointmentApi` و`clinicalDiagnosticReportApi` إلى `frontend-v3/src/api/endpoints.ts` مع DTOs typed تطابق الاستجابات الآمنة. تغطي Appointment عمليات create/list/get/reschedule/cancel/transition، وتغطي DiagnosticReport إنشاء المصدرين وget/finalize/amend. عقود frontend لا تعرض ولا تقبل authority fields مثل `practitioner_id` أو `facility_id` في create payload.
+
+احتُويت مسارات الكتابة في `/national/scheduling/appointments` بـHTTP 410 وsuccessor إلى `/api/v1/clinical/appointments`، بما في ذلك create/update/delete/complete/no-show/reschedule. بقيت list/get compatibility reads منفصلة، ولا تُعتبر بديلاً عن canonical workspace-scoped reads.
+
+| الفحص | النتيجة | الدليل |
+|---|---|---|
+| Frontend canonical endpoint tests | ناجح: 2/2 | `frontend-v3/src/api/clinicalCanonicalEndpoints.test.ts` |
+| Frontend full suite | ناجح: 74 اختباراً في 21 ملفاً | `/tmp/gula-p4-final-after-all-frontend-tests.log` |
+| Frontend lint | ناجح دون warnings مسموحة | `/tmp/gula-p4-final-after-all-frontend-lint.log` |
+| Frontend build/PWA | ناجح، 159 precache entries | `/tmp/gula-p4-final-after-all-frontend-build.log` |
+| Backend full regression | ناجح: 2782 passed، 4 skipped، 142 warnings | `/tmp/gula-p4-final-after-all-backend.log` |
+| Appointment containment targeted | ناجح: 7/7 | `backend/tests/test_legacy_appointment_containment.py` |
+
+ما زالت نتائج regression تتضمن warnings معروفة في test teardown وweak test JWT key، ولا تُحوّل هذه التحذيرات إلى نجاح أمني. تبقى Android production signing key rotation وGit history purge بعد التدوير إجراءات خارجية مطلوبة، ولذلك لا تزال `P4 = SECURITY_BLOCKED` و`P5 = BLOCKED`.

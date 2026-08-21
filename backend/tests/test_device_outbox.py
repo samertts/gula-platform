@@ -68,13 +68,15 @@ def test_failed_dispatch_retries_with_backoff_then_moves_to_dead_letter(db):
     now = datetime.now(UTC) + timedelta(seconds=1)
 
     def fail(_message):
-        raise RuntimeError("synthetic gateway unavailable")
+        raise RuntimeError("synthetic gateway unavailable: api-secret-value")
 
     result = process_batch(db, 1, now=now, dispatcher=fail)
     db.refresh(message)
     assert result["retried"] == 1
     assert message.status == "retry"
     assert message.attempts == 1
+    assert message.last_error == "dispatcher failure: RuntimeError"
+    assert "api-secret-value" not in (message.last_error or "")
     assert message.next_attempt_at > message.created_at
 
     for _ in range(message.max_attempts - 1):

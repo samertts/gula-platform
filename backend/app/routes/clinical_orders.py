@@ -12,10 +12,15 @@ from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
+from app.security.legacy_clinical import block_legacy_clinical_route
 
 logger = logging.getLogger("gula.routes.clinical_orders")
 
-router = APIRouter(prefix="/clinical/orders", tags=["clinical orders"])
+router = APIRouter(
+    prefix="/clinical/orders",
+    tags=["clinical orders"],
+    dependencies=[Depends(block_legacy_clinical_route)],
+)
 
 
 _ORDER_TYPES = frozenset({

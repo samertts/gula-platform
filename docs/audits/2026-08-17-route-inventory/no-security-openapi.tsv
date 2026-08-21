@@ -1,0 +1,144 @@
+/login	POST	login_login_post	auth
+/logout	POST	logout_logout_post	auth
+/register	POST	register_lab_register_post	auth
+/register/citizen	POST	register_citizen_register_citizen_post	auth
+/register/doctor	POST	register_doctor_register_doctor_post	auth
+/auth/verification/request	POST	request_verification_auth_verification_request_post	auth / verification
+/auth/verification/confirm	POST	confirm_verification_auth_verification_confirm_post	auth / verification
+/demo/access	POST	start_demo_session_demo_access_post	demo
+/setup/status	GET	setup_status_setup_status_get	setup
+/test-profiles	GET	list_test_profiles_test_profiles_get	results
+/r/{token}	GET	get_public_result_route_r__token__get	results
+/r/{token}/pdf	GET	download_result_pdf_route_r__token__pdf_get	results
+/history/{phone}	GET	get_patient_history_route_history__phone__get	results
+/app-updates	GET	get_update_manifest_app_updates_get	app-updates
+/qr/{token}	GET	generate_qr_route_qr__token__get	qr
+/qr-medical/{token}	GET	generate_medical_qr_qr_medical__token__get	qr
+/auth/refresh	POST	refresh_access_token_auth_refresh_post	mobile / auth
+/auth/mobile/app-info	GET	get_app_info_auth_mobile_app_info_get	mobile / auth,mobile / info
+/compliance/time-sync	GET	time_sync_status_compliance_time_sync_get	government compliance
+/tiers	GET	list_tiers_tiers_get	subscription
+/citizen/login	POST	citizen_login_citizen_login_post	citizen-portal
+/citizen/logout	POST	citizen_logout_citizen_logout_post	citizen-portal
+/citizen/profile	GET	citizen_profile_citizen_profile_get	citizen-portal
+/citizen/results	GET	citizen_results_citizen_results_get	citizen-portal
+/citizen/orders	GET	citizen_orders_citizen_orders_get	citizen-portal
+/citizen/health-record	GET	citizen_health_record_citizen_health_record_get	citizen-portal
+/api/ai/operations	GET	list_operations_api_ai_operations_get	AI Safety Layer
+/api/ai/providers	GET	list_ai_providers_api_ai_providers_get	AI Safety Layer
+/api/ai/interpret/{token}	GET	interpret_result_public_api_ai_interpret__token__get	AI Safety Layer,AI Public
+/auth/forgot-password	POST	forgot_password_auth_forgot_password_post	password-reset
+/auth/recovery/verify	POST	verify_recovery_auth_recovery_verify_post	password-reset
+/auth/reset-password	POST	reset_password_auth_reset_password_post	password-reset
+/oauth2/token	POST	token_oauth2_token_post	oauth2
+/oauth2/introspect	POST	introspect_oauth2_introspect_post	oauth2
+/oauth2/revoke	POST	revoke_oauth2_revoke_post	oauth2
+/oauth2/.well-known/openid-configuration	GET	openid_config_oauth2__well_known_openid_configuration_get	oauth2
+/oauth2/jwks.json	GET	jwks_json_oauth2_jwks_json_get	oauth2
+/auth/saml/metadata	GET	metadata_auth_saml_metadata_get	saml
+/auth/saml/acs	POST	acs_auth_saml_acs_post	saml
+/edge/agent/heartbeat	POST	agent_heartbeat_edge_agent_heartbeat_post	edge
+/edge/agent/tasks/{task_uid}/result	POST	agent_task_result_edge_agent_tasks__task_uid__result_post	edge
+/edge/agent/telemetry	POST	agent_telemetry_edge_agent_telemetry_post	edge
+/edge/health	GET	edge_health_edge_health_get	edge
+/fhir-interoperability/metadata	GET	capability_metadata_fhir_interoperability_metadata_get	FHIR Interoperability
+/governance/nodes/{node_id}	GET	get_node_governance_nodes__node_id__get	governance
+/governance/nodes/{node_id}/subtree	GET	get_subtree_governance_nodes__node_id__subtree_get	governance
+/governance/nodes/{node_id}/path	GET	get_path_governance_nodes__node_id__path_get	governance
+/governance/nodes/{node_id}/children	GET	get_children_governance_nodes__node_id__children_get	governance
+/governance/nodes/by-type/{node_type}	GET	get_nodes_by_type_governance_nodes_by_type__node_type__get	governance
+/governance/health-numbers/{health_number}	GET	get_health_number_governance_health_numbers__health_number__get	governance
+/governance/health-numbers/{health_number}/history	GET	get_health_number_history_governance_health_numbers__health_number__history_get	governance
+/governance/connectors	GET	list_connectors_governance_connectors_get	governance
+/governance/workers/{worker_id}	GET	get_worker_governance_workers__worker_id__get	governance
+/governance/workers/by-node/{node_id}	GET	get_workers_by_node_governance_workers_by_node__node_id__get	governance
+/governance/workers/{worker_id}/trainings	POST	add_training_governance_workers__worker_id__trainings_post	governance
+/governance/workers/{worker_id}/competencies	POST	assess_competency_governance_workers__worker_id__competencies_post	governance
+/governance/workers/{worker_id}/productivity	POST	record_productivity_governance_workers__worker_id__productivity_post	governance
+/governance/workers/{worker_id}/productivity	GET	get_productivity_governance_workers__worker_id__productivity_get	governance
+/governance/workers/ranking	GET	get_national_ranking_governance_workers_ranking_get	governance
+/governance/workers/{worker_id}/stats	GET	get_worker_stats_governance_workers__worker_id__stats_get	governance
+/governance/laboratories	GET	list_labs_governance_laboratories_get	governance
+/governance/laboratories/{lab_id}	GET	get_lab_governance_laboratories__lab_id__get	governance
+/governance/laboratories/{lab_id}/stats	GET	get_lab_stats_governance_laboratories__lab_id__stats_get	governance
+/governance/laboratories/{lab_id}/low-stock	GET	get_low_stock_governance_laboratories__lab_id__low_stock_get	governance
+/governance/national-tests	GET	get_national_tests_governance_national_tests_get	governance
+/governance/clinical-policies	GET	get_clinical_policies_governance_clinical_policies_get	governance
+/governance/audit-events	POST	log_audit_event_governance_audit_events_post	governance
+/governance/audit-events	GET	get_audit_events_governance_audit_events_get	governance
+/governance/interop-protocols	GET	list_protocols_governance_interop_protocols_get	governance
+/governance/terminology-mappings	GET	lookup_terminology_governance_terminology_mappings_get	governance
+/governance/ai/risk/{model_name}	GET	get_model_risk_governance_ai_risk__model_name__get	governance
+/governance/policy/evaluate	GET	evaluate_governance_action_governance_policy_evaluate_get	governance
+/governance/health	GET	governance_health_governance_health_get	governance
+/lims/quality/indicators	GET	list_quality_indicators_lims_quality_indicators_get	lims
+/lims/quality/indicators/{indicator_id}/evaluate	POST	evaluate_indicator_lims_quality_indicators__indicator_id__evaluate_post	lims
+/national/workflows/health	GET	health_national_workflows_health_get	National Workflows
+/national/tasks/health	GET	health_national_tasks_health_get	National Task Engine
+/api/v1/telegram/webhook	POST	telegram_webhook_api_v1_telegram_webhook_post	Telegram Conversation
+/contracts/openapi.json	GET	get_openapi_contracts_openapi_json_get	contracts
+/contracts/asyncapi.json	GET	get_asyncapi_contracts_asyncapi_json_get	contracts
+/contracts/schemas/{module}	GET	get_schema_contracts_schemas__module__get	contracts
+/contracts/fhir/profiles	GET	get_fhir_profiles_endpoint_contracts_fhir_profiles_get	contracts
+/contracts/fhir/capability	GET	get_fhir_capability_endpoint_contracts_fhir_capability_get	contracts
+/contracts/fhir/structure-definitions	GET	get_fhir_structure_definitions_contracts_fhir_structure_definitions_get	contracts
+/contracts/graphql/schema	GET	get_graphql_schema_contracts_graphql_schema_get	contracts
+/contracts/catalog	GET	get_contract_catalog_contracts_catalog_get	contracts
+/contracts/export	POST	export_contracts_contracts_export_post	contracts
+/certification/evaluate/{module_path}	POST	evaluate_module_certification_evaluate__module_path__post	certification
+/certification/level/{module_path}	GET	get_certification_level_certification_level__module_path__get	certification
+/certification/report/{module_path}	GET	get_report_certification_report__module_path__get	certification
+/certification/metrics	GET	get_all_metrics_certification_metrics_get	certification
+/certification/metrics/{category}	GET	get_metrics_by_category_certification_metrics__category__get	certification
+/certification/release/check	POST	check_release_gates_certification_release_check_post	certification
+/certification/release/validate	POST	validate_release_certification_release_validate_post	certification
+/certification/dimensions	GET	list_dimensions_certification_dimensions_get	certification
+/certification/dimensions/{dimension}/checks	GET	get_dimension_checks_certification_dimensions__dimension__checks_get	certification
+/pilot-platform/pilots	POST	create_pilot_pilot_platform_pilots_post	National Pilot Deployment & Readiness
+/pilot-platform/pilots	GET	list_pilots_pilot_platform_pilots_get	National Pilot Deployment & Readiness
+/pilot-platform/pilots/{pilot_id}	GET	get_pilot_pilot_platform_pilots__pilot_id__get	National Pilot Deployment & Readiness
+/pilot-platform/pilots/{pilot_id}/phase	PUT	advance_phase_pilot_platform_pilots__pilot_id__phase_put	National Pilot Deployment & Readiness
+/pilot-platform/facilities	POST	enroll_facility_pilot_platform_facilities_post	National Pilot Deployment & Readiness
+/pilot-platform/pilots/{pilot_id}/facilities	GET	list_pilot_facilities_pilot_platform_pilots__pilot_id__facilities_get	National Pilot Deployment & Readiness
+/pilot-platform/readiness	POST	assess_readiness_pilot_platform_readiness_post	National Pilot Deployment & Readiness
+/pilot-platform/facilities/{facility_id}/readiness	GET	get_facility_readiness_pilot_platform_facilities__facility_id__readiness_get	National Pilot Deployment & Readiness
+/pilot-platform/gates	POST	decide_gate_pilot_platform_gates_post	National Pilot Deployment & Readiness
+/pilot-platform/pilots/{pilot_id}/gates	GET	list_gates_pilot_platform_pilots__pilot_id__gates_get	National Pilot Deployment & Readiness
+/pilot-platform/deployments	POST	record_deployment_pilot_platform_deployments_post	National Pilot Deployment & Readiness
+/pilot-platform/deployments	GET	list_deployments_pilot_platform_deployments_get	National Pilot Deployment & Readiness
+/pilot-platform/certify/{module_path}	GET	evaluate_certification_pilot_platform_certify__module_path__get	National Pilot Deployment & Readiness
+/pilot-platform/dashboard	GET	get_dashboard_pilot_platform_dashboard_get	National Pilot Deployment & Readiness
+/pilot-platform/health	GET	health_pilot_platform_health_get	National Pilot Deployment & Readiness
+/lifecycle/components	POST	register_component_lifecycle_components_post	National Platform Lifecycle & Governance
+/lifecycle/components	GET	list_components_lifecycle_components_get	National Platform Lifecycle & Governance
+/lifecycle/components/{component_id}	GET	get_component_lifecycle_components__component_id__get	National Platform Lifecycle & Governance
+/lifecycle/components/name/{name}	GET	find_component_lifecycle_components_name__name__get	National Platform Lifecycle & Governance
+/lifecycle/components/{component_id}/stage	PUT	update_component_stage_lifecycle_components__component_id__stage_put	National Platform Lifecycle & Governance
+/lifecycle/releases	POST	create_release_lifecycle_releases_post	National Platform Lifecycle & Governance
+/lifecycle/releases	GET	list_releases_lifecycle_releases_get	National Platform Lifecycle & Governance
+/lifecycle/releases/{release_id}	GET	get_release_lifecycle_releases__release_id__get	National Platform Lifecycle & Governance
+/lifecycle/releases/{release_id}/approve	POST	approve_release_lifecycle_releases__release_id__approve_post	National Platform Lifecycle & Governance
+/lifecycle/compatibility	POST	record_compatibility_lifecycle_compatibility_post	National Platform Lifecycle & Governance
+/lifecycle/compatibility/check	GET	check_compatibility_lifecycle_compatibility_check_get	National Platform Lifecycle & Governance
+/lifecycle/compatibility/{component}/{version}	GET	list_compatibility_lifecycle_compatibility__component___version__get	National Platform Lifecycle & Governance
+/lifecycle/upgrade-paths	POST	create_upgrade_path_lifecycle_upgrade_paths_post	National Platform Lifecycle & Governance
+/lifecycle/upgrade-paths	GET	list_upgrade_paths_lifecycle_upgrade_paths_get	National Platform Lifecycle & Governance
+/lifecycle/upgrade-paths/{component}/{from_version}/{to_version}	GET	find_upgrade_path_lifecycle_upgrade_paths__component___from_version___to_version__get	National Platform Lifecycle & Governance
+/lifecycle/deprecations	POST	issue_deprecation_lifecycle_deprecations_post	National Platform Lifecycle & Governance
+/lifecycle/deprecations	GET	list_deprecations_lifecycle_deprecations_get	National Platform Lifecycle & Governance
+/lifecycle/dashboard	GET	get_dashboard_lifecycle_dashboard_get	National Platform Lifecycle & Governance
+/lifecycle/health	GET	health_lifecycle_health_get	National Platform Lifecycle & Governance
+/niam/account-requests/	POST	submit_account_request_niam_account_requests__post	NIAM,NIAM Account Requests
+/niam/accounts/	POST	create_account_niam_accounts__post	NIAM,NIAM Accounts
+/niam/accounts/{account_uuid}/lock	POST	lock_account_niam_accounts__account_uuid__lock_post	NIAM,NIAM Accounts
+/niam/accounts/{account_uuid}/unlock	POST	unlock_account_niam_accounts__account_uuid__unlock_post	NIAM,NIAM Accounts
+/niam/auth/login	POST	login_niam_auth_login_post	NIAM,NIAM Auth
+/niam/auth/refresh	POST	refresh_niam_auth_refresh_post	NIAM,NIAM Auth
+/niam/health	GET	niam_health_niam_health_get	NIAM
+/health	GET	health_health_get	system
+/health/ready	GET	readiness_health_ready_get	system
+/health/live	GET	liveness_health_live_get	system
+/health/status	GET	health_status_health_status_get	system
+/health/deep	GET	health_deep_health_deep_get	system
+/health/kernel	GET	kernel_health_health_kernel_get	system
+/test-types	GET	list_test_types_test_types_get	system

@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { type LucideIcon, FileText, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui";
+import { classifyApiError } from "@/api/errorHandling";
 
 interface PageHeaderProps {
   title: string;
@@ -87,17 +88,20 @@ export function LoadingSpinner({ className }: { className?: string }) {
 }
 
 interface ErrorDisplayProps {
-  error?: string;
+  error?: unknown;
   onRetry?: () => void;
 }
 
 export function ErrorDisplay({ error, onRetry }: ErrorDisplayProps) {
+  const info = typeof error === "string" ? null : error ? classifyApiError(error) : null;
+  const message = typeof error === "string" ? error : info?.message || "حدث خطأ غير متوقع";
+  const title = info?.kind === "UNAUTHORIZED" ? "انتهت الجلسة" : info?.kind === "FORBIDDEN" ? "الوصول غير مصرح" : info?.kind === "OFFLINE" ? "لا يوجد اتصال" : "حدث خطأ";
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <AlertCircle className="h-12 w-12 text-destructive" />
-      <h3 className="mt-4 text-lg font-semibold">حدث خطأ</h3>
-      <p className="mt-1 text-sm text-muted-foreground max-w-sm">{error || "حدث خطأ غير متوقع"}</p>
-      {onRetry && (
+    <div className="flex flex-col items-center justify-center py-16 text-center" role="alert">
+      <AlertCircle className="h-12 w-12 text-destructive" aria-hidden="true" />
+      <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{message}</p>
+      {onRetry && info?.reauthenticate !== true && (
         <Button variant="outline" className="mt-4" onClick={onRetry}>
           إعادة المحاولة
         </Button>

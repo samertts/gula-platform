@@ -6,11 +6,22 @@ import '../../core/theme/app_colors.dart';
 import '../../core/providers/app_providers.dart';
 import '../../core/theme/theme_provider.dart';
 import '../../core/utils/constants.dart';
+import '../../l10n/l10n.dart';
 import '../../widgets/core/gula_card.dart';
 import '../../widgets/core/gula_button.dart';
 import '../../widgets/layout/page_container.dart';
 import '../../widgets/layout/section_header.dart';
 import 'settings_provider.dart';
+
+String _languageLabel(Locale locale) => switch (locale.languageCode) {
+  'ar' => 'العربية',
+  'en' => 'English',
+  'ku' => 'کوردی',
+  'tk' => 'Türkmençe',
+  'syr' => 'ܣܘܪܝܝܐ',
+  'fa' => 'فارسی',
+  _ => locale.languageCode,
+};
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -79,25 +90,43 @@ class SettingsPage extends ConsumerWidget {
                     const Divider(),
                     ListTile(
                       title: const Text('Language'),
-                      subtitle: Text(
-                        themeState.locale.languageCode == 'ar'
-                            ? 'العربية'
-                            : 'English',
-                      ),
-                      trailing: SegmentedButton<Locale>(
-                        segments: const [
-                          ButtonSegment(
-                            value: Locale('ar'),
-                            label: Text('العربية'),
+                      subtitle: Text(_languageLabel(themeState.locale)),
+                      trailing: DropdownButton<Locale>(
+                        value: AppLocalization.supportedLocales.firstWhere(
+                          (locale) =>
+                              locale.languageCode ==
+                              themeState.locale.languageCode,
+                          orElse: () => AppLocalization.fallbackLocale,
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: Locale('ar', 'IQ'),
+                            child: Text('العربية'),
                           ),
-                          ButtonSegment(
-                            value: Locale('en'),
-                            label: Text('English'),
+                          DropdownMenuItem(
+                            value: Locale('en', 'US'),
+                            child: Text('English'),
+                          ),
+                          DropdownMenuItem(
+                            value: Locale('ku'),
+                            child: Text('کوردی'),
+                          ),
+                          DropdownMenuItem(
+                            value: Locale('tk'),
+                            child: Text('Türkmençe'),
+                          ),
+                          DropdownMenuItem(
+                            value: Locale('syr'),
+                            child: Text('ܣܘܪܝܝܐ'),
+                          ),
+                          DropdownMenuItem(
+                            value: Locale('fa'),
+                            child: Text('فارسی'),
                           ),
                         ],
-                        selected: {themeState.locale},
-                        onSelectionChanged: (v) =>
-                            themeState.setLocale(v.first),
+                        onChanged: (value) {
+                          if (value != null) themeState.setLocale(value);
+                        },
                       ),
                     ),
                   ],

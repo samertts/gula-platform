@@ -21,10 +21,22 @@ from app.pharmacy.models import (
     Prescription,
     StockLevel,
 )
-from app.pharmacy.services import PharmacyService, PharmacyWorkflowError
-from app.security.dependencies import get_current_user, require_institutional_permission
+from app.pharmacy.services import (
+    PharmacyAuthorizationBlocked,
+    PharmacyService,
+    PharmacyWorkflowError,
+)
+from app.security.dependencies import (
+    get_current_user,
+    require_institutional_permission,
+    require_institutional_user,
+)
 
-router = APIRouter(prefix="/pharmacy", tags=["Pharmacy"])
+router = APIRouter(
+    prefix="/pharmacy",
+    tags=["Pharmacy"],
+    dependencies=[Depends(require_institutional_user)],
+)
 
 
 # ── Pydantic Schemas ───────────────────────────────────────────────────────────
@@ -746,7 +758,10 @@ async def create_prescription(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    return svc.create_prescription(data.model_dump(exclude_none=True))
+    try:
+        return svc.create_prescription(data.model_dump(exclude_none=True))
+    except PharmacyAuthorizationBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Prescription authorisation proof is required") from exc
 
 
 @router.get("/prescriptions", response_model=list[PrescriptionResponse])
@@ -808,7 +823,10 @@ async def renew_prescription(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    renewal = svc.renew_prescription(rx_id)
+    try:
+        renewal = svc.renew_prescription(rx_id)
+    except PharmacyAuthorizationBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Prescription renewal authorisation proof is required") from exc
     if not renewal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
     return renewal
@@ -852,8 +870,12 @@ async def substitute_prescription_item(
     new_drug_id = data.get("drug_catalog_id")
     if not new_drug_id:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="drug_catalog_id required")
+    reason = data.get("reason")
     svc = _get_pharmacy_service(db, user)
-    item = svc.substitute_prescription_item(rx_id, item_id, new_drug_id)
+    try:
+        item = svc.substitute_prescription_item(rx_id, item_id, new_drug_id, reason or "")
+    except PharmacyAuthorizationBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Equivalent substitution authorisation proof is required") from exc
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prescription item not found")
     return item

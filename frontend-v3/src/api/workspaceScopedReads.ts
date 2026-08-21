@@ -12,6 +12,11 @@ export const SCOPED_READ_CONTRACTS = {
     path: "/api/v1/clinical/orders",
     permission: "orders.read",
   },
+  results: {
+    id: "results.read",
+    path: "/api/v1/clinical/orders",
+    permission: "results.read",
+  },
 } as const;
 
 /** Legacy `/patients` and `/lims/orders` REST surfaces remain blocked forever
@@ -56,6 +61,20 @@ export interface ClinicalOrderRead {
   practitioner_display_name?: string | null;
   status: string;
   test_count: number;
+  created_at?: string | null;
+}
+
+export interface ClinicalResultRead {
+  id: string;
+  order_id: string;
+  test_name: string;
+  value?: number | null;
+  value_text?: string | null;
+  unit?: string | null;
+  normal_range_low?: number | null;
+  normal_range_high?: number | null;
+  flag?: string | null;
+  interpretation?: string | null;
   created_at?: string | null;
 }
 
@@ -199,6 +218,10 @@ export function parseClinicalOrderEnvelope(payload: unknown): ClinicalReadEnvelo
   return parseEnvelope(payload, parseOrder);
 }
 
+export function parseClinicalResultEnvelope(payload: unknown): ClinicalReadEnvelope<ClinicalResultRead> {
+  return parseEnvelope(payload, parseResult);
+}
+
 function parsePatient(item: unknown): ClinicalPatientRead {
   const record = asRecord(item);
   if (!record) {
@@ -215,6 +238,39 @@ function parsePatient(item: unknown): ClinicalPatientRead {
     display_name: displayName,
     birth_date: record.birth_date as string | null | undefined,
     gender: record.gender as string | null | undefined,
+    created_at: record.created_at as string | null | undefined,
+  };
+}
+
+function parseResult(item: unknown): ClinicalResultRead {
+  const record = asRecord(item);
+  if (!record) {
+    throw new WorkspaceReadBlockedError("invalid_response", "سجل النتيجة في الاستجابة غير صالح.");
+  }
+  rejectUnexpectedSensitiveKeys(record, ["token", "result_token", "result_link", "share_link", "whatsapp_link", "patient_id", "patient_phone", "lab_id"]);
+  const id = asNonEmptyString(record.id);
+  const orderId = asNonEmptyString(record.order_id);
+  const testName = asNonEmptyString(record.test_name);
+  if (!id || !orderId || !testName) {
+    throw new WorkspaceReadBlockedError("invalid_response", "سجل النتيجة في الاستجابة غير صالح.");
+  }
+  for (const key of ["value", "normal_range_low", "normal_range_high"]) {
+    const value = record[key];
+    if (value !== undefined && value !== null && typeof value !== "number") {
+      throw new WorkspaceReadBlockedError("invalid_response", "قيمة النتيجة السريرية غير صالحة.");
+    }
+  }
+  return {
+    id,
+    order_id: orderId,
+    test_name: testName,
+    value: record.value as number | null | undefined,
+    value_text: record.value_text as string | null | undefined,
+    unit: record.unit as string | null | undefined,
+    normal_range_low: record.normal_range_low as number | null | undefined,
+    normal_range_high: record.normal_range_high as number | null | undefined,
+    flag: record.flag as string | null | undefined,
+    interpretation: record.interpretation as string | null | undefined,
     created_at: record.created_at as string | null | undefined,
   };
 }
@@ -296,6 +352,17 @@ export const workspaceScopedReads = {
       return envelope.items;
     } catch (error) {
       const mapped = mapGatewayError(error, SCOPED_READ_CONTRACTS.orders.id);
+      throw mapped ?? error;
+    }
+  },
+
+  async listResults(orderId: string): Promise<ClinicalResultRead[]> {
+    try {
+      const response = await api.get<unknown>(`${SCOPED_READ_CONTRACTS.results.path}/${encodeURIComponent(orderId)}/results`);
+      const envelope = parseEnvelope(response.data, parseResult);
+      return envelope.items;
+    } catch (error) {
+      const mapped = mapGatewayError(error, SCOPED_READ_CONTRACTS.results.id);
       throw mapped ?? error;
     }
   },

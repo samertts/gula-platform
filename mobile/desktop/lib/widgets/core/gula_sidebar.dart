@@ -103,6 +103,21 @@ class GulaSidebar extends StatelessWidget {
       icon: Icons.local_hospital_outlined,
     ),
     SidebarItem(
+      label: 'Memberships & Contexts',
+      route: '/memberships',
+      icon: Icons.group_work_outlined,
+    ),
+    SidebarItem(
+      label: 'Workspace',
+      route: '/workspace',
+      icon: Icons.business_center_outlined,
+    ),
+    SidebarItem(
+      label: 'Security Center',
+      route: '/security',
+      icon: Icons.security_outlined,
+    ),
+    SidebarItem(
       label: 'Settings',
       route: '/settings',
       icon: Icons.settings_outlined,

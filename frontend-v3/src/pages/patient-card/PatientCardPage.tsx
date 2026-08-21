@@ -78,9 +78,9 @@ export function PatientCardPage() {
                   )}
                 </div>
                 <div className="text-center space-y-1">
-                  <p className="font-medium text-lg">{card.card.patient.full_name}</p>
-                  <p className="text-sm text-muted-foreground">{card.card.patient.phone}</p>
-                  <p className="text-xs text-muted-foreground">{card.card.patient.health_id}</p>
+                  <p className="font-medium text-lg">{card.card.full_name}</p>
+                  <p className="text-sm text-muted-foreground">الهاتف: {card.card.phone_masked ?? "محجوب"}</p>
+                  <p className="text-xs text-muted-foreground">المعرّف الصحي: {card.card.health_id_masked ?? "محجوب"}</p>
                 </div>
               </div>
             ) : (

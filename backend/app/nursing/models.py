@@ -36,6 +36,7 @@ class NursingShift(NursingBaseEntity):
     __tablename__ = "nursing_shifts"
 
     nurse_id = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=False, index=True)
+    clinician_user_id = Column(String(26), ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True, index=True)
     department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True, index=True)
     shift_type = Column(SAEnum(ShiftType), nullable=False)
     shift_date = Column(Date, nullable=False, index=True)
@@ -56,6 +57,7 @@ class PatientAssignment(NursingBaseEntity):
     __tablename__ = "nursing_patient_assignments"
 
     nurse_id = Column(String(26), ForeignKey("lab_users.id", ondelete="CASCADE"), nullable=False, index=True)
+    clinician_user_id = Column(String(26), ForeignKey("lab_users.id", ondelete="CASCADE"), nullable=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False, index=True)
     encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
     department_id = Column(Integer, ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True, index=True)

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from inspect import isawaitable
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -8,6 +11,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
+from app._compat import UTC
+from app.config import SESSION_IDLE_TIMEOUT_MINUTES, SESSION_TOUCH_INTERVAL_SECONDS
 from app.database import get_db
 from app.identity.models.account import Account, AccountStatus
 from app.identity.models.audit import AuditAction
@@ -27,8 +32,49 @@ class NiamActor:
     session: UserSession
 
 
+def _session_is_idle(session: UserSession, now: datetime) -> bool:
+    last_activity = cast(datetime | None, getattr(session, "last_activity_at", None))
+    if last_activity is None:
+        return False
+    if last_activity.tzinfo is None:
+        last_activity = last_activity.replace(tzinfo=now.tzinfo)
+    return now - last_activity > timedelta(minutes=SESSION_IDLE_TIMEOUT_MINUTES)
+
+
+def _touch_session_sync(db: Session, session: UserSession, now: datetime) -> None:
+    last_activity = getattr(session, "last_activity_at", None)
+    if last_activity is None:
+        return
+    if last_activity.tzinfo is None:
+        last_activity = last_activity.replace(tzinfo=now.tzinfo)
+    if now - last_activity < timedelta(seconds=SESSION_TOUCH_INTERVAL_SECONDS):
+        return
+    session.last_activity_at = now
+    db.commit()
+
+
+async def _touch_session_async(db: AsyncSession, session: UserSession, now: datetime) -> None:
+    last_activity = getattr(session, "last_activity_at", None)
+    if last_activity is None:
+        return
+    if last_activity.tzinfo is None:
+        last_activity = last_activity.replace(tzinfo=now.tzinfo)
+    if now - last_activity < timedelta(seconds=SESSION_TOUCH_INTERVAL_SECONDS):
+        return
+    session.last_activity_at = now
+    commit = getattr(db, "commit", None)
+    if commit is not None:
+        result = commit()
+        if isawaitable(result):
+            await result
+
+
 def _raw_niam_token(request: Request, credentials: HTTPAuthorizationCredentials | None) -> str:
-    raw_token = credentials.credentials if credentials else request.cookies.get("access_token")
+    raw_token = (
+        credentials.credentials
+        if credentials
+        else cast(str | None, request.cookies.get("access_token"))
+    )
     if not raw_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     return raw_token
@@ -59,6 +105,10 @@ def get_current_niam_actor_sync(
     )
     if actor is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive or invalid NIAM session")
+    now = datetime.now(UTC)
+    if _session_is_idle(actor[1], now):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="NIAM session expired due to inactivity")
+    _touch_session_sync(db, actor[1], now)
     return NiamActor(account=actor[0], session=actor[1])
 
 
@@ -79,6 +129,7 @@ async def get_current_niam_actor(
             Account.uuid == payload["account_uuid"],
             Account.status == AccountStatus.active.value,
             Account.is_active.is_(True),
+            Account.is_locked.is_(False),
             UserSession.token_jti == payload["jti"],
             UserSession.is_active.is_(True),
         ),
@@ -86,6 +137,10 @@ async def get_current_niam_actor(
     actor = result.first()
     if actor is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive or invalid NIAM session")
+    now = datetime.now(UTC)
+    if _session_is_idle(actor[1], now):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="NIAM session expired due to inactivity")
+    await _touch_session_async(db, actor[1], now)
     return NiamActor(account=actor[0], session=actor[1])
 
 
@@ -106,7 +161,10 @@ def serialize_workspace(workspace: Workspace) -> dict[str, object]:
 
 
 @router.get("")
-async def list_workspaces(actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+async def list_workspaces(
+    actor: NiamActor = Depends(get_current_niam_actor),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
     service = WorkspaceService(db)
     citizen = await service.ensure_citizen_workspace(actor.account)
     workspaces = await service.list_eligible(actor.account)
@@ -116,7 +174,11 @@ async def list_workspaces(actor: NiamActor = Depends(get_current_niam_actor), db
 
 
 @router.get("/{workspace_id}")
-async def get_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+async def get_workspace(
+    workspace_id: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
     service = WorkspaceService(db)
     workspaces = await service.list_eligible(actor.account)
     workspace = next((item for item in workspaces if item.id == workspace_id), None)
@@ -126,7 +188,11 @@ async def get_workspace(workspace_id: str, actor: NiamActor = Depends(get_curren
 
 
 @router.post("/{workspace_id}/switch")
-async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_current_niam_actor), db: AsyncSession = Depends(get_db)):
+async def switch_workspace(
+    workspace_id: str,
+    actor: NiamActor = Depends(get_current_niam_actor),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, object]:
     service = WorkspaceService(db)
     try:
         context = await service.switch(actor.account, actor.session.id, workspace_id)
@@ -136,17 +202,31 @@ async def switch_workspace(workspace_id: str, actor: NiamActor = Depends(get_cur
             actor_id=actor.account.id,
             target_type="workspace",
             target_id=workspace_id,
+            workspace_id=workspace_id,
+            decision="deny",
+            reason_code="workspace_access_denied",
+            source="niam_workspace",
             metadata={"outcome": "denied"},
             outcome="denied",
         )
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace access denied") from exc
-    workspace = await db.get(Workspace, context.workspace_id)
+    workspace: Workspace | None = await db.get(Workspace, context.workspace_id)
+    if workspace is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Workspace context unavailable",
+        )
     await AuditService(db).record(
         AuditAction.workspace_switched,
         actor_id=actor.account.id,
         actor_type="account",
         target_type="workspace",
         target_id=workspace.id,
+        workspace_id=workspace.id,
+        facility_id=workspace.facility_id,
+        decision="allow",
+        reason_code="workspace_switched",
+        source="niam_workspace",
         session_id=actor.session.uuid,
         metadata={"context_version": context.version},
     )

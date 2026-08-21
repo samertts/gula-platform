@@ -113,22 +113,35 @@ class AuthManager: ObservableObject {
         }
     }
 
-    func logout() {
-        APIClient.shared.clearTokens()
-        UserDefaults.standard.removeObject(forKey: "current_user_id")
-        UserDefaults.standard.removeObject(forKey: "current_user_role")
-        UserDefaults.standard.removeObject(forKey: "current_user_name")
-        UserDefaults.standard.synchronize()
-
-        currentUser = nil
-        isAuthenticated = false
-        requiresMFA = false
-        mfaSession = nil
+    func logout() async {
+        let token = KeychainManager.shared.get(key: "access_token")
+        if let token {
+            try? await APIClient.shared.serverLogout(accessToken: token)
+        }
+        await clearLocalSession()
     }
 
-    func forceLogout() {
-        logout()
-        NotificationCenter.default.post(name: .sessionExpired, object: nil)
+    func forceLogout() async {
+        await logout()
+        await MainActor.run {
+            NotificationCenter.default.post(name: .sessionExpired, object: nil)
+        }
+    }
+
+    private func clearLocalSession() async {
+        await APIClient.shared.clearTokens()
+        await MainActor.run {
+            UserDefaults.standard.removeObject(forKey: "current_user_id")
+            UserDefaults.standard.removeObject(forKey: "current_user_role")
+            UserDefaults.standard.removeObject(forKey: "current_user_name")
+            UserDefaults.standard.removeObject(forKey: "current_user_lab_id")
+            UserDefaults.standard.synchronize()
+
+            currentUser = nil
+            isAuthenticated = false
+            requiresMFA = false
+            mfaSession = nil
+        }
     }
 
     func enableBiometric(email: String, password: String) {

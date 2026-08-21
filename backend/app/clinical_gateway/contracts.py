@@ -15,6 +15,7 @@ MAX_PAGE_SIZE = 100
 class ClinicalResource(StrEnum):
     patients = "patients"
     orders = "orders"
+    results = "results"
 
 
 class ClinicalGatewayErrorCode(StrEnum):
@@ -83,6 +84,22 @@ class OrderRead(BaseModel):
     practitioner_display_name: str | None = Field(default=None, max_length=200)
     status: str = Field(min_length=1, max_length=40)
     test_count: int = Field(default=0, ge=0)
+    created_at: datetime | None = None
+
+
+class ResultRead(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1, max_length=80)
+    order_id: str = Field(min_length=1, max_length=80)
+    test_name: str = Field(min_length=1, max_length=200)
+    value: float | None = None
+    value_text: str | None = Field(default=None, max_length=200)
+    unit: str | None = Field(default=None, max_length=20)
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
+    flag: str | None = Field(default=None, max_length=10)
+    interpretation: str | None = Field(default=None, max_length=240)
     created_at: datetime | None = None
 
 

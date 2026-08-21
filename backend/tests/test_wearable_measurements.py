@@ -1,18 +1,22 @@
 from datetime import UTC, datetime
+from typing import Any
 
+import pytest
+from app.devices.schemas import WearableMeasurementIngestRequest
 from app.models.patient import Patient
+from pydantic import ValidationError
 
 from tests.conftest import auth_headers
 
 
-def _patient(db, lab_id: int, name: str = "Wearable Patient") -> Patient:
+def _patient(db: Any, lab_id: int, name: str = "Wearable Patient") -> Patient:
     patient = Patient(lab_id=lab_id, full_name=name, phone="0770000011")
     db.add(patient)
     db.flush()
     return patient
 
 
-def _payload(patient_id: int, event_id: str = "evt-001") -> dict:
+def _payload(patient_id: int, event_id: str = "evt-001") -> dict[str, Any]:
     return {
         "patient_id": patient_id,
         "source": "synthetic-wearable",
@@ -28,7 +32,7 @@ def _payload(patient_id: int, event_id: str = "evt-001") -> dict:
     }
 
 
-def test_wearable_measurement_is_tenant_scoped_and_idempotent(client, db, make_lab, make_lab_user):
+def test_wearable_measurement_is_tenant_scoped_and_idempotent(client: Any, db: Any, make_lab: Any, make_lab_user: Any) -> None:
     lab = make_lab("Wearable Lab")
     other_lab = make_lab("Other Wearable Lab")
     user = make_lab_user(lab.id, role="admin")
@@ -76,7 +80,7 @@ def test_wearable_measurement_is_tenant_scoped_and_idempotent(client, db, make_l
     assert other_listed.json()["total"] == 0
 
 
-def test_wearable_measurement_rejects_invalid_unit_and_live_mode(client, db, make_lab, make_lab_user):
+def test_wearable_measurement_rejects_invalid_unit_and_live_mode(client: Any, db: Any, make_lab: Any, make_lab_user: Any) -> None:
     lab = make_lab("Wearable Validation Lab")
     user = make_lab_user(lab.id, role="admin")
     patient = _patient(db, lab.id)
@@ -101,7 +105,7 @@ def test_wearable_measurement_rejects_invalid_unit_and_live_mode(client, db, mak
     assert response.status_code == 400
 
 
-def test_wearable_measurement_rejects_non_finite_values(client, db, make_lab, make_lab_user):
+def test_wearable_measurement_rejects_non_finite_values(client: Any, db: Any, make_lab: Any, make_lab_user: Any) -> None:
     lab = make_lab("Wearable Finite Value Lab")
     user = make_lab_user(lab.id, role="admin")
     patient = _patient(db, lab.id)
@@ -118,7 +122,7 @@ def test_wearable_measurement_rejects_non_finite_values(client, db, make_lab, ma
         assert response.status_code == 422
 
 
-def test_signed_wearable_webhook_is_verified_and_idempotent(client, db, make_lab, monkeypatch):
+def test_signed_wearable_webhook_is_verified_and_idempotent(client: Any, db: Any, make_lab: Any, monkeypatch: Any) -> None:
     import hashlib
     import hmac
     import json
@@ -159,7 +163,7 @@ def test_signed_wearable_webhook_is_verified_and_idempotent(client, db, make_lab
     assert second.json()["measurement_id"] == first.json()["measurement_id"]
 
 
-def test_signed_wearable_webhook_rejects_invalid_signature(client, db, make_lab, monkeypatch):
+def test_signed_wearable_webhook_rejects_invalid_signature(client: Any, db: Any, make_lab: Any, monkeypatch: Any) -> None:
     import json
     import time
 
@@ -177,7 +181,7 @@ def test_signed_wearable_webhook_rejects_invalid_signature(client, db, make_lab,
     assert "Invalid webhook signature" in response.text
 
 
-def test_signed_wearable_webhook_rejects_live_mode(client, db, make_lab, monkeypatch):
+def test_signed_wearable_webhook_rejects_live_mode(client: Any, db: Any, make_lab: Any, monkeypatch: Any) -> None:
     import hashlib
     import hmac
     import json
@@ -200,7 +204,7 @@ def test_signed_wearable_webhook_rejects_live_mode(client, db, make_lab, monkeyp
     assert "clinical approval" in response.text
 
 
-def test_signed_wearable_webhook_rejects_expired_timestamp(client, db, make_lab, monkeypatch):
+def test_signed_wearable_webhook_rejects_expired_timestamp(client: Any, db: Any, make_lab: Any, monkeypatch: Any) -> None:
     import hashlib
     import hmac
     import json
@@ -223,7 +227,26 @@ def test_signed_wearable_webhook_rejects_expired_timestamp(client, db, make_lab,
     assert "Expired webhook signature" in response.text
 
 
-def test_wearable_baseline_summary_is_advisory_and_tenant_scoped(client, db, make_lab, make_lab_user):
+def test_wearable_contract_rejects_non_finite_values() -> None:
+    payload = {
+        "patient_id": 1,
+        "source": "synthetic-wearable",
+        "metric_code": "heart_rate",
+        "value": float("nan"),
+        "unit": "bpm",
+        "measured_at": datetime.now(UTC),
+        "source_event_id": "evt-nan",
+        "simulation_only": True,
+    }
+    with pytest.raises(ValidationError):
+        WearableMeasurementIngestRequest.model_validate(payload)
+
+    payload["value"] = float("inf")
+    with pytest.raises(ValidationError):
+        WearableMeasurementIngestRequest.model_validate(payload)
+
+
+def test_wearable_baseline_summary_is_advisory_and_tenant_scoped(client: Any, db: Any, make_lab: Any, make_lab_user: Any) -> None:
     lab = make_lab("Baseline Lab")
     other_lab = make_lab("Other Baseline Lab")
     user = make_lab_user(lab.id, role="admin")

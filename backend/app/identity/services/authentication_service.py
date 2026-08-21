@@ -119,12 +119,21 @@ class AuthenticationService:
             return None
 
         account = await self.account_repo.get_by_id(session.account_id)
-        if not account or not account.is_active:
+        if (
+            not account
+            or not account.is_active
+            or account.status != "active"
+            or account.is_locked
+        ):
             return None
 
-        remaining_seconds = max(1, int((session.expires_at - datetime.now(UTC)).total_seconds()))
+        now = datetime.now(UTC)
+        remaining_seconds = max(1, int((session.expires_at - now).total_seconds()))
+        consumed = await self.session_repo.consume_refresh_token(refresh_jti, now)
+        if not consumed:
+            # Another worker already rotated this token, so this is a replay.
+            return None
         blacklist_token(refresh_jti, remaining_seconds)
-        await self.session_repo.soft_delete(session.id)
         return await self._create_session(
             account=account,
             ip_address=session.ip_address,
@@ -132,14 +141,18 @@ class AuthenticationService:
             device_id=session.device_id,
         )
 
-    async def logout(self, session_uuid: str) -> None:
+    async def logout(self, session_uuid: str, account_id: str | None = None) -> bool:
         session = await self.session_repo.get_by_uuid(session_uuid)
-        if session:
-            await self.session_repo.terminate_session(
-                session_id=session.id,
-                reason="user_logout",
-                terminated_by="user",
-            )
+        if not session:
+            return False
+        if account_id is not None and str(session.account_id) != str(account_id):
+            return False
+        await self.session_repo.terminate_session(
+            session_id=session.id,
+            reason="user_logout",
+            terminated_by="user",
+        )
+        return True
 
     async def logout_all_sessions(self, account_id: str) -> None:
         await self.session_repo.terminate_all_for_account(

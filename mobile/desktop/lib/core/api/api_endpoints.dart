@@ -9,14 +9,26 @@ class ApiEndpoints {
   static const String logout = '/logout';
   static const String session = '/session';
   static const String myMemberships = '/niam/memberships/me';
+  static const String workspaces = '/niam/workspaces';
+  static String switchWorkspace(String workspaceId) =>
+      '/niam/workspaces/$workspaceId/switch';
   static const String effectivePermissions = '/niam/roles/effective';
   static const String demoAccess = '/demo/access';
   static const String refreshToken = '/auth/refresh';
   static const String verifyMfa = '/auth/mfa/verify';
   static const String setupMfa = '/auth/mfa/setup';
   static const String forgotPassword = '/auth/forgot-password';
+  static const String recoveryVerify = '/auth/recovery/verify';
   static const String resetPassword = '/auth/reset-password';
   static const String changePassword = '/auth/change-password';
+  static const String accountRequests = '/niam/account-requests/';
+  static String accountSessions(String accountId) =>
+      '/niam/sessions/account/$accountId';
+  static String terminateAllSessions(String accountId) =>
+      '/niam/sessions/account/$accountId/terminate-all';
+  static const String mfaStatus = '/mfa/status';
+  static const String mfaDevices = '/mfa/devices';
+  static const String securityStatus = '/security/status';
 
   // Labs
   static const String myLab = '/labs/me';

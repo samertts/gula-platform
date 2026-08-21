@@ -63,6 +63,13 @@ def is_token_blacklisted(jti: str) -> bool:
     return cache.get(f"blacklist:jti:{jti}") is not None
 
 
+def consume_refresh_jti(jti: str, ttl_seconds: int) -> bool:
+    """Atomically consume a refresh JTI for single-use rotation."""
+    from .redis_client import cache
+
+    return cache.set_if_absent(f"refresh:consumed:{jti}", "1", ex=ttl_seconds)
+
+
 # Generate a process-local dummy hash so missing-user login paths have the
 # same bcrypt work factor without embedding credential-like material in source.
 _DUMMY_HASH: str = _shared_hash_password(f"gula-timing-dummy:{uuid4().hex}")
@@ -76,18 +83,22 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return cast(bool, _shared_verify_password(plain_password, hashed_password))
 
 
-def build_token_payload(user: _TokenUser) -> JWTClaims:
+def build_token_payload(user: _TokenUser, *, account_kind: str = "lab") -> JWTClaims:
+    if account_kind not in {"lab", "user"}:
+        raise ValueError("Unsupported account kind")
     return {
         "user_id": user.id,
         "lab_id": user.lab_id,
         "role": user.role,
+        "account_kind": account_kind,
         "perm_ver": user.perm_version if user.perm_version is not None else 1,
     }
 
 
 def create_token(data: JWTClaims) -> str:
     to_encode = data.copy()
-    to_encode.update({"type": "access", "jti": str(uuid4())})
+    to_encode.setdefault("jti", str(uuid4()))
+    to_encode["type"] = "access"
     return cast(str, _shared_create_access_token(
         to_encode,
         secret_key=SECRET_KEY,
@@ -108,7 +119,8 @@ def decode_token(token: str) -> JWTClaims | None:
 
 def create_refresh_token(data: JWTClaims) -> str:
     to_encode = data.copy()
-    to_encode.update({"type": "refresh", "jti": str(uuid4())})
+    to_encode.setdefault("jti", str(uuid4()))
+    to_encode["type"] = "refresh"
     return cast(str, _shared_create_refresh_token(
         to_encode,
         refresh_secret=REFRESH_TOKEN_SECRET,
@@ -117,13 +129,13 @@ def create_refresh_token(data: JWTClaims) -> str:
     ))
 
 
-def decode_refresh_token(token: str) -> JWTClaims | None:
+def decode_refresh_token(token: str, *, check_blacklist: bool = True) -> JWTClaims | None:
     try:
         payload = _shared_decode_access_token(token, REFRESH_TOKEN_SECRET, [JWT_ALGORITHM])
         if payload.get("type") != "refresh":
             return None
         jti = payload.get("jti")
-        if jti and is_token_blacklisted(jti):
+        if check_blacklist and jti and is_token_blacklisted(jti):
             return None
         return cast(JWTClaims, payload)
     except JWTError:

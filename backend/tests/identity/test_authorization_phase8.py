@@ -44,8 +44,10 @@ class _AuthorizationSession:
         self.effective_permissions = effective_permissions or []
         self.policies = policies or []
         self.fail = fail
+        self.execute_calls = 0
 
     async def execute(self, statement):
+        self.execute_calls += 1
         if self.fail:
             raise RuntimeError("simulated policy store failure")
         sql = str(statement)
@@ -127,9 +129,11 @@ async def test_missing_trusted_actor_denies_compatibility_engine() -> None:
 
 @pytest.mark.asyncio
 async def test_actor_mismatch_denies_before_database_access() -> None:
-    service = AuthorizationDecisionService(_AuthorizationSession())
+    session = _AuthorizationSession()
+    service = AuthorizationDecisionService(session)
     decision = await service._evaluate(_actor(), _request(subject_account_id="other-account"))
     assert decision.reason_code is AuthorizationReason.actor_mismatch
+    assert session.execute_calls == 0
 
 
 @pytest.mark.asyncio

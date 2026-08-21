@@ -110,7 +110,7 @@ def two_labs(db):
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:
     """Return Bearer token headers for a (user, lab, role) triple."""
-    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role})
+    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role, "account_kind": "lab"})
     return {"Authorization": f"Bearer {token}"}
 
 

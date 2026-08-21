@@ -35,6 +35,7 @@ COPY backend/migrations ./migrations
 COPY backend/alembic.ini .
 COPY backend/start_railway.sh ./start_railway.sh
 COPY backend/railway_startup_probe.py ./railway_startup_probe.py
+COPY backend/gula_uvicorn_worker.py ./gula_uvicorn_worker.py
 COPY shared ./shared
 
 # Keep legacy backend.app.* imports compatible without duplicating the source
@@ -43,7 +44,7 @@ RUN mkdir -p /app/backend && ln -s /app/app /app/backend/app
 
 # Fail the image build on syntax errors in application or shared code.
 RUN chmod 755 /app/start_railway.sh && \
-    python -m compileall app/ shared/ backend/app/_compat.py railway_startup_probe.py
+    python -m compileall app/ shared/ backend/app/_compat.py railway_startup_probe.py gula_uvicorn_worker.py
 
 # SECURITY: Drop root — run as unprivileged user.
 RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app

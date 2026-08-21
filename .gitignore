@@ -64,5 +64,10 @@ openapi.json
 *.pyc
 __pycache__/
 
+# Android signing material — inject from approved CI/secret manager only
+**/*.jks
+mobile/android/**/signing.properties
+!mobile/android/**/signing.properties.example
+
 # Local Gradle caches and generated state
 mobile/android/.gradle/

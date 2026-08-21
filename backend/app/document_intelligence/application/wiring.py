@@ -307,10 +307,10 @@ class DefaultDocumentParser(DocumentParser):
         return ""
 
     async def parse_tiff(self, data: bytes) -> list[bytes]:
-        PIL = await self._to_pil()
+        pil_module = await self._to_pil()
         import io
 
-        tiff = PIL.open(io.BytesIO(data))
+        tiff = pil_module.open(io.BytesIO(data))
         images: list[bytes] = []
         for page in range(tiff.n_frames):
             tiff.seek(page)

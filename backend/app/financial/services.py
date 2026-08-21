@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import logging
 import sys
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func as sa_func
 from sqlalchemy.orm import Session
+
+from app._compat import UTC
 
 from ..services.audit_service import log_action
 

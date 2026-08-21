@@ -25,6 +25,7 @@ const syr = {
     identity: "ܝܕܥܬܐ ܕܚܘܠܡܢܐ",
     tiers: "ܕܪܓܐ",
     security: "ܚܘܣܝܢܐ",
+    memberships: "ܚܒܪܘܬܐ ܘܩܢܛܟܣܛ",
     hospital: "ܡܕܒܪܢܘܬܐ ܕܒܝܬ ܟܪܝܗܐ",
     edgePlatform: "ܦܠܛܦܘܪܡܐ Edge",
     financial: "ܢܝܫܡܐ ܕܡܡܘܢܐ",

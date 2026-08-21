@@ -1,4 +1,5 @@
 from ..database import Base
+from .account_recovery import AccountRecoveryRequest
 from .ai_interaction import (
     AIFeedback,
     AIInteraction,
@@ -58,6 +59,7 @@ __all__ = [
     "AIRetrievalRef",
     "AIUnresolvedQuestion",
     "AccessibilityProfile",
+    "AccountRecoveryRequest",
     "Appointment",
     "AuditLog",
     "AuthorizationAudit",

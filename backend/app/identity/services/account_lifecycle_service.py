@@ -3,7 +3,7 @@ from __future__ import annotations
 from app.identity.models.account import Account, AccountStatus
 
 LEGAL_TRANSITIONS: dict[str, frozenset[str]] = {
-    AccountStatus.pending_verification.value: frozenset({AccountStatus.active.value, AccountStatus.deactivated.value}),
+    AccountStatus.pending_verification.value: frozenset({AccountStatus.active.value, AccountStatus.rejected.value, AccountStatus.deactivated.value}),
     AccountStatus.active.value: frozenset({
         AccountStatus.suspended.value,
         AccountStatus.locked.value,
@@ -13,6 +13,7 @@ LEGAL_TRANSITIONS: dict[str, frozenset[str]] = {
     AccountStatus.suspended.value: frozenset({AccountStatus.active.value, AccountStatus.disabled.value}),
     AccountStatus.locked.value: frozenset({AccountStatus.active.value, AccountStatus.disabled.value}),
     AccountStatus.disabled.value: frozenset({AccountStatus.deactivated.value}),
+    AccountStatus.rejected.value: frozenset(),
     AccountStatus.deactivated.value: frozenset(),
 }
 
@@ -38,6 +39,7 @@ class AccountLifecycleService:
         account.status = target_value
         account.is_active = target not in {
             AccountStatus.disabled,
+            AccountStatus.rejected,
             AccountStatus.deactivated,
         }
         account.is_locked = target == AccountStatus.locked

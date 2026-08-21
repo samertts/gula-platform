@@ -11,24 +11,22 @@ from decimal import Decimal
 from uuid import uuid4
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     CheckConstraint,
     Column,
     DateTime,
     ForeignKey,
-    event,
     Index,
     Integer,
-    JSON,
     Numeric,
     String,
-    Text,
     UniqueConstraint,
+    event,
 )
 
 from app._compat import UTC
 from app.financial.models import FinBase
-
 
 MONEY = Numeric(18, 2)
 FX_AMOUNT = Numeric(24, 6)

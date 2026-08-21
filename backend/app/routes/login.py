@@ -2,12 +2,18 @@ import hashlib
 import hmac
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from ..config import DEMO_MODE, JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS, USE_SECURE_COOKIES
+from ..config import (
+    DEMO_MODE,
+    JWT_EXPIRE_MINUTES,
+    NID_HMAC_KEY,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    USE_SECURE_COOKIES,
+)
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.user import User
@@ -20,9 +26,9 @@ from ..security.auth import (
     decode_token,
     verify_password,
 )
-from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..security.dependencies import get_current_user
 from ..security.login_protection import is_locked, register_failed_login, register_successful_login
+from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..security.session import bump_perm_version, warm_perm_version
 from ..services.audit_service import log_action
 
@@ -42,7 +48,13 @@ class LoginRequest(BaseModel):
 
 
 @router.post("/login")
-def login(data: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+def login(
+    data: LoginRequest,
+    request: Request,
+    response: Response,
+    client_platform: str | None = Header(default=None, alias="X-Client-Platform"),
+    db: Session = Depends(get_db),
+):
     client_ip = get_client_ip(request)
     identifier = data.email
     rate_limit_auth(request, identifier=identifier)
@@ -83,7 +95,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     if user and is_locked(user):
         log_action(
             db,
-            action="login_denied_lockout",
+            action="login_failure",
             resource_type="auth",
             user_id=user.id,
             user_role=user.role,
@@ -95,10 +107,10 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
     if not user or not password_ok:
         if user:
-            locked_now = register_failed_login(user)
-            action = "login_lockout_started" if locked_now else "login_failed"
+            register_failed_login(user)
+            action = "login_failure"
         else:
-            action = "login_failed"
+            action = "login_failure"
         log_action(
             db,
             action=action,
@@ -119,7 +131,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
     if not isinstance(user, LabUser) and not user.is_verified:
         log_action(
             db,
-            action="login_denied_verification",
+            action="login_failure",
             resource_type="auth",
             user_id=user.id,
             user_role=user.role,
@@ -133,14 +145,14 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         )
 
     # ── Enforce MFA for privileged roles ─────────────────────────────────────
-    PRIVILEGED_ROLES = {"master_admin", "ministry_admin", "province_admin"}
-    if user.role in PRIVILEGED_ROLES:
+    privileged_roles = {"master_admin", "ministry_admin", "province_admin"}
+    if user.role in privileged_roles:
         from ..security.mfa_service import MFAService
         mfa = MFAService(db)
         if not mfa.has_mfa_enabled(user.id):
             log_action(
                 db,
-                action="login_denied_mfa_required",
+                action="login_failure",
                 resource_type="auth",
                 user_id=user.id,
                 user_role=user.role,
@@ -162,7 +174,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         if not lab and lab_user.role != "master_admin":
             log_action(
                 db,
-                action="login_denied",
+                action="login_failure",
                 resource_type="auth",
                 user_id=lab_user.id,
                 user_role=lab_user.role,
@@ -174,7 +186,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
         # Warm Redis perm_version cache (lab users only)
         warm_perm_version(lab_user)
-        base_payload = build_token_payload(lab_user)
+        base_payload = build_token_payload(lab_user, account_kind="lab")
         user_name = lab_user.name
         lab_name = lab.name if lab else None
     else:
@@ -183,7 +195,8 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
             "user_id": citizen.id,
             "lab_id": None,
             "role": "citizen",
-            "perm_ver": 1,
+            "account_kind": "user",
+            "perm_ver": citizen.perm_version or 1,
         }
         user_name = citizen.full_name
         lab_name = None
@@ -193,7 +206,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
     log_action(
         db,
-        action="login",
+        action="login_success",
         resource_type="auth",
         user_id=user.id,
         user_role=user.role,
@@ -222,14 +235,10 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         **cookie_kwargs,
     )
 
-    return {
-        # `access_token` is the canonical native-client field; `token` remains
-        # temporarily for older clients while they migrate to secure storage.
-        "access_token": token,
-        "token": token,
-        "refresh_token": refresh_token,
-        "token_type": "Bearer",
-        "expires_in": JWT_EXPIRE_MINUTES * 60,
+    # Browser clients use the HttpOnly cookies above. Do not echo bearer
+    # material in JSON. Native clients opt into the token-bearing contract via
+    # an explicit platform header and persist those tokens in secure storage.
+    result = {
         "user": {
             "id": user.id,
             "name": user_name,
@@ -240,6 +249,14 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
             "is_verified": bool(getattr(user, "is_verified", True)),
         },
     }
+    if (client_platform or "").strip().lower() in {"android", "ios", "desktop", "flutter"}:
+        result.update({
+            "access_token": token,
+            "refresh_token": refresh_token,
+            "token_type": "bearer",
+            "expires_in": JWT_EXPIRE_MINUTES * 60,
+        })
+    return result
 
 
 @router.post("/logout")
@@ -251,13 +268,20 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     import time as _time
 
     user_id = None
+    account_kind = None
 
-    # Layer 1: blacklist access token JTI in Redis
+    # Layer 1: blacklist access token JTI in Redis. Native clients may send
+    # the same token in Authorization while web clients use the cookie.
     access_token = request.cookies.get("access_token")
+    if not access_token:
+        authorization = request.headers.get("authorization", "")
+        if authorization.lower().startswith("bearer "):
+            access_token = authorization[7:].strip()
     if access_token:
         payload = decode_token(access_token)
         if payload:
             user_id = payload.get("user_id")
+            account_kind = payload.get("account_kind")
             jti = payload.get("jti")
             if jti:
                 remaining = int((payload["exp"] - _time.time()) + 1)
@@ -274,14 +298,17 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                 blacklist_token(rp["jti"], min(remaining, REFRESH_TOKEN_EXPIRE_DAYS * 86400))
             if not user_id:
                 user_id = rp.get("user_id")
+                account_kind = rp.get("account_kind")
 
     # Layer 2: bump perm_version in DB so ALL existing tokens become invalid
     # This is the safety net if Redis is wiped — get_current_user will reject
     # any token whose perm_ver no longer matches the DB value.
-    if user_id:
-        user = db.query(LabUser).filter(LabUser.id == user_id).first()
-        if user is None:
-            user = db.query(User).filter(User.id == user_id).first()
+    if user_id and account_kind in {"lab", "user"}:
+        user = (
+            db.query(LabUser).filter(LabUser.id == user_id).first()
+            if account_kind == "lab"
+            else db.query(User).filter(User.id == user_id).first()
+        )
         if user:
             bump_perm_version(
                 user,
@@ -289,6 +316,14 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                 actor_id=user_id,
                 actor_role=user.role,
                 reason="logout",
+            )
+            log_action(
+                db,
+                action="logout",
+                resource_type="auth",
+                user_id=user_id,
+                user_role=user.role,
+                details="User logged out",
             )
             db.commit()
 

@@ -25,6 +25,7 @@ const en = {
     identity: "Health Identity",
     tiers: "Subscriptions",
     security: "Security",
+    memberships: "Memberships & Contexts",
     hospital: "Hospital Management",
     edgePlatform: "Edge Platform",
     financial: "Financial",

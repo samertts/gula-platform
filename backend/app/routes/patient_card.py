@@ -25,13 +25,14 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models.lab_user import LabUser
-from ..security.dependencies import get_current_user
+from ..security.dependencies import require_institutional_permission
 from ..security.rate_limit import get_client_ip, rate_limit_user
 from ..services.audit_service import log_action
 from ..services.patient_card import (
     CardTokenError,
     build_card_view,
     build_full_history,
+    build_print_card_view,
     issue_card_token,
     lookup_patient_for_lab,
     render_card_qr_png,
@@ -55,7 +56,7 @@ class ScanRequest(BaseModel):
 def get_patient_card(
     patient_id: int,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_institutional_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Return the patient card payload + a freshly-signed QR token."""
@@ -64,8 +65,6 @@ def get_patient_card(
     patient = lookup_patient_for_lab(db, patient_id=patient_id, lab_id=current_user.lab_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-
-    token = issue_card_token(patient.id, patient.lab_id)
 
     log_action(
         db,
@@ -80,7 +79,6 @@ def get_patient_card(
 
     return {
         "card": build_card_view(patient),
-        "token": token,
         "qr_url": f"/patient-card/{patient.id}/qr.png",
     }
 
@@ -89,7 +87,7 @@ def get_patient_card(
 def get_patient_card_qr(
     patient_id: int,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_institutional_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """PNG image of the patient-card QR. Always issues a fresh token so an
@@ -113,7 +111,7 @@ def get_patient_card_qr(
 def scan_patient_card(
     body: ScanRequest,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_institutional_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Resolve a scanned QR token to the patient record.
@@ -181,7 +179,7 @@ def get_patient_full_history(
     patient_id: int,
     request: Request,
     limit: int = Query(100, ge=1, le=500),
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_institutional_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Aggregate the patient's full visit/result timeline within the lab."""
@@ -269,7 +267,7 @@ _GENDER_AR = {"M": "ذكر", "F": "أنثى", "male": "ذكر", "female": "أن�
 def get_patient_card_print(
     patient_id: int,
     request: Request,
-    current_user: LabUser = Depends(get_current_user),
+    current_user: LabUser = Depends(require_institutional_permission("patients:read")),
     db: Session = Depends(get_db),
 ):
     """Printable Arabic-first HTML card with embedded QR (base64)."""
@@ -287,10 +285,10 @@ def get_patient_card_print(
 
     html = _PRINT_TEMPLATE.format(
         full_name=_html_escape(patient.full_name),
-        health_id=_html_escape(patient.health_id or "—"),
+        health_id=_html_escape(build_print_card_view(patient)["health_id"] or "—"),
         birth_date=patient.birth_date.isoformat() if patient.birth_date else "—",
         gender_ar=_GENDER_AR.get(patient.gender or "", "—"),
-        phone=_html_escape(patient.phone or "—"),
+        phone=_html_escape(build_print_card_view(patient)["phone"] or "—"),
         qr_b64=qr_b64,
     )
 

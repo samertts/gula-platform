@@ -155,6 +155,7 @@ export const NAV_ITEMS: Record<string, { label: string; path: string; icon: stri
     { label: "nav.profile", path: "/profile", icon: "UserCircle" },
     { label: "nav.settings", path: "/settings", icon: "Settings" },
     { label: "nav.security", path: "/security", icon: "Lock" },
+    { label: "nav.memberships", path: "/memberships", icon: "Users" },
     { label: "nav.notifications", path: "/notifications", icon: "Bell" },
   ],
   clinical: [

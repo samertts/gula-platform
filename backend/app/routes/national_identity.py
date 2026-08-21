@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from ..config import DEMO_MODE, IS_PRODUCTION
 from ..gateways.mode import AdapterMode
 from ..gateways.national_identity_gateway import get_national_identity_gateway, verify_national_id
 from ..models.lab_user import LabUser
@@ -26,9 +25,9 @@ def verify(
     gateway = get_national_identity_gateway()
     gateway_mode = gateway.current_mode()
     gateway_mode_value = getattr(gateway_mode, "value", str(gateway_mode)).lower()
-    if IS_PRODUCTION and not DEMO_MODE and gateway_mode_value == AdapterMode.STUB.value:
+    if gateway_mode_value != AdapterMode.LIVE.value:
         raise HTTPException(
             status_code=503,
-            detail="National identity verification is not configured for production",
+            detail="National identity verification requires an authorized live provider",
         )
     return verify_national_id(data.national_id)

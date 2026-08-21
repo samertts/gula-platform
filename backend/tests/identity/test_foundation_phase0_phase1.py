@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
+from unittest.mock import AsyncMock
 
 import pytest
 from app.identity.models.account import AccountStatus, AccountType
@@ -13,19 +15,20 @@ from app.identity.services.account_lifecycle_service import (
     AccountLifecycleService,
     InvalidAccountTransition,
 )
-from app.identity.services.account_service import AccountService
+from app.identity.services.account_service import AccountService, DuplicateAccountError
+from sqlalchemy.exc import IntegrityError
 
 
 class _AccountRepository:
-    def __init__(self, session):
+    def __init__(self, session: Any) -> None:
         self.session = session
 
-    async def create(self, account):
+    async def create(self, account: Any) -> Any:
         return account
 
 
 @pytest.mark.asyncio
-async def test_account_creation_normalizes_identifiers_and_keeps_pending_status(monkeypatch):
+async def test_account_creation_normalizes_identifiers_and_keeps_pending_status(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(account_service_module, "AccountRepository", _AccountRepository)
 
     result = await AccountService(SimpleNamespace()).create_account(
@@ -47,7 +50,29 @@ async def test_account_creation_normalizes_identifiers_and_keeps_pending_status(
 
 
 @pytest.mark.asyncio
-async def test_account_creation_rejects_missing_identifier_and_short_password(monkeypatch):
+async def test_duplicate_account_creation_rolls_back_and_returns_domain_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    class _DuplicateAccountRepository:
+        def __init__(self, session: Any) -> None:
+            self.session = session
+
+        async def create(self, account: Any) -> Any:
+            raise IntegrityError("insert", {}, Exception("unique constraint"))
+
+    session = SimpleNamespace(rollback=AsyncMock())
+    monkeypatch.setattr(account_service_module, "AccountRepository", _DuplicateAccountRepository)
+
+    with pytest.raises(DuplicateAccountError, match="already registered"):
+        await AccountService(session).create_account(
+            identity_id="identity-1",
+            email="person@example.com",
+            password="correct horse battery staple",
+        )
+
+    session.rollback.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_account_creation_rejects_missing_identifier_and_short_password(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(account_service_module, "AccountRepository", _AccountRepository)
     service = AccountService(SimpleNamespace())
 
@@ -62,9 +87,9 @@ async def test_account_creation_rejects_missing_identifier_and_short_password(mo
         )
 
 
-def test_account_lifecycle_matrix_is_deny_by_default():
+def test_account_lifecycle_matrix_is_deny_by_default() -> None:
     assert LEGAL_TRANSITIONS[AccountStatus.pending_verification.value] == frozenset(
-        {AccountStatus.active.value, AccountStatus.deactivated.value},
+        {AccountStatus.active.value, AccountStatus.rejected.value, AccountStatus.deactivated.value},
     )
     assert LEGAL_TRANSITIONS[AccountStatus.deactivated.value] == frozenset()
     assert not AccountLifecycleService.can_transition(
@@ -84,7 +109,7 @@ def test_account_lifecycle_matrix_is_deny_by_default():
     assert item.is_active is False
 
 
-def test_phase0_audit_vocabulary_covers_foundation_security_events():
+def test_phase0_audit_vocabulary_covers_foundation_security_events() -> None:
     required = {
         AuditAction.account_created,
         AuditAction.account_activated,
@@ -100,3 +125,24 @@ def test_phase0_audit_vocabulary_covers_foundation_security_events():
     assert required.issubset(set(AuditAction))
     values = [item.value for item in AuditAction]
     assert len(values) == len(set(values))
+
+
+@pytest.mark.asyncio
+async def test_rejected_account_is_denied_without_state_reactivation(monkeypatch: pytest.MonkeyPatch) -> None:
+    account = SimpleNamespace(
+        status=AccountStatus.rejected.value,
+        is_active=False,
+        is_locked=False,
+        password_hash="stored-hash",
+    )
+    repository = SimpleNamespace(
+        find_by_login=AsyncMock(return_value=account),
+        session=SimpleNamespace(flush=AsyncMock()),
+    )
+    service = AccountService(SimpleNamespace())
+    service.repo = repository
+    monkeypatch.setattr(account_service_module, "verify_password", lambda *_args: True)
+
+    assert await service.authenticate("rejected@example.test", "password") is None
+    assert account.status == AccountStatus.rejected.value
+    repository.session.flush.assert_not_awaited()

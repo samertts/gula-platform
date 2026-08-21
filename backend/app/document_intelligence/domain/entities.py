@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
+from app._compat import UTC
+
 from .enums import (
     ClassificationConfidence,
     CollaborationRole,
@@ -61,22 +63,22 @@ class ScannedDocument:
         self.storage_path = storage_path
         self.checksum_sha256 = checksum
         self.status = DocumentStatus.ingested
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def mark_ocr_completed(self) -> None:
         self.status = DocumentStatus.ocr_completed
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def mark_ocr_failed(self, error: str) -> None:
         self.status = DocumentStatus.ocr_failed
         self.error_message = error
         self.retry_count += 1
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(UTC)
 
     def mark_processed(self) -> None:
         self.status = DocumentStatus.knowledge_indexed
-        self.processed_at = datetime.utcnow()
-        self.updated_at = datetime.utcnow()
+        self.processed_at = datetime.now(UTC)
+        self.updated_at = datetime.now(UTC)
 
     @property
     def extension(self) -> str:

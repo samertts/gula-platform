@@ -27,6 +27,32 @@ class SessionRepository(IdentityRepositoryBase[UserSession]):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def consume_refresh_token(self, refresh_jti: str, now: datetime) -> bool:
+        """Atomically consume one active refresh token row.
+
+        The conditional UPDATE is the replay boundary: only the first worker can
+        transition the row from active to inactive. A concurrent retry receives
+        zero affected rows and must not create a second session.
+        """
+        stmt = (
+            update(self.model_class)
+            .where(
+                self.model_class.refresh_token_jti == refresh_jti,
+                self.model_class.is_active.is_(True),
+                self.model_class.expires_at > now,
+            )
+            .values(
+                is_active=False,
+                terminated_at=now,
+                termination_reason="refresh_rotation",
+                terminated_by="system",
+                governance_action="refresh_rotation",
+            )
+        )
+        result = await self.session.execute(stmt)
+        await self.session.flush()
+        return bool(result.rowcount == 1)
+
     async def find_by_account_id(self, account_id: str) -> list[UserSession]:
         stmt = (
             select(self.model_class)

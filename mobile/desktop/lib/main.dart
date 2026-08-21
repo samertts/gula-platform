@@ -24,37 +24,48 @@ void main() async {
 
 Future<void> _initializeApp() async {
   try {
-    await windowManager.ensureInitialized();
+    final isDesktop =
+        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    if (isDesktop) {
+      await windowManager.ensureInitialized();
 
-    const windowOptions = WindowOptions(
-      size: Size(
-        AppConstants.defaultDesktopWidth,
-        AppConstants.defaultDesktopHeight,
-      ),
-      minimumSize: Size(
-        AppConstants.minDesktopWidth,
-        AppConstants.minDesktopHeight,
-      ),
-      center: true,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: false,
-      title: AppConstants.appName,
-      titleBarStyle: TitleBarStyle.normal,
-    );
-
-    await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
-      await windowManager.setPreventClose(true);
-      await windowManager.setMinimumSize(
-        const Size(AppConstants.minDesktopWidth, AppConstants.minDesktopHeight),
+      const windowOptions = WindowOptions(
+        size: Size(
+          AppConstants.defaultDesktopWidth,
+          AppConstants.defaultDesktopHeight,
+        ),
+        minimumSize: Size(
+          AppConstants.minDesktopWidth,
+          AppConstants.minDesktopHeight,
+        ),
+        center: true,
+        backgroundColor: Colors.transparent,
+        skipTaskbar: false,
+        title: AppConstants.appName,
+        titleBarStyle: TitleBarStyle.normal,
       );
-    });
 
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
+      await windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.show();
+        await windowManager.focus();
+        await windowManager.setPreventClose(true);
+        await windowManager.setMinimumSize(
+          const Size(
+            AppConstants.minDesktopWidth,
+            AppConstants.minDesktopHeight,
+          ),
+        );
+      });
+    }
+
+    if (Platform.isAndroid || Platform.isIOS) {
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
 
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -114,14 +125,18 @@ class _AppEntryState extends ConsumerState<_AppEntry> {
       }
     } catch (_) {}
 
-    try {
-      await _autoUpdater.initialize();
-      _updatePolicy = await _autoUpdater.checkForUpdates(
-        apiClient: authProvider.manager.apiClient,
-        platform: _desktopPlatform(),
-        currentVersion: AppConstants.appVersion,
-      );
-    } catch (_) {}
+    final isDesktop =
+        Platform.isWindows || Platform.isMacOS || Platform.isLinux;
+    if (isDesktop) {
+      try {
+        await _autoUpdater.initialize();
+        _updatePolicy = await _autoUpdater.checkForUpdates(
+          apiClient: authProvider.manager.apiClient,
+          platform: _desktopPlatform(),
+          currentVersion: AppConstants.appVersion,
+        );
+      } catch (_) {}
+    }
 
     if (mounted) setState(() => _initialized = true);
   }
@@ -137,7 +152,9 @@ class _AppEntryState extends ConsumerState<_AppEntry> {
       ref.read(syncEngineProvider).dispose();
       ref.read(databaseProvider).close();
     } catch (_) {}
-    await windowManager.destroy();
+    if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+      await windowManager.destroy();
+    }
   }
 
   @override

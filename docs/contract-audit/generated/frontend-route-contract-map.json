@@ -1,10 +1,10 @@
 {
   "source": "frontend-v3/src/routes/index.tsx",
-  "routeCount": 92,
+  "routeCount": 94,
   "entries": [
     {
       "path": "login",
-      "line": 129,
+      "line": 134,
       "source": "{ path: \"login\", element: <LazyPage><LoginPage /></LazyPage> },",
       "id": "login#1",
       "contract": "حد المصادقة",
@@ -16,7 +16,7 @@
     },
     {
       "path": "register",
-      "line": 130,
+      "line": 135,
       "source": "{ path: \"register\", element: <LazyPage><RegisterPage /></LazyPage> },",
       "id": "register#1",
       "contract": "حد المصادقة",
@@ -27,8 +27,20 @@
       "negativeOutcome": "لا يسمح المسار بالوصول إلى البيانات السريرية."
     },
     {
+      "path": "recover",
+      "line": 136,
+      "source": "{ path: \"recover\", element: <LazyPage><RecoveryPage /></LazyPage> },",
+      "id": "recover#1",
+      "contract": "غير مسجل",
+      "decision": "blocked_not_registered",
+      "reason": "لا يوجد عقد قراءة أو كتابة موثق ومفروض في بوابة الاستبدال الحالية.",
+      "authorization": "محجوب: لا يوجد إذن خادمي موثق ومفروض.",
+      "tenancy": "محجوب: لا يوجد دليل عزل منشأة/مورد كافٍ.",
+      "negativeOutcome": "منع صريح: لا يعد المسار مكافئًا وظيفيًا ولا يفعّل تدفقًا تشغيليًا."
+    },
+    {
       "path": "privacy-policy",
-      "line": 131,
+      "line": 137,
       "source": "{ path: \"privacy-policy\", element: <LazyPage><LegalPage document=\"privacy\" /></LazyPage> },",
       "id": "privacy-policy#1",
       "contract": "غير مسجل",
@@ -40,7 +52,7 @@
     },
     {
       "path": "terms-of-service",
-      "line": 132,
+      "line": 138,
       "source": "{ path: \"terms-of-service\", element: <LazyPage><LegalPage document=\"terms\" /></LazyPage> },",
       "id": "terms-of-service#1",
       "contract": "غير مسجل",
@@ -52,7 +64,7 @@
     },
     {
       "path": "dashboard",
-      "line": 144,
+      "line": 150,
       "source": "{ path: \"dashboard\", element: <LazyPage><DashboardPage /></LazyPage> },",
       "id": "dashboard#1",
       "contract": "غير مسجل",
@@ -64,7 +76,7 @@
     },
     {
       "path": "patients",
-      "line": 145,
+      "line": 151,
       "source": "{ path: \"patients\", element: <RoleGuard roles={staffRoles}><LazyPage><PatientsPage /></LazyPage></RoleGuard> },",
       "id": "patients#1",
       "contract": "patients.read",
@@ -76,7 +88,7 @@
     },
     {
       "path": "patient-management",
-      "line": 146,
+      "line": 152,
       "source": "{ path: \"patient-management\", element: <RoleGuard roles={readonlyRoles}><LazyPage><PatientManagementWorkspacePageLazy /></LazyPage></RoleGuard> },",
       "id": "patient-management#1",
       "contract": "غير مسجل",
@@ -88,7 +100,7 @@
     },
     {
       "path": "lab-operations",
-      "line": 147,
+      "line": 153,
       "source": "{ path: \"lab-operations\", element: <RoleGuard roles={readonlyRoles}><LazyPage><LabOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },",
       "id": "lab-operations#1",
       "contract": "غير مسجل",
@@ -100,7 +112,7 @@
     },
     {
       "path": "orders",
-      "line": 148,
+      "line": 154,
       "source": "{ path: \"orders\", element: <RoleGuard roles={staffRoles}><LazyPage><OrdersPage /></LazyPage></RoleGuard> },",
       "id": "orders#1",
       "contract": "orders.read",
@@ -112,7 +124,7 @@
     },
     {
       "path": "reports",
-      "line": 149,
+      "line": 155,
       "source": "{ path: \"reports\", element: <RoleGuard roles={readonlyRoles}><LazyPage><ReportsPage /></LazyPage></RoleGuard> },",
       "id": "reports#1",
       "contract": "غير مرتبط",
@@ -124,7 +136,7 @@
     },
     {
       "path": "results",
-      "line": 150,
+      "line": 156,
       "source": "{ path: \"results\", element: <RoleGuard roles={staffRoles}><LazyPage><ResultsPage /></LazyPage></RoleGuard> },",
       "id": "results#1",
       "contract": "غير مسجل",
@@ -136,7 +148,7 @@
     },
     {
       "path": "samples",
-      "line": 151,
+      "line": 157,
       "source": "{ path: \"samples\", element: <RoleGuard roles={labRoles}><LazyPage><SamplesPage /></LazyPage></RoleGuard> },",
       "id": "samples#1",
       "contract": "غير مسجل",
@@ -148,7 +160,7 @@
     },
     {
       "path": "labs",
-      "line": 152,
+      "line": 158,
       "source": "{ path: \"labs\", element: <RoleGuard roles={readonlyRoles}><LazyPage><LabsPage /></LazyPage></RoleGuard> },",
       "id": "labs#1",
       "contract": "غير مسجل",
@@ -160,7 +172,7 @@
     },
     {
       "path": "alerts",
-      "line": 153,
+      "line": 159,
       "source": "{ path: \"alerts\", element: <RoleGuard roles={readonlyRoles}><LazyPage><CriticalAlertsPage /></LazyPage></RoleGuard> },",
       "id": "alerts#1",
       "contract": "غير مسجل",
@@ -172,7 +184,7 @@
     },
     {
       "path": "notifications",
-      "line": 154,
+      "line": 160,
       "source": "{ path: \"notifications\", element: <LazyPage><NotificationsPage /></LazyPage> },",
       "id": "notifications#1",
       "contract": "غير مسجل",
@@ -184,7 +196,7 @@
     },
     {
       "path": "ai",
-      "line": 155,
+      "line": 161,
       "source": "{ path: \"ai\", element: <RoleGuard roles={readonlyRoles}><LazyPage><AIPage /></LazyPage></RoleGuard> },",
       "id": "ai#1",
       "contract": "غير مسجل",
@@ -196,7 +208,7 @@
     },
     {
       "path": "ai-platform",
-      "line": 156,
+      "line": 162,
       "source": "{ path: \"ai-platform\", element: <RoleGuard roles={readonlyRoles}><LazyPage><AiPlatformPage /></LazyPage></RoleGuard> },",
       "id": "ai-platform#1",
       "contract": "غير مسجل",
@@ -208,7 +220,7 @@
     },
     {
       "path": "stats",
-      "line": 157,
+      "line": 163,
       "source": "{ path: \"stats\", element: <RoleGuard roles={readonlyRoles}><LazyPage><StatsPage /></LazyPage></RoleGuard> },",
       "id": "stats#1",
       "contract": "غير مسجل",
@@ -220,7 +232,7 @@
     },
     {
       "path": "qc",
-      "line": 158,
+      "line": 164,
       "source": "{ path: \"qc\", element: <RoleGuard roles={readonlyRoles}><LazyPage><QCPage /></LazyPage></RoleGuard> },",
       "id": "qc#1",
       "contract": "غير مسجل",
@@ -232,7 +244,7 @@
     },
     {
       "path": "patient-card",
-      "line": 159,
+      "line": 165,
       "source": "{ path: \"patient-card\", element: <RoleGuard roles={staffRoles}><LazyPage><PatientCardPage /></LazyPage></RoleGuard> },",
       "id": "patient-card#1",
       "contract": "غير مسجل",
@@ -244,7 +256,7 @@
     },
     {
       "path": "patient-visit/readiness",
-      "line": 160,
+      "line": 166,
       "source": "{ path: \"patient-visit/readiness\", element: <RoleGuard roles={readonlyRoles}><LazyPage><PatientVisitReadinessPage /></LazyPage></RoleGuard> },",
       "id": "patient-visit/readiness#1",
       "contract": "غير مسجل",
@@ -256,7 +268,7 @@
     },
     {
       "path": "identity",
-      "line": 161,
+      "line": 167,
       "source": "{ path: \"identity\", element: <RoleGuard roles={staffRoles}><LazyPage><IdentityPage /></LazyPage></RoleGuard> },",
       "id": "identity#1",
       "contract": "غير مسجل",
@@ -268,7 +280,7 @@
     },
     {
       "path": "tiers",
-      "line": 162,
+      "line": 168,
       "source": "{ path: \"tiers\", element: <RoleGuard roles={readonlyRoles}><LazyPage><TiersPage /></LazyPage></RoleGuard> },",
       "id": "tiers#1",
       "contract": "غير مسجل",
@@ -280,7 +292,7 @@
     },
     {
       "path": "compliance",
-      "line": 163,
+      "line": 169,
       "source": "{ path: \"compliance\", element: <RoleGuard roles={adminRoles}><LazyPage><CompliancePage /></LazyPage></RoleGuard> },",
       "id": "compliance#1",
       "contract": "غير مسجل",
@@ -292,7 +304,7 @@
     },
     {
       "path": "settings",
-      "line": 164,
+      "line": 170,
       "source": "{ path: \"settings\", element: <LazyPage><SettingsPage /></LazyPage> },",
       "id": "settings#1",
       "contract": "غير مسجل",
@@ -304,7 +316,7 @@
     },
     {
       "path": "settings/accessibility",
-      "line": 165,
+      "line": 171,
       "source": "{ path: \"settings/accessibility\", element: <LazyPage><AccessibilityCenterPage /></LazyPage> },",
       "id": "settings/accessibility#1",
       "contract": "غير مسجل",
@@ -316,7 +328,7 @@
     },
     {
       "path": "profile",
-      "line": 166,
+      "line": 172,
       "source": "{ path: \"profile\", element: <LazyPage><ProfilePage /></LazyPage> },",
       "id": "profile#1",
       "contract": "غير مسجل",
@@ -327,9 +339,21 @@
       "negativeOutcome": "منع صريح: لا يعد المسار مكافئًا وظيفيًا ولا يفعّل تدفقًا تشغيليًا."
     },
     {
+      "path": "memberships",
+      "line": 173,
+      "source": "{ path: \"memberships\", element: <LazyPage><MembershipsPage /></LazyPage> },",
+      "id": "memberships#1",
+      "contract": "غير مسجل",
+      "decision": "blocked_not_registered",
+      "reason": "لا يوجد عقد قراءة أو كتابة موثق ومفروض في بوابة الاستبدال الحالية.",
+      "authorization": "محجوب: لا يوجد إذن خادمي موثق ومفروض.",
+      "tenancy": "محجوب: لا يوجد دليل عزل منشأة/مورد كافٍ.",
+      "negativeOutcome": "منع صريح: لا يعد المسار مكافئًا وظيفيًا ولا يفعّل تدفقًا تشغيليًا."
+    },
+    {
       "path": "security",
-      "line": 167,
-      "source": "{ path: \"security\", element: <RoleGuard roles={adminRoles}><LazyPage><SecurityPage /></LazyPage></RoleGuard> },",
+      "line": 174,
+      "source": "{ path: \"security\", element: <LazyPage><SecurityPage /></LazyPage> },",
       "id": "security#1",
       "contract": "غير مسجل",
       "decision": "blocked_not_registered",
@@ -340,7 +364,7 @@
     },
     {
       "path": "admin/labs",
-      "line": 168,
+      "line": 175,
       "source": "{ path: \"admin/labs\", element: <RoleGuard roles={adminRoles}><LazyPage><AdminLabsPage /></LazyPage></RoleGuard> },",
       "id": "admin/labs#1",
       "contract": "غير مسجل",
@@ -352,7 +376,7 @@
     },
     {
       "path": "admin/users",
-      "line": 169,
+      "line": 176,
       "source": "{ path: \"admin/users\", element: <RoleGuard roles={adminRoles}><LazyPage><AdminUsersPage /></LazyPage></RoleGuard> },",
       "id": "admin/users#1",
       "contract": "غير مسجل",
@@ -364,7 +388,7 @@
     },
     {
       "path": "admin/audit",
-      "line": 170,
+      "line": 177,
       "source": "{ path: \"admin/audit\", element: <RoleGuard roles={adminRoles}><LazyPage><AdminAuditPage /></LazyPage></RoleGuard> },",
       "id": "admin/audit#1",
       "contract": "غير مسجل",
@@ -376,7 +400,7 @@
     },
     {
       "path": "fhir",
-      "line": 171,
+      "line": 178,
       "source": "{ path: \"fhir\", element: <RoleGuard roles={adminRoles}><LazyPage><FhirPage /></LazyPage></RoleGuard> },",
       "id": "fhir#1",
       "contract": "غير مسجل",
@@ -388,7 +412,7 @@
     },
     {
       "path": "ehr",
-      "line": 172,
+      "line": 179,
       "source": "{ path: \"ehr\", element: <RoleGuard roles={adminRoles}><LegacyRouteBridge /></RoleGuard> },",
       "id": "ehr#1",
       "contract": "غير مسجل",
@@ -400,7 +424,7 @@
     },
     {
       "path": "hospital",
-      "line": 173,
+      "line": 180,
       "source": "{ path: \"hospital\", element: <RoleGuard roles={adminRoles}><LazyPage><HospitalPage /></LazyPage></RoleGuard> },",
       "id": "hospital#1",
       "contract": "غير مسجل",
@@ -412,7 +436,7 @@
     },
     {
       "path": "edge",
-      "line": 174,
+      "line": 181,
       "source": "{ path: \"edge\", element: <RoleGuard roles={['master_admin', 'admin']}><LazyPage><EdgePage /></LazyPage></RoleGuard> },",
       "id": "edge#1",
       "contract": "غير مسجل",
@@ -424,7 +448,7 @@
     },
     {
       "path": "financial",
-      "line": 175,
+      "line": 182,
       "source": "{ path: \"financial\", element: <RoleGuard roles={adminRoles}><LazyPage><FinancialPage /></LazyPage></RoleGuard> },",
       "id": "financial#1",
       "contract": "غير مسجل",
@@ -436,7 +460,7 @@
     },
     {
       "path": "financial-governance",
-      "line": 176,
+      "line": 183,
       "source": "{ path: \"financial-governance\", element: <RoleGuard roles={financialRoles}><LazyPage><FinancialGovernancePage /></LazyPage></RoleGuard> },",
       "id": "financial-governance#1",
       "contract": "غير مسجل",
@@ -448,7 +472,7 @@
     },
     {
       "path": "national-data",
-      "line": 177,
+      "line": 184,
       "source": "{ path: \"national-data\", element: <RoleGuard roles={['master_admin', 'ministry_admin', 'province_admin']}><LazyPage><NationalDataPage /></LazyPage></RoleGuard> },",
       "id": "national-data#1",
       "contract": "غير مسجل",
@@ -460,7 +484,7 @@
     },
     {
       "path": "niam/governance",
-      "line": 178,
+      "line": 185,
       "source": "{ path: \"niam/governance\", element: <RoleGuard roles={adminRoles}><LazyPage><NiamGovernancePage /></LazyPage></RoleGuard> },",
       "id": "niam/governance#1",
       "contract": "غير مسجل",
@@ -472,7 +496,7 @@
     },
     {
       "path": "niam/trust",
-      "line": 179,
+      "line": 186,
       "source": "{ path: \"niam/trust\", element: <RoleGuard roles={adminRoles}><LazyPage><NiamTrustPage /></LazyPage></RoleGuard> },",
       "id": "niam/trust#1",
       "contract": "غير مسجل",
@@ -484,7 +508,7 @@
     },
     {
       "path": "niam/lifecycle",
-      "line": 180,
+      "line": 187,
       "source": "{ path: \"niam/lifecycle\", element: <RoleGuard roles={adminRoles}><LazyPage><NiamLifecyclePage /></LazyPage></RoleGuard> },",
       "id": "niam/lifecycle#1",
       "contract": "غير مسجل",
@@ -496,7 +520,7 @@
     },
     {
       "path": "niam/federation",
-      "line": 181,
+      "line": 188,
       "source": "{ path: \"niam/federation\", element: <RoleGuard roles={adminRoles}><LazyPage><NiamFederationPage /></LazyPage></RoleGuard> },",
       "id": "niam/federation#1",
       "contract": "غير مسجل",
@@ -508,7 +532,7 @@
     },
     {
       "path": "niam/certificates",
-      "line": 182,
+      "line": 189,
       "source": "{ path: \"niam/certificates\", element: <RoleGuard roles={adminRoles}><LazyPage><NiamCertificatesPage /></LazyPage></RoleGuard> },",
       "id": "niam/certificates#1",
       "contract": "غير مسجل",
@@ -520,7 +544,7 @@
     },
     {
       "path": "niam/workflows",
-      "line": 183,
+      "line": 190,
       "source": "{ path: \"niam/workflows\", element: <RoleGuard roles={adminRoles}><LazyPage><NiamWorkflowsPage /></LazyPage></RoleGuard> },",
       "id": "niam/workflows#1",
       "contract": "غير مسجل",
@@ -532,7 +556,7 @@
     },
     {
       "path": "niam/adaptive-auth",
-      "line": 184,
+      "line": 191,
       "source": "{ path: \"niam/adaptive-auth\", element: <RoleGuard roles={adminRoles}><LazyPage><NiamAdaptiveAuthPage /></LazyPage></RoleGuard> },",
       "id": "niam/adaptive-auth#1",
       "contract": "غير مسجل",
@@ -544,7 +568,7 @@
     },
     {
       "path": "ai-fabric",
-      "line": 185,
+      "line": 192,
       "source": "{ path: \"ai-fabric\", element: <RoleGuard roles={adminRoles}><LazyPage><AiFabricPageLazy /></LazyPage></RoleGuard> },",
       "id": "ai-fabric#1",
       "contract": "غير مسجل",
@@ -556,7 +580,7 @@
     },
     {
       "path": "biomedical",
-      "line": 186,
+      "line": 193,
       "source": "{ path: \"biomedical\", element: <RoleGuard roles={adminRoles}><LazyPage><BiomedicalApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "biomedical#1",
       "contract": "غير مسجل",
@@ -568,7 +592,7 @@
     },
     {
       "path": "blood-bank",
-      "line": 187,
+      "line": 194,
       "source": "{ path: \"blood-bank\", element: <RoleGuard roles={adminRoles}><LazyPage><BloodBankApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "blood-bank#1",
       "contract": "غير مسجل",
@@ -580,7 +604,7 @@
     },
     {
       "path": "capabilities/clinical-foundation",
-      "line": 188,
+      "line": 195,
       "source": "{ path: \"capabilities/clinical-foundation\", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesClinicalFoundationPageLazy /></LazyPage></RoleGuard> },",
       "id": "capabilities/clinical-foundation#1",
       "contract": "غير مسجل",
@@ -592,7 +616,7 @@
     },
     {
       "path": "capabilities/document-management",
-      "line": 189,
+      "line": 196,
       "source": "{ path: \"capabilities/document-management\", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesDocumentManagementPageLazy /></LazyPage></RoleGuard> },",
       "id": "capabilities/document-management#1",
       "contract": "غير مسجل",
@@ -604,7 +628,7 @@
     },
     {
       "path": "capabilities/encounter-management",
-      "line": 190,
+      "line": 197,
       "source": "{ path: \"capabilities/encounter-management\", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesEncounterManagementPageLazy /></LazyPage></RoleGuard> },",
       "id": "capabilities/encounter-management#1",
       "contract": "غير مسجل",
@@ -616,7 +640,7 @@
     },
     {
       "path": "capabilities/healthcare-consent",
-      "line": 191,
+      "line": 198,
       "source": "{ path: \"capabilities/healthcare-consent\", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesHealthcareConsentPageLazy /></LazyPage></RoleGuard> },",
       "id": "capabilities/healthcare-consent#1",
       "contract": "غير مسجل",
@@ -628,7 +652,7 @@
     },
     {
       "path": "capabilities/provider-management",
-      "line": 192,
+      "line": 199,
       "source": "{ path: \"capabilities/provider-management\", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesProviderManagementPageLazy /></LazyPage></RoleGuard> },",
       "id": "capabilities/provider-management#1",
       "contract": "غير مسجل",
@@ -640,7 +664,7 @@
     },
     {
       "path": "capabilities/reporting-service",
-      "line": 193,
+      "line": 200,
       "source": "{ path: \"capabilities/reporting-service\", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesReportingServicePageLazy /></LazyPage></RoleGuard> },",
       "id": "capabilities/reporting-service#1",
       "contract": "غير مسجل",
@@ -652,7 +676,7 @@
     },
     {
       "path": "capabilities/search-service",
-      "line": 194,
+      "line": 201,
       "source": "{ path: \"capabilities/search-service\", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesSearchServicePageLazy /></LazyPage></RoleGuard> },",
       "id": "capabilities/search-service#1",
       "contract": "غير مسجل",
@@ -664,7 +688,7 @@
     },
     {
       "path": "capabilities/storage-service",
-      "line": 195,
+      "line": 202,
       "source": "{ path: \"capabilities/storage-service\", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesStorageServicePageLazy /></LazyPage></RoleGuard> },",
       "id": "capabilities/storage-service#1",
       "contract": "غير مسجل",
@@ -676,7 +700,7 @@
     },
     {
       "path": "capabilities/workflow-engine",
-      "line": 196,
+      "line": 203,
       "source": "{ path: \"capabilities/workflow-engine\", element: <RoleGuard roles={readonlyRoles}><LazyPage><CapabilitiesWorkflowEnginePageLazy /></LazyPage></RoleGuard> },",
       "id": "capabilities/workflow-engine#1",
       "contract": "غير مسجل",
@@ -688,7 +712,7 @@
     },
     {
       "path": "certification",
-      "line": 197,
+      "line": 204,
       "source": "{ path: \"certification\", element: <RoleGuard roles={adminRoles}><LazyPage><CertificationPageLazy /></LazyPage></RoleGuard> },",
       "id": "certification#1",
       "contract": "غير مسجل",
@@ -700,7 +724,7 @@
     },
     {
       "path": "citizen",
-      "line": 198,
+      "line": 205,
       "source": "{ path: \"citizen\", element: <RoleGuard roles={[\"citizen\"]}><LazyPage><CitizenWorkspacePageLazy /></LazyPage></RoleGuard> },",
       "id": "citizen#1",
       "contract": "غير مسجل",
@@ -712,7 +736,7 @@
     },
     {
       "path": "citizen-platform",
-      "line": 199,
+      "line": 206,
       "source": "{ path: \"citizen-platform\", element: <RoleGuard roles={adminRoles}><LazyPage><CitizenPlatformPageLazy /></LazyPage></RoleGuard> },",
       "id": "citizen-platform#1",
       "contract": "غير مسجل",
@@ -724,7 +748,7 @@
     },
     {
       "path": "command-center",
-      "line": 200,
+      "line": 207,
       "source": "{ path: \"command-center\", element: <RoleGuard roles={adminRoles}><LazyPage><CommandCenterApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "command-center#1",
       "contract": "غير مسجل",
@@ -736,7 +760,7 @@
     },
     {
       "path": "command-intelligence",
-      "line": 201,
+      "line": 208,
       "source": "{ path: \"command-intelligence\", element: <RoleGuard roles={adminRoles}><LazyPage><CommandIntelligencePageLazy /></LazyPage></RoleGuard> },",
       "id": "command-intelligence#1",
       "contract": "غير مسجل",
@@ -748,7 +772,7 @@
     },
     {
       "path": "control-plane",
-      "line": 202,
+      "line": 209,
       "source": "{ path: \"control-plane\", element: <RoleGuard roles={adminRoles}><LazyPage><ControlPlanePageLazy /></LazyPage></RoleGuard> },",
       "id": "control-plane#1",
       "contract": "غير مسجل",
@@ -760,7 +784,7 @@
     },
     {
       "path": "critical-care",
-      "line": 203,
+      "line": 210,
       "source": "{ path: \"critical-care\", element: <RoleGuard roles={adminRoles}><LazyPage><CriticalCareApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "critical-care#1",
       "contract": "غير مسجل",
@@ -772,7 +796,7 @@
     },
     {
       "path": "ems",
-      "line": 204,
+      "line": 211,
       "source": "{ path: \"ems\", element: <RoleGuard roles={adminRoles}><LazyPage><EmsApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "ems#1",
       "contract": "غير مسجل",
@@ -784,7 +808,7 @@
     },
     {
       "path": "health-data",
-      "line": 205,
+      "line": 212,
       "source": "{ path: \"health-data\", element: <RoleGuard roles={adminRoles}><LazyPage><HealthDataPageLazy /></LazyPage></RoleGuard> },",
       "id": "health-data#1",
       "contract": "غير مسجل",
@@ -796,7 +820,7 @@
     },
     {
       "path": "integration",
-      "line": 206,
+      "line": 213,
       "source": "{ path: \"integration\", element: <RoleGuard roles={adminRoles}><LazyPage><IntegrationPageLazy /></LazyPage></RoleGuard> },",
       "id": "integration#1",
       "contract": "غير مسجل",
@@ -808,7 +832,7 @@
     },
     {
       "path": "integration/connectors",
-      "line": 207,
+      "line": 214,
       "source": "{ path: \"integration/connectors\", element: <RoleGuard roles={adminRoles}><LazyPage><IntegrationConnectorsPageLazy /></LazyPage></RoleGuard> },",
       "id": "integration/connectors#1",
       "contract": "غير مسجل",
@@ -820,7 +844,7 @@
     },
     {
       "path": "health-ecosystem",
-      "line": 208,
+      "line": 215,
       "source": "{ path: \"health-ecosystem\", element: <RoleGuard roles={readonlyRoles}><LazyPage><HealthEcosystemPageLazy /></LazyPage></RoleGuard> },",
       "id": "health-ecosystem#1",
       "contract": "غير مسجل",
@@ -832,7 +856,7 @@
     },
     {
       "path": "kernel",
-      "line": 209,
+      "line": 216,
       "source": "{ path: \"kernel\", element: <RoleGuard roles={adminRoles}><LazyPage><KernelPageLazy /></LazyPage></RoleGuard> },",
       "id": "kernel#1",
       "contract": "غير مسجل",
@@ -844,7 +868,7 @@
     },
     {
       "path": "lifecycle-platform",
-      "line": 210,
+      "line": 217,
       "source": "{ path: \"lifecycle-platform\", element: <RoleGuard roles={adminRoles}><LazyPage><LifecyclePlatformApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "lifecycle-platform#1",
       "contract": "غير مسجل",
@@ -856,7 +880,7 @@
     },
     {
       "path": "national/background-platform",
-      "line": 211,
+      "line": 218,
       "source": "{ path: \"national/background-platform\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalBackgroundPlatformApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/background-platform#1",
       "contract": "غير مسجل",
@@ -868,7 +892,7 @@
     },
     {
       "path": "national/document-platform",
-      "line": 212,
+      "line": 219,
       "source": "{ path: \"national/document-platform\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalDocumentPlatformApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/document-platform#1",
       "contract": "غير مسجل",
@@ -880,7 +904,7 @@
     },
     {
       "path": "national/ecosystem",
-      "line": 213,
+      "line": 220,
       "source": "{ path: \"national/ecosystem\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalEcosystemPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/ecosystem#1",
       "contract": "غير مسجل",
@@ -892,7 +916,7 @@
     },
     {
       "path": "national/ecosystem/gateway",
-      "line": 214,
+      "line": 221,
       "source": "{ path: \"national/ecosystem/gateway\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalEcosystemGatewayPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/ecosystem/gateway#1",
       "contract": "غير مسجل",
@@ -904,7 +928,7 @@
     },
     {
       "path": "national/notification-platform",
-      "line": 215,
+      "line": 222,
       "source": "{ path: \"national/notification-platform\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalNotificationPlatformApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/notification-platform#1",
       "contract": "غير مسجل",
@@ -916,7 +940,7 @@
     },
     {
       "path": "national/observability",
-      "line": 216,
+      "line": 223,
       "source": "{ path: \"national/observability\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalObservabilityApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/observability#1",
       "contract": "غير مسجل",
@@ -928,7 +952,7 @@
     },
     {
       "path": "national/rules-engine",
-      "line": 217,
+      "line": 224,
       "source": "{ path: \"national/rules-engine\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalRulesEngineApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/rules-engine#1",
       "contract": "غير مسجل",
@@ -940,7 +964,7 @@
     },
     {
       "path": "national/scheduling-platform",
-      "line": 218,
+      "line": 225,
       "source": "{ path: \"national/scheduling-platform\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalSchedulingPlatformApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/scheduling-platform#1",
       "contract": "غير مسجل",
@@ -952,7 +976,7 @@
     },
     {
       "path": "national/search-platform",
-      "line": 219,
+      "line": 226,
       "source": "{ path: \"national/search-platform\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalSearchPlatformApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/search-platform#1",
       "contract": "غير مسجل",
@@ -964,7 +988,7 @@
     },
     {
       "path": "national/task-engine",
-      "line": 220,
+      "line": 227,
       "source": "{ path: \"national/task-engine\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalTaskEngineApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/task-engine#1",
       "contract": "غير مسجل",
@@ -976,7 +1000,7 @@
     },
     {
       "path": "national/workflow-runtime",
-      "line": 221,
+      "line": 228,
       "source": "{ path: \"national/workflow-runtime\", element: <RoleGuard roles={adminRoles}><LazyPage><NationalWorkflowRuntimeApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "national/workflow-runtime#1",
       "contract": "غير مسجل",
@@ -988,7 +1012,7 @@
     },
     {
       "path": "pharmacy",
-      "line": 222,
+      "line": 229,
       "source": "{ path: \"pharmacy\", element: <RoleGuard roles={adminRoles}><LazyPage><PharmacyPageLazy /></LazyPage></RoleGuard> },",
       "id": "pharmacy#1",
       "contract": "غير مسجل",
@@ -1000,7 +1024,7 @@
     },
     {
       "path": "pharmacy-operations",
-      "line": 223,
+      "line": 230,
       "source": "{ path: \"pharmacy-operations\", element: <RoleGuard roles={readonlyRoles}><LazyPage><PharmacyOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },",
       "id": "pharmacy-operations#1",
       "contract": "غير مسجل",
@@ -1012,7 +1036,7 @@
     },
     {
       "path": "billing-insurance",
-      "line": 224,
+      "line": 231,
       "source": "{ path: \"billing-insurance\", element: <RoleGuard roles={readonlyRoles}><LazyPage><BillingInsuranceWorkspacePageLazy /></LazyPage></RoleGuard> },",
       "id": "billing-insurance#1",
       "contract": "غير مسجل",
@@ -1024,7 +1048,7 @@
     },
     {
       "path": "device-integration",
-      "line": 225,
+      "line": 232,
       "source": "{ path: \"device-integration\", element: <InstitutionalOnlyRoute><RoleGuard roles={readonlyRoles}><LazyPage><DeviceIntegrationWorkspacePageLazy /></LazyPage></RoleGuard></InstitutionalOnlyRoute> },",
       "id": "device-integration#1",
       "contract": "غير مسجل",
@@ -1036,7 +1060,7 @@
     },
     {
       "path": "pilot-platform",
-      "line": 226,
+      "line": 233,
       "source": "{ path: \"pilot-platform\", element: <RoleGuard roles={adminRoles}><LazyPage><PilotPlatformApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "pilot-platform#1",
       "contract": "غير مسجل",
@@ -1048,7 +1072,7 @@
     },
     {
       "path": "platform",
-      "line": 227,
+      "line": 234,
       "source": "{ path: \"platform\", element: <RoleGuard roles={adminRoles}><LazyPage><PlatformPageLazy /></LazyPage></RoleGuard> },",
       "id": "platform#1",
       "contract": "غير مسجل",
@@ -1060,7 +1084,7 @@
     },
     {
       "path": "public-health",
-      "line": 228,
+      "line": 235,
       "source": "{ path: \"public-health\", element: <RoleGuard roles={adminRoles}><LazyPage><PublicHealthApiPageLazy /></LazyPage></RoleGuard> },",
       "id": "public-health#1",
       "contract": "غير مسجل",
@@ -1072,7 +1096,7 @@
     },
     {
       "path": "admin",
-      "line": 229,
+      "line": 236,
       "source": "{ path: \"admin\", element: <Navigate to=\"/admin/labs\" replace /> },",
       "id": "admin#1",
       "contract": "لا ينطبق",
@@ -1084,7 +1108,7 @@
     },
     {
       "path": "*",
-      "line": 230,
+      "line": 237,
       "source": "{ path: \"*\", element: <LegacyRouteBridge /> },",
       "id": "*#1",
       "contract": "جسر انتقال",
@@ -1096,7 +1120,7 @@
     },
     {
       "path": "*",
-      "line": 233,
+      "line": 240,
       "source": "{ path: \"*\", element: <Navigate to=\"/\" replace /> },",
       "id": "*#2",
       "contract": "لا ينطبق",

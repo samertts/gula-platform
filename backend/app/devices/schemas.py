@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from datetime import datetime
 from typing import Any, Literal
 
@@ -517,6 +518,13 @@ class WearableMeasurementIngestRequest(BaseModel):
     quality_status: Literal["good", "suspect", "invalid", "unknown"] = "unknown"
     provenance: dict[str, Any] | None = None
     simulation_only: bool = True
+
+    @field_validator("value")
+    @classmethod
+    def validate_finite_value(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("value must be finite")
+        return value
 
     @field_validator("provenance")
     @classmethod

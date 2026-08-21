@@ -27,7 +27,7 @@ Revises     : (none — initial migration)
 Create Date : 2025-03-22
 """
 
-from alembic import op
+from alembic import context, op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
 
@@ -40,6 +40,9 @@ depends_on    = None
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def _table_exists(table: str) -> bool:
+    """Return table existence online; offline SQL assumes upgrade is from empty base."""
+    if context.is_offline_mode():
+        return False
     return inspect(op.get_bind()).has_table(table)
 
 
@@ -459,5 +462,5 @@ def downgrade() -> None:
         "test_types",
         "labs",
     ]:
-        if _table_exists(table):
+        if context.is_offline_mode() or _table_exists(table):
             op.drop_table(table)

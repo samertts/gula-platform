@@ -109,8 +109,12 @@ class TokenAuthenticator @Inject constructor(
                             val bodyStr = refreshResponse.body?.string()
                             val jsonResponse = JSONObject(bodyStr)
                             val newAccessToken = jsonResponse.optString("access_token")
+                            val newRefreshToken = jsonResponse.optString("refresh_token")
                             if (newAccessToken.isNotBlank()) {
                                 encryptedPrefs.accessToken = newAccessToken
+                                if (newRefreshToken.isNotBlank()) {
+                                    encryptedPrefs.refreshToken = newRefreshToken
+                                }
                                 return response.request.newBuilder()
                                     .header("Authorization", "Bearer $newAccessToken")
                                     .build()

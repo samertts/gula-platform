@@ -13,6 +13,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
+from app._compat import UTC
+
 logger = logging.getLogger(__name__)
 
 
@@ -105,7 +107,7 @@ class BackupService:
         manifest.size_bytes = len(serialized)
         manifest.checksum = hashlib.sha256(serialized).hexdigest()
 
-        filename = f"backup_{manifest.id}_{datetime.utcnow().strftime('%Y%m%d_%H%M%S')}.json"
+        filename = f"backup_{manifest.id}_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
         filepath = os.path.join(self._backup_dir, filename)
 
         with open(filepath, "wb") as f:

@@ -183,6 +183,30 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 if REFRESH_TOKEN_EXPIRE_DAYS < 1 or REFRESH_TOKEN_EXPIRE_DAYS > 30:
     sys.exit("REFRESH_TOKEN_EXPIRE_DAYS must be between 1 and 30 days")
 
+# NIAM sessions use a sliding idle timeout in addition to the absolute
+# refresh/session expiry stored on each UserSession row.
+SESSION_IDLE_TIMEOUT_MINUTES = int(os.getenv("SESSION_IDLE_TIMEOUT_MINUTES", "30"))
+if SESSION_IDLE_TIMEOUT_MINUTES < 5 or SESSION_IDLE_TIMEOUT_MINUTES > 1440:
+    sys.exit("SESSION_IDLE_TIMEOUT_MINUTES must be between 5 minutes and 24 hours")
+SESSION_TOUCH_INTERVAL_SECONDS = int(os.getenv("SESSION_TOUCH_INTERVAL_SECONDS", "60"))
+if SESSION_TOUCH_INTERVAL_SECONDS < 10 or SESSION_TOUCH_INTERVAL_SECONDS > 3600:
+    sys.exit("SESSION_TOUCH_INTERVAL_SECONDS must be between 10 seconds and 1 hour")
+
+# Account recovery is deliberately short-lived and bounded. High-risk recovery
+# operations remain manual-review only until an assurance provider is connected.
+ACCOUNT_RECOVERY_TOKEN_TTL_MINUTES = int(os.getenv("ACCOUNT_RECOVERY_TOKEN_TTL_MINUTES", "15"))
+if ACCOUNT_RECOVERY_TOKEN_TTL_MINUTES < 5 or ACCOUNT_RECOVERY_TOKEN_TTL_MINUTES > 60:
+    sys.exit("ACCOUNT_RECOVERY_TOKEN_TTL_MINUTES must be between 5 and 60 minutes")
+ACCOUNT_RECOVERY_MAX_ATTEMPTS = int(os.getenv("ACCOUNT_RECOVERY_MAX_ATTEMPTS", "5"))
+if ACCOUNT_RECOVERY_MAX_ATTEMPTS < 3 or ACCOUNT_RECOVERY_MAX_ATTEMPTS > 10:
+    sys.exit("ACCOUNT_RECOVERY_MAX_ATTEMPTS must be between 3 and 10")
+ACCOUNT_RECOVERY_MANUAL_REVIEW_ENABLED = os.getenv(
+    "ACCOUNT_RECOVERY_MANUAL_REVIEW_ENABLED", "true",
+).lower() == "true"
+ACCOUNT_RECOVERY_EMAIL_ENABLED = os.getenv(
+    "ACCOUNT_RECOVERY_EMAIL_ENABLED", "false",
+).lower() == "true"
+
 # ─── Encryption ──────────────────────────────────────────────────────────────
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
 if not ENCRYPTION_KEY:
@@ -225,6 +249,11 @@ ENABLE_PUBLIC_PATIENT_HISTORY = os.getenv("ENABLE_PUBLIC_PATIENT_HISTORY", "fals
 # ─── Upload Limits ───────────────────────────────────────────────────────────
 MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "2"))
 MAX_REQUEST_BODY_MB = int(os.getenv("MAX_REQUEST_BODY_MB", "10"))
+
+# Bound local and Redis-backed task queues to prevent unbounded growth.
+TASK_QUEUE_MAX_DEPTH = int(os.getenv("TASK_QUEUE_MAX_DEPTH", "1000"))
+if TASK_QUEUE_MAX_DEPTH < 1:
+    sys.exit("TASK_QUEUE_MAX_DEPTH must be positive")
 
 # ─── Rate Limiting ───────────────────────────────────────────────────────────
 RATE_LIMIT_AUTH = int(os.getenv("RATE_LIMIT_AUTH", "10"))

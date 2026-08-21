@@ -710,10 +710,14 @@ services:
       - gula-net
 
   gula-backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: gula-backend
     restart: always
     environment:
+      PORT: 8000
+      BASE_URL: ${BASE_URL:?BASE_URL must be set in .env and must use HTTPS for production}
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set in .env}@pgbouncer:5432/labdb
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379
       SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env}

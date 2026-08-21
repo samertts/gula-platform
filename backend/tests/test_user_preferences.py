@@ -7,7 +7,7 @@ from sqlalchemy import text
 
 
 def _headers(user_id: int, lab_id: int, role: str = "admin") -> dict[str, str]:
-    return {"Authorization": f"Bearer {create_token({'user_id': user_id, 'lab_id': lab_id, 'role': role})}"}
+    return {"Authorization": f"Bearer {create_token({'user_id': user_id, 'lab_id': lab_id, 'role': role, 'account_kind': 'lab'})}"}
 
 
 def test_accessibility_defaults_are_presentation_only(client, db, make_lab, make_lab_user):

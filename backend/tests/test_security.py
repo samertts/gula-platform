@@ -25,7 +25,7 @@ class TestJWTTokens:
     def test_create_access_token(self):
         """Should create a valid access token."""
         from app.security.auth import create_token, decode_token
-        token = create_token({"user_id": 1, "lab_id": 1, "role": "admin"})
+        token = create_token({"user_id": 1, "lab_id": 1, "role": "admin", "account_kind": "lab"})
         assert token is not None
         assert isinstance(token, str)
         assert len(token) > 20
@@ -33,7 +33,7 @@ class TestJWTTokens:
     def test_decode_access_token(self):
         """Should decode a valid access token."""
         from app.security.auth import create_token, decode_token
-        token = create_token({"user_id": 42, "lab_id": 5, "role": "staff"})
+        token = create_token({"user_id": 42, "lab_id": 5, "role": "staff", "account_kind": "lab"})
         payload = decode_token(token)
         assert payload is not None
         assert payload["user_id"] == 42
@@ -71,7 +71,7 @@ class TestJWTTokens:
     def test_access_token_rejected_as_refresh(self):
         """Access token should not be accepted as refresh token."""
         from app.security.auth import create_token, decode_refresh_token
-        access_token = create_token({"user_id": 1, "lab_id": 1, "role": "admin"})
+        access_token = create_token({"user_id": 1, "lab_id": 1, "role": "admin", "account_kind": "lab"})
         result = decode_refresh_token(access_token)
         assert result is None
 
@@ -85,9 +85,9 @@ class TestJWTTokens:
     def test_tokens_differ_for_different_users(self):
         """Different users should receive different tokens."""
         from app.security.auth import create_token
-        token1 = create_token({"user_id": 1, "lab_id": 1, "role": "admin"})
-        token2 = create_token({"user_id": 2, "lab_id": 1, "role": "admin"})
-        token3 = create_token({"user_id": 1, "lab_id": 2, "role": "admin"})
+        token1 = create_token({"user_id": 1, "lab_id": 1, "role": "admin", "account_kind": "lab"})
+        token2 = create_token({"user_id": 2, "lab_id": 1, "role": "admin", "account_kind": "lab"})
+        token3 = create_token({"user_id": 1, "lab_id": 2, "role": "admin", "account_kind": "lab"})
         assert token1 != token2
         assert token1 != token3
 

@@ -31,6 +31,7 @@ from app.national.scheduling_platform.infrastructure.repository import (
     SQLAlchemyWaitingListRepository,
 )
 from app.security.dependencies import require_permission
+from app.security.legacy_appointment import block_legacy_appointment_write
 
 router = APIRouter(
     prefix="/national/scheduling",
@@ -57,7 +58,7 @@ def _get_service(db: Session = Depends(get_db)) -> SchedulingPlatformService:
     )
 
 
-@router.post("/appointments", status_code=status.HTTP_201_CREATED)
+@router.post("/appointments", status_code=status.HTTP_201_CREATED, dependencies=[Depends(block_legacy_appointment_write)])
 async def create_appointment(
     body: dict[str, Any],
     service: SchedulingPlatformService = Depends(_get_service),
@@ -121,7 +122,7 @@ async def get_appointment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
 
 
-@router.put("/appointments/{appointment_id}")
+@router.put("/appointments/{appointment_id}", dependencies=[Depends(block_legacy_appointment_write)])
 async def update_appointment(
     appointment_id: str,
     body: dict[str, Any],
@@ -149,7 +150,7 @@ async def update_appointment(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
-@router.delete("/appointments/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+@router.delete("/appointments/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None, dependencies=[Depends(block_legacy_appointment_write)])
 async def cancel_appointment(
     appointment_id: str,
     body: dict[str, Any] | None = None,
@@ -165,7 +166,7 @@ async def cancel_appointment(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
-@router.post("/appointments/{appointment_id}/complete")
+@router.post("/appointments/{appointment_id}/complete", dependencies=[Depends(block_legacy_appointment_write)])
 async def complete_appointment(
     appointment_id: str,
     service: SchedulingPlatformService = Depends(_get_service),
@@ -179,7 +180,7 @@ async def complete_appointment(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
-@router.post("/appointments/{appointment_id}/no-show")
+@router.post("/appointments/{appointment_id}/no-show", dependencies=[Depends(block_legacy_appointment_write)])
 async def mark_no_show(
     appointment_id: str,
     service: SchedulingPlatformService = Depends(_get_service),
@@ -193,7 +194,7 @@ async def mark_no_show(
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
 
 
-@router.post("/appointments/{appointment_id}/reschedule")
+@router.post("/appointments/{appointment_id}/reschedule", dependencies=[Depends(block_legacy_appointment_write)])
 async def reschedule_appointment(
     appointment_id: str,
     body: dict[str, Any],

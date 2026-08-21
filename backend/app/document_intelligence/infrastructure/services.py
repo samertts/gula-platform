@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
+
+from app._compat import UTC
 
 from ..domain.entities import (
     CollaborationSession,

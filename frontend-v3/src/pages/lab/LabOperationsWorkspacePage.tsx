@@ -153,6 +153,10 @@ export function LabOperationsWorkspacePage() {
   return (
     <div className="mx-auto max-w-7xl space-y-6" dir="rtl">
       <PageHeader title="إدارة المختبر" description="مساحة GULA الأصلية لدورة الطلب والعينة والنتيجة والمحلل وضبط الجودة، مستلهمة من احتياجات OpenELIS وLIMS العامة دون نسخ الكود." />
+      <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2"><Badge variant="warning">بيانات اصطناعية معزولة</Badge><span>هذه الشاشة لا تعتمد سجلات إنتاجية ولا ترسل نتائجاً إلى نظام خارجي.</span></div>
+        <Link to="/clinical-workspace" className="font-semibold text-teal-700 underline underline-offset-4 dark:text-teal-300">فتح مساحة العمل السريرية المحمية</Link>
+      </div>
 
       <Card className="overflow-hidden border-teal-200 bg-gradient-to-l from-teal-50 via-white to-sky-50 dark:border-teal-900/50 dark:from-teal-950/30 dark:via-background dark:to-sky-950/30">
         <CardContent className="p-6">

@@ -16,6 +16,7 @@ from ..database import get_db
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..services.care_continuum_service import (
+    ReferralScopeError,
     accept_referral,
     complete_referral,
     coordinate_ehr_immunization,
@@ -102,6 +103,10 @@ def _lab_id(user: LabUser) -> int | None:
 
 def _practitioner_id(user: LabUser) -> str | None:
     return str(user.id) if hasattr(user, "national_practitioner_id") else None
+
+
+def _referral_scope_error(exc: ReferralScopeError) -> HTTPException:
+    return HTTPException(status_code=403, detail=str(exc))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -271,7 +276,15 @@ def api_create_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return create_referral_request(db, data)
+    try:
+        return create_referral_request(
+            db,
+            data,
+            _lab_id(current_user),
+            server_practitioner_id=current_user.id,
+        )
+    except ReferralScopeError as exc:
+        raise _referral_scope_error(exc) from exc
 
 
 @router.put("/referrals/{referral_id}/accept", summary="Accept referral")
@@ -293,7 +306,10 @@ def api_reject_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = reject_referral(db, referral_id, reason)
+    try:
+        result = reject_referral(db, referral_id, reason, _lab_id(current_user))
+    except ReferralScopeError as exc:
+        raise _referral_scope_error(exc) from exc
     if not result:
         raise HTTPException(status_code=404, detail="Referral not found")
     return result
@@ -307,7 +323,10 @@ def api_complete_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    result = complete_referral(db, referral_id)
+    try:
+        result = complete_referral(db, referral_id, _lab_id(current_user))
+    except ReferralScopeError as exc:
+        raise _referral_scope_error(exc) from exc
     if not result:
         raise HTTPException(status_code=404, detail="Referral not found")
     return result
@@ -340,7 +359,10 @@ def api_get_referral_timeline(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return get_referral_timeline(db, referral_id)
+    try:
+        return get_referral_timeline(db, referral_id, _lab_id(current_user))
+    except ReferralScopeError as exc:
+        raise _referral_scope_error(exc) from exc
 
 
 @router.post(
@@ -351,7 +373,10 @@ def api_create_cross_org_referral(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return create_cross_org_referral(db, data)
+    try:
+        return create_cross_org_referral(db, data, _lab_id(current_user))
+    except ReferralScopeError as exc:
+        raise _referral_scope_error(exc) from exc
 
 
 @router.post(
@@ -362,7 +387,10 @@ def api_create_referral_response(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return create_referral_response(db, data)
+    try:
+        return create_referral_response(db, data, _lab_id(current_user))
+    except ReferralScopeError as exc:
+        raise _referral_scope_error(exc) from exc
 
 
 @router.get(
@@ -376,7 +404,12 @@ def api_get_referral_analytics(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return get_referral_analytics(db, facility_id, organization_id, start_date, end_date)
+    try:
+        return get_referral_analytics(
+            db, facility_id, _lab_id(current_user), organization_id, start_date, end_date,
+        )
+    except ReferralScopeError as exc:
+        raise _referral_scope_error(exc) from exc
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -13,7 +13,9 @@ import time
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from .config import (
     APP_VERSION,
@@ -54,11 +56,11 @@ class HealthcheckHostMiddleware:
     with its original header and remains strictly validated.
     """
 
-    def __init__(self, app, canonical_host: str) -> None:
+    def __init__(self, app: ASGIApp, canonical_host: str) -> None:
         self.app = app
         self._canonical_host = canonical_host.encode("ascii")
 
-    async def __call__(self, scope, receive, send) -> None:
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope.get("type") == "http" and scope.get("path") in _ALWAYS_ALLOWED_PATHS:
             normalized_scope = dict(scope)
             headers = [
@@ -76,11 +78,11 @@ class HealthcheckHostMiddleware:
 class MaxBodySizeMiddleware(BaseHTTPMiddleware):
     """Reject oversized request bodies."""
 
-    def __init__(self, app, max_size_mb: int = 10):
+    def __init__(self, app: ASGIApp, max_size_mb: int = 10) -> None:
         super().__init__(app)
         self._max_bytes = max_size_mb * 1024 * 1024
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         content_length = request.headers.get("content-length")
         if content_length and int(content_length) > self._max_bytes:
             return JSONResponse(
@@ -104,7 +106,7 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
 
     def __init__(
         self,
-        app,
+        app: ASGIApp,
         max_requests: int = RATE_LIMIT_GLOBAL,
         window_seconds: int = RATE_LIMIT_GLOBAL_WINDOW_SECONDS,
     ) -> None:
@@ -112,18 +114,43 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
         self._max_requests = max_requests
         self._window_seconds = window_seconds
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         path = request.url.path
         if path in _ALWAYS_ALLOWED_PATHS:
             return await call_next(request)
 
+        from .security.redis_client import cache as rate_limit_cache
+
+        if IS_PRODUCTION and not rate_limit_cache.is_shared:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "detail": "Traffic protection temporarily unavailable",
+                    "detail_ar": "حماية الطلبات غير متاحة مؤقتاً",
+                },
+                headers={"Retry-After": "5"},
+            )
+
         client_ip = get_client_ip(request)
-        allowed, remaining, reset_ts = _check(
-            f"global:{client_ip}",
-            self._max_requests,
-            self._window_seconds,
-            request,
-        )
+        try:
+            allowed, remaining, reset_ts = _check(
+                f"global:{client_ip}",
+                self._max_requests,
+                self._window_seconds,
+                request,
+            )
+        except Exception:
+            logger.exception("Global rate-limit backend failed")
+            if IS_PRODUCTION:
+                return JSONResponse(
+                    status_code=503,
+                    content={
+                        "detail": "Traffic protection temporarily unavailable",
+                        "detail_ar": "حماية الطلبات غير متاحة مؤقتاً",
+                    },
+                    headers={"Retry-After": "5"},
+                )
+            return await call_next(request)
         if not allowed:
             retry_after = max(1, reset_ts - int(time.time()))
             return JSONResponse(
@@ -148,18 +175,22 @@ class GlobalRateLimitMiddleware(BaseHTTPMiddleware):
 class RequestIDMiddleware(BaseHTTPMiddleware):
     """Assign a unique ID to every request for tracing."""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         request_id = sanitize_request_id(request.headers.get("X-Request-ID"))
         request.state.request_id = request_id
         bind_log_context(request_id=request_id)
-        from .database import _endpoint_var, _request_id_var
+        from .database import _correlation_id_var, _endpoint_var, _request_id_var
 
+        correlation_id = sanitize_request_id(request.headers.get("X-Correlation-ID")) if request.headers.get("X-Correlation-ID") else request_id
+        request.state.correlation_id = correlation_id
         rid_token = _request_id_var.set(request_id)
+        cid_token = _correlation_id_var.set(correlation_id)
         ep_token = _endpoint_var.set(request.url.path)
         try:
             response = await call_next(request)
         finally:
             _request_id_var.reset(rid_token)
+            _correlation_id_var.reset(cid_token)
             _endpoint_var.reset(ep_token)
         response.headers["X-Request-ID"] = request_id
         return response
@@ -171,7 +202,7 @@ _SILENT_PATHS: frozenset[str] = frozenset({"/health", "/health/ready", "/health/
 class RequestTimingMiddleware(BaseHTTPMiddleware):
     """Emit a structured access-log line per request."""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         start = time.perf_counter()
         response = await call_next(request)
         elapsed_ms = round((time.perf_counter() - start) * 1000)
@@ -206,24 +237,27 @@ class DemoReadOnlyMiddleware(BaseHTTPMiddleware):
         },
     )
 
-    async def dispatch(self, request: Request, call_next):
-        if DEMO_MODE and request.method not in {"GET", "HEAD", "OPTIONS"}:
-            if (request.method, request.url.path) not in self._ALLOWED_MUTATIONS:
-                return JSONResponse(
-                    status_code=405,
-                    content={
-                        "detail": "Write operations are disabled in the public demo.",
-                        "detail_ar": "عمليات الكتابة معطلة في العرض التجريبي العام.",
-                    },
-                    headers={"Allow": "GET, HEAD, OPTIONS"},
-                )
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if (
+            DEMO_MODE
+            and request.method not in {"GET", "HEAD", "OPTIONS"}
+            and (request.method, request.url.path) not in self._ALLOWED_MUTATIONS
+        ):
+            return JSONResponse(
+                status_code=405,
+                content={
+                    "detail": "Write operations are disabled in the public demo.",
+                    "detail_ar": "عمليات الكتابة معطلة في العرض التجريبي العام.",
+                },
+                headers={"Allow": "GET, HEAD, OPTIONS"},
+            )
         return await call_next(request)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Apply security headers to every response."""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         response = await call_next(request)
         path = request.url.path
         if path.startswith("/assets/") or path.endswith((".css", ".js", ".png", ".ico")):
@@ -258,7 +292,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 class ReadinessMiddleware(BaseHTTPMiddleware):
     """Reject non-whitelisted requests with 503 until startup guard passes."""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         from .core.startup_guard import system_ready
 
         if not system_ready and request.url.path not in _ALWAYS_ALLOWED_PATHS:
@@ -277,14 +311,14 @@ class PrivacyMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        
+
         # Only mask if it's a JSON response and not a critical clinical path
         # (Clinical paths need full data for doctors, but logging should still be masked)
         if response.headers.get("content-type") == "application/json":
             # In a real system, we would mask the log entry here.
             # For this demonstration, we ensure PII is handled safely.
             pass
-            
+
         return response
 
 
@@ -293,7 +327,7 @@ class DocsAuthMiddleware(BaseHTTPMiddleware):
 
     _PROTECTED = {"/docs", "/redoc", "/openapi.json"}
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path not in self._PROTECTED:
             return await call_next(request)
         token = request.cookies.get("access_token")
@@ -316,7 +350,7 @@ class DocsAuthMiddleware(BaseHTTPMiddleware):
 class KernelMiddleware(BaseHTTPMiddleware):
     """Attach kernel context to every request."""
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         from .kernel.integration import kernel_middleware
 
         return await kernel_middleware(request, call_next)
@@ -324,7 +358,7 @@ class KernelMiddleware(BaseHTTPMiddleware):
 
 _MAX_CONCURRENT = int(os.getenv("MAX_CONCURRENT_REQUESTS", "200"))
 
-_CRITICAL_PATH_PREFIXES: tuple = (
+_CRITICAL_PATH_PREFIXES: tuple[str, ...] = (
     "/results",
     "/orders",
     "/samples",
@@ -347,12 +381,12 @@ class ConcurrencyLimitMiddleware(BaseHTTPMiddleware):
     _active: int = 0
     _instance: ConcurrencyLimitMiddleware | None = None
 
-    def __init__(self, app, max_concurrent: int = _MAX_CONCURRENT):
+    def __init__(self, app: ASGIApp, max_concurrent: int = _MAX_CONCURRENT) -> None:
         super().__init__(app)
         self._max = max_concurrent
         ConcurrencyLimitMiddleware._instance = self
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         if request.url.path in _ALWAYS_ALLOWED_PATHS:
             return await call_next(request)
         if _is_critical_write(request.method, request.url.path):

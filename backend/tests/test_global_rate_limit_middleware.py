@@ -1,3 +1,4 @@
+import pytest
 from app.middleware import GlobalRateLimitMiddleware
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -12,17 +13,17 @@ def _build_app() -> FastAPI:
     )
 
     @app.get("/data")
-    async def data():
+    async def data() -> dict[str, bool]:
         return {"ok": True}
 
     @app.get("/health")
-    async def health():
+    async def health() -> dict[str, str]:
         return {"status": "ok"}
 
     return app
 
 
-def test_global_limiter_returns_standard_headers_and_429(monkeypatch):
+def test_global_limiter_returns_standard_headers_and_429(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENV", "development")
     client = TestClient(_build_app())
     origin = {"X-Forwarded-For": "198.51.100.10"}
@@ -41,7 +42,7 @@ def test_global_limiter_returns_standard_headers_and_429(monkeypatch):
     assert blocked.headers["x-ratelimit-remaining"] == "0"
 
 
-def test_health_probe_is_not_consumed_by_global_budget(monkeypatch):
+def test_health_probe_is_not_consumed_by_global_budget(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENV", "development")
     client = TestClient(_build_app())
     origin = {"X-Forwarded-For": "198.51.100.11"}

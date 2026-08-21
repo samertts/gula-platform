@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 
+import pyotp
 import pytest
 from fastapi.testclient import TestClient
 
@@ -34,7 +35,9 @@ def _setup_db(db):
 def token(client):
     resp = client.post("/login", json={"email": "test@mfa.gula", "password": "password123"})
     assert resp.status_code == 200, resp.text
-    return resp.json()["token"]
+    token = resp.cookies.get("access_token")
+    assert token
+    return token
 
 
 _AUTH_HEADER_TEMPLATE = "Bearer {}"
@@ -100,18 +103,43 @@ def test_list_devices_after_totp_setup(client, token):
     assert len(resp.json()["devices"]) >= 1
 
 
-def test_remove_device(client, token):
+def test_remove_device_requires_recent_mfa_step_up(client, token):
     setup = client.post("/mfa/totp/setup", json={}, headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
     dev_id = setup.json()["device_id"]
-    resp = client.delete(f"/mfa/devices/{dev_id}", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
+    denied = client.request(
+        "DELETE",
+        f"/mfa/devices/{dev_id}",
+        json={},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert denied.status_code in (403, 422)
+
+    verified = client.post(
+        "/mfa/totp/verify",
+        json={"token": pyotp.TOTP(setup.json()["secret"]).now()},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert verified.status_code == 200, verified.text
+    step_up = verified.json()["mfa_session_token"]
+    resp = client.request(
+        "DELETE",
+        f"/mfa/devices/{dev_id}",
+        json={"session_token": step_up},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
     assert resp.status_code == 200
     resp2 = client.get("/mfa/devices", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
-    assert all(d["id"] != dev_id for d in resp2.json()["devices"])
+    assert resp2.status_code == 401
 
 
-def test_remove_nonexistent_device_returns_404(client, token):
-    resp = client.delete("/mfa/devices/99999", headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)})
-    assert resp.status_code == 404
+def test_remove_nonexistent_device_requires_step_up(client, token):
+    resp = client.request(
+        "DELETE",
+        "/mfa/devices/99999",
+        json={},
+        headers={"Authorization": _AUTH_HEADER_TEMPLATE.format(token)},
+    )
+    assert resp.status_code in (403, 404, 422)
 
 
 # ── MFA: Status ──

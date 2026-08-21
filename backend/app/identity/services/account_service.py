@@ -4,6 +4,7 @@ import re
 import uuid
 from datetime import datetime, timedelta
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app._compat import UTC
@@ -16,6 +17,19 @@ PASSWORD_MIN_LENGTH = 12
 ACCOUNT_LOCKOUT_THRESHOLD = 5
 ACCOUNT_LOCKOUT_DURATION_MINUTES = 30
 PASSWORD_EXPIRY_DAYS = 90
+
+
+class DuplicateAccountError(ValueError):
+    """Raised when a unique account identifier is already registered."""
+
+
+def _is_unique_violation(error: IntegrityError) -> bool:
+    original = getattr(error, "orig", None)
+    code = getattr(original, "pgcode", None) or getattr(original, "sqlstate", None)
+    if code == "23505":
+        return True
+    message = str(original or error).lower()
+    return "unique constraint" in message or "duplicate key" in message
 
 
 class AccountService:
@@ -32,6 +46,8 @@ class AccountService:
         username: str | None = None,
         password: str | None = None,
     ) -> Account:
+        if not identity_id or not identity_id.strip():
+            raise ValueError("identity_id is required")
         email = email.strip().lower() if email else None
         phone = re.sub(r"\s+", "", phone) if phone else None
         username = username.strip().lower() if username else None
@@ -64,10 +80,25 @@ class AccountService:
             phone_verified=False,
             identity_verified=False,
         )
-        return await self.repo.create(account)
+        try:
+            return await self.repo.create(account)
+        except IntegrityError as exc:
+            rollback = getattr(self.repo.session, "rollback", None)
+            if rollback is not None:
+                result = rollback()
+                if hasattr(result, "__await__"):
+                    await result
+            if _is_unique_violation(exc):
+                raise DuplicateAccountError("Account identifier is already registered") from exc
+            raise
 
     async def authenticate(self, login: str, password: str) -> Account | None:
-        account = await self.repo.find_by_login(login)
+        normalized_login = login.strip()
+        if "@" in normalized_login:
+            normalized_login = normalized_login.lower()
+        else:
+            normalized_login = re.sub(r"\s+", "", normalized_login)
+        account = await self.repo.find_by_login(normalized_login)
         if not account:
             verify_password(password, _DUMMY_HASH)
             return None
@@ -76,6 +107,7 @@ class AccountService:
             AccountStatus.pending_verification.value,
             AccountStatus.suspended.value,
             AccountStatus.disabled.value,
+            AccountStatus.rejected.value,
             AccountStatus.deactivated.value,
         } or not account.is_active:
             verify_password(password, account.password_hash or _DUMMY_HASH)
@@ -84,7 +116,13 @@ class AccountService:
         password_is_valid = verify_password(password, account.password_hash or _DUMMY_HASH)
 
         if account.is_locked or account.status == AccountStatus.locked.value:
-            if account.locked_until and account.locked_until > datetime.now(UTC):
+            now = datetime.now(UTC)
+            # A lock without an expiry is an explicit/manual lock. It must not
+            # be cleared by an unauthenticated login attempt. Only an expired
+            # timed lockout may be reopened automatically.
+            if account.locked_until is None:
+                return None
+            if account.locked_until > now:
                 return None
             AccountLifecycleService.transition(account, AccountStatus.active)
             account.failed_login_attempts = 0

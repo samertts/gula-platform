@@ -8,6 +8,8 @@ from uuid import UUID
 from sqlalchemy import and_, desc, func
 from sqlalchemy.orm import Session, sessionmaker
 
+from app._compat import UTC
+
 from ..domain.entities import (
     ClassificationResult,
     DigitalPreservationRecord,
@@ -589,7 +591,7 @@ class SqlPreservationRepository(PreservationRepository):
         from datetime import datetime
         with self._session_factory() as s:
             ms = s.query(DigitalPreservationRecordModel).filter(
-                DigitalPreservationRecordModel.next_integrity_check <= datetime.utcnow(),
+                DigitalPreservationRecordModel.next_integrity_check <= datetime.now(UTC),
             ).all()
             return [m.to_domain() for m in ms]
 
@@ -827,7 +829,7 @@ class SqlRetentionRepository(RetentionRepository):
         from datetime import datetime, timedelta
 
         with self._session_factory() as s:
-            cutoff = datetime.utcnow() + timedelta(days=days)
+            cutoff = datetime.now(UTC) + timedelta(days=days)
             return [m.document_id for m in s.query(DocumentRetentionModel)
                     .filter(DocumentRetentionModel.retention_end <= cutoff).all()]
 

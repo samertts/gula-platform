@@ -409,7 +409,7 @@ class ExternalGateway:
         your internal data before switching to live mode — with zero risk.
         """
         try:
-            external = self._do_call(action, **call_kwargs)
+            self._do_call(action, **call_kwargs)
             logger.info(
                 "[SHADOW] gateway=%s action=%s comparison=completed",
                 self.name,

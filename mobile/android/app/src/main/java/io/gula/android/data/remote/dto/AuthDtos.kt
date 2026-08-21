@@ -37,6 +37,7 @@ data class RefreshRequestDto(
 @JsonClass(generateAdapter = true)
 data class RefreshResponseDto(
     @Json(name = "access_token") val accessToken: String,
+    @Json(name = "refresh_token") val refreshToken: String? = null,
     @Json(name = "expires_in") val expiresIn: Long,
 )
 
@@ -69,6 +70,13 @@ data class PasswordResetRequestDto(
 data class PasswordResetConfirmDto(
     @Json(name = "token") val token: String,
     @Json(name = "new_password") val newPassword: String,
+    @Json(name = "request_id") val requestId: String? = null,
+)
+
+@JsonClass(generateAdapter = true)
+data class RecoveryVerifyRequestDto(
+    @Json(name = "token") val token: String,
+    @Json(name = "request_id") val requestId: String? = null,
 )
 
 @JsonClass(generateAdapter = true)

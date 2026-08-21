@@ -33,6 +33,17 @@ class _MemoryStore:
         with self._lock:
             self._data[key] = (str(value), expire_at)
 
+    def set_if_absent(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> bool:
+        expire_at = time.monotonic() + ex if ex else None
+        with self._lock:
+            entry = self._data.get(key)
+            if entry is not None:
+                if entry[1] is None or time.monotonic() <= entry[1]:
+                    return False
+                del self._data[key]
+            self._data[key] = (str(value), expire_at)
+            return True
+
     def get(self, key: str) -> str | None:
         with self._lock:
             entry = self._data.get(key)
@@ -44,17 +55,15 @@ class _MemoryStore:
                 return None
             return value
 
-    def set_if_absent(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> bool:
-        expire_at = time.monotonic() + ex if ex else None
+    def get_and_delete(self, key: str) -> str | None:
         with self._lock:
-            entry = self._data.get(key)
-            if entry is not None:
-                if entry[1] is not None and time.monotonic() > entry[1]:
-                    del self._data[key]
-                else:
-                    return False
-            self._data[key] = (str(value), expire_at)
-            return True
+            entry = self._data.pop(key, None)
+            if entry is None:
+                return None
+            value, expire_at = entry
+            if expire_at is not None and time.monotonic() > expire_at:
+                return None
+            return value
 
     def delete(self, key: str) -> None:
         with self._lock:
@@ -74,6 +83,10 @@ class _MemoryStore:
             entry = self._data.get(key)
             if entry is not None:
                 self._data[key] = (entry[0], time.monotonic() + seconds)
+
+    @property
+    def is_shared(self) -> bool:
+        return False
 
     def ping(self) -> bool:
         """Always return True for in-memory store as it's always 'available'."""
@@ -99,12 +112,16 @@ class _RedisWrapper:
     def set(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> None:
         self._client.set(key, value, ex=ex)
 
+    def set_if_absent(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> bool:
+        return bool(self._client.set(key, value, ex=ex, nx=True))
+
     def get(self, key: str) -> str | None:
         value = self._client.get(key)
         return value.decode() if isinstance(value, bytes) else value
 
-    def set_if_absent(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> bool:
-        return bool(self._client.set(key, value, ex=ex, nx=True))
+    def get_and_delete(self, key: str) -> str | None:
+        value = self._client.getdel(key)
+        return value.decode() if isinstance(value, bytes) else value
 
     def delete(self, key: str) -> None:
         self._client.delete(key)
@@ -114,6 +131,10 @@ class _RedisWrapper:
 
     def expire(self, key: str, seconds: int) -> None:
         self._client.expire(key, seconds)
+
+    @property
+    def is_shared(self) -> bool:
+        return True
 
     def ping(self) -> bool:
         """Ping Redis — raises on failure so callers can catch it."""

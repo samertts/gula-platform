@@ -1,0 +1,12 @@
+sha	commit	workflow_or_job	status	conclusion	runner_id	steps	url
+33664e8d	internal-fix	IAM Hardening Gate / Security and tenant isolation regression	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060318297
+33664e8d	internal-fix	Changed Files Quality Gate / Ruff-MyPy non-regression	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060318338
+33664e8d	internal-fix	Security Hardening / Secret Scan	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060318515
+33664e8d	internal-fix	Mobile Android CI/CD / Android Lint	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060318319
+33664e8d	internal-fix	Preview Deploy / preview	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060318363
+92ae8aec	report-update	IAM Hardening Gate / Security and tenant isolation regression	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060612922
+92ae8aec	report-update	Formatting Check / Ruff Format (Python)	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060612831
+92ae8aec	report-update	Mobile Flutter Android and iOS / flutter-analyze-test	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060612826
+92ae8aec	report-update	Frontend Bundle Budget / frontend bundle budget	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060612809
+92ae8aec	report-update	CI Pipeline / Syntax Gate	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060612749
+92ae8aec	report-update	Security Hardening / dependency and secret jobs	completed	failure	0	0	https://github.com/samertts/gula-platform/actions/runs/32060612893

@@ -22,6 +22,7 @@ from app.clinical_gateway.contracts import (
     ClinicalReadEnvelope,
     OrderRead,
     PatientRead,
+    ResultRead,
 )
 from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
 from app.identity.services.authorization_decision import (
@@ -30,7 +31,7 @@ from app.identity.services.authorization_decision import (
     AuthorizationRequest,
 )
 from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
-from app.services.order_service import list_orders
+from app.services.order_service import get_order_by_id, list_orders
 from app.services.patient_service import list_patients
 
 
@@ -47,7 +48,7 @@ _ResultT = TypeVar("_ResultT")
 
 @dataclass(frozen=True)
 class ClinicalReadResult:
-    items: list[PatientRead] | list[OrderRead]
+    items: list[PatientRead] | list[OrderRead] | list[ResultRead]
     total: int
     next_cursor: str | None
 
@@ -99,8 +100,8 @@ class ClinicalCursorCodec:
 class ClinicalGatewayService:
     """Canonical, read-only clinical gateway over existing legacy services."""
 
-    PERMISSIONS = {"patients": "patients.read", "orders": "orders.read"}
-    RESOURCE_TYPES = {"patients": "clinical_patient", "orders": "clinical_order"}
+    PERMISSIONS = {"patients": "patients.read", "orders": "orders.read", "results": "results.read"}
+    RESOURCE_TYPES = {"patients": "clinical_patient", "orders": "clinical_order", "results": "clinical_result"}
 
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -213,6 +214,57 @@ class ClinicalGatewayService:
             limit=params.limit,
             next_cursor=next_cursor,
             total=result["total"],
+        )
+
+    def list_results(
+        self,
+        *,
+        context: ClinicalGatewayContext,
+        request_id: UUID,
+        correlation_id: UUID,
+        order_id: int,
+    ) -> ClinicalReadEnvelope[ResultRead]:
+        resource = "results"
+        self._authorize_and_audit(
+            context=context,
+            resource=resource,
+            request_id=request_id,
+            correlation_id=correlation_id,
+        )
+        result = get_order_by_id(
+            db=self.db,
+            order_id=order_id,
+            lab_id=context.scope.legacy_lab_id,
+            user_role=context.legacy_user.role,
+            user_id=context.legacy_user.id,
+            scope=context.scope,
+        )
+        if result is None:
+            raise ClinicalGatewayBlocked("not_found")
+        items = [
+            ResultRead(
+                id=str(item["id"]),
+                order_id=str(order_id),
+                test_name=item["test_name"],
+                value=item.get("value"),
+                value_text=item.get("value_text"),
+                unit=item.get("unit"),
+                normal_range_low=item.get("normal_range_low"),
+                normal_range_high=item.get("normal_range_high"),
+                flag=item.get("flag"),
+                interpretation=item.get("interpretation"),
+                created_at=item.get("created_at"),
+            )
+            for item in result.get("results", [])
+        ]
+        return ClinicalReadEnvelope[ResultRead](
+            request_id=request_id,
+            correlation_id=correlation_id,
+            workspace_context=self._workspace_context(context),
+            items=items,
+            limit=max(len(items), 1),
+            next_cursor=None,
+            total=len(items),
         )
 
     def _authorize_and_audit(

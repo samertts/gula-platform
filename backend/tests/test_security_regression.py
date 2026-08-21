@@ -55,7 +55,7 @@ from joserfc import jwk
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:
-    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role})
+    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role, "account_kind": "lab"})
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -118,7 +118,7 @@ class TestTokenTypeConfusion:
     """Access tokens cannot be used as refresh tokens, and vice versa."""
 
     def test_access_token_rejected_as_refresh(self):
-        access = create_token({"user_id": 1, "lab_id": 1, "role": "admin"})
+        access = create_token({"user_id": 1, "lab_id": 1, "role": "admin", "account_kind": "lab"})
         # decode_refresh_token uses REFRESH_TOKEN_SECRET — different secret
         assert decode_refresh_token(access) is None
 
@@ -147,7 +147,7 @@ class TestSignatureTampering:
         assert decode_token(bad) is None
 
     def test_payload_byte_swap_rejected(self):
-        token = create_token({"user_id": 1, "lab_id": 1, "role": "admin"})
+        token = create_token({"user_id": 1, "lab_id": 1, "role": "admin", "account_kind": "lab"})
         # Flip one character in the middle (payload section)
         parts = token.split(".")
         if len(parts[1]) > 4:

@@ -119,12 +119,30 @@ def _is_b64u(s: str) -> bool:
 # ── Card view ────────────────────────────────────────────────────────────────
 
 
-def build_card_view(patient: Patient) -> dict:
-    """Compact, presentation-ready snapshot for the front-side of the card.
+def _mask_identifier(value: str | None, visible: int = 4) -> str | None:
+    if not value:
+        return None
+    value = str(value)
+    if len(value) <= visible:
+        return "•" * len(value)
+    return "•" * (len(value) - visible) + value[-visible:]
 
-    Excludes the national_id_hash and family_id_hash — those are sensitive
-    derivations that should never round-trip through the UI.
-    """
+
+def build_card_view(patient: Patient) -> dict:
+    """Minimum-disclosure clinical card view for ordinary API responses."""
+    return {
+        "patient_id": patient.id,
+        "health_id_masked": _mask_identifier(patient.health_id),
+        "full_name": patient.full_name,
+        "phone_masked": _mask_identifier(patient.phone, visible=2),
+        "birth_date": patient.birth_date.isoformat() if patient.birth_date else None,
+        "gender": patient.gender,
+        "is_minor": patient.is_minor,
+    }
+
+
+def build_print_card_view(patient: Patient) -> dict:
+    """Full print-only fields; callers must apply a separate print policy."""
     return {
         "patient_id": patient.id,
         "health_id": patient.health_id,

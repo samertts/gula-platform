@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   Activity,
@@ -19,6 +19,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { authFailureMessage } from "@/api/errorHandling";
 import { DEMO_PERSONAS, type DemoPersonaId } from "@/api/client";
 import { useLocale } from "@/contexts/LocaleContext";
 import { localeOptions, type Locale } from "@/i18n/locales";
@@ -26,19 +27,12 @@ import { Button, Input } from "@/components/ui";
 
 type AccessPath = "citizen" | "institution";
 
-function errorMessage(error: unknown, fallback: string) {
-  const detail = (error as { response?: { data?: { detail?: string | { message?: string; message_ar?: string } } } })?.response?.data?.detail;
-  if (typeof detail === "string") return detail;
-  if (detail?.message_ar) return detail.message_ar;
-  if (detail?.message) return detail.message;
-  return fallback;
-}
-
 export function LoginPage() {
-  const { login, startDemo } = useAuth();
+  const { login, startDemo, state: authState, error: authError } = useAuth();
   const { locale, setLocale, isRTL } = useLocale();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const [accessPath, setAccessPath] = useState<AccessPath>("citizen");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -75,7 +69,7 @@ export function LoginPage() {
       await login({ email: email.trim(), password });
       navigate("/dashboard");
     } catch (err: unknown) {
-      setError(errorMessage(err, t("auth.invalidCredentials")));
+      setError(authFailureMessage(err).message);
     } finally {
       setLoading(false);
     }
@@ -88,7 +82,7 @@ export function LoginPage() {
       await startDemo(demoPersona);
       navigate("/dashboard");
     } catch (err: unknown) {
-      setError(errorMessage(err, t("common.error")));
+      setError(authFailureMessage(err).message);
     } finally {
       setDemoLoading(false);
     }
@@ -199,7 +193,8 @@ export function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4" aria-busy={loading}>
-              {error && <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-3.5 py-3 text-sm leading-6 text-destructive" role="alert">{error}</div>}
+              {(error || authError?.message || location.state?.reason === "SESSION_EXPIRED") && <div className="rounded-xl border border-destructive/20 bg-destructive/10 px-3.5 py-3 text-sm leading-6 text-destructive" role="alert">{error || authError?.message || (location.state?.reason === "SESSION_EXPIRED" ? "انتهت الجلسة أو أُبطلت. أعد تسجيل الدخول للمتابعة." : "تعذر تسجيل الدخول.")}</div>}
+              {(authState === "LOCKED" || authState === "SUSPENDED") && <p className="text-xs font-semibold text-amber-700 dark:text-amber-300" role="status">{authState === "LOCKED" ? "الحساب مقفل مؤقتاً." : "الحساب موقوف حالياً."} استخدم مسار الاسترداد أو تواصل مع الجهة المعتمدة.</p>}
               <div className="space-y-2">
                 <label className="text-sm font-semibold" htmlFor="email">{t("loginPage.emailOrPhone")}</label>
                 <div className="relative">
@@ -218,8 +213,10 @@ export function LoginPage() {
                 </div>
               </div>
               <Button type="submit" className="h-12 w-full rounded-xl text-sm font-bold shadow-lg shadow-primary/15 transition-transform active:scale-[0.99]" loading={loading}>
+
                 {activePath.action} <Arrow className="ms-2 h-4 w-4" />
               </Button>
+              <div className="flex items-center justify-between gap-3 text-xs"><Link className="font-semibold text-primary hover:underline" to="/recover">نسيت كلمة المرور؟</Link><span className="text-muted-foreground">لا يتم تخزين tokens في المتصفح</span></div>
             </form>
 
             <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground"><span className="h-px flex-1 bg-border" /><span>GULA</span><span className="h-px flex-1 bg-border" /></div>

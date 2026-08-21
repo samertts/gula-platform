@@ -57,6 +57,52 @@ import type {
   HealthPreferencesResponse,
 } from "@/types";
 
+// ── Identity lifecycle contracts ──
+export interface AccountRequestPayload {
+  email?: string;
+  phone?: string;
+  display_name?: string;
+  requested_account_type: "human";
+}
+
+export interface AccountRequestAccepted {
+  accepted: boolean;
+  status: string;
+  request_id: string | null;
+  message: string;
+}
+
+export interface SessionSummary {
+  uuid: string;
+  id: number;
+}
+
+export interface MfaDeviceSummary {
+  id: number;
+  device_type: string;
+  device_name: string;
+  created_at: string;
+  last_used_at?: string | null;
+  is_active?: boolean;
+  is_primary?: boolean;
+}
+
+export interface MfaStatusResponse {
+  mfa_enabled: boolean;
+  devices: MfaDeviceSummary[];
+}
+
+export const identityLifecycleApi = {
+  submitAccountRequest: (payload: AccountRequestPayload, idempotencyKey: string) =>
+    api.post<AccountRequestAccepted>("/niam/account-requests/", payload, { headers: { "Idempotency-Key": idempotencyKey } }).then((r) => r.data),
+  listSessions: (accountId: string) =>
+    apiClient.api.get<{ sessions: SessionSummary[] }>(`/niam/sessions/account/${encodeURIComponent(accountId)}`).then((r) => r.data),
+  terminateSession: (sessionUuid: string) =>
+    apiClient.api.post<Record<string, unknown>>(`/niam/sessions/${encodeURIComponent(sessionUuid)}/terminate`).then((r) => r.data),
+  terminateAllSessions: (accountId: string) =>
+    apiClient.api.post<Record<string, unknown>>(`/niam/sessions/account/${encodeURIComponent(accountId)}/terminate-all`).then((r) => r.data),
+};
+
 // ── Auth ──
 export const authApi = {
   login: (data: LoginRequest) =>
@@ -87,12 +133,16 @@ export const authApi = {
     api.post<Record<string, unknown>>("/register/staff", data).then((r) => r.data),
   registerDoctor: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/register/doctor", data).then((r) => r.data),
-  forgotPassword: (email: string) =>
-    api.post<Record<string, unknown>>("/auth/forgot-password", { email }).then((r) => r.data),
-  resetPassword: (token: string, new_password: string) =>
-    api.post<Record<string, unknown>>("/auth/reset-password", { token, new_password }).then((r) => r.data),
+  forgotPassword: (email: string, idempotencyKey?: string) =>
+    api.post<Record<string, unknown>>("/auth/forgot-password", { email }, idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : undefined).then((r) => r.data),
+  verifyRecovery: (token: string, requestId?: string) =>
+    api.post<Record<string, unknown>>("/auth/recovery/verify", { token, ...(requestId ? { request_id: requestId } : {}) }).then((r) => r.data),
+  resetPassword: (token: string, new_password: string, requestId?: string) =>
+    api.post<Record<string, unknown>>("/auth/reset-password", { token, new_password, ...(requestId ? { request_id: requestId } : {}) }).then((r) => r.data),
   changePassword: (current_password: string, new_password: string) =>
     api.post<Record<string, unknown>>("/auth/change-password", { current_password, new_password }).then((r) => r.data),
+  requestSecurityRecovery: (operation: "contact_change" | "lost_device" | "mfa_reset" | "passkey_recovery" | "account_unlock") =>
+    api.post<Record<string, unknown>>("/auth/security/recovery-request", { operation }).then((r) => r.data),
 };
 
 // ── User preferences ──
@@ -323,6 +373,153 @@ export const batchApi = {
     api.post<Record<string, unknown>>("/batch/orders", data).then((r) => r.data),
 };
 
+// ── Canonical clinical command contracts ──
+export interface ClinicalEncounterRecord {
+  id: string;
+  encounter_type: string;
+  status: string;
+  patient_id: string;
+  citizen_id?: string | null;
+  facility_id: string;
+  practitioner_id: string;
+  period_start?: string | null;
+  period_end?: string | null;
+  duration_minutes?: number | null;
+  reason_code?: string | null;
+  reason_description?: string | null;
+  priority: string;
+  is_emergency: boolean;
+  disposition?: string | null;
+  notes?: string | null;
+}
+
+export interface ClinicalWorkflowRecord {
+  id: string;
+  patient_id?: number | null;
+  shift_id?: string | null;
+  status?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  completed_at?: string | null;
+  task_type?: string | null;
+  priority?: string | null;
+  description?: string | null;
+}
+
+export interface ClinicalAppointmentRecord {
+  id: string;
+  patient_id: string;
+  practitioner_id?: string | null;
+  facility_id?: string | null;
+  appointment_type: string;
+  title?: string | null;
+  description?: string | null;
+  start_at: string | null;
+  end_at: string | null;
+  status: string;
+  notes?: string | null;
+  version: number;
+  organization_id?: string | null;
+  workspace_id?: string | null;
+  department_id?: string | null;
+}
+
+export interface ClinicalAppointmentListResponse {
+  items: ClinicalAppointmentRecord[];
+  limit: number;
+  offset: number;
+  workspace_id: string;
+}
+
+export interface ClinicalDiagnosticReportRecord {
+  id: string;
+  source_type: "LAB_ORDER" | "RADIOLOGY_REPORT" | string;
+  source_id: string;
+  patient_id: string;
+  encounter_id?: string | null;
+  report_code?: string | null;
+  report_name: string;
+  status: "PRELIMINARY" | "FINAL" | "AMENDED" | string;
+  conclusion?: string | null;
+  result_refs: string[];
+  version: number;
+  issued_at?: string | null;
+  released_at?: string | null;
+  amended_at?: string | null;
+  amendment_reason?: string | null;
+  organization_id?: string | null;
+  facility_id?: string | null;
+  department_id?: string | null;
+  workspace_id?: string | null;
+}
+
+export interface PatientCardHistoryResponse {
+  patient?: Record<string, unknown>;
+  orders?: Record<string, unknown>[];
+  timeline?: Record<string, unknown>[];
+  total?: number;
+  [key: string]: unknown;
+}
+
+export const clinicalEncounterApi = {
+  create: (data: {
+    patient_id: number;
+    encounter_type: string;
+    reason_code?: string;
+    reason_description?: string;
+    priority?: string;
+    is_emergency?: boolean;
+  }) => api.post<ClinicalEncounterRecord>("/api/v1/clinical/encounters", data).then((r) => r.data),
+  start: (encounterId: string) => api.post<ClinicalEncounterRecord>(`/api/v1/clinical/encounters/${encounterId}/start`).then((r) => r.data),
+  complete: (encounterId: string, data?: { disposition?: string; notes?: string }) => api.post<ClinicalEncounterRecord>(`/api/v1/clinical/encounters/${encounterId}/complete`, data ?? {}).then((r) => r.data),
+};
+
+export const clinicalWorkflowApi = {
+  startShift: (data: { shift_type: string; department_id?: number }) => api.post<ClinicalWorkflowRecord>("/api/v1/clinical/workflow/shifts/start", data).then((r) => r.data),
+  endShift: (shiftId: string) => api.post<ClinicalWorkflowRecord>(`/api/v1/clinical/workflow/shifts/${shiftId}/end`).then((r) => r.data),
+  assignPatient: (data: { shift_id: string; patient_id: number; encounter_id?: string; assignment_type?: string }) => api.post<ClinicalWorkflowRecord>("/api/v1/clinical/workflow/patient-assignments", data).then((r) => r.data),
+  createTask: (data: { patient_id: number; task_type: string; description: string; priority?: string; encounter_id?: string; due_time?: string }) => api.post<ClinicalWorkflowRecord>("/api/v1/clinical/workflow/tasks", data).then((r) => r.data),
+  completeTask: (taskId: string, data?: { notes?: string }) => api.post<ClinicalWorkflowRecord>(`/api/v1/clinical/workflow/tasks/${taskId}/complete`, data ?? {}).then((r) => r.data),
+};
+
+export const clinicalResultsReviewApi = {
+  review: (orderId: number, resultId: number, data: { expected_version: number; decision: "ACCEPTED" | "REJECTED"; note?: string }) => api.post<Record<string, unknown>>(`/api/v1/clinical/orders/${orderId}/results/${resultId}/review`, data).then((r) => r.data),
+};
+
+export const clinicalAppointmentApi = {
+  create: (data: {
+    patient_id: string;
+    appointment_type: string;
+    start_at: string;
+    end_at: string;
+    title?: string;
+    description?: string;
+    notes?: string;
+    idempotency_key?: string;
+  }) => api.post<ClinicalAppointmentRecord>("/api/v1/clinical/appointments", data).then((r) => r.data),
+  list: (params?: { status?: string; limit?: number; offset?: number }) =>
+    api.get<ClinicalAppointmentListResponse>("/api/v1/clinical/appointments", { params }).then((r) => r.data),
+  get: (appointmentId: string) => api.get<ClinicalAppointmentRecord>(`/api/v1/clinical/appointments/${encodeURIComponent(appointmentId)}`).then((r) => r.data),
+  reschedule: (appointmentId: string, data: { start_at: string; end_at: string; expected_version?: number; reason?: string }) =>
+    api.post<ClinicalAppointmentRecord>(`/api/v1/clinical/appointments/${encodeURIComponent(appointmentId)}/reschedule`, data).then((r) => r.data),
+  cancel: (appointmentId: string, data?: { expected_version?: number; reason?: string }) =>
+    api.post<ClinicalAppointmentRecord>(`/api/v1/clinical/appointments/${encodeURIComponent(appointmentId)}/cancel`, data ?? {}).then((r) => r.data),
+  transition: (appointmentId: string, data: { status: string; expected_version?: number }) =>
+    api.post<ClinicalAppointmentRecord>(`/api/v1/clinical/appointments/${encodeURIComponent(appointmentId)}/transition`, data).then((r) => r.data),
+};
+
+export const clinicalDiagnosticReportApi = {
+  createFromLabOrder: (orderId: number) =>
+    api.post<ClinicalDiagnosticReportRecord>(`/api/v1/clinical/diagnostic-reports/from-lab-orders/${orderId}`).then((r) => r.data),
+  createFromRadiologyReport: (reportId: string) =>
+    api.post<ClinicalDiagnosticReportRecord>(`/api/v1/clinical/diagnostic-reports/from-radiology-reports/${encodeURIComponent(reportId)}`).then((r) => r.data),
+  get: (reportId: string) => api.get<ClinicalDiagnosticReportRecord>(`/api/v1/clinical/diagnostic-reports/${encodeURIComponent(reportId)}`).then((r) => r.data),
+  finalize: (reportId: string, data: { expected_version: number }) =>
+    api.post<ClinicalDiagnosticReportRecord>(`/api/v1/clinical/diagnostic-reports/${encodeURIComponent(reportId)}/finalize`, data).then((r) => r.data),
+  amend: (reportId: string, data: { expected_version: number; conclusion?: string; reason: string }) =>
+    api.post<ClinicalDiagnosticReportRecord>(`/api/v1/clinical/diagnostic-reports/${encodeURIComponent(reportId)}/amend`, data).then((r) => r.data),
+};
+
 // ── Patient Card ──
 export const patientCardApi = {
   get: (patientId: number) =>
@@ -332,9 +529,9 @@ export const patientCardApi = {
   scan: (token: string) =>
     api.post<Record<string, unknown>>("/patient-card/scan", { token }).then((r) => r.data),
   history: (patientId: number, params?: { limit?: number }) =>
-    api.get<{ scans: { scanned_at: string; scanner_ip?: string }[] }>(`/patient-card/${patientId}/history`, { params }).then((r) => r.data),
+    api.get<PatientCardHistoryResponse>(`/patient-card/${patientId}/history`, { params }).then((r) => r.data),
   print: (patientId: number) =>
-    api.get<PatientCard>(`/patient-card/${patientId}/print`).then((r) => r.data),
+    api.get<Blob>(`/patient-card/${patientId}/print`, { responseType: "blob" }).then((r) => r.data),
 };
 
 // ── ID Scan ──
@@ -622,23 +819,10 @@ export const mfaApi = {
   webauthnAuthBegin: () => api.post<Record<string, unknown>>("/mfa/webauthn/authenticate/begin").then((r) => r.data),
   webauthnAuthComplete: (data: Record<string, unknown>) =>
     api.post<Record<string, unknown>>("/mfa/webauthn/authenticate/complete", data).then((r) => r.data),
-  devices: () =>
-    api
-      .get<{ devices: { id: number; type: string; name: string; created_at: string; last_used?: string }[] }>(
-        "/mfa/devices",
-      )
-      .then((r) => r.data),
-  removeDevice: (deviceId: number) =>
-    api.delete<Record<string, unknown>>(`/mfa/devices/${deviceId}`).then((r) => r.data),
-  status: () =>
-    api
-      .get<{
-        mfa_enabled: boolean;
-        totp_configured: boolean;
-        webauthn_configured: boolean;
-        recommended_method: string;
-      }>("/mfa/status")
-      .then((r) => r.data),
+  devices: () => api.get<MfaStatusResponse>("/mfa/devices").then((r) => r.data),
+  removeDevice: (deviceId: number, mfaSessionToken: string) =>
+    api.delete<Record<string, unknown>>(`/mfa/devices/${deviceId}`, { data: { session_token: mfaSessionToken } }).then((r) => r.data),
+  status: () => api.get<MfaStatusResponse>("/mfa/status").then((r) => r.data),
 };
 
 // ── Service Accounts ──

@@ -15,9 +15,6 @@ from .models import (
     DEVICE_PROTOCOLS,
     DEVICE_STATUSES,
     DEVICE_TRANSPORTS,
-    EVENT_DIRECTIONS,
-    EVENT_SEVERITIES,
-    PRINT_STATUSES,
     DeviceConnector,
     DeviceEvent,
     DeviceGateway,
@@ -28,7 +25,9 @@ from .models import (
     IntegratedDevice,
     WearableMeasurement,
 )
-from .outbox import enqueue_message, list_messages as list_outbox_messages, summarize as summarize_outbox
+from .outbox import enqueue_message
+from .outbox import list_messages as list_outbox_messages
+from .outbox import summarize as summarize_outbox
 from app.models.patient import Patient
 from .schemas import (
     ConnectorRegisterRequest,
@@ -43,7 +42,6 @@ from .schemas import (
     ProtocolProfileRequest,
     WearableMeasurementIngestRequest,
 )
-
 
 PROTOCOL_CATALOG = [
     {

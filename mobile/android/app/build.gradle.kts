@@ -1,5 +1,3 @@
-import java.io.FileInputStream
-import java.util.Properties
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -34,19 +32,32 @@ android {
 
     signingConfigs {
         create("release") {
-            val externalPropsPath = System.getenv("GULA_ANDROID_SIGNING_PROPERTIES")
-            val propsFile = externalPropsPath?.let(::file) ?: rootProject.file("signing.properties")
-            if (propsFile.exists()) {
-                val props = Properties().apply {
-                    load(FileInputStream(propsFile))
-                }
-                storeFile = rootProject.file(props.getProperty("storeFile"))
-                storePassword = props.getProperty("storePassword")
-                keyAlias = props.getProperty("keyAlias")
-                keyPassword = props.getProperty("keyPassword")
+            val injectedStoreFile = providers.gradleProperty("android.injected.signing.store.file").orNull
+            val injectedStorePassword = providers.gradleProperty("android.injected.signing.store.password").orNull
+            val injectedKeyAlias = providers.gradleProperty("android.injected.signing.key.alias").orNull
+            val injectedKeyPassword = providers.gradleProperty("android.injected.signing.key.password").orNull
+            val releaseSigningConfigured = listOf(
+                injectedStoreFile,
+                injectedStorePassword,
+                injectedKeyAlias,
+                injectedKeyPassword,
+            ).all { !it.isNullOrBlank() }
+
+            if (releaseSigningConfigured) {
+                storeFile = file(requireNotNull(injectedStoreFile))
+                storePassword = requireNotNull(injectedStorePassword)
+                keyAlias = requireNotNull(injectedKeyAlias)
+                keyPassword = requireNotNull(injectedKeyPassword)
+            } else if (gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) }) {
+                throw GradleException(
+                    "Release signing is not configured. Inject the Android signing project properties from the approved CI secret store."
+                )
             }
         }
     }
+
+    // Release signing is deliberately supplied through CI project properties.
+    // No local signing.properties or keystore is accepted from the repository.
 
         defaultConfig {
             applicationId = "iq.gula.lab"

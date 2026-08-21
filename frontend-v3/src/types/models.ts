@@ -325,17 +325,14 @@ export interface TurnaroundTime {
 
 export interface PatientCard {
   card: {
-    patient: {
-      id: number;
-      full_name: string;
-      health_id: string;
-      phone: string;
-      birth_date?: string;
-      gender?: string;
-    };
-    lab_name?: string;
+    patient_id: number;
+    full_name: string;
+    health_id_masked?: string | null;
+    phone_masked?: string | null;
+    birth_date?: string | null;
+    gender?: string | null;
+    is_minor?: boolean;
   };
-  token: string;
   qr_url: string;
 }
 

@@ -1,4 +1,5 @@
 import collections
+import contextlib
 import contextvars
 import logging
 import os
@@ -18,7 +19,14 @@ logger = logging.getLogger("gula.database")
 #   request_id + endpoint   ← set by RequestIDMiddleware
 #   user_id + lab_id        ← set by get_current_user dependency (authenticated routes)
 _request_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("request_id", default="")
+_correlation_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("correlation_id", default="")
 _endpoint_var: contextvars.ContextVar[str] = contextvars.ContextVar("endpoint", default="")
+
+
+def get_request_audit_context() -> tuple[str | None, str | None]:
+    request_id = _request_id_var.get("") or None
+    correlation_id = _correlation_id_var.get("") or request_id
+    return request_id, correlation_id
 _user_id_var: contextvars.ContextVar[int | None] = contextvars.ContextVar("user_id", default=None)
 _lab_id_var: contextvars.ContextVar[int | None] = contextvars.ContextVar("lab_id", default=None)
 
@@ -78,10 +86,8 @@ class _SlidingWindow:
             payload = json.dumps(
                 [(ts + offset, etype) for ts, etype in self._events if ts >= cutoff],
             )
-        try:
+        with contextlib.suppress(Exception):
             redis_client.set(key, payload, ex=self._max_age + 60)
-        except Exception:
-            pass  # best-effort — never raise from persistence code
 
     def restore_from_redis(
         self,
@@ -179,10 +185,10 @@ _TIMEOUT_L2_THRESHOLD = int(os.getenv("DB_TIMEOUT_L2_THRESHOLD", "15"))  # timeo
 # ── Connection Pool Sizing ────────────────────────────────────────────────────
 # PostgreSQL default max_connections = 100.
 # We run --workers 2, so each worker gets its own pool.
-# Total DB connections = workers × (pool_size + max_overflow).
+# Total DB connections = workers x (pool_size + max_overflow).
 # Keep total well under 100 to leave room for superuser + monitoring connections.
 #
-# Formula used: 2 workers × (5 base + 15 overflow) = 40 total.
+# Formula used: 2 workers x (5 base + 15 overflow) = 40 total.
 # Configurable via env vars for larger deployments.
 _WORKERS = int(os.getenv("WEB_CONCURRENCY", "2"))
 _POOL_SIZE = max(2, int(os.getenv("DB_POOL_SIZE", "5")))  # per worker
@@ -195,7 +201,7 @@ if not re.fullmatch(r"[1-9][0-9]*(?:ms|s|min|h)", _STMT_TIMEOUT):
     _STMT_TIMEOUT = "30s"
 
 logger.debug(
-    "DB pool config: %d workers × (%d base + %d overflow) = %d max connections",
+    "DB pool config: %d workers x (%d base + %d overflow) = %d max connections",
     _WORKERS,
     _POOL_SIZE,
     _MAX_OVERFLOW,

@@ -12,6 +12,10 @@ from app.identity.models.machine_identity import MachineIdentity
 from app.identity.repositories.device_repository import DeviceRepository
 
 
+class DeviceOwnershipError(PermissionError):
+    """Raised when a device fingerprint is bound to another account/person."""
+
+
 class DeviceService:
 
     def __init__(self, session: AsyncSession) -> None:
@@ -36,6 +40,10 @@ class DeviceService:
     ) -> Device:
         existing = await self.repo.find_by_fingerprint(device_fingerprint)
         if existing:
+            if account_id is not None and existing.account_id not in (None, account_id):
+                raise DeviceOwnershipError("Device fingerprint belongs to another account")
+            if account_id is not None and existing.account_id == account_id and existing.person_id != person_id:
+                raise DeviceOwnershipError("Device fingerprint is bound to another person")
             existing.last_seen_at = datetime.now(UTC)
             existing.last_ip = ip_address
             if account_id:

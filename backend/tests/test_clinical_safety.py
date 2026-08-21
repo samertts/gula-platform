@@ -50,7 +50,7 @@ from app.services.critical_alerts import CRITICAL_THRESHOLDS, check_critical
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:
-    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role})
+    token = create_token({"user_id": user_id, "lab_id": lab_id, "role": role, "account_kind": "lab"})
     return {"Authorization": f"Bearer {token}"}
 
 

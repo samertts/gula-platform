@@ -25,6 +25,7 @@ const ku = {
     identity: "ناسنامەی تەندروستی",
     tiers: "پلەکان",
     security: "ئاسایش",
+    memberships: "ئەندامێتی و کۆنتێکست",
     hospital: "بەڕێوەبردنی نەخۆشخانە",
     edgePlatform: "پلاتفۆرمی Edge",
     financial: "سیستەمی دارایی",

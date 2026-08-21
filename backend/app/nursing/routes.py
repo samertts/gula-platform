@@ -11,7 +11,10 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
-from app.nursing.clinical_read_gate import ClinicalNursingTaskReadDenied, ClinicalNursingTaskReadGate
+from app.nursing.clinical_read_gate import (
+    ClinicalNursingTaskReadDenied,
+    ClinicalNursingTaskReadGate,
+)
 from app.nursing.coordination import CareCoordinatorService
 from app.nursing.medication import MedicationAdminService
 from app.nursing.models import (
@@ -23,6 +26,7 @@ from app.nursing.models import (
 )
 from app.nursing.services import NursingService
 from app.security.dependencies import get_current_user
+from app.security.legacy_referral import block_legacy_referral_write
 
 logger = logging.getLogger("gula.nursing.routes")
 
@@ -539,8 +543,8 @@ def list_clinical_my_tasks(
     """
     try:
         ClinicalNursingTaskReadGate().authorize(db=db, lab_user=current_user)
-    except ClinicalNursingTaskReadDenied:
-        raise HTTPException(status_code=403, detail="Clinical nursing access is not permitted")
+    except ClinicalNursingTaskReadDenied as exc:
+        raise HTTPException(status_code=403, detail="Clinical nursing access is not permitted") from exc
 
     tasks = NursingService.get_tasks(
         db=db,
@@ -1244,7 +1248,7 @@ def request_pharmacy(
     )
 
 
-@router.post("/coordination/referral", summary="Create referral")
+@router.post("/coordination/referral", summary="Create referral", dependencies=[Depends(block_legacy_referral_write)])
 def create_referral(
     body: ReferralRequest,
     current_user: LabUser = Depends(get_current_user),

@@ -482,11 +482,18 @@ def create_order(
 
 
 def get_order_by_id(
-    db: Session, order_id: int, lab_id: int, user_role: str, user_id: int,
+    db: Session,
+    order_id: int,
+    lab_id: int,
+    user_role: str,
+    user_id: int,
+    scope: ClinicalLegacyReadScope | None = None,
 ) -> dict | None:
-    """Get a single order by ID."""
+    """Get a single order by ID within the reviewed clinical scope."""
     order = (
-        _base_order_query(db, user_role, user_id, lab_id).filter(LabOrder.id == order_id).first()
+        _base_order_query(db, user_role, user_id, lab_id, scope=scope)
+        .filter(LabOrder.id == order_id)
+        .first()
     )
     if not order:
         return None

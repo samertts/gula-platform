@@ -28,6 +28,7 @@ router = APIRouter(prefix="/auth/verification", tags=["auth / verification"])
 
 _CODE_TTL_SECONDS = 15 * 60
 _MAX_ATTEMPTS = 5
+_RESEND_COOLDOWN_SECONDS = 60
 
 
 def _normalize_identifier(value: str) -> str:
@@ -42,6 +43,16 @@ def _cache_key(identifier: str) -> str:
 def _attempt_key(identifier: str) -> str:
     digest = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
     return f"verification:attempts:{digest}"
+
+
+def _resend_key(identifier: str) -> str:
+    digest = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
+    return f"verification:resend:{digest}"
+
+
+def _consumed_key(identifier: str) -> str:
+    digest = hashlib.sha256(identifier.encode("utf-8")).hexdigest()
+    return f"verification:consumed:{digest}"
 
 
 def _hash_code(code: str) -> str:
@@ -84,7 +95,26 @@ _GENERIC_MESSAGE = (
 )
 
 
-def _issue_code(user: User, identifier: str) -> str:
+def _ensure_shared_cache_for_production() -> None:
+    if IS_PRODUCTION and not getattr(cache, "is_shared", False):
+        raise HTTPException(
+            status_code=503,
+            detail="Verification service is temporarily unavailable",
+        )
+
+
+def _issue_code(
+    user: User,
+    identifier: str,
+    *,
+    db: Session,
+    ip_address: str,
+) -> tuple[str | None, bool]:
+    if not cache.set_if_absent(
+        _resend_key(identifier), "1", ex=_RESEND_COOLDOWN_SECONDS
+    ):
+        return None, False
+    cache.delete(_consumed_key(identifier))
     code = f"{secrets.randbelow(1_000_000):06d}"
     channel = "email" if user.email and identifier == user.email else "sms"
     cache.set(
@@ -100,12 +130,29 @@ def _issue_code(user: User, identifier: str) -> str:
     if channel == "email":
         from ..notifications.service import get_service
 
-        get_service().send_email(user.email, "GULA account verification", message)
+        delivery = get_service().send_email(user.email, "GULA account verification", message)
     elif user.phone:
         from ..notifications.service import get_service
 
-        get_service().send_sms(user.phone, message)
-    return code
+        delivery = get_service().send_sms(user.phone, message)
+    else:
+        delivery = None
+
+    if delivery is None or not delivery.success:
+        cache.delete(_cache_key(identifier))
+        cache.delete(_attempt_key(identifier))
+        log_action(
+            db,
+            action="verification_provider_failure",
+            resource_type="user",
+            resource_id=user.id,
+            user_id=user.id,
+            user_role=user.role,
+            details="Verification code delivery failed",
+            ip_address=ip_address,
+        )
+        return None, True
+    return code, False
 
 
 @router.post("/request", status_code=202)
@@ -114,6 +161,7 @@ def request_verification(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    _ensure_shared_cache_for_production()
     rate_limit_auth(request)
     identifier = data.identifier
     user = _find_user(db, identifier)
@@ -121,20 +169,28 @@ def request_verification(
     # Keep the response identical for unknown and known identifiers.
     response: dict[str, object] = {"message": _GENERIC_MESSAGE}
     if user and not user.is_verified and user.is_active:
-        code = _issue_code(user, identifier)
-        log_action(
-            db,
-            action="verification_requested",
-            resource_type="user",
-            resource_id=user.id,
-            user_id=user.id,
-            user_role=user.role,
-            details="Account verification code requested",
+        code, provider_failed = _issue_code(
+            user,
+            identifier,
+            db=db,
             ip_address=get_client_ip(request),
         )
-        db.commit()
-        if DEMO_MODE or not IS_PRODUCTION:
-            response["demo_code"] = code
+        if provider_failed:
+            db.commit()
+        elif code is not None:
+            log_action(
+                db,
+                action="verification_requested",
+                resource_type="user",
+                resource_id=user.id,
+                user_id=user.id,
+                user_role=user.role,
+                details="Account verification code requested",
+                ip_address=get_client_ip(request),
+            )
+            db.commit()
+            if DEMO_MODE or not IS_PRODUCTION:
+                response["demo_code"] = code
     return response
 
 
@@ -144,6 +200,7 @@ def confirm_verification(
     request: Request,
     db: Session = Depends(get_db),
 ):
+    _ensure_shared_cache_for_production()
     rate_limit_auth(request)
     identifier = data.identifier
     entry = cache.get(_cache_key(identifier))
@@ -152,17 +209,20 @@ def confirm_verification(
     if not entry or not user:
         raise HTTPException(status_code=400, detail="Invalid or expired verification code")
 
-    attempts = int(cache.get(_attempt_key(identifier)) or "0")
-    if attempts >= _MAX_ATTEMPTS:
+    attempts = cache.incr(_attempt_key(identifier))
+    if attempts == 1:
+        cache.expire(_attempt_key(identifier), _CODE_TTL_SECONDS)
+    if attempts > _MAX_ATTEMPTS:
         raise HTTPException(status_code=429, detail="Too many verification attempts")
-    cache.set(_attempt_key(identifier), attempts + 1, ex=_CODE_TTL_SECONDS)
 
     try:
         stored = json.loads(entry)
-    except json.JSONDecodeError:
+        stored_user_id = int(stored.get("user_id", -1))
+    except (json.JSONDecodeError, TypeError, ValueError):
         stored = {}
+        stored_user_id = -1
     valid = hmac.compare_digest(str(stored.get("digest", "")), _hash_code(data.code))
-    if int(stored.get("user_id", -1)) != user.id or not valid:
+    if stored_user_id != user.id or not valid:
         log_action(
             db,
             action="verification_failed",
@@ -174,6 +234,9 @@ def confirm_verification(
             ip_address=get_client_ip(request),
         )
         db.commit()
+        raise HTTPException(status_code=400, detail="Invalid or expired verification code")
+
+    if not cache.set_if_absent(_consumed_key(identifier), "1", ex=_CODE_TTL_SECONDS):
         raise HTTPException(status_code=400, detail="Invalid or expired verification code")
 
     user.is_verified = True

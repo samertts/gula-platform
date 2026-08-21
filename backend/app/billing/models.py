@@ -6,11 +6,24 @@ Every tenant-facing query must filter by ``lab_id``.
 """
 from __future__ import annotations
 
-from datetime import date
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey, Index, Integer, JSON, Numeric, String, UniqueConstraint, event
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
+    event,
+)
 from sqlalchemy.orm import relationship
 
 from app._compat import UTC

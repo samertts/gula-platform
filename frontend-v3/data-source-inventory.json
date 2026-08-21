@@ -11,18 +11,13 @@
   "surfaces": [
     {
       "source": "src/api/client.ts",
-      "kinds": [
-        "demo-surface"
-      ],
+      "kinds": ["demo-surface"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/api/endpoints.ts",
-      "kinds": [
-        "demo-surface",
-        "endpoint-catalog"
-      ],
+      "kinds": ["demo-surface", "endpoint-catalog"],
       "classification": "demo-only",
       "status": "non-operational"
     },
@@ -38,597 +33,421 @@
     },
     {
       "source": "src/api/workspaceScopedReads.ts",
-      "kinds": [
-        "workspace-scoped-read"
-      ],
+      "kinds": ["workspace-scoped-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
+      "source": "src/auth/authState.ts",
+      "kinds": ["demo-surface"],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
       "source": "src/components/auth/RoleGuard.tsx",
-      "kinds": [
-        "demo-surface"
-      ],
+      "kinds": ["demo-surface"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/components/guide/GuideAssistant.tsx",
-      "kinds": [
-        "demo-surface"
-      ],
+      "kinds": ["demo-surface"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/components/navigation/MobileBottomNav.tsx",
-      "kinds": [
-        "demo-surface"
-      ],
+      "kinds": ["demo-surface"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/components/workspace/WorkspaceSelector.tsx",
-      "kinds": [
-        "demo-surface"
-      ],
+      "kinds": ["demo-surface"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/contexts/AccessibilityContext.tsx",
-      "kinds": [
-        "demo-surface",
-        "endpoint-import"
-      ],
+      "kinds": ["demo-surface", "endpoint-import"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/contexts/AuthContext.tsx",
-      "kinds": [
-        "demo-surface",
-        "endpoint-import"
-      ],
+      "kinds": ["demo-surface", "endpoint-import"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/hooks/useApi.ts",
-      "kinds": [
-        "endpoint-import",
-        "react-query-mutation",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-mutation", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/hooks/usePermissions.ts",
-      "kinds": [
-        "demo-surface"
-      ],
+      "kinds": ["demo-surface"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/layouts/DashboardLayout.tsx",
-      "kinds": [
-        "demo-surface"
-      ],
+      "kinds": ["demo-surface"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/layouts/Sidebar.tsx",
-      "kinds": [
-        "demo-surface"
-      ],
+      "kinds": ["demo-surface"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/pages/admin/AdminPages.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/ai-fabric/AiFabricPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/ai-platform/AiPlatformPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/ai/AIPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/alerts/CriticalAlertsPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/auth/RecoveryPage.tsx",
+      "kinds": ["endpoint-import"],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/auth/RegisterPage.tsx",
+      "kinds": ["endpoint-import"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/billing/BillingInsuranceWorkspacePage.tsx",
-      "kinds": [
-        "demo-surface",
-        "endpoint-import"
-      ],
+      "kinds": ["demo-surface", "endpoint-import"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/pages/biomedical/BiomedicalApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/blood-bank/BloodBankApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/capabilities/clinical-foundation/CapabilitiesClinicalFoundationPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/capabilities/document-management/CapabilitiesDocumentManagementPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/capabilities/encounter-management/CapabilitiesEncounterManagementPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/capabilities/healthcare-consent/CapabilitiesHealthcareConsentPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/capabilities/provider-management/CapabilitiesProviderManagementPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/capabilities/reporting-service/CapabilitiesReportingServicePage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/capabilities/search-service/CapabilitiesSearchServicePage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/capabilities/storage-service/CapabilitiesStorageServicePage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/capabilities/workflow-engine/CapabilitiesWorkflowEnginePage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/certification/CertificationPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/citizen-platform/CitizenPlatformPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/citizen-platform/CitizenWorkspacePage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/command-center/CommandCenterApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/command-intelligence/CommandIntelligencePage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/compliance/CompliancePage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/control-plane/ControlPlanePage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/critical-care/CriticalCareApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/dashboard/DashboardPage.tsx",
-      "kinds": [
-        "demo-surface",
-        "endpoint-import"
-      ],
+      "kinds": ["demo-surface", "endpoint-import"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/pages/devices/DeviceIntegrationWorkspacePage.tsx",
-      "kinds": [
-        "demo-surface",
-        "endpoint-import"
-      ],
+      "kinds": ["demo-surface", "endpoint-import"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/pages/edge/EdgePage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-mutation",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-mutation", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/ehr/EhrPage.tsx",
-      "kinds": [
-        "safe-bridge-marker"
-      ],
+      "kinds": ["safe-bridge-marker"],
       "classification": "safe_bridge",
       "status": "non-operational"
     },
     {
       "source": "src/pages/ems/EmsApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/fhir/FhirExplorerPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/fhir/FhirObservationPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/fhir/FhirPatientPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/fhir/FhirReportPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/financial-governance/FinancialGovernancePage.tsx",
-      "kinds": [
-        "demo-surface",
-        "endpoint-import"
-      ],
+      "kinds": ["demo-surface", "endpoint-import"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/pages/financial/FinancialPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/health-data/HealthDataPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/hospital/HospitalPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-mutation",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-mutation", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/integration/connectors/IntegrationConnectorsPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/integration/IntegrationPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/kernel/KernelPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/labs/LabsPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/lifecycle-platform/LifecyclePlatformApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/migration/LegacyRouteBridge.tsx",
-      "kinds": [
-        "safe-bridge-marker"
-      ],
+      "kinds": ["safe-bridge-marker"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national-data/NationalDataPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/background-platform/NationalBackgroundPlatformApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/document-platform/NationalDocumentPlatformApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/ecosystem/gateway/NationalEcosystemGatewayPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/ecosystem/NationalEcosystemPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/notification-platform/NationalNotificationPlatformApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/observability/NationalObservabilityApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/rules-engine/NationalRulesEngineApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/scheduling-platform/NationalSchedulingPlatformApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/search-platform/NationalSearchPlatformApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/task-engine/NationalTaskEngineApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/national/workflow-runtime/NationalWorkflowRuntimeApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
@@ -674,10 +493,7 @@
     },
     {
       "source": "src/pages/niam/LifecyclePage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
@@ -703,37 +519,31 @@
     },
     {
       "source": "src/pages/orders/OrdersPage.tsx",
-      "kinds": [
-        "react-query-read",
-        "workspace-scoped-read"
-      ],
+      "kinds": ["react-query-read", "workspace-scoped-read"],
       "classification": "contract-bound",
       "status": "blocked-until-server-enforcement"
     },
     {
       "source": "src/pages/patient-card/PatientCardPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/patients/PatientsPage.tsx",
-      "kinds": [
-        "react-query-read",
-        "workspace-scoped-read"
-      ],
+      "kinds": ["react-query-read", "workspace-scoped-read"],
       "classification": "contract-bound",
       "status": "blocked-until-server-enforcement"
     },
     {
       "source": "src/pages/pharmacy/PharmacyPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
+      "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/pharmacy/PharmacyPosPanel.tsx",
+      "kinds": ["endpoint-import", "react-query-mutation", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
@@ -749,105 +559,73 @@
     },
     {
       "source": "src/pages/pilot-platform/PilotPlatformApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/platform/PlatformPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/public-health/PublicHealthApiPage.tsx",
-      "kinds": [
-        "direct-api-client",
-        "react-query-read"
-      ],
+      "kinds": ["direct-api-client", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/qc/QCPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/results/ResultsPage.tsx",
-      "kinds": [
-        "safe-bridge-marker"
-      ],
+      "kinds": ["safe-bridge-marker"],
       "classification": "safe_bridge",
       "status": "non-operational"
     },
     {
       "source": "src/pages/samples/SamplesPage.tsx",
-      "kinds": [
-        "safe-bridge-marker"
-      ],
+      "kinds": ["safe-bridge-marker"],
       "classification": "safe_bridge",
       "status": "non-operational"
     },
     {
       "source": "src/pages/security/SecurityPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/settings/SettingsPageLegacy.tsx",
-      "kinds": [
-        "demo-surface",
-        "endpoint-import"
-      ],
+      "kinds": ["demo-surface", "endpoint-import"],
       "classification": "demo-only",
       "status": "non-operational"
     },
     {
       "source": "src/pages/stats/StatsPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/pages/tiers/TiersPage.tsx",
-      "kinds": [
-        "endpoint-import",
-        "react-query-read"
-      ],
+      "kinds": ["endpoint-import", "react-query-read"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/routes/index.tsx",
-      "kinds": [
-        "safe-bridge-marker"
-      ],
+      "kinds": ["safe-bridge-marker"],
       "classification": "unbound",
       "status": "non-operational"
     },
     {
       "source": "src/types/api.ts",
-      "kinds": [
-        "demo-surface"
-      ],
+      "kinds": ["demo-surface"],
       "classification": "demo-only",
       "status": "non-operational"
     }

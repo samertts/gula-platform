@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 EXCLUDED_PARTS = {
@@ -37,6 +38,11 @@ EXCLUDED_PREFIXES = (
     "security-audit/",
     "docs/security/",
 )
+FORBIDDEN_TRACKED_ARTIFACTS = {
+    ".jks",
+    "signing.properties",
+}
+
 TEXT_EXTENSIONS = {
     ".c", ".cfg", ".conf", ".dart", ".env", ".gradle", ".h", ".java",
     ".js", ".json", ".jsx", ".kts", ".kt", ".properties", ".py", ".rb",
@@ -92,6 +98,9 @@ def main() -> int:
 
     findings: list[tuple[str, int, str, str]] = []
     for path in tracked_files():
+        if path.suffix.lower() in FORBIDDEN_TRACKED_ARTIFACTS or path.name in FORBIDDEN_TRACKED_ARTIFACTS:
+            findings.append((path.as_posix(), 0, "tracked-signing-artifact", "[path-only check]"))
+            continue
         if not is_candidate(path) or not path.is_file():
             continue
         try:
@@ -107,12 +116,12 @@ def main() -> int:
             findings.append((path.as_posix(), line_number, name, snippet))
 
     if findings:
-        print("Potential public secrets detected:")
+        sys.stdout.write("Potential public secrets detected:\n")
         for path, line_number, name, snippet in findings:
-            print(f"- {path}:{line_number} [{name}] {snippet[:80]!r}")
+            sys.stdout.write(f"- {path}:{line_number} [{name}] {snippet[:80]!r}\n")
         return 1
 
-    print("OK: no likely public secrets found in tracked source files")
+    sys.stdout.write("OK: no likely public secrets found in tracked source files\n")
     return 0
 
 

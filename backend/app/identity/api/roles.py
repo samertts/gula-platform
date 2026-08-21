@@ -9,6 +9,7 @@ from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
 from app.identity.models.authorization import Permission, Role, RoleAssignment
 from app.identity.models.membership import Membership
+from app.identity.models.workspace import Workspace, WorkspaceSessionContext, WorkspaceStatus
 from app.identity.services.authorization_decision import (
     AuthorizationActor,
     AuthorizationDecisionService,
@@ -120,6 +121,49 @@ async def _require_phase8_decision(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Authorization denied")
 
 
+async def _resolve_trusted_scope(
+    actor: NiamActor,
+    db: AsyncSession,
+    *,
+    organization_id: str,
+    facility_id: str | None,
+    department_id: str | None,
+    unit_id: str | None,
+    workspace_id: str | None,
+) -> dict[str, str | None]:
+    context = await db.scalar(
+        select(WorkspaceSessionContext).where(
+            WorkspaceSessionContext.session_id == actor.session.id,
+            WorkspaceSessionContext.account_id == actor.account.id,
+            WorkspaceSessionContext.is_active.is_(True),
+        ),
+    )
+    if context is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace context is required")
+    workspace = await db.get(Workspace, context.workspace_id)
+    if workspace is None or workspace.status != WorkspaceStatus.active.value:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace context is unavailable")
+    if workspace.organization_id != organization_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context mismatch")
+
+    resolved = {
+        "organization_id": workspace.organization_id,
+        "facility_id": workspace.facility_id,
+        "department_id": workspace.department_id,
+        "unit_id": None,
+        "workspace_id": workspace.id,
+    }
+    for field, requested in (
+        ("facility_id", facility_id),
+        ("department_id", department_id),
+        ("unit_id", unit_id),
+        ("workspace_id", workspace_id),
+    ):
+        if requested is not None and requested != resolved[field]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Authorization scope mismatch")
+    return resolved
+
+
 @router.get("/effective")
 async def effective_permissions(
     organization_id: str = Query(min_length=1, max_length=26),
@@ -130,6 +174,15 @@ async def effective_permissions(
     actor: NiamActor = Depends(get_current_niam_actor),
     db: AsyncSession = Depends(get_db),
 ):
+    resolved = await _resolve_trusted_scope(
+        actor,
+        db,
+        organization_id=organization_id,
+        facility_id=facility_id,
+        department_id=department_id,
+        unit_id=unit_id,
+        workspace_id=workspace_id,
+    )
     await _require_phase8_decision(
         actor,
         db,
@@ -138,29 +191,23 @@ async def effective_permissions(
             action="read",
             resource_type="membership",
             permission_key="membership.read",
-            organization_id=organization_id,
-            facility_id=facility_id,
-            department_id=department_id,
-            unit_id=unit_id,
-            workspace_id=workspace_id,
-            resource_context={
-                "organization_id": organization_id,
-                "facility_id": facility_id,
-                "department_id": department_id,
-                "unit_id": unit_id,
-                "workspace_id": workspace_id,
-            },
+            organization_id=resolved["organization_id"],
+            facility_id=resolved["facility_id"],
+            department_id=resolved["department_id"],
+            unit_id=resolved["unit_id"],
+            workspace_id=resolved["workspace_id"],
+            resource_context=dict(resolved),
         ),
     )
     permissions = await RolePermissionService(db).effective_permissions(
         actor.account.id,
-        organization_id,
-        facility_id=facility_id,
-        department_id=department_id,
-        unit_id=unit_id,
-        workspace_id=workspace_id,
+        resolved["organization_id"] or organization_id,
+        facility_id=resolved["facility_id"],
+        department_id=resolved["department_id"],
+        unit_id=resolved["unit_id"],
+        workspace_id=resolved["workspace_id"],
     )
-    return {"organization_id": organization_id, "permissions": sorted(permissions)}
+    return {**resolved, "permissions": sorted(permissions)}
 
 
 @router.post("/assignments", status_code=status.HTTP_201_CREATED)

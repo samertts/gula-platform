@@ -21,7 +21,7 @@ os.environ.setdefault("REDIS_URL", "")
 # ── Import models so their tables are visible to autogenerate ─────────────────
 from app.database import Base
 from app.models import (
-    Lab, LabUser, User, Patient, TestType,
+    AccountRecoveryRequest, Lab, LabUser, User, Patient, TestType,
     LabOrder, LabResult, AuditLog, Sample, QualityControl,
     AccessibilityProfile, HealthPreference,
 )

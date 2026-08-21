@@ -171,7 +171,7 @@ def run_mypy(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
         return ToolResult("mypy", scope, 0, (), "", "")
     # Do not reuse a repository-local cache: baseline and head are checked in
     # different worktrees and stale semantic caches can cause MyPy internal
-    # errors or make the comparison depend on run order.  Imports remain
+    # errors or make the comparison depend on run order. Imports remain
     # available so framework base classes preserve their type information.
     result = run(
         (
@@ -179,6 +179,7 @@ def run_mypy(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
             "--no-incremental",
             "--show-error-codes",
             "--no-error-summary",
+            "--no-pretty",
             *paths,
         ),
         repo,

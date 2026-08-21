@@ -1,0 +1,5 @@
+.github/workflows/frontend-pwa.yml:12:      - 'vercel.json'
+k8s/base/mesh/linkerd.yaml:16:  routes:
+k8s/overlays/prod/patch-resources.yaml:1:# Prod: full resource allocation + wider HPA range (5-8 replicas)
+helm/gula-platform/templates/mesh/linkerd.yaml:11:  routes:
+helm/gula-platform/values.yaml:765:      routes:
