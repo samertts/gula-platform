@@ -169,7 +169,10 @@ def run_ruff(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
 def run_mypy(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
     if not paths:
         return ToolResult("mypy", scope, 0, (), "", "")
-    result = run(("mypy", "--show-error-codes", "--no-error-summary", *paths), repo)
+    # Do not reuse a repository-local cache: baseline and head are checked in
+    # different worktrees and stale semantic caches can cause MyPy internal
+    # errors or make the comparison depend on run order.
+    result = run(("mypy", "--no-incremental", "--show-error-codes", "--no-error-summary", *paths), repo)
     execution_error = None if result.returncode in (0, 1) else result.stderr.strip()
     diagnostics = limit_to_requested_paths(
         parse_mypy_text(repo, f"{result.stdout}\n{result.stderr}"),
