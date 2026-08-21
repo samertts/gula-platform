@@ -20,14 +20,14 @@ def _document(status: str = "DRAFT") -> ClinicalDocument:
     )
 
 
-def test_document_state_machine_allows_review_then_sign():
+def test_document_state_machine_allows_review_then_sign() -> None:
     document = _document()
     assert document.can_transition_to("IN_REVIEW")
     document.status = "IN_REVIEW"
     assert document.can_transition_to("SIGNED")
 
 
-def test_signed_document_cannot_be_overwritten_or_signed_twice():
+def test_signed_document_cannot_be_overwritten_or_signed_twice() -> None:
     document = _document("IN_REVIEW")
     document.sign(practitioner_id="practitioner-1", signature_reference="sig-1")
     assert document.status == "SIGNED"
@@ -37,7 +37,7 @@ def test_signed_document_cannot_be_overwritten_or_signed_twice():
         document.sign(practitioner_id="practitioner-1", signature_reference="sig-2")
 
 
-def test_amendment_creates_new_draft_and_preserves_original_reference():
+def test_amendment_creates_new_draft_and_preserves_original_reference() -> None:
     original = _document("SIGNED")
     amendment = original.create_amendment(
         content={"assessment": "corrected"},
@@ -50,7 +50,7 @@ def test_amendment_creates_new_draft_and_preserves_original_reference():
     assert amendment.is_signed is False
 
 
-def test_amendment_requires_reason_and_signed_source():
+def test_amendment_requires_reason_and_signed_source() -> None:
     with pytest.raises(ValueError, match="Only signed"):
         _document("DRAFT").create_amendment(content={}, reason="x", author_practitioner_id="p")
     with pytest.raises(ValueError, match="Amendment reason"):

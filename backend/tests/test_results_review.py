@@ -6,12 +6,12 @@ from app.clinical_gateway.results_review_routes import router
 from app.clinical_gateway.results_review_service import ResultsReviewService
 
 
-def test_results_review_route_is_canonical():
+def test_results_review_route_is_canonical() -> None:
     paths = {route.path for route in router.routes}
     assert "/api/v1/clinical/orders/{order_id}/results/{result_id}/review" in paths
 
 
-def test_result_review_dto_excludes_secret_fields():
+def test_result_review_dto_excludes_secret_fields() -> None:
     result = SimpleNamespace(
         id=1,
         order_id=2,
@@ -34,7 +34,7 @@ def test_result_review_dto_excludes_secret_fields():
     assert dto["review_status"] == "ACCEPTED"
 
 
-def test_review_service_rejects_invalid_decision_before_db():
+def test_review_service_rejects_invalid_decision_before_db() -> None:
     access = SimpleNamespace(require_operation=lambda operation: None)
     with pytest.raises(ClinicalGatewayBlocked, match="invalid_result_review_decision"):
         ResultsReviewService(db=None).review(

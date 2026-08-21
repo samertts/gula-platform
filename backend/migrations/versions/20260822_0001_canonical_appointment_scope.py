@@ -6,7 +6,7 @@ Revises: 20260821_0001
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from alembic import op
@@ -18,7 +18,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 _TABLE = "national_scheduling_appointments"
-_COLUMNS = {
+_COLUMNS: dict[str, Any] = {
     "organization_id": sa.String(length=26),
     "workspace_id": sa.String(length=26),
     "department_id": sa.String(length=26),
@@ -37,7 +37,7 @@ def _existing_columns() -> set[str]:
 def _existing_indexes() -> set[str]:
     bind = op.get_bind()
     inspector = cast(Inspector, sa.inspect(bind))
-    return {index["name"] for index in inspector.get_indexes(_TABLE)}
+    return {index["name"] for index in inspector.get_indexes(_TABLE) if index["name"]}
 
 
 def upgrade() -> None:

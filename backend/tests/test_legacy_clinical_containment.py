@@ -25,17 +25,17 @@ def _request(path: str, method: str = "POST") -> Request:
     )
 
 
-def test_legacy_documentation_router_is_fail_closed():
+def test_legacy_documentation_router_is_fail_closed() -> None:
     dependency_calls = [dependency.dependency for dependency in clinical_documentation.router.dependencies]
     assert block_legacy_clinical_route in dependency_calls
 
 
-def test_legacy_orders_router_is_fail_closed():
+def test_legacy_orders_router_is_fail_closed() -> None:
     dependency_calls = [dependency.dependency for dependency in clinical_orders.router.dependencies]
     assert block_legacy_clinical_route in dependency_calls
 
 
-def test_legacy_guard_returns_explicit_deprecation_response():
+def test_legacy_guard_returns_explicit_deprecation_response() -> None:
     with pytest.raises(HTTPException) as captured:
         block_legacy_clinical_route(
             _request("/clinical/documentation/soap-notes"),
@@ -44,6 +44,7 @@ def test_legacy_guard_returns_explicit_deprecation_response():
 
     error = captured.value
     assert error.status_code == 410
+    assert error.headers is not None
     assert error.headers["Deprecation"] == "true"
     assert error.headers["Cache-Control"] == "no-store"
     assert "/api/v1/clinical" in error.headers["Link"]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Index, Integer, String
 
@@ -15,7 +16,7 @@ def _document_id() -> str:
     return str(uuid.uuid4())
 
 
-class ClinicalDocument(AuditMixin, SoftDeleteMixin, OptimisticLockMixin, Base):
+class ClinicalDocument(AuditMixin, SoftDeleteMixin, OptimisticLockMixin, Base):  # type: ignore[misc]
     """Durable clinical document authority for the doctor workflow.
 
     The model deliberately stores opaque/string resource identifiers because the
@@ -69,21 +70,22 @@ class ClinicalDocument(AuditMixin, SoftDeleteMixin, OptimisticLockMixin, Base):
             "VOIDED": set(),
             "CANCELLED": set(),
         }
-        return new_status in allowed.get(self.status, set())
+        current_status = str(getattr(self, "status", ""))
+        return new_status in allowed.get(current_status, set())
 
     def sign(self, *, practitioner_id: str, signature_reference: str) -> None:
         if not self.can_transition_to("SIGNED"):
             raise ValueError(f"Invalid clinical document transition: {self.status} -> SIGNED")
         now = datetime.now(UTC)
-        self.status = "SIGNED"
-        self.is_signed = True
-        self.version = int(self.version or 1) + 1
-        self.signed_by = practitioner_id
-        self.signed_at = now
-        self.signature_reference = signature_reference
-        self.updated_at = now
+        setattr(self, "status", "SIGNED")  # noqa: B010 - legacy Column typing boundary
+        setattr(self, "is_signed", True)  # noqa: B010 - legacy Column typing boundary
+        setattr(self, "version", int(getattr(self, "version", 1) or 1) + 1)  # noqa: B010 - legacy Column typing boundary
+        setattr(self, "signed_by", practitioner_id)  # noqa: B010 - legacy Column typing boundary
+        setattr(self, "signed_at", now)  # noqa: B010 - legacy Column typing boundary
+        setattr(self, "signature_reference", signature_reference)  # noqa: B010 - legacy Column typing boundary
+        setattr(self, "updated_at", now)  # noqa: B010 - legacy Column typing boundary
 
-    def create_amendment(self, *, content: dict, reason: str, author_practitioner_id: str) -> "ClinicalDocument":
+    def create_amendment(self, *, content: dict[str, Any], reason: str, author_practitioner_id: str) -> ClinicalDocument:
         if self.status not in {"SIGNED", "AMENDED"}:
             raise ValueError("Only signed clinical documents can be amended")
         if not reason.strip():

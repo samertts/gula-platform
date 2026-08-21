@@ -15,7 +15,7 @@ def test_appointment_create_contract_forbids_client_authority_fields() -> None:
     with pytest.raises(ValidationError):
         AppointmentCreateRequest(
             patient_id="patient-1",
-            practitioner_id="client-controlled",  # type: ignore[call-arg]
+            practitioner_id="client-controlled",
             appointment_type="consultation",
             start_at=datetime(2026, 8, 22, 9, 0, tzinfo=UTC),
             end_at=datetime(2026, 8, 22, 9, 30, tzinfo=UTC),

@@ -1,13 +1,15 @@
+from typing import Any
+
 from app.pharmacy.routes import router
 from app.security.dependencies import require_institutional_user
 
 
-def test_pharmacy_router_requires_institutional_account():
+def test_pharmacy_router_requires_institutional_account() -> None:
     dependency_calls = [dependency.dependency for dependency in router.dependencies]
     assert require_institutional_user in dependency_calls
 
 
-def test_prescription_creation_fails_closed_without_server_practitioner_mapping(db, make_lab, make_lab_user):
+def test_prescription_creation_fails_closed_without_server_practitioner_mapping(db: Any, make_lab: Any, make_lab_user: Any) -> None:
     from app.pharmacy.services import PharmacyAuthorizationBlocked, PharmacyService
 
     lab = make_lab(name="Prescription Guard Lab")

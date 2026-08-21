@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -30,7 +31,7 @@ from app.services.care_continuum_service import (
         (get_referral_analytics, (Mock(), None, None, None, None, None)),
     ],
 )
-def test_referral_operations_require_server_derived_lab_scope(operation, args) -> None:
+def test_referral_operations_require_server_derived_lab_scope(operation: Any, args: tuple[Any, ...]) -> None:
     with pytest.raises(ReferralScopeError, match="institution_scope_required"):
         operation(*args)
 

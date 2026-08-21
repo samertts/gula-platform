@@ -21,7 +21,7 @@ def _context() -> ClinicalWorkspaceContext:
     )
 
 
-def test_page_request_defaults_and_hard_limit():
+def test_page_request_defaults_and_hard_limit() -> None:
     request = ClinicalPageRequest()
 
     assert request.limit == 50
@@ -29,19 +29,19 @@ def test_page_request_defaults_and_hard_limit():
         ClinicalPageRequest(limit=101)
 
 
-def test_page_request_rejects_identifier_and_phone_enumeration():
+def test_page_request_rejects_identifier_and_phone_enumeration() -> None:
     for value in ("123456", "+964 700 000 0000", "07-000-000-000"):
         with pytest.raises(ValidationError):
             ClinicalPageRequest(search=value)
 
 
-def test_page_request_normalizes_safe_name_search():
+def test_page_request_normalizes_safe_name_search() -> None:
     request = ClinicalPageRequest(search="  Ali   Hassan ")
 
     assert request.search == "Ali Hassan"
 
 
-def test_result_read_excludes_sensitive_legacy_fields():
+def test_result_read_excludes_sensitive_legacy_fields() -> None:
     result = ResultRead(
         id="result-1",
         order_id="order-1",
@@ -58,7 +58,7 @@ def test_result_read_excludes_sensitive_legacy_fields():
         ResultRead(id="result-1", order_id="order-1", test_name="Glucose", result_token="secret")
 
 
-def test_response_shapes_exclude_sensitive_legacy_fields():
+def test_response_shapes_exclude_sensitive_legacy_fields() -> None:
     patient = PatientRead(id="patient-1", display_name="Ali Hassan")
     order = OrderRead(id="order-1", status="pending")
 
@@ -69,7 +69,7 @@ def test_response_shapes_exclude_sensitive_legacy_fields():
     assert "patient_phone" not in order.model_dump()
 
 
-def test_envelope_is_versioned_and_rejects_extra_fields():
+def test_envelope_is_versioned_and_rejects_extra_fields() -> None:
     envelope = ClinicalReadEnvelope[PatientRead](
         request_id=uuid4(),
         correlation_id=uuid4(),

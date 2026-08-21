@@ -7,7 +7,7 @@ Revises: 20260818_0002
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from alembic import op
@@ -19,7 +19,7 @@ down_revision: str | None = "20260818_0002"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-_COLUMNS: tuple[tuple[str, sa.types.TypeEngine], ...] = (
+_COLUMNS: tuple[tuple[str, Any], ...] = (
     ("substituted_from_drug_id", sa.String(length=26)),
     ("substitution_reason", sa.String(length=500)),
     ("substituted_by", sa.String(length=26)),

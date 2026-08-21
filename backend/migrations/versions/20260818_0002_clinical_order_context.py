@@ -7,7 +7,7 @@ Revises: 20260818_0001
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import cast
+from typing import Any, cast
 
 import sqlalchemy as sa
 from alembic import op
@@ -19,7 +19,7 @@ down_revision: str | None = "20260818_0001"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
-_COLUMNS: tuple[tuple[str, sa.types.TypeEngine], ...] = (
+_COLUMNS: tuple[tuple[str, Any], ...] = (
     ("clinical_status", sa.String(length=24)),
     ("encounter_id", sa.String(length=80)),
     ("ordering_practitioner_id", sa.String(length=80)),
@@ -52,7 +52,7 @@ def _has_index(table: str, name: str) -> bool:
 def upgrade() -> None:
     for name, column_type in _COLUMNS:
         if not _has_column("lab_orders", name):
-            kwargs: dict[str, object] = {"nullable": True}
+            kwargs: dict[str, Any] = {"nullable": True}
             if name == "updated_at":
                 kwargs["server_default"] = sa.func.now()
             op.add_column("lab_orders", sa.Column(name, column_type, **kwargs))

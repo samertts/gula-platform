@@ -32,7 +32,7 @@ def _gateway_context() -> SimpleNamespace:
     )
 
 
-def test_context_derives_scope_from_gateway_only():
+def test_context_derives_scope_from_gateway_only() -> None:
     context = ClinicalAccessContext.from_gateway(
         _gateway_context(),
         purpose="patient_care",
@@ -49,12 +49,12 @@ def test_context_derives_scope_from_gateway_only():
     assert "national_id" not in context.audit_fields()
 
 
-def test_context_requires_purpose():
+def test_context_requires_purpose() -> None:
     with pytest.raises(ClinicalGatewayBlocked, match="missing_purpose"):
         ClinicalAccessContext.from_gateway(_gateway_context(), purpose=" ")
 
 
-def test_context_denies_clinical_write_without_shift_assignment_task():
+def test_context_denies_clinical_write_without_shift_assignment_task() -> None:
     context = ClinicalAccessContext.from_gateway(
         _gateway_context(),
         purpose="documentation",
@@ -65,7 +65,7 @@ def test_context_denies_clinical_write_without_shift_assignment_task():
         context.require_operation("create")
 
 
-def test_context_denies_write_without_permission_even_with_context():
+def test_context_denies_write_without_permission_even_with_context() -> None:
     context = ClinicalAccessContext.from_gateway(
         _gateway_context(),
         purpose="documentation",
@@ -77,7 +77,7 @@ def test_context_denies_write_without_permission_even_with_context():
         context.require_operation("create")
 
 
-def test_context_allows_shift_start_only_with_server_permission():
+def test_context_allows_shift_start_only_with_server_permission() -> None:
     context = ClinicalAccessContext.from_gateway(
         _gateway_context(),
         purpose="workflow.shift.start",
@@ -86,7 +86,7 @@ def test_context_allows_shift_start_only_with_server_permission():
     context.require_operation("shift_start")
 
 
-def test_context_denies_task_create_without_assignment_and_patient_scope():
+def test_context_denies_task_create_without_assignment_and_patient_scope() -> None:
     context = ClinicalAccessContext.from_gateway(
         _gateway_context(),
         purpose="workflow.task.create",

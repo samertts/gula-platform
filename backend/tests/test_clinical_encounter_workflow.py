@@ -7,7 +7,7 @@ from app.clinical_gateway.encounter_service import EncounterService
 from app.clinical_gateway.workflow_routes import router as workflow_router
 
 
-def test_encounter_and_workflow_routes_are_canonical_only():
+def test_encounter_and_workflow_routes_are_canonical_only() -> None:
     encounter_paths = {route.path for route in encounter_router.routes}
     workflow_paths = {route.path for route in workflow_router.routes}
     assert "/api/v1/clinical/encounters" in encounter_paths
@@ -16,7 +16,7 @@ def test_encounter_and_workflow_routes_are_canonical_only():
     assert "/api/v1/clinical/workflow/tasks/{task_id}/complete" in workflow_paths
 
 
-def test_encounter_rejects_unknown_type_before_database_lookup():
+def test_encounter_rejects_unknown_type_before_database_lookup() -> None:
     access = SimpleNamespace(require_operation=lambda operation: None)
     with pytest.raises(ClinicalGatewayBlocked, match="invalid_encounter_type"):
         EncounterService(db=None).create(

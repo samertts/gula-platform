@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from app.clinical_gateway.context import ClinicalGatewayBlocked
 from app.clinical_gateway.order_service import ClinicalOrderService
 
 
-def _access(**overrides):
+def _access(**overrides: Any) -> SimpleNamespace:
     values = {
         "account_id": 11,
         "session_id": 22,
@@ -34,7 +35,7 @@ def _access(**overrides):
     return SimpleNamespace(**values, require_operation=lambda operation: None)
 
 
-def test_create_rejects_spoofed_prescriber_without_db():
+def test_create_rejects_spoofed_prescriber_without_db() -> None:
     with pytest.raises(ClinicalGatewayBlocked, match="prescriber_mismatch"):
         ClinicalOrderService(db=None).create(
             access=_access(),
@@ -45,7 +46,7 @@ def test_create_rejects_spoofed_prescriber_without_db():
         )
 
 
-def test_transition_map_has_no_backward_or_terminal_reopen():
+def test_transition_map_has_no_backward_or_terminal_reopen() -> None:
     service = ClinicalOrderService(db=None)
     assert service is not None
     from app.clinical_gateway.order_service import _ALLOWED_TRANSITIONS
