@@ -1,16 +1,23 @@
+from __future__ import annotations
+
 import hashlib
 import secrets
 from datetime import datetime, timedelta
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from app._compat import UTC
 
 from ..database import Base
 
+if TYPE_CHECKING:
+    from .lab_order import LabOrder
+    from .test_type import TestType
 
-def generate_token():
+
+def generate_token() -> str:
     return secrets.token_urlsafe(32)
 
 
@@ -19,7 +26,7 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def default_expiry():
+def default_expiry() -> datetime:
     return datetime.now(UTC) + timedelta(days=90)
 
 
@@ -52,5 +59,5 @@ class LabResult(Base):
     # If the caller's version no longer matches DB, the caller receives HTTP 409.
     version = Column(Integer, nullable=False, default=1)
 
-    order = relationship("LabOrder", back_populates="results")
-    test_type = relationship("TestType")
+    order: Mapped[LabOrder] = relationship("LabOrder", back_populates="results")
+    test_type: Mapped[TestType | None] = relationship("TestType")

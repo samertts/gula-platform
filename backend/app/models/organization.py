@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from app._compat import UTC
 
@@ -44,4 +44,4 @@ class Facility(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    organization = relationship("Organization", backref="facilities")
+    organization: Mapped[Organization] = relationship("Organization", backref="facilities")

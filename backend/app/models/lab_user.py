@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from app._compat import UTC
 
 from ..database import Base
+
+if TYPE_CHECKING:
+    from .lab import Lab
 
 
 class LabUser(Base):
@@ -41,6 +47,8 @@ class LabUser(Base):
 
     @property
     def full_name(self) -> str:
-        return self.name
+        # `name` is declared NOT NULL in the database; the cast compensates for
+        # SQLAlchemy's legacy Column typing while preserving that invariant.
+        return cast(str, self.name)
 
-    lab = relationship("Lab", back_populates="users")
+    lab: Mapped[Lab] = relationship("Lab", back_populates="users")

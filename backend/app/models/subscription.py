@@ -9,15 +9,21 @@ Multi-tier SaaS model with 3 orthogonal dimensions:
 Labs start at 'starter / single / standard'.
 Upgrades are self-service (admin panel) or demand-driven (citizen pressure).
 """
+from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, String, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from app._compat import UTC
 
 from ..database import Base
+
+if TYPE_CHECKING:
+    from .lab import Lab
+    from .user import User
 
 
 class LabSubscription(Base):
@@ -70,7 +76,7 @@ class LabSubscription(Base):
         onupdate=lambda: datetime.now(UTC),
     )
 
-    lab = relationship("Lab", back_populates="subscription", uselist=False)
+    lab: Mapped[Lab] = relationship("Lab", back_populates="subscription", uselist=False)
 
 
 class UpgradeRequest(Base):
@@ -104,8 +110,8 @@ class UpgradeRequest(Base):
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True)
 
-    lab = relationship("Lab")
-    requester = relationship("User", foreign_keys=[requester_id])
+    lab: Mapped[Lab] = relationship("Lab")
+    requester: Mapped[User | None] = relationship("User", foreign_keys=[requester_id])
 
     __table_args__ = (Index("ix_upgrade_requests_lab_status", "lab_id", "status"),)
 
@@ -130,7 +136,7 @@ class UpgradeDemandScore(Base):
     last_request_at = Column(DateTime(timezone=True), nullable=True)
     updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    lab = relationship("Lab")
+    lab: Mapped[Lab] = relationship("Lab")
 
 
 class FeatureFlag(Base):

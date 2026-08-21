@@ -1,11 +1,19 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from app._compat import UTC
 
 from ..database import Base
+
+if TYPE_CHECKING:
+    from .authorization import RoleAssignment
+    from .lab import Lab
+    from .organization import Organization
 
 
 class User(Base):
@@ -38,6 +46,10 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     last_login = Column(DateTime(timezone=True), nullable=True)
 
-    lab = relationship("Lab", backref="staff_users")
-    organization = relationship("Organization", backref="users", foreign_keys=[organization_id])
-    role_assignments = relationship("RoleAssignment", backref="user", foreign_keys="RoleAssignment.user_id")
+    lab: Mapped[Lab | None] = relationship("Lab", backref="staff_users")
+    organization: Mapped[Organization | None] = relationship(
+        "Organization", backref="users", foreign_keys=[organization_id]
+    )
+    role_assignments: Mapped[list[RoleAssignment]] = relationship(
+        "RoleAssignment", backref="user", foreign_keys="RoleAssignment.user_id"
+    )

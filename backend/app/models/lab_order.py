@@ -1,11 +1,19 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from app._compat import UTC
 
 from ..database import Base
+
+if TYPE_CHECKING:
+    from .lab import Lab
+    from .lab_result import LabResult
+    from .patient import Patient
 
 # Optimistic locking: increment `version` on every UPDATE.
 # If the version the caller saw no longer matches the DB, the update affects
@@ -47,6 +55,8 @@ class LabOrder(Base):
 
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True)
 
-    patient = relationship("Patient", back_populates="orders")
-    lab = relationship("Lab", back_populates="orders")
-    results = relationship("LabResult", back_populates="order", cascade="all, delete-orphan")
+    patient: Mapped[Patient] = relationship("Patient", back_populates="orders")
+    lab: Mapped[Lab] = relationship("Lab", back_populates="orders")
+    results: Mapped[list[LabResult]] = relationship(
+        "LabResult", back_populates="order", cascade="all, delete-orphan"
+    )

@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from typing import Any
 
 from app.models.patient import Patient
 
@@ -101,7 +102,9 @@ def test_wearable_measurement_rejects_invalid_unit_and_live_mode(client, db, mak
     assert response.status_code == 400
 
 
-def test_wearable_measurement_rejects_non_finite_values(client, db, make_lab, make_lab_user):
+def test_wearable_measurement_rejects_non_finite_values(
+    client: Any, db: Any, make_lab: Any, make_lab_user: Any
+) -> None:
     lab = make_lab("Wearable Finite Value Lab")
     user = make_lab_user(lab.id, role="admin")
     patient = _patient(db, lab.id)
