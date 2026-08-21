@@ -3,7 +3,6 @@ from fastapi.responses import Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
-from ..config import ENABLE_PUBLIC_PATIENT_HISTORY
 from ..database import get_db
 from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser

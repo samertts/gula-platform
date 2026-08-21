@@ -54,12 +54,12 @@ from .user import User
 from .user_preferences import AccessibilityProfile, HealthPreference
 
 __all__ = [
-    "AccountRecoveryRequest",
     "AIFeedback",
     "AIInteraction",
     "AIRetrievalRef",
     "AIUnresolvedQuestion",
     "AccessibilityProfile",
+    "AccountRecoveryRequest",
     "Appointment",
     "AuditLog",
     "AuthorizationAudit",

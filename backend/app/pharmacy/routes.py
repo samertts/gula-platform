@@ -21,7 +21,11 @@ from app.pharmacy.models import (
     Prescription,
     StockLevel,
 )
-from app.pharmacy.services import PharmacyAuthorizationBlocked, PharmacyService, PharmacyWorkflowError
+from app.pharmacy.services import (
+    PharmacyAuthorizationBlocked,
+    PharmacyService,
+    PharmacyWorkflowError,
+)
 from app.security.dependencies import (
     get_current_user,
     require_institutional_permission,
