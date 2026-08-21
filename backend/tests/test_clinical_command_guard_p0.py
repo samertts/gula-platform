@@ -1,6 +1,8 @@
 """P0 regression tests for non-bypassable clinical command safety controls."""
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from app.clinical.command_guard import ClinicalCommandGuard
 from app.models.clinical_command import ClinicalCommandReceipt
@@ -10,7 +12,7 @@ from app.security.auth import hash_password
 from fastapi import HTTPException
 
 
-def _actor(db) -> LabUser:
+def _actor(db: Any) -> LabUser:
     lab = Lab(
         name="P0 Safety Lab",
         license_number="LIC-P0-GUARD",
@@ -33,7 +35,7 @@ def _actor(db) -> LabUser:
     return actor
 
 
-def test_clinical_command_requires_both_transport_guards():
+def test_clinical_command_requires_both_transport_guards() -> None:
     with pytest.raises(HTTPException) as missing_key:
         ClinicalCommandGuard.require_idempotency_key(None)
     assert missing_key.value.status_code == 400
@@ -47,7 +49,7 @@ def test_clinical_command_requires_both_transport_guards():
     assert stale_version.value.status_code == 409
 
 
-def test_duplicate_clinical_command_never_repeats_side_effect(db):
+def test_duplicate_clinical_command_never_repeats_side_effect(db: Any) -> None:
     actor = _actor(db)
     guard = ClinicalCommandGuard(
         db,
@@ -89,7 +91,7 @@ def test_duplicate_clinical_command_never_repeats_side_effect(db):
     assert db.query(ClinicalCommandReceipt).count() == 1
 
 
-def test_clinical_command_accepts_textual_resource_ids(db):
+def test_clinical_command_accepts_textual_resource_ids(db: Any) -> None:
     actor = _actor(db)
     guard = ClinicalCommandGuard(
         db,
@@ -117,7 +119,7 @@ def test_clinical_command_accepts_textual_resource_ids(db):
     assert db.query(ClinicalCommandReceipt).one().resource_id == "RAD-REPORT-01"
 
 
-def test_public_phone_history_is_disabled_by_default(client):
+def test_public_phone_history_is_disabled_by_default(client: Any) -> None:
     response = client.get("/history/07700000000?name=Example%20Patient")
     assert response.status_code == 410
     # The central error contract intentionally redacts route-specific details;
@@ -125,7 +127,7 @@ def test_public_phone_history_is_disabled_by_default(client):
     assert response.json()["code"] == "HTTP_ERROR"
 
 
-def test_result_service_requires_signature_and_validated_state():
+def test_result_service_requires_signature_and_validated_state() -> None:
     from app.lims.models import Result
     from app.lims.services import ResultService
 

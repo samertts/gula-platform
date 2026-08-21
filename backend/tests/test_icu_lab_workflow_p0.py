@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from typing import Any
 
 import pytest
 from app._compat import UTC
@@ -28,7 +29,7 @@ from app.lims.services import ReportService
 LAB_ID = 71
 
 
-def _admit_icu_patient(db, *, patient_id: str = "patient-1") -> tuple[CriticalCareService, ICUAdmissionModel]:
+def _admit_icu_patient(db: Any, *, patient_id: str = "patient-1") -> tuple[CriticalCareService, ICUAdmissionModel]:
     bed = ICUBedModel(
         lab_id=LAB_ID,
         bed_label="ICU-01",
@@ -53,7 +54,7 @@ def _admit_icu_patient(db, *, patient_id: str = "patient-1") -> tuple[CriticalCa
     return service, admission
 
 
-def test_icu_admission_binds_the_bed_and_rejects_a_second_active_admission(db):
+def test_icu_admission_binds_the_bed_and_rejects_a_second_active_admission(db: Any) -> None:
     service, admission = _admit_icu_patient(db)
 
     bed = db.query(ICUBedModel).filter_by(id=admission.bed_id).one()
@@ -72,7 +73,7 @@ def test_icu_admission_binds_the_bed_and_rejects_a_second_active_admission(db):
         )
 
 
-def test_icu_vitals_require_a_live_admission_and_strict_chronology(db):
+def test_icu_vitals_require_a_live_admission_and_strict_chronology(db: Any) -> None:
     service, admission = _admit_icu_patient(db)
     recorded_at = datetime.now(UTC)
     service.record_vitals_safely(
@@ -103,7 +104,7 @@ def test_icu_vitals_require_a_live_admission_and_strict_chronology(db):
         )
 
 
-def test_high_alert_infusion_requires_independent_verification_and_cannot_stop_twice(db):
+def test_high_alert_infusion_requires_independent_verification_and_cannot_stop_twice(db: Any) -> None:
     service, admission = _admit_icu_patient(db)
     infusion = service.start_infusion_safely(
         {
@@ -131,7 +132,7 @@ def test_high_alert_infusion_requires_independent_verification_and_cannot_stop_t
         service.stop_infusion_safely(infusion.id, LAB_ID)
 
 
-def _blood_request_and_unit(db) -> tuple[BloodBankService, BloodRequestModel, BloodUnitModel]:
+def _blood_request_and_unit(db: Any) -> tuple[BloodBankService, BloodRequestModel, BloodUnitModel]:
     request = BloodRequestModel(
         lab_id=LAB_ID,
         patient_id="patient-blood-1",
@@ -161,7 +162,7 @@ def _blood_request_and_unit(db) -> tuple[BloodBankService, BloodRequestModel, Bl
     return BloodBankService(db), request, unit
 
 
-def test_blood_issue_requires_a_bound_request_and_only_eligible_units(db):
+def test_blood_issue_requires_a_bound_request_and_only_eligible_units(db: Any) -> None:
     service, request, unit = _blood_request_and_unit(db)
 
     issued = service.issue_units_safely(
@@ -184,7 +185,7 @@ def test_blood_issue_requires_a_bound_request_and_only_eligible_units(db):
         )
 
 
-def test_transfusion_requires_independent_crossmatch_and_bedside_verification(db):
+def test_transfusion_requires_independent_crossmatch_and_bedside_verification(db: Any) -> None:
     service, request, unit = _blood_request_and_unit(db)
     service.issue_units_safely(
         request_id=request.id,
@@ -246,7 +247,7 @@ def test_transfusion_requires_independent_crossmatch_and_bedside_verification(db
     assert unit.status == "transfused"
 
 
-def test_lims_reports_require_released_results_and_a_valid_correction_transition(db):
+def test_lims_reports_require_released_results_and_a_valid_correction_transition(db: Any) -> None:
     report = lims_models.LabReport(
         lab_id=LAB_ID,
         order_id=1001,
@@ -284,7 +285,7 @@ def test_lims_reports_require_released_results_and_a_valid_correction_transition
     assert corrected.version == 3
 
 
-def test_icu_reads_are_scoped_to_the_callers_institution(db):
+def test_icu_reads_are_scoped_to_the_callers_institution(db: Any) -> None:
     service, admission = _admit_icu_patient(db, patient_id="patient-isolated")
     other_bed = ICUBedModel(
         lab_id=LAB_ID + 1,

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from app.pharmacy.enums import DispenseStatus
@@ -27,13 +28,13 @@ def _queue_entry() -> SimpleNamespace:
     )
 
 
-def test_dispense_workflow_requires_legal_order_and_independent_verifier():
+def test_dispense_workflow_requires_legal_order_and_independent_verifier() -> None:
     entry = _queue_entry()
     preparer_service = PharmacyService(_FakeSession(), user_id=101, lab_id=1)
     verifier_service = PharmacyService(_FakeSession(), user_id=202, lab_id=1)
     for service in (preparer_service, verifier_service):
-        service.get_dispense_queue_entry = lambda _queue_id, *, for_update: entry  # type: ignore[method-assign]
-        service._audit = lambda *args, **kwargs: None  # type: ignore[method-assign]
+        service.get_dispense_queue_entry = lambda _queue_id, *, for_update: entry
+        service._audit = lambda *args, **kwargs: None
 
     with pytest.raises(PharmacyWorkflowError, match="illegal dispense transition"):
         preparer_service.complete_dispense(entry.id, expected_version=entry.version)
@@ -53,7 +54,7 @@ def test_dispense_workflow_requires_legal_order_and_independent_verifier():
     assert verified.version == 3
 
 
-def _exam(db, *, status: ExamStatus = ExamStatus.SCHEDULED) -> RadiologyExam:
+def _exam(db: Any, *, status: ExamStatus = ExamStatus.SCHEDULED) -> RadiologyExam:
     exam = RadiologyExam(
         patient_id="RAD-PATIENT-001",
         accession_number="ACC-WORKFLOW-001",
@@ -65,7 +66,7 @@ def _exam(db, *, status: ExamStatus = ExamStatus.SCHEDULED) -> RadiologyExam:
     return exam
 
 
-def test_exam_workflow_rejects_skipped_state_transition(db):
+def test_exam_workflow_rejects_skipped_state_transition(db: Any) -> None:
     exam = _exam(db)
     service = RadiologyService(db)
 
@@ -86,7 +87,7 @@ def test_exam_workflow_rejects_skipped_state_transition(db):
     assert checked_in.version == 2
 
 
-def test_report_verification_requires_second_reviewer_and_critical_acknowledgement_is_sequenced(db):
+def test_report_verification_requires_second_reviewer_and_critical_acknowledgement_is_sequenced(db: Any) -> None:
     exam = _exam(db, status=ExamStatus.COMPLETED)
     report = RadiologyReport(
         exam_id=exam.id,

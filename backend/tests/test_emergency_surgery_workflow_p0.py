@@ -1,6 +1,8 @@
 """Regression tests for P0 emergency response and surgical resource workflows."""
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from app.domain.exceptions import ConflictError
 from app.ems.application.service import EMSService
@@ -15,14 +17,14 @@ from app.hospital.models import Bed, BedAssignment, OperationTheater
 from app.services.hospital_service import HospitalService
 
 
-def _incident(db, *, status: str = "pending") -> EmergencyIncidentModel:
+def _incident(db: Any, *, status: str = "pending") -> EmergencyIncidentModel:
     model = EmergencyIncidentModel(lab_id=1, status=status, category="medical", priority="bravo")
     db.add(model)
     db.flush()
     return model
 
 
-def test_emergency_dispatch_requires_available_crew_and_changes_resources_atomically(db):
+def test_emergency_dispatch_requires_available_crew_and_changes_resources_atomically(db: Any) -> None:
     incident = _incident(db)
     ambulance = AmbulanceModel(
         lab_id=1,
@@ -65,7 +67,7 @@ def test_emergency_dispatch_requires_available_crew_and_changes_resources_atomic
     assert ambulance.version == 2
 
 
-def test_emergency_triage_and_epcr_submission_reject_closed_or_incomplete_clinical_records(db):
+def test_emergency_triage_and_epcr_submission_reject_closed_or_incomplete_clinical_records(db: Any) -> None:
     closed = _incident(db, status="completed")
     service = EMSService(db)
     with pytest.raises(EMSWorkflowError, match="closed incident"):
@@ -99,7 +101,7 @@ def test_emergency_triage_and_epcr_submission_reject_closed_or_incomplete_clinic
     assert epcr.version == 2
 
 
-def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse(db):
+def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse(db: Any) -> None:
     theater = OperationTheater(
         lab_id=1,
         hospital_id=1,
@@ -189,7 +191,7 @@ def test_operation_theater_requires_surgery_identifier_and_cleaning_before_reuse
     assert cleaning.status == "cleaning"
 
 
-def test_bed_transfer_preserves_patient_and_closes_source_assignment(db):
+def test_bed_transfer_preserves_patient_and_closes_source_assignment(db: Any) -> None:
     source = Bed(lab_id=1, room_id=1, bed_number="P0-A", status="occupied", current_patient_id=77)
     target = Bed(lab_id=1, room_id=1, bed_number="P0-B", status="available")
     db.add_all([source, target])
