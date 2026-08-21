@@ -406,6 +406,53 @@ export interface ClinicalWorkflowRecord {
   description?: string | null;
 }
 
+export interface ClinicalAppointmentRecord {
+  id: string;
+  patient_id: string;
+  practitioner_id?: string | null;
+  facility_id?: string | null;
+  appointment_type: string;
+  title?: string | null;
+  description?: string | null;
+  start_at: string | null;
+  end_at: string | null;
+  status: string;
+  notes?: string | null;
+  version: number;
+  organization_id?: string | null;
+  workspace_id?: string | null;
+  department_id?: string | null;
+}
+
+export interface ClinicalAppointmentListResponse {
+  items: ClinicalAppointmentRecord[];
+  limit: number;
+  offset: number;
+  workspace_id: string;
+}
+
+export interface ClinicalDiagnosticReportRecord {
+  id: string;
+  source_type: "LAB_ORDER" | "RADIOLOGY_REPORT" | string;
+  source_id: string;
+  patient_id: string;
+  encounter_id?: string | null;
+  report_code?: string | null;
+  report_name: string;
+  status: "PRELIMINARY" | "FINAL" | "AMENDED" | string;
+  conclusion?: string | null;
+  result_refs: string[];
+  version: number;
+  issued_at?: string | null;
+  released_at?: string | null;
+  amended_at?: string | null;
+  amendment_reason?: string | null;
+  organization_id?: string | null;
+  facility_id?: string | null;
+  department_id?: string | null;
+  workspace_id?: string | null;
+}
+
 export interface PatientCardHistoryResponse {
   patient?: Record<string, unknown>;
   orders?: Record<string, unknown>[];
@@ -437,6 +484,40 @@ export const clinicalWorkflowApi = {
 
 export const clinicalResultsReviewApi = {
   review: (orderId: number, resultId: number, data: { expected_version: number; decision: "ACCEPTED" | "REJECTED"; note?: string }) => api.post<Record<string, unknown>>(`/api/v1/clinical/orders/${orderId}/results/${resultId}/review`, data).then((r) => r.data),
+};
+
+export const clinicalAppointmentApi = {
+  create: (data: {
+    patient_id: string;
+    appointment_type: string;
+    start_at: string;
+    end_at: string;
+    title?: string;
+    description?: string;
+    notes?: string;
+    idempotency_key?: string;
+  }) => api.post<ClinicalAppointmentRecord>("/api/v1/clinical/appointments", data).then((r) => r.data),
+  list: (params?: { status?: string; limit?: number; offset?: number }) =>
+    api.get<ClinicalAppointmentListResponse>("/api/v1/clinical/appointments", { params }).then((r) => r.data),
+  get: (appointmentId: string) => api.get<ClinicalAppointmentRecord>(`/api/v1/clinical/appointments/${encodeURIComponent(appointmentId)}`).then((r) => r.data),
+  reschedule: (appointmentId: string, data: { start_at: string; end_at: string; expected_version?: number; reason?: string }) =>
+    api.post<ClinicalAppointmentRecord>(`/api/v1/clinical/appointments/${encodeURIComponent(appointmentId)}/reschedule`, data).then((r) => r.data),
+  cancel: (appointmentId: string, data?: { expected_version?: number; reason?: string }) =>
+    api.post<ClinicalAppointmentRecord>(`/api/v1/clinical/appointments/${encodeURIComponent(appointmentId)}/cancel`, data ?? {}).then((r) => r.data),
+  transition: (appointmentId: string, data: { status: string; expected_version?: number }) =>
+    api.post<ClinicalAppointmentRecord>(`/api/v1/clinical/appointments/${encodeURIComponent(appointmentId)}/transition`, data).then((r) => r.data),
+};
+
+export const clinicalDiagnosticReportApi = {
+  createFromLabOrder: (orderId: number) =>
+    api.post<ClinicalDiagnosticReportRecord>(`/api/v1/clinical/diagnostic-reports/from-lab-orders/${orderId}`).then((r) => r.data),
+  createFromRadiologyReport: (reportId: string) =>
+    api.post<ClinicalDiagnosticReportRecord>(`/api/v1/clinical/diagnostic-reports/from-radiology-reports/${encodeURIComponent(reportId)}`).then((r) => r.data),
+  get: (reportId: string) => api.get<ClinicalDiagnosticReportRecord>(`/api/v1/clinical/diagnostic-reports/${encodeURIComponent(reportId)}`).then((r) => r.data),
+  finalize: (reportId: string, data: { expected_version: number }) =>
+    api.post<ClinicalDiagnosticReportRecord>(`/api/v1/clinical/diagnostic-reports/${encodeURIComponent(reportId)}/finalize`, data).then((r) => r.data),
+  amend: (reportId: string, data: { expected_version: number; conclusion?: string; reason: string }) =>
+    api.post<ClinicalDiagnosticReportRecord>(`/api/v1/clinical/diagnostic-reports/${encodeURIComponent(reportId)}/amend`, data).then((r) => r.data),
 };
 
 // ── Patient Card ──

@@ -163,3 +163,21 @@
 | Facility/practitioner safety | fail-closed | `CanonicalReferralMappingError` و`ReferralScopeError` |
 
 هذه الدفعة لا تعلن اكتمال Referral بالكامل: national placeholder/workflow stubs وfacility mapping review وWeb/Mobile/Desktop parity ما زالت تحتاج evidence منفصلة. تبقى حالة `P4 = SECURITY_BLOCKED` و`P5 = BLOCKED` بسبب مفتاح توقيع Android الإنتاجي والتفويض الخارجي المطلوب.
+
+
+## ملحق Appointment containment وcross-platform parity — 22 آب/أغسطس 2026
+
+أضيفت واجهات TypeScript `clinicalAppointmentApi` و`clinicalDiagnosticReportApi` إلى `frontend-v3/src/api/endpoints.ts` مع DTOs typed تطابق الاستجابات الآمنة. تغطي Appointment عمليات create/list/get/reschedule/cancel/transition، وتغطي DiagnosticReport إنشاء المصدرين وget/finalize/amend. عقود frontend لا تعرض ولا تقبل authority fields مثل `practitioner_id` أو `facility_id` في create payload.
+
+احتُويت مسارات الكتابة في `/national/scheduling/appointments` بـHTTP 410 وsuccessor إلى `/api/v1/clinical/appointments`، بما في ذلك create/update/delete/complete/no-show/reschedule. بقيت list/get compatibility reads منفصلة، ولا تُعتبر بديلاً عن canonical workspace-scoped reads.
+
+| الفحص | النتيجة | الدليل |
+|---|---|---|
+| Frontend canonical endpoint tests | ناجح: 2/2 | `frontend-v3/src/api/clinicalCanonicalEndpoints.test.ts` |
+| Frontend full suite | ناجح: 74 اختباراً في 21 ملفاً | `/tmp/gula-p4-final-after-all-frontend-tests.log` |
+| Frontend lint | ناجح دون warnings مسموحة | `/tmp/gula-p4-final-after-all-frontend-lint.log` |
+| Frontend build/PWA | ناجح، 159 precache entries | `/tmp/gula-p4-final-after-all-frontend-build.log` |
+| Backend full regression | ناجح: 2782 passed، 4 skipped، 142 warnings | `/tmp/gula-p4-final-after-all-backend.log` |
+| Appointment containment targeted | ناجح: 7/7 | `backend/tests/test_legacy_appointment_containment.py` |
+
+ما زالت نتائج regression تتضمن warnings معروفة في test teardown وweak test JWT key، ولا تُحوّل هذه التحذيرات إلى نجاح أمني. تبقى Android production signing key rotation وGit history purge بعد التدوير إجراءات خارجية مطلوبة، ولذلك لا تزال `P4 = SECURITY_BLOCKED` و`P5 = BLOCKED`.
