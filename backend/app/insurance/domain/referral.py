@@ -56,6 +56,8 @@ class InsuranceReferral(InsBase):
     coverage_id = Column(Integer, ForeignKey("ins_coverages.id"), nullable=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, index=True)
     authorization_id = Column(Integer, ForeignKey("ins_authorizations.id"), nullable=True, index=True)
+    # Server-side bridge to the care-continuum canonical referral aggregate.
+    canonical_referral_id = Column(String(26), nullable=True, index=True)
 
     from_practitioner_id = Column(Integer, nullable=True, index=True)
     to_practitioner_id = Column(Integer, nullable=True, index=True)

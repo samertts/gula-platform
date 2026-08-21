@@ -147,3 +147,19 @@
 | Canonical registry JSON | محدث | `docs/architecture/canonical-domain-registry-2026.json` |
 
 لم يُعلن إغلاق المجال بالكامل: توحيد أسطح FHIR/LIMS القديمة واحتواء كتاباتها وتكافؤ Web/Mobile/Desktop ما زالت مطلوبة. كما تبقى تدوير production Android signing key وتطهير Git history بعد التدوير حاجزين خارجيين؛ لذلك يظل `P4 = SECURITY_BLOCKED` و`P5 = BLOCKED`.
+
+
+## ملحق Referral canonical bridge وlegacy containment — 22 آب/أغسطس 2026
+
+أضيفت migration additive-only `20260822_0003` لإضافة `canonical_referral_id` nullable/index إلى `national_referrals` و`ins_referrals`. أضيفت `CanonicalReferralMappingService` لربط السجلات القديمة بـ`ReferralRequest` فقط بعد تحقق `lab_id`، mapping وحيد للمريض الوطني من legacy patient ID، وmapping practitioner من LabUser إلى National Practitioner عبر `national_id_hash`. لا يُفترض أي تطابق بين integer facility IDs والموارد الوطنية؛ وجود facility legacy غير مربوط يوقف العملية بـ`server_facility_mapping_required` بدلاً من إنشاء مرجع غير موثوق.
+
+أصبح إنشاء referral canonical يرفض authority fields من العميل، بما فيها practitioner/facility/organization/workspace/tenant/status/direction، ويشتق referring practitioner من هوية المستخدم على الخادم. احتُويت جميع Insurance Referral write routes ومسار Nursing in-memory referral بـHTTP 410 مع `Deprecation: true` و`Cache-Control: no-store` و`Link` إلى `/care-continuum/referrals`. تبقى compatibility reads مفصولة بـ`lab_id` ولا تُعتبر canonical writes.
+
+| الفحص | النتيجة | الدليل |
+|---|---|---|
+| Referral canonical/containment tests | ناجح: 18/18 | `backend/tests/test_referral_canonicalization.py` و`test_care_continuum_referral_scope.py` |
+| Migration/OpenAPI targeted suite | ناجح: 27/27 | `/tmp/gula-referral-targeted-2.log` ونتيجة migration suite |
+| Python compile | ناجح | bridge service, routes, models, migration |
+| Facility/practitioner safety | fail-closed | `CanonicalReferralMappingError` و`ReferralScopeError` |
+
+هذه الدفعة لا تعلن اكتمال Referral بالكامل: national placeholder/workflow stubs وfacility mapping review وWeb/Mobile/Desktop parity ما زالت تحتاج evidence منفصلة. تبقى حالة `P4 = SECURITY_BLOCKED` و`P5 = BLOCKED` بسبب مفتاح توقيع Android الإنتاجي والتفويض الخارجي المطلوب.

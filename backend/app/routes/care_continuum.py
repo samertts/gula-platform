@@ -277,7 +277,12 @@ def api_create_referral(
     db: Session = Depends(get_db),
 ):
     try:
-        return create_referral_request(db, data, _lab_id(current_user))
+        return create_referral_request(
+            db,
+            data,
+            _lab_id(current_user),
+            server_practitioner_id=current_user.id,
+        )
     except ReferralScopeError as exc:
         raise _referral_scope_error(exc) from exc
 

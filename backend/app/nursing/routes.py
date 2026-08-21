@@ -23,6 +23,7 @@ from app.nursing.models import (
 )
 from app.nursing.services import NursingService
 from app.security.dependencies import get_current_user
+from app.security.legacy_referral import block_legacy_referral_write
 
 logger = logging.getLogger("gula.nursing.routes")
 
@@ -1244,7 +1245,7 @@ def request_pharmacy(
     )
 
 
-@router.post("/coordination/referral", summary="Create referral")
+@router.post("/coordination/referral", summary="Create referral", dependencies=[Depends(block_legacy_referral_write)])
 def create_referral(
     body: ReferralRequest,
     current_user: LabUser = Depends(get_current_user),

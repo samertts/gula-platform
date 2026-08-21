@@ -18,6 +18,7 @@ from app._compat import UTC
 from app.care_continuum.enums import (
     CareProgramStatus,
     ChronicDiseaseType,
+    ReferralDirection,
     FollowUpStatus,
     PregnancyStatus,
     VaccinationStatus,
@@ -81,6 +82,8 @@ from app.care_continuum.models.referral import (
     ReferralTimeline,
 )
 from app.national.enums import ReferralStatus
+from app.models.lab_user import LabUser
+from app.national.domain.practitioner import Practitioner
 
 logger = logging.getLogger("gula.care_continuum.service")
 
@@ -238,16 +241,64 @@ def list_preventive_care_records(
 
 
 def create_referral_request(
-    db: Session, data: dict, lab_id: int | None = None,
+    db: Session,
+    data: dict,
+    lab_id: int | None = None,
+    server_practitioner_id: int | None = None,
 ) -> dict:
     scoped_lab_id = _require_referral_lab(lab_id)
     payload = dict(data)
-    supplied_lab_id = payload.pop("lab_id", None)
+    supplied_lab_id = payload.get("lab_id")
     if supplied_lab_id is not None and int(supplied_lab_id) != scoped_lab_id:
         raise ReferralScopeError("referral_institution_scope_mismatch")
-    # Primary keys and tenant authority are always server-owned.
-    payload.pop("id", None)
+    forbidden = {
+        "id",
+        "lab_id",
+        "tenant_id",
+        "organization_id",
+        "facility_id",
+        "workspace_id",
+        "department_id",
+        "referring_practitioner_id",
+        "referring_facility_id",
+        "referring_department_id",
+        "receiving_practitioner_id",
+        "receiving_facility_id",
+        "receiving_department_id",
+        "national_referral_id",
+        "status",
+        "direction",
+    }
+    if forbidden.intersection(payload):
+        raise ReferralScopeError("referral_client_authority_forbidden")
+    if server_practitioner_id is None:
+        raise ReferralScopeError("server_practitioner_mapping_required")
+    user = (
+        db.query(LabUser)
+        .filter(
+            LabUser.id == server_practitioner_id,
+            LabUser.lab_id == scoped_lab_id,
+            LabUser.is_active.is_(True),
+            LabUser.national_id_hash.isnot(None),
+        )
+        .one_or_none()
+    )
+    if user is None:
+        raise ReferralScopeError("server_practitioner_mapping_required")
+    practitioner = (
+        db.query(Practitioner)
+        .filter(
+            Practitioner.national_id_hash == user.national_id_hash,
+            Practitioner.is_active.is_(True),
+        )
+        .one_or_none()
+    )
+    if practitioner is None:
+        raise ReferralScopeError("server_practitioner_mapping_required")
     payload["lab_id"] = scoped_lab_id
+    payload["direction"] = ReferralDirection.OUTGOING
+    payload["status"] = ReferralStatus.DRAFT
+    payload["referring_practitioner_id"] = practitioner.id
     ref = ReferralRequest(**payload)
     db.add(ref)
     db.commit()

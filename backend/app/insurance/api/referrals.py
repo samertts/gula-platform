@@ -18,6 +18,7 @@ from app.insurance.domain.referral import (
 )
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
+from app.security.legacy_referral import block_legacy_referral_write
 from app.services.audit_service import log_action
 
 router = APIRouter(prefix="/referrals", tags=["insurance-referrals"])
@@ -164,7 +165,7 @@ def list_referrals(
     return q.order_by(InsuranceReferral.created_at.desc()).offset(skip).limit(limit).all()
 
 
-@router.post("", status_code=201, response_model=ReferralResponse)
+@router.post("", status_code=201, response_model=ReferralResponse, dependencies=[Depends(block_legacy_referral_write)])
 def create_referral(
     data: ReferralCreate,
     current_user: LabUser = Depends(get_current_user),
@@ -217,7 +218,7 @@ def get_referral(
     return referral
 
 
-@router.put("/{referral_id}", response_model=ReferralResponse)
+@router.put("/{referral_id}", response_model=ReferralResponse, dependencies=[Depends(block_legacy_referral_write)])
 def update_referral(
     referral_id: int,
     data: ReferralUpdate,
@@ -253,7 +254,7 @@ def update_referral(
     return referral
 
 
-@router.post("/{referral_id}/send", response_model=ReferralResponse)
+@router.post("/{referral_id}/send", response_model=ReferralResponse, dependencies=[Depends(block_legacy_referral_write)])
 def send_referral(
     referral_id: int,
     current_user: LabUser = Depends(get_current_user),
@@ -290,7 +291,7 @@ def send_referral(
     return referral
 
 
-@router.post("/{referral_id}/accept", response_model=ReferralResponse)
+@router.post("/{referral_id}/accept", response_model=ReferralResponse, dependencies=[Depends(block_legacy_referral_write)])
 def accept_referral(
     referral_id: int,
     current_user: LabUser = Depends(get_current_user),
@@ -327,7 +328,7 @@ def accept_referral(
     return referral
 
 
-@router.post("/{referral_id}/decline", response_model=ReferralResponse)
+@router.post("/{referral_id}/decline", response_model=ReferralResponse, dependencies=[Depends(block_legacy_referral_write)])
 def decline_referral(
     referral_id: int,
     reason: str = Query(..., min_length=1),
@@ -365,7 +366,7 @@ def decline_referral(
     return referral
 
 
-@router.post("/{referral_id}/complete", response_model=ReferralResponse)
+@router.post("/{referral_id}/complete", response_model=ReferralResponse, dependencies=[Depends(block_legacy_referral_write)])
 def complete_referral(
     referral_id: int,
     completed_notes: str | None = Query(None),
@@ -405,7 +406,7 @@ def complete_referral(
     return referral
 
 
-@router.post("/{referral_id}/cancel", response_model=ReferralResponse)
+@router.post("/{referral_id}/cancel", response_model=ReferralResponse, dependencies=[Depends(block_legacy_referral_write)])
 def cancel_referral(
     referral_id: int,
     reason: str = Query(..., min_length=1),
@@ -445,7 +446,7 @@ def cancel_referral(
     return referral
 
 
-@router.post("/{referral_id}/validate", response_model=dict)
+@router.post("/{referral_id}/validate", response_model=dict, dependencies=[Depends(block_legacy_referral_write)])
 def validate_referral(
     referral_id: int,
     validation_method: ValidationMethod = ValidationMethod.QR_SCAN,
