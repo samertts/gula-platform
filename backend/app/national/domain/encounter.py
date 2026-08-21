@@ -19,7 +19,17 @@ class Encounter(TenantAuditEntity):
     department_id = Column(String(26), ForeignKey("national_departments.id", ondelete="RESTRICT"), nullable=True, index=True)
 
     practitioner_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="RESTRICT"), nullable=True, index=True)
-    referral_id = Column(String(26), ForeignKey("national_referrals.id", ondelete="SET NULL"), nullable=True, index=True)
+    referral_id = Column(
+        String(26),
+        ForeignKey(
+            "national_referrals.id",
+            ondelete="SET NULL",
+            use_alter=True,
+            name="fk_national_encounters_referral",
+        ),
+        nullable=True,
+        index=True,
+    )
 
     period_start = Column(DateTime(timezone=True), nullable=False)
     period_end = Column(DateTime(timezone=True), nullable=True)

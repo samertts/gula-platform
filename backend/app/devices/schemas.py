@@ -5,7 +5,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
 DeviceCategory = Literal[
     "medical_measurement",
     "patient_monitor",
@@ -510,7 +509,7 @@ class WearableMeasurementIngestRequest(BaseModel):
     device_uid: str | None = Field(None, min_length=3, max_length=96)
     source: str = Field(..., min_length=2, max_length=64, pattern=r"^[A-Za-z0-9._:-]+$")
     metric_code: WearableMetricCode
-    value: float = Field(..., finite=True)
+    value: float = Field(..., allow_inf_nan=False)
     unit: str = Field(..., min_length=1, max_length=32)
     measured_at: datetime
     source_event_id: str = Field(..., min_length=3, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")
