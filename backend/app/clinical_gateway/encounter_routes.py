@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
@@ -59,7 +61,7 @@ def create_encounter(
     payload: EncounterCreateRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         access = _access_for_patient(db, actor, payload.patient_id, "encounter.create", frozenset({"create"}))
         encounter = EncounterService(db).create(
@@ -72,7 +74,7 @@ def create_encounter(
             is_emergency=payload.is_emergency,
         )
         db.commit()
-        return EncounterService.to_safe_dict(encounter)
+        return cast(dict[str, Any], EncounterService.to_safe_dict(encounter))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Encounter creation is not authorized") from exc
@@ -83,12 +85,12 @@ def start_encounter(
     encounter_id: str,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         access = _access_for_encounter(db, actor, encounter_id, "encounter.start", frozenset({"update"}))
         encounter = EncounterService(db).start(access=access, encounter_id=encounter_id)
         db.commit()
-        return EncounterService.to_safe_dict(encounter)
+        return cast(dict[str, Any], EncounterService.to_safe_dict(encounter))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Encounter start is not authorized") from exc
@@ -100,7 +102,7 @@ def complete_encounter(
     payload: EncounterCompleteRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         access = _access_for_encounter(db, actor, encounter_id, "encounter.complete", frozenset({"update"}))
         encounter = EncounterService(db).complete(
@@ -110,7 +112,7 @@ def complete_encounter(
             notes=payload.notes,
         )
         db.commit()
-        return EncounterService.to_safe_dict(encounter)
+        return cast(dict[str, Any], EncounterService.to_safe_dict(encounter))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Encounter completion is not authorized") from exc

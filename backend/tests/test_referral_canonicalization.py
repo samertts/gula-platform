@@ -3,8 +3,6 @@ from __future__ import annotations
 from unittest.mock import Mock
 
 import pytest
-from fastapi import HTTPException
-
 from app.insurance.api.referrals import router as insurance_referral_router
 from app.nursing.routes import router as nursing_router
 from app.security.legacy_referral import block_legacy_referral_write
@@ -13,6 +11,7 @@ from app.services.referral_canonical_mapping import (
     CanonicalReferralMappingError,
     CanonicalReferralMappingService,
 )
+from fastapi import HTTPException
 
 
 def test_legacy_referral_write_blocker_returns_gone_successor() -> None:
@@ -25,6 +24,7 @@ def test_legacy_referral_write_blocker_returns_gone_successor() -> None:
         block_legacy_referral_write(request, user)
 
     assert exc_info.value.status_code == 410
+    assert exc_info.value.headers is not None
     assert exc_info.value.headers["Deprecation"] == "true"
     assert exc_info.value.headers["Cache-Control"] == "no-store"
     assert "/care-continuum/referrals" in exc_info.value.headers["Link"]

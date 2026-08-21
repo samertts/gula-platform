@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.clinical_gateway.access_context import ClinicalAccessContext
-from app.clinical_gateway.context import ClinicalGatewayBlocked, ClinicalGatewayContextResolver
+from app.clinical_gateway.context import (
+    ClinicalGatewayBlocked,
+    ClinicalGatewayContext,
+    ClinicalGatewayContextResolver,
+)
 from app.clinical_gateway.workflow_service import ClinicalWorkflowService
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor_sync
@@ -48,7 +53,7 @@ class ClinicalTaskCompleteRequest(BaseModel):
     notes: str | None = Field(default=None, max_length=4000)
 
 
-def _workflow_permissions(context) -> frozenset[str]:
+def _workflow_permissions(context: ClinicalGatewayContext) -> frozenset[str]:
     """Derive workflow capabilities from reviewed membership relationship only."""
     relationship = str(context.membership.relationship_type or "").lower()
     if relationship in {"professional", "consultant", "manager"}:
@@ -56,7 +61,7 @@ def _workflow_permissions(context) -> frozenset[str]:
     raise ClinicalGatewayBlocked("workflow_role_not_authorized")
 
 
-def _gateway(db: Session, actor: NiamActor):
+def _gateway(db: Session, actor: NiamActor) -> ClinicalGatewayContext:
     return ClinicalGatewayContextResolver(db).resolve(actor)
 
 
@@ -65,14 +70,14 @@ def start_shift(
     payload: ShiftStartRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         gateway = _gateway(db, actor)
         permissions = _workflow_permissions(gateway)
         access = ClinicalAccessContext.from_gateway(gateway, purpose="workflow.shift.start", permissions=permissions)
         shift = ClinicalWorkflowService(db).start_shift(access=access, shift_type=payload.shift_type, department_id=payload.department_id)
         db.commit()
-        return ClinicalWorkflowService.to_safe_dict(shift)
+        return cast(dict[str, Any], ClinicalWorkflowService.to_safe_dict(shift))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Shift start is not authorized") from exc
@@ -83,14 +88,14 @@ def end_shift(
     shift_id: str,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         gateway = _gateway(db, actor)
         permissions = _workflow_permissions(gateway)
         access = ClinicalAccessContext.from_gateway(gateway, purpose="workflow.shift.end", permissions=permissions)
         shift = ClinicalWorkflowService(db).end_shift(access=access, shift_id=shift_id)
         db.commit()
-        return ClinicalWorkflowService.to_safe_dict(shift)
+        return cast(dict[str, Any], ClinicalWorkflowService.to_safe_dict(shift))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Shift end is not authorized") from exc
@@ -101,7 +106,7 @@ def assign_patient(
     payload: PatientAssignRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         gateway = _gateway(db, actor)
         permissions = _workflow_permissions(gateway)
@@ -114,7 +119,7 @@ def assign_patient(
             assignment_type=payload.assignment_type,
         )
         db.commit()
-        return ClinicalWorkflowService.to_safe_dict(assignment)
+        return cast(dict[str, Any], ClinicalWorkflowService.to_safe_dict(assignment))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Patient assignment is not authorized") from exc
@@ -125,7 +130,7 @@ def create_task(
     payload: ClinicalTaskCreateRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         gateway = _gateway(db, actor)
         permissions = _workflow_permissions(gateway)
@@ -140,7 +145,7 @@ def create_task(
             due_time=payload.due_time,
         )
         db.commit()
-        return ClinicalWorkflowService.to_safe_dict(task)
+        return cast(dict[str, Any], ClinicalWorkflowService.to_safe_dict(task))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Task creation is not authorized") from exc
@@ -152,14 +157,14 @@ def complete_task(
     payload: ClinicalTaskCompleteRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         gateway = _gateway(db, actor)
         permissions = _workflow_permissions(gateway)
         access = ClinicalAccessContext.from_gateway(gateway, purpose="workflow.task.complete", permissions=permissions)
         task = ClinicalWorkflowService(db).complete_task(access=access, task_id=task_id, notes=payload.notes)
         db.commit()
-        return ClinicalWorkflowService.to_safe_dict(task)
+        return cast(dict[str, Any], ClinicalWorkflowService.to_safe_dict(task))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Task completion is not authorized") from exc

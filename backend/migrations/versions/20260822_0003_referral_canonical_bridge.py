@@ -6,9 +6,11 @@ Revises: 20260822_0002
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import cast
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.engine import Inspector
 
 revision: str = "20260822_0003"
 down_revision: str = "20260822_0002"
@@ -21,8 +23,8 @@ _BRIDGES = (
 )
 
 
-def _inspector():
-    return sa.inspect(op.get_bind())
+def _inspector() -> Inspector:
+    return cast(Inspector, sa.inspect(op.get_bind()))
 
 
 def _table_exists(table: str) -> bool:

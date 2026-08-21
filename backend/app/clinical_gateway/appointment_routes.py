@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, NoReturn, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
-from app.clinical_gateway.appointment_service import AppointmentCanonicalConflict, AppointmentCanonicalService
+from app.clinical_gateway.appointment_service import (
+    AppointmentCanonicalConflict,
+    AppointmentCanonicalService,
+)
 from app.clinical_gateway.context import ClinicalGatewayBlocked
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor_sync
@@ -57,7 +60,7 @@ def _service(db: Session, scheduler: SchedulingPlatformService) -> AppointmentCa
     return AppointmentCanonicalService(db, scheduler)
 
 
-def _raise(exc: Exception) -> None:
+def _raise(exc: Exception) -> NoReturn:
     if isinstance(exc, ClinicalGatewayBlocked):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Appointment authorization denied") from exc
     if isinstance(exc, AppointmentCanonicalConflict):
@@ -86,7 +89,7 @@ async def create_appointment(
             notes=payload.notes,
             idempotency_key=payload.idempotency_key,
         )
-        return AppointmentCanonicalService.to_safe_dict(appointment)
+        return cast(dict[str, Any], AppointmentCanonicalService.to_safe_dict(appointment))
     except (ClinicalGatewayBlocked, AppointmentCanonicalConflict) as exc:
         db.rollback()
         _raise(exc)
@@ -108,7 +111,7 @@ def list_appointments(
             offset=offset,
         )
         return {
-            "items": [AppointmentCanonicalService.to_safe_dict(row) for row in rows],
+            "items": [cast(dict[str, Any], AppointmentCanonicalService.to_safe_dict(row)) for row in rows],
             "limit": limit,
             "offset": offset,
             "workspace_id": access.workspace_id,
@@ -129,7 +132,7 @@ def get_appointment(
             actor=actor,
             appointment_id=appointment_id,
         )
-        return AppointmentCanonicalService.to_safe_dict(appointment)
+        return cast(dict[str, Any], AppointmentCanonicalService.to_safe_dict(appointment))
     except (ClinicalGatewayBlocked, AppointmentCanonicalConflict) as exc:
         db.rollback()
         _raise(exc)
@@ -152,7 +155,7 @@ async def reschedule_appointment(
             expected_version=payload.expected_version,
             reason=payload.reason,
         )
-        return AppointmentCanonicalService.to_safe_dict(appointment)
+        return cast(dict[str, Any], AppointmentCanonicalService.to_safe_dict(appointment))
     except (ClinicalGatewayBlocked, AppointmentCanonicalConflict) as exc:
         db.rollback()
         _raise(exc)
@@ -173,7 +176,7 @@ async def cancel_appointment(
             expected_version=payload.expected_version,
             reason=payload.reason,
         )
-        return AppointmentCanonicalService.to_safe_dict(appointment)
+        return cast(dict[str, Any], AppointmentCanonicalService.to_safe_dict(appointment))
     except (ClinicalGatewayBlocked, AppointmentCanonicalConflict) as exc:
         db.rollback()
         _raise(exc)
@@ -194,7 +197,7 @@ async def transition_appointment(
             status=payload.status,
             expected_version=payload.expected_version,
         )
-        return AppointmentCanonicalService.to_safe_dict(appointment)
+        return cast(dict[str, Any], AppointmentCanonicalService.to_safe_dict(appointment))
     except (ClinicalGatewayBlocked, AppointmentCanonicalConflict) as exc:
         db.rollback()
         _raise(exc)

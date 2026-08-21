@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import logging
+from typing import NoReturn
 
 from fastapi import Depends, HTTPException, Request, status
 
+from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user
 
 logger = logging.getLogger("gula.security.legacy_appointment")
@@ -16,8 +18,8 @@ _SUCCESSOR = "/api/v1/clinical/appointments"
 
 def block_legacy_appointment_write(
     request: Request,
-    current_user=Depends(get_current_user),
-):
+    current_user: LabUser = Depends(get_current_user),
+) -> NoReturn:
     """Stop non-canonical appointment mutations with an explicit successor."""
 
     logger.warning(

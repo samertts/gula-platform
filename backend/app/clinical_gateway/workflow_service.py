@@ -202,7 +202,7 @@ class ClinicalWorkflowService:
         return shift
 
     @staticmethod
-    def _gateway_context(access: ClinicalAccessContext):
+    def _gateway_context(access: ClinicalAccessContext) -> Any:
         # Command routes pass a gateway context in ``access`` metadata only in
         # future adapters. This explicit stop prevents reconstructing authority
         # from client values in the meantime.

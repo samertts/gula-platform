@@ -18,9 +18,9 @@ from app._compat import UTC
 from app.care_continuum.enums import (
     CareProgramStatus,
     ChronicDiseaseType,
-    ReferralDirection,
     FollowUpStatus,
     PregnancyStatus,
+    ReferralDirection,
     VaccinationStatus,
 )
 from app.care_continuum.models.care_journey import (
@@ -81,9 +81,9 @@ from app.care_continuum.models.referral import (
     ReferralResponse,
     ReferralTimeline,
 )
-from app.national.enums import ReferralStatus
 from app.models.lab_user import LabUser
 from app.national.domain.practitioner import Practitioner
+from app.national.enums import ReferralStatus
 
 logger = logging.getLogger("gula.care_continuum.service")
 

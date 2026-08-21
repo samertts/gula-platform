@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from typing import Any
-from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
 from app.clinical_gateway.access_context import ClinicalAccessContext
 from app.clinical_gateway.context import ClinicalGatewayBlocked
 from app.models.lab_order import CLINICAL_ORDER_STATUSES, LabOrder
-
 
 _ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
     "DRAFT": frozenset({"PLACED", "CANCELLED"}),

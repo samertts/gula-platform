@@ -3,11 +3,9 @@ from __future__ import annotations
 from unittest.mock import Mock
 
 import pytest
-from fastapi import HTTPException
-
 from app.national.scheduling_platform.api.routes import router as scheduling_router
 from app.security.legacy_appointment import block_legacy_appointment_write
-
+from fastapi import HTTPException
 
 _MUTATION_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -22,6 +20,7 @@ def test_legacy_appointment_write_blocker_returns_gone_successor() -> None:
         block_legacy_appointment_write(request, user)
 
     assert exc_info.value.status_code == 410
+    assert exc_info.value.headers is not None
     assert exc_info.value.headers["Deprecation"] == "true"
     assert exc_info.value.headers["Cache-Control"] == "no-store"
     assert "/api/v1/clinical/appointments" in exc_info.value.headers["Link"]

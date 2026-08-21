@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
@@ -29,7 +31,7 @@ def review_result(
     payload: ResultReviewRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         order = db.get(LabOrder, order_id)
         if order is None or order.patient_id is None:
@@ -51,7 +53,7 @@ def review_result(
             note=payload.note,
         )
         db.commit()
-        return ResultsReviewService.to_safe_dict(result)
+        return cast(dict[str, Any], ResultsReviewService.to_safe_dict(result))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Result review is not authorized") from exc

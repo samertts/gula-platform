@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+from typing import Any, NoReturn, cast
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
 from app.clinical_gateway.context import ClinicalGatewayBlocked
-from app.clinical_gateway.diagnostic_report_service import DiagnosticReportConflict, DiagnosticReportService
+from app.clinical_gateway.diagnostic_report_service import (
+    DiagnosticReportConflict,
+    DiagnosticReportService,
+)
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor_sync
 
@@ -26,7 +31,7 @@ class DiagnosticReportAmendRequest(BaseModel):
     reason: str = Field(min_length=1, max_length=1000)
 
 
-def _raise(exc: Exception) -> None:
+def _raise(exc: Exception) -> NoReturn:
     if isinstance(exc, ClinicalGatewayBlocked):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Diagnostic report authorization denied") from exc
     if isinstance(exc, DiagnosticReportConflict):
@@ -42,11 +47,11 @@ def create_from_lab_order(
     order_id: int,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         report = DiagnosticReportService(db).create_from_lab_order(actor=actor, order_id=order_id)
         db.commit()
-        return DiagnosticReportService.to_safe_dict(report)
+        return cast(dict[str, Any], DiagnosticReportService.to_safe_dict(report))
     except (ClinicalGatewayBlocked, DiagnosticReportConflict) as exc:
         db.rollback()
         _raise(exc)
@@ -57,11 +62,11 @@ def create_from_radiology_report(
     report_id: str,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         report = DiagnosticReportService(db).create_from_radiology_report(actor=actor, report_id=report_id)
         db.commit()
-        return DiagnosticReportService.to_safe_dict(report)
+        return cast(dict[str, Any], DiagnosticReportService.to_safe_dict(report))
     except (ClinicalGatewayBlocked, DiagnosticReportConflict) as exc:
         db.rollback()
         _raise(exc)
@@ -72,10 +77,10 @@ def get_diagnostic_report(
     report_id: str,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         report = DiagnosticReportService(db).get(actor=actor, report_id=report_id)
-        return DiagnosticReportService.to_safe_dict(report)
+        return cast(dict[str, Any], DiagnosticReportService.to_safe_dict(report))
     except (ClinicalGatewayBlocked, DiagnosticReportConflict) as exc:
         db.rollback()
         _raise(exc)
@@ -87,7 +92,7 @@ def finalize_diagnostic_report(
     payload: DiagnosticReportFinalizeRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         report = DiagnosticReportService(db).finalize(
             actor=actor,
@@ -95,7 +100,7 @@ def finalize_diagnostic_report(
             expected_version=payload.expected_version,
         )
         db.commit()
-        return DiagnosticReportService.to_safe_dict(report)
+        return cast(dict[str, Any], DiagnosticReportService.to_safe_dict(report))
     except (ClinicalGatewayBlocked, DiagnosticReportConflict) as exc:
         db.rollback()
         _raise(exc)
@@ -107,7 +112,7 @@ def amend_diagnostic_report(
     payload: DiagnosticReportAmendRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         report = DiagnosticReportService(db).amend(
             actor=actor,
@@ -117,7 +122,7 @@ def amend_diagnostic_report(
             reason=payload.reason,
         )
         db.commit()
-        return DiagnosticReportService.to_safe_dict(report)
+        return cast(dict[str, Any], DiagnosticReportService.to_safe_dict(report))
     except (ClinicalGatewayBlocked, DiagnosticReportConflict) as exc:
         db.rollback()
         _raise(exc)

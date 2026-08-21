@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import NoReturn
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -104,7 +105,7 @@ def _raise_safe(
     correlation_id: UUID,
     reason_code: str,
     http_status: int | None = None,
-) -> None:
+) -> NoReturn:
     try:
         _audit_block(
             db=db,
@@ -192,7 +193,7 @@ def list_clinical_patients(
     params: ClinicalPageRequest = Depends(),
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> ClinicalReadEnvelope[PatientRead]:
     service, context, request_id, correlation_id = _prepare(db=db, actor=actor, resource="patients", request=request)
     try:
         response = service.list_patients(
@@ -223,7 +224,7 @@ def list_clinical_results(
     request: Request,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> ClinicalReadEnvelope[ResultRead]:
     service, context, request_id, correlation_id = _prepare(db=db, actor=actor, resource="results", request=request)
     try:
         response = service.list_results(
@@ -254,7 +255,7 @@ def list_clinical_orders(
     params: ClinicalPageRequest = Depends(),
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> ClinicalReadEnvelope[OrderRead]:
     service, context, request_id, correlation_id = _prepare(db=db, actor=actor, resource="orders", request=request)
     try:
         response = service.list_orders(

@@ -31,8 +31,7 @@ from app.identity.services.authorization_decision import (
     AuthorizationRequest,
 )
 from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
-from app.services.order_service import get_order_by_id
-from app.services.order_service import list_orders
+from app.services.order_service import get_order_by_id, list_orders
 from app.services.patient_service import list_patients
 
 

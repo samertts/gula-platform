@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -11,7 +11,7 @@ from app.clinical_gateway.context import ClinicalGatewayBlocked, ClinicalGateway
 from app.clinical_gateway.documentation_service import ClinicalDocumentService
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor_sync
-from app.models.clinical_document import CLINICAL_DOCUMENT_STATES, ClinicalDocument
+from app.models.clinical_document import ClinicalDocument
 
 router = APIRouter(prefix="/api/v1/clinical/documents", tags=["Canonical Clinical Documentation"])
 
@@ -44,7 +44,7 @@ def _access(db: Session, actor: NiamActor, *, purpose: str, permissions: frozens
     return ClinicalAccessContext.from_gateway(gateway, purpose=purpose, permissions=permissions)
 
 
-def _scope_query(db: Session, access: ClinicalAccessContext):
+def _scope_query(db: Session, access: ClinicalAccessContext) -> Any:
     return db.query(ClinicalDocument).filter(
         ClinicalDocument.is_deleted.is_(False),
         ClinicalDocument.tenant_id == access.tenant_id,
@@ -55,7 +55,7 @@ def _scope_query(db: Session, access: ClinicalAccessContext):
 
 
 def _safe(document: ClinicalDocument) -> dict[str, Any]:
-    return ClinicalDocumentService.to_safe_dict(document)
+    return cast(dict[str, Any], ClinicalDocumentService.to_safe_dict(document))
 
 
 @router.get("")
@@ -63,7 +63,7 @@ def list_documents(
     request: Request,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         access = _access(db, actor, purpose="clinical_documentation.read", permissions=frozenset({"read"}))
         documents = _scope_query(db, access).order_by(ClinicalDocument.updated_at.desc()).limit(100).all()
@@ -78,7 +78,7 @@ def get_document(
     request: Request,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         access = _access(db, actor, purpose="clinical_documentation.read", permissions=frozenset({"read"}))
         document = _scope_query(db, access).filter(ClinicalDocument.id == document_id).one_or_none()
@@ -94,7 +94,7 @@ def create_document(
     payload: ClinicalDocumentCreateRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         access = _access(db, actor, purpose="clinical_documentation.create", permissions=frozenset({"create"}))
         document = ClinicalDocumentService(db).create(access=access, **payload.model_dump())
@@ -111,7 +111,7 @@ def sign_document(
     payload: ClinicalDocumentSignRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         access = _access(db, actor, purpose="clinical_documentation.sign", permissions=frozenset({"sign"}))
         document = ClinicalDocumentService(db).sign(access=access, document_id=document_id, signature_reference=payload.signature_reference)
@@ -128,7 +128,7 @@ def amend_document(
     payload: ClinicalDocumentAmendRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         access = _access(db, actor, purpose="clinical_documentation.amend", permissions=frozenset({"update"}))
         document = ClinicalDocumentService(db).amend(access=access, document_id=document_id, **payload.model_dump())

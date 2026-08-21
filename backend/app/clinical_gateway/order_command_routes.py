@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any, cast
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
@@ -42,7 +44,7 @@ def create_clinical_order(
     payload: ClinicalOrderCreateRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         access = _access(db, actor, purpose="clinical_order.create", permissions=frozenset({"create"}))
         order = ClinicalOrderService(db).create(
@@ -55,7 +57,7 @@ def create_clinical_order(
             client_prescriber_id=payload.prescriber_id,
         )
         db.commit()
-        return ClinicalOrderService.to_safe_dict(order)
+        return cast(dict[str, Any], ClinicalOrderService.to_safe_dict(order))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Clinical order creation is not authorized") from exc
@@ -67,7 +69,7 @@ def transition_clinical_order(
     payload: ClinicalOrderTransitionRequest,
     actor: NiamActor = Depends(get_current_niam_actor_sync),
     db: Session = Depends(get_db),
-):
+) -> dict[str, Any]:
     try:
         access = _access(db, actor, purpose="clinical_order.transition", permissions=frozenset({"update"}))
         order = ClinicalOrderService(db).transition(
@@ -78,7 +80,7 @@ def transition_clinical_order(
             reason=payload.reason,
         )
         db.commit()
-        return ClinicalOrderService.to_safe_dict(order)
+        return cast(dict[str, Any], ClinicalOrderService.to_safe_dict(order))
     except ClinicalGatewayBlocked as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Clinical order transition is not authorized") from exc

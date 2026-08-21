@@ -16,8 +16,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
-from app.clinical_gateway.context import ClinicalGatewayContext, ClinicalGatewayBlocked
-
+from app.clinical_gateway.context import ClinicalGatewayBlocked, ClinicalGatewayContext
 
 WRITE_OPERATIONS = frozenset({"create", "update", "delete", "sign", "approve", "publish", "validate"})
 WORKFLOW_BOOTSTRAP_OPERATIONS = frozenset({"shift_start", "shift_end", "patient_assign", "task_create"})
@@ -55,7 +54,7 @@ class ClinicalAccessContext:
         purpose: str,
         permissions: frozenset[str] = frozenset(),
         correlation_id: UUID | None = None,
-    ) -> "ClinicalAccessContext":
+    ) -> ClinicalAccessContext:
         purpose_value = purpose.strip()
         if not purpose_value:
             raise ClinicalGatewayBlocked("missing_purpose")
@@ -95,7 +94,7 @@ class ClinicalAccessContext:
         permissions: frozenset[str] = frozenset(),
         correlation_id: UUID | None = None,
         require_task: bool = True,
-    ) -> "ClinicalAccessContext":
+    ) -> ClinicalAccessContext:
         """Derive patient/shift/task proof from server-side nursing workflow rows."""
         if patient_id <= 0:
             raise ClinicalGatewayBlocked("invalid_patient_scope")

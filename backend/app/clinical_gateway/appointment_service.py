@@ -6,7 +6,11 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.clinical_gateway.access_context import ClinicalAccessContext
-from app.clinical_gateway.context import ClinicalGatewayBlocked, ClinicalGatewayContextResolver
+from app.clinical_gateway.context import (
+    ClinicalGatewayBlocked,
+    ClinicalGatewayContext,
+    ClinicalGatewayContextResolver,
+)
 from app.identity.api.workspaces import NiamActor
 from app.national.domain.patient import Patient as NationalPatient
 from app.national.scheduling_platform.application.service import SchedulingPlatformService
@@ -31,7 +35,7 @@ class AppointmentCanonicalService:
             return value.replace(tzinfo=UTC)
         return value.astimezone(UTC)
 
-    def _gateway(self, actor: NiamActor):
+    def _gateway(self, actor: NiamActor) -> ClinicalGatewayContext:
         return ClinicalGatewayContextResolver(self.db).resolve(actor)
 
     def _access_for_patient(

@@ -11,7 +11,10 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
-from app.nursing.clinical_read_gate import ClinicalNursingTaskReadDenied, ClinicalNursingTaskReadGate
+from app.nursing.clinical_read_gate import (
+    ClinicalNursingTaskReadDenied,
+    ClinicalNursingTaskReadGate,
+)
 from app.nursing.coordination import CareCoordinatorService
 from app.nursing.medication import MedicationAdminService
 from app.nursing.models import (
@@ -540,8 +543,8 @@ def list_clinical_my_tasks(
     """
     try:
         ClinicalNursingTaskReadGate().authorize(db=db, lab_user=current_user)
-    except ClinicalNursingTaskReadDenied:
-        raise HTTPException(status_code=403, detail="Clinical nursing access is not permitted")
+    except ClinicalNursingTaskReadDenied as exc:
+        raise HTTPException(status_code=403, detail="Clinical nursing access is not permitted") from exc
 
     tasks = NursingService.get_tasks(
         db=db,
