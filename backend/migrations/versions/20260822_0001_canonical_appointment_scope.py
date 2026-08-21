@@ -6,9 +6,11 @@ Revises: 20260821_0001
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import cast
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.engine import Inspector
 
 revision: str = "20260822_0001"
 down_revision: str = "20260821_0001"
@@ -28,13 +30,13 @@ _COLUMNS = {
 
 def _existing_columns() -> set[str]:
     bind = op.get_bind()
-    inspector = sa.inspect(bind)
+    inspector = cast(Inspector, sa.inspect(bind))
     return {column["name"] for column in inspector.get_columns(_TABLE)}
 
 
 def _existing_indexes() -> set[str]:
     bind = op.get_bind()
-    inspector = sa.inspect(bind)
+    inspector = cast(Inspector, sa.inspect(bind))
     return {index["name"] for index in inspector.get_indexes(_TABLE)}
 
 

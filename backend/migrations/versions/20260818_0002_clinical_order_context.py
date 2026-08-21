@@ -7,10 +7,12 @@ Revises: 20260818_0001
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import cast
 
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy import inspect
+from sqlalchemy.engine import Inspector
 
 revision: str = "20260818_0002"
 down_revision: str | None = "20260818_0001"
@@ -35,12 +37,16 @@ _COLUMNS: tuple[tuple[str, sa.types.TypeEngine], ...] = (
 )
 
 
+def _inspector() -> Inspector:
+    return cast(Inspector, inspect(op.get_bind()))
+
+
 def _has_column(table: str, name: str) -> bool:
-    return name in {column["name"] for column in inspect(op.get_bind()).get_columns(table)}
+    return name in {column["name"] for column in _inspector().get_columns(table)}
 
 
 def _has_index(table: str, name: str) -> bool:
-    return any(index["name"] == name for index in inspect(op.get_bind()).get_indexes(table))
+    return any(index["name"] == name for index in _inspector().get_indexes(table))
 
 
 def upgrade() -> None:
@@ -70,7 +76,7 @@ def upgrade() -> None:
 
     # Existing rows may be legacy-only and remain NULL until an explicit, audited
     # backfill is approved. New canonical writes require this state in service code.
-    if not any(constraint.get("name") == "ck_lab_orders_clinical_status" for constraint in inspect(op.get_bind()).get_check_constraints("lab_orders")):
+    if not any(constraint.get("name") == "ck_lab_orders_clinical_status" for constraint in _inspector().get_check_constraints("lab_orders")):
         op.create_check_constraint(
             "ck_lab_orders_clinical_status",
             "lab_orders",

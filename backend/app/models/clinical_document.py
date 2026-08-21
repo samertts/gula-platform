@@ -3,11 +3,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Index, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Index, Integer, String
 
 from app._compat import UTC
 from app.models.base import AuditMixin, Base, OptimisticLockMixin, SoftDeleteMixin
-
 
 CLINICAL_DOCUMENT_STATES = frozenset({"DRAFT", "IN_REVIEW", "SIGNED", "AMENDED", "VOIDED", "CANCELLED"})
 

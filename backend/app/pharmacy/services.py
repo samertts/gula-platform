@@ -12,9 +12,9 @@ from sqlalchemy.orm import Session
 from app._compat import UTC
 from app.billing.service import BillingService
 from app.ehr.models.medication import MedicationDispense
+from app.models.lab_user import LabUser
 from app.national.domain.practitioner import Practitioner
 from app.national.enums import PractitionerRole
-from app.models.lab_user import LabUser
 from app.pharmacy.enums import DispenseStatus, PrescriptionStatus, StockMovementType
 from app.pharmacy.models import (
     DispenseQueue,

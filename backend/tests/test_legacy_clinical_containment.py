@@ -3,11 +3,10 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-from fastapi import HTTPException
-from starlette.requests import Request
-
 from app.routes import clinical_documentation, clinical_orders
 from app.security.legacy_clinical import block_legacy_clinical_route
+from fastapi import HTTPException
+from starlette.requests import Request
 
 
 def _request(path: str, method: str = "POST") -> Request:

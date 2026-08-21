@@ -5,7 +5,6 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-
 from app._compat import UTC
 from app.clinical_gateway.access_context import ClinicalAccessContext
 from app.clinical_gateway.context import ClinicalGatewayBlocked

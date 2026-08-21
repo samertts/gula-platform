@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
 import pytest
-
 from app.clinical_gateway.context import ClinicalGatewayBlocked
 from app.clinical_gateway.results_review_routes import router
 from app.clinical_gateway.results_review_service import ResultsReviewService

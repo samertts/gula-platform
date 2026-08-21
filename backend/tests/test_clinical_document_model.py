@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.models.clinical_document import ClinicalDocument
 
 

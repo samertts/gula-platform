@@ -7,10 +7,12 @@ Revises: 20260818_0004
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import cast
 
 import sqlalchemy as sa
 from alembic import op
 from sqlalchemy import inspect
+from sqlalchemy.engine import Inspector
 
 revision: str = "20260818_0005"
 down_revision: str | None = "20260818_0004"
@@ -25,12 +27,16 @@ _COLUMNS: tuple[tuple[str, sa.types.TypeEngine], ...] = (
 )
 
 
+def _inspector() -> Inspector:
+    return cast(Inspector, inspect(op.get_bind()))
+
+
 def _has_column(table: str, name: str) -> bool:
-    return name in {column["name"] for column in inspect(op.get_bind()).get_columns(table)}
+    return name in {column["name"] for column in _inspector().get_columns(table)}
 
 
 def _has_index(table: str, name: str) -> bool:
-    return any(index["name"] == name for index in inspect(op.get_bind()).get_indexes(table))
+    return any(index["name"] == name for index in _inspector().get_indexes(table))
 
 
 def upgrade() -> None:

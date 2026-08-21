@@ -1,11 +1,10 @@
 from types import SimpleNamespace
 
 import pytest
-
 from app.clinical_gateway.context import ClinicalGatewayBlocked
+from app.clinical_gateway.encounter_routes import router as encounter_router
 from app.clinical_gateway.encounter_service import EncounterService
 from app.clinical_gateway.workflow_routes import router as workflow_router
-from app.clinical_gateway.encounter_routes import router as encounter_router
 
 
 def test_encounter_and_workflow_routes_are_canonical_only():

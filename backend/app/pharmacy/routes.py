@@ -19,7 +19,11 @@ from app.pharmacy.models import (
     Prescription,
 )
 from app.pharmacy.services import PharmacyAuthorizationBlocked, PharmacyService
-from app.security.dependencies import get_current_user, require_institutional_permission, require_institutional_user
+from app.security.dependencies import (
+    get_current_user,
+    require_institutional_permission,
+    require_institutional_user,
+)
 
 router = APIRouter(
     prefix="/pharmacy",

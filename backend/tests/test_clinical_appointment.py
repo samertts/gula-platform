@@ -4,12 +4,11 @@ from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
-from pydantic import ValidationError
-
 from app.clinical_gateway.appointment_routes import AppointmentCreateRequest
 from app.clinical_gateway.appointment_service import AppointmentCanonicalService
 from app.clinical_gateway.context import ClinicalGatewayBlocked
 from app.national.scheduling_platform.infrastructure.models import NationalAppointment
+from pydantic import ValidationError
 
 
 def test_appointment_create_contract_forbids_client_authority_fields() -> None:

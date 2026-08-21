@@ -16,6 +16,7 @@ from ..database import get_db
 from ..models.lab_user import LabUser
 from ..security.dependencies import get_current_user
 from ..services.care_continuum_service import (
+    ReferralScopeError,
     accept_referral,
     complete_referral,
     coordinate_ehr_immunization,
@@ -88,7 +89,6 @@ from ..services.care_continuum_service import (
     list_screening_campaigns,
     list_vaccination_records,
     reject_referral,
-    ReferralScopeError,
 )
 
 router = APIRouter(prefix="/care-continuum", tags=["care continuum"])

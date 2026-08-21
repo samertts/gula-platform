@@ -31,8 +31,8 @@ from ..services.audit_service import log_action
 from ..services.patient_card import (
     CardTokenError,
     build_card_view,
-    build_print_card_view,
     build_full_history,
+    build_print_card_view,
     issue_card_token,
     lookup_patient_for_lab,
     render_card_qr_png,
@@ -65,8 +65,6 @@ def get_patient_card(
     patient = lookup_patient_for_lab(db, patient_id=patient_id, lab_id=current_user.lab_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-
-    token = issue_card_token(patient.id, patient.lab_id)
 
     log_action(
         db,

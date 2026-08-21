@@ -3,7 +3,6 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
-
 from app.clinical_gateway.context import ClinicalGatewayBlocked
 from app.clinical_gateway.order_service import ClinicalOrderService
 

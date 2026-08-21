@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
 
 import pytest
-from pydantic import ValidationError
-
 from app.devices.schemas import WearableMeasurementIngestRequest
 from app.models.patient import Patient
+from pydantic import ValidationError
+
 from tests.conftest import auth_headers
 
 

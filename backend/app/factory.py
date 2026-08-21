@@ -225,7 +225,6 @@ def import_all_models() -> None:
         TestType,
         User,
     )
-    from .models.clinical_diagnostic_report import ClinicalDiagnosticReport  # noqa: F401
     from .models.ai_interaction import (  # noqa: F401
         AIFeedback,
         AIInteraction,
@@ -234,6 +233,7 @@ def import_all_models() -> None:
         MedicalTerminologyNormalized,
     )
     from .models.claim import Claim, ClaimItem  # noqa: F401
+    from .models.clinical_diagnostic_report import ClinicalDiagnosticReport  # noqa: F401
     from .models.edge import (  # noqa: F401
         EdgeDevice,
         EdgeEvent,
@@ -797,14 +797,18 @@ def _register_routes(app: FastAPI) -> None:
     from .identity import get_router as get_niam_router
     app.include_router(get_niam_router())
 
-    from .clinical_gateway.routes import router as clinical_gateway_router
-    from .clinical_gateway.documentation_routes import router as clinical_documentation_gateway_router
-    from .clinical_gateway.order_command_routes import router as clinical_order_command_router
-    from .clinical_gateway.encounter_routes import router as clinical_encounter_router
-    from .clinical_gateway.workflow_routes import router as clinical_workflow_router
-    from .clinical_gateway.results_review_routes import router as clinical_results_review_router
     from .clinical_gateway.appointment_routes import router as clinical_appointment_router
-    from .clinical_gateway.diagnostic_report_routes import router as clinical_diagnostic_report_router
+    from .clinical_gateway.diagnostic_report_routes import (
+        router as clinical_diagnostic_report_router,
+    )
+    from .clinical_gateway.documentation_routes import (
+        router as clinical_documentation_gateway_router,
+    )
+    from .clinical_gateway.encounter_routes import router as clinical_encounter_router
+    from .clinical_gateway.order_command_routes import router as clinical_order_command_router
+    from .clinical_gateway.results_review_routes import router as clinical_results_review_router
+    from .clinical_gateway.routes import router as clinical_gateway_router
+    from .clinical_gateway.workflow_routes import router as clinical_workflow_router
     app.include_router(clinical_gateway_router)
     app.include_router(clinical_documentation_gateway_router)
     app.include_router(clinical_order_command_router)
