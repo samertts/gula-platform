@@ -4,7 +4,6 @@
     "slug": "gula-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "newArchEnabled": true,
     "scheme": "gula",
     "ios": {
       "supportsTablet": true,
@@ -16,7 +15,9 @@
     },
     "android": {
       "package": "org.gula.platform.mobile",
-      "permissions": ["android.permission.RECORD_AUDIO"]
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       [
@@ -30,7 +31,8 @@
             "com.samsung.android.bixby.agent"
           ]
         }
-      ]
+      ],
+      "expo-status-bar"
     ],
     "extra": {
       "gula": {
