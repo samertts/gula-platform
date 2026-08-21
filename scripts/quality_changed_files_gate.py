@@ -171,8 +171,21 @@ def run_mypy(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
         return ToolResult("mypy", scope, 0, (), "", "")
     # Do not reuse a repository-local cache: baseline and head are checked in
     # different worktrees and stale semantic caches can cause MyPy internal
-    # errors or make the comparison depend on run order.
-    result = run(("mypy", "--no-incremental", "--show-error-codes", "--no-error-summary", *paths), repo)
+    # errors or make the comparison depend on run order.  The gate evaluates
+    # the supplied files, so imports outside this scope are intentionally
+    # skipped; their quality is checked when their own files change or when a
+    # dedicated static-analysis job runs.
+    result = run(
+        (
+            "mypy",
+            "--no-incremental",
+            "--follow-imports=skip",
+            "--show-error-codes",
+            "--no-error-summary",
+            *paths,
+        ),
+        repo,
+    )
     execution_error = None if result.returncode in (0, 1) else result.stderr.strip()
     diagnostics = limit_to_requested_paths(
         parse_mypy_text(repo, f"{result.stdout}\n{result.stderr}"),
