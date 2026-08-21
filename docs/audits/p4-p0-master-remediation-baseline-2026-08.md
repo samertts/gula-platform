@@ -103,3 +103,10 @@
 ## ملحق تقوية القياسات والاعتماديات — 19 آب/أغسطس 2026
 
 تم استبدال `Field(finite=True)` deprecated في عقد WearableMeasurement بتحقق صريح متوافق مع Pydantic 2 باستخدام `math.isfinite`، مع إضافة اختبارات رفض `NaN` و`Infinity`. نجحت اختبارات wearable بنتيجة 8/8، ونجح فحص اعتماديات frontend الإنتاجية عبر `pnpm audit --prod` دون vulnerabilities معلنة: 0 info، 0 low، 0 moderate، 0 high، و0 critical ضمن 190 dependency.
+
+
+## ملحق إصلاحات main اللاحقة — 21 آب/أغسطس 2026
+
+بعد تحرك `main`، ظهر تعارض migration جديد بسبب وجود `20260819_0003_research_entities.py`، فتم نقل merge migration إلى revision فريد `20260821_0001_merge_clinical_and_wearable_heads.py` وربطه بالرأس الفعلي `20260819_0004`. كما تم إصلاح عقد OpenAPI لمسار `/lims/orders/{order_id}/fhir-bundle` باستخدام `FHIRJSONResponse` كي يعلن `application/fhir+json` فعلياً.
+
+تم أيضاً إصلاح اسم accessibility لزر قائمة الهاتف ليستخدم `mobileNav.openAllSections`، مع إبقاء النص المرئي المختصر. بعد ذلك نجح backend regression بنتيجة **2753 ناجحاً و4 متخطاة و142 تحذيراً**، ونجحت frontend suite بنتيجة **72/72**، كما نجح lint وbuild.
