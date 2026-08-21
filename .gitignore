@@ -20,6 +20,8 @@ coverage.xml
 # Node
 node_modules/
 dist/
+!mobile-expo/vendor/image-size/dist/
+!mobile-expo/vendor/image-size/dist/**
 build/
 
 # Logs
@@ -66,3 +68,6 @@ __pycache__/
 **/*.jks
 mobile/android/**/signing.properties
 !mobile/android/**/signing.properties.example
+
+# Local Gradle caches and generated state
+mobile/android/.gradle/

@@ -87,7 +87,7 @@
 
 ## ملحق إصلاحات ما بعد main — 19 آب/أغسطس 2026
 
-تم تشخيص فشل regression واحد سببه وجود رأسي Alembic مستقلين بعد إضافة wearable measurements إلى main. أُضيفت migration merge additive-only باسم `20260819_0003_merge_clinical_and_wearable_heads.py` لضم `20260818_0005` و`20260819_0002` دون تعديل migrations منشورة أو حذف بيانات.
+تم تشخيص فشل regression واحد سببه وجود رأسي Alembic مستقلين بعد إضافة wearable measurements إلى main. أُضيفت migration merge additive-only باسم `20260821_0001_merge_clinical_and_wearable_heads.py` لضم `20260818_0005` و`20260819_0004` بعد دمج سلسلة research/search الجديدة، دون تعديل migrations منشورة أو حذف بيانات.
 
 | الفحص | النتيجة |
 |---|---|

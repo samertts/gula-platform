@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+from app.models.lab_user import LabUser
 from app.national.search_platform.application.interfaces import PostgresFullTextSearch
 from app.national.search_platform.application.service import SearchPlatformService
 from app.national.search_platform.exceptions import (
@@ -26,7 +27,22 @@ router = APIRouter(
 )
 
 
-def _get_service(db: Session = Depends(get_db)) -> SearchPlatformService:
+def _raise_index_http_error(exc: Exception) -> None:
+    if isinstance(exc, NotImplementedError):
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail=str(exc),
+        ) from exc
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Search index backend is unavailable",
+    ) from exc
+
+
+def _get_service(
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(require_permission("system:admin")),
+) -> SearchPlatformService:
     from app.kernel import Kernel
     from app.kernel.event_bus.bus import EventBus
 
@@ -35,8 +51,8 @@ def _get_service(db: Session = Depends(get_db)) -> SearchPlatformService:
     index_adapter = PostgresFullTextSearch(db)
     return SearchPlatformService(
         index_adapter=index_adapter,
-        saved_search_repository=SQLAlchemySavedSearchRepository(db),
-        search_result_repository=SQLAlchemySearchResultRepository(db),
+        saved_search_repository=SQLAlchemySavedSearchRepository(db, current_user.lab_id),
+        search_result_repository=SQLAlchemySearchResultRepository(db, current_user.lab_id),
         event_bus=event_bus,
     )
 
@@ -59,6 +75,8 @@ async def search_post(
             operator=body.get("operator", "and"),
         )
         return _search_response_to_dict(response)
+    except NotImplementedError as e:
+        _raise_index_http_error(e)
     except SearchExecutionError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
@@ -86,6 +104,8 @@ async def search_get(
             mode=mode,
         )
         return _search_response_to_dict(response)
+    except NotImplementedError as e:
+        _raise_index_http_error(e)
     except SearchExecutionError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
@@ -103,6 +123,8 @@ async def fhir_search(
             page_size=body.get("_count", 20),
         )
         return _search_response_to_dict(response)
+    except NotImplementedError as e:
+        _raise_index_http_error(e)
     except SearchExecutionError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Validation error") from e
 
@@ -115,11 +137,14 @@ async def suggest(
     service: SearchPlatformService = Depends(_get_service),
 ) -> list[dict[str, Any]]:
     parsed_index_types = index_types.split(",") if index_types else None
-    suggestions = await service.suggest(
-        query_text=q,
-        index_types=parsed_index_types,
-        limit=limit,
-    )
+    try:
+        suggestions = await service.suggest(
+            query_text=q,
+            index_types=parsed_index_types,
+            limit=limit,
+        )
+    except Exception as exc:
+        _raise_index_http_error(exc)
     return [
         {
             "text": s.text,
@@ -137,10 +162,13 @@ async def get_facets(
     service: SearchPlatformService = Depends(_get_service),
 ) -> list[dict[str, Any]]:
     parsed_index_types = index_types.split(",") if index_types else None
-    facets = await service.get_facets(
-        query_text=q,
-        index_types=parsed_index_types,
-    )
+    try:
+        facets = await service.get_facets(
+            query_text=q,
+            index_types=parsed_index_types,
+        )
+    except Exception as exc:
+        _raise_index_http_error(exc)
     return [
         {
             "field": f.field,
@@ -214,8 +242,10 @@ async def rebuild_index(
         return await service.rebuild_index(
             index_type=body.get("index_type"),
         )
+    except NotImplementedError as e:
+        _raise_index_http_error(e)
     except IndexAdapterError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
+        _raise_index_http_error(e)
 
 
 @router.post("/index/document", status_code=status.HTTP_201_CREATED)
@@ -230,8 +260,10 @@ async def index_document(
             data=body.get("data", {}),
         )
         return {"status": "indexed"}
+    except NotImplementedError as e:
+        _raise_index_http_error(e)
     except IndexAdapterError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
+        _raise_index_http_error(e)
 
 
 @router.delete("/index/document/{index_type}/{document_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
@@ -242,8 +274,10 @@ async def remove_from_index(
 ) -> None:
     try:
         await service.remove_from_index(index_type, document_id)
+    except NotImplementedError as e:
+        _raise_index_http_error(e)
     except IndexAdapterError as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error") from e
+        _raise_index_http_error(e)
 
 
 @router.get("/stats")
@@ -257,7 +291,14 @@ async def get_search_stats(
 async def health(
     service: SearchPlatformService = Depends(_get_service),
 ) -> dict[str, Any]:
-    return await service.health()
+    result = await service.health()
+    adapter = result.get("adapter", {})
+    if adapter.get("status") != "ok":
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Search index backend is unavailable",
+        )
+    return result
 
 
 def _search_response_to_dict(response: Any) -> dict[str, Any]:

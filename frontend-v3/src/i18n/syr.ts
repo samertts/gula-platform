@@ -118,6 +118,7 @@ const syr = {
   },
   mobileNav: {
     quickNavigation: "ܐܘܪܚܐ ܥܓܝܠܬܐ",
+    mainNavigation: "ܐܘܪܚܐ ܪܝܫܝܬܐ",
     openAllSections: "ܦܬܚ ܟܠܗܘܢ ܦܠܓ̈ܐ",
     more: "ܝܬܝܪ",
     current: "ܦܬܐ ܕܟܕܘ",

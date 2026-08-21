@@ -126,6 +126,7 @@ const ku = {
   },
   mobileNav: {
     quickNavigation: "ڕێڕەوی خێرا",
+    mainNavigation: "ڕێڕەوی سەرەکی",
     openAllSections: "کردنەوەی هەموو بەشەکان",
     more: "زیاتر",
     current: "لاپەڕەی ئێستا",

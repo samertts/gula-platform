@@ -20,11 +20,15 @@ from app.national.search_platform.infrastructure.models import (
 
 class SQLAlchemySavedSearchRepository(SavedSearchRepository):
 
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, lab_id: int) -> None:
         self.db = db
+        self.lab_id = lab_id
 
     async def save(self, saved: SavedSearch) -> SavedSearch:
-        model = self.db.query(NationalSavedSearch).filter(NationalSavedSearch.id == saved.id).first()
+        model = self.db.query(NationalSavedSearch).filter(
+            NationalSavedSearch.id == saved.id,
+            NationalSavedSearch.lab_id == self.lab_id,
+        ).first()
         if model:
             model.name = saved.name
             model.description = saved.description
@@ -36,6 +40,7 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
         else:
             model = NationalSavedSearch(
                 id=saved.id,
+                lab_id=self.lab_id,
                 name=saved.name,
                 description=saved.description,
                 query=saved.query,
@@ -52,6 +57,7 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
     async def get(self, search_id: str) -> SavedSearch | None:
         model = self.db.query(NationalSavedSearch).filter(
             NationalSavedSearch.id == search_id,
+            NationalSavedSearch.lab_id == self.lab_id,
             ~NationalSavedSearch.is_deleted,
         ).first()
         if not model:
@@ -64,7 +70,10 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
         skip: int = 0,
         limit: int = 100,
     ) -> list[SavedSearch]:
-        query = self.db.query(NationalSavedSearch).filter(~~NationalSavedSearch.is_deleted)
+        query = self.db.query(NationalSavedSearch).filter(
+            NationalSavedSearch.lab_id == self.lab_id,
+            ~NationalSavedSearch.is_deleted,
+        )
         if created_by:
             query = query.filter(NationalSavedSearch.created_by == created_by)
         models = query.order_by(NationalSavedSearch.created_at.desc()).offset(skip).limit(limit).all()
@@ -73,6 +82,7 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
     async def delete(self, search_id: str) -> None:
         model = self.db.query(NationalSavedSearch).filter(
             NationalSavedSearch.id == search_id,
+            NationalSavedSearch.lab_id == self.lab_id,
             ~NationalSavedSearch.is_deleted,
         ).first()
         if model:
@@ -82,6 +92,7 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
 
     async def find_scheduled(self) -> list[SavedSearch]:
         models = self.db.query(NationalSavedSearch).filter(
+            NationalSavedSearch.lab_id == self.lab_id,
             NationalSavedSearch.scheduled,
             ~NationalSavedSearch.is_deleted,
         ).all()
@@ -90,11 +101,15 @@ class SQLAlchemySavedSearchRepository(SavedSearchRepository):
 
 class SQLAlchemySearchResultRepository(SearchResultRepository):
 
-    def __init__(self, db: Session) -> None:
+    def __init__(self, db: Session, lab_id: int) -> None:
         self.db = db
+        self.lab_id = lab_id
 
     async def save_result(self, result: SearchResult) -> SearchResult:
-        model = self.db.query(NationalSearchResult).filter(NationalSearchResult.id == result.id).first()
+        model = self.db.query(NationalSearchResult).filter(
+            NationalSearchResult.id == result.id,
+            NationalSearchResult.lab_id == self.lab_id,
+        ).first()
         if model:
             model.query_id = result.query_id
             model.index_type = result.index_type.value
@@ -110,6 +125,7 @@ class SQLAlchemySearchResultRepository(SearchResultRepository):
         else:
             model = NationalSearchResult(
                 id=result.id,
+                lab_id=self.lab_id,
                 query_id=result.query_id,
                 index_type=result.index_type.value,
                 resource_id=result.resource_id,
@@ -134,10 +150,16 @@ class SQLAlchemySearchResultRepository(SearchResultRepository):
         return saved
 
     async def get_stats(self) -> dict[str, Any]:
-        total = self.db.query(func.count(NationalSearchResult.id)).scalar() or 0
+        total = self.db.query(func.count(NationalSearchResult.id)).filter(
+            NationalSearchResult.lab_id == self.lab_id,
+            ~NationalSearchResult.is_deleted,
+        ).scalar() or 0
         by_index = self.db.query(
             NationalSearchResult.index_type,
             func.count(NationalSearchResult.id).label("count"),
+        ).filter(
+            NationalSearchResult.lab_id == self.lab_id,
+            ~NationalSearchResult.is_deleted,
         ).group_by(NationalSearchResult.index_type).all()
         return {
             "total_searches": total,

@@ -1,15 +1,17 @@
 from __future__ import annotations
 
-from sqlalchemy import JSON, Boolean, Column, Float, Index, String, Text
+from sqlalchemy import JSON, Boolean, Column, Float, Index, Integer, String, Text
 
+from app.models.base import TenantMixin
 from app.national.base import BaseEntity, _ulid
 from app.national.search_platform.domain.enums import SearchIndexType
 
 
-class NationalSavedSearch(BaseEntity):
+class NationalSavedSearch(TenantMixin, BaseEntity):
     __tablename__ = "national_search_saved_searches"
 
     id = Column(String(26), primary_key=True, default=_ulid)
+    lab_id = Column(Integer, nullable=False, index=True)
     name = Column(String(255), nullable=False, index=True)
     description = Column(Text, nullable=True, default="")
     query = Column(JSON, nullable=True, default=dict)
@@ -19,7 +21,8 @@ class NationalSavedSearch(BaseEntity):
     schedule_cron = Column(String(100), nullable=True, default="")
 
     __table_args__ = (
-        Index("ix_nat_search_saved_user", "created_by", "name"),
+        Index("ix_nat_search_saved_user", "lab_id", "created_by", "name"),
+        Index("ix_nat_search_saved_lab_deleted", "lab_id", "is_deleted"),
         {"extend_existing": True},
     )
 
@@ -40,10 +43,11 @@ class NationalSavedSearch(BaseEntity):
         )
 
 
-class NationalSearchResult(BaseEntity):
+class NationalSearchResult(TenantMixin, BaseEntity):
     __tablename__ = "national_search_results"
 
     id = Column(String(26), primary_key=True, default=_ulid)
+    lab_id = Column(Integer, nullable=False, index=True)
     query_id = Column(String(26), nullable=False, index=True)
     index_type = Column(String(50), nullable=False)
     resource_id = Column(String(26), nullable=False)
@@ -57,8 +61,9 @@ class NationalSearchResult(BaseEntity):
     url = Column(String(1000), nullable=True)
 
     __table_args__ = (
-        Index("ix_nat_search_result_query", "query_id", "score"),
-        Index("ix_nat_search_result_type_resource", "index_type", "resource_id"),
+        Index("ix_nat_search_result_query", "lab_id", "query_id", "score"),
+        Index("ix_nat_search_result_type_resource", "lab_id", "index_type", "resource_id"),
+        Index("ix_nat_search_result_lab_deleted", "lab_id", "is_deleted"),
         {"extend_existing": True},
     )
 

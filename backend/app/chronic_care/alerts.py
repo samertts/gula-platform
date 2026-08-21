@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Iterable
 
 from .baselines import BaselineEvaluation
 
@@ -42,9 +41,9 @@ class AlertOrchestrator:
         corroborated: bool = False,
         signal_quality: float = 1.0,
     ) -> ClinicalAlert | None:
-        timestamp = now or datetime.now(timezone.utc)
+        timestamp = now or datetime.now(UTC)
         if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
+            timestamp = timestamp.replace(tzinfo=UTC)
         if not 0 <= signal_quality <= 1:
             raise ValueError("signal_quality must be between 0 and 1")
         if not evaluation.is_anomaly or signal_quality < 0.7:

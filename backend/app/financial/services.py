@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -23,7 +23,7 @@ def _engine_enabled() -> bool:
     if config is None:
         return False
     return bool(getattr(config, "ENABLE_FINANCIAL_ENGINE", False))
-from .models import (
+from .models import (  # noqa: E402
     FinInvoice,
     FinInvoiceItem,
     FinPayable,
@@ -33,7 +33,7 @@ from .models import (
     FinSubscription,
     FinTransaction,
 )
-from .pricing import calculate_fee
+from .pricing import calculate_fee  # noqa: E402
 
 logger = logging.getLogger("gula.financial.services")
 

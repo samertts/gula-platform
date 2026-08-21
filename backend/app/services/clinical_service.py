@@ -14,7 +14,6 @@ from app.clinical.cds.models import (
     Contraindication,
     DuplicateOrderRule,
     OrderSet,
-    PreventiveRecommendation,
 )
 from app.clinical.knowledge.models import (
     ClinicalGuideline,
@@ -34,6 +33,7 @@ from app.clinical.quality.models import (
     PatientSafetyEvent,
     QualityIndicator,
 )
+from app.clinical.research.models import ClinicalRegistry, ResearchCohort
 from app.clinical.terminology.models import (
     CodeSystem,
     ICD10Code,
@@ -1102,51 +1102,34 @@ class ResearchService:
 
     @staticmethod
     def create_registry(
-        db: Session, data: dict[str, Any],
+        db: Session, *, lab_id: int, data: dict[str, Any],
     ) -> dict[str, Any]:
-        from app.clinical.research import models as research_models
-
-        cls = getattr(research_models, "ClinicalRegistry", None)
-        if cls is None:
-
-            class ClinicalRegistry:
-                pass
-
-            research_models.ClinicalRegistry = type(
-                "ClinicalRegistry",
-                (object,),
-                {"__module__": "app.clinical.research.models"},
-            )
-            cls = research_models.ClinicalRegistry
-
-        obj = cls(**data)
-        if hasattr(db, "add"):
-            db.add(obj)
-            db.commit()
-            if hasattr(db, "refresh"):
-                db.refresh(obj)
-        return {"id": getattr(obj, "id", None), **data}
+        obj = ClinicalRegistry(lab_id=lab_id, **data)
+        db.add(obj)
+        db.commit()
+        db.refresh(obj)
+        return obj.to_dict()
 
     @staticmethod
     def list_registries(
         db: Session,
         *,
+        lab_id: int,
         registry_type: str | None = None,
         skip: int = 0,
         limit: int = 50,
-    ) -> tuple[list[Any], int]:
-        from app.clinical.research import models as research_models
-
-        cls = getattr(research_models, "ClinicalRegistry", None)
-        if cls is None:
-            return [], 0
-        filters = []
+    ) -> tuple[list[ClinicalRegistry], int]:
+        filters = [
+            ClinicalRegistry.lab_id == lab_id,
+            ClinicalRegistry.is_deleted.is_(False),
+        ]
         if registry_type:
-            filters.append(cls.registry_type == registry_type)
-        total = db.query(cls).filter(*filters).count()
+            filters.append(ClinicalRegistry.registry_type == registry_type)
+        total = db.query(ClinicalRegistry).filter(*filters).count()
         items = (
-            db.query(cls)
+            db.query(ClinicalRegistry)
             .filter(*filters)
+            .order_by(ClinicalRegistry.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
@@ -1155,45 +1138,44 @@ class ResearchService:
 
     @staticmethod
     def create_cohort(
-        db: Session, data: dict[str, Any],
+        db: Session, *, lab_id: int, data: dict[str, Any],
     ) -> dict[str, Any]:
-        from app.clinical.research import models as research_models
-
-        cls = getattr(research_models, "ResearchCohort", None)
-        if cls is None:
-
-            class ResearchCohort:
-                pass
-
-            research_models.ResearchCohort = type(
-                "ResearchCohort",
-                (object,),
-                {"__module__": "app.clinical.research.models"},
+        registry_id = data.get("registry_id")
+        if registry_id is not None:
+            registry_exists = (
+                db.query(ClinicalRegistry.id)
+                .filter(
+                    ClinicalRegistry.id == registry_id,
+                    ClinicalRegistry.lab_id == lab_id,
+                    ClinicalRegistry.is_deleted.is_(False),
+                )
+                .first()
             )
-            cls = research_models.ResearchCohort
-
-        obj = cls(**data)
-        if hasattr(db, "add"):
-            db.add(obj)
-            db.commit()
-        return {"id": getattr(obj, "id", None), **data}
+            if registry_exists is None:
+                raise LookupError("Research registry not found in tenant")
+        obj = ResearchCohort(lab_id=lab_id, **data)
+        db.add(obj)
+        db.commit()
+        db.refresh(obj)
+        return obj.to_dict()
 
     @staticmethod
     def list_cohorts(
         db: Session,
         *,
+        lab_id: int,
         skip: int = 0,
         limit: int = 50,
-    ) -> tuple[list[Any], int]:
-        from app.clinical.research import models as research_models
-
-        cls = getattr(research_models, "ResearchCohort", None)
-        if cls is None:
-            return [], 0
-        total = db.query(cls).filter().count()
+    ) -> tuple[list[ResearchCohort], int]:
+        filters = [
+            ResearchCohort.lab_id == lab_id,
+            ResearchCohort.is_deleted.is_(False),
+        ]
+        total = db.query(ResearchCohort).filter(*filters).count()
         items = (
-            db.query(cls)
-            .filter()
+            db.query(ResearchCohort)
+            .filter(*filters)
+            .order_by(ResearchCohort.created_at.desc())
             .offset(skip)
             .limit(limit)
             .all()
@@ -1207,15 +1189,9 @@ class ResearchService:
         cohort_id: str | None = None,
         registry_id: str | None = None,
     ) -> dict[str, Any]:
-        return {
-            "status": "stub",
-            "message": "De-identified dataset export is not yet implemented. "
-                       "This is a placeholder for future functionality.",
-            "cohort_id": cohort_id,
-            "registry_id": registry_id,
-            "format": "FHIR NDJSON",
-            "estimated_size": "unknown",
-        }
+        raise NotImplementedError(
+            "De-identified dataset export requires an approved disclosure-control workflow"
+        )
 
 
 # ==============================================================================
@@ -1232,18 +1208,10 @@ class ClinicalAIService:
         patient_context: dict[str, Any],
         clinical_findings: list[dict[str, Any]],
     ) -> dict[str, Any]:
-        return {
-            "status": "stub",
-            "suggestions": [],
-            "differential_diagnoses": [],
-            "recommended_orders": [],
-            "message": "Clinical copilot is a stub. "
-                       "Integrate with AI provider (Gemini/Groq/Ollama) for real suggestions.",
-            "patient_context_summary": {
-                k: v for k, v in patient_context.items()
-                if k in ("age", "gender", "chief_complaint")
-            },
-        }
+        raise NotImplementedError(
+            "Clinical copilot is not enabled until a validated advisory-only model, "
+            "human-review workflow, and audit controls are deployed"
+        )
 
     @staticmethod
     def predict_risk(
@@ -1253,17 +1221,10 @@ class ClinicalAIService:
         risk_type: str,
         clinical_data: dict[str, Any],
     ) -> dict[str, Any]:
-        return {
-            "status": "stub",
-            "patient_id": patient_id,
-            "risk_type": risk_type,
-            "risk_score": None,
-            "risk_level": "unknown",
-            "contributing_factors": [],
-            "recommendations": [],
-            "message": "Risk prediction is a stub. "
-                       "Integrate with ML model serving infrastructure for real predictions.",
-        }
+        raise NotImplementedError(
+            "Risk prediction is not enabled until a validated advisory-only model "
+            "and monitoring controls are deployed"
+        )
 
     @staticmethod
     def detect_care_gaps(
@@ -1272,33 +1233,10 @@ class ClinicalAIService:
         patient_id: str,
         clinical_data: dict[str, Any],
     ) -> dict[str, Any]:
-        gaps = []
-
-        preventive = (
-            db.query(PreventiveRecommendation)
-            .filter(
-                PreventiveRecommendation.is_deleted.is_(False),
-                PreventiveRecommendation.is_active.is_(True),
-            )
-            .all()
+        raise NotImplementedError(
+            "Patient-specific care-gap detection requires validated clinical rules "
+            "and patient-scoped data integration"
         )
-        for rec in preventive:
-            gaps.append({
-                "type": "preventive",
-                "recommendation": rec.title,
-                "description": rec.description,
-                "intervention": rec.intervention,
-                "priority": rec.priority,
-                "evidence_level": rec.evidence_level.value if rec.evidence_level else None,
-            })
-
-        return {
-            "status": "stub",
-            "patient_id": patient_id,
-            "care_gaps": gaps,
-            "message": "Care gap detection is based on active preventive recommendations. "
-                       "Enhance with ML-based gap analysis for production use.",
-        }
 
     @staticmethod
     def diagnostic_assistant(
@@ -1308,14 +1246,10 @@ class ClinicalAIService:
         findings: list[dict[str, Any]],
         patient_context: dict[str, Any],
     ) -> dict[str, Any]:
-        return {
-            "status": "stub",
-            "possible_diagnoses": [],
-            "suggested_workup": [],
-            "differential_discussion": "",
-            "message": "Diagnostic assistant is a stub. "
-                       "Integrate with AI provider (Gemini/Groq/Ollama) for real suggestions.",
-        }
+        raise NotImplementedError(
+            "Diagnostic assistant is not enabled until a validated advisory-only model "
+            "and clinician review workflow are deployed"
+        )
 
     @staticmethod
     def get_explanation(
@@ -1324,13 +1258,6 @@ class ClinicalAIService:
         recommendation_id: str,
         recommendation_type: str,
     ) -> dict[str, Any]:
-        return {
-            "status": "stub",
-            "recommendation_id": recommendation_id,
-            "recommendation_type": recommendation_type,
-            "explanation": "Explainability is not yet implemented. "
-                           "This endpoint will provide human-readable explanations "
-                           "for AI-generated recommendations.",
-            "evidence_sources": [],
-            "confidence": None,
-        }
+        raise NotImplementedError(
+            "Recommendation explanations require a provenance-backed explanation service"
+        )

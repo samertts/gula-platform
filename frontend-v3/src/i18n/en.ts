@@ -227,6 +227,7 @@ const en = {
   },
   mobileNav: {
     quickNavigation: "Quick navigation",
+    mainNavigation: "Main navigation",
     openAllSections: "Open all sections",
     more: "More",
     current: "Current page",
