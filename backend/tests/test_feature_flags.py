@@ -51,9 +51,9 @@ def db():
     import app.models.lab
     import app.models.lab_user
     import app.models.subscription
-    from app.services.mpi.models import Citizen, IdentityClaim  # noqa: F401
+    from app.services.mpi.models import Citizen, IdentityClaim
     engine = create_engine("sqlite:///:memory:", connect_args={"check_same_thread": False})
-    import app.national.domain  # noqa: F401
+    import app.national.domain
     NationalBase.metadata.create_all(engine)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)

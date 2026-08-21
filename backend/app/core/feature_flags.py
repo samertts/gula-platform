@@ -189,7 +189,7 @@ def resolve_lab_features(lab_id: int, db: Session) -> frozenset[str]:
         db.query(LabSubscription)
         .filter(
             LabSubscription.lab_id == lab_id,
-            LabSubscription.is_active,
+            LabSubscription.is_active.is_(True),
         )
         .first()
     )
@@ -211,10 +211,14 @@ def resolve_lab_features(lab_id: int, db: Session) -> frozenset[str]:
         # Skip expired flags
         if flag.expires_at and flag.expires_at < now:
             continue
+        feature_key = flag.feature_key
+        if not feature_key:
+            logger.error("[FEATURE GATE] ignoring flag with empty feature_key lab_id=%s", lab_id)
+            continue
         if flag.is_enabled:
-            features.add(flag.feature_key)
+            features.add(feature_key)
         else:
-            features.discard(flag.feature_key)
+            features.discard(feature_key)
 
     return frozenset(features)
 
@@ -262,7 +266,7 @@ def get_lab_subscription_info(lab_id: int, db: Session) -> dict[str, object]:
         db.query(LabSubscription)
         .filter(
             LabSubscription.lab_id == lab_id,
-            LabSubscription.is_active,
+            LabSubscription.is_active.is_(True),
         )
         .first()
     )
