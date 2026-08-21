@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -21,7 +21,7 @@ def _engine_enabled() -> bool:
     if config is None:
         return False
     return bool(getattr(config, "ENABLE_FINANCIAL_ENGINE", False))
-from .models import (
+from .models import (  # noqa: E402
     FinInvoice,
     FinInvoiceItem,
     FinPayable,
@@ -31,7 +31,7 @@ from .models import (
     FinSubscription,
     FinTransaction,
 )
-from .pricing import calculate_fee
+from .pricing import calculate_fee  # noqa: E402
 
 logger = logging.getLogger("gula.financial.services")
 
@@ -101,7 +101,7 @@ class InvoiceService:
             or 0
         )
         invoice_number = f"INV-{lab_id:04d}-{invoice_count + 1:06d}"
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         invoice = FinInvoice(
             lab_id=lab_id,
             invoice_number=invoice_number,
@@ -223,7 +223,7 @@ class PaymentService:
         if not invoice:
             raise ValueError("Invoice not found")
 
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         payment = FinPayment(
             invoice_id=invoice_id,
             lab_id=lab_id,

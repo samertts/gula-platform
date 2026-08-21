@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import StrEnum
 
 
@@ -16,7 +16,11 @@ class CarePlanState(StrEnum):
 
 _ALLOWED: dict[CarePlanState, set[CarePlanState]] = {
     CarePlanState.DRAFT: {CarePlanState.PENDING_REVIEW, CarePlanState.CANCELLED},
-    CarePlanState.PENDING_REVIEW: {CarePlanState.ACTIVE, CarePlanState.DRAFT, CarePlanState.CANCELLED},
+    CarePlanState.PENDING_REVIEW: {
+        CarePlanState.ACTIVE,
+        CarePlanState.DRAFT,
+        CarePlanState.CANCELLED,
+    },
     CarePlanState.ACTIVE: {CarePlanState.PAUSED, CarePlanState.COMPLETED, CarePlanState.CANCELLED},
     CarePlanState.PAUSED: {CarePlanState.ACTIVE, CarePlanState.COMPLETED, CarePlanState.CANCELLED},
     CarePlanState.COMPLETED: set(),
@@ -35,10 +39,12 @@ class CarePlan:
     goals: list[dict]
     state: CarePlanState = CarePlanState.DRAFT
     version: int = 1
-    updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     approved_by: int | None = None
 
-    def transition(self, target: CarePlanState, *, actor_id: int, clinician_approved: bool = False) -> "CarePlan":
+    def transition(
+        self, target: CarePlanState, *, actor_id: int, clinician_approved: bool = False
+    ) -> CarePlan:
         if actor_id <= 0:
             raise InvalidCarePlanTransition("A positive actor_id is required")
         if target not in _ALLOWED[self.state]:
@@ -49,17 +55,19 @@ class CarePlan:
             self.approved_by = actor_id
         self.state = target
         self.version += 1
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
         return self
 
-    def update_goals(self, goals: list[dict], *, expected_version: int) -> "CarePlan":
+    def update_goals(self, goals: list[dict], *, expected_version: int) -> CarePlan:
         if expected_version != self.version:
-            raise InvalidCarePlanTransition("Stale care-plan version; explicit conflict resolution is required")
+            raise InvalidCarePlanTransition(
+                "Stale care-plan version; explicit conflict resolution is required"
+            )
         if self.state in {CarePlanState.COMPLETED, CarePlanState.CANCELLED}:
             raise InvalidCarePlanTransition("A terminal care plan cannot be modified")
         if not goals:
             raise InvalidCarePlanTransition("At least one measurable goal is required")
         self.goals = goals
         self.version += 1
-        self.updated_at = datetime.now(timezone.utc)
+        self.updated_at = datetime.now(UTC)
         return self

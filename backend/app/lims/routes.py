@@ -18,6 +18,10 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.clinical.command_guard import ClinicalCommandGuard
+from app.core.release_capabilities import (
+    phase1_policy_from_environment,
+    require_release_capability,
+)
 from app.database import get_db
 from app.models.lab_order import LabOrder
 from app.models.lab_user import LabUser
@@ -183,6 +187,21 @@ class ASTMResultResponse(BaseModel):
 
 def _lab_id(current_user: LabUser) -> int:
     return current_user.lab_id
+
+
+def _require_phase1_capability(
+    capability_key: str,
+    current_user: LabUser,
+    db: Session,
+) -> None:
+    """Enforce release scope before a LIMS command can read or mutate state."""
+
+    require_release_capability(
+        capability_key,
+        _lab_id(current_user),
+        db,
+        phase1_policy_from_environment(),
+    )
 
 
 def _list_to_dict(qs, exclude: set | None = None) -> list[dict]:
@@ -637,6 +656,7 @@ def register_specimen(
     db: Session = Depends(get_db),
     request: Request = None,
 ):
+    _require_phase1_capability("phase1.lims.sample_tracking", current_user, db)
     try:
         specimen = SpecimenService.register(
             db, data.order_id, _lab_id(current_user),
@@ -701,6 +721,7 @@ def transition_specimen(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     """Transition a specimen through its state machine with hard safety guards."""
+    _require_phase1_capability("phase1.lims.sample_tracking", current_user, db)
     specimen = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.id == specimen_id,
         lims_models.Specimen.lab_id == _lab_id(current_user),
@@ -813,6 +834,7 @@ def create_lims_order(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    _require_phase1_capability("phase1.lims.orders", current_user, db)
     # Verify base order exists
     base_order = db.query(LabOrder).filter(
         LabOrder.id == data.order_id,
@@ -878,6 +900,7 @@ def transition_order(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    _require_phase1_capability("phase1.lims.orders", current_user, db)
     lims_order = db.query(lims_models.Order).filter(
         lims_models.Order.id == order_id,
         lims_models.Order.lab_id == _lab_id(current_user),
@@ -912,7 +935,11 @@ def order_fhir(
     return order_to_fhir_service_request(lims_order)
 
 
-@router.get("/orders/{order_id}/fhir-bundle", response_class=FHIRJSONResponse)
+@router.get(
+    "/orders/{order_id}/fhir-bundle",
+    response_class=JSONResponse,
+    status_code=200,
+)
 def order_fhir_bundle(
     order_id: int,
     current_user: LabUser = Depends(require_permission("orders:read")),
@@ -1054,6 +1081,7 @@ def create_result(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     """Enter a result only for a verified specimen and a current record version."""
+    _require_phase1_capability("phase1.lims.result_entry", current_user, db)
     specimen = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.id == data.specimen_id,
         lims_models.Specimen.lab_id == _lab_id(current_user),
@@ -1180,6 +1208,7 @@ def validate_result(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     """Validate, reject, or flag a result through an auditable, versioned command."""
+    _require_phase1_capability("phase1.lims.result_approval", current_user, db)
     result = db.query(lims_models.Result).filter(
         lims_models.Result.id == result_id,
         lims_models.Result.lab_id == _lab_id(current_user),
@@ -1267,6 +1296,7 @@ def release_result(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     """Release a validated result only after all linked results are safe to release."""
+    _require_phase1_capability("phase1.lims.result_approval", current_user, db)
     result = db.query(lims_models.Result).filter(
         lims_models.Result.id == result_id,
         lims_models.Result.lab_id == _lab_id(current_user),
@@ -2147,6 +2177,7 @@ def process_critical_alert(
     db: Session = Depends(get_db),
 ):
     """Process a critical result alert."""
+    _require_phase1_capability("phase1.lims.critical_alerts", current_user, db)
     from .workflows import process_critical_result
     return process_critical_result(db, result_id, _lab_id(current_user), current_user.id)
 

@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const reportPath = process.env.NPM_AUDIT_REPORT || '/tmp/gula-mobile-expo-audit.json';
 const report = JSON.parse(fs.readFileSync(reportPath, 'utf8'));
 const vulnerabilities = report.vulnerabilities ?? {};
-const knownExpoSdk54Chain = new Set([
+const knownReviewedExpoChain = new Set([
   '@expo/cli',
   '@expo/config',
   '@expo/config-plugins',
@@ -28,7 +28,7 @@ const critical = Object.values(vulnerabilities)
   .filter((entry) => entry.severity === 'critical')
   .map((entry) => entry.name);
 const unknownHigh = Object.values(vulnerabilities)
-  .filter((entry) => entry.severity === 'high' && !knownExpoSdk54Chain.has(entry.name))
+  .filter((entry) => entry.severity === 'high' && !knownReviewedExpoChain.has(entry.name))
   .map((entry) => entry.name);
 
 if (critical.length > 0 || unknownHigh.length > 0) {
@@ -41,7 +41,7 @@ if (critical.length > 0 || unknownHigh.length > 0) {
 
 const metadata = report.metadata?.vulnerabilities ?? {};
 console.log(JSON.stringify({
-  status: 'passed-with-reviewed-sdk54-upstream-chain',
+  status: 'passed-with-reviewed-expo-upstream-chain',
   critical: metadata.critical ?? 0,
   high: metadata.high ?? 0,
   moderate: metadata.moderate ?? 0,

@@ -188,7 +188,11 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
-@router.post("/change-password", summary="Change current user password")
+@router.post(
+    "/change-password",
+    summary="Change current user password",
+    operation_id="mobile_change_password",
+)
 def change_password(
     data: ChangePasswordRequest,
     current_user: LabUser = Depends(get_current_user),

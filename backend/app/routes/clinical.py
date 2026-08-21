@@ -28,6 +28,17 @@ logger = logging.getLogger("gula.routes.clinical")
 router = APIRouter(prefix="/clinical", tags=["clinical"])
 
 
+def _handle_service_error(exc: Exception) -> None:
+    """Translate known service failures without exposing a false-success response."""
+    if isinstance(exc, NotImplementedError):
+        raise HTTPException(status_code=501, detail=str(exc)) from exc
+    if isinstance(exc, LookupError):
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    if isinstance(exc, ValueError):
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    raise exc
+
+
 # ==============================================================================
 # Terminology Routes
 # ==============================================================================
@@ -1170,7 +1181,14 @@ def create_registry(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return ResearchService.create_registry(db, data.model_dump(exclude_none=True))
+    try:
+        return ResearchService.create_registry(
+            db,
+            lab_id=current_user.lab_id,
+            data=data.model_dump(exclude_none=True),
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
 
 
 @router.get("/research/registries")
@@ -1181,13 +1199,17 @@ def list_registries(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    items, total = ResearchService.list_registries(
-        db, registry_type=registry_type, skip=skip, limit=limit,
-    )
-    return {
-        "items": [r.to_dict() if hasattr(r, "to_dict") else {"id": r.id, "name": r.name} for r in items],
-        "total": total,
-    }
+    try:
+        items, total = ResearchService.list_registries(
+            db,
+            lab_id=current_user.lab_id,
+            registry_type=registry_type,
+            skip=skip,
+            limit=limit,
+        )
+        return {"items": [r.to_dict() for r in items], "total": total}
+    except Exception as exc:
+        _handle_service_error(exc)
 
 
 @router.post("/research/cohorts", status_code=201)
@@ -1196,7 +1218,14 @@ def create_cohort(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return ResearchService.create_cohort(db, data.model_dump(exclude_none=True))
+    try:
+        return ResearchService.create_cohort(
+            db,
+            lab_id=current_user.lab_id,
+            data=data.model_dump(exclude_none=True),
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
 
 
 @router.get("/research/cohorts")
@@ -1206,11 +1235,13 @@ def list_cohorts(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    items, total = ResearchService.list_cohorts(db, skip=skip, limit=limit)
-    return {
-        "items": [r.to_dict() if hasattr(r, "to_dict") else {"id": r.id, "name": r.name} for r in items],
-        "total": total,
-    }
+    try:
+        items, total = ResearchService.list_cohorts(
+            db, lab_id=current_user.lab_id, skip=skip, limit=limit,
+        )
+        return {"items": [r.to_dict() for r in items], "total": total}
+    except Exception as exc:
+        _handle_service_error(exc)
 
 
 @router.post("/research/export-deidentified")
@@ -1220,9 +1251,12 @@ def export_deidentified_dataset(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return ResearchService.export_deidentified_dataset(
-        db, cohort_id=cohort_id, registry_id=registry_id,
-    )
+    try:
+        return ResearchService.export_deidentified_dataset(
+            db, cohort_id=cohort_id, registry_id=registry_id,
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
 
 
 # ==============================================================================
@@ -1263,11 +1297,14 @@ def clinical_copilot(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return ClinicalAIService.clinical_copilot(
-        db,
-        patient_context=data.patient_context,
-        clinical_findings=data.clinical_findings,
-    )
+    try:
+        return ClinicalAIService.clinical_copilot(
+            db,
+            patient_context=data.patient_context,
+            clinical_findings=data.clinical_findings,
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
 
 
 @router.post("/ai/risk-prediction")
@@ -1276,12 +1313,15 @@ def predict_risk(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return ClinicalAIService.predict_risk(
-        db,
-        patient_id=data.patient_id,
-        risk_type=data.risk_type,
-        clinical_data=data.clinical_data,
-    )
+    try:
+        return ClinicalAIService.predict_risk(
+            db,
+            patient_id=data.patient_id,
+            risk_type=data.risk_type,
+            clinical_data=data.clinical_data,
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
 
 
 @router.post("/ai/care-gaps")
@@ -1290,11 +1330,14 @@ def detect_care_gaps(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return ClinicalAIService.detect_care_gaps(
-        db,
-        patient_id=data.patient_id,
-        clinical_data=data.clinical_data,
-    )
+    try:
+        return ClinicalAIService.detect_care_gaps(
+            db,
+            patient_id=data.patient_id,
+            clinical_data=data.clinical_data,
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
 
 
 @router.post("/ai/diagnostic-assistant")
@@ -1303,12 +1346,15 @@ def diagnostic_assistant(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return ClinicalAIService.diagnostic_assistant(
-        db,
-        symptoms=data.symptoms,
-        findings=data.findings,
-        patient_context=data.patient_context,
-    )
+    try:
+        return ClinicalAIService.diagnostic_assistant(
+            db,
+            symptoms=data.symptoms,
+            findings=data.findings,
+            patient_context=data.patient_context,
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
 
 
 @router.post("/ai/explain")
@@ -1317,8 +1363,11 @@ def get_explanation(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return ClinicalAIService.get_explanation(
-        db,
-        recommendation_id=data.recommendation_id,
-        recommendation_type=data.recommendation_type,
-    )
+    try:
+        return ClinicalAIService.get_explanation(
+            db,
+            recommendation_id=data.recommendation_id,
+            recommendation_type=data.recommendation_type,
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
