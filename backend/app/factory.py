@@ -802,12 +802,14 @@ def _register_routes(app: FastAPI) -> None:
     from .clinical_gateway.encounter_routes import router as clinical_encounter_router
     from .clinical_gateway.workflow_routes import router as clinical_workflow_router
     from .clinical_gateway.results_review_routes import router as clinical_results_review_router
+    from .clinical_gateway.appointment_routes import router as clinical_appointment_router
     app.include_router(clinical_gateway_router)
     app.include_router(clinical_documentation_gateway_router)
     app.include_router(clinical_order_command_router)
     app.include_router(clinical_encounter_router)
     app.include_router(clinical_workflow_router)
     app.include_router(clinical_results_review_router)
+    app.include_router(clinical_appointment_router)
 
     from .routes.authorization import router as authorization_router
     app.include_router(authorization_router)

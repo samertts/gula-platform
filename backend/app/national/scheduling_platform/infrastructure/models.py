@@ -29,6 +29,13 @@ class NationalAppointment(BaseEntity):
 
     id = Column(String(26), primary_key=True, default=_ulid)
     patient_id = Column(String(26), nullable=False, index=True)
+    # Canonical clinical scope is server-derived; nullable preserves legacy rows during migration.
+    organization_id = Column(String(26), nullable=True, index=True)
+    workspace_id = Column(String(26), nullable=True, index=True)
+    department_id = Column(String(26), nullable=True, index=True)
+    tenant_id = Column(Integer, nullable=True, index=True)
+    legacy_lab_id = Column(Integer, nullable=True, index=True)
+    idempotency_key = Column(String(128), nullable=True, index=True)
     practitioner_id = Column(String(26), nullable=True, index=True)
     facility_id = Column(String(26), nullable=True, index=True)
     resource_id = Column(String(26), nullable=True, index=True)

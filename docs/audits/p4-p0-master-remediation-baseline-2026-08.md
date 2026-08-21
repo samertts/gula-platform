@@ -124,3 +124,10 @@
 تم إغلاق مسار أمني عملي في referral domain دون إنشاء نموذج مكرر. أصبحت عمليات إنشاء referral وcross-organization وresponse، والانتقالات accept/reject/complete، وtimeline وanalytics تتطلب `lab_id` مشتقاً من جلسة المؤسسة على الخادم. يتم رفض scope المفقود أو المتعارض كـ403، ويُحقن `lab_id` في السجلات الجديدة ولا يُقبل كسلطة من العميل. كما أصبحت ReferralTimeline نفسها tenant-scoped، وتُصفّى transitions وtimeline بالـlab_id.
 
 أضيفت تغطية اختبارية صريحة لرفض scope المفقود والمتعارض، ولإثبات أن timeline يحمل المؤسسة الصحيحة. بقيت canonicalization بين care-continuum وnational وinsurance وnursing surfaces، إضافة إلى server-derived practitioner/facility mapping، كمتطلبات لاحقة ولم يُعلن إغلاقها.
+
+
+## ملحق Appointment canonical lifecycle — 21 آب/أغسطس 2026
+
+أضيفت بوابة `/api/v1/clinical/appointments` فوق خدمة scheduling الوطنية الموجودة، بدلاً من إنشاء state machine ثانية. البوابة تفرض ClinicalAccessContext مع shift/assignment/task proof على الكتابة، وتشتق patient mapping وworkspace وorganization وfacility وdepartment وtenant من الخادم. لا تقبل practitioner_id أو facility_id أو resource_id أو created_by من العميل، وتستخدم idempotency key وoptimistic version checks.
+
+أضيفت أعمدة scope nullable وidempotency إلى `national_scheduling_appointments` عبر migration additive-only `20260822_0001`. nullable مؤقتة لتسهيل backfill؛ السجلات القديمة التي لا تملك scope لا تُقرأ أو تُكتب عبر canonical gateway. أضيفت اختبارات لعقد الطلب، منع authority fields، minimum disclosure، وdeny عند scope غير المحلول. ما زال احتواء legacy write routes وتكافؤ Web/Mobile/Desktop مطلوباً قبل إغلاق المجال نهائياً.
