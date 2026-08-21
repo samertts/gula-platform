@@ -15,9 +15,9 @@ depends_on: str | Sequence[str] | None = None
 
 def upgrade() -> None:
     """Converge both already-applied branches; this revision owns no DDL."""
-    return None
+    return
 
 
 def downgrade() -> None:
     """A merge revision owns no schema objects to remove."""
-    return None
+    return
