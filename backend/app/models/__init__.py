@@ -22,6 +22,7 @@ from .authorization import (
     UserTypeEnum,
 )
 from .canonical_patient import CanonicalPatient, CitizenLink, PatientLink
+from .clinical_command import ClinicalCommandReceipt
 from .clinical_scope import ClinicalEhrFacilityBinding, ClinicalLabFacilityBinding
 from .consent import Consent
 from .edge import (
@@ -56,14 +57,15 @@ __all__ = [
     "AIInteraction",
     "AIRetrievalRef",
     "AIUnresolvedQuestion",
-    "Appointment",
     "AccessibilityProfile",
+    "Appointment",
     "AuditLog",
     "AuthorizationAudit",
     "Base",
     "BreakGlassSession",
     "CanonicalPatient",
     "CitizenLink",
+    "ClinicalCommandReceipt",
     "ClinicalEhrFacilityBinding",
     "ClinicalLabFacilityBinding",
     "Consent",
@@ -78,12 +80,12 @@ __all__ = [
     "Facility",
     "FeatureFlag",
     "FieldSecurity",
+    "HealthPreference",
     "Lab",
     "LabOrder",
     "LabResult",
     "LabSubscription",
     "LabUser",
-    "HealthPreference",
     "MedicalTerminologyNormalized",
     "OAuth2Client",
     "OAuth2Token",

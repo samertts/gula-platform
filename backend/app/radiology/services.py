@@ -27,8 +27,27 @@ from app.radiology.models import (
     ReportTemplate,
     WorklistEntry,
 )
+from app.services.audit_service import log_action
 
 logger = logging.getLogger("gula.radiology.services")
+
+
+class RadiologyWorkflowError(ValueError):
+    """Raised when a radiology workflow safety invariant is violated."""
+
+
+_EXAM_TRANSITIONS: dict[ExamStatus, set[ExamStatus]] = {
+    ExamStatus.SCHEDULED: {ExamStatus.CHECKED_IN, ExamStatus.CANCELLED},
+    ExamStatus.CHECKED_IN: {ExamStatus.IN_PROGRESS, ExamStatus.CANCELLED},
+    ExamStatus.IN_PROGRESS: {ExamStatus.COMPLETED, ExamStatus.CANCELLED},
+    ExamStatus.COMPLETED: {ExamStatus.VERIFIED},
+    ExamStatus.VERIFIED: {ExamStatus.REPORTED},
+    ExamStatus.REPORTED: {ExamStatus.APPROVED},
+    ExamStatus.APPROVED: set(),
+    ExamStatus.CANCELLED: set(),
+}
+
+
 
 
 def _generate_accession() -> str:
@@ -49,8 +68,31 @@ def _generate_order_number() -> str:
 
 
 class RadiologyService:
-    def __init__(self, db: Session):
+    def __init__(
+        self,
+        db: Session,
+        actor_user_id: int | None = None,
+        actor_lab_id: int | None = None,
+        actor_role: str | None = None,
+    ):
         self.db = db
+        self.actor_user_id = actor_user_id
+        self.actor_lab_id = actor_lab_id
+        self.actor_role = actor_role or "system"
+
+    def _audit(self, action: str, resource_type: str, resource_id: str, details: dict[str, Any]) -> None:
+        if self.actor_user_id is None or self.actor_lab_id is None:
+            return
+        log_action(
+            self.db,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            user_id=self.actor_user_id,
+            user_role=self.actor_role,
+            lab_id=self.actor_lab_id,
+            details=details,
+        )
 
     def _patient_scoped_query(self, model: Any, patient_ids: set[str] | None):
         query = self.db.query(model)
@@ -309,17 +351,38 @@ class RadiologyService:
         q = q.order_by(RadiologyExam.created_at.desc())
         return q.offset(skip).limit(limit).all()
 
-    def update_exam_status(self, exam_id: str, status: ExamStatus) -> RadiologyExam | None:
-        exam = self.get_exam(exam_id)
+    def update_exam_status(
+        self,
+        exam_id: str,
+        status: ExamStatus,
+        *,
+        expected_version: int,
+    ) -> RadiologyExam | None:
+        exam = self.db.query(RadiologyExam).filter(
+            RadiologyExam.id == exam_id,
+            ~RadiologyExam.is_deleted,
+        ).with_for_update().first()
         if not exam:
             return None
+        if exam.version != expected_version:
+            raise RadiologyWorkflowError("radiology examination version conflict")
+        current = ExamStatus(exam.status)
+        if status not in _EXAM_TRANSITIONS[current]:
+            raise RadiologyWorkflowError(f"illegal examination transition: {current.value} -> {status.value}")
+        state_before = current.value
         exam.status = status
         if status == ExamStatus.IN_PROGRESS and not exam.started_at:
             exam.started_at = datetime.now(UTC)
         elif status == ExamStatus.COMPLETED and not exam.completed_at:
             exam.completed_at = datetime.now(UTC)
-        self.db.commit()
-        self.db.refresh(exam)
+        exam.version += 1
+        self.db.flush()
+        self._audit(
+            "radiology.exam.status_changed",
+            "radiology_exam",
+            exam.id,
+            {"state_before": state_before, "state_after": status.value, "version": exam.version},
+        )
         return exam
 
     def update_exam_images(self, exam_id: str, images_count: int, series_count: int) -> RadiologyExam | None:
@@ -536,35 +599,89 @@ class RadiologyService:
         q = q.order_by(RadiologyReport.created_at.desc())
         return q.offset(skip).limit(limit).all()
 
-    def save_report_draft(self, report_id: str, findings: str | None = None, impression: str | None = None, conclusion: str | None = None, recommendation: str | None = None, body_text: str | None = None) -> RadiologyReport | None:
-        report = self.get_report(report_id)
+    def _locked_report(self, report_id: str) -> RadiologyReport | None:
+        return self.db.query(RadiologyReport).filter(
+            RadiologyReport.id == report_id,
+            ~RadiologyReport.is_deleted,
+        ).with_for_update().first()
+
+    def save_report_draft(
+        self,
+        report_id: str,
+        *,
+        expected_version: int,
+        findings: str | None = None,
+        impression: str | None = None,
+        conclusion: str | None = None,
+        recommendation: str | None = None,
+        body_text: str | None = None,
+    ) -> RadiologyReport | None:
+        report = self._locked_report(report_id)
         if not report:
             return None
-        if findings is not None:
-            report.findings = findings
-        if impression is not None:
-            report.impression = impression
-        if conclusion is not None:
-            report.conclusion = conclusion
-        if recommendation is not None:
-            report.recommendation = recommendation
-        if body_text is not None:
-            report.body_text = body_text
+        if report.version != expected_version:
+            raise RadiologyWorkflowError("radiology report version conflict")
+        if report.status not in {ReportStatus.DRAFT, ReportStatus.PRELIMINARY}:
+            raise RadiologyWorkflowError("only draft or preliminary reports can be edited")
+        state_before = report.status.value
+        for field, value in {
+            "findings": findings,
+            "impression": impression,
+            "conclusion": conclusion,
+            "recommendation": recommendation,
+            "body_text": body_text,
+        }.items():
+            if value is not None:
+                setattr(report, field, value)
         report.status = ReportStatus.DRAFT
-        self.db.commit()
-        self.db.refresh(report)
+        report.version += 1
+        self.db.flush()
+        self._audit(
+            "radiology.report.draft_saved",
+            "radiology_report",
+            report.id,
+            {"state_before": state_before, "state_after": report.status.value, "version": report.version},
+        )
         return report
 
-    def finalize_report(self, report_id: str, radiologist_id: str | None = None) -> RadiologyReport | None:
-        report = self.get_report(report_id)
+    def finalize_report(
+        self,
+        report_id: str,
+        *,
+        expected_version: int,
+        radiologist_id: str,
+    ) -> RadiologyReport | None:
+        report = self._locked_report(report_id)
         if not report:
             return None
-        if radiologist_id:
-            report.radiologist_id = radiologist_id
+        if report.version != expected_version:
+            raise RadiologyWorkflowError("radiology report version conflict")
+        if report.status not in {ReportStatus.DRAFT, ReportStatus.PRELIMINARY}:
+            raise RadiologyWorkflowError("only draft or preliminary reports can be finalized")
+        if not radiologist_id:
+            raise RadiologyWorkflowError("a reporting radiologist is required")
+        if not any((report.findings, report.impression, report.conclusion, report.body_text)):
+            raise RadiologyWorkflowError("a report cannot be finalized without clinical content")
+        if report.critical_finding:
+            notified = self.db.query(CriticalFinding).filter(
+                CriticalFinding.report_id == report.id,
+                CriticalFinding.status.in_([CriticalFindingStatus.NOTIFIED, CriticalFindingStatus.ACKNOWLEDGED]),
+                ~CriticalFinding.is_deleted,
+            ).first()
+            if notified is None:
+                raise RadiologyWorkflowError("critical reports require a documented notification before finalization")
+        state_before = report.status.value
+        report.radiologist_id = radiologist_id
         report.status = ReportStatus.FINAL
         report.completed_at = datetime.now(UTC)
-        self.db.commit()
-        self.db.refresh(report)
+        report.version += 1
+        self.db.flush()
+        self._audit(
+            "radiology.report.finalized",
+            "radiology_report",
+            report.id,
+            {"state_before": state_before, "state_after": report.status.value, "version": report.version},
+        )
         logger.info("Radiology report finalized: %s", report.id)
         return report
 
@@ -578,12 +695,31 @@ class RadiologyService:
         self.db.refresh(report)
         return report
 
-    def amend_report(self, report_id: str, findings: str, impression: str, conclusion: str | None = None, recommendation: str | None = None, amended_by: str | None = None) -> RadiologyReport | None:
-        report = self.get_report(report_id)
+    def amend_report(
+        self,
+        report_id: str,
+        *,
+        expected_version: int,
+        findings: str,
+        impression: str,
+        reason: str,
+        conclusion: str | None = None,
+        recommendation: str | None = None,
+        amended_by: str,
+    ) -> RadiologyReport | None:
+        report = self._locked_report(report_id)
         if not report:
             return None
-        prior_version = report.version or 1
-        report.version = prior_version + 1
+        if report.version != expected_version:
+            raise RadiologyWorkflowError("radiology report version conflict")
+        if report.status not in {ReportStatus.FINAL, ReportStatus.AMENDED}:
+            raise RadiologyWorkflowError("only a finalized report can be amended")
+        if not reason.strip():
+            raise RadiologyWorkflowError("an amendment reason is required")
+        if not findings.strip() or not impression.strip():
+            raise RadiologyWorkflowError("amended reports require findings and impression")
+        state_before = report.status.value
+        report.version += 1
         report.findings = findings
         report.impression = impression
         if conclusion is not None:
@@ -592,19 +728,49 @@ class RadiologyService:
             report.recommendation = recommendation
         report.status = ReportStatus.AMENDED
         report.amended_at = datetime.now(UTC)
-        self.db.commit()
-        self.db.refresh(report)
+        metadata = dict(report.extra_metadata or {})
+        amendments = list(metadata.get("amendments", []))
+        amendments.append({"version": report.version, "reason": reason, "amended_by": amended_by, "at": report.amended_at.isoformat()})
+        metadata["amendments"] = amendments
+        report.extra_metadata = metadata
+        self.db.flush()
+        self._audit(
+            "radiology.report.amended",
+            "radiology_report",
+            report.id,
+            {"state_before": state_before, "state_after": report.status.value, "version": report.version, "reason": reason},
+        )
         logger.info("Radiology report amended (v%s): %s", report.version, report.id)
         return report
 
-    def verify_report(self, report_id: str, verified_by: str | None = None) -> RadiologyReport | None:
-        report = self.get_report(report_id)
+    def verify_report(
+        self,
+        report_id: str,
+        *,
+        expected_version: int,
+        verified_by: str,
+    ) -> RadiologyReport | None:
+        report = self._locked_report(report_id)
         if not report:
             return None
-        report.status = ReportStatus.FINAL
+        if report.version != expected_version:
+            raise RadiologyWorkflowError("radiology report version conflict")
+        if report.status not in {ReportStatus.FINAL, ReportStatus.AMENDED}:
+            raise RadiologyWorkflowError("only finalized or amended reports can be verified")
+        if not verified_by or verified_by == report.radiologist_id:
+            raise RadiologyWorkflowError("a second qualified reviewer must verify the report")
         report.verified_at = datetime.now(UTC)
-        self.db.commit()
-        self.db.refresh(report)
+        report.version += 1
+        metadata = dict(report.extra_metadata or {})
+        metadata["verified_by"] = verified_by
+        report.extra_metadata = metadata
+        self.db.flush()
+        self._audit(
+            "radiology.report.verified",
+            "radiology_report",
+            report.id,
+            {"state_before": report.status.value, "state_after": report.status.value, "version": report.version, "verified_by": verified_by},
+        )
         return report
 
     # ── Report Templates ──────────────────────────────────────────────────────
@@ -649,26 +815,46 @@ class RadiologyService:
         exam_id: str,
         finding_type: str,
         finding_description: str,
+        *,
         report_id: str | None = None,
-        notified_by: str | None = None,
-        notified_to: str | None = None,
         notes: str | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> CriticalFinding:
+        if not finding_description.strip():
+            raise RadiologyWorkflowError("critical finding description is required")
+        exam = self.db.query(RadiologyExam).filter(
+            RadiologyExam.id == exam_id,
+            ~RadiologyExam.is_deleted,
+        ).with_for_update().first()
+        if exam is None:
+            raise RadiologyWorkflowError("critical finding exam not found")
+        if exam.status not in {ExamStatus.COMPLETED, ExamStatus.VERIFIED, ExamStatus.REPORTED, ExamStatus.APPROVED}:
+            raise RadiologyWorkflowError("critical findings require a completed examination")
+        if report_id:
+            report = self._locked_report(report_id)
+            if report is None or report.exam_id != exam_id:
+                raise RadiologyWorkflowError("critical finding report does not belong to the examination")
+            report.critical_finding = True
+            report.critical_finding_type = finding_type
+            report.version += 1
+        exam.version += 1
         finding = CriticalFinding(
             exam_id=exam_id,
             report_id=report_id,
             finding_type=finding_type,
             finding_description=finding_description,
-            notified_by=notified_by,
-            notified_to=notified_to,
             status=CriticalFindingStatus.PENDING,
             notes=notes,
             extra_metadata=metadata or {},
         )
         self.db.add(finding)
-        self.db.commit()
-        self.db.refresh(finding)
+        self.db.flush()
+        self._audit(
+            "radiology.critical_finding.created",
+            "radiology_critical_finding",
+            finding.id,
+            {"exam_id": exam_id, "report_id": report_id, "state_after": finding.status.value},
+        )
         logger.warning("Critical finding created: %s on exam %s", finding_type, exam_id)
         return finding
 
@@ -705,29 +891,75 @@ class RadiologyService:
         q = q.order_by(CriticalFinding.created_at.desc())
         return q.offset(skip).limit(limit).all()
 
-    def acknowledge_critical_finding(self, finding_id: str, acknowledged_by: str, notes: str | None = None) -> CriticalFinding | None:
-        finding = self.get_critical_finding(finding_id)
+    def acknowledge_critical_finding(
+        self,
+        finding_id: str,
+        *,
+        expected_version: int,
+        acknowledged_by: str,
+        notes: str | None = None,
+    ) -> CriticalFinding | None:
+        finding = self.db.query(CriticalFinding).filter(
+            CriticalFinding.id == finding_id,
+            ~CriticalFinding.is_deleted,
+        ).with_for_update().first()
         if not finding:
             return None
+        if finding.version != expected_version:
+            raise RadiologyWorkflowError("critical finding version conflict")
+        if finding.status != CriticalFindingStatus.NOTIFIED:
+            raise RadiologyWorkflowError("only a notified critical finding can be acknowledged")
+        if not acknowledged_by or acknowledged_by != finding.notified_to:
+            raise RadiologyWorkflowError("only the documented recipient can acknowledge a critical finding")
+        state_before = finding.status.value
         finding.status = CriticalFindingStatus.ACKNOWLEDGED
         finding.acknowledged_by = acknowledged_by
         finding.acknowledgement_time = datetime.now(UTC)
         if notes:
             finding.notes = notes
-        self.db.commit()
-        self.db.refresh(finding)
+        finding.version += 1
+        self.db.flush()
+        self._audit(
+            "radiology.critical_finding.acknowledged",
+            "radiology_critical_finding",
+            finding.id,
+            {"state_before": state_before, "state_after": finding.status.value, "version": finding.version},
+        )
         return finding
 
-    def notify_critical_finding(self, finding_id: str, notified_by: str, notified_to: str) -> CriticalFinding | None:
-        finding = self.get_critical_finding(finding_id)
+    def notify_critical_finding(
+        self,
+        finding_id: str,
+        *,
+        expected_version: int,
+        notified_by: str,
+        notified_to: str,
+    ) -> CriticalFinding | None:
+        finding = self.db.query(CriticalFinding).filter(
+            CriticalFinding.id == finding_id,
+            ~CriticalFinding.is_deleted,
+        ).with_for_update().first()
         if not finding:
             return None
+        if finding.version != expected_version:
+            raise RadiologyWorkflowError("critical finding version conflict")
+        if finding.status not in {CriticalFindingStatus.PENDING, CriticalFindingStatus.ESCALATED}:
+            raise RadiologyWorkflowError("only pending or escalated critical findings can be notified")
+        if not notified_by or not notified_to:
+            raise RadiologyWorkflowError("notification sender and recipient are required")
+        state_before = finding.status.value
         finding.notified_by = notified_by
         finding.notified_to = notified_to
         finding.notification_time = datetime.now(UTC)
         finding.status = CriticalFindingStatus.NOTIFIED
-        self.db.commit()
-        self.db.refresh(finding)
+        finding.version += 1
+        self.db.flush()
+        self._audit(
+            "radiology.critical_finding.notified",
+            "radiology_critical_finding",
+            finding.id,
+            {"state_before": state_before, "state_after": finding.status.value, "version": finding.version, "notified_to": notified_to},
+        )
         return finding
 
     # ── Worklist Management ───────────────────────────────────────────────────

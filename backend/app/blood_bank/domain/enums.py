@@ -7,7 +7,7 @@ class ABOGroup(Enum):
     A = "A"
     B = "B"
     AB = "AB"
-    O = "O"
+    O = "O"  # noqa: E741 — conventional ABO group name; public domain API.
     UNKNOWN = "unknown"
 
 

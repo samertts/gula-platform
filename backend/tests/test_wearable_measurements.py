@@ -1,6 +1,7 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.models.patient import Patient
+
 from tests.conftest import auth_headers
 
 
@@ -18,7 +19,7 @@ def _payload(patient_id: int, event_id: str = "evt-001") -> dict:
         "metric_code": "heart_rate",
         "value": 72.0,
         "unit": "bpm",
-        "measured_at": datetime.now(timezone.utc).isoformat(),
+        "measured_at": datetime.now(UTC).isoformat(),
         "source_event_id": event_id,
         "quality_score": 0.98,
         "quality_status": "good",
@@ -98,6 +99,23 @@ def test_wearable_measurement_rejects_invalid_unit_and_live_mode(client, db, mak
         headers=headers,
     )
     assert response.status_code == 400
+
+
+def test_wearable_measurement_rejects_non_finite_values(client, db, make_lab, make_lab_user):
+    lab = make_lab("Wearable Finite Value Lab")
+    user = make_lab_user(lab.id, role="admin")
+    patient = _patient(db, lab.id)
+    headers = auth_headers(user.id, lab.id, role="admin")
+
+    for index, non_finite in enumerate(("NaN", "Infinity", "-Infinity"), start=1):
+        payload = _payload(patient.id, f"evt-non-finite-{index}")
+        payload["value"] = non_finite
+        response = client.post(
+            "/device-integration/wearables/measurements",
+            json=payload,
+            headers=headers,
+        )
+        assert response.status_code == 422
 
 
 def test_signed_wearable_webhook_is_verified_and_idempotent(client, db, make_lab, monkeypatch):
@@ -214,7 +232,7 @@ def test_wearable_baseline_summary_is_advisory_and_tenant_scoped(client, db, mak
     headers = auth_headers(user.id, lab.id, role="admin")
     for index in range(7):
         payload = _payload(patient.id, f"baseline-{index}")
-        payload["measured_at"] = datetime(2026, 8, 1 + index, tzinfo=timezone.utc).isoformat()
+        payload["measured_at"] = datetime(2026, 8, 1 + index, tzinfo=UTC).isoformat()
         payload["value"] = 70 + index
         accepted = client.post("/device-integration/wearables/measurements", json=payload, headers=headers)
         assert accepted.status_code == 201, accepted.text

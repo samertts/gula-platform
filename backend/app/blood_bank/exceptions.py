@@ -63,3 +63,11 @@ class ExpiredUnitError(BloodBankException):
 
 class RecallNotFoundError(BloodBankException):
     pass
+
+
+class BloodBankWorkflowError(BloodBankException):
+    """Raised when a safety-critical blood bank transition is not permitted."""
+
+
+class BloodBankValidationError(BloodBankException):
+    """Raised when a blood bank command lacks required clinical verification."""

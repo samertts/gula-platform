@@ -288,11 +288,23 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
             "# TYPE gula_db_timeout_rate_5m gauge",
             f"gula_db_timeout_rate_5m {win['timeout_per_min']}",
             "",
-            "# HELP gula_db_error_ratio_5m Fraction of DB checks that failed in last 5min (0–1)",
+            "# HELP gula_db_error_ratio_5m Fraction of DB checks that failed in last 5min (0-1)",
             "# TYPE gula_db_error_ratio_5m gauge",
             f"gula_db_error_ratio_5m {round((win['refused'] + win['timeout']) / total_events, 4)}",
         ]
     except Exception:
+        pass
+
+    # ── Clinical command safety metrics ─────────────────────────────────────
+    # The renderer exports only allow-listed, low-cardinality labels.  It never
+    # includes patients, users, resource IDs, request bodies, or free text.
+    try:
+        from app.clinical.observability import prometheus_lines as _clinical_prometheus_lines
+
+        lines += _clinical_prometheus_lines()
+    except Exception:
+        # Monitoring must not make the protected metrics endpoint unavailable.
+        # The safety control itself remains fail-closed inside the command guard.
         pass
 
     # ── Control Layer metrics ────────────────────────────────────────────────

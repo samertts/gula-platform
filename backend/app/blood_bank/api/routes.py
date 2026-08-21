@@ -2,26 +2,62 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.blood_bank.application.service import BloodBankService
 from app.blood_bank.compatibility import check_compatibility, get_compatible_groups
 from app.blood_bank.exceptions import (
+    BloodBankValidationError,
+    BloodBankWorkflowError,
     CrossmatchConflictError,
     DonorDeferredError,
     DonorNotFoundError,
     InsufficientStockError,
     TransfusionNotFoundError,
 )
+from app.blood_bank.infrastructure.models import (
+    BloodRequestModel,
+    BloodUnitModel,
+    CrossmatchModel,
+    TransfusionModel,
+)
+from app.clinical.command_guard import ClinicalCommandGuard
 from app.database import get_db
-from app.security.dependencies import require_permission
+from app.models.lab_user import LabUser
+from app.security.dependencies import get_current_user, require_permission
 
 router = APIRouter(
     prefix="/blood-bank",
     tags=["National Blood Bank Platform"],
     dependencies=[Depends(require_permission("system:admin"))],
 )
+
+
+def _lab_id(current_user: LabUser) -> int:
+    lab_id = getattr(current_user, "lab_id", None)
+    if not isinstance(lab_id, int) or lab_id <= 0:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Institutional laboratory context is required")
+    return lab_id
+
+
+def _guard(db: Session, current_user: LabUser) -> ClinicalCommandGuard:
+    return ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=_lab_id(current_user),
+        actor_role=current_user.role,
+    )
+
+
+def _raise_blood_error(error: Exception) -> None:
+    if isinstance(error, (BloodBankValidationError, BloodBankWorkflowError, CrossmatchConflictError)):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+    if isinstance(error, InsufficientStockError):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Insufficient safe stock") from error
+    if isinstance(error, TransfusionNotFoundError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from error
+    raise error
 
 
 def _get_service(db: Session = Depends(get_db)) -> BloodBankService:
@@ -138,18 +174,52 @@ async def get_critical_inventory(
 @router.post("/inventory/issue")
 async def issue_units(
     body: dict[str, Any],
-    service: BloodBankService = Depends(_get_service),
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> list[dict[str, Any]]:
+    """Issue only screened, processed, unexpired units against one active patient request."""
+    lab_id = _lab_id(current_user)
+    request = (
+        db.query(BloodRequestModel)
+        .filter(BloodRequestModel.id == body.get("request_id"), BloodRequestModel.lab_id == lab_id)
+        .with_for_update()
+        .first()
+    )
+    if not request:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    guard = _guard(db, current_user)
+    version_before = request.version
+    state_before = request.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="blood request")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="blood.issue", resource_type="blood_request", resource_id=request.id,
+        idempotency_key=key, payload=body,
+    )
     try:
-        units = service.issue_units(
-            blood_group=body.get("blood_group", ""),
-            component=body.get("component", ""),
+        units = BloodBankService(db).issue_units_safely(
+            request_id=request.id,
+            lab_id=lab_id,
             quantity=body.get("quantity", 1),
-            facility_id=body.get("facility_id", ""),
+            issued_by=str(current_user.id),
         )
-        return [_unit_to_dict(u) for u in units]
-    except InsufficientStockError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
+        guard.complete(
+            receipt, resource_type="blood_request", resource_id=request.id,
+            state_before=state_before, state_after=request.status,
+            version_before=version_before, version_after=request.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="blood.issue", resource_type="blood_request", resource_id=request.id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        _raise_blood_error(exc)
+    return [_unit_to_dict(unit) for unit in units]
 
 
 # ---- Crossmatch ----
@@ -157,13 +227,98 @@ async def issue_units(
 @router.post("/crossmatch", status_code=status.HTTP_201_CREATED)
 async def perform_crossmatch(
     body: dict[str, Any],
-    service: BloodBankService = Depends(_get_service),
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
+    lab_id = _lab_id(current_user)
+    unit = (
+        db.query(BloodUnitModel)
+        .filter(BloodUnitModel.id == body.get("unit_id"), BloodUnitModel.lab_id == lab_id)
+        .with_for_update()
+        .first()
+    )
+    if not unit:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    guard = _guard(db, current_user)
+    version_before = unit.version
+    state_before = unit.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="blood unit")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="blood.crossmatch.perform", resource_type="blood_unit", resource_id=unit.id,
+        idempotency_key=key, payload=body,
+    )
     try:
-        crossmatch = service.perform_crossmatch(body)
-        return _crossmatch_to_dict(crossmatch)
-    except CrossmatchConflictError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
+        crossmatch = BloodBankService(db).perform_crossmatch_safely(
+            {**body, "lab_id": lab_id, "performed_by": str(current_user.id)},
+        )
+        guard.complete(
+            receipt, resource_type="blood_crossmatch", resource_id=crossmatch.id,
+            state_before=state_before, state_after=crossmatch.status,
+            version_before=version_before, version_after=unit.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="blood.crossmatch.perform", resource_type="blood_unit", resource_id=unit.id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        _raise_blood_error(exc)
+    db.refresh(crossmatch)
+    return _crossmatch_to_dict(crossmatch)
+
+
+@router.post("/crossmatch/{crossmatch_id}/verify")
+async def verify_crossmatch(
+    crossmatch_id: str,
+    body: dict[str, Any],
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> dict[str, Any]:
+    lab_id = _lab_id(current_user)
+    crossmatch = (
+        db.query(CrossmatchModel)
+        .filter(CrossmatchModel.id == crossmatch_id, CrossmatchModel.lab_id == lab_id)
+        .with_for_update()
+        .first()
+    )
+    if not crossmatch:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    guard = _guard(db, current_user)
+    version_before = crossmatch.version
+    state_before = crossmatch.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="crossmatch")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="blood.crossmatch.verify", resource_type="blood_crossmatch", resource_id=crossmatch.id,
+        idempotency_key=key, payload=body,
+    )
+    try:
+        verified = BloodBankService(db).verify_crossmatch_safely(
+            crossmatch_id, lab_id, str(current_user.id),
+        )
+        guard.complete(
+            receipt, resource_type="blood_crossmatch", resource_id=verified.id,
+            state_before=state_before, state_after="verified",
+            version_before=version_before, version_after=verified.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="blood.crossmatch.verify", resource_type="blood_crossmatch", resource_id=crossmatch_id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        _raise_blood_error(exc)
+    db.refresh(verified)
+    return _crossmatch_to_dict(verified)
 
 
 @router.post("/crossmatch/check")
@@ -188,32 +343,194 @@ async def get_compatible_blood_groups(
 @router.post("/transfusions", status_code=status.HTTP_201_CREATED)
 async def record_transfusion(
     body: dict[str, Any],
-    service: BloodBankService = Depends(_get_service),
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
-    transfusion = service.record_transfusion(body)
+    lab_id = _lab_id(current_user)
+    unit = (
+        db.query(BloodUnitModel)
+        .filter(BloodUnitModel.id == body.get("unit_id"), BloodUnitModel.lab_id == lab_id)
+        .with_for_update()
+        .first()
+    )
+    if not unit:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    guard = _guard(db, current_user)
+    version_before = unit.version
+    state_before = unit.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="blood unit")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="blood.transfusion.order", resource_type="blood_unit", resource_id=unit.id,
+        idempotency_key=key, payload=body,
+    )
+    try:
+        transfusion = BloodBankService(db).record_transfusion_safely(
+            {**body, "lab_id": lab_id, "ordered_by": str(current_user.id)},
+        )
+        guard.complete(
+            receipt, resource_type="blood_transfusion", resource_id=transfusion.id,
+            state_before=state_before, state_after=transfusion.status,
+            version_before=version_before, version_after=unit.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="blood.transfusion.order", resource_type="blood_unit", resource_id=unit.id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        _raise_blood_error(exc)
+    db.refresh(transfusion)
     return _transfusion_to_dict(transfusion)
+
+
+@router.post("/transfusions/{transfusion_id}/verify")
+async def verify_transfusion(
+    transfusion_id: str,
+    body: dict[str, Any],
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> dict[str, Any]:
+    lab_id = _lab_id(current_user)
+    transfusion = (
+        db.query(TransfusionModel)
+        .filter(TransfusionModel.id == transfusion_id, TransfusionModel.lab_id == lab_id)
+        .with_for_update()
+        .first()
+    )
+    if not transfusion:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    guard = _guard(db, current_user)
+    version_before = transfusion.version
+    state_before = transfusion.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="transfusion")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="blood.transfusion.verify", resource_type="blood_transfusion", resource_id=transfusion.id,
+        idempotency_key=key, payload=body,
+    )
+    try:
+        verified = BloodBankService(db).verify_transfusion_safely(
+            transfusion_id, lab_id, {**body, "verified_by": str(current_user.id)},
+        )
+        guard.complete(
+            receipt, resource_type="blood_transfusion", resource_id=verified.id,
+            state_before=state_before, state_after=verified.status,
+            version_before=version_before, version_after=verified.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="blood.transfusion.verify", resource_type="blood_transfusion", resource_id=transfusion_id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        _raise_blood_error(exc)
+    db.refresh(verified)
+    return _transfusion_to_dict(verified)
 
 
 @router.post("/transfusions/{transfusion_id}/start")
 async def start_transfusion(
     transfusion_id: str,
-    service: BloodBankService = Depends(_get_service),
+    body: dict[str, Any],
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
+    lab_id = _lab_id(current_user)
+    transfusion = (
+        db.query(TransfusionModel)
+        .filter(TransfusionModel.id == transfusion_id, TransfusionModel.lab_id == lab_id)
+        .with_for_update()
+        .first()
+    )
+    if not transfusion:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    guard = _guard(db, current_user)
+    version_before = transfusion.version
+    state_before = transfusion.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="transfusion")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="blood.transfusion.start", resource_type="blood_transfusion", resource_id=transfusion.id,
+        idempotency_key=key, payload=body,
+    )
     try:
-        return _transfusion_to_dict(service.start_transfusion(transfusion_id))
-    except TransfusionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        started = BloodBankService(db).start_transfusion_safely(
+            transfusion_id, lab_id, str(current_user.id),
+        )
+        guard.complete(
+            receipt, resource_type="blood_transfusion", resource_id=started.id,
+            state_before=state_before, state_after=started.status,
+            version_before=version_before, version_after=started.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="blood.transfusion.start", resource_type="blood_transfusion", resource_id=transfusion_id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        _raise_blood_error(exc)
+    db.refresh(started)
+    return _transfusion_to_dict(started)
 
 
 @router.post("/transfusions/{transfusion_id}/complete")
 async def complete_transfusion(
     transfusion_id: str,
-    service: BloodBankService = Depends(_get_service),
+    body: dict[str, Any],
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
+    lab_id = _lab_id(current_user)
+    transfusion = (
+        db.query(TransfusionModel)
+        .filter(TransfusionModel.id == transfusion_id, TransfusionModel.lab_id == lab_id)
+        .with_for_update()
+        .first()
+    )
+    if not transfusion:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    guard = _guard(db, current_user)
+    version_before = transfusion.version
+    state_before = transfusion.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="transfusion")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="blood.transfusion.complete", resource_type="blood_transfusion", resource_id=transfusion.id,
+        idempotency_key=key, payload=body,
+    )
     try:
-        return _transfusion_to_dict(service.complete_transfusion(transfusion_id))
-    except TransfusionNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+        completed = BloodBankService(db).complete_transfusion_safely(transfusion_id, lab_id, body)
+        guard.complete(
+            receipt, resource_type="blood_transfusion", resource_id=completed.id,
+            state_before=state_before, state_after=completed.status,
+            version_before=version_before, version_after=completed.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="blood.transfusion.complete", resource_type="blood_transfusion", resource_id=transfusion_id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        _raise_blood_error(exc)
+    db.refresh(completed)
+    return _transfusion_to_dict(completed)
 
 
 # ---- Blood Requests ----

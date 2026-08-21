@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from typing import Any
 
@@ -7,6 +8,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, s
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.orm import Session
 
+from app.clinical.command_guard import ClinicalCommandGuard
 from app.database import get_db
 from app.pharmacy.enums import (
     DrugCategory,
@@ -17,8 +19,9 @@ from app.pharmacy.enums import (
 )
 from app.pharmacy.models import (
     Prescription,
+    StockLevel,
 )
-from app.pharmacy.services import PharmacyService
+from app.pharmacy.services import PharmacyService, PharmacyWorkflowError
 from app.security.dependencies import get_current_user, require_institutional_permission
 
 router = APIRouter(prefix="/pharmacy", tags=["Pharmacy"])
@@ -279,6 +282,7 @@ class DispenseRecordCreate(BaseModel):
     prescription_id: str | None = None
     prescription_item_id: str | None = None
     patient_id: str
+    drug_catalog_id: str
     dispensed_by: str | None = None
     verified_by: str | None = None
     quantity_dispensed: int
@@ -501,6 +505,70 @@ def _get_or_404(db: Session, model, id: str, detail: str = "Not found"):
     if not obj:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
     return obj
+
+
+def _run_dispense_transition(
+    *,
+    queue_id: str,
+    operation: str,
+    transition: Callable[[PharmacyService, str, int], object | None],
+    db: Session,
+    user,
+    if_match: str | None,
+    idempotency_key: str | None,
+):
+    """Execute one queue transition with durable idempotency and audit evidence."""
+    svc = _get_pharmacy_service(db, user)
+    entry = svc.get_dispense_queue_entry(queue_id, for_update=True)
+    if entry is None:
+        raise HTTPException(status_code=404, detail=f"Queue entry not found: {queue_id}")
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=user.id,
+        lab_id=user.lab_id,
+        actor_role=user.role,
+    )
+    state_before = entry.status.value if hasattr(entry.status, "value") else str(entry.status)
+    version_before = entry.version
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="dispense queue entry")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation=operation,
+        resource_type="pharmacy_dispense_queue",
+        resource_id=queue_id,
+        idempotency_key=key,
+        payload={"if_match": if_match},
+    )
+    try:
+        updated = transition(svc, queue_id, version_before)
+        if updated is None:
+            raise HTTPException(status_code=404, detail=f"Queue entry not found: {queue_id}")
+        state_after = updated.status.value if hasattr(updated.status, "value") else str(updated.status)
+        guard.complete(
+            receipt,
+            resource_type="pharmacy_dispense_queue",
+            resource_id=queue_id,
+            state_before=state_before,
+            state_after=state_after,
+            version_before=version_before,
+            version_after=updated.version,
+        )
+        db.commit()
+    except (HTTPException, PharmacyWorkflowError) as exc:
+        db.rollback()
+        guard.reject(
+            operation=operation,
+            resource_type="pharmacy_dispense_queue",
+            resource_id=queue_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason=str(getattr(exc, "detail", exc)),
+        )
+        db.commit()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return updated
 
 
 # ── Drug Catalog Routes ────────────────────────────────────────────────────────
@@ -813,12 +881,19 @@ async def prepare_dispense(
     queue_id: str,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_pharmacy_service(db, user)
-    entry = svc.prepare_dispense(queue_id)
-    if not entry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}")
-    return {"status": "prepared", "id": queue_id}
+    entry = _run_dispense_transition(
+        queue_id=queue_id,
+        operation="pharmacy.dispense.prepare",
+        transition=lambda svc, qid, version: svc.prepare_dispense(qid, expected_version=version),
+        db=db,
+        user=user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+    )
+    return {"status": "prepared", "id": queue_id, "version": entry.version}
 
 
 @router.post("/dispense-queue/{queue_id}/verify")
@@ -826,12 +901,19 @@ async def verify_dispense(
     queue_id: str,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_pharmacy_service(db, user)
-    entry = svc.verify_dispense(queue_id)
-    if not entry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}")
-    return {"status": "verified", "id": queue_id}
+    entry = _run_dispense_transition(
+        queue_id=queue_id,
+        operation="pharmacy.dispense.verify",
+        transition=lambda svc, qid, version: svc.verify_dispense(qid, expected_version=version),
+        db=db,
+        user=user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+    )
+    return {"status": "verified", "id": queue_id, "version": entry.version}
 
 
 @router.post("/dispense-queue/{queue_id}/dispense")
@@ -839,12 +921,19 @@ async def complete_dispense(
     queue_id: str,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_pharmacy_service(db, user)
-    entry = svc.complete_dispense(queue_id)
-    if not entry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}")
-    return {"status": "dispensed", "id": queue_id}
+    entry = _run_dispense_transition(
+        queue_id=queue_id,
+        operation="pharmacy.dispense.complete",
+        transition=lambda svc, qid, version: svc.complete_dispense(qid, expected_version=version),
+        db=db,
+        user=user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+    )
+    return {"status": "dispensed", "id": queue_id, "version": entry.version}
 
 
 @router.post("/dispense-queue/{queue_id}/partial")
@@ -852,12 +941,19 @@ async def partial_dispense(
     queue_id: str,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_pharmacy_service(db, user)
-    entry = svc.partial_dispense(queue_id)
-    if not entry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}")
-    return {"status": "partial", "id": queue_id}
+    entry = _run_dispense_transition(
+        queue_id=queue_id,
+        operation="pharmacy.dispense.partial",
+        transition=lambda svc, qid, version: svc.partial_dispense(qid, expected_version=version),
+        db=db,
+        user=user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+    )
+    return {"status": "partial", "id": queue_id, "version": entry.version}
 
 
 @router.post("/dispense-queue/{queue_id}/cancel")
@@ -865,12 +961,19 @@ async def cancel_dispense(
     queue_id: str,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_pharmacy_service(db, user)
-    entry = svc.cancel_dispense(queue_id)
-    if not entry:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Queue entry not found: {queue_id}")
-    return {"status": "cancelled", "id": queue_id}
+    entry = _run_dispense_transition(
+        queue_id=queue_id,
+        operation="pharmacy.dispense.cancel",
+        transition=lambda svc, qid, version: svc.cancel_dispense(qid, expected_version=version),
+        db=db,
+        user=user,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+    )
+    return {"status": "cancelled", "id": queue_id, "version": entry.version}
 
 
 @router.post("/dispense/dispense-record", response_model=DispenseRecordResponse, status_code=status.HTTP_201_CREATED)
@@ -878,9 +981,62 @@ async def create_dispense_record(
     data: DispenseRecordCreate,
     db: Session = Depends(get_db),
     user=Depends(get_current_user),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    svc = _get_pharmacy_service(db, user)
-    return svc.create_dispense_record(data.model_dump(exclude_none=True))
+    """Create a manually recorded dispense only under locked, independently verified stock."""
+    stock = db.query(StockLevel).filter(
+        StockLevel.lab_id == user.lab_id,
+        StockLevel.batch_id == data.batch_id,
+        StockLevel.drug_catalog_id == data.drug_catalog_id,
+        ~StockLevel.is_deleted,
+    ).with_for_update().first()
+    if stock is None:
+        raise HTTPException(status_code=404, detail="Stock record not found for the requested medication batch")
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=user.id,
+        lab_id=user.lab_id,
+        actor_role=user.role,
+    )
+    version_before = stock.version
+    quantity_before = stock.available_quantity
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="pharmacy stock level")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="pharmacy.dispense.record",
+        resource_type="pharmacy_stock_level",
+        resource_id=stock.id,
+        idempotency_key=key,
+        payload=data.model_dump(mode="json"),
+    )
+    try:
+        record = _get_pharmacy_service(db, user).create_dispense_record(data.model_dump(exclude_none=True))
+        db.flush()
+        guard.complete(
+            receipt,
+            resource_type="pharmacy_stock_level",
+            resource_id=stock.id,
+            state_before=f"available={quantity_before}",
+            state_after=f"available={stock.available_quantity}",
+            version_before=version_before,
+            version_after=stock.version,
+        )
+        db.commit()
+    except PharmacyWorkflowError as exc:
+        db.rollback()
+        guard.reject(
+            operation="pharmacy.dispense.record",
+            resource_type="pharmacy_stock_level",
+            resource_id=stock.id,
+            state_before=f"available={quantity_before}",
+            version_before=version_before,
+            reason=str(exc),
+        )
+        db.commit()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    db.refresh(record)
+    return record
 
 
 @router.get("/dispense/dispense-records/{patient_id}", response_model=list[DispenseRecordResponse])

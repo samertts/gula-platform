@@ -217,6 +217,10 @@ if IS_PRODUCTION:
 # ─── Result Links ────────────────────────────────────────────────────────────
 RESULT_TOKEN_LENGTH = 32
 RESULT_LINK_EXPIRE_DAYS = 90
+# Historical results require authenticated citizen verification.  The legacy
+# public phone-and-name lookup is disabled unless an institution explicitly
+# enables it during a controlled migration.
+ENABLE_PUBLIC_PATIENT_HISTORY = os.getenv("ENABLE_PUBLIC_PATIENT_HISTORY", "false").lower() == "true"
 
 # ─── Upload Limits ───────────────────────────────────────────────────────────
 MAX_UPLOAD_SIZE_MB = int(os.getenv("MAX_UPLOAD_SIZE_MB", "2"))

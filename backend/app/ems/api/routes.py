@@ -2,19 +2,27 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from app.clinical.command_guard import ClinicalCommandGuard
 from app.database import get_db
 from app.ems.application.service import EMSService
 from app.ems.exceptions import (
     AmbulanceNotAvailableError,
     AmbulanceNotFoundError,
+    EMSWorkflowError,
     IncidentNotFoundError,
     InvalidIncidentStateError,
     ePCRNotFoundError,
 )
-from app.security.dependencies import require_permission
+from app.ems.infrastructure.models import (
+    AmbulanceModel,
+    EmergencyIncidentModel,
+    ePCRModel,
+)
+from app.models.lab_user import LabUser
+from app.security.dependencies import get_current_user, require_permission
 
 router = APIRouter(
     prefix="/ems",
@@ -23,14 +31,81 @@ router = APIRouter(
 )
 
 
-def _get_service(db: Session = Depends(get_db)) -> EMSService:
+def _get_service(
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+) -> EMSService:
     try:
         from app.kernel import Kernel
         kernel = Kernel.get_instance()
         event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else None
     except Exception:
         event_bus = None
-    return EMSService(db=db, event_bus=event_bus)
+    return EMSService(
+        db=db,
+        event_bus=event_bus,
+        actor_user_id=current_user.id,
+        actor_lab_id=current_user.lab_id,
+        actor_role=current_user.role,
+    )
+
+
+def _run_ems_command(
+    *,
+    operation: str,
+    resource_type: str,
+    resource_id: str,
+    state_before: str,
+    version_before: int,
+    current_user: LabUser,
+    db: Session,
+    if_match: str | None,
+    idempotency_key: str | None,
+    mutation,
+):
+    """Commit one safety-critical EMS mutation with durable command evidence."""
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=current_user.lab_id,
+        actor_role=current_user.role,
+    )
+    guard.require_expected_version(if_match, current_version=version_before, resource_name=resource_type)
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation=operation,
+        resource_type=resource_type,
+        resource_id=resource_id,
+        idempotency_key=key,
+        payload={"if_match": if_match},
+    )
+    try:
+        result, state_after, version_after = mutation()
+        guard.complete(
+            receipt,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            state_before=state_before,
+            state_after=state_after,
+            version_before=version_before,
+            version_after=version_after,
+        )
+        db.commit()
+    except (HTTPException, EMSWorkflowError, InvalidIncidentStateError, AmbulanceNotAvailableError) as exc:
+        db.rollback()
+        guard.reject(
+            operation=operation,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason=str(getattr(exc, "detail", exc)),
+        )
+        db.commit()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    return result
 
 
 # ---- Emergency Call Intake / Incidents ----
@@ -70,14 +145,39 @@ async def get_incident(
 async def update_incident_status(
     incident_id: str,
     body: dict[str, Any],
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
     service: EMSService = Depends(_get_service),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
-    try:
-        return _incident_to_dict(service.update_incident_status(incident_id, body.get("status", "")))
-    except IncidentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
-    except InvalidIncidentStateError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
+    incident = db.query(EmergencyIncidentModel).filter(
+        EmergencyIncidentModel.id == incident_id,
+        EmergencyIncidentModel.is_deleted.isnot(True),
+    ).first()
+    if incident is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    updated = _run_ems_command(
+        operation="ems.incident.status_change",
+        resource_type="ems_incident",
+        resource_id=incident_id,
+        state_before=incident.status,
+        version_before=incident.version,
+        current_user=current_user,
+        db=db,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+        mutation=lambda: (
+            service.update_incident_status(
+                incident_id,
+                str(body.get("status") or ""),
+                expected_version=incident.version,
+            ),
+            str(body.get("status") or ""),
+            incident.version,
+        ),
+    )
+    return _incident_to_dict(updated)
 
 
 # ---- Dispatch ----
@@ -85,19 +185,53 @@ async def update_incident_status(
 @router.post("/dispatch", status_code=status.HTTP_201_CREATED)
 async def dispatch_incident(
     body: dict[str, Any],
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
     service: EMSService = Depends(_get_service),
+    if_match: str | None = Header(None, alias="If-Match"),
+    ambulance_if_match: str | None = Header(None, alias="X-Ambulance-If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
-    try:
-        dispatch = service.dispatch_incident(
-            incident_id=body.get("incident_id", ""),
-            ambulance_id=body.get("ambulance_id", ""),
-            crew_ids=body.get("crew_ids"),
-        )
-        return _dispatch_to_dict(dispatch)
-    except IncidentNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
-    except AmbulanceNotAvailableError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Resource conflict") from e
+    incident_id = str(body.get("incident_id") or "")
+    ambulance_id = str(body.get("ambulance_id") or "")
+    incident = db.query(EmergencyIncidentModel).filter(
+        EmergencyIncidentModel.id == incident_id,
+        EmergencyIncidentModel.is_deleted.isnot(True),
+    ).first()
+    ambulance = db.query(AmbulanceModel).filter(
+        AmbulanceModel.id == ambulance_id,
+        AmbulanceModel.is_deleted.isnot(True),
+    ).first()
+    if incident is None or ambulance is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    ClinicalCommandGuard.require_expected_version(
+        ambulance_if_match,
+        current_version=ambulance.version,
+        resource_name="ambulance",
+    )
+    dispatch = _run_ems_command(
+        operation="ems.dispatch.assign",
+        resource_type="ems_incident",
+        resource_id=incident_id,
+        state_before=incident.status,
+        version_before=incident.version,
+        current_user=current_user,
+        db=db,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+        mutation=lambda: (
+            service.dispatch_incident(
+                incident_id=incident_id,
+                ambulance_id=ambulance_id,
+                crew_ids=body.get("crew_ids"),
+                incident_expected_version=incident.version,
+                ambulance_expected_version=ambulance.version,
+            ),
+            "dispatched",
+            incident.version,
+        ),
+    )
+    return _dispatch_to_dict(dispatch)
 
 
 # ---- Ambulances ----
@@ -185,9 +319,36 @@ async def list_crew(
 @router.post("/triage", status_code=status.HTTP_201_CREATED)
 async def record_triage(
     body: dict[str, Any],
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
     service: EMSService = Depends(_get_service),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
-    return _triage_to_dict(service.record_triage(body))
+    incident_id = str(body.get("incident_id") or "")
+    incident = db.query(EmergencyIncidentModel).filter(
+        EmergencyIncidentModel.id == incident_id,
+        EmergencyIncidentModel.is_deleted.isnot(True),
+    ).first()
+    if incident is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    triage = _run_ems_command(
+        operation="ems.triage.record",
+        resource_type="ems_incident",
+        resource_id=incident_id,
+        state_before=incident.status,
+        version_before=incident.version,
+        current_user=current_user,
+        db=db,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+        mutation=lambda: (
+            service.record_triage(body, incident_expected_version=incident.version),
+            incident.status,
+            incident.version,
+        ),
+    )
+    return _triage_to_dict(triage)
 
 
 @router.get("/triage/{incident_id}")
@@ -232,12 +393,35 @@ async def get_epcr(
 @router.post("/epcr/{epcr_id}/submit")
 async def submit_epcr(
     epcr_id: str,
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
     service: EMSService = Depends(_get_service),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
-    try:
-        return _epcr_to_dict(service.submit_epcr(epcr_id))
-    except ePCRNotFoundError as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found") from e
+    epcr = db.query(ePCRModel).filter(
+        ePCRModel.id == epcr_id,
+        ePCRModel.is_deleted.isnot(True),
+    ).first()
+    if epcr is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Resource not found")
+    submitted = _run_ems_command(
+        operation="ems.epcr.submit",
+        resource_type="ems_epcr",
+        resource_id=epcr_id,
+        state_before=epcr.status,
+        version_before=epcr.version,
+        current_user=current_user,
+        db=db,
+        if_match=if_match,
+        idempotency_key=idempotency_key,
+        mutation=lambda: (
+            service.submit_epcr(epcr_id, expected_version=epcr.version),
+            "completed",
+            epcr.version,
+        ),
+    )
+    return _epcr_to_dict(submitted)
 
 
 # ---- Hospital Status ----
