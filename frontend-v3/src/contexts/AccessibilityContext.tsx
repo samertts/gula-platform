@@ -4,7 +4,7 @@ import { userPreferencesApi } from "@/api/endpoints";
 import type { AccessibilityPreferences, AccessibilityResponse } from "@/types";
 
 const DEFAULT_PREFERENCES: AccessibilityPreferences = {
-  language: "ar-IQ",
+  language: "ar",
   font_size: "medium",
   text_scale: 1,
   high_contrast: false,
@@ -104,7 +104,6 @@ export function AccessibilityProvider({ children }: { children: ReactNode }) {
   const clearPreview = useCallback(() => {
     applyPreferences(preferences);
   }, [preferences]);
-
   const update = useCallback(async (patch: Partial<AccessibilityPreferences>) => {
     const next = { ...preferences, ...patch };
     setIsSaving(true);

@@ -407,6 +407,43 @@ export interface DeviceGatewayMonitoringSnapshot {
   outbox?: DeviceOutboxSummary;
 }
 
+export interface WearableBaselineLatest {
+  value: number;
+  unit: string;
+  measured_at: string;
+  quality_score?: number | null;
+  source: string;
+}
+
+export interface WearableBaselineStats {
+  status: string;
+  median?: number | null;
+  mad?: number | null;
+  lower_bound?: number | null;
+  upper_bound?: number | null;
+  confidence: number;
+  generated_at: string;
+}
+
+export interface WearableBaselineEvaluation {
+  is_anomaly: boolean;
+  severity: string;
+  deviation_score?: number | null;
+  confidence: number;
+  explanation: string;
+  requires_clinician_review: boolean;
+  advisory_only: true;
+}
+
+export interface WearableBaselineSummary {
+  patient_id: number;
+  metric_code: string;
+  measurement_count: number;
+  latest: WearableBaselineLatest;
+  baseline: WearableBaselineStats;
+  evaluation: WearableBaselineEvaluation;
+}
+
 export interface DeviceIntegrationPrinterJob {
   id: number;
   device_uid: string;

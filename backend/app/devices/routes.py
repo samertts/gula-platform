@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import hashlib
+import hmac
+import json
+import os
+import time
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -42,6 +48,11 @@ from .schemas import (
     SimulatorRequest,
     ProtocolProfileRecord,
     ProtocolProfileRequest,
+    WearableMeasurementIngestRequest,
+    WearableMeasurementIngestResponse,
+    WearableMeasurementListResponse,
+    WearableMeasurementRecord,
+    ClinicianBaselineSummary,
 )
 
 router = APIRouter(prefix="/device-integration", tags=["device-integration"])
@@ -68,6 +79,78 @@ def _handle_service_error(exc: Exception) -> None:
     if isinstance(exc, ValueError):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     raise exc
+
+
+@router.post("/wearables/webhook/{provider}", status_code=status.HTTP_202_ACCEPTED)
+async def ingest_wearable_webhook(
+    provider: str,
+    request: Request,
+    x_signature_256: str | None = Header(default=None, alias="X-Signature-256"),
+    x_timestamp: str | None = Header(default=None, alias="X-Webhook-Timestamp"),
+    db: Session = Depends(get_db),
+):
+    """Accept a signed canonical wearable event without persisting raw provider data."""
+    normalized_provider = provider.strip().lower()
+    allowed_providers = {"apple_health", "fitbit", "google_fit"}
+    if normalized_provider not in allowed_providers:
+        raise HTTPException(status_code=404, detail="Unsupported wearable provider")
+
+    secret = os.getenv(
+        f"GULA_WEARABLE_WEBHOOK_SECRET_{normalized_provider.upper()}"
+    ) or os.getenv("GULA_WEARABLE_WEBHOOK_SECRET", "")
+    if not secret:
+        raise HTTPException(status_code=503, detail="Wearable webhook is not configured")
+    if not x_signature_256 or not x_timestamp or not x_timestamp.isdigit():
+        raise HTTPException(status_code=401, detail="Missing webhook signature")
+
+    timestamp = int(x_timestamp)
+    if abs(time.time() - timestamp) > 300:
+        raise HTTPException(status_code=401, detail="Expired webhook signature")
+
+    raw_body = await request.body()
+    expected = hmac.new(
+        secret.encode("utf-8"),
+        f"{timestamp}.".encode("ascii") + raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+    supplied = x_signature_256.removeprefix("sha256=")
+    if not hmac.compare_digest(supplied, expected):
+        raise HTTPException(status_code=401, detail="Invalid webhook signature")
+
+    try:
+        envelope = json.loads(raw_body.decode("utf-8"))
+        if not isinstance(envelope, dict):
+            raise ValueError("Webhook envelope must be an object")
+        lab_id = int(envelope["lab_id"])
+        measurement_data = envelope["measurement"]
+        if not isinstance(measurement_data, dict):
+            raise ValueError("Webhook measurement must be an object")
+        payload = WearableMeasurementIngestRequest.model_validate(measurement_data)
+    except (KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError, ValidationError) as exc:
+        raise HTTPException(status_code=400, detail="Invalid canonical wearable webhook") from exc
+
+    if payload.source.lower() != normalized_provider:
+        raise HTTPException(status_code=400, detail="Webhook provider does not match measurement source")
+    if not payload.simulation_only:
+        raise HTTPException(
+            status_code=409,
+            detail="Live wearable providers require documented clinical approval",
+        )
+
+    try:
+        measurement, duplicate = service.ingest_wearable_measurement(db, lab_id, payload)
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
+
+    # Return identifiers only; raw provider payloads are never stored or logged.
+    return {
+        "accepted": True,
+        "provider": normalized_provider,
+        "duplicate": duplicate,
+        "measurement_id": measurement.id,
+        "simulation_only": True,
+    }
 
 
 @router.get("/protocols", response_model=list[ProtocolDescriptor])
@@ -505,6 +588,76 @@ def acknowledge_monitoring_alert(
     try:
         alert = service.acknowledge_gateway_alert(db, actor.lab_id, alert_id, actor.id, payload)
         return GatewayAlertRecord.model_validate(alert)
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
+
+
+@router.post(
+    "/wearables/measurements",
+    response_model=WearableMeasurementIngestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def ingest_wearable_measurement(
+    payload: WearableMeasurementIngestRequest,
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+):
+    try:
+        measurement, duplicate = service.ingest_wearable_measurement(db, actor.lab_id, payload)
+        return WearableMeasurementIngestResponse(
+            accepted=True,
+            duplicate=duplicate,
+            measurement=WearableMeasurementRecord.model_validate(measurement),
+        )
+    except Exception as exc:
+        _handle_service_error(exc)
+        raise AssertionError("unreachable")
+
+
+@router.get(
+    "/wearables/measurements",
+    response_model=WearableMeasurementListResponse,
+)
+def list_wearable_measurements(
+    patient_id: int = Query(..., ge=1),
+    metric_code: str | None = Query(None, min_length=2, max_length=64),
+    limit: int = Query(100, ge=1, le=500),
+    actor: LabUser = _read_actor(),
+    db: Session = Depends(get_db),
+):
+    total, rows = service.list_wearable_measurements(
+        db,
+        actor.lab_id,
+        patient_id=patient_id,
+        metric_code=metric_code,
+        limit=limit,
+    )
+    return WearableMeasurementListResponse(
+        total=total,
+        measurements=[WearableMeasurementRecord.model_validate(row) for row in rows],
+    )
+
+
+@router.get(
+    "/wearables/baseline-summary",
+    response_model=ClinicianBaselineSummary,
+)
+def clinician_baseline_summary(
+    patient_id: int = Query(..., ge=1),
+    metric_code: str = Query(..., min_length=2, max_length=64),
+    limit: int = Query(28, ge=7, le=180),
+    actor: LabUser = _read_actor(),
+    db: Session = Depends(get_db),
+):
+    try:
+        return service.clinician_baseline_summary(
+            db,
+            actor.lab_id,
+            patient_id,
+            metric_code,
+            limit=limit,
+        )
     except Exception as exc:
         _handle_service_error(exc)
         raise AssertionError("unreachable")

@@ -31,8 +31,8 @@ log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "${BACKUP_DIR}/logs/ba
 _pg_dump() {
     if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${PG_CONTAINER}$"; then
         # Docker-aware: execute inside container — password already configured there
-        docker exec "${PG_CONTAINER}" pg_dump -U "${DB_USER}" "${DB_NAME}" \
-            --no-owner --no-privileges
+        # Use nice and ionice inside container to prevent choking the host
+        docker exec "${PG_CONTAINER}" sh -c "nice -n 19 ionice -c 3 pg_dump -U ${DB_USER} ${DB_NAME} --no-owner --no-privileges"
     elif command -v pg_dump &>/dev/null; then
         # Fallback: direct connection (requires DB_HOST, DB_PORT, PGPASSWORD)
         DB_HOST="${DB_HOST:-localhost}"

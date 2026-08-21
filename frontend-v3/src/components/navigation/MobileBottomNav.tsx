@@ -1,4 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   BellRing,
   ClipboardList,
@@ -10,87 +11,140 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { hasPermission } from "@/permissions";
+import { hasPermission, NAV_ITEMS } from "@/permissions";
+import {
+  hasReflectedPermission,
+  type ReflectedPermissions,
+} from "@/permissions/liveCapabilities";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLocale } from "@/contexts/LocaleContext";
+import { Button } from "@/components/ui";
 
 interface MobileBottomNavProps {
   onOpenMenu: () => void;
+  isMenuOpen?: boolean;
 }
 
 interface MobileNavItem {
-  label: string;
+  labelKey: string;
   path: string;
   icon: LucideIcon;
-  permission?: string;
+  permissions?: string[];
   roles?: string[];
 }
 
+const canonicalNavItems = Object.values(NAV_ITEMS).flat();
+
+function fromCanonical(
+  path: string,
+  icon: LucideIcon,
+  roles?: string[],
+): MobileNavItem {
+  const item = canonicalNavItems.find((candidate) => candidate.path === path);
+  if (!item)
+    throw new Error(
+      `Mobile navigation path is missing from NAV_ITEMS: ${path}`,
+    );
+  return {
+    labelKey: item.label,
+    path: item.path,
+    icon,
+    permissions: item.permissions,
+    roles,
+  };
+}
+
 const primaryItems: MobileNavItem[] = [
-  { label: "الرئيسية", path: "/dashboard", icon: LayoutDashboard },
-  { label: "المرضى", path: "/patients", icon: Users, permission: "patients:read" },
-  { label: "الطلبات", path: "/orders", icon: ClipboardList, permission: "orders:read" },
-  { label: "النتائج", path: "/results", icon: FlaskConical, permission: "results:read" },
-  { label: "التنبيهات", path: "/alerts", icon: BellRing, permission: "results:read" },
+  fromCanonical("/dashboard", LayoutDashboard),
+  fromCanonical("/patients", Users),
+  fromCanonical("/orders", ClipboardList),
+  fromCanonical("/results", FlaskConical),
+  fromCanonical("/alerts", BellRing),
 ];
 
 const citizenItems: MobileNavItem[] = [
-  { label: "الرئيسية", path: "/dashboard", icon: LayoutDashboard },
-  { label: "مساحتي", path: "/citizen", icon: UserCircle, roles: ["citizen"] },
-  { label: "التنبيهات", path: "/notifications", icon: BellRing },
+  fromCanonical("/dashboard", LayoutDashboard),
+  fromCanonical("/citizen", UserCircle, ["citizen"]),
+  fromCanonical("/notifications", BellRing),
 ];
 
-function canUseItem(item: MobileNavItem, role: string) {
+function canUseItem(
+  item: MobileNavItem,
+  role: string,
+  demoMode: boolean,
+  effectivePermissions: ReflectedPermissions,
+) {
   if (item.roles && !item.roles.includes(role)) return false;
-  if (item.permission && !hasPermission(role, item.permission)) return false;
-  return true;
+  if (!item.permissions?.length) return true;
+  if (demoMode)
+    return item.permissions.some((permission) =>
+      hasPermission(role, permission),
+    );
+  return hasReflectedPermission(effectivePermissions, item.permissions);
 }
 
-export function MobileBottomNav({ onOpenMenu }: MobileBottomNavProps) {
-  const { user } = useAuth();
-  const { isRTL } = useLocale();
+function isRouteActive(pathname: string, path: string) {
+  const current = pathname.replace(/\/+$/, "") || "/";
+  const target = path.replace(/\/+$/, "") || "/";
+  return current === target || current.startsWith(`${target}/`);
+}
+
+export function MobileBottomNav({
+  onOpenMenu,
+  isMenuOpen = false,
+}: MobileBottomNavProps) {
+  const { user, demoMode, effectivePermissions } = useAuth();
+  const { t } = useTranslation();
   const location = useLocation();
   const role = user?.role ?? "citizen";
   const isCitizen = role === "citizen";
   const items = (isCitizen ? citizenItems : primaryItems)
-    .filter((item) => canUseItem(item, role))
+    .filter((item) => canUseItem(item, role, demoMode, effectivePermissions))
     .slice(0, 4);
 
   return (
     <nav
-      aria-label={isRTL ? "التنقل السريع" : "Quick navigation"}
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-14px_32px_-26px_rgba(15,23,42,0.6)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95 md:hidden"
+      aria-label={t("mobileNav.quickNavigation")}
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200/80 bg-white/95 px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-14px_32px_-26px_rgba(15,23,42,0.6)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95 md:hidden"
     >
       <div className="mx-auto grid max-w-lg grid-cols-5 gap-1">
         {items.map((item) => {
           const Icon = item.icon;
-          const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+          const active = isRouteActive(location.pathname, item.path);
+          const label = item.labelKey.startsWith("nav.")
+            ? t(item.labelKey)
+            : item.labelKey;
           return (
             <Link
               key={item.path}
               to={item.path}
               aria-current={active ? "page" : undefined}
+              aria-label={
+                active ? `${label} — ${t("mobileNav.current")}` : label
+              }
               className={cn(
-                "flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                "relative flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold motion-safe:transition-[background-color,color,box-shadow,transform] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 motion-safe:active:scale-[0.98]",
                 active
-                  ? "bg-teal-50 text-[#0D9488] ring-1 ring-teal-100 dark:bg-teal-950/35 dark:text-teal-200 dark:ring-teal-900/60"
+                  ? "bg-teal-50 text-[#0D9488] ring-1 ring-teal-100 after:absolute after:inset-x-4 after:top-1 after:h-0.5 after:rounded-full after:bg-[#0D9488] dark:bg-teal-950/35 dark:text-teal-200 dark:ring-teal-900/60 dark:after:bg-teal-300"
                   : "text-muted-foreground hover:bg-slate-100 hover:text-[#0F172A] dark:hover:bg-white/10 dark:hover:text-white",
               )}
             >
-              <Icon className="h-4.5 w-4.5 shrink-0" aria-hidden="true" />
-              <span className="max-w-full truncate">{item.label}</span>
+              <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span className="max-w-full truncate">{label}</span>
             </Link>
           );
         })}
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="default"
           onClick={onOpenMenu}
-          className="flex min-h-12 min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[10px] font-semibold text-muted-foreground transition-colors hover:bg-slate-100 hover:text-[#0F172A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:hover:bg-white/10 dark:hover:text-white"
-          aria-label={isRTL ? "فتح جميع الأقسام" : "Open all sections"}
+          aria-expanded={isMenuOpen}
+          aria-label={t("mobileNav.openAllSections")}
+          className="flex h-auto min-h-12 min-w-0 w-full flex-col items-center justify-center gap-1 rounded-xl px-1 py-1 text-[10px] font-semibold text-muted-foreground motion-safe:active:scale-[0.98] motion-reduce:transition-none hover:bg-slate-100 hover:text-[#0F172A] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:hover:bg-white/10 dark:hover:text-white"
         >
-          <Menu className="h-4.5 w-4.5" aria-hidden="true" />
-          <span>{isRTL ? "المزيد" : "More"}</span>
-        </button>
+          <Menu className="h-5 w-5" aria-hidden="true" />
+          <span>{t("mobileNav.more")}</span>
+        </Button>
       </div>
     </nav>
   );

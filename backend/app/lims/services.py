@@ -284,12 +284,17 @@ class ResultService:
         notes: str | None = None,
         signature_data: str | None = None,
     ) -> Result:
+        if result.validation_status in {"validated", "released"}:
+            raise ValueError("A validated or released result cannot be validated again")
+        if not signature_data:
+            raise ValueError("A validation signature is required")
         now = datetime.now(UTC)
         result.validation_status = "validated"
         result.validated_by = user_id
         result.validated_at = now
         result.updated_by = user_id
         result.updated_at = now
+        result.version += 1
 
         validation = ResultValidation(
             result_id=result.id,
@@ -322,13 +327,20 @@ class ResultService:
         user_id: int,
         channel: str = "portal",
     ) -> ResultRelease:
+        if result.validation_status not in {"validated", "auto_validated"}:
+            raise ValueError("Only validated results can be released")
+        released_at = datetime.now(UTC)
         release = ResultRelease(
             lab_id=result.lab_id,
             order_id=result.order_id,
             released_by=user_id,
-            released_at=datetime.now(UTC),
+            released_at=released_at,
             release_channel=channel,
         )
+        result.validation_status = "released"
+        result.updated_by = user_id
+        result.updated_at = released_at
+        result.version += 1
         db.add(release)
         db.flush()
         return release
@@ -511,10 +523,20 @@ class ReportService:
         report: LabReport,
         user_id: int,
     ) -> LabReport:
+        if report.status != "draft":
+            raise ValueError("Only draft reports can be finalized")
+        released_results = db.query(Result).filter(
+            Result.lab_id == report.lab_id,
+            Result.order_id == report.order_id,
+            Result.is_deleted.is_(False),
+        ).all()
+        if not released_results or any(result.validation_status != "released" for result in released_results):
+            raise ValueError("All order results must be released before finalizing a laboratory report")
         report.status = "final"
         report.finalized_by = user_id
         report.finalized_at = datetime.now(UTC)
         report.updated_by = user_id
+        report.version += 1
         db.flush()
         return report
 
@@ -525,10 +547,15 @@ class ReportService:
         reason: str,
         user_id: int,
     ) -> LabReport:
+        if report.status != "final":
+            raise ValueError("Only finalized reports can be corrected")
+        if not reason or not reason.strip():
+            raise ValueError("A correction reason is required")
         report.status = "corrected"
         report.corrected_by = user_id
         report.corrected_at = datetime.now(UTC)
-        report.correction_reason = reason
+        report.correction_reason = reason.strip()
         report.updated_by = user_id
+        report.version += 1
         db.flush()
         return report

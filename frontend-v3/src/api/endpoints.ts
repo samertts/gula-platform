@@ -49,6 +49,7 @@ import type {
   DeviceGatewayMetricRecord,
   DeviceGatewayMonitoringSnapshot,
   DeviceGatewayRecord,
+  WearableBaselineSummary,
   DeviceOutboxRecord,
   AccessibilityPreferences,
   AccessibilityResponse,
@@ -385,6 +386,10 @@ export const deviceIntegrationApi = {
     api.post<DeviceIntegrationPrinterJob>("/device-integration/printer-jobs", data).then((r) => r.data),
   monitoring: () =>
     api.get<DeviceGatewayMonitoringSnapshot>("/device-integration/monitoring").then((r) => r.data),
+  baselineSummary: (patientId: number, metricCode: string, limit = 28) =>
+    api.get<WearableBaselineSummary>("/device-integration/wearables/baseline-summary", {
+      params: { patient_id: patientId, metric_code: metricCode, limit },
+    }).then((r) => r.data),
   gateways: (params?: { status?: string; limit?: number }) =>
     api.get<{ total: number; gateways: DeviceGatewayRecord[] }>("/device-integration/gateways", { params }).then((r) => r.data),
   registerGateway: (data: Record<string, unknown>) =>
@@ -1602,4 +1607,161 @@ export const kernelRuntimeApi = {
   aiInfer: (data: Record<string, unknown>) => api.post<Record<string, unknown>>("/kernel/runtime/ai/infer", data).then((r) => r.data),
   listRules: () => api.get<Record<string, unknown>>("/kernel/runtime/rules").then((r) => r.data),
   listPolicies: () => api.get<Record<string, unknown>>("/kernel/runtime/policies").then((r) => r.data),
+};
+
+
+// ── Pharmacy POS ──
+export type PharmacyDrugRecord = {
+  id: string;
+  code: string;
+  name: string;
+  name_ar?: string | null;
+  generic_name?: string | null;
+  brand_name?: string | null;
+  barcode_gs1?: string | null;
+  is_active: boolean;
+};
+
+export type PharmacyStockRecord = {
+  id: string;
+  drug_catalog_id: string;
+  batch_id?: string | null;
+  quantity: number;
+  reserved_quantity: number;
+  available_quantity: number;
+  reorder_point?: number | null;
+  storage_condition?: string | null;
+};
+
+export type PharmacySaleLineRecord = {
+  id: string;
+  line_number: number;
+  drug_catalog_id: string;
+  batch_id: string;
+  medication_dispense_id?: string | null;
+  barcode?: string | null;
+  medication_name: string;
+  medication_name_ar?: string | null;
+  quantity: number;
+  quantity_unit?: string | null;
+  lot_number?: string | null;
+  expiry_date?: string | null;
+  unit_price: number;
+  unit_cost: number;
+  discount: number;
+  line_total: number;
+  line_cost: number;
+};
+
+export type PharmacySaleRecord = {
+  id: string;
+  sale_number: string;
+  patient_id?: string | null;
+  citizen_id?: string | null;
+  billing_patient_id?: number | null;
+  billing_invoice_id?: number | null;
+  status: string;
+  currency: string;
+  subtotal: number;
+  discount: number;
+  total_amount: number;
+  cost_amount: number;
+  gross_profit: number;
+  payment_status: string;
+  payment_method: string;
+  sold_at: string;
+  lines: PharmacySaleLineRecord[];
+};
+
+export type PharmacySaleRequest = {
+  patient_id?: string;
+  citizen_id?: string;
+  billing_patient_id?: number;
+  encounter_id?: string;
+  encounter_ref?: string;
+  currency?: string;
+  payment_method?: string;
+  covered_amount?: number;
+  issue_invoice?: boolean;
+  idempotency_key?: string;
+  lines: Array<{
+    drug_catalog_id?: string;
+    barcode?: string;
+    substitution_request_id?: string;
+    batch_id?: string;
+    prescription_id?: string;
+    quantity: number;
+    quantity_unit?: string;
+    unit_price?: number;
+    discount?: number;
+    days_supply?: number;
+    dosage_instruction?: string;
+    route?: string;
+    frequency?: string;
+  }>;
+};
+
+export type PharmacySubstitutionCandidate = {
+  rule_id: string;
+  original_drug_catalog_id: string;
+  alternative_drug_catalog_id: string;
+  equivalence_type: string;
+  approval_level: string;
+  requires_patient_consent: boolean;
+  available_quantity: number;
+  eligible: boolean;
+  original: { code: string; name: string; name_ar?: string | null };
+  alternative: { code: string; name: string; name_ar?: string | null; strength_value?: string | null; strength_unit?: string | null; form?: string; route?: string };
+};
+
+export type PharmacySubstitutionRequest = {
+  rule_id: string;
+  prescription_id?: string;
+  patient_id?: string;
+  citizen_id?: string;
+  quantity: number;
+  reason?: string;
+  patient_consent: boolean;
+  patient_notified: boolean;
+};
+
+export type PharmacySubstitutionRecord = {
+  id: string;
+  rule_id: string;
+  original_drug_catalog_id: string;
+  alternative_drug_catalog_id: string;
+  quantity: number;
+  status: string;
+  reason: string;
+  approval_level: string;
+  patient_consent: boolean;
+  approved_by?: string | null;
+  consumed_sale_id?: string | null;
+  version: number;
+};
+
+export type PharmacyPosSummary = {
+  period_days: number;
+  sale_count: number;
+  units_sold: number;
+  sales_total: string;
+  cost_total: string;
+  gross_profit: string;
+  low_stock_count: number;
+  expiring_soon_count: number;
+  stagnant_items: Array<{ drug_id: string; drug_name: string; available_quantity: number; last_sold_at?: string | null }>;
+  synthetic: boolean;
+};
+
+export const pharmacyApi = {
+  drugs: (query?: string) => api.get<{ items: PharmacyDrugRecord[]; total: number }>("/pharmacy/drugs", { params: query ? { query } : undefined }).then((r) => r.data),
+  stock: (params?: { drug_id?: string; skip?: number; limit?: number }) => api.get<PharmacyStockRecord[]>("/pharmacy/inventory/stock-levels", { params }).then((r) => r.data),
+  sales: (params?: { citizen_id?: string; skip?: number; limit?: number }) => api.get<PharmacySaleRecord[]>("/pharmacy/pos/sales", { params }).then((r) => r.data),
+  summary: (days = 30) => api.get<PharmacyPosSummary>("/pharmacy/pos/summary", { params: { days } }).then((r) => r.data),
+  sale: (id: string) => api.get<PharmacySaleRecord>(`/pharmacy/pos/sales/${id}`).then((r) => r.data),
+  createSale: (data: PharmacySaleRequest, idempotencyKey: string) => api.post<PharmacySaleRecord>("/pharmacy/pos/sales", data, { headers: { "Idempotency-Key": idempotencyKey } }).then((r) => r.data),
+  substitutionCandidates: (originalDrugId: string, quantity = 1) => api.get<PharmacySubstitutionCandidate[]>("/pharmacy/substitutions/candidates", { params: { original_drug_id: originalDrugId, quantity } }).then((r) => r.data),
+  createSubstitutionRequest: (data: PharmacySubstitutionRequest) => api.post<PharmacySubstitutionRecord>("/pharmacy/substitutions/requests", data).then((r) => r.data),
+  approveSubstitution: (requestId: string) => api.post<PharmacySubstitutionRecord>(`/pharmacy/substitutions/requests/${requestId}/approve`).then((r) => r.data),
+  rejectSubstitution: (requestId: string, reason: string) => api.post<PharmacySubstitutionRecord>(`/pharmacy/substitutions/requests/${requestId}/reject`, { reason }).then((r) => r.data),
 };

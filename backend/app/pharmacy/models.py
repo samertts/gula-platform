@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -15,10 +16,12 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
 )
 from sqlalchemy import (
     Enum as SAEnum,
 )
+from sqlalchemy.orm import relationship
 
 from app._compat import UTC
 from app.pharmacy.base import TenantAuditEntity
@@ -775,5 +778,174 @@ class ClinicalGuideline(TenantAuditEntity):
     __table_args__ = (
         Index("ix_pharmacy_guideline_code", "guideline_code"),
         Index("ix_pharmacy_guideline_active", "is_active"),
+        {"extend_existing": True},
+    )
+
+
+class PharmacySale(TenantAuditEntity):  # type: ignore[misc]
+    """Institution-scoped pharmacy POS sale.
+
+    A sale is the commercial envelope around stock movements, billing, and the
+    citizen medication record. It never stores payment credentials.
+    """
+
+    __tablename__ = "pharmacy_sales"
+
+    patient_id = Column(String(26), nullable=True, index=True)
+    citizen_id = Column(String(26), nullable=True, index=True)
+    # Integer bridge to the legacy billing patient table. The database migration
+    # owns the FK because PharmacyBase and the core Base are separate metadata.
+    billing_patient_id = Column(Integer, nullable=True, index=True)
+    encounter_id = Column(String(26), nullable=True, index=True)
+    # Integer bridge to billing projection; see the migration for the DB FK.
+    billing_invoice_id = Column(Integer, nullable=True, index=True)
+
+    sale_number = Column(String(50), nullable=False)
+    status = Column(String(24), nullable=False, default="completed")
+    currency = Column(String(3), nullable=False, default="IQD")
+    subtotal = Column(Numeric(12, 2), nullable=False, default=0)
+    discount = Column(Numeric(12, 2), nullable=False, default=0)
+    total_amount = Column(Numeric(12, 2), nullable=False, default=0)
+    cost_amount = Column(Numeric(12, 2), nullable=False, default=0)
+    gross_profit = Column(Numeric(12, 2), nullable=False, default=0)
+    payment_status = Column(String(24), nullable=False, default="paid")
+    payment_method = Column(String(40), nullable=False, default="synthetic_settlement")
+    idempotency_key = Column(String(128), nullable=True)
+    sold_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False, index=True)
+    metadata_ = Column("metadata", JSON, nullable=True)
+
+    lines = relationship("PharmacySaleLine", back_populates="sale", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint("lab_id", "sale_number", name="uq_pharmacy_sale_lab_number"),
+        UniqueConstraint("lab_id", "idempotency_key", name="uq_pharmacy_sale_lab_idempotency"),
+        CheckConstraint("subtotal >= 0", name="ck_pharmacy_sale_subtotal_non_negative"),
+        CheckConstraint("discount >= 0", name="ck_pharmacy_sale_discount_non_negative"),
+        CheckConstraint("total_amount >= 0", name="ck_pharmacy_sale_total_non_negative"),
+        CheckConstraint("cost_amount >= 0", name="ck_pharmacy_sale_cost_non_negative"),
+        Index("ix_pharmacy_sales_lab_status", "lab_id", "status"),
+        Index("ix_pharmacy_sales_lab_citizen", "lab_id", "citizen_id"),
+        Index("ix_pharmacy_sales_lab_sold_at", "lab_id", "sold_at"),
+        {"extend_existing": True},
+    )
+
+
+class PharmacySaleLine(TenantAuditEntity):  # type: ignore[misc]
+    """One stockable medication line within a POS sale."""
+
+    __tablename__ = "pharmacy_sale_lines"
+
+    sale_id = Column(String(26), ForeignKey("pharmacy_sales.id", ondelete="CASCADE"), nullable=False, index=True)
+    drug_catalog_id = Column(String(26), ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True)
+    batch_id = Column(String(26), ForeignKey("pharmacy_drug_batches.id", ondelete="RESTRICT"), nullable=False, index=True)
+    prescription_id = Column(String(26), ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"), nullable=True, index=True)
+    medication_dispense_id = Column(String(26), nullable=True, index=True)
+
+    line_number = Column(Integer, nullable=False)
+    barcode = Column(String(64), nullable=True)
+    medication_name = Column(String(300), nullable=False)
+    medication_name_ar = Column(String(300), nullable=True)
+    quantity = Column(Integer, nullable=False)
+    quantity_unit = Column(String(50), nullable=True, default="unit")
+    lot_number = Column(String(100), nullable=True)
+    expiry_date = Column(Date, nullable=True)
+    unit_price = Column(Numeric(12, 2), nullable=False)
+    unit_cost = Column(Numeric(12, 2), nullable=False, default=0)
+    discount = Column(Numeric(12, 2), nullable=False, default=0)
+    line_total = Column(Numeric(12, 2), nullable=False)
+    line_cost = Column(Numeric(12, 2), nullable=False, default=0)
+    metadata_ = Column("metadata", JSON, nullable=True)
+
+    sale = relationship("PharmacySale", back_populates="lines")
+
+    __table_args__ = (
+        UniqueConstraint("sale_id", "line_number", name="uq_pharmacy_sale_line_number"),
+        CheckConstraint("quantity > 0", name="ck_pharmacy_sale_line_quantity_positive"),
+        CheckConstraint("unit_price >= 0", name="ck_pharmacy_sale_line_unit_price_non_negative"),
+        CheckConstraint("unit_cost >= 0", name="ck_pharmacy_sale_line_unit_cost_non_negative"),
+        CheckConstraint("line_total >= 0", name="ck_pharmacy_sale_line_total_non_negative"),
+        CheckConstraint("line_cost >= 0", name="ck_pharmacy_sale_line_cost_non_negative"),
+        Index("ix_pharmacy_sale_lines_sale_drug", "sale_id", "drug_catalog_id"),
+        {"extend_existing": True},
+    )
+
+
+class DrugSubstitutionRule(TenantAuditEntity):  # type: ignore[misc]
+    """Institution-approved mapping between a requested drug and an equivalent."""
+
+    __tablename__ = "pharmacy_drug_substitution_rules"
+
+    original_drug_catalog_id = Column(
+        String(26),
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    alternative_drug_catalog_id = Column(
+        String(26),
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    equivalence_type = Column(String(32), nullable=False, default="generic")
+    approval_level = Column(String(32), nullable=False, default="pharmacist")
+    requires_patient_consent = Column(Boolean, nullable=False, default=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    notes = Column(Text, nullable=True)
+    metadata_ = Column("metadata", JSON, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "lab_id",
+            "original_drug_catalog_id",
+            "alternative_drug_catalog_id",
+            name="uq_pharmacy_substitution_rule_pair",
+        ),
+        CheckConstraint(
+            "original_drug_catalog_id <> alternative_drug_catalog_id",
+            name="ck_pharmacy_substitution_rule_distinct_drugs",
+        ),
+        Index("ix_pharmacy_substitution_rule_active", "lab_id", "is_active"),
+        {"extend_existing": True},
+    )
+
+
+class DrugSubstitutionRequest(TenantAuditEntity):  # type: ignore[misc]
+    """Auditable approval record consumed by a pharmacy POS sale."""
+
+    __tablename__ = "pharmacy_drug_substitution_requests"
+
+    rule_id = Column(
+        String(26),
+        ForeignKey("pharmacy_drug_substitution_rules.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    original_drug_catalog_id = Column(String(26), nullable=False, index=True)
+    alternative_drug_catalog_id = Column(String(26), nullable=False, index=True)
+    prescription_id = Column(String(26), nullable=True, index=True)
+    patient_id = Column(String(26), nullable=True, index=True)
+    citizen_id = Column(String(26), nullable=True, index=True)
+    quantity = Column(Integer, nullable=False, default=1)
+    status = Column(String(32), nullable=False, default="pending")
+    reason = Column(String(500), nullable=False)
+    approval_level = Column(String(32), nullable=False, default="pharmacist")
+    approved_by = Column(String(26), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    patient_consent = Column(Boolean, nullable=False, default=False)
+    patient_notified_at = Column(DateTime(timezone=True), nullable=True)
+    consumed_sale_id = Column(
+        String(26),
+        ForeignKey("pharmacy_sales.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    metadata_ = Column("metadata", JSON, nullable=True)
+
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_pharmacy_substitution_request_quantity_positive"),
+        CheckConstraint("status IN ('pending', 'approved', 'rejected', 'consumed')", name="ck_pharmacy_substitution_request_status"),
+        Index("ix_pharmacy_substitution_request_status", "lab_id", "status"),
+        Index("ix_pharmacy_substitution_request_patient", "lab_id", "patient_id"),
         {"extend_existing": True},
     )

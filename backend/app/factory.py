@@ -76,11 +76,35 @@ def _should_init_sentry() -> bool:
     return bool(os.getenv("SENTRY_DSN"))
 
 
+def scrub_sentry_event(event: dict, _hint: dict | None = None) -> dict:
+    """Remove request, identity, and free-text context before an event leaves GULA.
+
+    The clinical audit ledger is the source of truth.  External error tracking
+    receives only a minimised exception type and deployment context, never PHI.
+    """
+    sanitized = dict(event)
+    for field in ("request", "user", "extra", "breadcrumbs", "transaction"):
+        sanitized.pop(field, None)
+    sanitized.pop("contexts", None)
+    sanitized["logentry"] = {"message": "redacted_application_error"}
+    exception = sanitized.get("exception")
+    if isinstance(exception, dict):
+        values = exception.get("values")
+        if isinstance(values, list):
+            sanitized_values = []
+            for value in values:
+                if isinstance(value, dict):
+                    safe_value = {"type": str(value.get("type", "ApplicationError"))[:128]}
+                    sanitized_values.append(safe_value)
+            sanitized["exception"] = {"values": sanitized_values}
+    return sanitized
+
+
 def configure_sentry() -> None:
     import logging
 
-    _SENTRY_DSN = os.getenv("SENTRY_DSN")
-    if _SENTRY_DSN:
+    sentry_dsn = os.getenv("SENTRY_DSN")
+    if sentry_dsn:
         try:
             import sentry_sdk
             from sentry_sdk.integrations.fastapi import FastApiIntegration
@@ -88,7 +112,7 @@ def configure_sentry() -> None:
             from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
             sentry_sdk.init(
-                dsn=_SENTRY_DSN,
+                dsn=sentry_dsn,
                 environment=os.getenv("ENVIRONMENT", "production"),
                 release=os.getenv("APP_VERSION", "unknown"),
                 integrations=[
@@ -97,6 +121,8 @@ def configure_sentry() -> None:
                     LoggingIntegration(level=logging.ERROR, event_level=logging.ERROR),
                 ],
                 traces_sample_rate=float(os.getenv("SENTRY_TRACES_RATE", "0.05")),
+                before_send=scrub_sentry_event,
+                send_default_pii=False,
             )
             logger.info("Sentry initialized (env=%s)", os.getenv("ENVIRONMENT", "production"))
         except ImportError:
@@ -108,6 +134,26 @@ def import_all_models() -> None:
 
     Called once at startup. Must be idempotent.
     """
+    from .billing.models import (  # noqa: F401
+        BillingAuditEvent,
+        BillingInvoice,
+        BillingInvoiceLine,
+        BillingPayment,
+        InsuranceCoverage,
+    )
+    from .capabilities.fhir_interoperability.models import FHIRResourceRecord  # noqa: F401
+    from .devices.models import (  # noqa: F401
+        DeviceConnector,
+        DeviceEvent,
+        DeviceGateway,
+        DeviceGatewayAlert,
+        DeviceGatewayMetricSnapshot,
+        DeviceOutboxMessage,
+        DevicePrintJob,
+        DeviceProtocolProfile,
+        IntegratedDevice,
+        WearableMeasurement,
+    )
     from .document_intelligence.infrastructure.models import (  # noqa: F401
         AccessControlModel,
         ClassificationResultModel,
@@ -181,14 +227,6 @@ def import_all_models() -> None:
         Transportation,
         Workstation,
     )
-    from .billing.models import (  # noqa: F401
-        BillingAuditEvent,
-        BillingInvoice,
-        BillingInvoiceLine,
-        BillingPayment,
-        InsuranceCoverage,
-    )
-    from .models.claim import Claim, ClaimItem  # noqa: F401
     from .models import (  # noqa: F401
         AuditLog,
         AuthorizationAudit,
@@ -220,6 +258,7 @@ def import_all_models() -> None:
         AIUnresolvedQuestion,
         MedicalTerminologyNormalized,
     )
+    from .models.claim import Claim, ClaimItem  # noqa: F401
     from .models.edge import (  # noqa: F401
         EdgeDevice,
         EdgeEvent,
@@ -229,20 +268,7 @@ def import_all_models() -> None:
         EdgeTask,
         EdgeTelemetry,
     )
-    from .devices.models import (  # noqa: F401
-        DeviceConnector,
-        DeviceEvent,
-        DeviceGateway,
-        DeviceGatewayAlert,
-        DeviceGatewayMetricSnapshot,
-        DeviceOutboxMessage,
-        DevicePrintJob,
-        DeviceProtocolProfile,
-        IntegratedDevice,
-    )
-    from .capabilities.fhir_interoperability.models import FHIRResourceRecord  # noqa: F401
     from .models.outbox import OutboxEvent  # noqa: F401
-    from .payments import models as payment_models  # noqa: F401
     from .models.subscription import (  # noqa: F401
         FeatureFlag,
         LabSubscription,
@@ -342,6 +368,8 @@ def import_all_models() -> None:
         PressureInjuryAssessment,
         ShiftHandover,
     )
+    from .payments import models as payment_models  # noqa: F401
+    from .payments import subscription_models  # noqa: F401
     from .pharmacy.models import (  # noqa: F401
         AllergyRule,
         ClinicalGuideline,
@@ -367,7 +395,6 @@ def import_all_models() -> None:
         Warehouse,
         WasteRecord,
     )
-    from .payments import subscription_models  # noqa: F401
     from .radiology.ai import AIAnalysisJob  # noqa: F401
     from .radiology.models import (  # noqa: F401
         MPPS,
@@ -399,6 +426,7 @@ def _build_middleware_stack(app: FastAPI) -> None:
     from app.middleware import (
         ConcurrencyLimitMiddleware,
         DemoReadOnlyMiddleware,
+        GlobalRateLimitMiddleware,
         HealthcheckHostMiddleware,
         KernelMiddleware,
         MaxBodySizeMiddleware,
@@ -407,11 +435,12 @@ def _build_middleware_stack(app: FastAPI) -> None:
         RequestTimingMiddleware,
         SecurityHeadersMiddleware,
     )
-    from .security.csrf import CSRFMiddleware
 
     from .config import MAX_REQUEST_BODY_MB
+    from .security.csrf import CSRFMiddleware
 
     app.add_middleware(MaxBodySizeMiddleware, max_size_mb=MAX_REQUEST_BODY_MB)
+    app.add_middleware(GlobalRateLimitMiddleware)
     app.add_middleware(RequestIDMiddleware)
 
     if IS_PRODUCTION:
@@ -493,16 +522,18 @@ def _register_routes(app: FastAPI) -> None:
     In openapi mode, we still register routes (they define the OpenAPI schema)
     but skip any route module that requires DB/AI/external service imports.
     """
+    from .billing import routes as billing_routes
     from .routes import (
         admin,
         admin_log_level,
+        app_updates,
         batch,
+        cds_hooks,
         compliance,
         critical_alerts,
-        cds_hooks,
         dashboard,
-        device_results,
         demo,
+        device_results,
         ehr,
         ehr_fhir,
         id_scan,
@@ -524,9 +555,7 @@ def _register_routes(app: FastAPI) -> None:
         setup,
         test_results,
         verification,
-        app_updates,
     )
-    from .billing import routes as billing_routes
     from .routes import ai as ai_routes
     from .routes import citizen_portal as citizen_portal_routes
     from .routes import citizen_relationship_admin as citizen_relationship_admin_routes
@@ -555,11 +584,11 @@ def _register_routes(app: FastAPI) -> None:
     from .financial import register_routes as register_financial_routes
     register_financial_routes(app)
 
-    from .payments.routes import router as payments_router
+    from .payments.control_routes import router as payments_control_router
     from .payments.fx_routes import router as payments_fx_router
     from .payments.orchestration_routes import router as payments_orchestration_router
+    from .payments.routes import router as payments_router
     from .payments.subscription_routes import router as payments_subscription_router
-    from .payments.control_routes import router as payments_control_router
     app.include_router(payments_router)
     app.include_router(payments_fx_router)
     app.include_router(payments_orchestration_router)
@@ -613,6 +642,9 @@ def _register_routes(app: FastAPI) -> None:
 
     from .routes import integrations as integrations_routes
     app.include_router(integrations_routes.router)
+
+    from .routes import advanced_integrations as advanced_integrations_routes
+    app.include_router(advanced_integrations_routes.router)
 
     from .routes import edge as edge_routes
     app.include_router(edge_routes.router)

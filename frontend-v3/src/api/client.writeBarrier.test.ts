@@ -2,11 +2,21 @@ import { describe, expect, it } from "vitest";
 import {
   OperationalReadBlockedError,
   OperationalWriteBlockedError,
+  clinicalCommandHeaders,
   assertFrontendReadIsAllowed,
   assertFrontendWriteIsAllowed,
 } from "./client";
 
 describe("حاجز الكتابات التشغيلية في frontend-v3", () => {
+  it("ينشئ عقد الأوامر السريرية بالقفل وعدم التكرار ويرفض القيم غير الصالحة", () => {
+    expect(clinicalCommandHeaders(7, "icu-command-7")).toEqual({
+      "If-Match": "7",
+      "Idempotency-Key": "icu-command-7",
+    });
+    expect(() => clinicalCommandHeaders(0, "safe-key")).toThrow("CLINICAL_COMMAND_VERSION_REQUIRED");
+    expect(() => clinicalCommandHeaders(1, " ")).toThrow("CLINICAL_COMMAND_IDEMPOTENCY_KEY_REQUIRED");
+  });
+
   it("يرفض كتابة مريض سريرية حتى لو احتوت طبقة endpoints على دالة قديمة", () => {
     expect(() => assertFrontendWriteIsAllowed("post", "/patients")).toThrow(OperationalWriteBlockedError);
   });
@@ -45,6 +55,14 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/monitoring/metrics")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/monitoring/alerts/42/acknowledge")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/device-integration/devices/VITAL-001/raw-command")).toThrow(OperationalWriteBlockedError);
+  });
+
+  it("يسمح بعقود الصيدلية وسجل المواطن الجديدة ويرفض كتابة صيدلانية غير معتمدة", () => {
+    expect(() => assertFrontendReadIsAllowed("get", "/pharmacy/drugs?query=paracetamol")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/pharmacy/pos/summary?days=30")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/citizen-platform/me/medication-dispenses")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/pos/sales")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/inventory/stock-levels/adjust")).toThrow(OperationalWriteBlockedError);
   });
 
   it("يرفض قراءة REST غير مصنفة ويحصر الاستثناء في تهيئة الجلسة العامة", () => {

@@ -22,6 +22,7 @@ from ..security.auth import (
 )
 from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..security.dependencies import get_current_user
+from ..security.login_protection import is_locked, register_failed_login, register_successful_login
 from ..security.session import bump_perm_version, warm_perm_version
 from ..services.audit_service import log_action
 
@@ -79,10 +80,28 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         data.password,
         user.password_hash if user else _DUMMY_HASH,
     )
-    if not user or not password_ok:
+    if user and is_locked(user):
         log_action(
             db,
-            action="login_failed",
+            action="login_denied_lockout",
+            resource_type="auth",
+            user_id=user.id,
+            user_role=user.role,
+            details="Login denied while account lockout window is active",
+            ip_address=client_ip,
+        )
+        db.commit()
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    if not user or not password_ok:
+        if user:
+            locked_now = register_failed_login(user)
+            action = "login_lockout_started" if locked_now else "login_failed"
+        else:
+            action = "login_failed"
+        log_action(
+            db,
+            action=action,
             resource_type="auth",
             user_id=user.id if user else None,
             user_role=user.role if user else None,
@@ -91,6 +110,8 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
         )
         db.commit()
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    register_successful_login(user)
 
     # Citizen and provider accounts must complete the free verification flow
     # before any authenticated session is issued. Lab accounts remain gated by

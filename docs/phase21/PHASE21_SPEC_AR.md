@@ -71,4 +71,4 @@
 
 ## بوابات الاعتماد قبل الإنتاج
 
-يجب أولًا تشغيل migration `20260815_0019_phase21_user_preferences` على staging والتحقق من rollback في نسخة قاعدة بيانات اختبارية. ثم يجب التأكد من وجود `ENCRYPTION_KEY` إنتاجي مُدار عبر Railway Secret وليس قيمة مثال. بعد ذلك تُنفذ مراجعة صلاحيات وpenetration test للـendpoints الأربعة، وتُراجع resource bundles للغات السبع، ثم يُنشر PR عبر حماية `main` مع جميع checks. لا يُنشر أي تطبيق إلى متجر ضمن هذه المرحلة.
+يجب أولًا تشغيل migration `20260815_0020_phase21_user_preferences` على staging والتحقق من rollback في نسخة قاعدة بيانات اختبارية. ثم يجب التأكد من وجود `ENCRYPTION_KEY` إنتاجي مُدار عبر Railway Secret وليس قيمة مثال. بعد ذلك تُنفذ مراجعة صلاحيات وpenetration test للـendpoints الأربعة، وتُراجع resource bundles للغات السبع، ثم يُنشر PR عبر حماية `main` مع جميع checks. لا يُنشر أي تطبيق إلى متجر ضمن هذه المرحلة.

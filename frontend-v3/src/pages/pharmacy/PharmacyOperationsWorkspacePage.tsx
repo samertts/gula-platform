@@ -22,12 +22,13 @@ import {
   Truck,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/PageComponents";
+import PharmacyPosPanel from "./PharmacyPosPanel";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 
-type PharmacyTab = "overview" | "catalog" | "inventory" | "dispense" | "movements" | "alerts";
+type PharmacyTab = "overview" | "pos" | "catalog" | "inventory" | "dispense" | "movements" | "alerts";
 type StockState = "متاح" | "منخفض" | "منتهي قريبًا";
 type PrescriptionState = "مصدق" | "قيد الصرف" | "مصروف" | "موقوف";
 
@@ -109,6 +110,7 @@ const ALERTS: PharmacyAlert[] = [
 
 const tabs: Array<{ id: PharmacyTab; label: string; icon: typeof Pill }> = [
   { id: "overview", label: "نظرة الصيدلية", icon: ShoppingCart },
+  { id: "pos", label: "بيع سريع", icon: ShoppingCart },
   { id: "catalog", label: "كتالوج الأدوية", icon: Tags },
   { id: "inventory", label: "المخزون", icon: Boxes },
   { id: "dispense", label: "الوصفات والصرف", icon: Pill },
@@ -165,6 +167,7 @@ export default function PharmacyOperationsWorkspacePage() {
     {notice && <div className="rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-800 dark:border-indigo-900/60 dark:bg-indigo-950/30 dark:text-indigo-300" role="status"><CheckCircle2 className="ml-2 inline h-4 w-4" />{notice}</div>}
 
     {activeTab === "overview" && <Overview medications={medications} prescriptions={prescriptions} onTab={setActiveTab} />}
+    {activeTab === "pos" && <PharmacyPosPanel />}
     {activeTab === "catalog" && <Catalog medications={filteredMedications} selected={selectedMedication} search={medicationSearch} onSearch={setMedicationSearch} onSelect={setSelectedMedicationId} onReceive={simulateReceive} />}
     {activeTab === "inventory" && <Inventory medications={filteredMedications} search={medicationSearch} onSearch={setMedicationSearch} onReceive={simulateReceive} />}
     {activeTab === "dispense" && <DispenseQueue prescriptions={filteredPrescriptions} search={prescriptionSearch} onSearch={setPrescriptionSearch} onDispense={simulateDispense} />}

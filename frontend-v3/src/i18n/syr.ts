@@ -71,10 +71,13 @@ const syr = {
   onboarding: {
     citizenVerify: "ܐܫܪ ܝܕܥܘܬܟ ܒܐܘܪܚܐ ܡܠܝܬܐ ܐܘ ܕܫܘܪܪܐ ܕܬܠܝܦܘܢܐ ܡܬܩܒܠܢܐ.",
     citizenAccess: "ܥܘܠܐ ܡܬܝܗܒ ܒܬܪ ܕܦܣܩܐ ܕܫܘܪܪܐ ܡܬܟܬܒ ܒܢܝܫܡܐ.",
-    institutionDocuments: "ܫܕܪ ܪܘܚܨܐ ܕܡܘܣܣܬܐ ܘܒܝܢܬܐ ܕܡܕܒܪܢܐ ܡܬܬܚܡܢܐ ܠܓܘܕܐ ܕܦܪܘܣܐ.",
+    institutionDocuments:
+      "ܫܕܪ ܪܘܚܨܐ ܕܡܘܣܣܬܐ ܘܒܝܢܬܐ ܕܡܕܒܪܢܐ ܡܬܬܚܡܢܐ ܠܓܘܕܐ ܕܦܪܘܣܐ.",
     institutionAccess: "ܥܘܠܐ ܕܡܘܣܣܬܐ ܡܬܥܒܕ ܒܬܪ ܫܘܪܪܐ ܡܕܒܪܢܝܐ.",
-    selfServiceUnavailable: "ܒܪܝܬܐ ܕܚܘܫܒܢܐ ܒܢܦܫܗ ܠܐ ܫܟܝܚܐ ܒܗܕܐ ܦܬܐ ܓܘܢܝܬܐ؛ ܗܢܐ ܢܛܪ ܠܦܠܛܦܘܪܡܐ ܡܢ ܝܕܥܬܐ ܕܠܐ ܫܘܪܪܐ ܘܥܘܠܐ ܕܡܘܣܣܬܐ ܕܠܐ ܫܘܠܛܢܐ.",
-    existingStaff: "ܦܠܚ̈ܐ ܕܡܘܣܣܬܐ ܕܐܝܬ ܠܗܘܢ ܡܩܒܠܝܢ ܥܘܠܐ ܡܢ ܡܕܒܪܢܐ ܡܫܪܪܐ ܕܡܘܣܣܬܐ.",
+    selfServiceUnavailable:
+      "ܒܪܝܬܐ ܕܚܘܫܒܢܐ ܒܢܦܫܗ ܠܐ ܫܟܝܚܐ ܒܗܕܐ ܦܬܐ ܓܘܢܝܬܐ؛ ܗܢܐ ܢܛܪ ܠܦܠܛܦܘܪܡܐ ܡܢ ܝܕܥܬܐ ܕܠܐ ܫܘܪܪܐ ܘܥܘܠܐ ܕܡܘܣܣܬܐ ܕܠܐ ܫܘܠܛܢܐ.",
+    existingStaff:
+      "ܦܠܚ̈ܐ ܕܡܘܣܣܬܐ ܕܐܝܬ ܠܗܘܢ ܡܩܒܠܝܢ ܥܘܠܐ ܡܢ ܡܕܒܪܢܐ ܡܫܪܪܐ ܕܡܘܣܣܬܐ.",
   },
   common: {
     loading: "ܡܬܛܥܢ...",
@@ -111,6 +114,34 @@ const syr = {
     darkMode: "ܚܙܘܐ ܚܫܘܟܐ",
     lightMode: "ܚܙܘܐ ܢܗܝܪܐ",
     language: "ܠܫܢܐ",
+  },
+  mobileNav: {
+    quickNavigation: "ܐܘܪܚܐ ܥܓܝܠܬܐ",
+    openAllSections: "ܦܬܚ ܟܠܗܘܢ ܦܠܓ̈ܐ",
+    more: "ܝܬܝܪ",
+    current: "ܦܬܐ ܕܟܕܘ",
+    skipToContent: "ܦܪܘܩ ܠܚܒܪܐ ܪܝܫܝܐ",
+    changeLanguage: "ܫܚܠܦ ܠܫܢܐ",
+    closeSections: "ܣܟܪ ܟܠܗܘܢ ܦܠܓ̈ܐ",
+    expandSidebar: "ܦܫܘܛ ܐܘܪܚܐ",
+    collapseSidebar: "ܟܢܘܫ ܐܘܪܚܐ",
+    operationsCenter: "ܡܨܥܬܐ ܕܦܘܠܚܢܐ",
+    userFallback: "ܡܦܠܚܢܐ ܕ-GULA",
+    readOnly: "ܩܪܝܢܐ ܒܠܚܘܕ",
+    syntheticReadOnly:
+      "ܟܢܘܫܝܐ ܕܢܘܣܝܐ ܘܩܪܝܢܐ ܒܠܚܘܕ؛ ܦܘܠܚܢ̈ܐ ܕܟܬܒܐ ܘܚܘܒܪ̈ܐ ܒܪ̈ܝܐ ܚܣܝܡܝܢ.",
+    groups: {
+      main: "ܪܝܫܝܐ",
+      lab: "ܡܥܒܕܬܐ",
+      admin: "ܡܕܒܪܢܘܬܐ",
+      tools: "ܡܐܢ̈ܐ",
+      niam: "ܗܘܝܘܬܐ ܐܘܡܬܢܝܬܐ",
+      enterprise: "ܡܘܣܕܢܝܐ",
+      clinical: "ܐܣܝܘܬܢܝܐ",
+      national: "ܐܘܡܬܢܝܐ",
+      systems: "ܡܛܟܣ̈ܐ",
+      settings: "ܬܩܢܬ̈ܐ",
+    },
   },
 };
 

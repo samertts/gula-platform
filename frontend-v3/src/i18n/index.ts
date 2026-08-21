@@ -8,15 +8,13 @@ import tk from "./tk";
 import { getStoredLocale } from "./locales";
 
 i18n.use(initReactI18next).init({
-      resources: {
-      "ar-IQ": { translation: ar },
-      ar: { translation: ar },
-      en: { translation: en },
-      ku: { translation: ku },
-      tk: { translation: tk },
-      syr: { translation: syr },
-      fa: { translation: en },
-    },
+  resources: {
+    ar: { translation: ar },
+    en: { translation: en },
+    ku: { translation: ku },
+    tk: { translation: tk },
+    syr: { translation: syr },
+  },
 
   lng: getStoredLocale(),
   fallbackLng: "en",

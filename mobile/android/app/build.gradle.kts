@@ -13,11 +13,11 @@ plugins {
 
 configurations.all {
     resolutionStrategy {
-        force("io.netty:netty-codec-http2:4.1.136.Final")
-        force("io.netty:netty-handler:4.1.136.Final")
-        force("io.netty:netty-handler-proxy:4.1.136.Final")
-        force("io.netty:netty-codec-http:4.1.136.Final")
-        force("io.netty:netty-codec:4.1.136.Final")
+        force("io.netty:netty-codec-http2:4.1.137.Final")
+        force("io.netty:netty-handler:4.1.137.Final")
+        force("io.netty:netty-handler-proxy:4.1.137.Final")
+        force("io.netty:netty-codec-http:4.1.137.Final")
+        force("io.netty:netty-codec:4.1.137.Final")
         force("com.google.protobuf:protobuf-java:3.25.5")
         force("com.google.protobuf:protobuf-kotlin:3.25.5")
         force("org.jdom:jdom2:2.0.6.1")
@@ -34,12 +34,13 @@ android {
 
     signingConfigs {
         create("release") {
-            val propsFile = rootProject.file("signing.properties")
+            val externalPropsPath = System.getenv("GULA_ANDROID_SIGNING_PROPERTIES")
+            val propsFile = externalPropsPath?.let(::file) ?: rootProject.file("signing.properties")
             if (propsFile.exists()) {
                 val props = Properties().apply {
                     load(FileInputStream(propsFile))
                 }
-                storeFile = file(props.getProperty("storeFile"))
+                storeFile = rootProject.file(props.getProperty("storeFile"))
                 storePassword = props.getProperty("storePassword")
                 keyAlias = props.getProperty("keyAlias")
                 keyPassword = props.getProperty("keyPassword")
@@ -48,7 +49,7 @@ android {
     }
 
         defaultConfig {
-            applicationId = "io.gula.android"
+            applicationId = "iq.gula.lab"
             minSdk = 26
             targetSdk = 35
             versionCode = 20500

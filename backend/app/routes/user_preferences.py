@@ -27,7 +27,7 @@ from ..services.audit_service import log_action
 router = APIRouter(prefix="/user-preferences", tags=["user-preferences"])
 
 
-AccessibilityLanguage = Literal["ar-IQ", "ar", "en", "ku", "tk", "syr", "fa"]
+AccessibilityLanguage = Literal["ar", "en", "ku", "tk", "syr"]
 FontSize = Literal["small", "medium", "large", "x-large"]
 ColorBlindMode = Literal["none", "protanopia", "deuteranopia", "tritanopia", "monochrome"]
 
@@ -35,7 +35,7 @@ ColorBlindMode = Literal["none", "protanopia", "deuteranopia", "tritanopia", "mo
 class AccessibilityPreferences(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    language: AccessibilityLanguage = "ar-IQ"
+    language: AccessibilityLanguage = "ar"
     font_size: FontSize = "medium"
     text_scale: float = Field(default=1.0, ge=0.85, le=2.0)
     high_contrast: bool = False

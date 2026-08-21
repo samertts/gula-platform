@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>تحسين شريط التنقل السفلي في GULA</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    .slide-container { width: 1280px; min-height: 720px; position: relative; overflow: hidden; background: #f0f9ff; color: #082f49; font-family: "Noto Sans Arabic", "Segoe UI", Arial, sans-serif; }
+    .orb { position: absolute; border-radius: 999px; background: rgba(2,132,199,.13); }
+    .orb.one { width: 320px; min-height: 320px; top: -140px; left: -70px; }
+    .orb.two { width: 220px; min-height: 220px; bottom: -110px; right: 180px; background: rgba(186,230,253,.55); }
+    .content { position: relative; z-index: 2; display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; min-height: 640px; padding-top: 92px; padding-left: 48px; padding-right: 48px; align-items: center; }
+    .eyebrow { display: inline-block; color: #0284c7; font-size: 15px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { max-width: 680px; margin: 18px 0 0; font-size: 58px; line-height: 1.14; letter-spacing: -.04em; font-weight: 800; }
+    .subtitle { max-width: 560px; margin-top: 20px; color: #31556b; font-size: 23px; line-height: 1.65; }
+    .meta { margin-top: 32px; color: #52768c; font-size: 16px; font-weight: 700; }
+    .phone { width: 330px; min-height: 360px; margin-right: auto; border: 10px solid #082f49; border-radius: 36px; background: rgba(255,255,255,.62); box-shadow: 0 28px 70px -34px rgba(8,47,73,.55); transform: rotate(-5deg); }
+    .phone-top { min-height: 32px; border-bottom: 1px solid rgba(8,47,73,.12); background: rgba(255,255,255,.52); }
+    .phone-body { min-height: 220px; padding-top: 18px; padding-left: 14px; padding-right: 14px; }
+    .line { min-height: 12px; margin-bottom: 10px; border-radius: 8px; background: #d6edf9; }
+    .line.short { width: 62%; background: #bae6fd; }
+    .surface { min-height: 62px; margin-top: 18px; border: 1px solid rgba(2,132,199,.18); border-radius: 16px; background: rgba(255,255,255,.72); box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 12px 24px -20px rgba(8,47,73,.5); }
+    .bottom-nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; min-height: 44px; padding-top: 4px; padding-left: 6px; padding-right: 6px; border-top: 1px solid rgba(8,47,73,.14); background: rgba(255,255,255,.86); }
+    .nav-dot { min-height: 32px; border-radius: 12px; background: #e8f5fc; }
+    .nav-dot.active { background: #0284c7; box-shadow: 0 8px 18px -12px #0284c7; }
+    .tag { position: absolute; left: 140px; bottom: 96px; min-height: 34px; padding-top: 10px; padding-left: 14px; padding-right: 14px; border: 1px solid rgba(2,132,199,.2); border-radius: 12px; background: rgba(255,255,255,.74); color: #0c4a6e; font-size: 14px; font-weight: 800; box-shadow: 0 12px 28px -18px rgba(8,47,73,.42); }
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <div class="orb one"></div><div class="orb two"></div>
+    <div class="content">
+      <section>
+        <div class="eyebrow">GULA · Technical Review</div>
+        <h1>تحسين شريط التنقل السفلي في GULA</h1>
+        <p class="subtitle">تنفيذ آمن متوافق مع Stitch وRTL وi18n وإمكانية الوصول</p>
+        <p class="meta">PR #219 · مراجعة الفريق الفني</p>
+      </section>
+      <section class="phone" aria-label="تمثيل بصري لشريط التنقل السفلي">
+        <div class="phone-top"></div>
+        <div class="phone-body"><div class="line short"></div><div class="line"></div><div class="surface"></div><div class="surface"></div></div>
+        <div class="bottom-nav"><div class="nav-dot active"></div><div class="nav-dot"></div><div class="nav-dot"></div><div class="nav-dot"></div><div class="nav-dot"></div></div>
+      </section>
+    </div>
+    <div class="tag">طبقة تنقل مرئية · لا صلاحيات جديدة</div>
+  </div>
+</body>
+</html>

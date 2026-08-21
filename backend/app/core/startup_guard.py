@@ -453,7 +453,7 @@ def _run_seed_test_types() -> None:
                 test_name="White Blood Cells",
                 test_name_ar="كريات الدم البيضاء",
                 category="CBC",
-                unit="×10³/µL",
+                unit="×10³/µL",  # noqa: RUF001 - clinical notation
                 normal_range_low=4.0,
                 normal_range_high=11.0,
             ),
@@ -462,7 +462,7 @@ def _run_seed_test_types() -> None:
                 test_name="Platelets",
                 test_name_ar="الصفائح الدموية",
                 category="CBC",
-                unit="×10³/µL",
+                unit="×10³/µL",  # noqa: RUF001 - clinical notation
                 normal_range_low=150,
                 normal_range_high=400,
             ),
@@ -570,7 +570,7 @@ def _run_seed_test_types() -> None:
                 test_name="Red Blood Cells",
                 test_name_ar="كريات الدم الحمراء",
                 category="CBC",
-                unit="×10⁶/µL",
+                unit="×10⁶/µL",  # noqa: RUF001 - clinical notation
                 normal_range_low=4.0,
                 normal_range_high=6.0,
             ),
@@ -790,7 +790,7 @@ async def run_startup_guard() -> None:
     """
     global system_ready, _readiness_reason
 
-    from ..config import RUNTIME_MODE, STARTUP_TIMEOUT_SECONDS
+    from ..config import ENV, RUNTIME_MODE, STARTUP_TIMEOUT_SECONDS
 
     # ── Test mode: skip validation entirely ─────────────────────────────────
     if RUNTIME_MODE == "test":
@@ -809,7 +809,10 @@ async def run_startup_guard() -> None:
 
     # Wrap core validation in a timeout so startup can't block indefinitely.
     # After the timeout, the system starts in partial-readiness mode.
-    STARTUP_TIMEOUT = max(STARTUP_TIMEOUT_SECONDS, 30)
+    # Production and staging retain a conservative minimum.  Test/dev modes
+    # may use a shorter timeout, while still staying unready on expiration.
+    minimum_timeout = 30 if ENV in {"production", "staging"} else 1
+    startup_timeout = max(STARTUP_TIMEOUT_SECONDS, minimum_timeout)
 
     async def _run_core_validation() -> None:
         """Core validation: config → DB → Redis → migrations → seeds → kernel."""
@@ -852,19 +855,17 @@ async def run_startup_guard() -> None:
         )
 
     try:
-        await asyncio.wait_for(_run_core_validation(), timeout=STARTUP_TIMEOUT)
+        await asyncio.wait_for(_run_core_validation(), timeout=startup_timeout)
     except TimeoutError:
         elapsed = (time.perf_counter() - t0) * 1000
-        logger.warning(
-            "[STARTUP GUARD] Startup validation did not complete within %ds (%.0fms elapsed) — "
-            "system starts in PARTIAL READY state. Some dependencies may be unavailable.",
-            STARTUP_TIMEOUT,
-            elapsed,
-        )
-        system_ready = True
+        # A timeout means mandatory dependency verification is incomplete.  Do
+        # not advertise readiness or accept clinical traffic in this state.
+        system_ready = False
         _readiness_reason = "partial_startup_timeout"
-        logger.info(
-            "[STARTUP GUARD] === System PARTIALLY READY (%.0fms, timeout) — accepting traffic ===",
+        logger.error(
+            "[STARTUP GUARD] Startup validation did not complete within %ds (%.0fms elapsed) — "
+            "system remains UNREADY and clinical traffic is rejected until validation succeeds.",
+            startup_timeout,
             elapsed,
         )
         return

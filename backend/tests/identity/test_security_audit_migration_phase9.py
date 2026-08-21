@@ -10,8 +10,8 @@ pytestmark = pytest.mark.integration
 
 def _database_url() -> str:
     url = os.getenv("MIGRATION_DATABASE_URL") or os.getenv("DATABASE_URL")
-    if not url:
-        pytest.skip("MIGRATION_DATABASE_URL or DATABASE_URL is required")
+    if not url or url.startswith("sqlite"):
+        pytest.skip("A PostgreSQL migration database is required for this integration test")
     return url
 
 

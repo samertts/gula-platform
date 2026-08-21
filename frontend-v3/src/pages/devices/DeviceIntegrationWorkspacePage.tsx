@@ -45,6 +45,7 @@ import type {
   DeviceIntegrationSummary,
   DeviceGatewayAlertRecord,
   DeviceGatewayMonitoringSnapshot,
+  WearableBaselineSummary,
 } from "@/types";
 
 const SYNTHETIC_DEVICES: DeviceIntegrationRecord[] = [
@@ -268,6 +269,15 @@ const SYNTHETIC_ALERTS: DeviceGatewayAlertRecord[] = [
   { id: 2, gateway_ref: "gateway-lab-sim-02", alert_key: "disk_usage", severity: "critical", status: "acknowledged", title: "استهلاك القرص حرج", summary: "استهلاك قرص Gateway تجاوز الحد الحرج.", metric_key: "disk_used_percent", current_value: 96.4, threshold_value: 95, first_seen_at: "2026-08-15T07:55:00Z", last_seen_at: "2026-08-15T08:41:00Z", acknowledged_at: "2026-08-15T08:42:00Z", acknowledged_by: 1, correlation_id: "sim-alert-002", simulation_only: true, safe_metadata: { simulation_only: true } },
 ];
 
+const SYNTHETIC_BASELINE_SUMMARY: WearableBaselineSummary = {
+  patient_id: 1,
+  metric_code: "systolic_bp",
+  measurement_count: 21,
+  latest: { value: 132, unit: "mmHg", measured_at: "2026-08-15T08:40:00Z", quality_score: 0.96, source: "fitbit" },
+  baseline: { status: "ready", median: 128, mad: 5, lower_bound: 113, upper_bound: 143, confidence: 0.86, generated_at: "2026-08-15T08:42:00Z" },
+  evaluation: { is_anomaly: false, severity: "normal", deviation_score: 0.54, confidence: 0.86, explanation: "القراءة ضمن النطاق الشخصي المتعلم؛ يلزم تفسيرها مع السياق السريري.", requires_clinician_review: false, advisory_only: true },
+};
+
 const SYNTHETIC_MONITORING: DeviceGatewayMonitoringSnapshot = {
   gateway_count: 2,
   healthy_gateway_count: 1,
@@ -366,7 +376,7 @@ function deviceIcon(category: DeviceIntegrationCategory) {
 export function DeviceIntegrationWorkspacePage() {
   const { demoMode, user } = useAuth();
   const isInstitutional = Boolean(user?.lab_id && user.role !== "citizen");
-  const [activeTab, setActiveTab] = useState<"overview" | "devices" | "connectors" | "protocols" | "profiles" | "simulators" | "events" | "printing" | "monitoring">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "devices" | "connectors" | "protocols" | "profiles" | "simulators" | "events" | "printing" | "monitoring" | "chronic_care">("overview");
   const [devices, setDevices] = useState<DeviceIntegrationRecord[]>(SYNTHETIC_DEVICES);
   const [summary, setSummary] = useState<DeviceIntegrationSummary>(syntheticSummary());
   const [protocols, setProtocols] = useState<DeviceIntegrationProtocolDescriptor[]>(SYNTHETIC_PROTOCOLS);
@@ -376,6 +386,10 @@ export function DeviceIntegrationWorkspacePage() {
   const [profiles, setProfiles] = useState<DeviceIntegrationProtocolProfileRecord[]>(SYNTHETIC_PROFILES);
   const [simulators, setSimulators] = useState<DeviceIntegrationSimulatorDescriptor[]>(SYNTHETIC_SIMULATORS);
   const [monitoring, setMonitoring] = useState<DeviceGatewayMonitoringSnapshot>(SYNTHETIC_MONITORING);
+  const [baselineSummary, setBaselineSummary] = useState<WearableBaselineSummary | null>(null);
+  const [baselinePatientId, setBaselinePatientId] = useState("1");
+  const [baselineMetric, setBaselineMetric] = useState("systolic_bp");
+  const [baselineLoading, setBaselineLoading] = useState(false);
   const [alertActionId, setAlertActionId] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<"all" | DeviceIntegrationCategory>("all");
   const [search, setSearch] = useState("");
@@ -418,6 +432,27 @@ export function DeviceIntegrationWorkspacePage() {
   useEffect(() => {
     if (isInstitutional) void loadLive();
   }, [demoMode, isInstitutional]);
+
+  const loadBaselineSummary = async () => {
+    const patientId = Number.parseInt(baselinePatientId, 10);
+    if (!Number.isInteger(patientId) || patientId < 1) {
+      setError("أدخل رقم مريض صحيحًا لتحميل baseline الاستشاري.");
+      return;
+    }
+    setBaselineLoading(true);
+    setError("");
+    try {
+      const result = demoMode
+        ? { ...SYNTHETIC_BASELINE_SUMMARY, patient_id: patientId, metric_code: baselineMetric }
+        : await deviceIntegrationApi.baselineSummary(patientId, baselineMetric, 28);
+      setBaselineSummary(result);
+    } catch {
+      setBaselineSummary(null);
+      setError("تعذر تحميل baseline للمريض؛ لم يتم إنشاء قرار علاجي تلقائي.");
+    } finally {
+      setBaselineLoading(false);
+    }
+  };
 
   const filteredDevices = useMemo(() => {
     const normalized = search.trim().toLowerCase();
@@ -546,6 +581,7 @@ export function DeviceIntegrationWorkspacePage() {
     { key: "events" as const, label: "سجل الأحداث", icon: FileOutput },
     { key: "printing" as const, label: "الطباعة", icon: Printer },
     { key: "monitoring" as const, label: "المراقبة والتنبيهات", icon: AlertTriangle },
+    { key: "chronic_care" as const, label: "الرعاية المزمنة", icon: Stethoscope },
   ];
 
   return (
@@ -597,8 +633,85 @@ export function DeviceIntegrationWorkspacePage() {
       {activeTab === "events" && <EventsTab events={events} />}
       {activeTab === "printing" && <PrintingTab jobs={jobs} printers={printerDevices} onCreate={createPrintJob} actionUid={actionUid} />}
       {activeTab === "monitoring" && <MonitoringTab monitoring={monitoring} onAcknowledge={acknowledgeAlert} alertActionId={alertActionId} />}
+      {activeTab === "chronic_care" && <ChronicCareTab summary={baselineSummary} patientId={baselinePatientId} metricCode={baselineMetric} loading={baselineLoading} setPatientId={setBaselinePatientId} setMetricCode={setBaselineMetric} onLoad={loadBaselineSummary} demoMode={demoMode} />}
     </div>
   );
+}
+
+function ChronicCareTab({
+  summary,
+  patientId,
+  metricCode,
+  loading,
+  setPatientId,
+  setMetricCode,
+  onLoad,
+  demoMode,
+}: {
+  summary: WearableBaselineSummary | null;
+  patientId: string;
+  metricCode: string;
+  loading: boolean;
+  setPatientId: (value: string) => void;
+  setMetricCode: (value: string) => void;
+  onLoad: () => Promise<void>;
+  demoMode: boolean;
+}) {
+  const latestValue = summary?.latest.value ?? 0;
+  const lower = summary?.baseline.lower_bound ?? latestValue;
+  const upper = summary?.baseline.upper_bound ?? latestValue;
+  const range = Math.max(upper - lower, 1);
+  const markerPosition = Math.min(100, Math.max(0, ((latestValue - lower) / range) * 100));
+  const anomaly = summary?.evaluation.is_anomaly ?? false;
+  const metricLabel: Record<string, string> = {
+    systolic_bp: "ضغط الدم الانقباضي",
+    diastolic_bp: "ضغط الدم الانبساطي",
+    heart_rate: "معدل النبض",
+    spo2: "تشبع الأكسجين",
+    blood_glucose: "سكر الدم",
+    weight: "الوزن",
+  };
+
+  return <div className="space-y-6">
+    <Card className="border-cyan-200 bg-cyan-50/60 dark:border-cyan-900/60 dark:bg-cyan-950/20">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><Stethoscope className="h-5 w-5 text-cyan-700" />محرك الرعاية المزمنة — baseline شخصي</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm leading-7 text-muted-foreground">يعرض هذا القسم انحراف القراءة الأخيرة عن النمط التاريخي للمريض باستخدام إحصاءات مقاومة للشذوذ. المخرجات استشارية فقط، ولا تغيّر الدواء أو خطة الرعاية ولا تغلق التنبيه تلقائيًا.</p>
+        <form className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end" onSubmit={(event) => { event.preventDefault(); void onLoad(); }}>
+          <label className="space-y-1.5 text-sm font-medium"><span>رقم المريض</span><input type="number" min="1" value={patientId} onChange={(event) => setPatientId(event.target.value)} className="h-10 w-full rounded-lg border bg-background px-3" required /></label>
+          <label className="space-y-1.5 text-sm font-medium"><span>المؤشر الحيوي</span><select value={metricCode} onChange={(event) => setMetricCode(event.target.value)} className="h-10 w-full rounded-lg border bg-background px-3"><option value="systolic_bp">ضغط انقباضي</option><option value="diastolic_bp">ضغط انبساطي</option><option value="heart_rate">نبض</option><option value="spo2">SpO₂</option><option value="blood_glucose">سكر الدم</option><option value="weight">الوزن</option></select></label>
+          <Button type="submit" disabled={loading}>{loading ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <RefreshCw className="ml-2 h-4 w-4" />}تحميل الملخص</Button>
+        </form>
+        <div className="flex flex-wrap items-center gap-2 text-xs"><Badge variant="success"><ShieldCheck className="ml-1 h-3.5 w-3.5" />advisory_only=true</Badge>{demoMode && <Badge variant="outline">Demo / Synthetic</Badge>}<span className="text-muted-foreground">لا تُحفظ payloads الخام لمزود الجهاز.</span></div>
+      </CardContent>
+    </Card>
+
+    {!summary ? <Card><CardContent className="p-8 text-center text-sm text-muted-foreground">أدخل رقم المريض والمؤشر ثم اضغط «تحميل الملخص» لعرض baseline الاستشاري.</CardContent></Card> : <>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="آخر قراءة" value={`${summary.latest.value} ${summary.latest.unit}`} icon={Activity} tone={anomaly ? "rose" : "cyan"} />
+        <MetricCard label="الوسيط الشخصي" value={summary.baseline.median ?? "—"} icon={Gauge} tone="violet" />
+        <MetricCard label="عدد القراءات" value={summary.measurement_count} icon={Activity} tone="slate" />
+        <MetricCard label="الثقة الإحصائية" value={`${Math.round(summary.baseline.confidence * 100)}%`} icon={ShieldCheck} tone="emerald" />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+        <Card>
+          <CardHeader><CardTitle className="text-base">النطاق الشخصي المتعلم — {metricLabel[summary.metric_code] ?? summary.metric_code}</CardTitle></CardHeader>
+          <CardContent className="space-y-5">
+            <div className="relative pt-6"><div className="h-4 rounded-full bg-gradient-to-l from-rose-300 via-emerald-300 to-rose-300 dark:from-rose-900 dark:via-emerald-900 dark:to-rose-900" /><div className="absolute top-0 -translate-x-1/2 text-xs font-semibold" style={{ left: `${markerPosition}%` }}>{summary.latest.value}</div><div className="absolute top-5 h-3 w-0.5 bg-slate-900 dark:bg-white" style={{ left: `${markerPosition}%` }} /></div>
+            <div className="flex justify-between text-xs text-muted-foreground"><span>الحد الأدنى {summary.baseline.lower_bound ?? "—"}</span><span>الحد الأعلى {summary.baseline.upper_bound ?? "—"}</span></div>
+            <div className={`rounded-xl border p-4 ${anomaly ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100" : "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/20 dark:text-emerald-100"}`}><div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" /><p className="text-sm leading-7">{summary.evaluation.explanation}</p></div></div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-base">حالة التقييم</CardTitle></CardHeader>
+          <CardContent className="space-y-3 text-sm"><div className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2.5"><span>الحالة</span><Badge variant={anomaly ? "warning" : "success"}>{anomaly ? "يحتاج مراجعة" : "ضمن النمط الشخصي"}</Badge></div><div className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2.5"><span>درجة الانحراف</span><strong>{summary.evaluation.deviation_score ?? "—"}</strong></div><div className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2.5"><span>مصدر آخر قراءة</span><strong>{summary.latest.source}</strong></div><div className="flex items-center justify-between rounded-xl bg-muted/50 px-3 py-2.5"><span>آخر تحديث baseline</span><strong>{formatTime(summary.baseline.generated_at)}</strong></div><p className="pt-2 text-xs leading-6 text-muted-foreground">يجب على الطبيب مراجعة الاتجاه والسياق والأعراض والسجل الطبي قبل اتخاذ أي قرار. لا يمثل هذا التقييم تشخيصًا أو توصية علاجية.</p></CardContent>
+        </Card>
+      </div>
+    </>}
+  </div>;
 }
 
 function OverviewTab({ devices, summary, events, protocols, onProbe, actionUid, onGo }: { devices: DeviceIntegrationRecord[]; summary: DeviceIntegrationSummary; events: DeviceIntegrationEventRecord[]; protocols: DeviceIntegrationProtocolDescriptor[]; onProbe: (device: DeviceIntegrationRecord) => void; actionUid: string | null; onGo: (tab: "devices" | "protocols" | "events" | "printing") => void }) {
@@ -670,7 +783,7 @@ function SeverityBadge({ severity }: { severity: DeviceIntegrationEventRecord["s
   return <Badge variant={severity === "error" ? "destructive" : severity === "warning" ? "warning" : "outline"}>{severity === "error" ? "خطأ" : severity === "warning" ? "تحذير" : "معلومة"}</Badge>;
 }
 
-function MetricCard({ label, value, icon: Icon, tone }: { label: string; value: number; icon: typeof Activity; tone: "slate" | "emerald" | "amber" | "rose" | "violet" | "cyan" }) {
+function MetricCard({ label, value, icon: Icon, tone }: { label: string; value: number | string; icon: typeof Activity; tone: "slate" | "emerald" | "amber" | "rose" | "violet" | "cyan" }) {
   const tones = { slate: "bg-slate-500/10 text-slate-700 dark:text-slate-300", emerald: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300", amber: "bg-amber-500/10 text-amber-700 dark:text-amber-300", rose: "bg-rose-500/10 text-rose-700 dark:text-rose-300", violet: "bg-violet-500/10 text-violet-700 dark:text-violet-300", cyan: "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300" };
   return <Card><CardContent className="flex items-center gap-3 p-4"><span className={`rounded-xl p-2.5 ${tones[tone]}`}><Icon className="h-5 w-5" /></span><div><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 text-xl font-bold">{value}</p></div></CardContent></Card>;
 }

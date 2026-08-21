@@ -20,15 +20,23 @@ import { GuideAssistant } from "@/components/guide/GuideAssistant";
 import { DemoEnvironmentBadge, GulaBrand } from "@/components/shared/GulaBrand";
 import { WorkspaceSelector } from "@/components/workspace/WorkspaceSelector";
 import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
+import { localeOptions } from "@/i18n/locales";
 
 export function DashboardLayout() {
   const { theme, setTheme } = useTheme();
-  const { locale, setLocale } = useLocale();
+  const { locale, setLocale, isRTL } = useLocale();
   const { user, demoMode } = useAuth();
   const { t } = useTranslation();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showDemoNotice, setShowDemoNotice] = useState(true);
+  const currentLocaleIndex = Math.max(
+    0,
+    localeOptions.findIndex((option) => option.code === locale),
+  );
+  const nextLocale =
+    localeOptions[(currentLocaleIndex + 1) % localeOptions.length] ??
+    localeOptions[0]!;
 
   const currentLabel =
     location.pathname === "/dashboard"
@@ -39,13 +47,13 @@ export function DashboardLayout() {
   return (
     <div
       className="flex min-h-[100dvh] overflow-x-clip bg-[#F8FAFC] text-foreground dark:bg-slate-950"
-      dir={locale === "ar" ? "rtl" : "ltr"}
+      dir={isRTL ? "rtl" : "ltr"}
     >
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:fixed focus:right-2 focus:top-2 focus:z-[9999] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground focus:shadow-lg focus:outline-none"
       >
-        {locale === "ar" ? "تخطى إلى المحتوى الرئيسي" : "Skip to main content"}
+        {t("mobileNav.skipToContent")}
       </a>
       <Sidebar mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
       <main
@@ -58,7 +66,7 @@ export function DashboardLayout() {
             size="icon"
             className="h-11 w-11 rounded-xl lg:hidden"
             onClick={() => setMobileOpen(true)}
-            aria-label="فتح القائمة"
+            aria-label={t("mobileNav.openAllSections")}
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -104,14 +112,12 @@ export function DashboardLayout() {
               variant="ghost"
               size="icon"
               className="h-11 w-11 rounded-xl"
-              onClick={() => setLocale(locale === "ar" ? "en" : "ar")}
-              title={locale === "ar" ? "English" : "العربية"}
-              aria-label={
-                locale === "ar" ? "التبديل إلى الإنجليزية" : "العربية"
-              }
+              onClick={() => setLocale(nextLocale.code)}
+              title={t("mobileNav.changeLanguage")}
+              aria-label={t("mobileNav.changeLanguage")}
             >
               <span className="text-[11px] font-bold">
-                {locale === "ar" ? "EN" : "AR"}
+                {nextLocale.shortName}
               </span>
             </Button>
             <Button
@@ -195,7 +201,10 @@ export function DashboardLayout() {
         </div>
       </main>
       <GuideAssistant />
-      <MobileBottomNav onOpenMenu={() => setMobileOpen(true)} />
+      <MobileBottomNav
+        onOpenMenu={() => setMobileOpen(true)}
+        isMenuOpen={mobileOpen}
+      />
     </div>
   );
 }

@@ -125,15 +125,14 @@ class ContraindicationEngine:
 
     def check_pregnancy(self, drug_code: str, pregnancy_category: str | None = None) -> list[dict[str, Any]]:
         results: list[dict[str, Any]] = []
-        if pregnancy_category:
-            if pregnancy_category.upper() in ("X", "D"):
-                results.append({
-                    "drug_code": drug_code,
-                    "risk": "high",
-                    "category": pregnancy_category,
-                    "description": f"Pregnancy category {pregnancy_category}: contraindicated or high risk",
-                    "recommendation": "Avoid use during pregnancy; consider alternative therapy",
-                })
+        if pregnancy_category and pregnancy_category.upper() in ("X", "D"):
+            results.append({
+                "drug_code": drug_code,
+                "risk": "high",
+                "category": pregnancy_category,
+                "description": f"Pregnancy category {pregnancy_category}: contraindicated or high risk",
+                "recommendation": "Avoid use during pregnancy; consider alternative therapy",
+            })
         return results
 
     def check_breastfeeding(self, drug_code: str) -> list[ContraindicationRule]:

@@ -75,16 +75,16 @@ interface SidebarProps {
 }
 
 const navigationGroups = [
-  { key: "main", label: "الرئيسية" },
-  { key: "lab", label: "المختبر" },
-  { key: "admin", label: "الإدارة" },
-  { key: "tools", label: "الأدوات" },
-  { key: "niam", label: "الهوية الوطنية" },
-  { key: "enterprise", label: "المؤسسي" },
-  { key: "clinical", label: "السريري" },
-  { key: "national", label: "الوطنية" },
-  { key: "systems", label: "الأنظمة" },
-  { key: "settings", label: "الإعدادات" },
+  "main",
+  "lab",
+  "admin",
+  "tools",
+  "niam",
+  "enterprise",
+  "clinical",
+  "national",
+  "systems",
+  "settings",
 ] as const;
 
 export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
@@ -98,18 +98,28 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
     const items = NAV_ITEMS[groupKey] ?? [];
     return items
       .filter((item) => {
-        if (item.institutionalOnly && (!user?.lab_id || user.role === "citizen")) return false;
+        if (
+          item.institutionalOnly &&
+          (!user?.lab_id || user.role === "citizen")
+        )
+          return false;
         if (!item.permissions) return true;
         if (demoMode) {
-          return item.permissions.some((permission) => hasPermission(user?.role ?? "citizen", permission));
+          return item.permissions.some((permission) =>
+            hasPermission(user?.role ?? "citizen", permission),
+          );
         }
         // Live capabilities are UX hints only. The server remains the authorization boundary.
         return hasReflectedPermission(effectivePermissions, item.permissions);
       })
       .map((item) => {
         const Icon = iconMap[item.icon] || Activity;
-        const active = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
-        const label = item.label.startsWith("nav.") ? t(item.label) : item.label;
+        const active =
+          location.pathname === item.path ||
+          location.pathname.startsWith(`${item.path}/`);
+        const label = item.label.startsWith("nav.")
+          ? t(item.label)
+          : item.label;
         return (
           <Link
             key={item.path}
@@ -137,52 +147,108 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   return (
     <>
       <aside
-        aria-label="التنقل الرئيسي"
+        aria-label={t("mobileNav.quickNavigation")}
         className={cn(
           "fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-slate-200/80 bg-white/95 shadow-[0_24px_70px_-36px_rgba(15,23,42,0.72)] backdrop-blur-xl transition-[transform,visibility] duration-200 dark:border-white/10 dark:bg-slate-950/95 lg:static lg:z-auto lg:visible lg:pointer-events-auto lg:shadow-none",
-          mobileOpen ? "translate-x-0 visible pointer-events-auto" : "translate-x-full invisible pointer-events-none lg:translate-x-0",
+          mobileOpen
+            ? "translate-x-0 visible pointer-events-auto"
+            : "translate-x-full invisible pointer-events-none lg:translate-x-0",
           collapsed && "lg:w-[72px]",
         )}
       >
-        <div className={cn("flex h-16 shrink-0 items-center border-b px-4", collapsed && "justify-center px-2")}>
+        <div
+          className={cn(
+            "flex h-16 shrink-0 items-center border-b px-4",
+            collapsed && "justify-center px-2",
+          )}
+        >
           <Link to="/dashboard" onClick={onClose} className="flex items-center">
             <GulaBrand compact={collapsed} />
           </Link>
-          {!collapsed && <span className="mr-auto text-[10px] font-medium text-muted-foreground">مركز العمليات</span>}
+          {!collapsed && (
+            <span className="mr-auto text-[10px] font-medium text-muted-foreground">
+              {t("mobileNav.operationsCenter")}
+            </span>
+          )}
           <Button
             variant="ghost"
             size="icon"
             className={cn("mr-2 hidden lg:inline-flex", collapsed && "mr-0")}
             onClick={() => setCollapsed((value) => !value)}
-            aria-label={collapsed ? "توسيع القائمة" : "طي القائمة"}
+            aria-label={
+              collapsed
+                ? t("mobileNav.expandSidebar")
+                : t("mobileNav.collapseSidebar")
+            }
           >
-            {collapsed ? (isRTL ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />) : (isRTL ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />)}
+            {collapsed ? (
+              isRTL ? (
+                <ChevronLeft className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )
+            ) : isRTL ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
           </Button>
         </div>
 
-        <div className={cn("flex shrink-0 flex-col gap-2 border-b p-3", collapsed && "items-center px-2")}>
+        <div
+          className={cn(
+            "flex shrink-0 flex-col gap-2 border-b p-3",
+            collapsed && "items-center px-2",
+          )}
+        >
           {demoMode && !collapsed && <DemoEnvironmentBadge />}
-          <div className={cn("flex items-center gap-2", collapsed && "justify-center")}>
+          <div
+            className={cn(
+              "flex items-center gap-2",
+              collapsed && "justify-center",
+            )}
+          >
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-xs font-bold text-[#0D9488] dark:bg-teal-950/40 dark:text-teal-200">
-              {user?.name?.charAt(0) || "م"}
+              {user?.name?.charAt(0) || t("mobileNav.userFallback").charAt(0)}
             </span>
             {!collapsed && (
               <div className="min-w-0">
-                <p className="truncate text-xs font-semibold">{user?.name || "مستخدم GULA"}</p>
-                <p className="truncate text-[10px] text-muted-foreground">{demoMode ? `${getRoleLabel(user?.role || "citizen")} · قراءة فقط` : getRoleLabel(user?.role || "citizen")}</p>
+                <p className="truncate text-xs font-semibold">
+                  {user?.name || t("mobileNav.userFallback")}
+                </p>
+                <p className="truncate text-[10px] text-muted-foreground">
+                  {demoMode
+                    ? `${getRoleLabel(user?.role || "citizen")} · ${t("mobileNav.readOnly")}`
+                    : getRoleLabel(user?.role || "citizen")}
+                </p>
               </div>
             )}
           </div>
-          {demoMode && !collapsed && <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-[10px] leading-5 text-amber-800 dark:text-amber-200">الجلسة اصطناعية وقراءة فقط؛ عمليات الكتابة والتكاملات الخارجية محظورة.</p>}
+          {demoMode && !collapsed && (
+            <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-2.5 py-1.5 text-[10px] leading-5 text-amber-800 dark:text-amber-200">
+              {t("mobileNav.syntheticReadOnly")}
+            </p>
+          )}
         </div>
 
-        <nav className="flex-1 space-y-4 overflow-y-auto p-3" aria-label="أقسام المنصة">
-          {navigationGroups.map((group) => {
-            const items = renderItems(group.key);
+        <nav
+          className="flex-1 space-y-4 overflow-y-auto p-3"
+          aria-label={t("mobileNav.openAllSections")}
+        >
+          {navigationGroups.map((groupKey) => {
+            const items = renderItems(groupKey);
             if (!items.length) return null;
             return (
-              <section key={group.key} aria-label={group.label} className="space-y-1">
-                {!collapsed && <h2 className="px-3 pb-1 text-[10px] font-semibold tracking-wide text-muted-foreground">{group.label}</h2>}
+              <section
+                key={groupKey}
+                aria-label={t(`mobileNav.groups.${groupKey}`)}
+                className="space-y-1"
+              >
+                {!collapsed && (
+                  <h2 className="px-3 pb-1 text-[10px] font-semibold tracking-wide text-muted-foreground">
+                    {t(`mobileNav.groups.${groupKey}`)}
+                  </h2>
+                )}
                 {items}
               </section>
             );
@@ -190,13 +256,29 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         </nav>
 
         <div className={cn("shrink-0 border-t p-3", collapsed && "px-2")}>
-          <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("w-full justify-start gap-3", collapsed && "justify-center")} onClick={() => void logout()} title={collapsed ? t("nav.logout") : undefined}>
+          <Button
+            variant="ghost"
+            size={collapsed ? "icon" : "default"}
+            className={cn(
+              "w-full justify-start gap-3",
+              collapsed && "justify-center",
+            )}
+            onClick={() => void logout()}
+            title={collapsed ? t("nav.logout") : undefined}
+          >
             <LogOut className="h-4 w-4" />
             {!collapsed && <span>{t("nav.logout")}</span>}
           </Button>
         </div>
       </aside>
-      {mobileOpen && <button type="button" aria-label="إغلاق القائمة" onClick={onClose} className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden" />}
+      {mobileOpen && (
+        <button
+          type="button"
+          aria-label={t("mobileNav.closeSections")}
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-slate-950/40 lg:hidden"
+        />
+      )}
     </>
   );
 }

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1280, initial-scale=1.0" />
+  <title>لماذا نحتاج إلى تحديث الشريط؟</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0}
+    .slide-container{width:1280px;min-height:720px;background:#f0f9ff;color:#082f49;font-family:"Noto Sans Arabic","Segoe UI",Arial,sans-serif}
+    .frame{min-height:720px;padding-top:44px;padding-left:74px;padding-right:74px}
+    .eyebrow{color:#0284c7;font-size:14px;font-weight:800;letter-spacing:.08em}
+    h1{margin:12px 0 0;font-size:42px;line-height:1.2;letter-spacing:-.025em;font-weight:800}
+    .lead{max-width:760px;margin-top:12px;color:#486b80;font-size:18px;line-height:1.6}
+    .divider{margin-top:20px;border-top:1px dashed #8dc9e8}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 36px;margin-top:14px}
+    .issue{display:grid;grid-template-columns:66px 1fr;gap:14px;min-height:160px;padding-top:12px;border-top:1px dashed #b7dff2}
+    .issue:nth-child(-n+2){border-top:0}
+    .num{width:54px;min-height:54px;display:flex;align-items:center;justify-content:center;color:#0284c7;font-size:30px;font-weight:800;border:1px solid #8dc9e8;border-radius:50%;background:rgba(255,255,255,.48)}
+    .issue h2{margin:2px 0 0;font-size:22px;line-height:1.35;font-weight:800}
+    .issue p{margin-top:8px;color:#45687d;font-size:16px;line-height:1.5}
+    .note{margin-top:12px;min-height:48px;padding-top:12px;padding-left:18px;padding-right:18px;border-top:2px solid #0284c7;background:rgba(186,230,253,.34);color:#0c4a6e;font-size:16px;font-weight:700}
+    .note strong{color:#082f49}
+  </style>
+</head>
+<body>
+  <div class="slide-container">
+    <main class="frame">
+      <div class="eyebrow">01 · CONTEXT</div>
+      <h1>لماذا نحتاج إلى تحديث الشريط؟</h1>
+      <p class="lead">نهدف إلى جعل الشريط أكثر دقة وترجمة وقابلية للوصول عبر اللغات المدعومة.</p>
+      <div class="divider"></div>
+      <section class="grid" aria-label="الفجوات المعالجة">
+        <article class="issue">
+          <div class="num">01</div>
+          <div><h2>تسميات مضمّنة داخل المكوّن</h2><p>احتوى الشريط نصوصًا عربية مباشرة، من دون الاعتماد على الترجمات.</p></div>
+        </article>
+        <article class="issue">
+          <div class="num">02</div>
+          <div><h2>تعريف منفصل للمسارات</h2><p>كانت عناصر الهاتف تكرر metadata الموجودة في <strong>NAV_ITEMS</strong>.</p></div>
+        </article>
+        <article class="issue">
+          <div class="num">03</div>
+          <div><h2>حالة نشطة غير محكومة بالحدود</h2><p>المطابقة احتاجت تعاملاً أدق مع المسارات المتداخلة وtrailing slash.</p></div>
+        </article>
+        <article class="issue">
+          <div class="num">04</div>
+          <div><h2>إعلان وصولي غير مكتمل</h2><p>زر «المزيد» والعنصر النشط احتاجا وصفًا وإعلان حالة مناسبين.</p></div>
+        </article>
+      </section>
+      <div class="note"><strong>النتيجة المطلوبة:</strong> تحسين القابلية من دون تجاوز التفويض الخادمي.</div>
+    </main>
+  </div>
+</body>
+</html>

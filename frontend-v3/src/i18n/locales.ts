@@ -1,4 +1,4 @@
-export const supportedLocales = ["ar-IQ", "ar", "en", "ku", "tk", "syr", "fa"] as const;
+export const supportedLocales = ["ar", "en", "ku", "tk", "syr"] as const;
 
 export type Locale = (typeof supportedLocales)[number];
 
@@ -10,13 +10,11 @@ export interface LocaleOption {
 }
 
 export const localeOptions: readonly LocaleOption[] = [
-  { code: "ar-IQ", nativeName: "العربية العراقية", shortName: "ع-ع", dir: "rtl" },
   { code: "ar", nativeName: "العربية الفصحى", shortName: "ع", dir: "rtl" },
   { code: "en", nativeName: "English", shortName: "EN", dir: "ltr" },
   { code: "ku", nativeName: "کوردی", shortName: "ک", dir: "rtl" },
   { code: "tk", nativeName: "Türkmençe", shortName: "TM", dir: "ltr" },
   { code: "syr", nativeName: "ܣܘܪܝܬ", shortName: "ܣ", dir: "rtl" },
-  { code: "fa", nativeName: "فارسی", shortName: "فا", dir: "rtl" },
 ] as const;
 
 export const defaultLocale: Locale = "ar";

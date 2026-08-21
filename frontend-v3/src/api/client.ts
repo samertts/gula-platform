@@ -254,13 +254,32 @@ export class OperationalReadBlockedError extends Error {
 const BILLING_READ_PATTERN = /^GET \/billing\/(summary|invoices(?:\/\d+)?|claims|coverages|payments|alerts)$/;
 const FINANCIAL_CONTROL_READ_PATTERN = /^GET \/payments\/controls\/(summary|requests)$/;
 const DEVICE_INTEGRATION_READ_PATTERN = /^GET \/device-integration\/(protocols|summary|devices(?:\/[^/]+)?|connectors|protocol-profiles|simulators|events|printer-jobs|monitoring|monitoring\/alerts)$/;
+const PHARMACY_READ_PATTERN = /^GET \/pharmacy\/(drugs(?:\/[^/]+)?|batches\/[^/]+|suppliers|prescriptions(?:\/[^/]+)?|dispense-queue|dispense\/dispense-records\/[^/]+|pos\/(?:sales(?:\/[^/]+)?|summary)|clinical\/guidelines|inventory\/stock-levels(?:\/alerts)?|inventory\/movements|inventory\/transfers|inventory\/recalls|dashboard(?:\/(queue-summary|stock-alerts|expiry-alerts))?)$/;
+const CITIZEN_READ_PATTERN = /^GET \/citizen-platform\/me\/(dashboard|profile|health-summary|appointments|medications|medication-dispenses|lab-results)$/;
 const BILLING_WRITE_PATTERN = /^POST \/billing\/(invoices|coverages|claims\/\d+\/advance|coverages\/\d+\/verify-local|invoices\/\d+\/simulate-settlement)$/;
+const PHARMACY_WRITE_PATTERN = /^POST \/pharmacy\/pos\/sales$/;
 const DEVICE_INTEGRATION_WRITE_PATTERN = /^POST \/device-integration\/(devices|devices\/[^/]+\/(status|probe)|connectors|connectors\/[^/]+\/(status|simulate)|protocol-profiles|printer-jobs|monitoring\/metrics|monitoring\/alerts\/\d+\/acknowledge)$/;
 
 function toRequestKey(method?: string, url?: string): string {
-  const normalizedMethod = (method ?? "get").toUpperCase();
-  const normalizedUrl = (url ?? "").split("?")[0] || "/";
-  return `${normalizedMethod} ${normalizedUrl.startsWith("/") ? normalizedUrl : `/${normalizedUrl}`}`;
+    const normalizedMethod = (method ?? "get").toUpperCase();
+    const normalizedUrl = (url ?? "").split("?")[0] || "/";
+    return `${normalizedMethod} ${normalizedUrl.startsWith("/") ? normalizedUrl : `/${normalizedUrl}`}`;
+}
+
+/**
+ * Build the non-bypassable transport contract for a single clinical intent.
+ * Callers must retain and reuse the same idempotency key only when retrying
+ * that exact intent; a new clinical decision needs a new key.
+ */
+export function clinicalCommandHeaders(version: number, idempotencyKey: string): Record<"If-Match" | "Idempotency-Key", string> {
+    if (!Number.isSafeInteger(version) || version < 1) {
+        throw new Error("CLINICAL_COMMAND_VERSION_REQUIRED");
+    }
+    const key = idempotencyKey.trim();
+    if (!key || key.length > 128) {
+        throw new Error("CLINICAL_COMMAND_IDEMPOTENCY_KEY_REQUIRED");
+    }
+    return { "If-Match": String(version), "Idempotency-Key": key };
 }
 
 /**
@@ -278,7 +297,7 @@ export function assertFrontendWriteIsAllowed(method?: string, url?: string): voi
   const key = toRequestKey(normalizedMethod, url);
   const workspaceSwitch = normalizedMethod === "post" && /^POST \/niam\/workspaces\/[^/]+\/switch$/.test(key);
   const membershipMutation = normalizedMethod === "post" && /^POST \/niam\/memberships\/(?:applications(?:\/[^/]+\/approve)?|invitations(?:\/[^/]+\/(?:accept|revoke))?|[^/]+\/(?:revoke|suspend|reactivate))$/.test(key);
-  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && (BILLING_WRITE_PATTERN.test(key) || DEVICE_INTEGRATION_WRITE_PATTERN.test(key))) {
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && (BILLING_WRITE_PATTERN.test(key) || PHARMACY_WRITE_PATTERN.test(key) || DEVICE_INTEGRATION_WRITE_PATTERN.test(key))) {
     return;
   }
   if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation) {
@@ -297,7 +316,7 @@ export function assertFrontendReadIsAllowed(method?: string, url?: string): void
 
   const key = toRequestKey(normalizedMethod, url);
   const workspaceDetail = /^GET \/niam\/workspaces\/[^/]+$/.test(key);
-  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key)) return;
+  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || PHARMACY_READ_PATTERN.test(key) || CITIZEN_READ_PATTERN.test(key)) return;
   if (!INITIALIZATION_READ_ALLOWLIST.has(key) && !workspaceDetail) {
     throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }

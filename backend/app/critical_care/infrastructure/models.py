@@ -161,6 +161,8 @@ class ContinuousInfusionModel(TenantAuditEntity):
     start_time = Column(DateTime(timezone=True), nullable=False)
     end_time = Column(DateTime(timezone=True), nullable=True)
     initiated_by = Column(String(200), nullable=True)
+    verified_by = Column(String(200), nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
     pump_id = Column(String(100), nullable=True)
     titrated_to = Column(String(200), nullable=True)
     titration_history = Column(JSON, nullable=True)
