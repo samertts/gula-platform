@@ -110,3 +110,17 @@
 بعد تحرك `main`، ظهر تعارض migration جديد بسبب وجود `20260819_0003_research_entities.py`، فتم نقل merge migration إلى revision فريد `20260821_0001_merge_clinical_and_wearable_heads.py` وربطه بالرأس الفعلي `20260819_0004`. كما تم إصلاح عقد OpenAPI لمسار `/lims/orders/{order_id}/fhir-bundle` باستخدام `FHIRJSONResponse` كي يعلن `application/fhir+json` فعلياً.
 
 تم أيضاً إصلاح اسم accessibility لزر قائمة الهاتف ليستخدم `mobileNav.openAllSections`، مع إبقاء النص المرئي المختصر. بعد ذلك نجح backend regression بنتيجة **2753 ناجحاً و4 متخطاة و142 تحذيراً**، ونجحت frontend suite بنتيجة **72/72**، كما نجح lint وbuild.
+
+
+## ملحق تدقيق AuditEvent وConsent — 21 آب/أغسطس 2026
+
+أظهر التدقيق أن فجوتي `AuditEvent` و`Consent` ليستا غير مبنيتين بالكامل. توجد خدمة `CanonicalAuditService` على `IdentityAuditEntry` مع hash chaining، redaction، organization/facility/department/workspace context، ومسارات read/export/integrity محكومة بصلاحيات NIAM وبدون mutation endpoint. وتوجد خدمة `NiamConsentService` على `NiamConsent` تفرض purpose allow-list، scope غير فارغ، resource domain، expiry بحد أقصى 72 ساعة، versioning، supersession، withdrawal، وتسجيل الأحداث في audit canonical.
+
+تم تحديث canonical registry لتعكس ذلك بدقة. بقيت حالة `PARTIAL` لأن `audit_logs` و`niam_lifecycle_consents` يمثلان أسطح توافق/legacy تحتاج خطة توحيد وترحيل منفصلة؛ لم يتم اعتبار وجود الخدمة canonical سبباً لإغلاق الترحيل الكامل.
+
+
+## ملحق Referral tenant containment — 21 آب/أغسطس 2026
+
+تم إغلاق مسار أمني عملي في referral domain دون إنشاء نموذج مكرر. أصبحت عمليات إنشاء referral وcross-organization وresponse، والانتقالات accept/reject/complete، وtimeline وanalytics تتطلب `lab_id` مشتقاً من جلسة المؤسسة على الخادم. يتم رفض scope المفقود أو المتعارض كـ403، ويُحقن `lab_id` في السجلات الجديدة ولا يُقبل كسلطة من العميل. كما أصبحت ReferralTimeline نفسها tenant-scoped، وتُصفّى transitions وtimeline بالـlab_id.
+
+أضيفت تغطية اختبارية صريحة لرفض scope المفقود والمتعارض، ولإثبات أن timeline يحمل المؤسسة الصحيحة. بقيت canonicalization بين care-continuum وnational وinsurance وnursing surfaces، إضافة إلى server-derived practitioner/facility mapping، كمتطلبات لاحقة ولم يُعلن إغلاقها.

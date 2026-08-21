@@ -85,7 +85,17 @@ from app.national.enums import ReferralStatus
 logger = logging.getLogger("gula.care_continuum.service")
 
 
+class ReferralScopeError(PermissionError):
+    """Referral access must always carry a server-derived institution scope."""
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
+
+def _require_referral_lab(lab_id: int | None) -> int:
+    if lab_id is None or int(lab_id) <= 0:
+        raise ReferralScopeError("referral_institution_scope_required")
+    return int(lab_id)
 
 
 def _now() -> datetime:
@@ -227,30 +237,50 @@ def list_preventive_care_records(
 # =============================================================================
 
 
-def create_referral_request(db: Session, data: dict) -> dict:
-    ref = ReferralRequest(**data)
+def create_referral_request(
+    db: Session, data: dict, lab_id: int | None = None,
+) -> dict:
+    scoped_lab_id = _require_referral_lab(lab_id)
+    payload = dict(data)
+    supplied_lab_id = payload.pop("lab_id", None)
+    if supplied_lab_id is not None and int(supplied_lab_id) != scoped_lab_id:
+        raise ReferralScopeError("referral_institution_scope_mismatch")
+    # Primary keys and tenant authority are always server-owned.
+    payload.pop("id", None)
+    payload["lab_id"] = scoped_lab_id
+    ref = ReferralRequest(**payload)
     db.add(ref)
     db.commit()
     db.refresh(ref)
 
-    _add_referral_timeline(db, ref.id, "created", "Referral request created")
+    _add_referral_timeline(db, ref.id, "created", "Referral request created", lab_id=scoped_lab_id)
     return ref.to_dict()
 
 
 def accept_referral(db: Session, referral_id: str, lab_id: int | None = None) -> dict | None:
-    ref = db.query(ReferralRequest).filter(ReferralRequest.id == referral_id).first()
+    scoped_lab_id = _require_referral_lab(lab_id)
+    ref = db.query(ReferralRequest).filter(
+        ReferralRequest.id == referral_id,
+        ReferralRequest.lab_id == scoped_lab_id,
+    ).first()
     if not ref:
         return None
     ref.status = ReferralStatus.ACCEPTED
     ref.accepted_at = _now()
     db.commit()
     db.refresh(ref)
-    _add_referral_timeline(db, referral_id, "accepted", "Referral accepted")
+    _add_referral_timeline(db, referral_id, "accepted", "Referral accepted", lab_id=scoped_lab_id)
     return ref.to_dict()
 
 
-def reject_referral(db: Session, referral_id: str, reason: str) -> dict | None:
-    ref = db.query(ReferralRequest).filter(ReferralRequest.id == referral_id).first()
+def reject_referral(
+    db: Session, referral_id: str, reason: str, lab_id: int | None = None,
+) -> dict | None:
+    scoped_lab_id = _require_referral_lab(lab_id)
+    ref = db.query(ReferralRequest).filter(
+        ReferralRequest.id == referral_id,
+        ReferralRequest.lab_id == scoped_lab_id,
+    ).first()
     if not ref:
         return None
     ref.status = ReferralStatus.REJECTED
@@ -258,19 +288,25 @@ def reject_referral(db: Session, referral_id: str, reason: str) -> dict | None:
     ref.cancellation_reason = reason
     db.commit()
     db.refresh(ref)
-    _add_referral_timeline(db, referral_id, "rejected", f"Referral rejected: {reason}")
+    _add_referral_timeline(db, referral_id, "rejected", f"Referral rejected: {reason}", lab_id=scoped_lab_id)
     return ref.to_dict()
 
 
-def complete_referral(db: Session, referral_id: str) -> dict | None:
-    ref = db.query(ReferralRequest).filter(ReferralRequest.id == referral_id).first()
+def complete_referral(
+    db: Session, referral_id: str, lab_id: int | None = None,
+) -> dict | None:
+    scoped_lab_id = _require_referral_lab(lab_id)
+    ref = db.query(ReferralRequest).filter(
+        ReferralRequest.id == referral_id,
+        ReferralRequest.lab_id == scoped_lab_id,
+    ).first()
     if not ref:
         return None
     ref.status = ReferralStatus.COMPLETED
     ref.completed_at = _now()
     db.commit()
     db.refresh(ref)
-    _add_referral_timeline(db, referral_id, "completed", "Referral completed")
+    _add_referral_timeline(db, referral_id, "completed", "Referral completed", lab_id=scoped_lab_id)
     return ref.to_dict()
 
 
@@ -301,11 +337,15 @@ def list_referrals(
     return _paginated_query(q, skip, limit)
 
 
-def get_referral_timeline(db: Session, referral_id: str) -> list[dict]:
+def get_referral_timeline(
+    db: Session, referral_id: str, lab_id: int | None = None,
+) -> list[dict]:
+    scoped_lab_id = _require_referral_lab(lab_id)
     entries = (
         db.query(ReferralTimeline)
         .filter(
             ReferralTimeline.referral_request_id == referral_id,
+            ReferralTimeline.lab_id == scoped_lab_id,
             ReferralTimeline.is_deleted.is_(False),
         )
         .order_by(ReferralTimeline.event_date.asc())
@@ -315,9 +355,12 @@ def get_referral_timeline(db: Session, referral_id: str) -> list[dict]:
 
 
 def _add_referral_timeline(
-    db: Session, referral_id: str, event_type: str, description: str, **extra,
+    db: Session, referral_id: str, event_type: str, description: str, *, lab_id: int,
+    **extra,
 ) -> ReferralTimeline:
+    scoped_lab_id = _require_referral_lab(lab_id)
     entry = ReferralTimeline(
+        lab_id=scoped_lab_id,
         referral_request_id=referral_id,
         event_type=event_type,
         event_date=_now(),
@@ -329,22 +372,41 @@ def _add_referral_timeline(
     return entry
 
 
-def create_cross_org_referral(db: Session, data: dict) -> dict:
-    cor = CrossOrgReferral(**data)
+def create_cross_org_referral(
+    db: Session, data: dict, lab_id: int | None = None,
+) -> dict:
+    scoped_lab_id = _require_referral_lab(lab_id)
+    payload = dict(data)
+    supplied_lab_id = payload.pop("lab_id", None)
+    if supplied_lab_id is not None and int(supplied_lab_id) != scoped_lab_id:
+        raise ReferralScopeError("referral_institution_scope_mismatch")
+    payload.pop("id", None)
+    payload["lab_id"] = scoped_lab_id
+    cor = CrossOrgReferral(**payload)
     db.add(cor)
     db.commit()
     db.refresh(cor)
     return cor.to_dict()
 
 
-def create_referral_response(db: Session, data: dict) -> dict:
-    resp = ReferralResponse(**data)
+def create_referral_response(
+    db: Session, data: dict, lab_id: int | None = None,
+) -> dict:
+    scoped_lab_id = _require_referral_lab(lab_id)
+    payload = dict(data)
+    supplied_lab_id = payload.pop("lab_id", None)
+    if supplied_lab_id is not None and int(supplied_lab_id) != scoped_lab_id:
+        raise ReferralScopeError("referral_institution_scope_mismatch")
+    payload.pop("id", None)
+    payload["lab_id"] = scoped_lab_id
+    resp = ReferralResponse(**payload)
     db.add(resp)
     db.commit()
     db.refresh(resp)
 
     ref = db.query(ReferralRequest).filter(
         ReferralRequest.id == resp.referral_request_id,
+        ReferralRequest.lab_id == scoped_lab_id,
     ).first()
     if ref and resp.decision == "accepted":
         ref.status = ReferralStatus.ACCEPTED
@@ -360,11 +422,16 @@ def create_referral_response(db: Session, data: dict) -> dict:
 def get_referral_analytics(
     db: Session,
     facility_id: str | None = None,
+    lab_id: int | None = None,
     organization_id: str | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
 ) -> dict:
-    q = db.query(ReferralRequest).filter(ReferralRequest.is_deleted.is_(False))
+    scoped_lab_id = _require_referral_lab(lab_id)
+    q = db.query(ReferralRequest).filter(
+        ReferralRequest.is_deleted.is_(False),
+        ReferralRequest.lab_id == scoped_lab_id,
+    )
     if facility_id:
         q = q.filter(
             or_(
@@ -390,6 +457,7 @@ def get_referral_analytics(
     completed = (
         db.query(ReferralRequest)
         .filter(
+            ReferralRequest.lab_id == scoped_lab_id,
             ReferralRequest.status == ReferralStatus.COMPLETED,
             ReferralRequest.sent_at.isnot(None),
             ReferralRequest.completed_at.isnot(None),
