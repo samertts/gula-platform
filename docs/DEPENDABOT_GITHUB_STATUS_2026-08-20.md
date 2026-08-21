@@ -62,3 +62,10 @@ The settings-level Netty pin was pushed to `main` as commit `d41057d8`, and loca
 ## GitHub refresh limit
 
 The Dependabot management menu now reports: `Refresh Dependabot alerts — Refreshed recently, available again in about 1 hour.` Therefore another manual refresh cannot be triggered at this time. The page still shows the stale in-progress check for `e7652fe` and `1 Open`; no UI action was used to dismiss or suppress the alert.
+
+
+## Follow-up after PR #241 remediation — 21 August 2026
+
+After resolving PR #241 conflicts and pushing commit [`17b234d5`](https://github.com/samertts/gula-platform/commit/17b234d5ea512da6065ef531340f25077d9a79f2), the locked `mobile-expo` installation passed `npm audit` with zero findings. The security parser regression test, typecheck, and Expo Doctor also passed. Three invalid Python exception clauses in the transformation engine were corrected, and the Alembic graph was normalized after a duplicate revision and two independent heads were discovered.
+
+GitHub REST API verification showed PR #241 on branch `fix/mobile-expo-dependency-audit` at SHA `17b234d5ea512da6065ef531340f25077d9a79f2`, with `mergeable=true` and `mergeable_state=unstable` while published checks are pending. Attempts to read Check Runs and Combined Status for this SHA returned HTTP 403 `Resource not accessible by integration`. This does not prove published CI success and does not change the state of Netty alert #471; the GitHub page must be rechecked after the billing/spending-limit or integration-permission issue is resolved.
