@@ -135,6 +135,20 @@ def parse_mypy_text(repo: Path, output: str) -> tuple[Diagnostic, ...]:
     return tuple(diagnostics)
 
 
+def limit_to_requested_paths(
+    diagnostics: Sequence[Diagnostic], paths: Sequence[str],
+) -> tuple[Diagnostic, ...]:
+    """Keep only diagnostics emitted for the exact files this gate evaluates.
+
+    MyPy follows imports and prints errors from transitive modules.  Those
+    modules are not evidence of a regression in the changed-file or critical
+    scope being compared, so including them makes the baseline comparison
+    depend on unrelated import-graph changes.
+    """
+    requested = {path.replace(os.sep, "/") for path in paths}
+    return tuple(diagnostic for diagnostic in diagnostics if diagnostic.path in requested)
+
+
 def run_ruff(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
     if not paths:
         return ToolResult("ruff", scope, 0, (), "", "")
@@ -157,7 +171,10 @@ def run_mypy(repo: Path, paths: Sequence[str], scope: str) -> ToolResult:
         return ToolResult("mypy", scope, 0, (), "", "")
     result = run(("mypy", "--show-error-codes", "--no-error-summary", *paths), repo)
     execution_error = None if result.returncode in (0, 1) else result.stderr.strip()
-    diagnostics = parse_mypy_text(repo, f"{result.stdout}\n{result.stderr}")
+    diagnostics = limit_to_requested_paths(
+        parse_mypy_text(repo, f"{result.stdout}\n{result.stderr}"),
+        paths,
+    )
     return ToolResult(
         "mypy",
         scope,
