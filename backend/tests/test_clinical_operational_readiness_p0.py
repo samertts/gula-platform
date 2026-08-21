@@ -4,7 +4,7 @@ from app.clinical.observability import clinical_safety_metrics, prometheus_lines
 from app.factory import scrub_sentry_event
 
 
-def test_clinical_metrics_export_only_allow_listed_labels():
+def test_clinical_metrics_export_only_allow_listed_labels() -> None:
     clinical_safety_metrics.reset_for_test()
     patient_identifier = "PATIENT-SECRET-123"
     idempotency_key = "idempotency-secret-456"
@@ -29,7 +29,7 @@ def test_clinical_metrics_export_only_allow_listed_labels():
     assert idempotency_key not in exported
 
 
-def test_reason_code_never_returns_untrusted_free_text():
+def test_reason_code_never_returns_untrusted_free_text() -> None:
     assert reason_code("") == "unknown"
     assert reason_code("Permission denied for user 99") == "authorization_denied"
     assert reason_code("A clinical record changed version") == "clinical_version_conflict"
@@ -37,7 +37,7 @@ def test_reason_code_never_returns_untrusted_free_text():
     assert reason_code("Invalid state for synthetic patient") == "invalid_state_transition"
 
 
-def test_sentry_scrubber_removes_request_identity_and_exception_text():
+def test_sentry_scrubber_removes_request_identity_and_exception_text() -> None:
     event = {
         "request": {"data": {"patient_name": "Sensitive Patient"}, "headers": {"Authorization": "secret"}},
         "user": {"id": "42", "email": "clinician@example.test"},

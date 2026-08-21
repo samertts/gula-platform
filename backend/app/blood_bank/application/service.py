@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -305,7 +305,8 @@ class BloodBankService:
         if quantity > remaining:
             raise BloodBankWorkflowError("Requested issue quantity exceeds the outstanding blood request")
         now = datetime.now(UTC)
-        units = (
+        units = cast(
+            list[BloodUnitModel],
             self.db.query(BloodUnitModel)
             .filter(
                 BloodUnitModel.lab_id == lab_id,
@@ -321,7 +322,7 @@ class BloodBankService:
             .order_by(BloodUnitModel.expiry_date.asc(), BloodUnitModel.id.asc())
             .with_for_update()
             .limit(quantity)
-            .all()
+            .all(),
         )
         if len(units) != quantity:
             raise InsufficientStockError("Insufficient screened, processed, unexpired units for this request")

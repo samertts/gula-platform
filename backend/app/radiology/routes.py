@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from contextlib import suppress
 from datetime import datetime
 from typing import Any
 
@@ -258,10 +259,8 @@ def _get_study_service(db: Session) -> DICOMStudyService:
 
 def _patient_for_user(db: Session, current_user: LabUser, patient_id: str) -> Patient:
     conditions = [Patient.health_id == patient_id]
-    try:
+    with suppress(TypeError, ValueError):
         conditions.append(Patient.id == int(patient_id))
-    except (TypeError, ValueError):
-        pass
     patient = db.query(Patient).filter(
         Patient.lab_id == current_user.lab_id,
         or_(*conditions),

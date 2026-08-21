@@ -570,7 +570,7 @@ class HospitalService:
             completed_at=datetime.now(UTC),
             completed_by=user_id,
             notes=data.get("notes"),
-            **{field: True for field in required_checks},
+            **dict.fromkeys(required_checks, True),
         )
         if not checklist.procedure_name or not checklist.procedure_site:
             raise ConflictError("Procedure name and site are required")

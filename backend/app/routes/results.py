@@ -37,10 +37,10 @@ from ..services.order_service import (
     list_orders as _list_orders,
 )
 from ..services.order_service import (
-    validate_order as _validate_order,
+    update_result as _update_result,
 )
 from ..services.order_service import (
-    update_result as _update_result,
+    validate_order as _validate_order,
 )
 
 router = APIRouter(tags=["results"])

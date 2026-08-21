@@ -453,7 +453,7 @@ def _run_seed_test_types() -> None:
                 test_name="White Blood Cells",
                 test_name_ar="كريات الدم البيضاء",
                 category="CBC",
-                unit="×10³/µL",
+                unit="×10³/µL",  # noqa: RUF001 - clinical notation
                 normal_range_low=4.0,
                 normal_range_high=11.0,
             ),
@@ -462,7 +462,7 @@ def _run_seed_test_types() -> None:
                 test_name="Platelets",
                 test_name_ar="الصفائح الدموية",
                 category="CBC",
-                unit="×10³/µL",
+                unit="×10³/µL",  # noqa: RUF001 - clinical notation
                 normal_range_low=150,
                 normal_range_high=400,
             ),
@@ -570,7 +570,7 @@ def _run_seed_test_types() -> None:
                 test_name="Red Blood Cells",
                 test_name_ar="كريات الدم الحمراء",
                 category="CBC",
-                unit="×10⁶/µL",
+                unit="×10⁶/µL",  # noqa: RUF001 - clinical notation
                 normal_range_low=4.0,
                 normal_range_high=6.0,
             ),

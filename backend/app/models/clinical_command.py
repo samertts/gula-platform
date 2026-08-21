@@ -15,7 +15,7 @@ from app._compat import UTC
 from app.database import Base
 
 
-class ClinicalCommandReceipt(Base):
+class ClinicalCommandReceipt(Base):  # type: ignore[misc]  # SQLAlchemy declarative base is dynamically typed
     """Append-only claim for a safety-critical clinical command."""
 
     __tablename__ = "clinical_command_receipts"

@@ -288,9 +288,10 @@ class TestRedisStartupPolicy:
 
     def test_demo_allows_in_memory_fallback_when_redis_is_unavailable(self):
         import asyncio
+        from unittest.mock import AsyncMock, patch
+
         import app.config as cfg
         from app.core import startup_guard
-        from unittest.mock import AsyncMock, patch
 
         with patch.object(cfg, "ENV", "demo"), patch.dict(
             os.environ, {"ALLOW_DEGRADED_REDIS": "true"},
@@ -301,9 +302,10 @@ class TestRedisStartupPolicy:
 
     def test_production_rejects_unavailable_redis(self):
         import asyncio
+        from unittest.mock import AsyncMock, patch
+
         import app.config as cfg
         from app.core import startup_guard
-        from unittest.mock import AsyncMock, patch
 
         with patch.object(cfg, "ENV", "production"), patch.dict(
             os.environ, {"ALLOW_DEGRADED_REDIS": "false"},

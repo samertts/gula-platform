@@ -53,7 +53,7 @@ class MassCasualtyIncidentNotFoundError(EMSException):
     pass
 
 
-class ePCRNotFoundError(EMSException):
+class ePCRNotFoundError(EMSException):  # noqa: N801 - ePCR is the established clinical acronym
     pass
 
 
