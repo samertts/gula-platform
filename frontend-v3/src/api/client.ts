@@ -261,9 +261,25 @@ const PHARMACY_WRITE_PATTERN = /^POST \/pharmacy\/pos\/sales$/;
 const DEVICE_INTEGRATION_WRITE_PATTERN = /^POST \/device-integration\/(devices|devices\/[^/]+\/(status|probe)|connectors|connectors\/[^/]+\/(status|simulate)|protocol-profiles|printer-jobs|monitoring\/metrics|monitoring\/alerts\/\d+\/acknowledge)$/;
 
 function toRequestKey(method?: string, url?: string): string {
-  const normalizedMethod = (method ?? "get").toUpperCase();
-  const normalizedUrl = (url ?? "").split("?")[0] || "/";
-  return `${normalizedMethod} ${normalizedUrl.startsWith("/") ? normalizedUrl : `/${normalizedUrl}`}`;
+    const normalizedMethod = (method ?? "get").toUpperCase();
+    const normalizedUrl = (url ?? "").split("?")[0] || "/";
+    return `${normalizedMethod} ${normalizedUrl.startsWith("/") ? normalizedUrl : `/${normalizedUrl}`}`;
+}
+
+/**
+ * Build the non-bypassable transport contract for a single clinical intent.
+ * Callers must retain and reuse the same idempotency key only when retrying
+ * that exact intent; a new clinical decision needs a new key.
+ */
+export function clinicalCommandHeaders(version: number, idempotencyKey: string): Record<"If-Match" | "Idempotency-Key", string> {
+    if (!Number.isSafeInteger(version) || version < 1) {
+        throw new Error("CLINICAL_COMMAND_VERSION_REQUIRED");
+    }
+    const key = idempotencyKey.trim();
+    if (!key || key.length > 128) {
+        throw new Error("CLINICAL_COMMAND_IDEMPOTENCY_KEY_REQUIRED");
+    }
+    return { "If-Match": String(version), "Idempotency-Key": key };
 }
 
 /**

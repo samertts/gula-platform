@@ -790,7 +790,7 @@ async def run_startup_guard() -> None:
     """
     global system_ready, _readiness_reason
 
-    from ..config import RUNTIME_MODE, STARTUP_TIMEOUT_SECONDS
+    from ..config import ENV, RUNTIME_MODE, STARTUP_TIMEOUT_SECONDS
 
     # ── Test mode: skip validation entirely ─────────────────────────────────
     if RUNTIME_MODE == "test":
@@ -809,7 +809,10 @@ async def run_startup_guard() -> None:
 
     # Wrap core validation in a timeout so startup can't block indefinitely.
     # After the timeout, the system starts in partial-readiness mode.
-    STARTUP_TIMEOUT = max(STARTUP_TIMEOUT_SECONDS, 30)
+    # Production and staging retain a conservative minimum.  Test/dev modes
+    # may use a shorter timeout, while still staying unready on expiration.
+    minimum_timeout = 30 if ENV in {"production", "staging"} else 1
+    startup_timeout = max(STARTUP_TIMEOUT_SECONDS, minimum_timeout)
 
     async def _run_core_validation() -> None:
         """Core validation: config → DB → Redis → migrations → seeds → kernel."""
@@ -852,7 +855,7 @@ async def run_startup_guard() -> None:
         )
 
     try:
-        await asyncio.wait_for(_run_core_validation(), timeout=STARTUP_TIMEOUT)
+        await asyncio.wait_for(_run_core_validation(), timeout=startup_timeout)
     except TimeoutError:
         elapsed = (time.perf_counter() - t0) * 1000
         # A timeout means mandatory dependency verification is incomplete.  Do
@@ -862,7 +865,7 @@ async def run_startup_guard() -> None:
         logger.error(
             "[STARTUP GUARD] Startup validation did not complete within %ds (%.0fms elapsed) — "
             "system remains UNREADY and clinical traffic is rejected until validation succeeds.",
-            STARTUP_TIMEOUT,
+            startup_timeout,
             elapsed,
         )
         return

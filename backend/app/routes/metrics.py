@@ -295,6 +295,18 @@ def prometheus_metrics(request: Request, db: Session = Depends(get_db)):
     except Exception:
         pass
 
+    # ── Clinical command safety metrics ─────────────────────────────────────
+    # The renderer exports only allow-listed, low-cardinality labels.  It never
+    # includes patients, users, resource IDs, request bodies, or free text.
+    try:
+        from app.clinical.observability import prometheus_lines as _clinical_prometheus_lines
+
+        lines += _clinical_prometheus_lines()
+    except Exception:
+        # Monitoring must not make the protected metrics endpoint unavailable.
+        # The safety control itself remains fail-closed inside the command guard.
+        pass
+
     # ── Control Layer metrics ────────────────────────────────────────────────
     try:
         from ..core.policy_engine import policy_engine

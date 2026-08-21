@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.clinical.observability import clinical_safety_metrics, reason_code
 from app.models.clinical_command import ClinicalCommandReceipt
 from app.services.audit_service import log_action
 
@@ -121,6 +122,12 @@ class ClinicalCommandGuard:
         )
         if existing:
             error = "idempotency_key_reused" if existing.request_fingerprint != fingerprint else "clinical_command_already_processed"
+            clinical_safety_metrics.record_command(
+                operation=operation,
+                resource_type=resource_type,
+                outcome="rejected",
+                reason="duplicate_command",
+            )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
@@ -147,6 +154,12 @@ class ClinicalCommandGuard:
             # A concurrent transaction won the unique-key race.  Roll back the
             # claim and fail closed rather than repeating the clinical write.
             self.db.rollback()
+            clinical_safety_metrics.record_command(
+                operation=operation,
+                resource_type=resource_type,
+                outcome="rejected",
+                reason="idempotency_race",
+            )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
@@ -155,6 +168,11 @@ class ClinicalCommandGuard:
                     "message_ar": "هذا الأمر السريري قيد المعالجة أو اكتمل بالفعل.",
                 },
             ) from exc
+        clinical_safety_metrics.record_command(
+            operation=operation,
+            resource_type=resource_type,
+            outcome="claimed",
+        )
         return receipt
 
     def reject(
@@ -168,20 +186,30 @@ class ClinicalCommandGuard:
         reason: str,
     ) -> None:
         """Record a rejected command after the failed transaction is rolled back."""
-        log_action(
-            self.db,
-            action=f"clinical.{operation}.rejected",
+        try:
+            log_action(
+                self.db,
+                action=f"clinical.{operation}.rejected",
+                resource_type=resource_type,
+                resource_id=str(resource_id),
+                user_id=self.actor_user_id,
+                user_role=self.actor_role,
+                lab_id=self.lab_id,
+                details={
+                    "operation": operation,
+                    "state_before": state_before,
+                    "version_before": version_before,
+                    "reason": reason,
+                },
+            )
+        except Exception:
+            clinical_safety_metrics.record_audit_failure(operation=operation, resource_type=resource_type)
+            raise
+        clinical_safety_metrics.record_command(
+            operation=operation,
             resource_type=resource_type,
-            resource_id=str(resource_id),
-            user_id=self.actor_user_id,
-            user_role=self.actor_role,
-            lab_id=self.lab_id,
-            details={
-                "operation": operation,
-                "state_before": state_before,
-                "version_before": version_before,
-                "reason": reason,
-            },
+            outcome="rejected",
+            reason=reason_code(reason),
         )
 
     def complete(
@@ -202,21 +230,33 @@ class ClinicalCommandGuard:
         receipt.resource_id = str(resource_id)
         receipt.completed_at = datetime.now(UTC)
         self.db.flush()
-        log_action(
-            self.db,
-            action=f"clinical.{receipt.operation}",
+        try:
+            log_action(
+                self.db,
+                action=f"clinical.{receipt.operation}",
+                resource_type=resource_type,
+                resource_id=str(resource_id),
+                user_id=self.actor_user_id,
+                user_role=self.actor_role,
+                lab_id=self.lab_id,
+                details={
+                    "operation": receipt.operation,
+                    "idempotency_key": receipt.idempotency_key,
+                    "state_before": state_before,
+                    "state_after": state_after,
+                    "version_before": version_before,
+                    "version_after": version_after,
+                    "reason": reason,
+                },
+            )
+        except Exception:
+            clinical_safety_metrics.record_audit_failure(
+                operation=receipt.operation,
+                resource_type=resource_type,
+            )
+            raise
+        clinical_safety_metrics.record_command(
+            operation=receipt.operation,
             resource_type=resource_type,
-            resource_id=str(resource_id),
-            user_id=self.actor_user_id,
-            user_role=self.actor_role,
-            lab_id=self.lab_id,
-            details={
-                "operation": receipt.operation,
-                "idempotency_key": receipt.idempotency_key,
-                "state_before": state_before,
-                "state_after": state_after,
-                "version_before": version_before,
-                "version_after": version_after,
-                "reason": reason,
-            },
+            outcome="completed",
         )

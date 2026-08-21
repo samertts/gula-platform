@@ -5,7 +5,7 @@
 | إن كنت تريد… | ابدأ هنا | ثم انتقل إلى |
 |---|---|---|
 | تشغيل المشروع أو المساهمة فيه | [Start Here](START_HERE.md) | [دليل المساهمة](../CONTRIBUTING.md) و[دليل الاختبارات](testing/) |
-| إصدار تغيير بأمان | [دليل Staging](STAGING_RUNBOOK.md) | [إرشادات النشر](deployment/) و[دليل الإنتاج](production/) |
+| إصدار تغيير بأمان | [دليل Staging](STAGING_RUNBOOK.md) | [سياسة الفروع والدمج](BRANCHING_AND_MERGE_POLICY_AR.md)، [دليل المراقبة وUAT السريري](CLINICAL_SAFETY_OBSERVABILITY_UAT_RUNBOOK_AR.md)، [إرشادات النشر](deployment/) و[دليل الإنتاج](production/) |
 | تشغيل تجربة LIS والتشغيل البيني | [دليل تجربة LIS](LIMS_PILOT_RUNBOOK_AR.md) | [دليل MHD/PIXm](MHD_PIXM_PRACTICAL_IMPLEMENTATION_AR.md)، [استراتيجية FHIR](FHIR_R4_NATIONAL_EXPANSION_AR.md)، و[ADR-011](architecture/ADR-011-fhir-strategy.md) |
 | فهم البنية التقنية | [العمارة](architecture/) | [قرارات البنية](adr/) و[واجهات API](api/) |
 | مراجعة الضوابط الأمنية | [الأمن](security/) | [تقرير تعزيز أمان المنصة](SECURITY_HARDENING_20260815_AR.md)، [سياسة الإبلاغ](../SECURITY.md) و[الهندسة التشغيلية](operations/) |
@@ -18,7 +18,7 @@
 | المجال | المحتوى |
 |---|---|
 | **البدء والهندسة** | [Start Here](START_HERE.md)، [architecture](architecture/)، [engineering](engineering/)، [api](api/) |
-| **التشغيل والإطلاق** | [deployment](deployment/)، [operations](operations/)، [runbooks](runbooks/)، [production](production/)، [testing](testing/)، [دليل الدمج التلقائي](operations/PR_AUTO_MERGE_RUNBOOK.md) |
+| **التشغيل والإطلاق** | [deployment](deployment/)، [operations](operations/)، [runbooks](runbooks/)، [production](production/)، [testing](testing/)، [سياسة الفروع والدمج](BRANCHING_AND_MERGE_POLICY_AR.md)، [المراقبة وUAT السريري](CLINICAL_SAFETY_OBSERVABILITY_UAT_RUNBOOK_AR.md)، [دليل الدمج التلقائي](operations/PR_AUTO_MERGE_RUNBOOK.md) |
 | **الأمن والامتثال** | [security](security/)، [governance](governance/)، [standards](standards/)، [trust](trust/) |
 | **المنتج والمنصات** | [platform](platform/)، [frontend](frontend/)، [pharmacy-platform](pharmacy-platform/)، [radiology-platform](radiology-platform/)، [nursing-platform](nursing-platform/) |
 | **البيانات والتكامل** | [database](database/)، [events](events/)، [api](api/)، [niam](niam/)، [دليل تجربة LIS](LIMS_PILOT_RUNBOOK_AR.md)، [MHD/PIXm](MHD_PIXM_PRACTICAL_IMPLEMENTATION_AR.md) |
