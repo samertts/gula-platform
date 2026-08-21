@@ -236,14 +236,17 @@ class TestSchemaConsumerAlignment:
         )
 
     def test_dhis2_query_joins_lab_orders_for_tenant_scope(self):
-        """DHIS2 must derive lab scope through lab_orders, not lab_results.lab_id."""
+        """DHIS2 must derive lab scope through LabOrder, not LabResult.lab_id.
+
+        The production implementation intentionally uses SQLAlchemy ORM rather
+        than raw SQL so the aggregate remains portable across PostgreSQL and
+        SQLite test environments.
+        """
         compliance_path = (
             pathlib.Path(__file__).parent.parent / "app" / "routes" / "compliance.py"
         )
         src = compliance_path.read_text()
-        idx = src.find("FROM lab_results")
-        assert idx >= 0
-        snippet = src[idx:idx + 500]
-        assert "JOIN lab_orders ON lab_orders.id = lab_results.order_id" in snippet
-        assert "WHERE lab_orders.lab_id = :lab_id" in snippet
-        assert "WHERE lab_id = :lab_id" not in snippet
+        assert ".join(LabOrder, LabOrder.id == LabResult.order_id)" in src
+        assert ".filter(LabOrder.lab_id == current_user.lab_id)" in src
+        assert "lab_results.lab_id" not in src
+        assert "WHERE lab_id = :lab_id" not in src

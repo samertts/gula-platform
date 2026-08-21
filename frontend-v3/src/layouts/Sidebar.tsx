@@ -147,7 +147,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   return (
     <>
       <aside
-        aria-label={t("mobileNav.quickNavigation")}
+        aria-label={t("mobileNav.mainNavigation")}
         className={cn(
           "fixed inset-y-0 right-0 z-50 flex w-72 flex-col border-l border-slate-200/80 bg-white/95 shadow-[0_24px_70px_-36px_rgba(15,23,42,0.72)] backdrop-blur-xl transition-[transform,visibility] duration-200 dark:border-white/10 dark:bg-slate-950/95 lg:static lg:z-auto lg:visible lg:pointer-events-auto lg:shadow-none",
           mobileOpen
@@ -233,7 +233,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
         <nav
           className="flex-1 space-y-4 overflow-y-auto p-3"
-          aria-label={t("mobileNav.openAllSections")}
+          aria-label={t("mobileNav.operationsCenter")}
         >
           {navigationGroups.map((groupKey) => {
             const items = renderItems(groupKey);

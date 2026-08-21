@@ -44,7 +44,7 @@ jobs:
       - name: Unit tests
         run: npm test -- --runInBand
 
-      - name: Image parser security regression
+      - name: Security parser tests
         run: npm run test:security
 
       - name: Validate public Expo config
@@ -53,7 +53,7 @@ jobs:
           node scripts/validate-expo-config.cjs
 
       - name: Dependency audit report
-        run: npm audit --omit=dev --json > /tmp/gula-mobile-expo-audit.json || true
+        run: npm audit --json > /tmp/gula-mobile-expo-audit.json
 
       - name: Enforce dependency audit policy
         run: node scripts/validate-npm-audit.cjs

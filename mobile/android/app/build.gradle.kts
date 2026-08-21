@@ -93,6 +93,12 @@ android {
 }
 
 dependencies {
+    constraints {
+        implementation("io.netty:netty-codec-http:4.1.137.Final") {
+            because("CVE-2025-55163: Netty CORS Vary header cache poisoning and information disclosure")
+        }
+    }
+
     // Compose BOM
     val composeBom = platform("androidx.compose:compose-bom:2026.06.01")
     implementation(composeBom)

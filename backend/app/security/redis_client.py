@@ -44,6 +44,18 @@ class _MemoryStore:
                 return None
             return value
 
+    def set_if_absent(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> bool:
+        expire_at = time.monotonic() + ex if ex else None
+        with self._lock:
+            entry = self._data.get(key)
+            if entry is not None:
+                if entry[1] is not None and time.monotonic() > entry[1]:
+                    del self._data[key]
+                else:
+                    return False
+            self._data[key] = (str(value), expire_at)
+            return True
+
     def delete(self, key: str) -> None:
         with self._lock:
             self._data.pop(key, None)
@@ -90,6 +102,9 @@ class _RedisWrapper:
     def get(self, key: str) -> str | None:
         value = self._client.get(key)
         return value.decode() if isinstance(value, bytes) else value
+
+    def set_if_absent(self, key: str, value: str | int | float | bytes, ex: int | None = None) -> bool:
+        return bool(self._client.set(key, value, ex=ex, nx=True))
 
     def delete(self, key: str) -> None:
         self._client.delete(key)

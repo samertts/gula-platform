@@ -1,6 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import backref, relationship
 
 from app._compat import UTC
@@ -26,7 +36,7 @@ class HospitalMaster(HospitalBaseEntity):
     country = Column(String(10), default="IQ")
 
     campuses = relationship("Campus", back_populates="hospital", cascade="all, delete-orphan")
-    departments = relationship("Department", back_populates="hospital", cascade="all, delete-orphan")
+    departments = relationship("HospitalDepartment", back_populates="hospital", cascade="all, delete-orphan")
     units = relationship("Unit", back_populates="hospital", cascade="all, delete-orphan")
     operation_theaters = relationship("OperationTheater", back_populates="hospital", cascade="all, delete-orphan")
     equipment = relationship("MedicalEquipment", back_populates="hospital", cascade="all, delete-orphan")
@@ -109,7 +119,7 @@ class Clinic(HospitalBaseEntity):
     phone = Column(String(20), nullable=True)
 
     hospital = relationship("HospitalMaster", back_populates="clinics")
-    department = relationship("Department", back_populates="clinics")
+    department = relationship("HospitalDepartment", back_populates="clinics")
     rooms = relationship("Room", back_populates="clinic", cascade="all, delete-orphan")
 
 
@@ -125,7 +135,7 @@ class Room(HospitalBaseEntity):
     room_type = Column(String(50), nullable=False, index=True)
     capacity = Column(Integer, default=1)
 
-    department = relationship("Department", back_populates="rooms")
+    department = relationship("HospitalDepartment", back_populates="rooms")
     clinic = relationship("Clinic", back_populates="rooms")
     floor = relationship("Floor", back_populates="rooms")
     beds = relationship("Bed", back_populates="room", cascade="all, delete-orphan")
@@ -142,7 +152,6 @@ class Bed(HospitalBaseEntity):
     current_patient_id = Column(Integer, nullable=True, index=True)
 
     room = relationship("Room", back_populates="beds")
-    current_patient = relationship("Patient", foreign_keys=[current_patient_id])
     assignments = relationship("BedAssignment", back_populates="bed", cascade="all, delete-orphan")
 
 
@@ -173,7 +182,48 @@ class OperationTheater(HospitalBaseEntity):
     current_surgery_id = Column(Integer, nullable=True)
 
     hospital = relationship("HospitalMaster", back_populates="operation_theaters")
-    department = relationship("Department", back_populates="operation_theaters")
+    department = relationship("HospitalDepartment", back_populates="operation_theaters")
+
+
+class SurgicalSafetyChecklist(HospitalBaseEntity):
+    __tablename__ = "hospital_surgical_safety_checklists"
+
+    id = Column(Integer, primary_key=True, index=True)
+    operation_theater_id = Column(
+        Integer,
+        ForeignKey("hospital_operation_theaters.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    surgery_id = Column(Integer, nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
+    procedure_name = Column(String(300), nullable=False)
+    procedure_site = Column(String(200), nullable=False)
+    planned_laterality = Column(String(20), nullable=False, default="not_applicable")
+    patient_identity_confirmed = Column(Boolean, nullable=False, default=False)
+    procedure_confirmed = Column(Boolean, nullable=False, default=False)
+    site_marked = Column(Boolean, nullable=False, default=False)
+    consent_verified = Column(Boolean, nullable=False, default=False)
+    anesthesia_assessment_complete = Column(Boolean, nullable=False, default=False)
+    allergy_reviewed = Column(Boolean, nullable=False, default=False)
+    antibiotic_prophylaxis_confirmed = Column(Boolean, nullable=False, default=False)
+    blood_products_confirmed = Column(Boolean, nullable=False, default=False)
+    imaging_reviewed = Column(Boolean, nullable=False, default=False)
+    team_time_out_completed = Column(Boolean, nullable=False, default=False)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    completed_by = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    operation_theater = relationship("OperationTheater")
+
+    __table_args__ = (
+        UniqueConstraint(
+            "lab_id",
+            "operation_theater_id",
+            "surgery_id",
+            name="uq_surgical_checklist_per_theater_case",
+        ),
+    )
 
 
 class MedicalEquipment(HospitalBaseEntity):
@@ -194,7 +244,7 @@ class MedicalEquipment(HospitalBaseEntity):
     next_maintenance_date = Column(DateTime(timezone=True), nullable=True)
 
     hospital = relationship("HospitalMaster", back_populates="equipment")
-    department = relationship("Department", back_populates="equipment")
+    department = relationship("HospitalDepartment", back_populates="equipment")
 
 
 class CostCenter(HospitalBaseEntity):
@@ -227,7 +277,6 @@ class BedAssignment(HospitalBaseEntity):
     discharged_by = Column(Integer, nullable=True)
 
     bed = relationship("Bed", back_populates="assignments")
-    patient = relationship("Patient", foreign_keys=[patient_id])
 
 
 __all__ = [
@@ -243,5 +292,6 @@ __all__ = [
     "MedicalEquipment",
     "OperationTheater",
     "Room",
+    "SurgicalSafetyChecklist",
     "Unit",
 ]

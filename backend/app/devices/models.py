@@ -231,6 +231,34 @@ class DeviceOutboxMessage(Base):
     simulation_only = Column(Boolean, nullable=False, default=True)
 
 
+class WearableMeasurement(Base):
+    """Canonical, tenant-scoped wearable measurement; raw provider payloads are never stored."""
+
+    __tablename__ = "wearable_measurements"
+    __table_args__ = (
+        UniqueConstraint("lab_id", "source", "source_event_id", name="uq_wearable_measurements_event"),
+        Index("ix_wearable_measurements_patient_metric_time", "lab_id", "patient_id", "metric_code", "measured_at"),
+        Index("ix_wearable_measurements_device_time", "lab_id", "device_id", "measured_at"),
+        Index("ix_wearable_measurements_lab_received", "lab_id", "received_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False)
+    patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
+    device_id = Column(Integer, ForeignKey("integrated_devices.id", ondelete="SET NULL"), nullable=True)
+    source = Column(String(64), nullable=False)
+    metric_code = Column(String(64), nullable=False)
+    value = Column(Float, nullable=False)
+    unit = Column(String(32), nullable=False)
+    measured_at = Column(DateTime(timezone=True), nullable=False)
+    received_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    quality_score = Column(Float, nullable=True)
+    quality_status = Column(String(24), nullable=False, default="unknown")
+    source_event_id = Column(String(160), nullable=False)
+    provenance = Column(JSON, nullable=True)
+    simulation_only = Column(Boolean, nullable=False, default=True)
+
+
 class DevicePrintJob(Base):
     __tablename__ = "device_print_jobs"
     __table_args__ = (

@@ -33,7 +33,7 @@ jobs:
 
       - name: Run Constitution Enforcer (25 Rules)
         run: |
-          python3 scripts/constitution_enforcer.py --diff-mode --base origin/main 2>&1 || echo "FAILED"
+          python3 scripts/constitution_enforcer.py --diff-mode --base origin/main
 
       - name: Check Free First Compliance
         run: |

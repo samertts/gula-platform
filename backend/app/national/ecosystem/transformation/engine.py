@@ -145,7 +145,7 @@ class ValueMapper:
                 try:
                     parsed = datetime.strptime(str(result), source_fmt)
                     result = parsed.strftime(target_fmt)
-                except ValueError, TypeError:
+                except (ValueError, TypeError):
                     pass
         return result
 
@@ -309,12 +309,12 @@ class TransformationEngine:
         if condition_type == "greater_than":
             try:
                 return float(value) > float(condition_value)
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 return False
         if condition_type == "less_than":
             try:
                 return float(value) < float(condition_value)
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 return False
         if condition_type == "is_empty":
             return not value

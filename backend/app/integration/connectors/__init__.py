@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Self
 
 logger = logging.getLogger("gula.integration.connectors")
 
@@ -60,7 +60,7 @@ class BaseConnector(ABC):
     async def send(self, data: dict[str, Any]) -> dict[str, Any]:
         ...
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 

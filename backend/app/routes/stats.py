@@ -67,14 +67,14 @@ def _cache_set(key: str, data: dict, ttl: int = _CACHE_TTL) -> None:
     r = _get_redis()
     if not r:
         return
-    with contextlib.suppress(Exception):
-        r.setex(key, ttl, json.dumps(data, default=str))
+    with contextlib.suppress(Exception):  # nosec B110 — cache failures must not break the API
+        r.set(key, json.dumps(data, default=str), ex=ttl)
 
 
 def _cache_key(lab_id: int, endpoint: str, **params) -> str:
     param_str = json.dumps(params, sort_keys=True)
-    # Short cache-key derivation; SHA3 avoids weak-hash findings.
-    h = hashlib.sha3_256(param_str.encode()).hexdigest()[:8]
+    # MD5 used only for short cache-key derivation — not security-sensitive
+    h = hashlib.md5(param_str.encode(), usedforsecurity=False).hexdigest()[:8]  # nosec B324
     return f"stats:{lab_id}:{endpoint}:{h}"
 
 

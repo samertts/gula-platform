@@ -33,6 +33,10 @@ class InvalidIncidentStateError(EMSException):
     pass
 
 
+class EMSWorkflowError(EMSException):
+    """Raised when an emergency clinical workflow safety rule is violated."""
+
+
 class TriageNotFoundError(EMSException):
     pass
 
@@ -49,7 +53,7 @@ class MassCasualtyIncidentNotFoundError(EMSException):
     pass
 
 
-class ePCRNotFoundError(EMSException):
+class ePCRNotFoundError(EMSException):  # noqa: N801 - ePCR is the established clinical acronym
     pass
 
 

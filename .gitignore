@@ -20,6 +20,8 @@ coverage.xml
 # Node
 node_modules/
 dist/
+!mobile-expo/vendor/image-size/dist/
+!mobile-expo/vendor/image-size/dist/**
 build/
 
 # Logs
@@ -61,3 +63,6 @@ wheels
 openapi.json
 *.pyc
 __pycache__/
+
+# Local Gradle caches and generated state
+mobile/android/.gradle/

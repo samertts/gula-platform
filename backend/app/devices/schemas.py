@@ -5,7 +5,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-
 DeviceCategory = Literal[
     "medical_measurement",
     "patient_monitor",
@@ -490,3 +489,103 @@ class GatewayMonitoringSnapshot(BaseModel):
 class GatewayMonitoringAlertListResponse(BaseModel):
     total: int
     alerts: list[GatewayAlertRecord]
+
+
+WearableMetricCode = Literal[
+    "heart_rate",
+    "respiratory_rate",
+    "spo2",
+    "temperature",
+    "systolic_bp",
+    "diastolic_bp",
+    "blood_glucose",
+    "steps",
+    "weight",
+]
+
+
+class WearableMeasurementIngestRequest(BaseModel):
+    patient_id: int = Field(..., ge=1)
+    device_uid: str | None = Field(None, min_length=3, max_length=96)
+    source: str = Field(..., min_length=2, max_length=64, pattern=r"^[A-Za-z0-9._:-]+$")
+    metric_code: WearableMetricCode
+    value: float = Field(..., allow_inf_nan=False)
+    unit: str = Field(..., min_length=1, max_length=32)
+    measured_at: datetime
+    source_event_id: str = Field(..., min_length=3, max_length=160, pattern=r"^[A-Za-z0-9._:-]+$")
+    quality_score: float | None = Field(None, ge=0.0, le=1.0)
+    quality_status: Literal["good", "suspect", "invalid", "unknown"] = "unknown"
+    provenance: dict[str, Any] | None = None
+    simulation_only: bool = True
+
+    @field_validator("provenance")
+    @classmethod
+    def validate_provenance(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _ensure_secret_free(value)
+
+
+class WearableMeasurementRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    patient_id: int
+    device_id: int | None
+    source: str
+    metric_code: str
+    value: float
+    unit: str
+    measured_at: datetime
+    received_at: datetime
+    quality_score: float | None
+    quality_status: str
+    source_event_id: str
+    provenance: dict[str, Any] | None
+    simulation_only: bool
+
+
+class WearableMeasurementListResponse(BaseModel):
+    total: int
+    measurements: list[WearableMeasurementRecord]
+
+
+class WearableMeasurementIngestResponse(BaseModel):
+    accepted: bool
+    duplicate: bool = False
+    measurement: WearableMeasurementRecord
+
+
+class ClinicianBaselineLatest(BaseModel):
+    value: float
+    unit: str
+    measured_at: datetime
+    quality_score: float | None
+    source: str
+
+
+class ClinicianBaselineStats(BaseModel):
+    status: str
+    median: float | None
+    mad: float | None
+    lower_bound: float | None
+    upper_bound: float | None
+    confidence: float
+    generated_at: datetime
+
+
+class ClinicianBaselineEvaluation(BaseModel):
+    is_anomaly: bool
+    severity: str
+    deviation_score: float | None
+    confidence: float
+    explanation: str
+    requires_clinician_review: bool
+    advisory_only: bool = True
+
+
+class ClinicianBaselineSummary(BaseModel):
+    patient_id: int
+    metric_code: str
+    measurement_count: int
+    latest: ClinicianBaselineLatest
+    baseline: ClinicianBaselineStats
+    evaluation: ClinicianBaselineEvaluation

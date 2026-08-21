@@ -3,6 +3,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
+from ..config import ENABLE_PUBLIC_PATIENT_HISTORY
 from ..database import get_db
 from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser
@@ -34,6 +35,9 @@ from ..services.order_service import (
 )
 from ..services.order_service import (
     list_orders as _list_orders,
+)
+from ..services.order_service import (
+    update_result as _update_result,
 )
 from ..services.order_service import (
     validate_order as _validate_order,
@@ -72,6 +76,54 @@ class CreateOrderRequest(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     results: list[ResultItem]
+
+
+class UpdateResultRequest(BaseModel):
+    value: float | None = None
+    value_text: str | None = None
+    unit: str | None = None
+    normal_range_low: float | None = None
+    normal_range_high: float | None = None
+
+
+@router.patch("/results/{result_id}")
+def update_result_route(
+    result_id: int,
+    data: UpdateResultRequest,
+    request: Request,
+    if_match: str | None = Header(default=None, alias="If-Match"),
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update an unlocked laboratory result with optimistic concurrency control.
+
+    The caller must send the version observed on read as ``If-Match``. A stale
+    concurrent writer receives HTTP 409 and must refresh before retrying.
+    """
+    if if_match is None:
+        raise HTTPException(status_code=428, detail="If-Match header is required")
+    try:
+        expected_version = int(if_match.strip().strip('"'))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="If-Match must contain a numeric result version") from None
+
+    result = _update_result(
+        db=db,
+        result_id=result_id,
+        lab_id=current_user.lab_id,
+        user_id=current_user.id,
+        user_role=current_user.role,
+        expected_version=expected_version,
+        value=data.value,
+        value_text=data.value_text,
+        unit=data.unit,
+        normal_range_low=data.normal_range_low,
+        normal_range_high=data.normal_range_high,
+        ip_address=get_client_ip(request),
+    )
+    if "error" in result:
+        raise HTTPException(status_code=result["status_code"], detail=result["error"])
+    return result
 
 
 @router.get("/test-profiles")
@@ -233,15 +285,21 @@ def cancel_order_route(
 
 
 @router.get("/r/{token}")
-def get_public_result_route(token: str, request: Request, db: Session = Depends(get_db)):
-    """Public result page - accessible without authentication. Rate limited."""
+def get_public_result_route(
+    token: str,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Public result page with strict cache and referrer controls."""
     rate_limit_public(request, max_per_minute=30)
-
     result = _get_public_result(db=db, token=token, ip_address=get_client_ip(request))
-
     if "error" in result:
         raise HTTPException(status_code=result["status_code"], detail=result["error"])
-
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
     return result
 
 
@@ -258,7 +316,13 @@ def download_result_pdf_route(token: str, request: Request, db: Session = Depend
     return Response(
         content=result["pdf_bytes"],
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{result["filename"]}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{result["filename"]}"',
+            "Cache-Control": "no-store, no-cache, must-revalidate, private",
+            "Pragma": "no-cache",
+            "Referrer-Policy": "no-referrer",
+            "X-Robots-Tag": "noindex, nofollow, noarchive",
+        },
     )
 
 
@@ -283,22 +347,25 @@ def get_patient_history_by_id_route(
 def get_patient_history_route(
     phone: str, request: Request, name: str | None = None, db: Session = Depends(get_db),
 ):
-    """Get patient test history by phone number (public, rate limited).
-    Requires 'name' query param matching full patient name as verification.
+    """Legacy public history lookup, disabled by default for patient privacy.
 
-    Multi-tenant isolation: the phone number may belong to Patient records in
-    multiple labs (each lab keeps its own patient roster).  We aggregate results
-    across ALL labs where the phone+name pair matches, so the citizen sees their
-    complete history regardless of which lab they visited.  Only the patient's
-    own results are returned — no cross-patient data is possible.
+    Phone number and name are not sufficient proof of ownership for longitudinal
+    health data.  Production access must move to the authenticated citizen portal
+    with consent and one-time verification before this migration flag is enabled.
     """
+    if not ENABLE_PUBLIC_PATIENT_HISTORY:
+        raise HTTPException(
+            status_code=410,
+            detail={
+                "error": "public_patient_history_disabled",
+                "message": "Public patient-history lookup is disabled. Use the authenticated citizen portal.",
+                "message_ar": "تم تعطيل الوصول العام إلى تاريخ المريض. استخدم بوابة المواطن الموثقة.",
+            },
+        )
     rate_limit_public(request, max_per_minute=5)
-
     result = _get_patient_history_by_phone(db=db, phone=phone, name=name)
-
     if "error" in result:
         raise HTTPException(status_code=result["status_code"], detail=result["error"])
-
     return result
 
 

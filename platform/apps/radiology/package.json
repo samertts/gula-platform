@@ -11,9 +11,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cornerstonejs/core": "^2.0.0",
-    "@cornerstonejs/tools": "^2.0.0",
-    "@cornerstonejs/adapters": "^2.0.0",
     "@gula/ui-platform": "workspace:*",
     "dicom-parser": "^1.8.0",
     "dicomweb-client": "^0.11.2",

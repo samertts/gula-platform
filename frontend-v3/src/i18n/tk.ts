@@ -125,6 +125,7 @@ const tk = {
   },
   mobileNav: {
     quickNavigation: "Çalt nawigasiýa",
+    mainNavigation: "Esasy nawigasiýa",
     openAllSections: "Ähli bölümleri aç",
     more: "Köp",
     current: "Häzirki sahypa",

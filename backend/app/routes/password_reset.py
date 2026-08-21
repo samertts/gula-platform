@@ -77,7 +77,7 @@ async def reset_password(
     return {"message": "Password reset successful"}
 
 
-@router.post("/change-password")
+@router.post("/change-password", operation_id="auth_change_password")
 async def change_password(
     req: ChangePasswordRequest,
     db: Session = Depends(get_db),
