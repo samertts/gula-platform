@@ -131,3 +131,19 @@
 أضيفت بوابة `/api/v1/clinical/appointments` فوق خدمة scheduling الوطنية الموجودة، بدلاً من إنشاء state machine ثانية. البوابة تفرض ClinicalAccessContext مع shift/assignment/task proof على الكتابة، وتشتق patient mapping وworkspace وorganization وfacility وdepartment وtenant من الخادم. لا تقبل practitioner_id أو facility_id أو resource_id أو created_by من العميل، وتستخدم idempotency key وoptimistic version checks.
 
 أضيفت أعمدة scope nullable وidempotency إلى `national_scheduling_appointments` عبر migration additive-only `20260822_0001`. nullable مؤقتة لتسهيل backfill؛ السجلات القديمة التي لا تملك scope لا تُقرأ أو تُكتب عبر canonical gateway. أضيفت اختبارات لعقد الطلب، منع authority fields، minimum disclosure، وdeny عند scope غير المحلول. ما زال احتواء legacy write routes وتكافؤ Web/Mobile/Desktop مطلوباً قبل إغلاق المجال نهائياً.
+
+
+## ملحق DiagnosticReport canonical aggregate — 22 آب/أغسطس 2026
+
+أضيف نموذج durable باسم `ClinicalDiagnosticReport` ومسار canonical باسم `/api/v1/clinical/diagnostic-reports`. ينشئ المسار تقريراً موحداً من `LabOrder` أو `RadiologyReport` عبر source mapping فريد، ويشتق patient وorganization وfacility وworkspace وtenant وlegacy lab من `ClinicalAccessContext` بدلاً من قبولها من العميل. كما أضيفت migration additive-only رقم `20260822_0002` مع فهارس scope/status وunique source mapping، وسُجل النموذج والـrouter في app factory.
+
+تتطلب عملية finalize مراجعة جميع نتائج `LabOrder` وقبولها (`review_status=ACCEPTED`) قبل الإصدار، أو أن يكون مصدر الأشعة في حالة `FINAL`/`AMENDED`. ولا يسمح amendment إلا من `FINAL` أو `AMENDED` مع reason غير فارغ وoptimistic version check. استبعد safe DTO حقول `legacy_lab_id` و`tenant_id` و`correlation_id` و`source_metadata` وأي أسرار مصدرية.
+
+| الفحص | النتيجة | الدليل |
+|---|---|---|
+| DiagnosticReport targeted tests | ناجح: 6/6 | `backend/tests/test_clinical_diagnostic_report.py` |
+| Migration/OpenAPI smoke | ناجح: 10/10 | `/tmp/gula-diagnostic-report-smoke.log` |
+| Python compile | ناجح | ملفات model/service/routes/migration/factory |
+| Canonical registry JSON | محدث | `docs/architecture/canonical-domain-registry-2026.json` |
+
+لم يُعلن إغلاق المجال بالكامل: توحيد أسطح FHIR/LIMS القديمة واحتواء كتاباتها وتكافؤ Web/Mobile/Desktop ما زالت مطلوبة. كما تبقى تدوير production Android signing key وتطهير Git history بعد التدوير حاجزين خارجيين؛ لذلك يظل `P4 = SECURITY_BLOCKED` و`P5 = BLOCKED`.

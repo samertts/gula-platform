@@ -225,6 +225,7 @@ def import_all_models() -> None:
         TestType,
         User,
     )
+    from .models.clinical_diagnostic_report import ClinicalDiagnosticReport  # noqa: F401
     from .models.ai_interaction import (  # noqa: F401
         AIFeedback,
         AIInteraction,
@@ -803,6 +804,7 @@ def _register_routes(app: FastAPI) -> None:
     from .clinical_gateway.workflow_routes import router as clinical_workflow_router
     from .clinical_gateway.results_review_routes import router as clinical_results_review_router
     from .clinical_gateway.appointment_routes import router as clinical_appointment_router
+    from .clinical_gateway.diagnostic_report_routes import router as clinical_diagnostic_report_router
     app.include_router(clinical_gateway_router)
     app.include_router(clinical_documentation_gateway_router)
     app.include_router(clinical_order_command_router)
@@ -810,6 +812,7 @@ def _register_routes(app: FastAPI) -> None:
     app.include_router(clinical_workflow_router)
     app.include_router(clinical_results_review_router)
     app.include_router(clinical_appointment_router)
+    app.include_router(clinical_diagnostic_report_router)
 
     from .routes.authorization import router as authorization_router
     app.include_router(authorization_router)
