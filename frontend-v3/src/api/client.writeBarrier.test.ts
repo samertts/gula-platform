@@ -2,12 +2,22 @@ import { describe, expect, it } from "vitest";
 import {
   OperationalReadBlockedError,
   OperationalWriteBlockedError,
+  clinicalCommandHeaders,
   assertFrontendReadIsAllowed,
   assertFrontendWriteIsAllowed,
   isSafeRefreshRetryMethod,
 } from "./client";
 
 describe("حاجز الكتابات التشغيلية في frontend-v3", () => {
+  it("ينشئ عقد الأوامر السريرية بالقفل وعدم التكرار ويرفض القيم غير الصالحة", () => {
+    expect(clinicalCommandHeaders(7, "icu-command-7")).toEqual({
+      "If-Match": "7",
+      "Idempotency-Key": "icu-command-7",
+    });
+    expect(() => clinicalCommandHeaders(0, "safe-key")).toThrow("CLINICAL_COMMAND_VERSION_REQUIRED");
+    expect(() => clinicalCommandHeaders(1, " ")).toThrow("CLINICAL_COMMAND_IDEMPOTENCY_KEY_REQUIRED");
+  });
+
   it("يرفض كتابة مريض سريرية حتى لو احتوت طبقة endpoints على دالة قديمة", () => {
     expect(() => assertFrontendWriteIsAllowed("post", "/patients")).toThrow(OperationalWriteBlockedError);
   });

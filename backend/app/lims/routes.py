@@ -11,12 +11,17 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.clinical.command_guard import ClinicalCommandGuard
+from app.core.release_capabilities import (
+    phase1_policy_from_environment,
+    require_release_capability,
+)
 from app.database import get_db
 from app.models.lab_order import LabOrder
 from app.models.lab_user import LabUser
@@ -197,6 +202,21 @@ class ASTMResultResponse(BaseModel):
 
 def _lab_id(current_user: LabUser) -> int:
     return current_user.lab_id
+
+
+def _require_phase1_capability(
+    capability_key: str,
+    current_user: LabUser,
+    db: Session,
+) -> None:
+    """Enforce release scope before a LIMS command can read or mutate state."""
+
+    require_release_capability(
+        capability_key,
+        _lab_id(current_user),
+        db,
+        phase1_policy_from_environment(),
+    )
 
 
 def _list_to_dict(qs, exclude: set | None = None) -> list[dict]:
@@ -651,6 +671,7 @@ def register_specimen(
     db: Session = Depends(get_db),
     request: Request = None,
 ):
+    _require_phase1_capability("phase1.lims.sample_tracking", current_user, db)
     try:
         specimen = SpecimenService.register(
             db, data.order_id, _lab_id(current_user),
@@ -711,25 +732,93 @@ def transition_specimen(
     data: SpecimenTransitionRequest,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    """Transition a specimen through its state machine with hard safety guards."""
+    _require_phase1_capability("phase1.lims.sample_tracking", current_user, db)
     specimen = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.id == specimen_id,
         lims_models.Specimen.lab_id == _lab_id(current_user),
-    ).first()
+    ).with_for_update().first()
     if not specimen:
         raise HTTPException(404, detail="Specimen not found")
 
+    lab_id = _lab_id(current_user)
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=lab_id,
+        actor_role=current_user.role,
+    )
+    version_before = specimen.version
+    state_before = specimen.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="specimen")
+    key = guard.require_idempotency_key(idempotency_key)
+
+    if data.target_status in {"verified", "validated", "released"} and current_user.role not in {
+        "master_admin", "admin", "lab_admin",
+    }:
+        guard.reject(
+            operation="specimen.transition",
+            resource_type="lims_specimen",
+            resource_id=specimen.id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="senior_authority_required",
+        )
+        db.commit()
+        raise HTTPException(403, detail="Senior laboratory authority is required for this specimen transition")
+
+    receipt = guard.claim(
+        operation="specimen.transition",
+        resource_type="lims_specimen",
+        resource_id=specimen.id,
+        idempotency_key=key,
+        payload=data.model_dump(),
+    )
     try:
         if data.rejection_reason:
             specimen = SpecimenService.reject(db, specimen, data.rejection_reason, current_user.id)
         else:
             specimen = SpecimenService.transition(db, specimen, data.target_status, current_user.id, data.notes)
-    except HTTPException:
+        specimen.version = version_before + 1
+        guard.complete(
+            receipt,
+            resource_type="lims_specimen",
+            resource_id=specimen.id,
+            state_before=state_before,
+            state_after=specimen.status,
+            version_before=version_before,
+            version_after=specimen.version,
+            reason=data.rejection_reason or data.notes,
+        )
+        db.commit()
+    except HTTPException as exc:
+        db.rollback()
+        guard.reject(
+            operation="specimen.transition",
+            resource_type="lims_specimen",
+            resource_id=specimen_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason=str(exc.detail),
+        )
+        db.commit()
         raise
-    except Exception as e:
-        raise HTTPException(400, detail="Invalid request") from e
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="specimen.transition",
+            resource_type="lims_specimen",
+            resource_id=specimen_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="invalid_state_transition",
+        )
+        db.commit()
+        raise HTTPException(422, detail="Invalid specimen state transition") from exc
 
-    db.commit()
     db.refresh(specimen)
     return specimen
 
@@ -760,6 +849,7 @@ def create_lims_order(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    _require_phase1_capability("phase1.lims.orders", current_user, db)
     # Verify base order exists
     base_order = db.query(LabOrder).filter(
         LabOrder.id == data.order_id,
@@ -825,6 +915,7 @@ def transition_order(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    _require_phase1_capability("phase1.lims.orders", current_user, db)
     lims_order = db.query(lims_models.Order).filter(
         lims_models.Order.id == order_id,
         lims_models.Order.lab_id == _lab_id(current_user),
@@ -1001,26 +1092,72 @@ def create_result(
     data: ResultCreateRequest,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    # Verify specimen belongs to lab
+    """Enter a result only for a verified specimen and a current record version."""
+    _require_phase1_capability("phase1.lims.result_entry", current_user, db)
     specimen = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.id == data.specimen_id,
         lims_models.Specimen.lab_id == _lab_id(current_user),
-    ).first()
+    ).with_for_update().first()
     if not specimen:
         raise HTTPException(404, detail="Specimen not found")
 
-    result = ResultService.create_result(
-        db, data.specimen_id, specimen.order_id,
-        _lab_id(current_user), data.test_code, data.test_name,
-        current_user.id,
-        value_numeric=data.value_numeric,
-        value_text=data.value_text,
-        unit=data.unit,
-        instrument_id=data.instrument_id,
-        loinc_code=data.loinc_code,
+    lab_id = _lab_id(current_user)
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=lab_id,
+        actor_role=current_user.role,
     )
-    db.commit()
+    version_before = specimen.version
+    state_before = specimen.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="specimen")
+    key = guard.require_idempotency_key(idempotency_key)
+    if specimen.status != "verified":
+        guard.reject(
+            operation="result.create",
+            resource_type="lims_specimen",
+            resource_id=specimen.id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="verified_specimen_required",
+        )
+        db.commit()
+        raise HTTPException(422, detail="A result can only be entered for a verified specimen")
+
+    receipt = guard.claim(
+        operation="result.create",
+        resource_type="lims_specimen",
+        resource_id=specimen.id,
+        idempotency_key=key,
+        payload=data.model_dump(),
+    )
+    try:
+        result = ResultService.create_result(
+            db, data.specimen_id, specimen.order_id,
+            lab_id, data.test_code, data.test_name,
+            current_user.id,
+            value_numeric=data.value_numeric,
+            value_text=data.value_text,
+            unit=data.unit,
+            instrument_id=data.instrument_id,
+            loinc_code=data.loinc_code,
+        )
+        guard.complete(
+            receipt,
+            resource_type="lims_result",
+            resource_id=result.id,
+            state_before=state_before,
+            state_after="entered",
+            version_before=version_before,
+            version_after=version_before,
+        )
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
     db.refresh(result)
     return result
 
@@ -1082,26 +1219,85 @@ def validate_result(
     data: ResultValidateRequest,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    """Validate, reject, or flag a result through an auditable, versioned command."""
+    _require_phase1_capability("phase1.lims.result_approval", current_user, db)
     result = db.query(lims_models.Result).filter(
         lims_models.Result.id == result_id,
         lims_models.Result.lab_id == _lab_id(current_user),
-    ).first()
+    ).with_for_update().first()
     if not result:
         raise HTTPException(404, detail="Result not found")
+    if data.action not in {"validate", "reject", "flag"}:
+        raise HTTPException(422, detail="Unsupported result validation action")
 
-    if data.action == "validate":
-        result = ResultService.validate_manually(
-            db, result, current_user.id, data.notes, data.signature_hash,
+    lab_id = _lab_id(current_user)
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=lab_id,
+        actor_role=current_user.role,
+    )
+    version_before = result.version
+    state_before = result.validation_status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="result")
+    key = guard.require_idempotency_key(idempotency_key)
+    if data.action == "validate" and current_user.role not in {"master_admin", "admin", "lab_admin"}:
+        guard.reject(
+            operation="result.validate",
+            resource_type="lims_result",
+            resource_id=result.id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="senior_authority_required",
         )
-    elif data.action == "reject":
-        result.validation_status = "rejected"
-        result.updated_by = current_user.id
-    elif data.action == "flag":
-        result.validation_status = "flagged"
-        result.updated_by = current_user.id
+        db.commit()
+        raise HTTPException(403, detail="Senior laboratory authority is required to validate a result")
 
-    db.commit()
+    receipt = guard.claim(
+        operation=f"result.{data.action}",
+        resource_type="lims_result",
+        resource_id=result.id,
+        idempotency_key=key,
+        payload=data.model_dump(),
+    )
+    try:
+        if data.action == "validate":
+            result = ResultService.validate_manually(
+                db, result, current_user.id, data.notes, data.signature_hash,
+            )
+        else:
+            result.validation_status = "rejected" if data.action == "reject" else "flagged"
+            result.updated_by = current_user.id
+            result.updated_at = datetime.now(UTC)
+            result.version = version_before + 1
+        guard.complete(
+            receipt,
+            resource_type="lims_result",
+            resource_id=result.id,
+            state_before=state_before,
+            state_after=result.validation_status,
+            version_before=version_before,
+            version_after=result.version,
+            reason=data.notes,
+        )
+        db.commit()
+    except (HTTPException, ValueError) as exc:
+        db.rollback()
+        guard.reject(
+            operation=f"result.{data.action}",
+            resource_type="lims_result",
+            resource_id=result_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason=str(getattr(exc, "detail", exc)),
+        )
+        db.commit()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(422, detail=str(exc)) from exc
     db.refresh(result)
     return result
 
@@ -1111,23 +1307,111 @@ def release_result(
     result_id: int,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    """Release a validated result only after all linked results are safe to release."""
+    _require_phase1_capability("phase1.lims.result_approval", current_user, db)
     result = db.query(lims_models.Result).filter(
         lims_models.Result.id == result_id,
         lims_models.Result.lab_id == _lab_id(current_user),
-    ).first()
+    ).with_for_update().first()
     if not result:
         raise HTTPException(404, detail="Result not found")
 
-    release = ResultService.release(db, result, current_user.id)
-    # Update the specimen status to released
+    lab_id = _lab_id(current_user)
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=current_user.id,
+        lab_id=lab_id,
+        actor_role=current_user.role,
+    )
+    version_before = result.version
+    state_before = result.validation_status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="result")
+    key = guard.require_idempotency_key(idempotency_key)
+    if current_user.role not in {"master_admin", "admin", "lab_admin"}:
+        guard.reject(
+            operation="result.release",
+            resource_type="lims_result",
+            resource_id=result.id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="senior_authority_required",
+        )
+        db.commit()
+        raise HTTPException(403, detail="Senior laboratory authority is required to release a result")
+
     specimen = db.query(lims_models.Specimen).filter(
         lims_models.Specimen.id == result.specimen_id,
-    ).first()
-    if specimen and specimen.status not in {"released", "archived", "disposed"}:
-        SpecimenService.transition(db, specimen, "released", current_user.id)
+        lims_models.Specimen.lab_id == lab_id,
+    ).with_for_update().first()
+    if not specimen or specimen.status != "verified":
+        guard.reject(
+            operation="result.release",
+            resource_type="lims_result",
+            resource_id=result.id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="verified_specimen_required",
+        )
+        db.commit()
+        raise HTTPException(422, detail="A result can only be released from a verified specimen")
 
-    db.commit()
+    remaining_unvalidated = db.query(lims_models.Result).filter(
+        lims_models.Result.specimen_id == specimen.id,
+        lims_models.Result.id != result.id,
+        lims_models.Result.validation_status.notin_(["validated", "auto_validated", "released"]),
+        lims_models.Result.is_deleted.is_(False),
+    ).count()
+    if remaining_unvalidated:
+        guard.reject(
+            operation="result.release",
+            resource_type="lims_result",
+            resource_id=result.id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="linked_results_not_validated",
+        )
+        db.commit()
+        raise HTTPException(422, detail="All results for the specimen must be validated before release")
+
+    receipt = guard.claim(
+        operation="result.release",
+        resource_type="lims_result",
+        resource_id=result.id,
+        idempotency_key=key,
+        payload={"if_match": if_match},
+    )
+    specimen_version_before = specimen.version
+    try:
+        release = ResultService.release(db, result, current_user.id)
+        specimen = SpecimenService.transition(db, specimen, "released", current_user.id)
+        specimen.version = specimen_version_before + 1
+        guard.complete(
+            receipt,
+            resource_type="lims_result",
+            resource_id=result.id,
+            state_before=state_before,
+            state_after=result.validation_status,
+            version_before=version_before,
+            version_after=result.version,
+        )
+        db.commit()
+    except (HTTPException, ValueError) as exc:
+        db.rollback()
+        guard.reject(
+            operation="result.release",
+            resource_type="lims_result",
+            resource_id=result_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason=str(getattr(exc, "detail", exc)),
+        )
+        db.commit()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(422, detail=str(exc)) from exc
     return release
 
 
@@ -1552,13 +1836,55 @@ def generate_report(
     data: ReportGenerateRequest,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
-    report = ReportService.generate_report(
-        db, data.order_id, _lab_id(current_user), data.report_number,
-        current_user.id, data.locale,
-        title=data.title, title_ar=data.title_ar,
+    lab_id = _lab_id(current_user)
+    order = db.query(lims_models.Order).filter(
+        lims_models.Order.order_id == data.order_id,
+        lims_models.Order.lab_id == lab_id,
+        lims_models.Order.is_deleted.is_(False),
+    ).with_for_update().first()
+    if not order:
+        raise HTTPException(404, detail="LIMS order not found")
+    guard = ClinicalCommandGuard(
+        db, actor_user_id=current_user.id, lab_id=lab_id, actor_role=current_user.role,
     )
-    db.commit()
+    version_before = order.version
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="LIMS order")
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="report.generate", resource_type="lims_order", resource_id=order.id,
+        idempotency_key=key, payload=data.model_dump(),
+    )
+    try:
+        existing = db.query(lims_models.LabReport).filter(
+            lims_models.LabReport.lab_id == lab_id,
+            lims_models.LabReport.report_number == data.report_number,
+            lims_models.LabReport.is_deleted.is_(False),
+        ).first()
+        if existing:
+            raise HTTPException(409, detail="Report number already exists")
+        report = ReportService.generate_report(
+            db, data.order_id, lab_id, data.report_number, current_user.id, data.locale,
+            title=data.title, title_ar=data.title_ar,
+        )
+        guard.complete(
+            receipt, resource_type="lims_report", resource_id=report.id,
+            state_before=order.order_status, state_after="draft",
+            version_before=version_before, version_after=order.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="report.generate", resource_type="lims_order", resource_id=order.id,
+            state_before=order.order_status, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        if isinstance(exc, HTTPException):
+            raise
+        raise HTTPException(422, detail=str(exc)) from exc
     db.refresh(report)
     return report
 
@@ -1601,16 +1927,51 @@ def finalize_report(
     report_id: int,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    lab_id = _lab_id(current_user)
     report = db.query(lims_models.LabReport).filter(
         lims_models.LabReport.id == report_id,
-        lims_models.LabReport.lab_id == _lab_id(current_user),
-    ).first()
+        lims_models.LabReport.lab_id == lab_id,
+        lims_models.LabReport.is_deleted.is_(False),
+    ).with_for_update().first()
     if not report:
         raise HTTPException(404, detail="Report not found")
-
-    report = ReportService.finalize(db, report, current_user.id)
-    db.commit()
+    guard = ClinicalCommandGuard(
+        db, actor_user_id=current_user.id, lab_id=lab_id, actor_role=current_user.role,
+    )
+    version_before = report.version
+    state_before = report.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="laboratory report")
+    key = guard.require_idempotency_key(idempotency_key)
+    if current_user.role not in {"master_admin", "admin", "lab_admin"}:
+        guard.reject(
+            operation="report.finalize", resource_type="lims_report", resource_id=report.id,
+            state_before=state_before, version_before=version_before, reason="senior_authority_required",
+        )
+        db.commit()
+        raise HTTPException(403, detail="Senior laboratory authority is required to finalize a report")
+    receipt = guard.claim(
+        operation="report.finalize", resource_type="lims_report", resource_id=report.id,
+        idempotency_key=key, payload={"report_id": report_id},
+    )
+    try:
+        report = ReportService.finalize(db, report, current_user.id)
+        guard.complete(
+            receipt, resource_type="lims_report", resource_id=report.id,
+            state_before=state_before, state_after=report.status,
+            version_before=version_before, version_after=report.version,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="report.finalize", resource_type="lims_report", resource_id=report_id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        raise HTTPException(422, detail=str(exc)) from exc
     db.refresh(report)
     return report
 
@@ -1621,16 +1982,52 @@ def correct_report(
     data: dict,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
+    lab_id = _lab_id(current_user)
     report = db.query(lims_models.LabReport).filter(
         lims_models.LabReport.id == report_id,
-        lims_models.LabReport.lab_id == _lab_id(current_user),
-    ).first()
+        lims_models.LabReport.lab_id == lab_id,
+        lims_models.LabReport.is_deleted.is_(False),
+    ).with_for_update().first()
     if not report:
         raise HTTPException(404, detail="Report not found")
-
-    report = ReportService.correct(db, report, data.get("reason", ""), current_user.id)
-    db.commit()
+    guard = ClinicalCommandGuard(
+        db, actor_user_id=current_user.id, lab_id=lab_id, actor_role=current_user.role,
+    )
+    version_before = report.version
+    state_before = report.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="laboratory report")
+    key = guard.require_idempotency_key(idempotency_key)
+    if current_user.role not in {"master_admin", "admin", "lab_admin"}:
+        guard.reject(
+            operation="report.correct", resource_type="lims_report", resource_id=report.id,
+            state_before=state_before, version_before=version_before, reason="senior_authority_required",
+        )
+        db.commit()
+        raise HTTPException(403, detail="Senior laboratory authority is required to correct a report")
+    receipt = guard.claim(
+        operation="report.correct", resource_type="lims_report", resource_id=report.id,
+        idempotency_key=key, payload=data,
+    )
+    try:
+        report = ReportService.correct(db, report, str(data.get("reason", "")), current_user.id)
+        guard.complete(
+            receipt, resource_type="lims_report", resource_id=report.id,
+            state_before=state_before, state_after=report.status,
+            version_before=version_before, version_after=report.version,
+            reason=report.correction_reason,
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        guard.reject(
+            operation="report.correct", resource_type="lims_report", resource_id=report_id,
+            state_before=state_before, version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        raise HTTPException(422, detail=str(exc)) from exc
     db.refresh(report)
     return report
 
@@ -1795,6 +2192,7 @@ def process_critical_alert(
     db: Session = Depends(get_db),
 ):
     """Process a critical result alert."""
+    _require_phase1_capability("phase1.lims.critical_alerts", current_user, db)
     from .workflows import process_critical_result
     return process_critical_result(db, result_id, _lab_id(current_user), current_user.id)
 

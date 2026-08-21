@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -103,6 +103,23 @@ def test_wearable_measurement_rejects_invalid_unit_and_live_mode(client: Any, db
         headers=headers,
     )
     assert response.status_code == 400
+
+
+def test_wearable_measurement_rejects_non_finite_values(client: Any, db: Any, make_lab: Any, make_lab_user: Any) -> None:
+    lab = make_lab("Wearable Finite Value Lab")
+    user = make_lab_user(lab.id, role="admin")
+    patient = _patient(db, lab.id)
+    headers = auth_headers(user.id, lab.id, role="admin")
+
+    for index, non_finite in enumerate(("NaN", "Infinity", "-Infinity"), start=1):
+        payload = _payload(patient.id, f"evt-non-finite-{index}")
+        payload["value"] = non_finite
+        response = client.post(
+            "/device-integration/wearables/measurements",
+            json=payload,
+            headers=headers,
+        )
+        assert response.status_code == 422
 
 
 def test_signed_wearable_webhook_is_verified_and_idempotent(client: Any, db: Any, make_lab: Any, monkeypatch: Any) -> None:

@@ -76,6 +76,30 @@ def _should_init_sentry() -> bool:
     return bool(os.getenv("SENTRY_DSN"))
 
 
+def scrub_sentry_event(event: dict, _hint: dict | None = None) -> dict:
+    """Remove request, identity, and free-text context before an event leaves GULA.
+
+    The clinical audit ledger is the source of truth.  External error tracking
+    receives only a minimised exception type and deployment context, never PHI.
+    """
+    sanitized = dict(event)
+    for field in ("request", "user", "extra", "breadcrumbs", "transaction"):
+        sanitized.pop(field, None)
+    sanitized.pop("contexts", None)
+    sanitized["logentry"] = {"message": "redacted_application_error"}
+    exception = sanitized.get("exception")
+    if isinstance(exception, dict):
+        values = exception.get("values")
+        if isinstance(values, list):
+            sanitized_values = []
+            for value in values:
+                if isinstance(value, dict):
+                    safe_value = {"type": str(value.get("type", "ApplicationError"))[:128]}
+                    sanitized_values.append(safe_value)
+            sanitized["exception"] = {"values": sanitized_values}
+    return sanitized
+
+
 def configure_sentry() -> None:
     import logging
 
@@ -97,6 +121,8 @@ def configure_sentry() -> None:
                     LoggingIntegration(level=logging.ERROR, event_level=logging.ERROR),
                 ],
                 traces_sample_rate=float(os.getenv("SENTRY_TRACES_RATE", "0.05")),
+                before_send=scrub_sentry_event,
+                send_default_pii=False,
             )
             logger.info("Sentry initialized (env=%s)", os.getenv("ENVIRONMENT", "production"))
         except ImportError:

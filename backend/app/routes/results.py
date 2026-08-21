@@ -3,6 +3,7 @@ from fastapi.responses import Response
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
 
+from ..config import ENABLE_PUBLIC_PATIENT_HISTORY
 from ..database import get_db
 from ..models.lab_order import LabOrder
 from ..models.lab_user import LabUser
@@ -33,10 +34,10 @@ from ..services.order_service import (
     list_orders as _list_orders,
 )
 from ..services.order_service import (
-    validate_order as _validate_order,
+    update_result as _update_result,
 )
 from ..services.order_service import (
-    update_result as _update_result,
+    validate_order as _validate_order,
 )
 
 router = APIRouter(tags=["results"])
@@ -281,15 +282,21 @@ def cancel_order_route(
 
 
 @router.get("/r/{token}")
-def get_public_result_route(token: str, request: Request, db: Session = Depends(get_db)):
-    """Public result page - accessible without authentication. Rate limited."""
+def get_public_result_route(
+    token: str,
+    request: Request,
+    response: Response,
+    db: Session = Depends(get_db),
+):
+    """Public result page with strict cache and referrer controls."""
     rate_limit_public(request, max_per_minute=30)
-
     result = _get_public_result(db=db, token=token, ip_address=get_client_ip(request))
-
     if "error" in result:
         raise HTTPException(status_code=result["status_code"], detail=result["error"])
-
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
     return result
 
 
@@ -306,7 +313,13 @@ def download_result_pdf_route(token: str, request: Request, db: Session = Depend
     return Response(
         content=result["pdf_bytes"],
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="{result["filename"]}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{result["filename"]}"',
+            "Cache-Control": "no-store, no-cache, must-revalidate, private",
+            "Pragma": "no-cache",
+            "Referrer-Policy": "no-referrer",
+            "X-Robots-Tag": "noindex, nofollow, noarchive",
+        },
     )
 
 

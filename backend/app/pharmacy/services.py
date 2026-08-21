@@ -46,6 +46,21 @@ class PharmacyAuthorizationBlocked(Exception):
     """Raised when a pharmacy command lacks server-derived clinical proof."""
 
 
+class PharmacyWorkflowError(ValueError):
+    """Raised when a pharmacy safety invariant or state transition is violated."""
+
+
+_DISPENSE_TRANSITIONS: dict[DispenseStatus, set[DispenseStatus]] = {
+    DispenseStatus.PENDING: {DispenseStatus.PREPARED, DispenseStatus.CANCELLED, DispenseStatus.ON_HOLD},
+    DispenseStatus.PREPARED: {DispenseStatus.VERIFIED, DispenseStatus.CANCELLED, DispenseStatus.ON_HOLD},
+    DispenseStatus.VERIFIED: {DispenseStatus.DISPENSED, DispenseStatus.PARTIAL, DispenseStatus.ON_HOLD},
+    DispenseStatus.PARTIAL: {DispenseStatus.PREPARED, DispenseStatus.CANCELLED},
+    DispenseStatus.ON_HOLD: {DispenseStatus.PENDING, DispenseStatus.CANCELLED},
+    DispenseStatus.DISPENSED: set(),
+    DispenseStatus.CANCELLED: set(),
+}
+
+
 class PharmacyService:
     def __init__(self, db: Session, user_id: int | None = None, lab_id: int | None = None):
         self.db = db
@@ -390,95 +405,175 @@ class PharmacyService:
         ).offset(skip).limit(limit).all()
         return items, total
 
-    def prepare_dispense(self, queue_id: str) -> DispenseQueue | None:
-        entry = self.db.query(DispenseQueue).filter(DispenseQueue.id == queue_id).first()
-        if not entry:
+    def get_dispense_queue_entry(self, queue_id: str, *, for_update: bool = False) -> DispenseQueue | None:
+        """Load a queue entry in the current institution, optionally locking it."""
+        query = self.db.query(DispenseQueue).filter(
+            DispenseQueue.id == queue_id,
+            ~DispenseQueue.is_deleted,
+        )
+        if self.lab_id is not None:
+            query = query.filter(DispenseQueue.lab_id == self.lab_id)
+        if for_update:
+            query = query.with_for_update()
+        return query.first()
+
+    def _transition_dispense(
+        self,
+        queue_id: str,
+        target: DispenseStatus,
+        *,
+        expected_version: int,
+    ) -> DispenseQueue | None:
+        """Apply a single legal dispense transition under a row lock.
+
+        Preparation and verification must be performed by distinct institutional
+        users.  The caller owns the surrounding transaction and commits only
+        after the audit receipt is written.
+        """
+        entry = self.get_dispense_queue_entry(queue_id, for_update=True)
+        if entry is None:
             return None
-        entry.status = DispenseStatus.PREPARED
-        entry.assigned_to = str(self.user_id) if self.user_id else None
+        if entry.version != expected_version:
+            raise PharmacyWorkflowError("dispense queue version conflict")
+        current = DispenseStatus(entry.status)
+        if target not in _DISPENSE_TRANSITIONS[current]:
+            raise PharmacyWorkflowError(f"illegal dispense transition: {current.value} -> {target.value}")
+
+        actor = str(self.user_id) if self.user_id is not None else None
+        if target == DispenseStatus.PREPARED:
+            if actor is None:
+                raise PharmacyWorkflowError("an authenticated preparer is required")
+            entry.assigned_to = actor
+            entry.ready_time = datetime.now(UTC)
+        elif target == DispenseStatus.VERIFIED:
+            if actor is None:
+                raise PharmacyWorkflowError("an authenticated verifier is required")
+            if not entry.assigned_to:
+                raise PharmacyWorkflowError("dispense must be prepared before verification")
+            if entry.assigned_to == actor:
+                raise PharmacyWorkflowError("a dispenser cannot verify their own preparation")
+        elif target == DispenseStatus.DISPENSED:
+            if not entry.assigned_to:
+                raise PharmacyWorkflowError("dispense has no recorded preparer")
+            entry.completion_time = datetime.now(UTC)
+
+        state_before = current.value
+        entry.status = target
+        entry.version += 1
         self.db.flush()
-        self._audit("pharmacy.dispense.prepare", "dispense_queue", queue_id)
+        self._audit(
+            f"pharmacy.dispense.{target.value}",
+            "dispense_queue",
+            queue_id,
+            f"state_before={state_before}; state_after={target.value}; actor={actor}",
+        )
         return entry
 
-    def verify_dispense(self, queue_id: str) -> DispenseQueue | None:
-        entry = self.db.query(DispenseQueue).filter(DispenseQueue.id == queue_id).first()
-        if not entry:
-            return None
-        entry.status = DispenseStatus.VERIFIED
-        self.db.flush()
-        self._audit("pharmacy.dispense.verify", "dispense_queue", queue_id)
-        return entry
+    def prepare_dispense(self, queue_id: str, *, expected_version: int) -> DispenseQueue | None:
+        return self._transition_dispense(queue_id, DispenseStatus.PREPARED, expected_version=expected_version)
 
-    def complete_dispense(self, queue_id: str) -> DispenseQueue | None:
-        entry = self.db.query(DispenseQueue).filter(DispenseQueue.id == queue_id).first()
-        if not entry:
-            return None
-        entry.status = DispenseStatus.DISPENSED
-        entry.completion_time = datetime.now(UTC)
-        self.db.flush()
+    def verify_dispense(self, queue_id: str, *, expected_version: int) -> DispenseQueue | None:
+        return self._transition_dispense(queue_id, DispenseStatus.VERIFIED, expected_version=expected_version)
 
-        rx = self.db.query(Prescription).filter(Prescription.id == entry.prescription_id).first()
-        if rx:
+    def complete_dispense(self, queue_id: str, *, expected_version: int) -> DispenseQueue | None:
+        entry = self._transition_dispense(queue_id, DispenseStatus.DISPENSED, expected_version=expected_version)
+        if entry is None:
+            return None
+        rx = self.get_prescription(entry.prescription_id)
+        if rx is not None:
+            if rx.status != PrescriptionStatus.ACTIVE:
+                raise PharmacyWorkflowError("only active prescriptions can be completed")
             rx.status = PrescriptionStatus.COMPLETED
+            rx.version += 1
             self.db.flush()
-
-        self._audit("pharmacy.dispense.complete", "dispense_queue", queue_id)
         return entry
 
-    def partial_dispense(self, queue_id: str) -> DispenseQueue | None:
-        entry = self.db.query(DispenseQueue).filter(DispenseQueue.id == queue_id).first()
-        if not entry:
-            return None
-        entry.status = DispenseStatus.PARTIAL
-        self.db.flush()
-        self._audit("pharmacy.dispense.partial", "dispense_queue", queue_id)
-        return entry
+    def partial_dispense(self, queue_id: str, *, expected_version: int) -> DispenseQueue | None:
+        return self._transition_dispense(queue_id, DispenseStatus.PARTIAL, expected_version=expected_version)
 
-    def cancel_dispense(self, queue_id: str) -> DispenseQueue | None:
-        entry = self.db.query(DispenseQueue).filter(DispenseQueue.id == queue_id).first()
-        if not entry:
-            return None
-        entry.status = DispenseStatus.CANCELLED
-        self.db.flush()
-        self._audit("pharmacy.dispense.cancel", "dispense_queue", queue_id)
-        return entry
+    def cancel_dispense(self, queue_id: str, *, expected_version: int) -> DispenseQueue | None:
+        return self._transition_dispense(queue_id, DispenseStatus.CANCELLED, expected_version=expected_version)
 
     def create_dispense_record(self, data: dict[str, Any]) -> DispenseRecord:
-        record = DispenseRecord(**{k: v for k, v in data.items() if hasattr(DispenseRecord, k)})
-        if self.lab_id:
-            record.lab_id = self.lab_id
-        self.db.add(record)
-        self.db.flush()
+        """Write a manual dispense only when its stock and dual check are valid."""
+        if self.lab_id is None:
+            raise PharmacyWorkflowError("institutional pharmacy context is required")
+        quantity = int(data.get("quantity_dispensed") or 0)
+        if quantity <= 0:
+            raise PharmacyWorkflowError("dispensed quantity must be positive")
+        batch_id = str(data.get("batch_id") or "")
+        drug_catalog_id = str(data.get("drug_catalog_id") or "")
+        if not batch_id or not drug_catalog_id:
+            raise PharmacyWorkflowError("drug_catalog_id and batch_id are required for a manual dispense")
+        dispenser = str(data.get("dispensed_by") or "")
+        verifier = str(data.get("verified_by") or "")
+        if not dispenser:
+            raise PharmacyWorkflowError("a recorded dispensing practitioner is required")
+        if not verifier or verifier == dispenser:
+            raise PharmacyWorkflowError("manual dispensing requires a distinct recorded verifier")
 
-        batch = self.db.query(DrugBatch).filter(DrugBatch.id == record.batch_id).first()
-        if batch:
-            batch.quantity_remaining -= record.quantity_dispensed
-            self.db.flush()
+        batch = self.db.query(DrugBatch).filter(
+            DrugBatch.id == batch_id,
+            DrugBatch.lab_id == self.lab_id,
+            ~DrugBatch.is_deleted,
+        ).with_for_update().first()
+        if batch is None:
+            raise PharmacyWorkflowError("drug batch not found in the current institution")
+        if batch.is_quarantined or batch.expiry_date < date.today():
+            raise PharmacyWorkflowError("quarantined or expired batches cannot be dispensed")
+        if batch.drug_catalog_id != drug_catalog_id:
+            raise PharmacyWorkflowError("batch does not belong to the requested medication")
 
         stock = self.db.query(StockLevel).filter(
-            StockLevel.batch_id == record.batch_id,
-            StockLevel.drug_catalog_id == data.get("drug_catalog_id"),
-        ).first()
-        if stock:
-            stock.quantity -= record.quantity_dispensed
-            stock.available_quantity = stock.quantity - stock.reserved_quantity
-            self.db.flush()
+            StockLevel.lab_id == self.lab_id,
+            StockLevel.batch_id == batch_id,
+            StockLevel.drug_catalog_id == drug_catalog_id,
+            ~StockLevel.is_deleted,
+        ).with_for_update().first()
+        if stock is None or stock.available_quantity < quantity or batch.quantity_remaining < quantity:
+            raise PharmacyWorkflowError("insufficient available stock for this dispense")
+
+        record_data = {k: v for k, v in data.items() if hasattr(DispenseRecord, k)}
+        record_data.update(
+            {
+                "dispensed_by": dispenser,
+                "verified_by": verifier,
+                "status": DispenseStatus.DISPENSED,
+                "lot_number": batch.batch_number,
+                "expiry_date": batch.expiry_date,
+            },
+        )
+        record = DispenseRecord(**record_data)
+        record.lab_id = self.lab_id
+        self.db.add(record)
+        stock.quantity -= quantity
+        stock.available_quantity = stock.quantity - stock.reserved_quantity
+        batch.quantity_remaining -= quantity
+        stock.version += 1
+        batch.version += 1
+        self.db.flush()
 
         movement = StockMovement(
-            drug_catalog_id=data.get("drug_catalog_id"),
-            batch_id=record.batch_id,
+            lab_id=self.lab_id,
+            drug_catalog_id=drug_catalog_id,
+            batch_id=batch_id,
+            warehouse_id=stock.warehouse_id,
+            store_id=stock.store_id,
             movement_type=StockMovementType.DISPENSED,
-            quantity=record.quantity_dispensed,
+            quantity=quantity,
             reference_type="dispense",
             reference_id=record.id,
             performed_by=str(self.user_id) if self.user_id else None,
+            notes="manual dispense with independent verification",
         )
-        if self.lab_id:
-            movement.lab_id = self.lab_id
         self.db.add(movement)
         self.db.flush()
-
-        self._audit("pharmacy.dispense.record", "dispense_record", record.id)
+        self._audit(
+            "pharmacy.dispense.record",
+            "dispense_record",
+            record.id,
+            f"batch={batch_id}; quantity={quantity}; verifier={verifier}",
+        )
         return record
 
     def get_dispense_records(self, patient_id: str) -> list[DispenseRecord]:

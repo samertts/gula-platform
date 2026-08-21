@@ -178,7 +178,7 @@ class CommandCenterService:
         try:
             from app.critical_care.application.service import CriticalCareService
             cc = CriticalCareService(self.db)
-            cc_stats = cc.get_dashboard_stats()
+            cc_stats = cc.get_national_dashboard_stats()
             icu_occupancy = cc_stats.get("occupancy_pct", 0)
             ventilators = cc_stats.get("available_ventilators", 0)
             beds = cc_stats.get("available_beds", 0)
