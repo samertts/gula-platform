@@ -861,7 +861,7 @@ def order_fhir(
 
 @router.get(
     "/orders/{order_id}/fhir-bundle",
-    response_class=JSONResponse,
+    response_class=FHIRJSONResponse,
     status_code=200,
 )
 def order_fhir_bundle(
