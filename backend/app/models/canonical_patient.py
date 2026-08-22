@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING, Protocol
 
 from sqlalchemy import (
     BigInteger,
@@ -11,11 +14,19 @@ from sqlalchemy import (
     Integer,
     String,
 )
-from sqlalchemy.orm import backref, relationship
+from sqlalchemy.orm import DynamicMapped, Mapped, backref, relationship
 
 from app._compat import UTC
 
 from ..database import Base
+
+if TYPE_CHECKING:
+    class Citizen(Protocol):
+        """Minimal contract for the citizen relationship target."""
+
+        id: int
+
+    from .patient import Patient
 
 
 class CanonicalPatient(Base):
@@ -54,8 +65,12 @@ class CanonicalPatient(Base):
         onupdate=lambda: datetime.now(UTC),
     )
 
-    patient_links = relationship("PatientLink", back_populates="canonical", lazy="dynamic")
-    citizen_links = relationship("CitizenLink", back_populates="canonical", lazy="dynamic")
+    patient_links: DynamicMapped[PatientLink] = relationship(
+        "PatientLink", back_populates="canonical", lazy="dynamic"
+    )
+    citizen_links: DynamicMapped[CitizenLink] = relationship(
+        "CitizenLink", back_populates="canonical", lazy="dynamic"
+    )
 
 
 class PatientLink(Base):
@@ -77,8 +92,12 @@ class PatientLink(Base):
     confidence = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    patient = relationship("Patient", backref=backref("canonical_links", lazy="dynamic"))
-    canonical = relationship("CanonicalPatient", back_populates="patient_links")
+    patient: Mapped[Patient] = relationship(
+        "Patient", backref=backref("canonical_links", lazy="dynamic")
+    )
+    canonical: Mapped[CanonicalPatient] = relationship(
+        "CanonicalPatient", back_populates="patient_links"
+    )
 
 
 class CitizenLink(Base):
@@ -100,5 +119,9 @@ class CitizenLink(Base):
     confidence = Column(Float, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    citizen = relationship("Citizen", backref=backref("canonical_links", lazy="dynamic"))
-    canonical = relationship("CanonicalPatient", back_populates="citizen_links")
+    citizen: Mapped[Citizen] = relationship(
+        "Citizen", backref=backref("canonical_links", lazy="dynamic")
+    )
+    canonical: Mapped[CanonicalPatient] = relationship(
+        "CanonicalPatient", back_populates="citizen_links"
+    )

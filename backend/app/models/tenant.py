@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from app._compat import UTC
 
 from ..database import Base
+
+if TYPE_CHECKING:
+    from .organization import Organization
 
 
 class Tenant(Base):
@@ -26,4 +32,4 @@ class Tenant(Base):
     settings = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    organizations = relationship("Organization", backref="tenant")
+    organizations: Mapped[list[Organization]] = relationship("Organization", backref="tenant")
