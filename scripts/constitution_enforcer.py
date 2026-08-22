@@ -588,46 +588,33 @@ def rule10_quality_gates(changed_py_files: list[str]) -> RuleResult:
         details.append(f"Architecture Guardian not found at {ARCHITECTURE_GUARDIAN}")
         all_ok = False
 
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "py_compile"] + [str(REPO_ROOT / f) for f in changed_py_files if (REPO_ROOT / f).exists()],
-            capture_output=True, text=True, timeout=30,
-        )
-        if result.returncode != 0:
-            all_ok = False
-            details.append("py_compile errors:")
-            for line in result.stderr.splitlines():
-                details.append(f"  {line.strip()[:120]}")
-        else:
-            details.append("py_compile: all syntax OK")
-    except (subprocess.TimeoutExpired, OSError) as exc:
-        details.append(f"py_compile check failed: {exc}")
-        all_ok = False
-
-    for tool in ("flake8", "pyflakes"):
-        exe = shutil.which(tool)
-        if exe:
-            try:
-                targets = [str(REPO_ROOT / f) for f in changed_py_files if f.endswith(".py") and (REPO_ROOT / f).exists()]
-                if targets:
-                    result = subprocess.run(
-                        [exe] + targets, capture_output=True, text=True, timeout=30,
-                    )
-                    if result.returncode != 0:
-                        all_ok = False
-                        issue_lines = [l for l in result.stdout.splitlines() if l.strip() and ":" in l]
-                        for line in issue_lines[:10]:
-                            details.append(f"  [{tool}] {line.strip()[:120]}")
-                        if len(issue_lines) > 10:
-                            details.append(f"  ... and {len(issue_lines) - 10} more")
-                    else:
-                        details.append(f"{tool}: all clear")
-            except (subprocess.TimeoutExpired, OSError) as exc:
-                details.append(f"{tool} check failed: {exc}")
+    targets = [
+        str(REPO_ROOT / f)
+        for f in changed_py_files
+        if f.endswith(".py") and (REPO_ROOT / f).is_file()
+    ]
+    if not targets:
+        details.append("No changed Python files; syntax and static checks are not applicable")
+    else:
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "py_compile", *targets],
+                capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode != 0:
                 all_ok = False
-        else:
-            details.append(f"{tool} not installed — skipped")
+                details.append("py_compile errors:")
+                for line in result.stderr.splitlines():
+                    details.append(f"  {line.strip()[:120]}")
+            else:
+                details.append("py_compile: all syntax OK")
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            details.append(f"py_compile check failed: {exc}")
             all_ok = False
+
+        details.append(
+            "Ruff/MyPy non-regression is enforced by the dedicated changed-files CI gate"
+        )
 
     if not all_ok:
         status = FAIL

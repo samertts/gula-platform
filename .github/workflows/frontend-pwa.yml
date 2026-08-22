@@ -12,9 +12,15 @@ on:
       - 'vercel.json'
       - '.github/workflows/frontend-pwa.yml'
   pull_request:
-    branches: [main]
+    branches: [main, develop, 'release/*']
     paths:
       - 'frontend-v3/**'
+      - 'packages/uap/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'vercel.json'
+      - '.github/workflows/frontend-pwa.yml'
   workflow_dispatch:
     inputs:
       environment:
@@ -70,10 +76,10 @@ jobs:
         run: npm ci --prefer-offline --no-audit
 
       - name: Lint
-        run: npm run lint 2>/dev/null || echo "No lint script configured"
+        run: npm run --if-present lint
 
       - name: Type check
-        run: npm run typecheck 2>/dev/null || echo "No typecheck script configured"
+        run: npm run --if-present typecheck
 
       - name: Build PWA
         run: npm run build

@@ -11,29 +11,63 @@ permissions:
 
 jobs:
   ruff-format:
-    name: Ruff Format (Python)
+    name: Ruff Format (changed production Python)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: "3.14"
       - name: Install ruff
-        run: pip install ruff
-      - name: Check Python formatting
-        run: ruff format --check backend/app/ shared/ scripts/ || echo "Formatting issues found — run 'ruff format backend/app/ shared/ scripts/' to fix"
+        run: python -m pip install "ruff==0.16.2"
+      - name: Check changed Python formatting
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.sha || github.event.before || github.sha }}"
+          HEAD_REF="${{ github.event.pull_request.head.sha || github.sha }}"
+          if [ "$BASE_REF" = "0000000000000000000000000000000000000000" ]; then
+            BASE_REF="$(git rev-parse "$HEAD_REF^")"
+          fi
+          git rev-parse --verify "$BASE_REF^{commit}"
+          git rev-parse --verify "$HEAD_REF^{commit}"
+          mapfile -d '' files < <(
+            git diff --name-only -z --diff-filter=ACMR "$BASE_REF" "$HEAD_REF" -- backend/app shared \
+              | grep -zE '\.py$' || true
+          )
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No changed Python files to format-check."
+            exit 0
+          fi
+          ruff format --check "${files[@]}"
 
   prettier:
-    name: Prettier (TypeScript/JSON/MD)
+    name: Prettier (changed web files)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: "24"
-      - name: Install prettier
-        run: npm install prettier --save-dev 2>/dev/null || npx prettier --version
-      - name: Check formatting
-        run: npx prettier --check "**/*.{ts,tsx,json,md}" --ignore-path .gitignore 2>/dev/null || echo "Formatting check skipped (prettier not fully configured)"
+      - name: Check changed web formatting
+        run: |
+          BASE_REF="${{ github.event.pull_request.base.sha || github.event.before || github.sha }}"
+          HEAD_REF="${{ github.event.pull_request.head.sha || github.sha }}"
+          if [ "$BASE_REF" = "0000000000000000000000000000000000000000" ]; then
+            BASE_REF="$(git rev-parse "$HEAD_REF^")"
+          fi
+          git rev-parse --verify "$BASE_REF^{commit}"
+          git rev-parse --verify "$HEAD_REF^{commit}"
+          mapfile -d '' files < <(
+            git diff --name-only -z --diff-filter=ACMR "$BASE_REF" "$HEAD_REF" \
+              | grep -zE '\.(ts|tsx|json|md)$' || true
+          )
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No changed web-format files to check."
+            exit 0
+          fi
+          npx --yes prettier@3.9.6 --check "${files[@]}"
