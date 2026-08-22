@@ -102,6 +102,8 @@ class ClinicalLabFacilityBinding(Base):
     ) -> None:
         """Apply one reviewed state transition without altering either resource ID."""
 
+        if self.status is None:
+            raise ValueError("Clinical lab-facility binding status is missing")
         current = ClinicalLabFacilityBindingStatus(self.status)
         target_status = ClinicalLabFacilityBindingStatus(target)
         if target_status == current:
@@ -197,6 +199,8 @@ class ClinicalEhrFacilityBinding(Base):
     ) -> None:
         """Advance the reviewed binding lifecycle without mutating either scope ID."""
 
+        if self.status is None:
+            raise ValueError("Clinical EHR-facility binding status is missing")
         current = ClinicalEhrFacilityBindingStatus(self.status)
         target_status = ClinicalEhrFacilityBindingStatus(target)
         if target_status == current:

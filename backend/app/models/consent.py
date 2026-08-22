@@ -56,6 +56,9 @@ class Consent(Base):
             return False
         now = datetime.now(UTC)
         exp = self.expires_at
+        # A malformed legacy row must never grant access without an expiry.
+        if exp is None:
+            return False
         # Defensive: if stored naive, treat as UTC (postgres always tz-aware)
         if exp.tzinfo is None:
             exp = exp.replace(tzinfo=UTC)

@@ -1,13 +1,19 @@
 """Quality Control model for lab instrument QC tracking."""
 
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from app._compat import UTC
 
 from ..database import Base
+
+if TYPE_CHECKING:
+    from .lab import Lab
 
 
 class QualityControl(Base):
@@ -36,4 +42,4 @@ class QualityControl(Base):
 
     # passive_deletes=True lets the DB-level CASCADE (ondelete="CASCADE" on the
     # FK above) handle deletion without SQLAlchemy loading records into memory.
-    lab = relationship("Lab", passive_deletes=True)
+    lab: Mapped[Lab] = relationship("Lab", passive_deletes=True)

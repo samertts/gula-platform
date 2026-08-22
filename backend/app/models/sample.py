@@ -1,15 +1,21 @@
+from __future__ import annotations
+
 import secrets
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from app._compat import UTC
 
 from ..database import Base
 
+if TYPE_CHECKING:
+    from .lab_order import LabOrder
 
-def generate_barcode():
+
+def generate_barcode() -> str:
     return f"SMP-{secrets.token_hex(6).upper()}"
 
 
@@ -32,4 +38,4 @@ class Sample(Base):
     storage_location = Column(String(100), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
-    order = relationship("LabOrder", backref="samples")
+    order: Mapped[LabOrder] = relationship("LabOrder", backref="samples")
