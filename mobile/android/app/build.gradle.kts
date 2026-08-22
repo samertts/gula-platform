@@ -36,11 +36,31 @@ android {
         create("release") {
             val externalPropsPath = System.getenv("GULA_ANDROID_SIGNING_PROPERTIES")
             val propsFile = externalPropsPath?.let(::file) ?: rootProject.file("signing.properties")
-            if (propsFile.exists()) {
-                val props = Properties().apply {
-                    load(FileInputStream(propsFile))
+            val releaseRequested = gradle.startParameter.taskNames.any { taskName ->
+                taskName.contains("release", ignoreCase = true)
+            }
+
+            if (releaseRequested) {
+                check(propsFile.isFile) {
+                    "Release signing properties are required; refusing to build an unsigned release."
                 }
-                storeFile = rootProject.file(props.getProperty("storeFile"))
+
+                val props = Properties().apply {
+                    FileInputStream(propsFile).use(::load)
+                }
+                val requiredProperties = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+                val missingProperties = requiredProperties.filter { propertyName ->
+                    props.getProperty(propertyName).isNullOrBlank()
+                }
+                check(missingProperties.isEmpty()) {
+                    "Release signing properties are incomplete; refusing to build an unsigned release."
+                }
+
+                val resolvedStoreFile = rootProject.file(requireNotNull(props.getProperty("storeFile")))
+                check(resolvedStoreFile.isFile) {
+                    "Release keystore file is unavailable; refusing to build an unsigned release."
+                }
+                storeFile = resolvedStoreFile
                 storePassword = props.getProperty("storePassword")
                 keyAlias = props.getProperty("keyAlias")
                 keyPassword = props.getProperty("keyPassword")
