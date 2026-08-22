@@ -7,7 +7,7 @@ import asyncio
 import logging
 import os
 import subprocess
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import requests
 from fastapi import FastAPI, HTTPException
@@ -76,7 +76,7 @@ def check_service_health(service_name: str, service_config: dict) -> bool:
 def restart_service(service_name: str) -> bool:
     """Restart a Docker container by name."""
     last = LAST_RESTART.get(service_name)
-    if last and datetime.utcnow() - last < timedelta(seconds=RESTART_COOLDOWN):
+    if last and datetime.now(UTC) - last < timedelta(seconds=RESTART_COOLDOWN):
         logger.warning(f"[AutoManager] {service_name}: restart cooldown active, skipping")
         return False
 
@@ -87,7 +87,7 @@ def restart_service(service_name: str) -> bool:
             capture_output=True, text=True, timeout=30
         )
         if result.returncode == 0:
-            LAST_RESTART[service_name] = datetime.utcnow()
+            LAST_RESTART[service_name] = datetime.now(UTC)
             RESTART_COUNTER.labels(service=service_name).inc()
             logger.info(f"[AutoManager] {service_name}: restarted successfully")
             return True
@@ -161,7 +161,7 @@ def status():
             "last_restart": LAST_RESTART[service_name].isoformat() if LAST_RESTART[service_name] else None,
         }
     return {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "services": service_status,
         "total_services": len(SERVICES),
         "healthy_services": sum(1 for f in FAILURE_COUNTS.values() if f == 0),

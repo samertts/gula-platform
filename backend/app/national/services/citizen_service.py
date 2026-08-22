@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import or_
@@ -72,7 +72,7 @@ class CitizenService:
         )
 
     async def _generate_health_number(self, prefix: str = "IQ") -> str:
-        now = datetime.utcnow()
+        now = datetime.now(UTC)
         year = now.year
         seq = await self._next_sequence(prefix, year)
         return f"{prefix}{year}{seq:06d}"

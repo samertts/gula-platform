@@ -586,10 +586,10 @@ class SqlPreservationRepository(PreservationRepository):
         return await self.save(record)
 
     async def list_due_for_integrity_check(self) -> list[DigitalPreservationRecord]:
-        from datetime import datetime
+        from datetime import UTC, datetime
         with self._session_factory() as s:
             ms = s.query(DigitalPreservationRecordModel).filter(
-                DigitalPreservationRecordModel.next_integrity_check <= datetime.utcnow(),
+                DigitalPreservationRecordModel.next_integrity_check <= datetime.now(UTC),
             ).all()
             return [m.to_domain() for m in ms]
 
@@ -824,10 +824,10 @@ class SqlRetentionRepository(RetentionRepository):
             return m.policy if m else None
 
     async def list_expiring(self, days: int = 30) -> list[UUID]:
-        from datetime import datetime, timedelta
+        from datetime import UTC, datetime, timedelta
 
         with self._session_factory() as s:
-            cutoff = datetime.utcnow() + timedelta(days=days)
+            cutoff = datetime.now(UTC) + timedelta(days=days)
             return [m.document_id for m in s.query(DocumentRetentionModel)
                     .filter(DocumentRetentionModel.retention_end <= cutoff).all()]
 

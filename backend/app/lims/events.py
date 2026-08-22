@@ -7,7 +7,7 @@ transactional outbox (OutboxEvent) for guaranteed delivery.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -21,7 +21,7 @@ class LIMSEvent:
     lab_id: int | None = None
     user_id: int | None = None
     payload: dict[str, Any] = field(default_factory=dict)
-    timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 # ── Specimen Lifecycle Events ──────────────────────────────────────────

@@ -1,7 +1,7 @@
 import os
 import sys
 import tempfile
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import psycopg2
 import requests
@@ -93,7 +93,7 @@ def login(username: str, password: str):
 
     token = jose_jwt.encode(
         {"alg": ALGORITHM},
-        {"user_id": uid, "exp": datetime.utcnow() + timedelta(hours=12)},
+        {"user_id": uid, "exp": datetime.now(UTC) + timedelta(hours=12)},
         jwk.OctKey.import_key(SECRET_KEY),
     )
 

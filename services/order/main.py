@@ -6,7 +6,7 @@ Executive Order 5: Audit on OrderCreated, OrderCompleted
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 import asyncpg
 from fastapi import FastAPI, HTTPException
@@ -46,7 +46,7 @@ def publish_event(event_type: str, payload: dict, routing_key: str = "orders.eve
         message = {
             "event_type": event_type,
             "payload": payload,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         channel.basic_publish(
             exchange="gula.events",

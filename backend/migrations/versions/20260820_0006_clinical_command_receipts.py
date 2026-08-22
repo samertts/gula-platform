@@ -1,7 +1,7 @@
 """Add durable receipts for safety-critical clinical commands.
 
-Revision ID: 20260819_0003
-Revises: 20260819_0002
+Revision ID: 20260820_0006
+Revises: 20260819_0004
 """
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "20260819_0003"
-down_revision = "20260819_0002"
+revision = "20260820_0006"
+down_revision = "20260819_0004"
 branch_labels = None
 depends_on = None
 

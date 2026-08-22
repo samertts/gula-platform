@@ -17,7 +17,7 @@ class GulaComplianceReporter:
         report_date = datetime.date.today().isoformat()
         report_data = {
             "report_id": f"COMP-{report_date}",
-            "timestamp": datetime.datetime.utcnow().isoformat(),
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
             "compliance_metrics": {
                 "data_integrity": {
                     "audit_logs_verified": True,
