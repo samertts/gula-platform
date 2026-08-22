@@ -50,8 +50,8 @@ from app.security.auth import (
     hash_password,
     verify_password,
 )
-from joserfc import jwt as jose_jwt
 from joserfc import jwk
+from joserfc import jwt as jose_jwt
 
 
 def _hdr(user_id: int, lab_id: int, role: str = "admin") -> dict:
@@ -142,7 +142,7 @@ class TestSignatureTampering:
                 "type": "access",
                 "jti": "fake",
             },
-            jwk.OctKey.import_key("wrong-secret"),
+            jwk.OctKey.import_key("wrong-secret-for-jwt-signing-test-xxxxxxxx"),
         )
         assert decode_token(bad) is None
 
@@ -202,7 +202,8 @@ class TestHeaderOverrideBypassResistance:
             lab_id=sec_lab["lab"].id, full_name="Sec P",
             phone="07700111111", health_id="HID-SEC-1",
         )
-        db.add(patient); db.commit()
+        db.add(patient)
+        db.commit()
 
         client.put(
             f"/patients/{patient.id}",
@@ -227,7 +228,8 @@ class TestMassAssignmentDefense:
             lab_id=sec_lab["lab"].id, full_name="Original",
             phone="07700111111", health_id="HID-SEC-2",
         )
-        db.add(patient); db.commit()
+        db.add(patient)
+        db.commit()
 
         # Try to mass-assign lab_id, role, etc.
         client.put(
@@ -241,7 +243,8 @@ class TestMassAssignmentDefense:
                 "created_at": "2000-01-01T00:00:00",
             },
         )
-        db.expire(patient); db.refresh(patient)
+        db.expire(patient)
+        db.refresh(patient)
         assert patient.lab_id == sec_lab["lab"].id  # NOT 9999
         assert patient.id != 9999
 
@@ -259,7 +262,8 @@ class TestMassAssignmentDefense:
                 "role": "master_admin",
             },
         )
-        db.expire(emp); db.refresh(emp)
+        db.expire(emp)
+        db.refresh(emp)
         assert emp.lab_id == sec_lab["lab"].id
         # Role should NOT have flipped to master_admin
         assert emp.role != "master_admin"
