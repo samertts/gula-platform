@@ -2,7 +2,7 @@ name: Changed Files Quality Gate
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, develop, 'release/*']
 
 permissions:
   contents: read
