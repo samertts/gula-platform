@@ -5,9 +5,12 @@ import os
 import re
 import threading
 import time
+from collections.abc import Generator
+from contextlib import suppress
+from typing import Any, Protocol
 
 from sqlalchemy import create_engine, event, text
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from .config import DATABASE_URL, READ_REPLICA_ENABLED, READ_REPLICA_URL
 
@@ -25,6 +28,17 @@ _lab_id_var: contextvars.ContextVar[int | None] = contextvars.ContextVar("lab_id
 # ── Sliding window event tracker ─────────────────────────────────────────────
 
 
+class _RedisSlidingWindowClient(Protocol):
+    """Minimum Redis interface needed for sliding-window persistence."""
+
+    def get(self, key: str) -> str | bytes | None: ...
+
+    def set(self, key: str, value: str, *, ex: int) -> Any: ...
+
+
+type PoolStatus = dict[str, int | bool | dict[str, int]]
+
+
 class _SlidingWindow:
     """Thread-safe circular buffer of (timestamp, event_type) entries.
 
@@ -34,7 +48,7 @@ class _SlidingWindow:
 
     def __init__(self, max_age_s: int = 300, max_size: int = 1000):
         self._lock = threading.Lock()
-        self._events: collections.deque = collections.deque()
+        self._events: collections.deque[tuple[float, str]] = collections.deque()
         self._max_age = max_age_s
         self._max_size = max_size
 
@@ -60,7 +74,7 @@ class _SlidingWindow:
 
     def persist_to_redis(
         self,
-        redis_client,
+        redis_client: _RedisSlidingWindowClient,
         key: str = "gula:db_window:events",
     ) -> None:
         """Serialize recent events (wall-clock times) to Redis.
@@ -78,14 +92,13 @@ class _SlidingWindow:
             payload = json.dumps(
                 [(ts + offset, etype) for ts, etype in self._events if ts >= cutoff],
             )
-        try:
+        # Persistence is intentionally best-effort and must not interrupt requests.
+        with suppress(Exception):
             redis_client.set(key, payload, ex=self._max_age + 60)
-        except Exception:
-            pass  # best-effort — never raise from persistence code
 
     def restore_from_redis(
         self,
-        redis_client,
+        redis_client: _RedisSlidingWindowClient,
         key: str = "gula:db_window:events",
     ) -> None:
         """Load previously persisted events from Redis on startup.
@@ -146,7 +159,7 @@ def get_db_error_counts() -> dict[str, int]:
         return dict(_db_error_counts)
 
 
-def get_db_window_snapshot(window_s: int = 300) -> dict:
+def get_db_window_snapshot(window_s: int = 300) -> dict[str, int | float]:
     """Return sliding-window stats for the last window_s seconds."""
     snap = db_window.snapshot(window_s)
     return {
@@ -179,10 +192,10 @@ _TIMEOUT_L2_THRESHOLD = int(os.getenv("DB_TIMEOUT_L2_THRESHOLD", "15"))  # timeo
 # ── Connection Pool Sizing ────────────────────────────────────────────────────
 # PostgreSQL default max_connections = 100.
 # We run --workers 2, so each worker gets its own pool.
-# Total DB connections = workers × (pool_size + max_overflow).
+# Total DB connections = workers x (pool_size + max_overflow).
 # Keep total well under 100 to leave room for superuser + monitoring connections.
 #
-# Formula used: 2 workers × (5 base + 15 overflow) = 40 total.
+# Formula used: 2 workers x (5 base + 15 overflow) = 40 total.
 # Configurable via env vars for larger deployments.
 _WORKERS = int(os.getenv("WEB_CONCURRENCY", "2"))
 _POOL_SIZE = max(2, int(os.getenv("DB_POOL_SIZE", "5")))  # per worker
@@ -195,7 +208,7 @@ if not re.fullmatch(r"[1-9][0-9]*(?:ms|s|min|h)", _STMT_TIMEOUT):
     _STMT_TIMEOUT = "30s"
 
 logger.debug(
-    "DB pool config: %d workers × (%d base + %d overflow) = %d max connections",
+    "DB pool config: %d workers x (%d base + %d overflow) = %d max connections",
     _WORKERS,
     _POOL_SIZE,
     _MAX_OVERFLOW,
@@ -227,7 +240,7 @@ else:
 
 # Set statement timeout + work_mem per connection (PostgreSQL only)
 @event.listens_for(engine, "connect")
-def set_pg_session_config(dbapi_conn, connection_record):
+def set_pg_session_config(dbapi_conn: Any, connection_record: Any) -> None:
     try:
         cursor = dbapi_conn.cursor()
         cursor.execute("SELECT set_config('statement_timeout', %s, false)", (_STMT_TIMEOUT,))
@@ -280,7 +293,7 @@ except Exception as _guard_exc:
     logger.warning("Edge-access guard not installed: %s", _guard_exc)
 
 
-def get_db():
+def get_db() -> Generator[Session]:
     """Database session dependency with proper cleanup.
 
     Note: Tests must override this dependency via ``app.dependency_overrides``
@@ -297,7 +310,7 @@ def get_db():
         db.close()
 
 
-def get_read_db():
+def get_read_db() -> Generator[Session]:
     """Read-replica session dependency.
 
     Routes that perform read-only queries should use this instead of
@@ -503,7 +516,7 @@ def persist_db_window_to_redis() -> None:
         logger.warning("[DB] Sliding window persist skipped: %s", exc)
 
 
-def get_pool_status() -> dict:
+def get_pool_status() -> PoolStatus:
     """Get connection pool metrics for monitoring.
 
     SQLite's StaticPool (used in tests) does not expose size/overflow/etc.,
@@ -511,14 +524,14 @@ def get_pool_status() -> dict:
     """
     pool = engine.pool
 
-    def _call(p, name: str) -> int:
+    def _call(p: Any, name: str) -> int:
         fn = getattr(p, name, None)
         try:
             return fn() if callable(fn) else 0
         except Exception:
             return 0
 
-    result = {
+    result: PoolStatus = {
         "pool_size": _call(pool, "size"),
         "checked_out": _call(pool, "checkedout"),
         "overflow": _call(pool, "overflow"),
