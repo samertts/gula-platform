@@ -25,7 +25,7 @@
 
 | البوابة | النتيجة المثبتة |
 |---|---|
-| Backend full suite | **2721 passed, 4 skipped, 21 warnings** خلال 216.12 ثانية. |
+| Backend full suite | **2727 passed, 4 skipped, 21 warnings** خلال نحو 230 ثانية بعد الإصلاحات الجديدة. |
 | Alembic | `20260820_0008 (head)`؛ رأس واحد فقط. |
 | Migration tests | **9 passed, 1 warning**. |
 | Python compilation | `python -m compileall -q backend shared services edge_agent scripts` ناجح. |
@@ -41,11 +41,19 @@
 
 ## حدود Data Preservation وRule 10
 
-أُعيد تشغيل `scripts/data_preservation_gate.py` كما هو. النتيجة هي **exit code 1 / WARNING**، وليس PASS. وجد الكاشف 29 نموذج أعمال بلا حقول soft-delete وفق heuristic على مستوى الملف، من بينها نماذج legacy مثل patients وlab_orders وlab_results وsamples وtest_results، إضافة إلى كيانات أخرى. التحليل السابق يبين أن الكاشف الحالي لا يفهم الوراثة والـ mixins ولا يطبق فحص default query filtering، كما يصنف بعض الكيانات التشغيلية أو append-only بطريقة خشنة.
+تم تحسين `scripts/data_preservation_gate.py` من heuristic على مستوى الملف إلى AST inventory على مستوى class/table، مع اكتشاف `__tablename__`، والحقول المباشرة، والوراثة من `SoftDeleteMixin`، وتصنيف append-only/transient/business. كما تمت إضافة جميع الجداول المكتشفة إلى Protected Tables Registry، وإضافة `--strict` ليحوّل فجوات Rule 10 الحقيقية إلى **FAIL / exit 2** عند فحص جاهزية الإنتاج، مع إبقاء الوضع الافتراضي **WARNING / exit 1** لمسار remediation.
 
-هذا التحذير يتضمن فجوة حقيقية في نماذج أعمال legacy، وليس مجرد خطأ يمكن إخفاؤه. لذلك لم تُضف migration شاملة إلى الجداول المحمية، ولم تُغيّر سياسة CI التي تفرق بين WARNING وFAIL. المعالجة الصحيحة التالية تحتاج سجل protected-table واعياً بالـ AST/class/inheritance، وتصنيف الاستثناءات المسموح بها، ثم Architecture Board approval لإضافة schema وحقول `deleted_at` و`deleted_by` و`is_deleted` وتطبيق filtering افتراضي مع backup وrollback واختبارات عزل المستأجرين.
+النتيجة الحالية: **68 model classes inventoried، ولا توجد جداول unregistered، و61 business model ما زالت تفتقد soft-delete support**. صُنفت `audit_logs` و`outbox_events` و`authorization_audit` و`clinical_command_receipts` و`edge_events` كسجلات append-only، وصُنفت `mfa_sessions` و`oauth2_tokens` كمخازن تشغيلية منتهية/قابلة للإبطال. هذه التصنيفات لا تمنح صلاحية حذف؛ بل تتطلب retention وintegrity وaccess controls موثقة.
 
-> الاستنتاج التشغيلي: Data Preservation Gate صالح حالياً كإشارة مراجعة، لكنه لا يثبت اكتمال Rule 10. لا ينبغي اعتبار branch جاهزاً لإغلاق هذا البند قبل اعتماد rollout رسمي.
+الوضع الافتراضي يعيد `WARNING / exit 1`، والوضع `python scripts/data_preservation_gate.py --ci --strict` يعيد **FAIL / exit 2** كما يجب، لأن إضافة الأعمدة وحدها لا تثبت default query filtering أو restore authorization. لم تُضف migration إلى الجداول المحمية. أضيف ADR-026 يثبت خطة rollout، ويلزم قبل أي schema change موافقة Architecture Board، وbackup/checksum/clone restore، وتسلسل expand/validate/switch، واختبارات tenant isolation والعلاقات والـrollback.
+
+## إصلاحات الأمن الإضافية
+
+أُزيلت بيانات PII وكلمات المرور الثابتة من التنفيذ الافتراضي في `gula_citizen_portal.py` و`gula_registration_portal.py`. أصبحت أمثلة SQLite تستخدم PBKDF2 مع salt عشوائي وتنسيق hash versioned، وترفض legacy SHA-256، وتتطلب المصادقة قبل إضافة سجل طبي، ولا تشغّل demo credentials تلقائياً. كما تحسن `.audit/scan_secrets_safe.py` لتمييز مراجع environment والـdocumentation headers، واكتشاف PEM فعلي، وتصنيف fixtures الاختبارية دون إخفائها.
+
+نتيجة فحص الأسرار بعد التعديل: **17 findingاً إجمالاً، 0 non-placeholder findings، و9 test-fixture-like findings**. هذا لا يلغي الحاجة إلى secret scanning في GitHub ومراجعة التدوير الفعلي للمفاتيح في بيئة الإنتاج؛ لكنه يزيل القيم literal التي كانت موجودة في الأمثلة المنفردة.
+
+> الاستنتاج التشغيلي: تحسن الكاشف وأصبح يخرج inventory قابلاً للتدقيق، لكن Rule 10 لم تُغلق schema-wise بعد. لا يجوز اعتبار strict gate ناجحاً أو استخدام استثناء غير موثق لتجاوز الفجوة.
 
 ## متطلبات السلامة التي لم تُمس
 
@@ -62,4 +70,32 @@
 
 ## الخطوة التالية
 
-بعد مراجعة هذا التقرير وdiff المراحل، يُدفع الفرع إلى GitHub ويُفتح PR موجّه إلى `main` من دون auto-merge. يجب تقييم CI المنشور مع التمييز بين فشل job فعلي وفشل pre-execution بسبب billing أو Vercel. ولا يُغلق PR أو يُدمج قبل مراجعة WARNING الخاص بـ Rule 10 واعتماد خطة schema مستقلة.
+يجب مراجعة تغييرات Rule 10 والأمن في PR مستقل أو تحديث PR الإصلاح الحالي، ثم تقييم CI المنشور مع التمييز بين فشل job فعلي وفشل pre-execution بسبب billing أو Vercel. لا يُغلق PR أو يُدمج إلى `main` قبل مراجعة strict gate، واعتماد خطة schema المستقلة، وتوقيعات Architecture وSecurity وPrivacy وQA/Validation وOperations والقيادة السريرية.
+
+
+## متابعة تنفيذ Rule 10 والأمن — الجولة الحالية
+
+تم استبدال فحص Rule 10 القائم على regex على مستوى الملف بـAST inventory على مستوى class/table، مع اكتشاف `__tablename__` والحقول المباشرة والوراثة من `SoftDeleteMixin` وتصنيف lifecycle. تمت إضافة الجداول المكتشفة إلى `protected_tables_registry.md`، وتصحيح أسماء `lab_subscriptions` و`quality_controls`، وإضافة ADR-026 الذي يمنع schema rollout غير المعتمد.
+
+النتيجة الحالية للـinventory هي 68 model classes، ولا توجد جداول غير مسجلة. توجد 61 business models بلا soft-delete support فعلي؛ لذلك يعيد الوضع الافتراضي `WARNING / exit 1`، بينما يعيد `--ci --strict` `FAIL / exit 2` لحجب release السريري حتى يتم اعتماد وتنفيذ lifecycle وdefault-filter evidence. هذا سلوك مقصود وليس فشلاً مخفياً.
+
+أضيفت ستة اختبارات للـgate، وثلاثة اختبارات لفاحص الأسرار، واختباران للبوابات المنفردة. كما تم تقوية `gula_citizen_portal.py` و`gula_registration_portal.py`: لا توجد demo credentials أو PII في main execution، وأصبح password hashing باستخدام PBKDF2 مع salt عشوائي وformat versioned، مع رفض legacy SHA-256 والمصادقة قبل كتابة سجل طبي.
+
+تم تحسين `.audit/scan_secrets_safe.py` لعدم اعتبار environment references وdocumentation headers أسراراً literal، مع الإبقاء على كشف PEM فعلي. النتيجة: 17 findingاً إجمالاً، 0 non-placeholder findings، و9 test-fixture-like findings. تبقى مراجعة تدوير مفاتيح الإنتاج مسؤولية التشغيل والأمن.
+
+تم إصلاح test collection الخاص بـdevice_bridge: root pytest يشغل `backend/tests` و`tests` فقط، بينما تمت إضافة CI job مستقل للخدمة مع `PYTHONPATH=.:../..`. بعد الإصلاح نجحت اختبارات device_bridge وعددها 30 اختباراً، ونجحت مجموعة root كاملة بعد الفصل بعدد 2732 اختباراً و4 skipped و21 warning. فشل root collection السابق كان بسبب خلط حزم `app` المستقلة، وليس بسبب Rule 10.
+
+## بوابات الجولة الحالية
+
+| البوابة | النتيجة |
+|---|---|
+| Root full pytest | **2732 passed, 4 skipped, 21 warnings** |
+| Device bridge isolated pytest | **30 passed, 1 warning** |
+| Rule 10 default | `WARNING / exit 1`، 68 models، 61 gaps حقيقية، 0 unregistered |
+| Rule 10 strict | `FAIL / exit 2` كما هو مطلوب قبل اعتماد rollout الإنتاجي |
+| Rule 10/security targeted tests | **11 passed** |
+| Standalone portal + scanner tests | **5 passed** ضمن المجموعة targeted |
+| Python compileall | ناجح للـbackend/shared/services/edge_agent/scripts وملفات الأمن الجديدة |
+| Ruff E9/F | ناجح على الملفات المعدلة |
+| Secret scanner | 0 non-placeholder findings |
+| CI YAML | صحيح، وjob `device-bridge-tests` موجود ومعزول |
