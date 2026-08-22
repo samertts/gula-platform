@@ -22,6 +22,9 @@ from __future__ import annotations
 
 import logging
 import re
+from typing import Any
+
+from sqlalchemy.engine import Connection, Engine, ExecutionContext
 
 from ..config import IS_WORKER_RUNTIME, RUNTIME_MODE
 
@@ -62,7 +65,7 @@ def _statement_touches_edge_table(sql: str) -> str | None:
     return match.group(0) if match else None
 
 
-def install_edge_access_guard(engine) -> None:
+def install_edge_access_guard(engine: Engine) -> None:
     """Attach a SQLAlchemy event hook that blocks edge_* access outside worker.
 
     Idempotent — re-installing the guard on the same engine is a no-op.
@@ -76,7 +79,14 @@ def install_edge_access_guard(engine) -> None:
         return
 
     @event.listens_for(engine, "before_cursor_execute")
-    def _block_edge_access(conn, cursor, statement, parameters, context, executemany):
+    def _block_edge_access(
+        conn: Connection,
+        cursor: Any,
+        statement: str,
+        parameters: Any,
+        context: ExecutionContext,
+        executemany: bool,
+    ) -> None:
         offender = _statement_touches_edge_table(statement)
         if offender is None:
             return
@@ -92,5 +102,5 @@ def install_edge_access_guard(engine) -> None:
             "into a worker job or relay the data through an API-safe view.",
         )
 
-    engine._gula_edge_guard_installed = True
+    engine.__dict__["_gula_edge_guard_installed"] = True
     logger.info("Edge-table access guard installed (RUNTIME_MODE=%s)", RUNTIME_MODE)

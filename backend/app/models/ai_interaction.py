@@ -20,7 +20,7 @@ from sqlalchemy import (
     Text,
     Uuid,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 
 from ..database import Base
 
@@ -37,7 +37,7 @@ _UUID = Uuid(as_uuid=True)
 _JSON = JSON
 
 
-def _uuid_pk() -> Column:
+def _uuid_pk() -> Column[uuid.UUID]:
     return Column(_UUID, primary_key=True, default=uuid.uuid4, nullable=False)
 
 
@@ -81,13 +81,13 @@ class AIInteraction(Base):
 
     created_at = Column(DateTime(timezone=True), nullable=False, index=True)
 
-    retrieval_refs = relationship(
+    retrieval_refs: Mapped[list[AIRetrievalRef]] = relationship(
         "AIRetrievalRef",
         backref="interaction",
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    feedback = relationship(
+    feedback: Mapped[list[AIFeedback]] = relationship(
         "AIFeedback",
         backref="interaction",
         cascade="all, delete-orphan",
@@ -99,7 +99,7 @@ class AIRetrievalRef(Base):
     __tablename__ = "ai_retrieval_refs"
 
     id = _uuid_pk()
-    interaction_id = Column(
+    interaction_id: Mapped[uuid.UUID] = Column(
         _UUID, ForeignKey("ai_interactions.id", ondelete="CASCADE"), nullable=False, index=True,
     )
     source = Column(String(64), nullable=True)
@@ -115,7 +115,7 @@ class AIFeedback(Base):
     __tablename__ = "ai_feedback"
 
     id = _uuid_pk()
-    interaction_id = Column(
+    interaction_id: Mapped[uuid.UUID] = Column(
         _UUID, ForeignKey("ai_interactions.id", ondelete="CASCADE"), nullable=False, index=True,
     )
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -129,7 +129,7 @@ class AIUnresolvedQuestion(Base):
     __tablename__ = "ai_unresolved_questions"
 
     id = _uuid_pk()
-    interaction_id = Column(
+    interaction_id: Mapped[uuid.UUID | None] = Column(
         _UUID, ForeignKey("ai_interactions.id", ondelete="SET NULL"), nullable=True,
     )
     lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)

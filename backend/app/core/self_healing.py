@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Self-Healing System — GULA Platform
 =====================================
@@ -25,6 +23,8 @@ Degradation Levels (escalating severity):
   L3_CRITICAL_ONLY → only health + auth + kill-switch paths pass (DB storm)
 """
 
+from __future__ import annotations
+
 import asyncio
 import logging
 import threading
@@ -33,7 +33,8 @@ from enum import Enum
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.responses import Response
 
 logger = logging.getLogger("gula.self_healing")
 
@@ -72,17 +73,17 @@ class CircuitBreaker:
 
     def _get_state(self) -> CircuitState:
         """Internal state reader — call with lock held."""
-        if self._state == CircuitState.OPEN:
-            # Auto-transition to HALF_OPEN after recovery timeout
-            if (
-                self._last_failure_time is not None
-                and (time.monotonic() - self._last_failure_time) >= self.recovery_timeout
-            ):
-                self._state = CircuitState.HALF_OPEN
-                logger.info(
-                    "[CIRCUIT BREAKER] %s: OPEN → HALF_OPEN (probing recovery)",
-                    self.name,
-                )
+        if (
+            self._state == CircuitState.OPEN
+            and self._last_failure_time is not None
+            and (time.monotonic() - self._last_failure_time) >= self.recovery_timeout
+        ):
+            # Auto-transition to HALF_OPEN after recovery timeout.
+            self._state = CircuitState.HALF_OPEN
+            logger.info(
+                "[CIRCUIT BREAKER] %s: OPEN → HALF_OPEN (probing recovery)",
+                self.name,
+            )
         return self._state
 
     def record_success(self) -> None:
@@ -127,7 +128,7 @@ class CircuitBreaker:
             self._failure_count = 0
             self._last_failure_time = None
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, str | int | float | None]:
         with self._lock:
             return {
                 "name": self.name,
@@ -255,7 +256,7 @@ class SystemHealth:
             # (L2/L3 are entered when circuits open; they exit when circuits close here.)
             self.exit_degraded_mode()
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, object]:
         lv = self.degradation_level
         return {
             "degraded_mode": self.degraded,
@@ -359,7 +360,11 @@ class DegradedModeMiddleware(BaseHTTPMiddleware):
     L3_CRITICAL_ONLY → block everything except _CRITICAL_PATHS
     """
 
-    async def dispatch(self, request: Request, call_next):
+    async def dispatch(
+        self,
+        request: Request,
+        call_next: RequestResponseEndpoint,
+    ) -> Response:
         if request.url.path in _ALWAYS_ALLOWED:
             return await call_next(request)
 
