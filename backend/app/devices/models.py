@@ -67,6 +67,7 @@ DEVICE_OUTBOX_STATUSES = ("pending", "processing", "retry", "delivered", "dead_l
 DEVICE_OUTBOX_MAX_ATTEMPTS = 5
 DEVICE_TRUST_STATUSES = ("pending", "active", "suspended", "revoked", "retired")
 DEVICE_INBOX_STATUSES = ("received", "duplicate", "quarantined", "rejected")
+INSTRUMENT_MEASUREMENT_STATUSES = ("quarantined", "pending_review", "rejected", "accepted")
 
 
 def utc_now() -> datetime:
@@ -295,6 +296,43 @@ class DeviceInboxMessage(Base):
     occurred_at = Column(DateTime(timezone=True), nullable=False)
     received_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
     safe_metadata = Column(JSON, nullable=True)
+
+
+class InstrumentMeasurement(Base):
+    """A device value under quarantine, never a clinical result or release decision."""
+
+    __tablename__ = "instrument_measurements"
+    __table_args__ = (
+        UniqueConstraint(
+            "device_inbox_message_id",
+            "sequence_index",
+            name="uq_instrument_measurement_inbox_sequence",
+        ),
+        Index("ix_instrument_measurement_lab_status", "lab_id", "status", "received_at"),
+        Index("ix_instrument_measurement_sample", "sample_id", "received_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lab_id = Column(Integer, ForeignKey("labs.id", ondelete="CASCADE"), nullable=False, index=True)
+    device_inbox_message_id = Column(
+        Integer,
+        ForeignKey("device_inbox_messages.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    sample_id = Column(Integer, ForeignKey("samples.id", ondelete="RESTRICT"), nullable=False)
+    sequence_index = Column(Integer, nullable=False)
+    test_code = Column(String(64), nullable=False)
+    value = Column(Float, nullable=True)
+    value_text = Column(String(200), nullable=True)
+    unit = Column(String(32), nullable=True)
+    status = Column(String(24), nullable=False, default="quarantined")
+    captured_at = Column(DateTime(timezone=True), nullable=False)
+    received_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    reviewed_by = Column(Integer, ForeignKey("lab_users.id", ondelete="SET NULL"), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    rejection_code = Column(String(64), nullable=True)
+    safe_metadata = Column(JSON, nullable=True)
+    version = Column(Integer, nullable=False, default=1)
 
 
 class DeviceOutboxMessage(Base):

@@ -3,7 +3,8 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from string import hexdigits
+from math import isfinite
+from string import ascii_uppercase, digits, hexdigits
 from uuid import uuid4
 
 from sqlalchemy import func
@@ -11,7 +12,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.models.lab_order import LabOrder
 from app.models.patient import Patient
+from app.models.sample import Sample
 
 from .models import (
     DEVICE_CATEGORIES,
@@ -26,6 +29,7 @@ from .models import (
     DeviceInboxMessage,
     DevicePrintJob,
     DeviceProtocolProfile,
+    InstrumentMeasurement,
     IntegratedDevice,
     TrustedDeviceIdentity,
     WearableMeasurement,
@@ -294,6 +298,130 @@ def quarantine_device_envelope(
             return DeviceInboxReceipt(message=repeated_message, created=False)
         raise DeviceIngressReplayError("duplicate device message or nonce was rejected") from exc
     return DeviceInboxReceipt(message=inbox_message, created=True)
+
+
+def _normalize_measurement_text(
+    value: str,
+    *,
+    field_name: str,
+    max_length: int,
+    allowed: str,
+) -> str:
+    normalized = _require_nonempty(value, field_name=field_name, max_length=max_length).upper()
+    if any(character not in allowed for character in normalized):
+        raise DeviceIngressValidationError(f"{field_name} contains unsupported characters")
+    return normalized
+
+
+def quarantine_instrument_measurement(
+    db: Session,
+    *,
+    lab_id: int,
+    device_inbox_message_id: int,
+    sample_id: int,
+    sequence_index: int,
+    test_code: str,
+    captured_at: datetime,
+    value: float | None = None,
+    value_text: str | None = None,
+    unit: str | None = None,
+    safe_metadata: dict[str, object] | None = None,
+) -> InstrumentMeasurement:
+    """Create a quarantined device value without creating a ``LabResult``.
+
+    The measurement remains non-clinical until a later, separately authorized
+    command verifies the sample and applies the LIMS state machine. This
+    function never updates an order, a sample, a LabResult, or a release state.
+    """
+    if sequence_index < 0:
+        raise DeviceIngressValidationError("sequence_index must be non-negative")
+    if captured_at.tzinfo is None:
+        raise DeviceIngressValidationError("captured_at must include a UTC offset")
+    if (value is None) == (value_text is None):
+        raise DeviceIngressValidationError("exactly one of value or value_text is required")
+    if value is not None and not isfinite(value):
+        raise DeviceIngressValidationError("numeric measurement value must be finite")
+    if value_text is not None:
+        value_text = _require_nonempty(value_text, field_name="value_text", max_length=200)
+    normalized_test_code = _normalize_measurement_text(
+        test_code,
+        field_name="test_code",
+        max_length=64,
+        allowed=ascii_uppercase + digits + "._-",
+    )
+    normalized_unit = None
+    if unit is not None:
+        normalized_unit = _normalize_measurement_text(
+            unit,
+            field_name="unit",
+            max_length=32,
+            allowed=ascii_uppercase + digits + " /%^.-",
+        )
+
+    inbox = (
+        db.query(DeviceInboxMessage)
+        .filter(
+            DeviceInboxMessage.id == device_inbox_message_id,
+            DeviceInboxMessage.lab_id == lab_id,
+            DeviceInboxMessage.status == "quarantined",
+        )
+        .first()
+    )
+    if inbox is None:
+        raise LookupError("quarantined device inbox message not found")
+
+    sample = (
+        db.query(Sample)
+        .join(LabOrder, LabOrder.id == Sample.order_id)
+        .filter(Sample.id == sample_id, LabOrder.lab_id == lab_id)
+        .first()
+    )
+    if sample is None:
+        raise LookupError("sample not found")
+    if sample.status == "rejected":
+        raise DeviceIngressValidationError(
+            "rejected samples cannot receive quarantined measurements"
+        )
+
+    existing = (
+        db.query(InstrumentMeasurement)
+        .filter(
+            InstrumentMeasurement.device_inbox_message_id == inbox.id,
+            InstrumentMeasurement.sequence_index == sequence_index,
+        )
+        .first()
+    )
+    if existing is not None:
+        if (
+            existing.sample_id == sample_id
+            and existing.test_code == normalized_test_code
+            and existing.value == value
+            and existing.value_text == value_text
+            and existing.unit == normalized_unit
+        ):
+            return existing
+        raise DeviceIngressReplayError("measurement sequence was re-used with different content")
+
+    measurement = InstrumentMeasurement(
+        lab_id=lab_id,
+        device_inbox_message_id=inbox.id,
+        sample_id=sample_id,
+        sequence_index=sequence_index,
+        test_code=normalized_test_code,
+        value=value,  # type: ignore[arg-type]  # SQLAlchemy Column lacks a typed numeric generic in this model.
+        value_text=value_text,
+        unit=normalized_unit,
+        status="quarantined",
+        captured_at=captured_at.astimezone(UTC),
+        safe_metadata=safe_metadata,
+    )
+    try:
+        with db.begin_nested():
+            db.add(measurement)
+            db.flush()
+    except IntegrityError as exc:
+        raise DeviceIngressReplayError("duplicate quarantined measurement was rejected") from exc
+    return measurement
 
 
 PROTOCOL_CATALOG = [
