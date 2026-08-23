@@ -1,0 +1,79 @@
+{
+  "release": {
+    "candidate_sha": "PENDING",
+    "target_branch": "release/clinical-safety-2026q3",
+    "recorded_at": "PENDING"
+  },
+  "gates": {
+    "ci": {
+      "status": "PENDING",
+      "owner": "platform-engineering",
+      "recorded_at": "PENDING",
+      "evidence": "PENDING: GitHub Actions run URL after billing/spending unblock"
+    },
+    "backend_regression": {
+      "status": "PENDING",
+      "owner": "backend-engineering",
+      "recorded_at": "PENDING",
+      "evidence": "PENDING: immutable test report for the exact candidate SHA"
+    },
+    "security": {
+      "status": "PENDING",
+      "owner": "information-security",
+      "recorded_at": "PENDING",
+      "evidence": "PENDING: security scan and dependency audit evidence for the exact candidate SHA"
+    },
+    "migration": {
+      "status": "PENDING",
+      "owner": "release-engineering",
+      "recorded_at": "PENDING",
+      "evidence": "PENDING: alembic heads output for the exact candidate SHA",
+      "expected_head": "20260820_0005",
+      "observed_heads": ["PENDING"]
+    },
+    "android_release": {
+      "status": "PENDING",
+      "owner": "mobile-release-owner",
+      "recorded_at": "PENDING",
+      "evidence": "PENDING: signed AAB provenance, signature verification, and physical-device test record"
+    },
+    "uat": {
+      "status": "PENDING",
+      "owner": "clinical-uat-lead",
+      "recorded_at": "PENDING",
+      "evidence": "PENDING: synthetic-data UAT record covering the approved P0/P1 cases"
+    }
+  },
+  "signatures": {
+    "lims_authorizer": {
+      "name": "PENDING",
+      "signed_at": "PENDING",
+      "decision": "PENDING",
+      "evidence": "PENDING: approved UAT signature reference"
+    },
+    "clinical_recipient": {
+      "name": "PENDING",
+      "signed_at": "PENDING",
+      "decision": "PENDING",
+      "evidence": "PENDING: approved UAT signature reference"
+    },
+    "privacy_security": {
+      "name": "PENDING",
+      "signed_at": "PENDING",
+      "decision": "PENDING",
+      "evidence": "PENDING: privacy and tenant-isolation review reference"
+    },
+    "platform_engineer": {
+      "name": "PENDING",
+      "signed_at": "PENDING",
+      "decision": "PENDING",
+      "evidence": "PENDING: release readiness and rollback verification reference"
+    },
+    "clinical_safety_lead": {
+      "name": "PENDING",
+      "signed_at": "PENDING",
+      "decision": "PENDING",
+      "evidence": "PENDING: final clinical safety approval reference"
+    }
+  }
+}
