@@ -15,6 +15,7 @@ Q ?= @
         self-audit self-audit-fix scale scale-down \
         manage kill-switch-on kill-switch-off control-stats \
         helm-deploy helm-uninstall helm-package helm-template helm-lint \
+        kustomize-template kustomize-deploy \
         quality-gate quality-gate-strict \
         compliance scorecard debt metrics \
         foundation-check foundation-ci \
@@ -31,6 +32,8 @@ Q ?= @
         platform-freeze platform-tag
 
 BACKEND_URL ?= http://localhost:8080
+# Helm renders/deploys must use an immutable hexadecimal image tag (commit SHA).
+HELM_IMAGE_TAG ?= $(IMAGE_TAG)
 
 # ─────────────────────────────────────────────────────────────────────────────
 help:
@@ -291,31 +294,56 @@ monitoring-down:
 # Helm
 # ─────────────────────────────────────────────────────────────────────────────
 helm-lint:
-	helm lint helm/gula-platform
+	@test -n "$(HELM_IMAGE_TAG)" || (echo "ERROR: HELM_IMAGE_TAG (or IMAGE_TAG) must be a commit SHA" >&2; exit 2)
+	helm lint helm/gula-platform --set global.imageTag=$(HELM_IMAGE_TAG)
 
 helm-template:
-	helm template gula-platform helm/gula-platform
+	@test -n "$(HELM_IMAGE_TAG)" || (echo "ERROR: HELM_IMAGE_TAG (or IMAGE_TAG) must be a commit SHA" >&2; exit 2)
+	helm template gula-platform helm/gula-platform --set global.imageTag=$(HELM_IMAGE_TAG)
 
 helm-package:
 	helm package helm/gula-platform -d ./releases
 
 helm-deploy:
+	@test -n "$(IMAGE_TAG)" || (echo "ERROR: IMAGE_TAG must be a commit SHA; refusing deploy" >&2; exit 2)
 	helm upgrade --install gula-platform helm/gula-platform \
-	  -f helm/gula-platform/values.yaml --namespace gula --create-namespace
+	  -f helm/gula-platform/values.yaml --set global.imageTag=$(IMAGE_TAG) \
+	  --namespace gula --create-namespace
 
 helm-uninstall:
 	helm uninstall gula-platform -n gula
+
+# Kustomize legacy overlays are fail-closed: render only after injecting an immutable SHA.
+kustomize-template:
+	@test -n "$(IMAGE_TAG)" || (echo "ERROR: IMAGE_TAG must be a commit SHA; refusing Kustomize render" >&2; exit 2)
+	@test -n "$(KUSTOMIZE_OVERLAY)" || (echo "ERROR: KUSTOMIZE_OVERLAY is required (e.g. prod, region-me, region-eu)" >&2; exit 2)
+	@case "$(IMAGE_TAG)" in ''|*[!0-9a-fA-F]*) echo "ERROR: IMAGE_TAG must contain only hexadecimal characters" >&2; exit 2;; esac
+	@printf '%s' "$(IMAGE_TAG)" | grep -Eq '^[0-9a-fA-F]{7,64}$$' || (echo "ERROR: IMAGE_TAG must be 7-64 hexadecimal characters" >&2; exit 2)
+	@tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+		cp -a k8s "$$tmp/k8s"; \
+		find "$$tmp/k8s" -type f \( -name '*.yaml' -o -name '*.yml' \) -exec sed -i "s/IMAGE_TAG_REQUIRED/$(IMAGE_TAG)/g" {} +; \
+		kustomize build "$$tmp/k8s/overlays/$(KUSTOMIZE_OVERLAY)"
+
+kustomize-deploy:
+	@test -n "$(IMAGE_TAG)" || (echo "ERROR: IMAGE_TAG must be a commit SHA; refusing Kustomize deploy" >&2; exit 2)
+	@test -n "$(KUSTOMIZE_OVERLAY)" || (echo "ERROR: KUSTOMIZE_OVERLAY is required (e.g. prod, region-me, region-eu)" >&2; exit 2)
+	@case "$(IMAGE_TAG)" in ''|*[!0-9a-fA-F]*) echo "ERROR: IMAGE_TAG must contain only hexadecimal characters" >&2; exit 2;; esac
+	@printf '%s' "$(IMAGE_TAG)" | grep -Eq '^[0-9a-fA-F]{7,64}$$' || (echo "ERROR: IMAGE_TAG must be 7-64 hexadecimal characters" >&2; exit 2)
+	@tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+		cp -a k8s "$$tmp/k8s"; \
+		find "$$tmp/k8s" -type f \( -name '*.yaml' -o -name '*.yml' \) -exec sed -i "s/IMAGE_TAG_REQUIRED/$(IMAGE_TAG)/g" {} +; \
+		kubectl apply -k "$$tmp/k8s/overlays/$(KUSTOMIZE_OVERLAY)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Quality Gates
 # ─────────────────────────────────────────────────────────────────────────────
 quality-gate:
 	$(Q)echo "=== Running Unified Quality Gate ==="
-	$(Q)python3 scripts/quality_gate.py --ci || true
+	$(Q)python3 scripts/quality_gate.py --ci
 
 quality-gate-strict:
 	$(Q)echo "=== Running Unified Quality Gate (strict) ==="
-	$(Q)python3 scripts/quality_gate.py --ci --strict || true
+	$(Q)python3 scripts/quality_gate.py --ci --strict
 
 compliance:
 	$(Q)echo "=== Architecture Compliance Engine ==="
@@ -338,13 +366,13 @@ foundation-check:
 	$(Q)echo "  → Compliance"
 	$(Q)python3 scripts/architecture_compliance_engine.py --json | python3 -c "import sys,json; d=json.load(sys.stdin); print(f'    Score: {d.get(\"score\",0)}/100')" 2>/dev/null || echo "    ⚠ Could not parse"
 	$(Q)echo "  → Scorecard"
-	$(Q)python3 scripts/repository_scorecard.py --summary || true
+	$(Q)python3 scripts/repository_scorecard.py --summary
 	$(Q)echo "  → Technical Debt"
-	$(Q)python3 scripts/technical_debt_registry.py --summary || true
+	$(Q)python3 scripts/technical_debt_registry.py --summary
 	$(Q)echo "  → Enterprise Metrics"
-	$(Q)python3 scripts/enterprise_metrics.py --chart || true
+	$(Q)python3 scripts/enterprise_metrics.py --chart
 	$(Q)echo "  → Quality Gate"
-	$(Q)python3 scripts/quality_gate.py --ci || true
+	$(Q)python3 scripts/quality_gate.py --ci
 	$(Q)echo "=== Foundation check complete ==="
 
 foundation-ci:
@@ -363,18 +391,18 @@ canary-deploy:
 	@echo "=== Canary Deployment ==="
 	@echo "  IMAGE_TAG=${IMAGE_TAG}  CANARY_PCT=${CANARY_PCT:-10}"
 	bash .github/scripts/canary-deploy.sh ${IMAGE_TAG} ${CANARY_PCT:-10} 2>/dev/null \
-	  || echo "See .github/workflows/canary-deploy.yml for CI-driven deployment"
+		  || { echo "Canary deployment failed; see .github/workflows/canary-deploy.yml" >&2; exit 1; }
 
 blue-green-deploy:
 	@echo "=== Blue-Green Deployment ==="
 	@echo "  IMAGE_TAG=${IMAGE_TAG}  SLOT=${SLOT:-auto}"
 	bash .github/scripts/blue-green-deploy.sh ${IMAGE_TAG} ${SLOT:-auto} 2>/dev/null \
-	  || echo "See .github/workflows/blue-green-deploy.yml for CI-driven deployment"
+		  || { echo "Blue-green deployment failed; see .github/workflows/blue-green-deploy.yml" >&2; exit 1; }
 
 auto-rollback:
 	@echo "=== Auto Rollback ==="
 	bash .github/scripts/auto-rollback.sh ${TARGET:-gula-backend} 2>/dev/null \
-	  || echo "See .github/workflows/auto-rollback.yml"
+		  || { echo "Auto rollback failed; see .github/workflows/auto-rollback.yml" >&2; exit 1; }
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Disaster Recovery
@@ -431,31 +459,31 @@ recovery-test:
 # ─────────────────────────────────────────────────────────────────────────────
 sast:
 	@echo "=== SAST: Bandit ==="
-	cd backend && bandit -r app/ -ll -ii -f json -o /tmp/bandit-report.json 2>/dev/null || true
+	cd backend && bandit -r app/ -ll -ii -f json -o /tmp/bandit-report.json
 	@echo "=== SAST: Semgrep ==="
-	semgrep --config=.semgrep/rules/security/ --error backend/app/ 2>/dev/null || true
+	semgrep --config=.semgrep/rules/security/ --error backend/app/
 
 dast:
 	@echo "=== DAST: OWASP ZAP ==="
-	python3 config/security/zap-api-scan.py --target $(BACKEND_URL) 2>/dev/null || true
+	python3 config/security/zap-api-scan.py --target $(BACKEND_URL)
 
 dependency-scan:
 	@echo "=== Dependency Scan ==="
-	cd backend && safety check -r requirements.txt --full-report 2>/dev/null || true
-	cd frontend-v2 && npm audit --audit-level=high 2>/dev/null || true
+	cd backend && safety check -r requirements.txt --full-report
+	cd frontend-v3 && npm audit --audit-level=high
 
 secret-scan:
 	@echo "=== Secret Scan ==="
-	gitleaks detect --source . --verbose 2>/dev/null || true
+	gitleaks detect --source . --verbose
 
 container-scan:
 	@echo "=== Container Scan ==="
 	trivy image ghcr.io/samertts/gula-platform/backend:${IMAGE_TAG:-latest} \
-	  --severity CRITICAL,HIGH --format sarif --output /tmp/trivy-report.sarif 2>/dev/null || true
+	  --severity CRITICAL,HIGH --format sarif --output /tmp/trivy-report.sarif
 
 iac-scan:
 	@echo "=== IaC Scan ==="
-	checkov -d k8s/ --framework kubernetes -o json > /tmp/checkov-report.json 2>/dev/null || true
+	checkov -d k8s/ --framework kubernetes -o json > /tmp/checkov-report.json
 
 sbom:
 	@echo "=== SBOM Generation ==="
