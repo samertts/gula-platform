@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 from scripts.release_go_preflight import (
     REQUIRED_GATES,
@@ -11,8 +12,8 @@ from scripts.release_go_preflight import (
 )
 
 
-def _complete_manifest(head: str) -> dict[str, object]:
-    gates = {
+def _complete_manifest(head: str) -> dict[str, Any]:
+    gates: dict[str, dict[str, object]] = {
         gate: {
             "status": "PASS",
             "owner": "test-owner",
@@ -27,7 +28,7 @@ def _complete_manifest(head: str) -> dict[str, object]:
             "observed_heads": [head],
         },
     )
-    signatures = {
+    signatures: dict[str, dict[str, object]] = {
         role: {
             "name": "Authorized Test Role",
             "signed_at": "2026-08-23T00:00:00+00:00",

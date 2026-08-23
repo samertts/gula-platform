@@ -76,6 +76,7 @@ def migration_heads(migrations_dir: Path) -> tuple[str, ...]:
         revision_values: tuple[str, ...] = ()
         parent_values: tuple[str, ...] = ()
         for statement in tree.body:
+            value: ast.expr | None
             if isinstance(statement, ast.Assign):
                 names = {target.id for target in statement.targets if isinstance(target, ast.Name)}
                 value = statement.value
@@ -83,6 +84,8 @@ def migration_heads(migrations_dir: Path) -> tuple[str, ...]:
                 names = {statement.target.id}
                 value = statement.value
             else:
+                continue
+            if value is None:
                 continue
             if "revision" in names:
                 revision_values = _literal_strings(value)
