@@ -5,6 +5,7 @@ import hmac
 import json
 import os
 import time
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
@@ -14,45 +15,45 @@ from ..models.lab_user import LabUser
 from ..security.dependencies import require_institutional_permission
 from . import service
 from .schemas import (
+    ClinicianBaselineSummary,
     ConnectorListResponse,
     ConnectorRecord,
     ConnectorRegisterRequest,
     ConnectorStatusUpdateRequest,
     DeviceEventListResponse,
     DeviceEventRecord,
+    DeviceListResponse,
     DeviceOutboxListResponse,
     DeviceOutboxProcessResponse,
     DeviceOutboxRecord,
+    DeviceRecord,
+    DeviceRegisterRequest,
+    DeviceStatusUpdateRequest,
+    DeviceSummary,
     GatewayAlertAcknowledgeRequest,
     GatewayAlertRecord,
     GatewayHeartbeatRequest,
     GatewayListResponse,
     GatewayMetricIngestRequest,
-    GatewayRecord,
-    GatewayRegistrationRequest,
     GatewayMetricRecord,
     GatewayMonitoringAlertListResponse,
     GatewayMonitoringSnapshot,
-    DeviceListResponse,
-    DeviceRecord,
-    DeviceRegisterRequest,
-    DeviceStatusUpdateRequest,
-    DeviceSummary,
+    GatewayRecord,
+    GatewayRegistrationRequest,
     PrinterJobListResponse,
     PrinterJobRecord,
     PrinterJobRequest,
     ProtocolDescriptor,
     ProtocolProfileListResponse,
+    ProtocolProfileRecord,
+    ProtocolProfileRequest,
     SimulationResult,
     SimulatorDescriptor,
     SimulatorRequest,
-    ProtocolProfileRecord,
-    ProtocolProfileRequest,
     WearableMeasurementIngestRequest,
     WearableMeasurementIngestResponse,
     WearableMeasurementListResponse,
     WearableMeasurementRecord,
-    ClinicianBaselineSummary,
 )
 
 router = APIRouter(prefix="/device-integration", tags=["device-integration"])
@@ -95,9 +96,9 @@ async def ingest_wearable_webhook(
     if normalized_provider not in allowed_providers:
         raise HTTPException(status_code=404, detail="Unsupported wearable provider")
 
-    secret = os.getenv(
-        f"GULA_WEARABLE_WEBHOOK_SECRET_{normalized_provider.upper()}"
-    ) or os.getenv("GULA_WEARABLE_WEBHOOK_SECRET", "")
+    secret = os.getenv(f"GULA_WEARABLE_WEBHOOK_SECRET_{normalized_provider.upper()}") or os.getenv(
+        "GULA_WEARABLE_WEBHOOK_SECRET", ""
+    )
     if not secret:
         raise HTTPException(status_code=503, detail="Wearable webhook is not configured")
     if not x_signature_256 or not x_timestamp or not x_timestamp.isdigit():
@@ -126,11 +127,20 @@ async def ingest_wearable_webhook(
         if not isinstance(measurement_data, dict):
             raise ValueError("Webhook measurement must be an object")
         payload = WearableMeasurementIngestRequest.model_validate(measurement_data)
-    except (KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError, ValidationError) as exc:
+    except (
+        KeyError,
+        TypeError,
+        ValueError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        ValidationError,
+    ) as exc:
         raise HTTPException(status_code=400, detail="Invalid canonical wearable webhook") from exc
 
     if payload.source.lower() != normalized_provider:
-        raise HTTPException(status_code=400, detail="Webhook provider does not match measurement source")
+        raise HTTPException(
+            status_code=400, detail="Webhook provider does not match measurement source"
+        )
     if not payload.simulation_only:
         raise HTTPException(
             status_code=409,
@@ -141,7 +151,7 @@ async def ingest_wearable_webhook(
         measurement, duplicate = service.ingest_wearable_measurement(db, lab_id, payload)
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
     # Return identifiers only; raw provider payloads are never stored or logged.
     return {
@@ -211,10 +221,14 @@ def register_connector(
         connector = service.register_connector(db, actor.lab_id, payload)
         device_uid = None
         if connector.device_id:
-            device = db.query(service.IntegratedDevice).filter(
-                service.IntegratedDevice.id == connector.device_id,
-                service.IntegratedDevice.lab_id == actor.lab_id,
-            ).first()
+            device = (
+                db.query(service.IntegratedDevice)
+                .filter(
+                    service.IntegratedDevice.id == connector.device_id,
+                    service.IntegratedDevice.lab_id == actor.lab_id,
+                )
+                .first()
+            )
             device_uid = device.device_uid if device else None
         return ConnectorRecord(
             id=connector.id,
@@ -239,7 +253,7 @@ def register_connector(
         )
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.post("/connectors/{connector_uid}/status", response_model=ConnectorRecord)
@@ -253,10 +267,14 @@ def update_connector_status(
         connector = service.update_connector_status(db, actor.lab_id, connector_uid, payload)
         device_uid = None
         if connector.device_id:
-            device = db.query(service.IntegratedDevice).filter(
-                service.IntegratedDevice.id == connector.device_id,
-                service.IntegratedDevice.lab_id == actor.lab_id,
-            ).first()
+            device = (
+                db.query(service.IntegratedDevice)
+                .filter(
+                    service.IntegratedDevice.id == connector.device_id,
+                    service.IntegratedDevice.lab_id == actor.lab_id,
+                )
+                .first()
+            )
             device_uid = device.device_uid if device else None
         return ConnectorRecord(
             id=connector.id,
@@ -281,7 +299,7 @@ def update_connector_status(
         )
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.get("/protocol-profiles", response_model=ProtocolProfileListResponse)
@@ -291,14 +309,18 @@ def list_protocol_profiles(
     actor: LabUser = _read_actor(),
     db: Session = Depends(get_db),
 ):
-    total, profiles = service.list_protocol_profiles(db, actor.lab_id, status=profile_status, limit=limit)
+    total, profiles = service.list_protocol_profiles(
+        db, actor.lab_id, status=profile_status, limit=limit
+    )
     return ProtocolProfileListResponse(
         total=total,
         profiles=[ProtocolProfileRecord.model_validate(profile) for profile in profiles],
     )
 
 
-@router.post("/protocol-profiles", response_model=ProtocolProfileRecord, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/protocol-profiles", response_model=ProtocolProfileRecord, status_code=status.HTTP_201_CREATED
+)
 def register_protocol_profile(
     payload: ProtocolProfileRequest,
     actor: LabUser = _write_actor(),
@@ -310,7 +332,7 @@ def register_protocol_profile(
         )
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.get("/simulators", response_model=list[SimulatorDescriptor])
@@ -326,10 +348,12 @@ def simulate_connector(
     db: Session = Depends(get_db),
 ):
     try:
-        return SimulationResult(**service.simulate_connector(db, actor.lab_id, connector_uid, payload))
+        return SimulationResult(
+            **service.simulate_connector(db, actor.lab_id, connector_uid, payload)
+        )
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.get("/devices", response_model=DeviceListResponse)
@@ -340,8 +364,12 @@ def list_devices(
     actor: LabUser = _read_actor(),
     db: Session = Depends(get_db),
 ):
-    total, devices = service.list_devices(db, actor.lab_id, category=category, status=device_status, limit=limit)
-    return DeviceListResponse(total=total, devices=[DeviceRecord.model_validate(device) for device in devices])
+    total, devices = service.list_devices(
+        db, actor.lab_id, category=category, status=device_status, limit=limit
+    )
+    return DeviceListResponse(
+        total=total, devices=[DeviceRecord.model_validate(device) for device in devices]
+    )
 
 
 @router.get("/devices/{device_uid}", response_model=DeviceRecord)
@@ -363,7 +391,7 @@ def register_device(
         return DeviceRecord.model_validate(service.register_device(db, actor.lab_id, payload))
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.post("/devices/{device_uid}/status", response_model=DeviceRecord)
@@ -374,10 +402,12 @@ def update_device_status(
     db: Session = Depends(get_db),
 ):
     try:
-        return DeviceRecord.model_validate(service.update_status(db, actor.lab_id, device_uid, payload))
+        return DeviceRecord.model_validate(
+            service.update_status(db, actor.lab_id, device_uid, payload)
+        )
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.post("/devices/{device_uid}/probe", response_model=DeviceRecord)
@@ -390,7 +420,7 @@ def probe_device(
         return DeviceRecord.model_validate(service.probe_device(db, actor.lab_id, device_uid))
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.get("/events", response_model=DeviceEventListResponse)
@@ -401,7 +431,9 @@ def list_device_events(
     actor: LabUser = _read_actor(),
     db: Session = Depends(get_db),
 ):
-    total, rows = service.list_events(db, actor.lab_id, device_uid=device_uid, severity=severity, limit=limit)
+    total, rows = service.list_events(
+        db, actor.lab_id, device_uid=device_uid, severity=severity, limit=limit
+    )
     events = [
         DeviceEventRecord(
             id=event.id,
@@ -470,7 +502,7 @@ def create_printer_job(
         )
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.get("/gateways", response_model=GatewayListResponse)
@@ -497,10 +529,14 @@ def register_gateway(
         return GatewayRecord.model_validate(service.register_gateway(db, actor.lab_id, payload))
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
-@router.post("/gateways/{gateway_ref}/heartbeat", response_model=GatewayMetricRecord, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/gateways/{gateway_ref}/heartbeat",
+    response_model=GatewayMetricRecord,
+    status_code=status.HTTP_201_CREATED,
+)
 def record_gateway_heartbeat(
     gateway_ref: str,
     payload: GatewayHeartbeatRequest,
@@ -510,10 +546,12 @@ def record_gateway_heartbeat(
     if payload.gateway_ref != gateway_ref:
         raise HTTPException(status_code=400, detail="gateway_ref does not match the route")
     try:
-        return GatewayMetricRecord.model_validate(service.record_gateway_heartbeat(db, actor.lab_id, payload))
+        return GatewayMetricRecord.model_validate(
+            service.record_gateway_heartbeat(db, actor.lab_id, payload)
+        )
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.get("/outbox", response_model=DeviceOutboxListResponse)
@@ -537,7 +575,9 @@ def list_device_outbox(
     )
 
 
-@router.post("/outbox/process", response_model=DeviceOutboxProcessResponse, status_code=status.HTTP_200_OK)
+@router.post(
+    "/outbox/process", response_model=DeviceOutboxProcessResponse, status_code=status.HTTP_200_OK
+)
 def process_device_outbox(
     limit: int = Query(50, ge=1, le=200),
     actor: LabUser = _write_actor(),
@@ -546,17 +586,21 @@ def process_device_outbox(
     return service.process_outbox(db, actor.lab_id, limit=limit)
 
 
-@router.post("/monitoring/metrics", response_model=GatewayMetricRecord, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/monitoring/metrics", response_model=GatewayMetricRecord, status_code=status.HTTP_201_CREATED
+)
 def ingest_monitoring_metrics(
     payload: GatewayMetricIngestRequest,
     actor: LabUser = _write_actor(),
     db: Session = Depends(get_db),
 ):
     try:
-        return GatewayMetricRecord.model_validate(service.ingest_gateway_metrics(db, actor.lab_id, payload))
+        return GatewayMetricRecord.model_validate(
+            service.ingest_gateway_metrics(db, actor.lab_id, payload)
+        )
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.get("/monitoring", response_model=GatewayMonitoringSnapshot)
@@ -574,8 +618,12 @@ def list_monitoring_alerts(
     actor: LabUser = _read_actor(),
     db: Session = Depends(get_db),
 ):
-    total, alerts = service.list_gateway_alerts(db, actor.lab_id, alert_status=alert_status, limit=limit)
-    return GatewayMonitoringAlertListResponse(total=total, alerts=[GatewayAlertRecord.model_validate(alert) for alert in alerts])
+    total, alerts = service.list_gateway_alerts(
+        db, actor.lab_id, alert_status=alert_status, limit=limit
+    )
+    return GatewayMonitoringAlertListResponse(
+        total=total, alerts=[GatewayAlertRecord.model_validate(alert) for alert in alerts]
+    )
 
 
 @router.post("/monitoring/alerts/{alert_id}/acknowledge", response_model=GatewayAlertRecord)
@@ -590,7 +638,7 @@ def acknowledge_monitoring_alert(
         return GatewayAlertRecord.model_validate(alert)
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.post(
@@ -612,7 +660,7 @@ def ingest_wearable_measurement(
         )
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc
 
 
 @router.get(
@@ -660,4 +708,4 @@ def clinician_baseline_summary(
         )
     except Exception as exc:
         _handle_service_error(exc)
-        raise AssertionError("unreachable")
+        raise AssertionError("unreachable") from exc

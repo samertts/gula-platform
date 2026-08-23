@@ -1,3 +1,4 @@
+# ruff: noqa: T201 — this CLI script intentionally prints the cost report.
 HOURS = 730
 
 # Estimated Frankfurt on-demand/usage rates in USD; replace with AWS Calculator/API quote before procurement.

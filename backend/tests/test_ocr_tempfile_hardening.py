@@ -10,7 +10,7 @@ class _FakeEasyReader:
     def __init__(self) -> None:
         self.paths: list[Path] = []
 
-    def readtext(self, path: str):
+    def readtext(self, path: str) -> list[tuple[list[object], str, float]]:
         image_path = Path(path)
         self.paths.append(image_path)
         assert image_path.read_bytes() == b"synthetic-image"
@@ -21,7 +21,7 @@ class _FakePaddleReader:
     def __init__(self) -> None:
         self.paths: list[Path] = []
 
-    def ocr(self, path: str, *, cls: bool):
+    def ocr(self, path: str, *, cls: bool) -> list[list[tuple[list[object], list[object]]]]:
         assert cls is True
         image_path = Path(path)
         self.paths.append(image_path)

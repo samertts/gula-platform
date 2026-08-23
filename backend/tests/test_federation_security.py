@@ -5,7 +5,9 @@ from app.identity.federation.security import (
 )
 
 
-def test_localhost_urls_are_allowed_only_in_development(monkeypatch) -> None:
+def test_localhost_urls_are_allowed_only_in_development(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("ENV", "test")
     monkeypatch.delenv("FEDERATION_ALLOWED_HOSTS", raising=False)
 
@@ -17,7 +19,9 @@ def test_localhost_urls_are_allowed_only_in_development(monkeypatch) -> None:
     ]
 
 
-def test_production_requires_https_and_explicit_allowlist(monkeypatch) -> None:
+def test_production_requires_https_and_explicit_allowlist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("ENV", "production")
     monkeypatch.setenv("FEDERATION_ALLOWED_HOSTS", "idp.example.org")
 
@@ -30,7 +34,9 @@ def test_production_requires_https_and_explicit_allowlist(monkeypatch) -> None:
         validate_endpoint_url("https://other.example.org/issuer", "issuer_url")
 
 
-def test_federation_urls_reject_ssrf_and_ambiguous_oauth_targets(monkeypatch) -> None:
+def test_federation_urls_reject_ssrf_and_ambiguous_oauth_targets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("ENV", "production")
     monkeypatch.setenv("FEDERATION_ALLOWED_HOSTS", "idp.example.org")
 
@@ -49,7 +55,9 @@ def test_federation_urls_reject_ssrf_and_ambiguous_oauth_targets(monkeypatch) ->
         validate_redirect_uris(["https://idp.example.org/callback#fragment"])
 
 
-def test_redirect_uri_list_is_bounded_and_exact(monkeypatch) -> None:
+def test_redirect_uri_list_is_bounded_and_exact(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("ENV", "production")
     monkeypatch.setenv("FEDERATION_ALLOWED_HOSTS", "idp.example.org")
 

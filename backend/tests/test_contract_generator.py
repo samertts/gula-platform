@@ -5,7 +5,7 @@ from pathlib import Path
 from app.contracts.generator import ContractGenerator
 
 
-def test_contract_export_manifest_uses_timezone_aware_utc_timestamp():
+def test_contract_export_manifest_uses_timezone_aware_utc_timestamp() -> None:
     generator = ContractGenerator()
 
     exported = generator.export_all("contract-test")
