@@ -1,18 +1,17 @@
 """Lab device integration - receive results from analyzers."""
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models.lab_order import LabOrder
-from ..models.lab_result import LabResult
 from ..models.lab_user import LabUser
-from ..models.sample import Sample
 from ..security.dependencies import get_current_user
-from ..security.rate_limit import rate_limit_public
 from ..services.audit_service import log_action
-from ..services.interpretation import get_flag
+
+logger = logging.getLogger("gula.device_results")
 
 router = APIRouter(prefix="/device", tags=["device"])
 
@@ -39,93 +38,31 @@ def receive_device_results(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Receive results from a lab analyzer device.
+    """Reject the legacy direct device-to-clinical-write path.
 
-    Matches results to an order via sample barcode, creates lab results,
-    and updates sample status to 'analyzed'.
+    Device payloads must enter the future trusted ingress service, be recorded
+    in the transactionally idempotent inbox, and remain quarantined until an
+    authorized clinician accepts them through the clinical command guard. This
+    endpoint intentionally never reads a sample, creates a result, or changes
+    clinical state.
     """
-    # Rate limit device submissions (max 100 per minute per IP)
-    rate_limit_public(request, max_per_minute=100)
-
-    # Limit number of results per submission
-    if len(data.results) > 100:
-        raise HTTPException(status_code=400, detail="Maximum 100 results per submission")
-
-    # Find sample by barcode
-    sample = (
-        db.query(Sample)
-        .join(LabOrder)
-        .filter(
-            Sample.barcode == data.barcode,
-            LabOrder.lab_id == current_user.lab_id,
+    del data, request
+    try:
+        log_action(
+            db,
+            action="device_direct_ingestion_rejected",
+            resource_type="device_ingress",
+            user_id=current_user.id,
+            user_role=current_user.role,
+            lab_id=current_user.lab_id,
+            details={"reason": "legacy_direct_clinical_write_disabled"},
         )
-        .first()
+        db.commit()
+    except Exception:
+        db.rollback()
+        logger.exception("Unable to persist direct-device-ingestion rejection audit event")
+
+    raise HTTPException(
+        status_code=503,
+        detail="device_ingestion_quarantined",
     )
-    if not sample:
-        raise HTTPException(status_code=404, detail="Sample not found")
-
-    if sample.status == "rejected":
-        raise HTTPException(status_code=400, detail="Cannot add results to a rejected sample")
-
-    order = db.query(LabOrder).filter(LabOrder.id == sample.order_id).first()
-
-    from ..domain.order_state import assert_not_cancelled, assert_not_locked, enforce_transition
-
-    assert_not_locked(order)
-    assert_not_cancelled(order)
-    enforce_transition(order.status, "completed")
-
-    created = []
-    for item in data.results:
-        flag = None
-        if (
-            item.value is not None
-            and item.normal_range_low is not None
-            and item.normal_range_high is not None
-        ):
-            flag = get_flag(
-                item.value, item.normal_range_low, item.normal_range_high, test_name=item.test_name,
-            )
-
-        import secrets
-
-        from ..models.lab_result import hash_token
-
-        token = secrets.token_urlsafe(32)
-
-        result = LabResult(
-            order_id=order.id,
-            test_name=item.test_name,
-            value=item.value,
-            value_text=item.value_text,
-            unit=item.unit,
-            normal_range_low=item.normal_range_low,
-            normal_range_high=item.normal_range_high,
-            flag=flag,
-            token=token,
-            token_hash=hash_token(token),
-        )
-        db.add(result)
-        created.append({"test": item.test_name, "token": token})
-
-    # Update sample status
-    sample.status = "analyzed"
-    order.status = "completed"
-
-    log_action(
-        db,
-        action="device_results",
-        resource_type="lab_order",
-        resource_id=order.id,
-        user_id=current_user.id,
-        user_role=current_user.role,
-        details=f"Device {data.device_id or 'unknown'}: {len(created)} results via barcode {data.barcode}",
-    )
-    db.commit()
-
-    return {
-        "message": f"{len(created)} results added from device",
-        "barcode": data.barcode,
-        "order_id": order.id,
-        "results": created,
-    }
