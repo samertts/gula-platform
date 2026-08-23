@@ -30,4 +30,4 @@ The repository's latest push notice reports one moderate vulnerability on the de
 
 ## Verification date
 
-The live Dependabot alert page was checked on 2026-08-23. The page showed `Open`, patched version `4.1.137.Final`, and the runner-unavailable message. The PR head verified locally at that time was `2a116c8adc0bdcb30ea62fa4f946203633d0bb29`.
+The live Dependabot alert page was checked on 2026-08-23. The page showed `Open`, patched version `4.1.137.Final`, and the runner-unavailable message. The PR head verified locally at that time was `2b47d7741e280811460506d5514abc8d44920dd5`.
