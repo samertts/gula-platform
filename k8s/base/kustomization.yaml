@@ -28,6 +28,7 @@ resources:
   - microservices/services.yaml
   - microservices/hpa.yaml
   - mesh/linkerd.yaml
+  - network-policies.yaml
 
 # Common labels applied to all resources
 commonLabels:

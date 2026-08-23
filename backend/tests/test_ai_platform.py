@@ -352,6 +352,20 @@ class TestMemoryStore:
         assert msg.role == "user"
         assert msg.content == "hello"
 
+    def test_memory_scope_rejects_cross_lab_and_cross_user_access(self):
+        from app.ai.memory import MemoryStore
+
+        store = MemoryStore()
+        conv = asyncio.run(store.create_session(lab_id=11, user_id=22))
+        assert asyncio.run(store.get_session(conv.session_id, lab_id=99, user_id=22)) is None
+        assert asyncio.run(store.get_session(conv.session_id, lab_id=11, user_id=99)) is None
+        with pytest.raises(PermissionError):
+            asyncio.run(store.add_message(conv.session_id, "user", "blocked", lab_id=99, user_id=22))
+        with pytest.raises(PermissionError):
+            asyncio.run(store.add_message(conv.session_id, "user", "blocked", lab_id=11, user_id=99))
+        assert store.delete_session(conv.session_id, lab_id=99, user_id=22) is False
+        assert asyncio.run(store.get_session(conv.session_id, lab_id=11, user_id=22)) is not None
+
     def test_get_recent(self):
         from app.ai.memory import MemoryStore
 

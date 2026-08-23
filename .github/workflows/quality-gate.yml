@@ -81,6 +81,37 @@ jobs:
               raise SystemExit(1)
           print('All tracked JSON and XML artifacts valid')
           PYEOF
+      - name: Validate Kubernetes security contracts
+        run: |
+          python - <<'PYEOF'
+          import pathlib
+          import yaml
+
+          base = yaml.safe_load(pathlib.Path('k8s/base/kustomization.yaml').read_text())
+          resources = set(base.get('resources', []))
+          if 'network-policies.yaml' not in resources:
+              raise SystemExit('k8s/base/kustomization.yaml does not register network-policies.yaml')
+
+          docs = list(yaml.safe_load_all(pathlib.Path('k8s/base/network-policies.yaml').read_text()))
+          if not docs:
+              raise SystemExit('no NetworkPolicy documents found')
+          for policy in docs:
+              if policy.get('kind') != 'NetworkPolicy':
+                  raise SystemExit(f"unexpected policy kind: {policy.get('kind')}")
+              spec = policy.get('spec') or {}
+              if not spec.get('podSelector') or not spec.get('policyTypes'):
+                  raise SystemExit(f"incomplete NetworkPolicy: {policy.get('metadata', {}).get('name')}")
+              if 'Ingress' in spec['policyTypes'] and not spec.get('ingress'):
+                  raise SystemExit(f"Ingress policy has no ingress rules: {policy.get('metadata', {}).get('name')}")
+              for rule in spec.get('ingress', []):
+                  if not rule.get('ports'):
+                      raise SystemExit(f"Ingress rule has no ports: {policy.get('metadata', {}).get('name')}")
+
+          for path in pathlib.Path('k8s').rglob('*.yaml'):
+              if ':latest' in path.read_text():
+                  raise SystemExit(f'mutable image tag found in {path}')
+          print(f'Validated {len(docs)} NetworkPolicies and immutable K8s image references')
+          PYEOF
       - name: Check Python compilation
         run: python -m compileall -q backend/app backend/tests scripts shared
       - name: Check functional Python lint

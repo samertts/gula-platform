@@ -140,6 +140,7 @@ def test_signed_wearable_webhook_is_verified_and_idempotent(
     patient = _patient(db, lab.id, "Webhook Patient")
     secret = "webhook-test-secret"
     monkeypatch.setenv("GULA_WEARABLE_WEBHOOK_SECRET_FITBIT", secret)
+    monkeypatch.setenv("GULA_WEARABLE_WEBHOOK_LABS_FITBIT", str(lab.id))
     measurement = _payload(patient.id, "fitbit-event-001")
     measurement["source"] = "fitbit"
     envelope = {"lab_id": lab.id, "measurement": measurement}
@@ -171,6 +172,32 @@ def test_signed_wearable_webhook_is_verified_and_idempotent(
     assert second.status_code == 202, second.text
     assert second.json()["duplicate"] is True
     assert second.json()["measurement_id"] == first.json()["measurement_id"]
+
+
+def test_signed_wearable_webhook_rejects_unbound_lab(
+    client: TestClient, db: Session, make_lab: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import hashlib
+    import hmac
+    import json
+    import time
+
+    lab = make_lab("Unbound Webhook Lab")
+    patient = _patient(db, lab.id, "Unbound Patient")
+    secret = "bound-secret"
+    monkeypatch.setenv("GULA_WEARABLE_WEBHOOK_SECRET_FITBIT", secret)
+    monkeypatch.setenv("GULA_WEARABLE_WEBHOOK_LABS_FITBIT", "999999")
+    envelope = {"lab_id": lab.id, "measurement": {**_payload(patient.id), "source": "fitbit"}}
+    raw = json.dumps(envelope, separators=(",", ":")).encode("utf-8")
+    timestamp = str(int(time.time()))
+    signature = hmac.new(secret.encode(), f"{timestamp}.".encode() + raw, hashlib.sha256).hexdigest()
+    response = client.post(
+        "/device-integration/wearables/webhook/fitbit",
+        content=raw,
+        headers={"X-Webhook-Timestamp": timestamp, "X-Signature-256": f"sha256={signature}"},
+    )
+    assert response.status_code == 403
+    assert "not bound" in response.text
 
 
 def test_signed_wearable_webhook_rejects_invalid_signature(

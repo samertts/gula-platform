@@ -203,7 +203,7 @@ redis-cli:
 # ─────────────────────────────────────────────────────────────────────────────
 lint:
 	@echo "=== pyflakes ==="
-	cd backend && python -m pyflakes app 2>&1 | grep -v "imported but unused" || true
+	cd backend && python -m pyflakes app
 	@echo "=== flake8 (errors only) ==="
 	cd backend && flake8 app --select=E9,F821 --statistics
 

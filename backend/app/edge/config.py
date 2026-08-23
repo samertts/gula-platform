@@ -40,8 +40,16 @@ EDGE_TRUST_MAX: float = 100.0
 EDGE_TRUST_MIN: float = 0.0
 EDGE_TRUST_QUARANTINE_BELOW: float = float(os.getenv("EDGE_TRUST_QUARANTINE_BELOW", "20.0"))
 
-# ── Task signing ──────────────────────────────────────────────────────────────
+# ── Agent token lifetime ───────────────────────────────────────────────────────
 
+try:
+    EDGE_AGENT_TOKEN_TTL_S: int = int(os.getenv("EDGE_AGENT_TOKEN_TTL_S", "86400"))
+except ValueError as exc:
+    raise RuntimeError("EDGE_AGENT_TOKEN_TTL_S must be an integer") from exc
+if not 300 <= EDGE_AGENT_TOKEN_TTL_S <= 604800:
+    raise RuntimeError("EDGE_AGENT_TOKEN_TTL_S must be between 300 and 604800 seconds")
+
+# ── Task signing ──────────────────────────────────────────────────────────────
 
 # Tasks are HMAC-signed with this secret. Defaults to SECRET_KEY for safety
 # (no silent fallback — see config.py weak-secret detection).

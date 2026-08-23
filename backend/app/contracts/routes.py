@@ -1,13 +1,16 @@
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse, PlainTextResponse
 
 from .events import EVENT_REGISTRY, get_event_catalog
 from .fhir import get_capability_statement, get_fhir_profiles, get_structure_definitions
 from .generator import ContractGenerator
 from .models import ContractExport
+from app.security.dependencies import require_permission
+
+_require_contract_export_admin = require_permission("system:admin")
 
 logger = logging.getLogger("gula.contracts.router")
 
@@ -156,7 +159,10 @@ async def get_contract_catalog():
 
 
 @router.post("/export", summary="Export all contracts to filesystem")
-async def export_contracts(export: ContractExport):
+async def export_contracts(
+    export: ContractExport,
+    _current_user=Depends(_require_contract_export_admin),
+):
     try:
         exported_files = _generator.export_all(export.output_dir)
         return JSONResponse(

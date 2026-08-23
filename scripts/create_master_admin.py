@@ -11,6 +11,7 @@ Or with inline args (non-interactive):
 """
 import argparse
 import getpass
+import os
 import sys
 
 
@@ -38,10 +39,9 @@ def main():
         sys.exit(1)
 
     # ── DB setup ──────────────────────────────────────────────────────────────
-    database_url = os.getenv(
-        "DATABASE_URL",
-        "postgresql://postgres:gula_default_pg_pass@localhost:5432/labdb"
-    )
+    database_url = os.getenv("DATABASE_URL")
+    if not database_url:
+        raise SystemExit("DATABASE_URL must be provided; refusing unsafe database fallback")
 
     from passlib.context import CryptContext
     from sqlalchemy import create_engine, text

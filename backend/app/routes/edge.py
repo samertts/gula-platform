@@ -35,6 +35,7 @@ user JWT and never call get_current_user.
 from __future__ import annotations
 
 from datetime import datetime
+import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
@@ -286,10 +287,11 @@ import hashlib as _hashlib
 import hmac as _hmac
 
 
-def _make_agent_token(device: EdgeDevice) -> str:
-    msg = f"{device.device_id}|{device.cert_fingerprint}|{device.lab_id}".encode()
+def _make_agent_token(device: EdgeDevice, expires_at: int | None = None) -> str:
+    expiry = expires_at if expires_at is not None else int(time.time()) + edge_config.EDGE_AGENT_TOKEN_TTL_S
+    msg = f"{device.device_id}|{device.cert_fingerprint}|{device.lab_id}|{expiry}".encode()
     sig = _hmac.new(edge_config.get_task_signing_key(), msg, _hashlib.sha256).hexdigest()
-    return f"{device.device_id}.{sig}"
+    return f"{device.device_id}.{expiry}.{sig}"
 
 
 def _resolve_agent_device(
@@ -300,13 +302,20 @@ def _resolve_agent_device(
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "Missing agent bearer token")
     token = authorization.split(" ", 1)[1].strip()
-    if "." not in token:
+    parts = token.split(".", 2)
+    if len(parts) != 3:
         raise HTTPException(401, "Malformed agent token")
-    device_id, sig = token.split(".", 1)
+    device_id, expiry_raw, sig = parts
+    try:
+        expires_at = int(expiry_raw)
+    except ValueError as exc:
+        raise HTTPException(401, "Malformed agent token") from exc
+    if expires_at <= int(time.time()):
+        raise HTTPException(401, "Expired agent token")
     device = db.query(EdgeDevice).filter(EdgeDevice.device_id == device_id).first()
     if device is None:
         raise HTTPException(401, "Unknown device")
-    expected = _make_agent_token(device).split(".", 1)[1]
+    expected = _make_agent_token(device, expires_at=expires_at).split(".", 2)[2]
     if not _hmac.compare_digest(expected, sig):
         # Cryptographic misbehavior — penalize and refuse.
         try:

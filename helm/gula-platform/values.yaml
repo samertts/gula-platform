@@ -16,6 +16,9 @@ global:
     app.kubernetes.io/part-of: gula-platform
     app.kubernetes.io/managed-by: helm
   annotations: {}
+  networkPolicy:
+    enabled: true
+    ingressNamespace: ingress-nginx
 
 namespace:
   enabled: true
