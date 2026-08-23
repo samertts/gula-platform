@@ -18,8 +18,8 @@ Security model (layered)
 
 Environment variables
 ---------------------
-DEVICE_HMAC_KEY      : Required in production for HMAC + replay protection.
-ALLOWED_DEVICE_IDS   : Comma-separated whitelist of known device IDs.
+DEVICE_HMAC_KEY      : Required in every runtime that calls this legacy gateway.
+ALLOWED_DEVICE_IDS   : Required comma-separated whitelist of known device IDs.
 REPLAY_WINDOW_SECONDS: Max age of a valid message (default 120 s = 2 min).
 """
 
@@ -46,12 +46,6 @@ _ALLOWED_DEVICE_IDS: set[str] = (
 _REPLAY_WINDOW: int = int(os.getenv("REPLAY_WINDOW_SECONDS", "120"))
 _NONCE_PREFIX = "dgw:nonce:"
 
-if not _DEVICE_HMAC_KEY:
-    logger.warning(
-        "[DEVICE_GATEWAY] DEVICE_HMAC_KEY not set — HMAC & replay protection disabled. "
-        "Set this key in production.",
-    )
-
 
 # ── Exceptions ─────────────────────────────────────────────────────────────────
 
@@ -68,7 +62,11 @@ class DeviceAuthError(PermissionError):
 
 
 def _compute_signature(
-    device_id: str, sample_id: str, test: str, value: float, timestamp: int,
+    device_id: str,
+    sample_id: str,
+    test: str,
+    value: float,
+    timestamp: int,
 ) -> str:
     msg = f"{device_id}:{sample_id}:{test}:{value}:{timestamp}".encode()
     return hmac.new(_DEVICE_HMAC_KEY.encode(), msg, hashlib.sha256).hexdigest()
@@ -91,13 +89,12 @@ def _check_replay(nonce: str, device_id: str) -> None:
     except DeviceAuthError:
         raise
     except Exception as exc:
-        logger.warning(
-            "[DEVICE_GATEWAY] Redis nonce check failed for device=%s: %s — replay protection degraded",
+        logger.error(
+            "[DEVICE_GATEWAY] Replay protection unavailable for device=%s: %s",
             device_id,
             exc,
         )
-        # If Redis is down we cannot enforce uniqueness — log and continue.
-        # This is acceptable because HMAC already authenticates the message.
+        raise DeviceAuthError("replay protection is unavailable") from exc
 
 
 # ── Public API ─────────────────────────────────────────────────────────────────
@@ -147,13 +144,13 @@ def receive_device_result(
         raise DeviceInputError("sample_id must be a non-empty string")
     sample_id = sample_id.strip()
     if not sample_id or len(sample_id) > _MAX_STR_LEN:
-        raise DeviceInputError(f"sample_id must be 1–{_MAX_STR_LEN} characters")
+        raise DeviceInputError(f"sample_id must be 1-{_MAX_STR_LEN} characters")
 
     if not test or not isinstance(test, str):
         raise DeviceInputError("test must be a non-empty string")
     test = test.strip()
     if not test or len(test) > _MAX_STR_LEN:
-        raise DeviceInputError(f"test must be 1–{_MAX_STR_LEN} characters")
+        raise DeviceInputError(f"test must be 1-{_MAX_STR_LEN} characters")
 
     if value is None:
         raise DeviceInputError("value is required")
@@ -166,48 +163,48 @@ def receive_device_result(
             f"value {numeric_value} is outside allowed range [{_MIN_VALUE}, {_MAX_VALUE}]",
         )
 
-    # ── 2. Authentication + replay protection (only when key is configured) ────
-    if _DEVICE_HMAC_KEY:
-        device_id = (device_id or "").strip()
+    # ── 2. Authentication + replay protection (always fail closed) ─────────────
+    if not _DEVICE_HMAC_KEY:
+        logger.error("[DEVICE_GATEWAY] HMAC authentication is not configured")
+        raise DeviceAuthError("device gateway authentication is unavailable")
+    if not _ALLOWED_DEVICE_IDS:
+        logger.error("[DEVICE_GATEWAY] Device allowlist is not configured")
+        raise DeviceAuthError("device gateway allowlist is unavailable")
 
-        # Whitelist check
-        if _ALLOWED_DEVICE_IDS and device_id not in _ALLOWED_DEVICE_IDS:
-            logger.warning("[DEVICE_GATEWAY] Unknown device_id=%s sample=%s", device_id, sample_id)
-            raise DeviceAuthError(f"Device '{device_id}' is not in the allowed device list")
+    device_id = (device_id or "").strip()
+    if not device_id:
+        raise DeviceAuthError("device_id is required")
+    if device_id not in _ALLOWED_DEVICE_IDS:
+        logger.warning("[DEVICE_GATEWAY] Unknown device_id=%s", device_id)
+        raise DeviceAuthError(f"Device '{device_id}' is not in the allowed device list")
 
-        # Timestamp window check (prevents stale/replayed messages)
-        if not timestamp:
-            raise DeviceAuthError("timestamp is required for authenticated messages")
-        server_now = int(time.time())
-        age = abs(server_now - timestamp)
-        if age > _REPLAY_WINDOW:
-            raise DeviceAuthError(
-                f"Message timestamp is {age}s old — outside replay window ({_REPLAY_WINDOW}s)",
-            )
+    # Timestamp window check (prevents stale/replayed messages)
+    if not timestamp:
+        raise DeviceAuthError("timestamp is required for authenticated messages")
+    server_now = int(time.time())
+    age = abs(server_now - timestamp)
+    if age > _REPLAY_WINDOW:
+        raise DeviceAuthError(
+            f"Message timestamp is {age}s old — outside replay window ({_REPLAY_WINDOW}s)",
+        )
 
-        # HMAC signature verification
-        if not signature:
-            raise DeviceAuthError("signature is required for authenticated messages")
-        expected = _compute_signature(device_id, sample_id, test, numeric_value, timestamp)
-        if not hmac.compare_digest(expected, signature):
-            logger.warning(
-                "[DEVICE_GATEWAY] Invalid signature device_id=%s sample=%s",
-                device_id,
-                sample_id,
-            )
-            raise DeviceAuthError("Invalid message signature — possible forgery")
+    # HMAC signature verification
+    if not signature:
+        raise DeviceAuthError("signature is required for authenticated messages")
+    expected = _compute_signature(device_id, sample_id, test, numeric_value, timestamp)
+    if not hmac.compare_digest(expected, signature):
+        logger.warning("[DEVICE_GATEWAY] Invalid signature device_id=%s", device_id)
+        raise DeviceAuthError("Invalid message signature — possible forgery")
 
-        # Nonce replay check (requires nonce to be present)
-        if not nonce:
-            raise DeviceAuthError("nonce is required for authenticated messages")
-        _check_replay(nonce, device_id)
+    # Nonce replay check (requires nonce to be present)
+    if not nonce:
+        raise DeviceAuthError("nonce is required for authenticated messages")
+    _check_replay(nonce, device_id)
 
     logger.debug(
-        "[DEVICE] Accepted — device=%s sample=%s test=%s value=%s",
-        device_id or "unset",
-        sample_id,
+        "[DEVICE] Authenticated envelope accepted — device=%s test=%s",
+        device_id,
         test,
-        numeric_value,
     )
 
     return {
