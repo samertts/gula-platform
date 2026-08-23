@@ -41,3 +41,11 @@ Run URL: https://github.com/samertts/gula-platform/actions/runs/32218175811
 Run `32628646557` لـCodeQL Analysis على head `d9fcf7d6eae01493576557dd96a5b17b523da275` بدأ تسجيل وظيفتي Python وJavaScript/TypeScript، لكن كلتيهما انتهتا خلال 5 ثوانٍ قبل بدء أي خطوة. أظهر GitHub annotation لكلتيهما نفس سبب billing/spending limit، لذلك لا توجد نتائج CodeQL فعلية يمكن تقييمها من هذا run.
 
 Run URL: https://github.com/samertts/gula-platform/actions/runs/32628646557
+
+## Final PR #241 head verification — 2026-08-23
+
+The branch was pushed non-force to head `54594c62bf121908832184419706805cfc56a80a`. Local verification on the same head passed Python compileall, Ruff format/check in the workflow scope (`backend/app`, `shared`, `scripts`), the changed-files quality gate against base `c36b4a4d6d9fd99530dd6773de921b6c8fbf5915`, and the affected backend test set (47 tests passed). Mobile Expo verification also passed `npm ci --ignore-scripts`, TypeScript typecheck, Jest (4 tests), image-size security parser tests, both production/full npm audits with zero vulnerabilities, and Expo Doctor (17/17).
+
+The live PR page still reports the PR as open and `Able to merge` at the mergeability level, but required GitHub checks remain operationally unstable because Actions jobs fail before starting with the account payments/spending-limit annotation. This record is not a passing CI status and must not be used to bypass required checks. The repository owner must restore GitHub Billing & plans/spending eligibility, rerun all required workflows on `54594c62`, and merge only after those remote checks pass.
+
+PR URL: https://github.com/samertts/gula-platform/pull/241
