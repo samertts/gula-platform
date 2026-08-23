@@ -35,3 +35,9 @@ Run URL: https://github.com/samertts/gula-platform/actions/runs/32218123745
 Run `32218175811` لـChanged Files Quality Gate على head `30ef06517ee5acc9ef1d65752b834142a8cbd9d7` فشل خلال 4 ثوانٍ. وظيفة `Ruff/MyPy changed-files non-regression` لم تبدأ أي خطوة، وannotation الرسمية كانت نفس رسالة GitHub عن فشل الدفعات أو spending limit. لا توجد نتيجة Ruff أو MyPy آلية يمكن إصلاحها من هذا run.
 
 Run URL: https://github.com/samertts/gula-platform/actions/runs/32218175811
+
+## CodeQL on latest remote head
+
+Run `32628646557` لـCodeQL Analysis على head `d9fcf7d6eae01493576557dd96a5b17b523da275` بدأ تسجيل وظيفتي Python وJavaScript/TypeScript، لكن كلتيهما انتهتا خلال 5 ثوانٍ قبل بدء أي خطوة. أظهر GitHub annotation لكلتيهما نفس سبب billing/spending limit، لذلك لا توجد نتائج CodeQL فعلية يمكن تقييمها من هذا run.
+
+Run URL: https://github.com/samertts/gula-platform/actions/runs/32628646557
