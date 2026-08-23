@@ -3,6 +3,7 @@
 Revision ID: 20260820_0008
 Revises: 20260820_0007
 """
+
 from __future__ import annotations
 
 from alembic import op

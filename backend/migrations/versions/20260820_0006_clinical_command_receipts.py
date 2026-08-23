@@ -3,6 +3,7 @@
 Revision ID: 20260820_0006
 Revises: 20260819_0004
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -33,7 +34,10 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["actor_user_id"], ["lab_users.id"], ondelete="RESTRICT"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
-            "lab_id", "actor_user_id", "operation", "idempotency_key",
+            "lab_id",
+            "actor_user_id",
+            "operation",
+            "idempotency_key",
             name="uq_clinical_command_actor_key",
         ),
     )

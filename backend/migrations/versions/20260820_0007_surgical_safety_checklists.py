@@ -3,6 +3,7 @@
 Revision ID: 20260820_0007
 Revises: 20260820_0006
 """
+
 from __future__ import annotations
 
 from alembic import op
@@ -24,17 +25,38 @@ def upgrade() -> None:
         sa.Column("patient_id", sa.Integer(), nullable=False),
         sa.Column("procedure_name", sa.String(length=300), nullable=False),
         sa.Column("procedure_site", sa.String(length=200), nullable=False),
-        sa.Column("planned_laterality", sa.String(length=20), nullable=False, server_default="not_applicable"),
-        sa.Column("patient_identity_confirmed", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "planned_laterality",
+            sa.String(length=20),
+            nullable=False,
+            server_default="not_applicable",
+        ),
+        sa.Column(
+            "patient_identity_confirmed", sa.Boolean(), nullable=False, server_default=sa.false()
+        ),
         sa.Column("procedure_confirmed", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("site_marked", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("consent_verified", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column("anesthesia_assessment_complete", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "anesthesia_assessment_complete",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.false(),
+        ),
         sa.Column("allergy_reviewed", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column("antibiotic_prophylaxis_confirmed", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column("blood_products_confirmed", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "antibiotic_prophylaxis_confirmed",
+            sa.Boolean(),
+            nullable=False,
+            server_default=sa.false(),
+        ),
+        sa.Column(
+            "blood_products_confirmed", sa.Boolean(), nullable=False, server_default=sa.false()
+        ),
         sa.Column("imaging_reviewed", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column("team_time_out_completed", sa.Boolean(), nullable=False, server_default=sa.false()),
+        sa.Column(
+            "team_time_out_completed", sa.Boolean(), nullable=False, server_default=sa.false()
+        ),
         sa.Column("completed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("completed_by", sa.Integer(), nullable=True),
         sa.Column("notes", sa.Text(), nullable=True),
