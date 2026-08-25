@@ -1,6 +1,6 @@
 """Sample collection and tracking endpoints."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -214,4 +214,131 @@ def sample_to_dict(s: Sample) -> dict:
         "notes": s.notes,
         "storage_location": s.storage_location,
         "created_at": s.created_at.isoformat() if s.created_at else None,
+    }
+
+
+class SampleIdentityVerificationRequest(BaseModel):
+    verification_method: str
+
+
+@router.put("/{barcode}/verify-identity")
+def verify_sample_identity(
+    barcode: str,
+    payload: SampleIdentityVerificationRequest,
+    current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+):
+    """Record a guarded human identity/container verification for a sample.
+
+    This command deliberately does not create ``LabResult`` records, change an
+    order, or accept/release a device measurement. It only records a versioned
+    human verification prerequisite for a separately approved future workflow.
+    """
+    from datetime import UTC, datetime
+
+    from ..clinical.command_guard import ClinicalCommandGuard
+    from ..core.feature_flags import can_lab_access
+    from ..models.sample import SAMPLE_IDENTITY_VERIFICATION_METHODS
+
+    if payload.verification_method not in SAMPLE_IDENTITY_VERIFICATION_METHODS:
+        raise HTTPException(status_code=422, detail="Unsupported verification method")
+    if current_user.id is None or current_user.lab_id is None or current_user.role is None:
+        raise HTTPException(status_code=403, detail="Verifier identity is incomplete")
+    actor_id = current_user.id
+    actor_lab_id = current_user.lab_id
+    actor_role = current_user.role
+    if actor_role not in frozenset({"master_admin", "admin", "lab_admin"}):
+        raise HTTPException(status_code=403, detail="Senior laboratory authority is required")
+
+    sample = (
+        db.query(Sample)
+        .join(LabOrder)
+        .filter(Sample.barcode == barcode, LabOrder.lab_id == actor_lab_id)
+        .with_for_update()
+        .first()
+    )
+    if sample is None:
+        raise HTTPException(status_code=404, detail="Sample not found")
+    order = db.query(LabOrder).filter(LabOrder.id == sample.order_id).with_for_update().first()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if sample.id is None or sample.version is None or sample.status is None or order.status is None:
+        raise HTTPException(status_code=409, detail="Sample has incomplete verification state")
+    sample_id = sample.id
+    version_before = sample.version
+    state_before = sample.status
+    order_status = order.status
+
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=actor_id,
+        lab_id=actor_lab_id,
+        actor_role=actor_role,
+    )
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="sample")
+    key = guard.require_idempotency_key(idempotency_key)
+
+    if not can_lab_access("sample_identity_verification", actor_lab_id, db):
+        guard.reject(
+            operation="sample.identity.verify",
+            resource_type="sample",
+            resource_id=sample_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="feature_disabled",
+        )
+        db.commit()
+        raise HTTPException(status_code=403, detail="Sample identity verification is disabled")
+    if state_before != "received" or sample.verified_at is not None:
+        guard.reject(
+            operation="sample.identity.verify",
+            resource_type="sample",
+            resource_id=sample_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="sample_not_pending_identity_verification",
+        )
+        db.commit()
+        raise HTTPException(status_code=409, detail="Sample is not eligible for identity verification")
+    if order_status != "pending" or order.locked_at is not None:
+        guard.reject(
+            operation="sample.identity.verify",
+            resource_type="sample",
+            resource_id=sample_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="order_not_mutable",
+        )
+        db.commit()
+        raise HTTPException(status_code=409, detail="Order is not eligible for sample verification")
+
+    receipt = guard.claim(
+        operation="sample.identity.verify",
+        resource_type="sample",
+        resource_id=sample_id,
+        idempotency_key=key,
+        payload=payload.model_dump(),
+    )
+    sample.status = "verified"
+    sample.verified_by = actor_id
+    sample.verified_at = datetime.now(UTC)
+    sample.verification_method = payload.verification_method
+    version_after = version_before + 1
+    sample.version = version_after
+    guard.complete(
+        receipt,
+        resource_type="sample",
+        resource_id=sample_id,
+        state_before=state_before,
+        state_after="verified",
+        version_before=version_before,
+        version_after=version_after,
+        reason=payload.verification_method,
+    )
+    db.commit()
+    return {
+        "message": "Sample identity verified",
+        "sample": {"id": sample_id, "status": "verified", "version": version_after},
     }
