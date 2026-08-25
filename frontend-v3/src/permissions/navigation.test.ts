@@ -14,6 +14,7 @@ describe("التنقل العربي الأساسي في GULA", () => {
 
     expect(paths).toEqual(expect.arrayContaining([
       "/dashboard",
+      "/my-record",
       "/orders",
       "/patients",
       "/reports",

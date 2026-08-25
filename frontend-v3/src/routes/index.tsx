@@ -73,6 +73,7 @@ const CapabilitiesWorkflowEnginePageLazy = lazy(() => import("@/pages/capabiliti
 const CertificationPageLazy = lazy(() => import("@/pages/certification/CertificationPage"));
 const CitizenPlatformPageLazy = lazy(() => import("@/pages/citizen-platform/CitizenPlatformPage"));
 const CitizenWorkspacePageLazy = lazy(() => import("@/pages/citizen-platform/CitizenWorkspacePage"));
+const MyRecordPageLazy = lazy(() => import("@/pages/my-record/MyRecordPage"));
 const CommandCenterApiPageLazy = lazy(() => import("@/pages/command-center/CommandCenterApiPage"));
 const CommandIntelligencePageLazy = lazy(() => import("@/pages/command-intelligence/CommandIntelligencePage"));
 const ControlPlanePageLazy = lazy(() => import("@/pages/control-plane/ControlPlanePage"));
@@ -198,6 +199,7 @@ export const router = createBrowserRouter([
       { path: "capabilities/workflow-engine", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><CapabilitiesWorkflowEnginePageLazy /></LazyPage></RoleGuard> },
       { path: "certification", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CertificationPageLazy /></LazyPage></RoleGuard> },
       { path: "citizen", element: <RoleGuard roles={ROUTE_ROLE_POLICIES["/citizen"]}><LazyPage><CitizenWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "my-record", element: <LazyPage><MyRecordPageLazy /></LazyPage> },
       { path: "citizen-platform", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CitizenPlatformPageLazy /></LazyPage></RoleGuard> },
       { path: "command-center", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CommandCenterApiPageLazy /></LazyPage></RoleGuard> },
       { path: "command-intelligence", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CommandIntelligencePageLazy /></LazyPage></RoleGuard> },

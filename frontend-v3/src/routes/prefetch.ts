@@ -2,6 +2,7 @@ type RouteLoader = () => Promise<unknown>;
 
 const routeLoaders: Record<string, RouteLoader> = {
   "/dashboard": () => import("@/pages/dashboard/DashboardPage"),
+  "/my-record": () => import("@/pages/my-record/MyRecordPage"),
   "/patients": () => import("@/pages/patients/PatientsPage"),
   "/orders": () => import("@/pages/orders/OrdersPage"),
   "/results": () => import("@/pages/results/ResultsPage"),

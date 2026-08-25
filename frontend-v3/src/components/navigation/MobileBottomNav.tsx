@@ -72,6 +72,7 @@ const clinicItems: MobileNavItem[] = [
 
 const citizenItems: MobileNavItem[] = [
   fromCanonical("/dashboard", LayoutDashboard),
+  fromCanonical("/my-record", UserCircle),
   fromCanonical("/citizen", UserCircle, ["citizen"]),
   fromCanonical("/notifications", BellRing),
 ];

@@ -128,6 +128,7 @@ export type NavigationItem = {
 export const NAV_ITEMS: Record<string, NavigationItem[]> = {
   main: [
     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    { label: "سجلي ومساحات العمل", path: "/my-record", icon: "UserCircle" },
     { label: "nav.citizenWorkspace", path: "/citizen", icon: "UserCircle", permissions: ["citizen:workspace"], roles: ROUTE_ROLE_POLICIES["/citizen"] },
     { label: "nav.patients", path: "/patients", icon: "Users", permissions: ["patients:read"], roles: STAFF_ROLES },
     { label: "إدارة المرضى المتقدمة", path: "/patient-management", icon: "HeartPulse", permissions: ["dashboard:read"], roles: READONLY_ROLES },
