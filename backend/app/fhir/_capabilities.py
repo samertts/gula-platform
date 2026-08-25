@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.config import APP_VERSION
+
 CAPABILITY_STATEMENT: dict[str, Any] = {
     "resourceType": "CapabilityStatement",
     "status": "active",
@@ -10,7 +12,7 @@ CAPABILITY_STATEMENT: dict[str, Any] = {
     "kind": "instance",
     "software": {
         "name": "GULA Platform FHIR Server",
-        "version": "2.1.0",
+        "version": APP_VERSION,
         "releaseDate": "2026-07-18",
     },
     "fhirVersion": "4.0.1",
