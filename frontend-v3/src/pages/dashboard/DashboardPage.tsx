@@ -137,7 +137,7 @@ const LAB_EXPERIENCE: DashboardExperience = {
 function dashboardExperienceFor(role?: string): DashboardExperience {
   if (role === "doctor") return DOCTOR_EXPERIENCE;
   if (role === "citizen") return CITIZEN_EXPERIENCE;
-  if (["admin", "master_admin", "ministry_admin", "province_admin", "staff"].includes(role ?? "")) return CLINIC_EXPERIENCE;
+  if (["admin", "master_admin", "ministry_admin", "province_admin"].includes(role ?? "")) return CLINIC_EXPERIENCE;
   return LAB_EXPERIENCE;
 }
 
