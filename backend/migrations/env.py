@@ -26,6 +26,13 @@ from app.models import (
     AccessibilityProfile, HealthPreference,
 )
 from app.models.claim import Claim, ClaimItem
+from app.external_ingestion import (
+    ExternalImportBatch,
+    ExternalProfessionalEntity,
+    ExternalProfessionalMatchReview,
+    ExternalProfessionalRecord,
+    ExternalSource,
+)
 from app.billing.models import (
     BillingAuditEvent,
     BillingInvoice,

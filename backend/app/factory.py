@@ -177,6 +177,13 @@ def import_all_models() -> None:
         ScannedDocumentModel,
         WebhookRegistrationModel,
     )
+    from .external_ingestion.models import (  # noqa: F401
+        ExternalImportBatch,
+        ExternalProfessionalEntity,
+        ExternalProfessionalMatchReview,
+        ExternalProfessionalRecord,
+        ExternalSource,
+    )
     from .hospital.models import (  # noqa: F401
         Bed,
         BedAssignment,

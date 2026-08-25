@@ -63,6 +63,23 @@ IS_CLI_RUNTIME = RUNTIME_MODE == "cli"
 _DEFAULT_BG = "true" if IS_WORKER_RUNTIME else "false"
 FEATURE_BACKGROUND_TASKS = os.getenv("FEATURE_BACKGROUND_TASKS", _DEFAULT_BG).lower() == "true"
 
+# ─── External ingestion / identity resolution boundary ───────────────────────
+# Disabled by default. External government/professional data must enter through
+# an independently secured quarantine/object-storage gateway; the API never
+# accepts a raw bulk file and never enables canonical writes implicitly.
+EXTERNAL_INGESTION_ENABLED = os.getenv("EXTERNAL_INGESTION_ENABLED", "false").lower() == "true"
+EXTERNAL_INGESTION_COMMIT_ENABLED = os.getenv("EXTERNAL_INGESTION_COMMIT_ENABLED", "false").lower() == "true"
+EXTERNAL_INGESTION_ER_HMAC_KEY = os.getenv("EXTERNAL_INGESTION_ER_HMAC_KEY", "").strip()
+EXTERNAL_INGESTION_MAX_CHUNK_RECORDS = int(os.getenv("EXTERNAL_INGESTION_MAX_CHUNK_RECORDS", "500"))
+EXTERNAL_INGESTION_STAGE_TTL_HOURS = int(os.getenv("EXTERNAL_INGESTION_STAGE_TTL_HOURS", "72"))
+if EXTERNAL_INGESTION_MAX_CHUNK_RECORDS < 1 or EXTERNAL_INGESTION_MAX_CHUNK_RECORDS > 5000:
+    sys.exit("EXTERNAL_INGESTION_MAX_CHUNK_RECORDS must be between 1 and 5000")
+if EXTERNAL_INGESTION_STAGE_TTL_HOURS < 1 or EXTERNAL_INGESTION_STAGE_TTL_HOURS > 720:
+    sys.exit("EXTERNAL_INGESTION_STAGE_TTL_HOURS must be between 1 and 720")
+if EXTERNAL_INGESTION_COMMIT_ENABLED and not EXTERNAL_INGESTION_ENABLED:
+    sys.exit("EXTERNAL_INGESTION_COMMIT_ENABLED requires EXTERNAL_INGESTION_ENABLED=true")
+# Production-secret validation is performed immediately after the helper definition below.
+
 # Hard rule: tests must never spawn background tasks regardless of env vars.
 if IS_TEST_RUNTIME:
     FEATURE_BACKGROUND_TASKS = False
@@ -145,6 +162,10 @@ def _validate_production_secret(name: str, value: str) -> None:
     """Fail fast when a production secret is missing strength requirements."""
     if IS_PRODUCTION and (len(value) < 32 or _is_weak_secret(value)):
         sys.exit(f"{name} must be a strong random secret of at least 32 characters")
+
+
+if EXTERNAL_INGESTION_ENABLED and IS_PRODUCTION:
+    _validate_production_secret("EXTERNAL_INGESTION_ER_HMAC_KEY", EXTERNAL_INGESTION_ER_HMAC_KEY)
 
 
 # ─── JWT Access Token ────────────────────────────────────────────────────────
