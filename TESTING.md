@@ -1,5 +1,7 @@
 # Testing Strategy
 
+> **حالة الدليل:** في 25 أغسطس 2026، نجح التشغيل المحلي المعتمد من `backend/` بالأمر `pytest -q` بنتيجة **2742 passed, 4 skipped, 249 warnings** خلال 189.30 ثانية. هذه نتيجة محلية قابلة لإعادة التشغيل، وليست دليلاً على CI خارجي أو staging أو قرار إطلاق. يبقى الإطلاق **NO-GO** إلى اكتمال جميع أدلته المستقلة.
+
 ## Test Suite Overview
 
 | Category | Files | Tests | Purpose |
@@ -14,21 +16,23 @@
 ## Running Tests
 
 ```bash
-# Full suite
-cd backend && .venv/bin/python -m pytest tests/ -v
+# الحزمة الخلفية المعتمدة محلياً
+cd backend && pytest -q
 
-# With coverage
-cd backend && .venv/bin/python -m pytest tests/ --cov=app --cov-report=term-missing
+# تغطية محلية؛ لا تعني بلوغ عتبة إطلاق أو حسم تعارض سياسة التغطية
+cd backend && pytest -q --cov=app --cov-report=term-missing
 
-# Security tests only
-cd backend && .venv/bin/python -m pytest tests/test_security.py tests/test_security_regression.py -v
+# اختبارات الأمن الموجهة
+cd backend && pytest -q tests/test_security.py tests/test_security_regression.py
 
-# Integration tests
-cd backend && .venv/bin/python -m pytest tests/integration/ -v
+# اختبارات التكامل الموجودة
+cd backend && pytest -q tests/integration/
 
-# Single test
-cd backend && .venv/bin/python -m pytest tests/test_security.py::test_jwt_reject_expired -v
+# اختبار منفرد
+cd backend && pytest -q tests/test_security.py::TestJWTTokens::test_invalid_token_returns_none
 ```
+
+> لا تستخدم `pytest -q` من جذر المستودع كبديل للحزمة الخلفية؛ فهو قد يجمع اختبارات خدمات وbridge ذات تهيئة واستيرادات مستقلة. نفّذ اختبارات تلك الخدمات من أدلتها ومساراتها الخاصة.
 
 ## Quality Gates
 
@@ -36,7 +40,7 @@ cd backend && .venv/bin/python -m pytest tests/test_security.py::test_jwt_reject
 - **Ruff lint**: 0 errors
 - **Ruff format**: All files formatted
 - **PyCompile**: All files compile
-- **Tests**: 1234+ passing
+- **Tests**: آخر تشغيل backend محلي معتمد: 2742 passed, 4 skipped, 249 warnings (25 أغسطس 2026). لا يعد هذا بديلاً عن CI خارجي.
 
 ### Gate B: Security
 - **Bandit**: 0 High, 2 Medium (dev config only), 53 Low
@@ -44,15 +48,14 @@ cd backend && .venv/bin/python -m pytest tests/test_security.py::test_jwt_reject
 - **No permission bypasses**: Verified
 
 ### Gate C: Testing
-- **Coverage**: 54% (17273 statements, 7992 missed)
-- **High-coverage modules**: auth (96%), models (95%), integration domain (90%+)
-- **Known gaps**: routes (avg 35%), services (avg 30%), edge/interoperability (0%)
+- **Coverage**: لا تعتمد هذه الوثيقة رقماً لإثبات الجاهزية. يجب قياس التغطية في تنفيذ مستقل مع توثيق الأمر والـcommit ونطاق الاستبعاد، ثم حسم تعارض العتبات حوكمياً.
+- **High-coverage modules**: لا تُعامل الادعاءات التاريخية كنسبة حالية بلا تقرير coverage متكرر.
+- **Known gaps**: يلزم قياس routes/services/edge/interoperability في تقرير قابل لإعادة التشغيل قبل وضع أرقام جديدة.
 
 ### Gate D: Production Readiness
-- All quality gates green
-- No critical security findings
-- No architecture regressions
-- Documentation complete
+- لا يجوز وصف بوابات الجودة بأنها خضراء بالكامل استناداً إلى دليل محلي.
+- يلزم نجاح CI خارجي، وأدلة أمن/معمارية قابلة للمراجعة، وstaging migration مع backup/restore، وAndroid موقّع، وUAT، وتوقيعات مخولين قبل قرار GO.
+- يبقى الوضع الافتراضي **NO-GO** عند غياب أي دليل أو توقيع مطلوب.
 
 ## Test Markers
 
@@ -76,6 +79,6 @@ cd backend && .venv/bin/python -m pytest tests/test_security.py::test_jwt_reject
 
 ## Known Issues
 
-1. **268 test errors**: Fixture/collection issues in slower test modules (test_tiers_privilege, test_tenant_isolation_matrix). These are test isolation issues, not production code bugs.
-2. **3 test failures**: Minor assertion mismatches in test ordering scenarios.
-3. **bcrypt deprecation warning**: passlib 1.7.4 with bcrypt 4.1.3 shows `__about__` deprecation — non-functional.
+1. **الادعاء التاريخي عن 268 خطأ و3 إخفاقات**: لم يظهر في التشغيل المحلي المعتمد من `backend/` في 25 أغسطس 2026. لا يعني ذلك أن مسار جذر المستودع أو اختبارات الخدمات المستقلة صالحة؛ فهي نطاقات منفصلة يجب تهيئتها وتشغيلها وفق أدلتها.
+2. **249 تحذيراً**: التشغيل الحالي ينتهي بتحذيرات deprecation معروفة في FastAPI/Starlette و`datetime.utcnow()` وSQLAlchemy ومكونات أخرى. لا تخفِ التحذيرات أو تعطلها؛ سجلها كدين منفصل وأصلحها في دفعات محددة.
+3. **أدلة الإطلاق**: نجاح pytest المحلي لا يغلق CI أو التغطية أو الأمن أو المهاجرات أو UAT أو التوقيعات البشرية.
