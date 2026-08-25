@@ -59,9 +59,12 @@
 | منع الكتابة المباشرة | `fix/device-p0-containment` عند `a85d87b0`         | رفض `POST /device/results` بـ503، وتسجيل تدقيق مجرد بلا sample/device identifier؛ اختبار احتواء 2/2             | يمنع إنشاء `LabResult` أو تغيير حالة العينة/الطلب من المسار القديم                   |
 | هوية الجهاز وinbox   | `fix/device-p0-identity-inbox` عند `1339d12b`      | هوية جهاز في حالة pending/disabled، بصمات فقط، مفاتيح عدم تكرار للرسالة والـnonce، ورأس Alembic `20260823_0006` | لا تقبل الرسالة إلا من هوية active، وتبقى الرسالة `quarantined` بلا حمولة سريرية خام |
 | قياسات حجرية         | `fix/device-p0-clinical-quarantine` عند `b8828a6e` | جدول `instrument_measurements` المنفصل، منع عينة مؤسسة أخرى أو عينة مرفوضة، ورأس Alembic `20260823_0007`        | القياس ليس `LabResult` ولا يغير حالة sample/order ولا يملك مسار release              |
-| حارس بوابة الجهاز    | `fix/device-p0-gateway-fail-closed` عند `a03977ef` | يرفض غياب HMAC أو قائمة السماح أو مخزن nonce؛ 43/43 من انحدار ربط الأجهزة                                       | يلغي قبول الرسائل عند تدهور الحماية؛ لا يزال الحارس غير موصول بمسار إدخال حي         |
+| حارس بوابة الجهاز    | `fix/device-p0-gateway-fail-closed` عند `8038e7a7` | يرفض غياب HMAC أو قائمة السماح أو مخزن nonce؛ 43/43 من انحدار ربط الأجهزة                                       | يلغي قبول الرسائل عند تدهور الحماية؛ لا يزال الحارس غير موصول بمسار إدخال حي         |
+| أمر مراجعة القياس المحجور | `fix/device-p0-review-command` عند `efe04ecc` | `PUT /device-integration/measurements/{measurement_id}/review` يتطلب `lab:manage` ودوراً مخولاً وميزة معطلة افتراضياً و`If-Match` و`Idempotency-Key` وحارس الأمر السريري؛ 17/17 اختبار أجهزة، وبوابة الجودة التفاضلية ناجحة (`Ruff` 16 → 16، و`Mypy` 99 → 99)، ورأس Alembic هو `20260823_0007` | يسمح فقط بـ`quarantined → pending_review` أو `rejected`؛ لا ينشئ `LabResult` ولا يغير `Sample` أو `Order` ولا يقبل أو يطلق نتيجة سريرية. [4] |
 
-> هذه الدفعات تخفض خطر المسار المباشر، لكنها لا تكفي لتفعيل جهاز حقيقي. يلزم قبل أي تجربة محدودة: اعتماد تصميم شبكة المنشأة وmTLS/إدارة الشهادات، endpoint ingress جديد ومراجَع، أمر بشري محمي لنقل القياس من الحجر، UAT تركيبي، وتوقيعات الأدوار المخولة.
+> هذه الدفعات تخفض خطر المسار المباشر، لكنها لا تكفي لتفعيل جهاز حقيقي. يوجد الآن أمر مراجعة بشري محمي للقياس المحجور، إلا أنه **ليس** أمراً لقبول النتيجة أو إصدارها. يلزم قبل أي تجربة محدودة: اعتماد تصميم شبكة المنشأة وmTLS/إدارة الشهادات، endpoint ingress جديد ومراجَع، وتصميم مستقل وموافق عليه بشرياً للقبول يتحقق من مطابقة العينة والاختبار في LIMS، وUAT تركيبي، وتوقيعات الأدوار المخولة.
+
+> أظهر `ruff format --check` و`ruff check` ديناً تاريخياً في `backend/app/devices/routes.py` (ومن ذلك مخالفات B904 وتنسيق ملف قديم). لم تزد بوابة الجودة التفاضلية هذا الدين، ولم تضف الدفعة مخالفة جديدة؛ يبقى علاجه دفعة مخصصة منفصلة ولا يعد نجاحها بديلاً عن البوابات العامة.
 
 ### سجل أدلة GO وفاحص الإغلاق الافتراضي
 
@@ -136,3 +139,4 @@ python3 scripts/release_go_preflight.py --json
 [1] [مهمة Syntax Gate — GitHub Actions](https://github.com/samertts/gula-platform/actions/runs/32476627178/job/96754212295)  
 [2] [تشغيل CI Pipeline — GitHub Actions](https://github.com/samertts/gula-platform/actions/runs/32476627178)  
 [3] [PR #242 — GitHub](https://github.com/samertts/gula-platform/pull/242)
+[4] [فرع أمر مراجعة القياسات المحجورة — GitHub](https://github.com/samertts/gula-platform/tree/fix/device-p0-review-command)
