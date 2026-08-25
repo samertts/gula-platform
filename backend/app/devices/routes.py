@@ -74,6 +74,19 @@ def _device_or_404(db: Session, actor: LabUser, device_uid: str):
     return device
 
 
+def _configured_wearable_labs(provider: str) -> set[int]:
+    raw = os.getenv(f"GULA_WEARABLE_WEBHOOK_LABS_{provider.upper()}", "")
+    if not raw.strip():
+        return set()
+    try:
+        return {int(item.strip()) for item in raw.split(",") if item.strip()}
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail="Wearable provider binding is misconfigured",
+        ) from exc
+
+
 def _handle_service_error(exc: Exception) -> None:
     if isinstance(exc, LookupError):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
@@ -145,6 +158,12 @@ async def ingest_wearable_webhook(
         raise HTTPException(
             status_code=409,
             detail="Live wearable providers require documented clinical approval",
+        )
+
+    if lab_id not in _configured_wearable_labs(normalized_provider):
+        raise HTTPException(
+            status_code=403,
+            detail="Wearable provider is not bound to this laboratory",
         )
 
     try:

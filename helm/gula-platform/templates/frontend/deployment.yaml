@@ -1,4 +1,5 @@
 {{- if .Values.frontend.enabled }}
+{{- include "gula.validateApplicationImageTag" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -37,7 +38,7 @@ spec:
         {{- toYaml .Values.frontend.initContainers | nindent 8 }}
       containers:
         - name: nginx
-          {{- include "gula.image" (dict "repository" .Values.frontend.image.repository "tag" (default .Values.global.imageTag .Values.frontend.image.tag) "pullPolicy" (default .Values.global.imagePullPolicy .Values.frontend.image.pullPolicy)) | nindent 10 }}
+          {{- include "gula.image" (dict "repository" .Values.frontend.image.repository "tag" (default .Values.global.imageTag .Values.frontend.image.tag) "pullPolicy" (default .Values.global.imagePullPolicy .Values.frontend.image.pullPolicy) "root" $) | nindent 10 }}
           ports:
             - containerPort: {{ .Values.frontend.service.targetPort }}
               name: {{ .Values.frontend.service.name }}

@@ -77,33 +77,66 @@ export const usePrinting = create<PrintingState>((set, get) => ({
   getAllJobs: () => get().jobs,
 }));
 
+const escapeXml = (value: string): string =>
+  value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&apos;',
+  })[character]!);
+
+const safeDimension = (value: number, fallback: number): number =>
+  Number.isFinite(value) && value > 0 && value <= 2000 ? value : fallback;
+
+const sanitizePrintHtml = (content: string): string => {
+  const template = document.createElement('template');
+  template.innerHTML = content;
+  template.content.querySelectorAll('script, iframe, object, embed, form, link').forEach((node) => node.remove());
+  template.content.querySelectorAll('*').forEach((element) => {
+    [...element.attributes].forEach((attribute) => {
+      const name = attribute.name.toLowerCase();
+      const value = attribute.value.trim().toLowerCase();
+      if (name.startsWith('on') || name === 'srcdoc') element.removeAttribute(attribute.name);
+      if ((name === 'href' || name === 'src' || name === 'xlink:href') && /^(javascript|data|vbscript):/.test(value)) {
+        element.removeAttribute(attribute.name);
+      }
+    });
+  });
+  return template.innerHTML;
+};
+
 export const generateBarcodeSvg = (data: string, width = 200, height = 80): string => {
-  const chars = data.split('');
-  const barWidth = width / chars.length;
+  const safeWidth = safeDimension(width, 200);
+  const safeHeight = safeDimension(height, 80);
+  const chars = data.slice(0, 256).split('');
+  const barWidth = safeWidth / Math.max(chars.length, 1);
   let bars = '';
   chars.forEach((_, i) => {
     const bar = i % 2 === 0 ? `#000` : `#fff`;
-    bars += `<rect x="${i * barWidth}" y="0" width="${barWidth}" height="${height}" fill="${bar}" />`;
+    bars += `<rect x="${i * barWidth}" y="0" width="${barWidth}" height="${safeHeight}" fill="${bar}" />`;
   });
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}">
     ${bars}
-    <text x="${width / 2}" y="${height - 5}" text-anchor="middle" font-size="12" fill="#000">${data}</text>
+    <text x="${safeWidth / 2}" y="${safeHeight - 5}" text-anchor="middle" font-size="12" fill="#000">${escapeXml(data.slice(0, 256))}</text>
   </svg>`;
 };
 
 export const generateQRSvg = (data: string, size = 200): string => {
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
-    <rect width="${size}" height="${size}" fill="white" rx="8"/>
-    <rect x="${size * 0.1}" y="${size * 0.1}" width="${size * 0.8}" height="${size * 0.8}" fill="black" rx="4"/>
-    <rect x="${size * 0.15}" y="${size * 0.15}" width="${size * 0.2}" height="${size * 0.2}" fill="white"/>
-    <rect x="${size * 0.65}" y="${size * 0.15}" width="${size * 0.2}" height="${size * 0.2}" fill="white"/>
-    <rect x="${size * 0.15}" y="${size * 0.65}" width="${size * 0.2}" height="${size * 0.2}" fill="white"/>
-    <rect x="${size * 0.38}" y="${size * 0.38}" width="${size * 0.24}" height="${size * 0.24}" fill="white"/>
-    <text x="${size / 2}" y="${size - 10}" text-anchor="middle" font-size="${size * 0.06}" fill="black">${data}</text>
+  const safeSize = safeDimension(size, 200);
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${safeSize}" height="${safeSize}">
+    <rect width="${safeSize}" height="${safeSize}" fill="white" rx="8"/>
+    <rect x="${safeSize * 0.1}" y="${safeSize * 0.1}" width="${safeSize * 0.8}" height="${safeSize * 0.8}" fill="black" rx="4"/>
+    <rect x="${safeSize * 0.15}" y="${safeSize * 0.15}" width="${safeSize * 0.2}" height="${safeSize * 0.2}" fill="white"/>
+    <rect x="${safeSize * 0.65}" y="${safeSize * 0.15}" width="${safeSize * 0.2}" height="${safeSize * 0.2}" fill="white"/>
+    <rect x="${safeSize * 0.15}" y="${safeSize * 0.65}" width="${safeSize * 0.2}" height="${safeSize * 0.2}" fill="white"/>
+    <rect x="${safeSize * 0.38}" y="${safeSize * 0.38}" width="${safeSize * 0.24}" height="${safeSize * 0.24}" fill="white"/>
+    <text x="${safeSize / 2}" y="${safeSize - 10}" text-anchor="middle" font-size="${safeSize * 0.06}" fill="black">${escapeXml(data.slice(0, 256))}</text>
   </svg>`;
 };
 
 export const printPDF = async (content: string, format: PrintFormat = 'a4'): Promise<void> => {
+  const safeContent = sanitizePrintHtml(content);
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     // Fallback: print in current window
@@ -114,7 +147,7 @@ export const printPDF = async (content: string, format: PrintFormat = 'a4'): Pro
       : '@page { size: A4; margin: 20mm; }';
     const html = `<!DOCTYPE html>
       <html><head><style>${style} body { font-family: sans-serif; }</style></head>
-      <body>${content}</body></html>`;
+      <body>${safeContent}</body></html>`;
     const win = window.open('', '_blank');
     if (win) {
       win.document.write(html);
@@ -124,26 +157,28 @@ export const printPDF = async (content: string, format: PrintFormat = 'a4'): Pro
     }
     return;
   }
-  printWindow.document.write(content);
+  printWindow.document.write(safeContent);
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
 };
 
-export const generateDigitalSignature = (data: string, key: string): string => {
-  const encoder = new TextEncoder();
-  const bytes = encoder.encode(data + key);
-  return Array.from(new Uint8Array(bytes))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+/**
+ * @deprecated This is intentionally disabled. A browser-side concatenation is
+ * not a digital signature; use a server-side, audited cryptographic signer.
+ */
+export const generateDigitalSignature = (_data: string, _key: string): never => {
+  throw new Error('SERVER_SIDE_SIGNATURE_REQUIRED');
 };
 
 export const addWatermark = (content: string, watermark: string): string => {
+  const safeContent = sanitizePrintHtml(content);
+  const safeWatermark = escapeXml(watermark.slice(0, 200));
   return `<div style="position: relative;">
     <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg);
       font-size: 72px; opacity: 0.1; color: #000; white-space: nowrap; pointer-events: none;">
-      ${watermark}
+      ${safeWatermark}
     </div>
-    <div style="position: relative; z-index: 1;">${content}</div>
+    <div style="position: relative; z-index: 1;">${safeContent}</div>
   </div>`;
 };

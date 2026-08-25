@@ -4,6 +4,7 @@
 {{- $registry := $global.imageRegistry -}}
 {{- $tag := $global.imageTag -}}
 {{- $pullPolicy := $global.imagePullPolicy -}}
+{{- include "gula.validateApplicationImageTag" . }}
 {{- $meshEnabled := .Values.serviceMesh.linkerd.enabled -}}
 {{- $meshInject := .Values.serviceMesh.linkerd.autoInject -}}
 {{- range $svc, $config := .Values.microservices }}

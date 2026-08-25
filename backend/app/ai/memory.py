@@ -79,12 +79,18 @@ class MemoryStore:
         content: str,
         metadata: dict[str, Any] | None = None,
         token_count: int | None = None,
+        lab_id: int | None = None,
+        user_id: int | None = None,
     ) -> Message:
         conv = self._sessions.get(session_id)
         if conv is None:
-            conv = await self.get_session(session_id)
+            conv = await self.get_session(session_id, lab_id=lab_id, user_id=user_id)
             if conv is None:
                 raise ValueError(f"Session {session_id} not found")
+        if lab_id is not None and conv.lab_id != lab_id:
+            raise PermissionError("Session is outside the requested laboratory")
+        if user_id is not None and conv.user_id != user_id:
+            raise PermissionError("Session is owned by another user")
 
         msg = Message(
             role=role,
@@ -112,17 +118,33 @@ class MemoryStore:
             pass
         return msg
 
-    async def get_session(self, session_id: str) -> Conversation | None:
+    async def get_session(
+        self,
+        session_id: str,
+        lab_id: int | None = None,
+        user_id: int | None = None,
+    ) -> Conversation | None:
         if session_id in self._sessions:
-            return self._sessions[session_id]
+            conv = self._sessions[session_id]
+            if lab_id is not None and conv.lab_id != lab_id:
+                return None
+            if user_id is not None and conv.user_id != user_id:
+                return None
+            return conv
         try:
             db = next(get_db())
         except Exception:
             return None
         try:
             row = db.execute(
-                text("SELECT id, lab_id, user_id, session_id, title, metadata FROM ai_conversations WHERE session_id = :sid"),
-                {"sid": session_id},
+                text(
+                    "SELECT id, lab_id, user_id, session_id, title, metadata "
+                    "FROM ai_conversations "
+                    "WHERE session_id = :sid "
+                    "AND (:lab_id IS NULL OR lab_id = :lab_id) "
+                    "AND (:user_id IS NULL OR user_id = :user_id)"
+                ),
+                {"sid": session_id, "lab_id": lab_id, "user_id": user_id},
             ).fetchone()
             if row is None:
                 return None
@@ -174,10 +196,17 @@ class MemoryStore:
             total += words
         return "\n\n".join(lines)
 
-    def list_sessions(self, lab_id: int | None = None, limit: int = 50) -> list[dict[str, Any]]:
+    def list_sessions(
+        self,
+        lab_id: int | None = None,
+        user_id: int | None = None,
+        limit: int = 50,
+    ) -> list[dict[str, Any]]:
         sessions = []
         for conv in self._sessions.values():
             if lab_id is not None and conv.lab_id != lab_id:
+                continue
+            if user_id is not None and conv.user_id != user_id:
                 continue
             sessions.append({
                 "session_id": conv.session_id,
@@ -190,12 +219,31 @@ class MemoryStore:
             })
         return sessions[:limit]
 
-    def delete_session(self, session_id: str) -> bool:
+    def delete_session(
+        self,
+        session_id: str,
+        lab_id: int | None = None,
+        user_id: int | None = None,
+    ) -> bool:
+        conv = self._sessions.get(session_id)
+        if conv is not None:
+            if lab_id is not None and conv.lab_id != lab_id:
+                return False
+            if user_id is not None and conv.user_id != user_id:
+                return False
         self._sessions.pop(session_id, None)
         try:
             db = next(get_db())
             try:
-                db.execute(text("DELETE FROM ai_conversations WHERE session_id = :sid"), {"sid": session_id})
+                db.execute(
+                    text(
+                        "DELETE FROM ai_conversations "
+                        "WHERE session_id = :sid "
+                        "AND (:lab_id IS NULL OR lab_id = :lab_id) "
+                        "AND (:user_id IS NULL OR user_id = :user_id)"
+                    ),
+                    {"sid": session_id, "lab_id": lab_id, "user_id": user_id},
+                )
                 db.commit()
             except Exception:
                 db.rollback()

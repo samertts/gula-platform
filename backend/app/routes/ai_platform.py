@@ -377,9 +377,19 @@ async def add_message(
     body: SessionMessageRequest,
     current_user=Depends(get_current_user),
 ):
-    conversation = await memory_store.get_session(body.session_id)
+    conversation = await memory_store.get_session(
+        body.session_id,
+        lab_id=current_user.lab_id,
+        user_id=current_user.id,
+    )
     _assert_session_owner(conversation, current_user)
-    msg = await memory_store.add_message(body.session_id, "user", body.message)
+    msg = await memory_store.add_message(
+        body.session_id,
+        "user",
+        body.message,
+        lab_id=current_user.lab_id,
+        user_id=current_user.id,
+    )
     return {"role": msg.role, "content_length": len(msg.content), "created_at": msg.created_at}
 
 
@@ -388,7 +398,11 @@ async def get_session(
     session_id: str,
     current_user=Depends(get_current_user),
 ):
-    conv = await memory_store.get_session(session_id)
+    conv = await memory_store.get_session(
+        session_id,
+        lab_id=current_user.lab_id,
+        user_id=current_user.id,
+    )
     _assert_session_owner(conv, current_user)
     return {
         "session_id": conv.session_id,

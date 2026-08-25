@@ -22,6 +22,8 @@ vi.mock("react-i18next", () => ({
         "nav.orders": "Orders",
         "nav.results": "Results",
         "nav.alerts": "Alerts",
+        "nav.hospital": "Hospital",
+        "nav.reports": "Reports",
         "mobileNav.quickNavigation": "Quick navigation",
         "mobileNav.openAllSections": "Open all sections",
         "mobileNav.more": "More",
@@ -32,6 +34,7 @@ vi.mock("react-i18next", () => ({
 
 describe("MobileBottomNav", () => {
   beforeEach(() => {
+    authState.user = { role: "doctor" };
     authState.demoMode = true;
     authState.effectivePermissions = {};
   });
@@ -49,10 +52,24 @@ describe("MobileBottomNav", () => {
     expect(
       screen.getByRole("link", { name: "Orders — Current page" }),
     ).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Patients" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "إدارة المرضى المتقدمة" })).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Open all sections" }),
     ).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("shows clinic operators a clinic-oriented mobile shortcut set", () => {
+    authState.user = { role: "admin" };
+
+    render(
+      <MemoryRouter initialEntries={["/hospital"]}>
+        <MobileBottomNav onOpenMenu={vi.fn()} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("link", { name: "إدارة المرضى المتقدمة" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Hospital — Current page" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Reports" })).toBeInTheDocument();
   });
 
   it("keeps live-mode navigation hidden until server-reflected permissions exist", () => {
@@ -66,7 +83,7 @@ describe("MobileBottomNav", () => {
     );
 
     expect(
-      screen.queryByRole("link", { name: "Patients" }),
+      screen.queryByRole("link", { name: "إدارة المرضى المتقدمة" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("link", { name: "Orders" }),
