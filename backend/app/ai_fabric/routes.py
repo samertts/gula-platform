@@ -13,6 +13,7 @@ from app.ai_fabric.public_health import (
 )
 from app.ai_fabric.rag import SearchMode
 from app.ai_fabric.sdk import UnifiedAISDK
+from app.config import APP_VERSION
 from app.security.dependencies import require_permission
 from app.security.policy import tenant_collection_key
 from app.security.rate_limit import rate_limit_ai
@@ -57,7 +58,7 @@ def _tenant_collection(current_user: Any, requested: str) -> str:
 
 @router.get("/health")
 async def fabric_health(_current_user: Any = Depends(require_permission("system:admin"))):
-    return {"status": "ok", "version": "2.1.0", "components": sdk.get_health()}
+    return {"status": "ok", "version": APP_VERSION, "components": sdk.get_health()}
 
 
 @router.post("/chat")

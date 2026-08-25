@@ -1,3 +1,5 @@
+from app.config import APP_VERSION
+
 EVENT_REGISTRY = {
     "PatientCreated": {
         "description": "A new patient is registered in the system",
@@ -550,7 +552,7 @@ def get_asyncapi_spec() -> dict:
         "asyncapi": "2.6.0",
         "info": {
             "title": "GULA Platform Events",
-            "version": "2.1.0",
+            "version": APP_VERSION,
             "description": "Event-driven message bus for the GULA healthcare platform",
             "contact": {
                 "name": "GULA Platform Support",

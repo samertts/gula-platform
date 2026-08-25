@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from app._compat import UTC
+from app.config import APP_VERSION
 
 logger = logging.getLogger("gula.knowledge_graph.fhir_catalog")
 
@@ -162,7 +163,7 @@ class FHIRCatalog:
             "kind": "instance",
             "software": {
                 "name": "GULA Platform",
-                "version": "2.1.0",
+                "version": APP_VERSION,
                 "releaseDate": datetime.now(UTC).strftime("%Y-%m-%d"),
             },
             "fhirVersion": "4.0.1",

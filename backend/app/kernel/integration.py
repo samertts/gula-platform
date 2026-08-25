@@ -4,6 +4,7 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
+from app.config import APP_VERSION
 from app.kernel import Kernel, KernelConfig
 from app.kernel.runtime.shutdown import ShutdownHandler
 
@@ -18,7 +19,7 @@ _kernel_instance: Kernel | None = None
 def get_kernel_config() -> KernelConfig:
     return KernelConfig(
         name=os.getenv("KERNEL_NAME", "gula-kernel"),
-        version=os.getenv("APP_VERSION", "2.1.0"),
+        version=os.getenv("APP_VERSION", APP_VERSION),
         environment=os.getenv("RUNTIME_ENV", "production"),
         debug=os.getenv("KERNEL_DEBUG", "false").lower() == "true",
         boot_timeout=float(os.getenv("KERNEL_BOOT_TIMEOUT", "30")),
