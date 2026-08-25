@@ -33,7 +33,7 @@ onboarding_director = DeviceOnboardingDirector()
 pipeline = DataPipeline(
     parser=ASTMParser(),
     normalizer=Normalizer(),
-    gula_client=GulaClient(base_url="http://gula.local", lab_id="LAB001"),
+    gula_client=GulaClient(base_url=None, lab_id="LAB001", enabled=False),
 )
 
 Auth = Annotated[str, Depends(verify_api_key)]

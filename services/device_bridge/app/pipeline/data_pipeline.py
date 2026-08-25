@@ -47,7 +47,7 @@ class DataPipeline:
     ) -> None:
         self.parser = parser
         self.normalizer = normalizer
-        self.gula_client = gula_client or GulaClient(base_url="http://gula.local", lab_id="LAB001")
+        self.gula_client = gula_client or GulaClient(base_url=None, lab_id="LAB001", enabled=False)
         self.mapping_engine = mapping_engine or TestMappingEngine()
         self.retry_queue = retry_queue or RetryQueue()
         self.adapter_registry = adapter_registry or AdapterRegistry()

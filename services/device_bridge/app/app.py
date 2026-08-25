@@ -12,6 +12,6 @@ def build_runtime() -> tuple[DeviceManager, DataPipeline]:
     pipeline = DataPipeline(
         parser=ASTMParser(),
         normalizer=Normalizer(),
-        gula_client=GulaClient(base_url="http://gula.local", lab_id="LAB001"),
+        gula_client=GulaClient(base_url=None, lab_id="LAB001", enabled=False),
     )
     return manager, pipeline
