@@ -1,62 +1,48 @@
-import os
-import socket
+"""Fail-closed containment for the retired experimental device gateway.
 
-import requests
+This module previously opened a raw TCP socket and forwarded parsed device values
+through a direct HTTP request using default configuration. That behavior is not
+an approved clinical device-integration path and must not be started. Future
+integration belongs to the separately reviewed Device Bridge design, which
+requires explicit enablement, mTLS, gateway controls, and human UAT.
+"""
 
-HOST = "0.0.0.0"
-PORT = 5000
+from __future__ import annotations
 
-API_URL = os.getenv("LAB_API_URL", "http://lab-api:8000/results")
-API_TOKEN = os.getenv("LAB_DEVICE_TOKEN", "devicesecret")
+import logging
+from typing import NoReturn
 
-
-def parse_message(msg: str):
-    """
-    مثال بسيط لتحليل رسالة قادمة من جهاز.
-    يمكن استبداله بـ HL7 أو ASTM parser لاحقًا.
-    الرسالة المتوقعة:
-    order_id|test_id|value
-    """
-
-    parts = msg.strip().split("|")
-
-    if len(parts) != 3:
-        return None
-
-    return {"order_id": int(parts[0]), "test_id": int(parts[1]), "value": parts[2]}
+logger = logging.getLogger(__name__)
 
 
-def send_result(data):
-
-    headers = {"Authorization": f"Bearer {API_TOKEN}"}
-
-    r = requests.post(API_URL, params=data, headers=headers)
-
-    return r.status_code
+class LegacyDeviceGatewayDisabledError(RuntimeError):
+    """Raised whenever code attempts to use the retired direct device gateway."""
 
 
-def run_server():
-
-    s = socket.socket()
-    s.bind((HOST, PORT))
-    s.listen(5)
-
-
-    while True:
-
-        conn, _addr = s.accept()
-
-        data = conn.recv(1024).decode()
+def _raise_disabled(operation: str) -> NoReturn:
+    logger.critical(
+        "legacy device gateway operation rejected",
+        extra={"operation": operation, "reason": "retired_unreviewed_device_path"},
+    )
+    raise LegacyDeviceGatewayDisabledError(
+        "The legacy device gateway is disabled. Use the approved Device Bridge "
+        "integration process; direct sockets and result forwarding are prohibited."
+    )
 
 
-        parsed = parse_message(data)
-
-        if parsed:
-
-            send_result(parsed)
+def parse_message(_message: str) -> NoReturn:
+    """Reject legacy parsing so no caller can progress toward direct forwarding."""
+    _raise_disabled("parse_message")
 
 
-        conn.close()
+def send_result(_data: object) -> NoReturn:
+    """Reject all direct device-result forwarding attempts."""
+    _raise_disabled("send_result")
+
+
+def run_server() -> NoReturn:
+    """Reject raw socket-server startup from the backend repository."""
+    _raise_disabled("run_server")
 
 
 if __name__ == "__main__":
