@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   BellRing,
+  Building,
   ClipboardList,
   FlaskConical,
   LayoutDashboard,
@@ -29,7 +30,7 @@ interface MobileNavItem {
   path: string;
   icon: LucideIcon;
   permissions?: string[];
-  roles?: string[];
+  roles?: readonly string[];
 }
 
 const canonicalNavItems = Object.values(NAV_ITEMS).flat();
@@ -49,15 +50,23 @@ function fromCanonical(
     path: item.path,
     icon,
     permissions: item.permissions,
-    roles,
+    roles: roles ?? item.roles,
   };
 }
 
-const primaryItems: MobileNavItem[] = [
+const clinicalItems: MobileNavItem[] = [
   fromCanonical("/dashboard", LayoutDashboard),
-  fromCanonical("/patients", Users),
+  fromCanonical("/patient-management", Users),
   fromCanonical("/orders", ClipboardList),
   fromCanonical("/results", FlaskConical),
+  fromCanonical("/alerts", BellRing),
+];
+
+const clinicItems: MobileNavItem[] = [
+  fromCanonical("/dashboard", LayoutDashboard),
+  fromCanonical("/patient-management", Users),
+  fromCanonical("/hospital", Building),
+  fromCanonical("/reports", ClipboardList),
   fromCanonical("/alerts", BellRing),
 ];
 
@@ -97,7 +106,9 @@ export function MobileBottomNav({
   const location = useLocation();
   const role = user?.role ?? "citizen";
   const isCitizen = role === "citizen";
-  const items = (isCitizen ? citizenItems : primaryItems)
+  const isClinicOperator = ["admin", "master_admin", "lab_admin", "ministry_admin", "province_admin"].includes(role);
+  const roleItems = isCitizen ? citizenItems : isClinicOperator ? clinicItems : clinicalItems;
+  const items = roleItems
     .filter((item) => canUseItem(item, role, demoMode, effectivePermissions))
     .slice(0, 4);
 
