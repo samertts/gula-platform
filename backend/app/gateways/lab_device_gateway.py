@@ -30,6 +30,7 @@ import hmac
 import logging
 import os
 import time
+from typing import Any
 
 logger = logging.getLogger("gula.device_gateway")
 
@@ -103,13 +104,13 @@ def _check_replay(nonce: str, device_id: str) -> None:
 def receive_device_result(
     sample_id: str,
     test: str,
-    value,
+    value: Any,
     *,
     device_id: str = "",
     signature: str = "",
     timestamp: int = 0,
     nonce: str = "",
-) -> dict:
+) -> dict[str, str | float]:
     """Validate, authenticate, and replay-check a result from a lab analyser.
 
     Args:
