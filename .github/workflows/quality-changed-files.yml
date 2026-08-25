@@ -45,10 +45,22 @@ jobs:
           python scripts/quality_changed_files_gate.py \
             --report quality-gate-report.json
 
-      - name: Upload quality gate report
+      - name: Reject new circular backend dependencies
+        env:
+          CIRCULAR_BASE_REF: origin/${{ github.base_ref }}
+          CIRCULAR_HEAD_REF: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python scripts/circular_dependency_nonregression.py \
+            --base-ref "$CIRCULAR_BASE_REF" \
+            --head-ref "$CIRCULAR_HEAD_REF" \
+            --report circular-dependency-nonregression-report.json
+
+      - name: Upload quality gate reports
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: changed-files-quality-report-${{ github.event.pull_request.number }}
-          path: quality-gate-report.json
+          name: changed-files-quality-reports-${{ github.event.pull_request.number }}
+          path: |
+            quality-gate-report.json
+            circular-dependency-nonregression-report.json
           if-no-files-found: warn
