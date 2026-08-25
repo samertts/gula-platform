@@ -18,8 +18,7 @@ from .schemas import (
     ConnectorRecord,
     ConnectorRegisterRequest,
     ConnectorStatusUpdateRequest,
-    DeviceEventListResponse,
-    DeviceEventRecord,
+    DeviceEventListResponse, DeviceEventRecord,
     DeviceOutboxListResponse,
     DeviceOutboxProcessResponse,
     DeviceOutboxRecord,
@@ -27,9 +26,10 @@ from .schemas import (
     GatewayAlertRecord,
     GatewayHeartbeatRequest,
     GatewayListResponse,
-    GatewayMetricIngestRequest,
-    GatewayRecord,
+    GatewayMetricIngestRequest, GatewayRecord,
     GatewayRegistrationRequest,
+    InstrumentMeasurementReviewRecord,
+    InstrumentMeasurementReviewRequest,
     GatewayMetricRecord,
     GatewayMonitoringAlertListResponse,
     GatewayMonitoringSnapshot,
@@ -661,3 +661,146 @@ def clinician_baseline_summary(
     except Exception as exc:
         _handle_service_error(exc)
         raise AssertionError("unreachable")
+
+
+@router.put(
+    "/measurements/{measurement_id}/review",
+    response_model=InstrumentMeasurementReviewRecord,
+)
+def review_quarantined_measurement(
+    measurement_id: int,
+    payload: InstrumentMeasurementReviewRequest,
+    actor: LabUser = _write_actor(),
+    db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> InstrumentMeasurementReviewRecord:
+    """Move a quarantined device measurement through human review only.
+
+    This endpoint cannot create a LabResult, update a sample/order, or release
+    a clinical result. The feature is disabled unless an explicit per-lab
+    server-side feature flag enables it.
+    """
+    from ..clinical.command_guard import ClinicalCommandGuard
+    from ..core.feature_flags import can_lab_access
+    from .models import InstrumentMeasurement
+
+    if actor.id is None or actor.lab_id is None or actor.role is None:
+        raise HTTPException(status_code=403, detail="Reviewer identity is incomplete")
+    actor_user_id = actor.id
+    actor_lab_id = actor.lab_id
+    actor_role = actor.role
+
+    measurement = (
+        db.query(InstrumentMeasurement)
+        .filter(
+            InstrumentMeasurement.id == measurement_id,
+            InstrumentMeasurement.lab_id == actor_lab_id,
+        )
+        .with_for_update()
+        .first()
+    )
+    if measurement is None:
+        raise HTTPException(status_code=404, detail="Quarantined measurement not found")
+    if measurement.id is None or measurement.version is None or measurement.status is None:
+        raise HTTPException(status_code=409, detail="Quarantined measurement has incomplete state")
+    measurement_record_id = measurement.id
+    version_before = measurement.version
+    state_before = measurement.status
+
+    guard = ClinicalCommandGuard(
+        db,
+        actor_user_id=actor_user_id,
+        lab_id=actor_lab_id,
+        actor_role=actor_role,
+    )
+    guard.require_expected_version(
+        if_match,
+        current_version=version_before,
+        resource_name="instrument measurement",
+    )
+    key = guard.require_idempotency_key(idempotency_key)
+
+    if not can_lab_access("device_quarantine_review", actor_lab_id, db):
+        guard.reject(
+            operation="device_measurement.review",
+            resource_type="instrument_measurement",
+            resource_id=measurement_record_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="feature_disabled",
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=403,
+            detail="Device quarantine review is disabled for this laboratory",
+        )
+    if actor_role not in frozenset({"master_admin", "admin", "lab_admin"}):
+        guard.reject(
+            operation="device_measurement.review",
+            resource_type="instrument_measurement",
+            resource_id=measurement_record_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="senior_authority_required",
+        )
+        db.commit()
+        raise HTTPException(status_code=403, detail="Senior laboratory authority is required")
+
+    receipt = guard.claim(
+        operation="device_measurement.review",
+        resource_type="instrument_measurement",
+        resource_id=measurement.id,
+        idempotency_key=key,
+        payload=payload.model_dump(),
+    )
+    try:
+        reviewed = service.transition_instrument_measurement_review(
+            db,
+            measurement=measurement,
+            target_status=payload.target_status,
+            actor_user_id=actor_user_id,
+            rejection_code=payload.rejection_code,
+        )
+        if reviewed.id is None or reviewed.status is None or reviewed.version is None:
+            db.rollback()
+            raise HTTPException(status_code=409, detail="Reviewed measurement has incomplete state")
+        reviewed_record_id = reviewed.id
+        reviewed_status = reviewed.status
+        reviewed_version = reviewed.version
+        guard.complete(
+            receipt,
+            resource_type="instrument_measurement",
+            resource_id=reviewed_record_id,
+            state_before=state_before,
+            state_after=reviewed_status,
+            version_before=version_before,
+            version_after=reviewed_version,
+            reason=payload.rejection_code,
+        )
+        db.commit()
+    except ValueError as exc:
+        db.rollback()
+        guard.reject(
+            operation="device_measurement.review",
+            resource_type="instrument_measurement",
+            resource_id=measurement_id,
+            state_before=state_before,
+            version_before=version_before,
+            reason="invalid_review_transition",
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid quarantined measurement review transition",
+        ) from exc
+
+    db.refresh(reviewed)
+    return InstrumentMeasurementReviewRecord(
+        id=reviewed_record_id,
+        status=reviewed_status,
+        version=reviewed_version,
+        reviewed_by=reviewed.reviewed_by,
+        reviewed_at=reviewed.reviewed_at,
+        rejection_code=reviewed.rejection_code,
+    )

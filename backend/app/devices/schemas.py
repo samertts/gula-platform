@@ -32,12 +32,22 @@ DeviceProtocol = Literal[
     "PDF",
     "None",
 ]
-DeviceTransport = Literal["MLLP", "TCP", "Serial", "USB", "Bluetooth", "WiFi", "HTTP", "File", "None"]
+DeviceTransport = Literal[
+    "MLLP", "TCP", "Serial", "USB", "Bluetooth", "WiFi", "HTTP", "File", "None"
+]
 ConnectorMode = Literal["simulated", "gateway_pending", "active", "disabled"]
 ConnectorStatus = Literal["healthy", "degraded", "offline", "error", "maintenance", "pending"]
 ProfileStatus = Literal["draft", "validated", "retired"]
 
-_SECRET_TERMS = ("password", "secret", "token", "private_key", "privatekey", "credential", "authorization")
+_SECRET_TERMS = (
+    "password",
+    "secret",
+    "token",
+    "private_key",
+    "privatekey",
+    "credential",
+    "authorization",
+)
 
 
 def _ensure_secret_free(value: Any) -> Any:
@@ -45,7 +55,9 @@ def _ensure_secret_free(value: Any) -> Any:
         for key, child in value.items():
             normalized = str(key).lower().replace("-", "_")
             if any(term in normalized for term in _SECRET_TERMS):
-                raise ValueError("secret-bearing configuration is not accepted by the device control plane")
+                raise ValueError(
+                    "secret-bearing configuration is not accepted by the device control plane"
+                )
             _ensure_secret_free(child)
     elif isinstance(value, list):
         for child in value:
@@ -304,7 +316,9 @@ class PrinterJobListResponse(BaseModel):
     jobs: list[PrinterJobRecord]
 
 
-GatewayStatus = Literal["healthy", "degraded", "offline", "error", "maintenance", "pending", "revoked"]
+GatewayStatus = Literal[
+    "healthy", "degraded", "offline", "error", "maintenance", "pending", "revoked"
+]
 GatewayMode = Literal["simulated", "local_pending"]
 GatewayAlertSeverity = Literal["info", "warning", "critical"]
 GatewayAlertStatus = Literal["open", "acknowledged", "resolved"]
@@ -322,7 +336,9 @@ class GatewayRegistrationRequest(BaseModel):
 
     @field_validator("capabilities_safe")
     @classmethod
-    def validate_capabilities_secret_free(cls, value: dict[str, Any] | None) -> dict[str, Any] | None:
+    def validate_capabilities_secret_free(
+        cls, value: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
         return _ensure_secret_free(value)
 
 
@@ -469,6 +485,31 @@ class DeviceOutboxListResponse(BaseModel):
 
 class GatewayAlertAcknowledgeRequest(BaseModel):
     note: str | None = Field(None, max_length=500)
+
+
+class InstrumentMeasurementReviewRequest(BaseModel):
+    """Human-review instruction for a quarantined device measurement only."""
+
+    target_status: Literal["pending_review", "rejected"]
+    rejection_code: (
+        Literal[
+            "duplicate",
+            "invalid_value",
+            "quality_control",
+            "sample_mismatch",
+            "unmatched_sample",
+        ]
+        | None
+    ) = None
+
+
+class InstrumentMeasurementReviewRecord(BaseModel):
+    id: int
+    status: Literal["quarantined", "pending_review", "rejected", "accepted"]
+    version: int
+    reviewed_by: int | None
+    reviewed_at: datetime | None
+    rejection_code: str | None
 
 
 class GatewayMonitoringSnapshot(BaseModel):

@@ -313,6 +313,55 @@ def _normalize_measurement_text(
     return normalized
 
 
+INSTRUMENT_MEASUREMENT_REVIEW_TRANSITIONS: dict[str, frozenset[str]] = {
+    "quarantined": frozenset({"pending_review", "rejected"}),
+    "pending_review": frozenset({"rejected"}),
+    "rejected": frozenset(),
+    "accepted": frozenset(),
+}
+INSTRUMENT_MEASUREMENT_REJECTION_CODES = frozenset(
+    {"duplicate", "invalid_value", "quality_control", "sample_mismatch", "unmatched_sample"}
+)
+
+
+def transition_instrument_measurement_review(
+    db: Session,
+    *,
+    measurement: InstrumentMeasurement,
+    target_status: str,
+    actor_user_id: int,
+    rejection_code: str | None = None,
+) -> InstrumentMeasurement:
+    """Apply the narrow human-review state machine to a quarantined measurement.
+
+    This transition intentionally cannot create ``LabResult`` records, change a
+    sample/order state, or move a measurement to clinical release. Those future
+    actions require a distinct validated design and authorization workflow.
+    """
+    current_status = measurement.status
+    current_version = measurement.version
+    if current_status is None or current_version is None:
+        raise DeviceIngressValidationError("instrument measurement has incomplete review state")
+    allowed_targets = INSTRUMENT_MEASUREMENT_REVIEW_TRANSITIONS.get(current_status)
+    if allowed_targets is None or target_status not in allowed_targets:
+        raise DeviceIngressValidationError("invalid instrument measurement review transition")
+    if target_status == "rejected":
+        if rejection_code not in INSTRUMENT_MEASUREMENT_REJECTION_CODES:
+            raise DeviceIngressValidationError("a supported rejection_code is required")
+    elif rejection_code is not None:
+        raise DeviceIngressValidationError(
+            "rejection_code is allowed only for rejected measurements"
+        )
+
+    measurement.status = target_status
+    measurement.reviewed_by = actor_user_id
+    measurement.reviewed_at = datetime.now(UTC)
+    measurement.rejection_code = rejection_code
+    measurement.version = current_version + 1
+    db.flush()
+    return measurement
+
+
 def quarantine_instrument_measurement(
     db: Session,
     *,
