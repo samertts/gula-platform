@@ -8,7 +8,7 @@ from app.pipeline.parser_engine import ASTMParser, calculate_checksum
 
 class FakeGulaClient(GulaClient):
     def __init__(self) -> None:
-        super().__init__(base_url="http://example.invalid", lab_id="LAB001")
+        super().__init__(base_url=None, lab_id="LAB001", enabled=False)
         self.sent_batches = []
 
     async def send_results(self, results):  # type: ignore[override]
