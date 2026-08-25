@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -19,6 +19,8 @@ import { Button } from "@/components/ui";
 import { GuideAssistant } from "@/components/guide/GuideAssistant";
 import { DemoEnvironmentBadge, GulaBrand } from "@/components/shared/GulaBrand";
 import { WorkspaceSelector } from "@/components/workspace/WorkspaceSelector";
+import { WorkspaceContextHeader } from "@/components/workspace/WorkspaceContextHeader";
+import type { WorkspaceSummary } from "@/api/client";
 import { MobileBottomNav } from "@/components/navigation/MobileBottomNav";
 import { localeOptions } from "@/i18n/locales";
 
@@ -30,6 +32,14 @@ export function DashboardLayout() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showDemoNotice, setShowDemoNotice] = useState(true);
+  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceSummary | null>(null);
+  const handleActiveWorkspace = useCallback((workspace: WorkspaceSummary) => {
+    setActiveWorkspace(workspace);
+  }, []);
+
+  useEffect(() => {
+    if (demoMode) setActiveWorkspace(null);
+  }, [demoMode]);
   const currentLocaleIndex = Math.max(
     0,
     localeOptions.findIndex((option) => option.code === locale),
@@ -86,7 +96,7 @@ export function DashboardLayout() {
               </div>
             )}
             <div className="hidden sm:block">
-              <WorkspaceSelector />
+              <WorkspaceSelector onActiveWorkspace={handleActiveWorkspace} />
             </div>
             <button
               type="button"
@@ -197,6 +207,13 @@ export function DashboardLayout() {
           </div>
         )}
         <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,rgba(13,148,136,0.08),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.06),transparent_34%)] p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-7">
+          <div className="mx-auto mb-5 max-w-7xl">
+            <WorkspaceContextHeader
+              workspace={activeWorkspace}
+              demoMode={demoMode}
+              role={user?.role}
+            />
+          </div>
           <Outlet />
         </div>
       </main>
