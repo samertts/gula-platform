@@ -300,6 +300,30 @@ jobs:
           cd backend
           python -m pytest tests/ -v --timeout=60 -x 2>&1
 
+      - name: Measure backend coverage excluding performance benchmarks
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gula_test
+          MIGRATION_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/gula_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: ${{ steps.test_secrets.outputs.secret_key }}
+          ENCRYPTION_KEY: ${{ steps.test_secrets.outputs.encryption_key }}
+          NID_HMAC_KEY: ${{ steps.test_secrets.outputs.nid_hmac_key }}
+          REFRESH_TOKEN_SECRET: ${{ steps.test_secrets.outputs.refresh_token_secret }}
+          DEVICE_HMAC_KEY: ${{ steps.test_secrets.outputs.device_hmac_key }}
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/backend
+        run: |
+          cd backend
+          python -m pytest tests/ -q --timeout=60 -m "not performance" \
+            --cov=app --cov-report=term --cov-report=json:coverage.json
+
+      - name: Upload backend coverage report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: backend-coverage-${{ github.sha }}
+          path: backend/coverage.json
+          if-no-files-found: warn
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest

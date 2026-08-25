@@ -8,8 +8,11 @@ Thresholds are generous (2x typical latency) to avoid flakiness in CI.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import time
+
+import pytest
 
 os.environ.setdefault("ENV", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
@@ -17,9 +20,8 @@ os.environ.setdefault("SECRET_KEY", "test-secret-key-" + "x" * 40)
 os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=")
 os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 
-import asyncio
 
-import pytest
+pytestmark = pytest.mark.performance
 
 
 class TestEmbeddingBenchmarks:
@@ -183,7 +185,7 @@ class TestObservabilityBenchmarks:
 
         reset_metrics()
         start = time.perf_counter()
-        for i in range(10000):
+        for _ in range(10000):
             track_request("test", "benchmark", "success")
         elapsed = time.perf_counter() - start
         rate = 10000 / elapsed
