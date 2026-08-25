@@ -2,6 +2,8 @@
 
 Phase-1..7 baseline now includes ASTM pipeline, device emulator, registry, adapter layer, command system, smart routing, patient matching, edge/offline buffering, and sync/security primitives.
 
+> **Safety status:** this service is a local bridge and emulator surface, not a live clinical-result path. Upstream forwarding is disabled by default in the shipped runtime; no deployment configuration in this repository enables it. The bridge does not create, validate, or release `LabResult` records. Any future forwarding requires a separately approved facility deployment with HTTPS, mutual TLS, CA/client certificate/client key held outside Git, gateway/network review, and synthetic UAT.
+
 ## Implemented
 
 - **Connectors + Handshake**
@@ -23,9 +25,9 @@ Phase-1..7 baseline now includes ASTM pipeline, device emulator, registry, adapt
   - `PatientMatcher` resolves patient IDs from ASTM, barcode map, or fallback
   - `TestMappingEngine` unifies aliases (e.g. `Hb`/`HGB` -> `HEMOGLOBIN`)
 - **Smart routing + edge mode**
-  - `SmartRoutingEngine` routes per device policy (`gula`/`offline`/`both`)
-  - `EdgeAgentBuffer` stores data in offline/branch mode and supports later sync
-  - `SyncEngine` stages and syncs edge payloads with retry-friendly behavior
+  - `SmartRoutingEngine` keeps local routing policy; it does not enable live clinical forwarding
+  - `EdgeAgentBuffer` stores local/offline payloads for controlled reconciliation
+  - `SyncEngine` stages payloads; it is not evidence of a live upstream integration
 - **Production hardening + security**
   - `RetryQueue` for failed upstream sends
   - offline queue persistence and audit trail in repository
@@ -62,21 +64,21 @@ Phase-1..7 baseline now includes ASTM pipeline, device emulator, registry, adapt
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .[dev]
-export LABLINK_API_KEY=lablink-dev-key
-uvicorn app.main:app --reload
-```
-
-Or using Make:
-
-```bash
+export API_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(32))')"
 make run
 ```
+
+The key is a local-development secret only: generate a new value, do not commit it, and do not use a fixed example or production credential. `make run` and `make smoke` reject an empty `API_KEY`.
+
+Use synthetic data only. This command does not configure upstream forwarding, certificates, or a live device integration.
 
 ## Run Device Emulator
 
 ```bash
 python -m app.emulator.tcp_device_emulator
 ```
+
+The emulator is for synthetic test frames only; it is not a facility instrument approval.
 
 ## Test
 
