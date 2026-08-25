@@ -61,8 +61,9 @@
 | قياسات حجرية         | `fix/device-p0-clinical-quarantine` عند `b8828a6e` | جدول `instrument_measurements` المنفصل، منع عينة مؤسسة أخرى أو عينة مرفوضة، ورأس Alembic `20260823_0007`        | القياس ليس `LabResult` ولا يغير حالة sample/order ولا يملك مسار release              |
 | حارس بوابة الجهاز    | `fix/device-p0-gateway-fail-closed` عند `8038e7a7` | يرفض غياب HMAC أو قائمة السماح أو مخزن nonce؛ 43/43 من انحدار ربط الأجهزة                                       | يلغي قبول الرسائل عند تدهور الحماية؛ لا يزال الحارس غير موصول بمسار إدخال حي         |
 | أمر مراجعة القياس المحجور | `fix/device-p0-review-command` عند `efe04ecc` | `PUT /device-integration/measurements/{measurement_id}/review` يتطلب `lab:manage` ودوراً مخولاً وميزة معطلة افتراضياً و`If-Match` و`Idempotency-Key` وحارس الأمر السريري؛ 17/17 اختبار أجهزة، وبوابة الجودة التفاضلية ناجحة (`Ruff` 16 → 16، و`Mypy` 99 → 99)، ورأس Alembic هو `20260823_0007` | يسمح فقط بـ`quarantined → pending_review` أو `rejected`؛ لا ينشئ `LabResult` ولا يغير `Sample` أو `Order` ولا يقبل أو يطلق نتيجة سريرية. [4] |
+| تحقق هوية العينة | `fix/sample-verification-guard` عند `4be4688f` | `PUT /samples/{barcode}/verify-identity` معطل افتراضياً؛ يتطلب دوراً مخولاً و`If-Match` و`Idempotency-Key` وحارس الأمر السريري. الانحدار المركّز 11/11 ناجح، وبوابة الجودة التفاضلية ناجحة (`Ruff` 1 → 1، و`Mypy` 0 → 0)، ورأس Alembic هو `20260825_0008` | ينقل عينة `received` فقط إلى `verified` مع دليل المراجع والطريقة والإصدار؛ لا ينشئ `LabResult`، ولا يغير `LabOrder`، ولا يقبل أو يطلق قياس جهاز. [5] |
 
-> هذه الدفعات تخفض خطر المسار المباشر، لكنها لا تكفي لتفعيل جهاز حقيقي. يوجد الآن أمر مراجعة بشري محمي للقياس المحجور، إلا أنه **ليس** أمراً لقبول النتيجة أو إصدارها. يلزم قبل أي تجربة محدودة: اعتماد تصميم شبكة المنشأة وmTLS/إدارة الشهادات، endpoint ingress جديد ومراجَع، وتصميم مستقل وموافق عليه بشرياً للقبول يتحقق من مطابقة العينة والاختبار في LIMS، وUAT تركيبي، وتوقيعات الأدوار المخولة.
+> هذه الدفعات تخفض خطر المسار المباشر، لكنها لا تكفي لتفعيل جهاز حقيقي. يوجد الآن أمر مراجعة بشري محمي للقياس المحجور وضابط تحقق هوية عينة منفصل، إلا أنهما **ليسا** أمر قبول للنتيجة أو إصدارها. يلزم قبل أي تجربة محدودة: اعتماد تصميم شبكة المنشأة وmTLS/إدارة الشهادات، endpoint ingress جديد ومراجَع، وتصميم مستقل وموافق عليه بشرياً للقبول يتحقق من مطابقة العينة والاختبار في LIMS، وUAT تركيبي، وتوقيعات الأدوار المخولة.
 
 > أظهر `ruff format --check` و`ruff check` ديناً تاريخياً في `backend/app/devices/routes.py` (ومن ذلك مخالفات B904 وتنسيق ملف قديم). لم تزد بوابة الجودة التفاضلية هذا الدين، ولم تضف الدفعة مخالفة جديدة؛ يبقى علاجه دفعة مخصصة منفصلة ولا يعد نجاحها بديلاً عن البوابات العامة.
 
@@ -140,3 +141,4 @@ python3 scripts/release_go_preflight.py --json
 [2] [تشغيل CI Pipeline — GitHub Actions](https://github.com/samertts/gula-platform/actions/runs/32476627178)  
 [3] [PR #242 — GitHub](https://github.com/samertts/gula-platform/pull/242)
 [4] [فرع أمر مراجعة القياسات المحجورة — GitHub](https://github.com/samertts/gula-platform/tree/fix/device-p0-review-command)
+[5] [فرع ضابط تحقق هوية العينة — GitHub](https://github.com/samertts/gula-platform/tree/fix/sample-verification-guard)
