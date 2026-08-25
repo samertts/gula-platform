@@ -5,6 +5,7 @@ from typing import Any
 
 from fastapi import FastAPI
 
+from app.external_ingestion.routes import router as external_ingestion_router
 from app.integration.monitoring import IntegrationMonitor
 from app.integration.offline import OfflineSyncEngine
 from app.integration.routes import configure as configure_routes
@@ -40,6 +41,7 @@ class IntegrationPlatform:
             mapper=self.mapper,
         )
         app.include_router(integration_router, prefix=prefix)
+        app.include_router(external_ingestion_router, prefix=prefix)
         logger.info("Integration routes registered at %s", prefix)
 
     def initialize(self, app: FastAPI, prefix: str = "") -> None:
