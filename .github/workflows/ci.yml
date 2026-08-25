@@ -300,6 +300,34 @@ jobs:
           cd backend
           python -m pytest tests/ -v --timeout=60 -x 2>&1
 
+  sbom:
+    name: Software Bill of Materials
+    runs-on: ubuntu-latest
+    needs: [syntax-gate]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: artifacts/gula-platform.cdx.json
+          syft-version: v1.51.0
+          upload-artifact: false
+          upload-release-assets: false
+      - name: Validate SBOM structure
+        run: python3 scripts/validate_sbom_artifact.py artifacts/gula-platform.cdx.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gula-platform-sbom-cyclonedx
+          path: artifacts/gula-platform.cdx.json
+          if-no-files-found: error
+          retention-days: 30
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
