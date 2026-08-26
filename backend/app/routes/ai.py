@@ -61,6 +61,7 @@ _GROQ_KEY = os.getenv("GROQ_API_KEY", "")
 # Hard timeout budget for every external AI HTTP call.  Keeps p99 latency ≤6s
 # and prevents a slow provider from blocking a gunicorn worker indefinitely.
 _AI_BUDGET_S = float(os.getenv("AI_BUDGET_SECONDS", "6"))
+_EXTERNAL_AI_ENABLED = os.getenv("ALLOW_EXTERNAL_AI", "").strip().lower() == "true"
 
 # Ollama — completely free, runs locally on the server (no API key required).
 # Install: curl -fsSL https://ollama.com/install.sh | sh && ollama pull llama3.2:3b
@@ -74,9 +75,9 @@ _AI_PROVIDER = os.getenv(
     "ollama"
     if _OLLAMA_BASE_URL
     else "gemini"
-    if _google_ai.is_configured()
+    if _EXTERNAL_AI_ENABLED and _google_ai.is_configured()
     else "groq"
-    if _GROQ_KEY
+    if _EXTERNAL_AI_ENABLED and _GROQ_KEY
     else "none",
 )
 _GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
@@ -750,6 +751,8 @@ async def _call_gemini_flash(prompt: str) -> str:
 
 
 async def _call_groq_llama(prompt: str) -> str:
+    if not _EXTERNAL_AI_ENABLED:
+        raise RuntimeError("external AI is disabled pending privacy approval")
     payload = {
         "model": "llama-3.1-8b-instant",
         "messages": [{"role": "user", "content": prompt}],
@@ -774,11 +777,11 @@ async def _call_ai_with_fallback(prompt: str) -> tuple[str, str]:
     Cloud providers are used as fallback when Ollama is offline/unavailable.
     """
     providers: list[tuple[str, Callable]] = []
-    # Ollama is always first — it's free, local, and has no rate limits
-    providers.append(("ollama", _call_ollama_clinical))
-    if _google_ai.is_configured():
+    if _OLLAMA_BASE_URL:
+        providers.append(("ollama", _call_ollama_clinical))
+    if _EXTERNAL_AI_ENABLED and _google_ai.is_configured():
         providers.append(("gemini", _call_gemini_flash))
-    if _GROQ_KEY:
+    if _EXTERNAL_AI_ENABLED and _GROQ_KEY:
         providers.append(("groq", _call_groq_llama))
 
     last_exc: Exception = RuntimeError("no providers configured")
