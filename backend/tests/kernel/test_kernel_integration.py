@@ -4,6 +4,7 @@ import asyncio
 
 import pytest
 
+from app.config import APP_VERSION
 from app.kernel import Kernel, KernelConfig, KernelState
 
 pytestmark = [pytest.mark.kernel, pytest.mark.integration]
@@ -97,7 +98,7 @@ class TestKernelIntegration:
 
         config = get_kernel_config()
         assert config.name == "gula-kernel"
-        assert config.version == "2.1.0"
+        assert config.version == APP_VERSION
         assert config.environment == "production"
 
     def test_kill_switch_not_active(self):
