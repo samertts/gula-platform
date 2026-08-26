@@ -11,9 +11,12 @@
 #
 name: "CodeQL Advanced"
 
+# This is the single CodeQL workflow for the repository. The legacy duplicate
+# workflow was removed so each language uploads one unambiguous SARIF category.
+
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "release/*" ]
   pull_request:
     branches: [ "main" ]
   schedule:
