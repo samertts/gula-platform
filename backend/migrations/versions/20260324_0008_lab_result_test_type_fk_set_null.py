@@ -39,26 +39,17 @@ def upgrade() -> None:
 
     bind = op.get_bind()
     if bind.dialect.name == "sqlite":
-            has_fk = any(
-                fk.get("name") == "lab_results_test_type_id_fkey"
-                for fk in inspect(bind).get_foreign_keys("lab_results")
+        has_fk = _fk_exists("lab_results", "lab_results_test_type_id_fkey")
+        with op.batch_alter_table("lab_results", recreate="always") as batch_op:
+            if has_fk:
+                batch_op.drop_constraint("lab_results_test_type_id_fkey", type_="foreignkey")
+            batch_op.create_foreign_key(
+                "lab_results_test_type_id_fkey",
+                "test_types",
+                ["test_type_id"],
+                ["id"],
+                ondelete="SET NULL",
             )
-            with op.batch_alter_table("lab_results", schema=None) as batch_op:
-                if has_fk:
-                    try:
-                        batch_op.drop_constraint("lab_results_test_type_id_fkey", type_="foreignkey")
-                    except Exception:
-                        pass
-                try:
-                    batch_op.create_foreign_key(
-                        "lab_results_test_type_id_fkey",
-                        "test_types",
-                        ["test_type_id"],
-                        ["id"],
-                        ondelete="SET NULL",
-                    )
-                except Exception:
-                    pass
     else:
         old_fk = "lab_results_test_type_id_fkey"
         if _fk_exists("lab_results", old_fk):
@@ -78,13 +69,24 @@ def downgrade() -> None:
         return
 
     new_fk = "lab_results_test_type_id_fkey"
-    if _fk_exists("lab_results", new_fk):
-        op.drop_constraint(new_fk, "lab_results", type_="foreignkey")
-
-    op.create_foreign_key(
-        "lab_results_test_type_id_fkey",
-        "lab_results",
-        "test_types",
-        ["test_type_id"],
-        ["id"],
-    )
+    bind = op.get_bind()
+    if bind.dialect.name == "sqlite":
+        with op.batch_alter_table("lab_results", recreate="always") as batch_op:
+            if _fk_exists("lab_results", new_fk):
+                batch_op.drop_constraint(new_fk, type_="foreignkey")
+            batch_op.create_foreign_key(
+                new_fk,
+                "test_types",
+                ["test_type_id"],
+                ["id"],
+            )
+    else:
+        if _fk_exists("lab_results", new_fk):
+            op.drop_constraint(new_fk, "lab_results", type_="foreignkey")
+        op.create_foreign_key(
+            new_fk,
+            "lab_results",
+            "test_types",
+            ["test_type_id"],
+            ["id"],
+        )

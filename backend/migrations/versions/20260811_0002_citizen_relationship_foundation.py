@@ -6,16 +6,17 @@ are added only when those tables exist in the target database.
 """
 from __future__ import annotations
 
-from typing import Sequence, Union
+from typing import Union
+from collections.abc import Sequence
 
 from alembic import op
 import sqlalchemy as sa
 
 
 revision: str = "20260811_0002"
-down_revision: Union[str, None] = "20260811_0001"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "20260811_0001"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 _TABLE = "niam_citizen_relationships"
 
@@ -65,13 +66,33 @@ def upgrade() -> None:
             sa.PrimaryKeyConstraint("id"),
         )
 
-        for constraint_name, column, target_table in (
-            ("fk_citizen_relationship_user", "legacy_user_id", "users"),
-            ("fk_citizen_relationship_lab_user", "legacy_lab_user_id", "lab_users"),
-            ("fk_citizen_relationship_citizen", "citizen_id", "national_citizens"),
-            ("fk_citizen_relationship_patient", "patient_id", "national_patients"),
-        ):
-            if _has_table(target_table):
+        conditional_foreign_keys = tuple(
+            (constraint_name, column, target_table)
+            for constraint_name, column, target_table in (
+                ("fk_citizen_relationship_user", "legacy_user_id", "users"),
+                ("fk_citizen_relationship_lab_user", "legacy_lab_user_id", "lab_users"),
+                ("fk_citizen_relationship_citizen", "citizen_id", "national_citizens"),
+                ("fk_citizen_relationship_patient", "patient_id", "national_patients"),
+            )
+            if _has_table(target_table)
+        )
+
+        bind = op.get_bind()
+        if bind.dialect.name == "sqlite":
+            # SQLite cannot ALTER TABLE to add a foreign key. Batch mode
+            # performs the documented copy-and-move rebuild and preserves the
+            # table constraints while keeping the same relationship contract.
+            with op.batch_alter_table(_TABLE, recreate="always") as batch_op:
+                for constraint_name, column, target_table in conditional_foreign_keys:
+                    batch_op.create_foreign_key(
+                        constraint_name,
+                        target_table,
+                        [column],
+                        ["id"],
+                        ondelete="RESTRICT",
+                    )
+        else:
+            for constraint_name, column, target_table in conditional_foreign_keys:
                 op.create_foreign_key(
                     constraint_name,
                     _TABLE,
@@ -103,14 +124,16 @@ def downgrade() -> None:
 
     bind = op.get_bind()
     inspector = sa.inspect(bind)
-    for constraint_name in (
+    constraint_names = (
         "fk_citizen_relationship_patient",
         "fk_citizen_relationship_citizen",
         "fk_citizen_relationship_lab_user",
         "fk_citizen_relationship_user",
-    ):
-        if constraint_name in {c["name"] for c in inspector.get_foreign_keys(_TABLE)}:
-            op.drop_constraint(constraint_name, _TABLE, type_="foreignkey")
+    )
+    if bind.dialect.name != "sqlite":
+        for constraint_name in constraint_names:
+            if constraint_name in {c["name"] for c in inspector.get_foreign_keys(_TABLE)}:
+                op.drop_constraint(constraint_name, _TABLE, type_="foreignkey")
 
     for index_name in (
         "ix_citizen_relationship_expiry",

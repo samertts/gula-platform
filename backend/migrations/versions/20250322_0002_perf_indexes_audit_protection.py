@@ -58,16 +58,28 @@ def upgrade() -> None:
         )
 
     # ── doctor_user_id on lab_orders ──────────────────────────────────────────
+    bind = op.get_bind()
     if not _has_column("lab_orders", "doctor_user_id"):
-        op.add_column(
-            "lab_orders",
-            sa.Column(
-                "doctor_user_id",
-                sa.Integer(),
-                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
-                nullable=True,
-            ),
-        )
+        if bind.dialect.name == "sqlite":
+            with op.batch_alter_table("lab_orders", recreate="always") as batch_op:
+                batch_op.add_column(sa.Column("doctor_user_id", sa.Integer(), nullable=True))
+                batch_op.create_foreign_key(
+                    "fk_lab_orders_doctor_user_id",
+                    "lab_users",
+                    ["doctor_user_id"],
+                    ["id"],
+                    ondelete="SET NULL",
+                )
+        else:
+            op.add_column(
+                "lab_orders",
+                sa.Column(
+                    "doctor_user_id",
+                    sa.Integer(),
+                    sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                    nullable=True,
+                ),
+            )
         op.create_index("ix_lab_orders_doctor_user_id", "lab_orders", ["doctor_user_id"])
 
     # ── audit_logs append-only trigger (PostgreSQL only) ─────────────────────
@@ -116,7 +128,15 @@ def downgrade() -> None:
     if _has_column("lab_orders", "doctor_user_id"):
         if _index_exists("lab_orders", "ix_lab_orders_doctor_user_id"):
             op.drop_index("ix_lab_orders_doctor_user_id", "lab_orders")
-        op.drop_column("lab_orders", "doctor_user_id")
+        if bind.dialect.name == "sqlite":
+            foreign_keys = insp.get_foreign_keys("lab_orders")
+            with op.batch_alter_table("lab_orders", recreate="always") as batch_op:
+                for foreign_key in foreign_keys:
+                    if "doctor_user_id" in (foreign_key.get("constrained_columns") or ()) and foreign_key.get("name"):
+                        batch_op.drop_constraint(foreign_key["name"], type_="foreignkey")
+                batch_op.drop_column("doctor_user_id")
+        else:
+            op.drop_column("lab_orders", "doctor_user_id")
 
     for idx, tbl in [
         ("ix_audit_logs_user_created", "audit_logs"),

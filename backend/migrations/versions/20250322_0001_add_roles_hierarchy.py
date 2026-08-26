@@ -53,33 +53,50 @@ def upgrade() -> None:
             unique=False,
         )
 
+    bind = op.get_bind()
     if not _has_column("lab_users", "created_by"):
-        op.add_column(
-            "lab_users",
-            sa.Column(
-                "created_by",
-                sa.Integer(),
-                sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
-                nullable=True,
-            ),
-        )
+        if bind.dialect.name == "sqlite":
+            with op.batch_alter_table("lab_users", recreate="always") as batch_op:
+                batch_op.add_column(sa.Column("created_by", sa.Integer(), nullable=True))
+                batch_op.create_foreign_key(
+                    "fk_lab_users_created_by",
+                    "lab_users",
+                    ["created_by"],
+                    ["id"],
+                    ondelete="SET NULL",
+                )
+        else:
+            op.add_column(
+                "lab_users",
+                sa.Column(
+                    "created_by",
+                    sa.Integer(),
+                    sa.ForeignKey("lab_users.id", ondelete="SET NULL"),
+                    nullable=True,
+                ),
+            )
 
 
 def downgrade() -> None:
     bind = op.get_bind()
     insp = inspect(bind)
     indexes = {i["name"] for i in insp.get_indexes("lab_users")}
-    cols = [c["name"] for c in insp.get_columns("lab_users")]
+    cols = {c["name"] for c in insp.get_columns("lab_users")}
 
-    if "created_by" in cols:
-        op.drop_column("lab_users", "created_by")
+    for index_name in ("ix_lab_users_province_id", "ix_lab_users_national_id_hash"):
+        if index_name in indexes:
+            op.drop_index(index_name, table_name="lab_users")
 
-    if "ix_lab_users_province_id" in indexes:
-        op.drop_index("ix_lab_users_province_id", table_name="lab_users")
-    if "province_id" in cols:
-        op.drop_column("lab_users", "province_id")
-
-    if "ix_lab_users_national_id_hash" in indexes:
-        op.drop_index("ix_lab_users_national_id_hash", table_name="lab_users")
-    if "national_id_hash" in cols:
-        op.drop_column("lab_users", "national_id_hash")
+    if bind.dialect.name == "sqlite":
+        if {"created_by", "province_id", "national_id_hash"}.intersection(cols):
+            with op.batch_alter_table("lab_users", recreate="always") as batch_op:
+                for foreign_key in insp.get_foreign_keys("lab_users"):
+                    if "created_by" in (foreign_key.get("constrained_columns") or ()) and foreign_key.get("name"):
+                        batch_op.drop_constraint(foreign_key["name"], type_="foreignkey")
+                for column in ("created_by", "province_id", "national_id_hash"):
+                    if column in cols:
+                        batch_op.drop_column(column)
+    else:
+        for column in ("created_by", "province_id", "national_id_hash"):
+            if column in cols:
+                op.drop_column("lab_users", column)
