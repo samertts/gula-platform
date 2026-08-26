@@ -20,7 +20,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "20260716_0015"
-down_revision: Union[str, None] = "20260716_0014"
+down_revision: str | None = "20260716_0014"
 
 
 def _has_table(name: str) -> bool:
@@ -146,4 +146,12 @@ def downgrade() -> None:
     if _has_column("lab_users", "reset_token_expires"):
         op.drop_column("lab_users", "reset_token_expires")
     if _has_column("lab_users", "reset_token"):
-        op.drop_column("lab_users", "reset_token")
+        bind = op.get_bind()
+        index_names = {index["name"] for index in sa.inspect(bind).get_indexes("lab_users")}
+        if "ix_lab_users_reset_token" in index_names:
+            op.drop_index("ix_lab_users_reset_token", table_name="lab_users")
+        if bind.dialect.name == "sqlite":
+            with op.batch_alter_table("lab_users", recreate="always") as batch_op:
+                batch_op.drop_column("reset_token")
+        else:
+            op.drop_column("lab_users", "reset_token")

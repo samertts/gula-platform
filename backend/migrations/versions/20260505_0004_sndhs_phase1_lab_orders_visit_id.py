@@ -81,4 +81,13 @@ def downgrade() -> None:
             op.drop_index("ix_lab_orders_visit_id", table_name="lab_orders")
 
     if _has_column("lab_orders", "visit_id"):
-        op.drop_column("lab_orders", "visit_id")
+        bind = op.get_bind()
+        if bind.dialect.name == "sqlite":
+            foreign_keys = sa.inspect(bind).get_foreign_keys("lab_orders")
+            with op.batch_alter_table("lab_orders", recreate="always") as batch_op:
+                for foreign_key in foreign_keys:
+                    if "visit_id" in (foreign_key.get("constrained_columns") or ()) and foreign_key.get("name"):
+                        batch_op.drop_constraint(foreign_key["name"], type_="foreignkey")
+                batch_op.drop_column("visit_id")
+        else:
+            op.drop_column("lab_orders", "visit_id")

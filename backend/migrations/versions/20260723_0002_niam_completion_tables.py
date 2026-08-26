@@ -31,7 +31,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "20260723_0002"
-down_revision: Union[str, None] = "20260723_0001"
+down_revision: str | None = "20260723_0001"
 
 
 def _has_table(name: str) -> bool:
@@ -1577,24 +1577,35 @@ def upgrade() -> None:
 
     # ── ALTER TABLE: niam_audit_entries — add chain columns ──────────────────
     if _has_table("niam_audit_entries"):
+        bind = op.get_bind()
         if not _has_column("niam_audit_entries", "entry_hash"):
-            bind = op.get_bind()
             if bind.dialect.name == "sqlite":
-                with op.batch_alter_table("niam_audit_entries", schema=None) as batch_op:
+                with op.batch_alter_table("niam_audit_entries", recreate="always") as batch_op:
                     batch_op.add_column(sa.Column("entry_hash", sa.String(length=64), nullable=True))
-                    try:
-                        batch_op.create_unique_constraint("uq_niam_audit_entries_entry_hash", ["entry_hash"])
-                    except Exception:
-                        pass
             else:
                 op.add_column(
                     "niam_audit_entries",
                     sa.Column("entry_hash", sa.String(length=64), nullable=True, index=True),
                 )
-                try:
-                    op.create_unique_constraint("uq_niam_audit_entries_entry_hash", "niam_audit_entries", ["entry_hash"])
-                except Exception:
-                    pass
+
+        unique_constraints = {
+            item["name"]
+            for item in sa.inspect(bind).get_unique_constraints("niam_audit_entries")
+            if item.get("name")
+        }
+        if "uq_niam_audit_entries_entry_hash" not in unique_constraints:
+            if bind.dialect.name == "sqlite":
+                with op.batch_alter_table("niam_audit_entries", recreate="always") as batch_op:
+                    batch_op.create_unique_constraint(
+                        "uq_niam_audit_entries_entry_hash",
+                        ["entry_hash"],
+                    )
+            else:
+                op.create_unique_constraint(
+                    "uq_niam_audit_entries_entry_hash",
+                    "niam_audit_entries",
+                    ["entry_hash"],
+                )
         if not _has_column("niam_audit_entries", "previous_hash"):
             op.add_column(
                 "niam_audit_entries",
@@ -1692,14 +1703,61 @@ def downgrade() -> None:
 
     # ── Revert audit columns ────────────────────────────────────────────────
     if _has_table("niam_audit_entries"):
-        if _has_column("niam_audit_entries", "entry_hash"):
-            op.drop_constraint("uq_niam_audit_entries_entry_hash", "niam_audit_entries", type_="unique")
-            op.drop_column("niam_audit_entries", "entry_hash")
-        if _has_column("niam_audit_entries", "previous_hash"):
-            op.drop_column("niam_audit_entries", "previous_hash")
+        bind = op.get_bind()
+        inspector = sa.inspect(bind)
+        unique_constraints = {
+            item["name"]
+            for item in inspector.get_unique_constraints("niam_audit_entries")
+            if item.get("name")
+        }
+        has_entry_hash = _has_column("niam_audit_entries", "entry_hash")
+        has_previous_hash = _has_column("niam_audit_entries", "previous_hash")
+        has_entry_hash_constraint = "uq_niam_audit_entries_entry_hash" in unique_constraints
+        index_names = {index["name"] for index in inspector.get_indexes("niam_audit_entries")}
+        for column in ("entry_hash", "previous_hash"):
+            index_name = f"ix_niam_audit_entries_{column}"
+            if index_name in index_names:
+                op.drop_index(index_name, table_name="niam_audit_entries")
+        if bind.dialect.name == "sqlite":
+            if has_entry_hash or has_previous_hash:
+                with op.batch_alter_table("niam_audit_entries", recreate="always") as batch_op:
+                    if has_entry_hash_constraint:
+                        batch_op.drop_constraint(
+                            "uq_niam_audit_entries_entry_hash",
+                            type_="unique",
+                        )
+                    if has_entry_hash:
+                        batch_op.drop_column("entry_hash")
+                    if has_previous_hash:
+                        batch_op.drop_column("previous_hash")
+        else:
+            if has_entry_hash_constraint:
+                op.drop_constraint(
+                    "uq_niam_audit_entries_entry_hash",
+                    "niam_audit_entries",
+                    type_="unique",
+                )
+            if has_entry_hash:
+                op.drop_column("niam_audit_entries", "entry_hash")
+            if has_previous_hash:
+                op.drop_column("niam_audit_entries", "previous_hash")
 
     # ── Revert session columns ──────────────────────────────────────────────
     if _has_table("niam_sessions"):
-        for col in ("policy_id", "governance_action", "risk_score_at_login", "risk_level_at_login"):
-            if _has_column("niam_sessions", col):
-                op.drop_column("niam_sessions", col)
+        bind = op.get_bind()
+        inspector = sa.inspect(bind)
+        columns = ("policy_id", "governance_action", "risk_score_at_login", "risk_level_at_login")
+        index_names = {index["name"] for index in inspector.get_indexes("niam_sessions")}
+        for column in columns:
+            index_name = f"ix_niam_sessions_{column}"
+            if index_name in index_names:
+                op.drop_index(index_name, table_name="niam_sessions")
+        if bind.dialect.name == "sqlite":
+            with op.batch_alter_table("niam_sessions", recreate="always") as batch_op:
+                for column in columns:
+                    if _has_column("niam_sessions", column):
+                        batch_op.drop_column(column)
+        else:
+            for column in columns:
+                if _has_column("niam_sessions", column):
+                    op.drop_column("niam_sessions", column)

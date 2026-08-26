@@ -52,5 +52,7 @@ def downgrade() -> None:
         op.drop_column("lab_results", "clinical_engine_version")
 
     if _table_exists("audit_logs") and _col_exists("audit_logs", "chain_hash"):
-        op.drop_index("ix_audit_logs_chain_hash", table_name="audit_logs")
+        index_names = {index["name"] for index in inspect(op.get_bind()).get_indexes("audit_logs")}
+        if "ix_audit_logs_chain_hash" in index_names:
+            op.drop_index("ix_audit_logs_chain_hash", table_name="audit_logs")
         op.drop_column("audit_logs", "chain_hash")

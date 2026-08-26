@@ -20,7 +20,7 @@ Create Date : 2026-03-24
 """
 
 from alembic import op
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 
 revision = "20260324_0010"
 down_revision = "20260324_0009"
@@ -91,15 +91,30 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    indexes = [
-        "ix_patients_phone_lookup", "ix_patients_lab_name", "ix_patients_nid_hash",
-        "ix_lab_orders_lab_status_date", "ix_lab_orders_patient_lab",
-        "ix_lab_results_order_test", "ix_lab_results_token_hash", "ix_lab_results_created_at",
-        "ix_audit_logs_created_action", "ix_audit_logs_chain_hash",
-        "ix_lab_users_email", "ix_lab_users_lab_active",
-        "ix_users_email", "ix_users_phone", "ix_users_nid",
-        "ix_samples_order_status",
-        "ix_labs_active",
-    ]
-    for idx in indexes:
-        op.drop_index(idx)
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    indexes = (
+        ("ix_patients_phone_lookup", "patients"),
+        ("ix_patients_lab_name", "patients"),
+        ("ix_patients_nid_hash", "patients"),
+        ("ix_lab_orders_lab_status_date", "lab_orders"),
+        ("ix_lab_orders_patient_lab", "lab_orders"),
+        ("ix_lab_results_order_test", "lab_results"),
+        ("ix_lab_results_token_hash", "lab_results"),
+        ("ix_lab_results_created_at", "lab_results"),
+        ("ix_audit_logs_created_action", "audit_logs"),
+        ("ix_audit_logs_chain_hash", "audit_logs"),
+        ("ix_lab_users_email", "lab_users"),
+        ("ix_lab_users_lab_active", "lab_users"),
+        ("ix_users_email", "users"),
+        ("ix_users_phone", "users"),
+        ("ix_users_nid", "users"),
+        ("ix_samples_order_status", "samples"),
+        ("ix_labs_active", "labs"),
+    )
+    table_names = set(inspector.get_table_names())
+    for index_name, table_name in indexes:
+        if table_name not in table_names:
+            continue
+        if index_name in {item["name"] for item in inspector.get_indexes(table_name)}:
+            op.drop_index(index_name, table_name=table_name)

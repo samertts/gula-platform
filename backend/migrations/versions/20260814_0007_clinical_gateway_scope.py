@@ -98,15 +98,22 @@ def downgrade() -> None:
         inspector = _inspector()
         bind_name = bind.dialect.name
         columns = ["niam_facility_id", "niam_organization_id"]
+        index_names = {index["name"] for index in inspector.get_indexes(_TABLE)}
+
+        # Drop indexes before a SQLite batch rebuild. Otherwise Alembic
+        # reflects them from the old table and tries to recreate an index that
+        # references a column being removed.
+        for name in columns:
+            index_name = f"ix_{_TABLE}_{name}"
+            if index_name in index_names:
+                op.drop_index(index_name, table_name=_TABLE)
+
         if bind_name == "sqlite":
-            with op.batch_alter_table(_TABLE) as batch_op:
+            with op.batch_alter_table(_TABLE, recreate="always") as batch_op:
                 for name in columns:
                     if _has_column(_TABLE, name):
                         batch_op.drop_column(name)
         else:
             for name in columns:
                 if _has_column(_TABLE, name):
-                    index_name = f"ix_{_TABLE}_{name}"
-                    if index_name in {index["name"] for index in inspector.get_indexes(_TABLE)}:
-                        op.drop_index(index_name, table_name=_TABLE)
                     op.drop_column(_TABLE, name)

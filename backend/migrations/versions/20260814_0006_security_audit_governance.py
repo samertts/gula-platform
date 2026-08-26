@@ -218,21 +218,32 @@ def downgrade() -> None:
         # DROP TABLE removes its owned indexes and UNIQUE constraints together.
         op.drop_table("niam_consents")
     if "niam_comp_checks" in inspector.get_table_names() and _has_column("niam_comp_checks", "organization_id"):
-        op.drop_index("ix_niam_comp_checks_organization_id", table_name="niam_comp_checks")
-        op.drop_column("niam_comp_checks", "organization_id")
+        if bind.dialect.name == "sqlite":
+            op.drop_index("ix_niam_comp_checks_organization_id", table_name="niam_comp_checks")
+            with op.batch_alter_table("niam_comp_checks", recreate="always") as batch_op:
+                batch_op.drop_column("organization_id")
+        else:
+            op.drop_index("ix_niam_comp_checks_organization_id", table_name="niam_comp_checks")
+            op.drop_column("niam_comp_checks", "organization_id")
     if "niam_audit_entries" in inspector.get_table_names():
         bind_name = bind.dialect.name
         columns = [
             "data_classification", "source", "correlation_id", "request_id", "reason_code", "decision",
             "workspace_id", "department_id", "facility_id", "actor_identity_id", "category", "event_version", "event_type",
         ]
+        index_names = {index["name"] for index in inspector.get_indexes("niam_audit_entries")}
+        # Drop indexes before a SQLite batch rebuild so they are not reflected
+        # and recreated with references to columns being removed.
+        for column in columns:
+            index_name = f"ix_niam_audit_entries_{column}"
+            if index_name in index_names:
+                op.drop_index(index_name, table_name="niam_audit_entries")
         if bind_name == "sqlite":
-            with op.batch_alter_table("niam_audit_entries") as batch_op:
+            with op.batch_alter_table("niam_audit_entries", recreate="always") as batch_op:
                 for column in columns:
                     if _has_column("niam_audit_entries", column):
                         batch_op.drop_column(column)
         else:
             for column in columns:
                 if _has_column("niam_audit_entries", column):
-                    op.drop_index(f"ix_niam_audit_entries_{column}", table_name="niam_audit_entries")
                     op.drop_column("niam_audit_entries", column)
