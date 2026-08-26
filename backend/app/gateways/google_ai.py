@@ -17,6 +17,7 @@ logger = logging.getLogger("gula.google_ai")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 _API_KEY = os.getenv("GEMINI_API_KEY", "")
+_EXTERNAL_AI_ENABLED = os.getenv("ALLOW_EXTERNAL_AI", "").strip().lower() == "true"
 _CLINICAL_MODEL = os.getenv("GEMINI_CLINICAL_MODEL", "gemini-2.0-flash")
 _CHAT_MODEL = os.getenv("GEMINI_CHAT_MODEL", "gemini-2.0-flash")
 _CLINICAL_TOKENS = int(os.getenv("GEMINI_CLINICAL_MAX_TOKENS", "500"))
@@ -32,7 +33,7 @@ _REST_URL = (
 _genai = None
 _sdk_available = False
 
-if _API_KEY:
+if _EXTERNAL_AI_ENABLED and _API_KEY:
     try:
         import google.generativeai as genai  # type: ignore[import]
 
@@ -75,8 +76,13 @@ _SAFETY_SETTINGS = [
 
 
 def is_configured() -> bool:
-    """True when an API key is present (SDK or HTTP both usable)."""
-    return bool(_API_KEY)
+    """True only when external AI is explicitly enabled and a key is present."""
+    return _EXTERNAL_AI_ENABLED and bool(_API_KEY)
+
+
+def external_ai_enabled() -> bool:
+    """Expose the explicit privacy gate without exposing any credential."""
+    return _EXTERNAL_AI_ENABLED
 
 
 def sdk_available() -> bool:
@@ -93,6 +99,8 @@ async def generate_clinical(prompt: str) -> str:
     Uses the SDK when available (proper system_instruction + safety settings),
     otherwise falls back to raw HTTPS.
     """
+    if not _EXTERNAL_AI_ENABLED:
+        raise RuntimeError("external AI is disabled pending privacy approval")
     if not _API_KEY:
         raise RuntimeError("GEMINI_API_KEY not set")
 
@@ -144,6 +152,8 @@ async def generate_chat(message: str, context: str | None = None) -> str:
     Uses the SDK when available (system_instruction kept separate from user message),
     otherwise falls back to raw HTTPS with an inline system prefix.
     """
+    if not _EXTERNAL_AI_ENABLED:
+        raise RuntimeError("external AI is disabled pending privacy approval")
     if not _API_KEY:
         raise RuntimeError("GEMINI_API_KEY not set")
 
@@ -207,6 +217,7 @@ def provider_info() -> dict:
         "type": "cloud",
         "source": "aistudio.google.com",
         "configured": is_configured(),
+        "external_ai_enabled": external_ai_enabled(),
         "sdk_available": sdk_available(),
         "clinical_model": _CLINICAL_MODEL,
         "chat_model": _CHAT_MODEL,
