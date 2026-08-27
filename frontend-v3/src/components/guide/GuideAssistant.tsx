@@ -57,6 +57,10 @@ const routeTips: Record<string, { ar: string; en: string }[]> = {
     { ar: "هذا معرض تصميم وتفاعل اصطناعي؛ لا يمثل ملفاً صحياً أو صلاحية حقيقية.", en: "This is a synthetic design and interaction gallery; it is not a real health record or permission." },
     { ar: "اختر الدور ثم الشاشة لمراجعة حالات loading وempty وgated وresponsive.", en: "Choose a role and screen to review loading, empty, gated, and responsive states." },
   ],
+  "/golden-path": [
+    { ar: "هذه خريطة جاهزية؛ لا نعلن نجاح الرحلة الذهبية قبل اكتمال العقود والاختبارات عبر المجالات.", en: "This is a readiness map; the Golden Path is not passed until cross-domain contracts and tests are complete." },
+    { ar: "ابدأ بالهوية ومساحة العمل ثم تحقق من Patient Access قبل أي عملية سريرية.", en: "Start with identity and workspace, then verify Patient Access before any clinical operation." },
+  ],
 };
 
 export function GuideAssistant() {

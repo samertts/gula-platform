@@ -101,6 +101,7 @@ export const ROUTE_ROLE_POLICIES = {
   "/patients": STAFF_ROLES,
   "/patient-management": READONLY_ROLES,
   "/screen-by-screen": READONLY_ROLES,
+  "/golden-path": READONLY_ROLES,
   "/app/health": READONLY_ROLES,
   "/app/appointments": READONLY_ROLES,
   "/app/results": READONLY_ROLES,

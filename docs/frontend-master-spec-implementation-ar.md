@@ -8,6 +8,8 @@
 
 ## ما تم تثبيته
 
+أضيفت شاشة `/golden-path` كـ**خريطة جاهزية** للرحلة السريرية الذهبية. تعرض Identity وWorkspace وPatient Access وAppointment وEncounter وLab Order وSpecimen وResult وDoctor Review وCitizen Access وSharing/Revoke وAudit في ترتيب واحد، وتعلن صراحة أن الأساس الحالي جزئي ولا تستخدم عبارة `GOLDEN PATH PASSED` قبل اكتمال العقود والاختبارات عبر المجالات.
+
 | مجال المواصفة | التنفيذ |
 |---|---|
 | APP-001 Bootstrap | `App.tsx` يحافظ على QueryClient وTheme وLocale وUpdateGate وAuth وAccessibility وRouter بالترتيب الحالي، مع defaults محدودة للقراءة وإعادة الاتصال دون تحميل كل modules. |
