@@ -89,6 +89,7 @@ const AcuteCareOperationsWorkspacePageLazy = lazy(() => import("@/pages/acute-ca
 const ScreenByScreenPageLazy = lazy(() => import("@/pages/screen-by-screen/ScreenByScreenPage"));
 const DomainRouteContractGatePageLazy = lazy(() => import("@/pages/domain/DomainRouteContractGatePage"));
 const GoldenPathReadinessPageLazy = lazy(() => import("@/pages/domain/GoldenPathReadinessPage"));
+const RemainingWorkstreamsPageLazy = lazy(() => import("@/pages/domain/RemainingWorkstreamsPage"));
 const HealthDataPageLazy = lazy(() => import("@/pages/health-data/HealthDataPage"));
 const IntegrationPageLazy = lazy(() => import("@/pages/integration/IntegrationPage"));
 const IntegrationConnectorsPageLazy = lazy(() => import("@/pages/integration/connectors/IntegrationConnectorsPage"));
@@ -218,6 +219,7 @@ export const router = createBrowserRouter([
       { path: "acute-care-operations", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "screen-by-screen", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><ScreenByScreenPageLazy /></LazyPage></RoleGuard> },
       { path: "golden-path", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><GoldenPathReadinessPageLazy /></LazyPage></RoleGuard> },
+      { path: "remaining-work", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><RemainingWorkstreamsPageLazy /></LazyPage></RoleGuard> },
       { path: "app/health", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Health" description="المسار العام لصحة المواطن سيعرض Summary ثم Timeline وResults وDocuments عند توفر العقود المناسبة." contract="CIT-002 / clinical read" /></LazyPage></RoleGuard> },
       { path: "app/appointments", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Appointments" description="مسار الموعد يحتاج خدمة وطبيباً ومنشأة وSlot وتغطية وتأكيداً من الخادم." contract="CIT-004 / appointment lifecycle" /></LazyPage></RoleGuard> },
       { path: "app/results", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Results" description="عرض النتائج يتطلب نطاقاً مصرحاً وإظهار قيمة ووحدة ومرجع ومصدر دون كشف زائد." contract="CIT-003 / result viewer" /></LazyPage></RoleGuard> },
