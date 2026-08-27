@@ -98,12 +98,12 @@
       "clinicalImpact": "Wrong medication, dose, batch or patient.",
       "financialImpact": "Duplicate sale, stock or settlement corruption.",
       "rootCause": "Prescription verification, pharmacist authorization and inventory ledger contracts are absent.",
-      "currentBehavior": "Demo read-only and limited Live reads; dispensing and POS writes are blocked.",
-      "expectedBehavior": "Separate prescription, verification, dispensing, administration and financial ledgers.",
-      "remediation": "Keep dispense/POS blocked; model partial dispensing and rejection fixtures only.",
+      "currentBehavior": "Frontend writes remain blocked; canonical backend Slice 06 now provides local synthetic prescription, amendment, inventory-ledger and dispensing evidence only.",
+      "expectedBehavior": "Separate prescription, verification, dispensing, administration and financial ledgers with contextual authorization and immutable signed versions.",
+      "remediation": "Keep frontend/POS and external delivery blocked; review canonical Slice 06 evidence, worker concurrency, policy approval and staging before admission.",
       "testsRequired": ["allergy/interaction", "batch/expiry", "duplicate dispense", "concurrency", "separation of duties"],
-      "evidenceRequired": ["prescription contract", "inventory ledger", "pharmacist authorization", "audit"],
-      "status": "backend-blocked"
+      "evidenceRequired": ["prescription contract", "inventory ledger", "pharmacist authorization", "audit", "PostgreSQL", "multi-worker concurrency", "staging"],
+      "status": "partial"
     },
     {
       "id": "GAP-RADIOLOGY-001",
@@ -115,12 +115,12 @@
       "clinicalImpact": "Incorrect study/report interpretation.",
       "financialImpact": "Incorrect study billing or external import reconciliation.",
       "rootCause": "RIS/PACS/DICOM and report lifecycle contracts are unavailable to the frontend boundary.",
-      "currentBehavior": "Limited metadata only; image URLs, reports, signing and release are gated.",
-      "expectedBehavior": "Object-scoped order/study/report access with signed lifecycle and audit.",
-      "remediation": "Keep metadata gate and forbid fabricated DICOM/PACS URLs.",
+      "currentBehavior": "Canonical local imaging metadata lifecycle, synthetic DICOM/RIS/PACS adapter contracts, FHIR projections and Access Grant reuse exist; binary/image delivery remains blocked.",
+      "expectedBehavior": "Object-scoped order/study/report access with signed lifecycle, quarantine, critical acknowledgement, audit and authorized integration adapters.",
+      "remediation": "Keep real PACS/RIS/DICOM and image URLs blocked; require staging, protocol security review, worker concurrency and operational rollback evidence.",
       "testsRequired": ["object access", "report amendment", "tenant isolation", "sensitive URL redaction"],
-      "evidenceRequired": ["RIS/PACS/DICOM contract", "access audit", "security tests"],
-      "status": "backend-blocked"
+      "evidenceRequired": ["RIS/PACS/DICOM contract", "access audit", "security tests", "adapter quarantine", "PostgreSQL", "staging"],
+      "status": "partial"
     },
     {
       "id": "GAP-CLINIC-001",
@@ -216,7 +216,7 @@
       "securityImpact": "False readiness claims could lead to unsafe rollout.",
       "clinicalImpact": "End-to-end clinical integrity is not proven.",
       "financialImpact": "Claims/dispensing/appointment effects are not proven.",
-      "rootCause": "Cross-domain Appointment → Encounter → Lab → Result → Review → Citizen → Share → Revoke → Audit backend contracts and remote evidence are missing.",
+      "rootCause": "Cross-domain backend contracts now cover Appointment → Encounter → Lab → Result → Access plus local Pharmacy → Imaging → Unified Record, but remote CI, staging and full operational evidence are missing.",
       "currentBehavior": "Readiness is explicitly partial; no `GOLDEN PATH PASSED` claim.",
       "expectedBehavior": "Synthetic Test Backend proves the full stateful workflow and negative/security cases.",
       "remediation": "Use typed state registry and keep all writes gated until evidence exists.",
@@ -282,14 +282,45 @@
       "bridge": "backend/app/models/clinical_scope.py",
       "status": "duplicate_orm_owner_removed_non_destructively"
     },
-    "tests": [
+          "pharmacy_imaging_record_slices": {
+        "pharmacy": {
+          "models": "backend/app/clinical/pharmacy/models.py",
+          "schemas": "backend/app/clinical/pharmacy/schemas.py",
+          "service": "backend/app/clinical/pharmacy/service.py",
+          "routes": "backend/app/clinical/pharmacy/routes.py",
+          "fhir_projection": "backend/app/clinical/pharmacy/service.py::fhir_medication_request + fhir_medication_dispense",
+          "status": "local-api-evidence-only"
+        },
+        "imaging": {
+          "models": "backend/app/clinical/imaging/models.py",
+          "schemas": "backend/app/clinical/imaging/schemas.py",
+          "adapters": "backend/app/clinical/imaging/adapters.py",
+          "service": "backend/app/clinical/imaging/service.py",
+          "routes": "backend/app/clinical/imaging/routes.py",
+          "fhir_projection": "backend/app/clinical/imaging/service.py::fhir_service_request + fhir_imaging_study + fhir_diagnostic_report",
+          "status": "local-api-evidence-only"
+        },
+        "clinical_record": {
+          "service": "backend/app/clinical/record/service.py",
+          "routes": "backend/app/clinical/record/routes.py",
+          "status": "read-only-local-api-evidence-only"
+        },
+        "migration": "backend/migrations/versions/20260828_0014_pharmacy_imaging_core.py",
+        "status": "development-and-local-test-evidence-only"
+      },
+      "tests": [
       "backend/tests/test_clinical_core_contracts.py",
+
       "backend/tests/test_contract_engineering_intelligence.py",
       "backend/tests/test_engineering_inventory.py",
       "backend/tests/test_synthetic_core_backend.py",
       "backend/tests/test_core_appointment_api.py",
       "backend/tests/test_core_encounter_api.py",
       "backend/tests/test_core_lab_result_access_api.py",
+      "backend/tests/test_core_pharmacy_api.py",
+      "backend/tests/test_core_imaging_api.py",
+      "backend/scripts/postgres_pharmacy_concurrency_probe.py",
+      "backend/tests/test_clinical_record_api.py",
       "backend/tests/test_redis_security_policy.py",
       "backend/app/clinical/results/fhir.py",
       "backend/tests/identity/test_core_appointment_migration.py",
@@ -297,18 +328,20 @@
       "backend/migrations/versions/20260828_0013_lab_result_access_core.py",
       "backend/tests/test_migrations.py"
     ],
-    "local_focused_result": "35 passed, 1 skipped for Appointment/Encounter/contracts/inventory/read-gate/migration-chain focused run (prior wave)",
+    "local_focused_result": "27 passed, 1 warning for Slice 03–08 API, synthetic, contract and inventory regression run; prior focused evidence remains in git history",
     "slice_03_05_focused_result": "5 passed, 1 warning for Lab/Result/Access API and FHIR projection; 6 passed, 1 warning for SyntheticCoreBackend; 14 passed, 1 warning for Appointment/Encounter/Synthetic regression",
     "redis_focused_result": "3 passed for production fail-closed, missing REDIS_URL fail-closed, and explicit degraded acknowledgement",
-    "full_backend_result": "2803 passed, 5 skipped, 165 warnings in 313.59s; exit code 0 captured from the final tree after Slice 03–05 implementation, Redis hardening, and migration guards",
+    "full_backend_result": "2814 passed, 5 skipped, 165 warnings in 309.98s; exit code 0 on the current Slice 06–08 tree after FHIR projections and migration-helper fix",
     "postgresql_disposable_proof": {
       "database": "PostgreSQL 16.15 local disposable",
-      "upgrade_head": "20260828_0013",
-      "schema_gate": "1 passed; asserts Laboratory/Result/Access tables, constraints, and 21 permission keys",
-      "rollback_reupgrade": "passed; downgraded to 20260814_0002 and re-upgraded to 20260828_0013 head",
+      "upgrade_head": "20260828_0014",
+      "schema_gate": "1 passed; asserts Laboratory/Result/Access plus Pharmacy/Imaging tables, constraints, FKs, indexes and permission keys",
+      "rollback_reupgrade": "passed; downgraded from 0014 to 0013 and re-upgraded to 0014 head",
       "row_lock_concurrency": "pass; one winner and one conflict across two connections",
       "compatibility_guard": "20260827_0012 passed; missing index may be recreated, unsafe FK/type/parent drift fails closed without casting or inferred DDL",
       "lab_result_access_migration": "20260828_0013 additive; canonical tables, FK/check/unique/index, guarded permission seeds, no legacy table mutation",
+      "pharmacy_imaging_migration": "20260828_0014 additive; canonical medication/prescription/ledger/dispense and imaging order/study/report/instance/critical tables, guarded seeds, no legacy table mutation",
+      "pharmacy_stock_lock_probe": "pass; two PostgreSQL connections produced one winner and one conflict, final synthetic available quantity 0; primitive proof only",
       "scope": "local disposable evidence only; not staging or production"
     },
     "redis_shared_controls_proof": {
@@ -329,24 +362,24 @@
       "job_summary": "IAM: 4 jobs failed before steps; Frontend Bundle Budget: 1 job failed before steps; all jobs reported steps=[]"
     },
     "engineering_inventory_evidence": {
-      "scanned_files": 1947,
+      "scanned_files": 1961,
       "status": "READY_FOR_REVIEW",
       "production_ready": false,
-      "findings": ["migration_present", "encounter_migration_present", "legacy_lab_route", "production_evidence_gap"],
-      "scope": "local advisory inventory; legacy routes remain explicitly outside canonical clinical write path"
+      "findings": ["migration_present", "encounter_migration_present", "legacy_canonical_overlap", "legacy_lab_route", "production_evidence_gap"],
+      "scope": "local advisory inventory; legacy pharmacy/radiology/EHR owners and routes remain explicitly outside canonical clinical write path"
     },
     "status": "development-and-local-test-evidence-only",
     "not_production_ready": true,
     "missing_for_production": [
-      "remote/staging PostgreSQL migration execution and schema evidence for 0010 through 0013",
+      "remote/staging PostgreSQL migration execution and schema evidence for 0010 through 0014",
       "production-like API/worker concurrency and contention evidence beyond the primitive row-lock proof",
       "rate-limit capacity and 429 evidence under production-like load",
       "Redis HA/failover and production observability evidence",
       "database-backed object authorization integration review",
       "production immutable audit integration review",
-      "Lab/Result/Access API multi-worker concurrency and fault-injection evidence",
+      "Lab/Result/Access/Pharmacy/Imaging API multi-worker concurrency and fault-injection evidence",
       "independent patient/provider/lab actor matrix across organization and facility boundaries",
-      "digital-signature, MFA, fresh-session, break-glass, and notification-provider assurance",
+      "digital-signature, MFA, fresh-session, controlled-medication policy, adapter security, break-glass, and notification-provider assurance",
       "frontend contract integration and browser E2E",
       "remote CI",
       "staging smoke and rollback"

@@ -55,6 +55,11 @@ def read_shared_result(result_id: str, request: Request, workspace_id: str = Que
     return _run(request, actor, db, "access.read", "lab_result", result_id, workspace_id, lambda: AccessService(db).read_result(actor, result_id=result_id, workspace_id=workspace_id, correlation_id=_correlation_id(request), request_id=getattr(request.state, "request_id", None)))
 
 
+@router.get("/api/v1/clinical/access/imaging-reports/{report_id}")
+def read_shared_imaging_report(report_id: str, request: Request, workspace_id: str = Query(..., min_length=1, max_length=26), actor: NiamActor = Depends(get_current_niam_actor_sync), db: Session = Depends(get_db)) -> dict[str, Any]:
+    return _run(request, actor, db, "access.read", "imaging_report", report_id, workspace_id, lambda: AccessService(db).read_imaging_report(actor, report_id=report_id, workspace_id=workspace_id, correlation_id=_correlation_id(request), request_id=getattr(request.state, "request_id", None)))
+
+
 @router.get("/api/v1/clinical/access/grants")
 def list_grants(request: Request, workspace_id: str = Query(..., min_length=1, max_length=26), limit: int = Query(default=50, ge=1, le=100), offset: int = Query(default=0, ge=0, le=1_000_000), actor: NiamActor = Depends(get_current_niam_actor_sync), db: Session = Depends(get_db)) -> dict[str, Any]:
     return _run(request, actor, db, "access.grants.list", "access_grant", None, workspace_id, lambda: AccessService(db).list_grants(actor, workspace_id=workspace_id, limit=limit, offset=offset, correlation_id=_correlation_id(request)))

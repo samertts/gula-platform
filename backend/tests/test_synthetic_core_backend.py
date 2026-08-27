@@ -22,6 +22,10 @@ def actors() -> dict[str, SyntheticActor]:
         "doctor": SyntheticActor("doctor-001", "doctor", "org-001", "workspace-doctor", roles=frozenset({"doctor"})),
         "lab": SyntheticActor("lab-001", "laboratory", "org-001", "workspace-lab", roles=frozenset({"lab_technician"})),
         "senior_lab": SyntheticActor("senior-lab-001", "laboratory", "org-001", "workspace-lab", roles=frozenset({"lab_technician", "senior_lab"})),
+        "pharmacist": SyntheticActor("pharmacist-001", "pharmacy", "org-001", "workspace-pharmacy", roles=frozenset({"pharmacist"})),
+        "pharmacist_reviewer": SyntheticActor("pharmacist-002", "pharmacy", "org-001", "workspace-pharmacy", roles=frozenset({"pharmacist"})),
+        "imaging_technician": SyntheticActor("imaging-tech-001", "imaging", "org-001", "workspace-imaging", roles=frozenset({"imaging_technician"})),
+        "radiologist": SyntheticActor("radiologist-001", "imaging", "org-001", "workspace-imaging", roles=frozenset({"radiologist"})),
         "other_org_doctor": SyntheticActor("doctor-002", "org-002", "org-002", "workspace-doctor-2", roles=frozenset({"doctor"})),
     }
 
@@ -141,3 +145,70 @@ def test_synthetic_clinical_commands_are_replay_safe_and_share_is_bounded(core: 
     revoked = core.revoke_share(actors["citizen"], consent.id, expected_version=1, idempotency_key="replay-revoke")
     assert revoked.state == "REVOKED" and revoked.version == 2
     assert {entry["action"] for entry in core.list_access_history(actors["citizen"], result_id=result.id)} >= {"GRANT_CREATED", "ACCESS_USED", "GRANT_REVOKED"}
+
+
+def _signed_encounter(core: SyntheticCoreBackend, actors: dict[str, SyntheticActor], slot: str = "synthetic-new-slot"):
+    appointment = core.book_appointment(actors["citizen"], patient_id="patient-001", practitioner_id="doctor-001", slot=slot, idempotency_key=f"new-{slot}")
+    core.confirm_appointment(actors["doctor"], appointment.id)
+    core.check_in(actors["citizen"], appointment.id)
+    encounter = core.create_encounter(actors["doctor"], appointment.id)
+    core.complete_and_sign_note(actors["doctor"], encounter.id)
+    return encounter
+
+
+def test_pharmacy_synthetic_workflow_is_replay_safe_and_separates_duties(core: SyntheticCoreBackend, actors: dict[str, SyntheticActor]) -> None:
+    encounter = _signed_encounter(core, actors, "pharmacy-synthetic-slot")
+    medication = core.create_medication(actors["doctor"], code="SYN-MED-001", name="Synthetic Medication", idempotency_key="med-001")
+    assert core.create_medication(actors["doctor"], code="SYN-MED-001", name="Synthetic Medication", idempotency_key="med-001").id == medication.id
+    core.receive_medication_stock(actors["pharmacist"], medication.id, quantity=5)
+    prescription = core.create_prescription(actors["doctor"], encounter.id, medication_id=medication.id, quantity=5, idempotency_key="rx-001")
+    assert core.create_prescription(actors["doctor"], encounter.id, medication_id=medication.id, quantity=5, idempotency_key="rx-001").id == prescription.id
+    core.sign_prescription(actors["doctor"], prescription.id, expected_version=1)
+    with pytest.raises(SyntheticConflictError, match="version conflict"):
+        core.sign_prescription(actors["doctor"], prescription.id, expected_version=1)
+    amended = core.amend_prescription(actors["doctor"], prescription.id, quantity=4, reason="synthetic correction", expected_version=2)
+    assert amended.fields["supersedes_id"] == prescription.id
+    core.sign_prescription(actors["doctor"], amended.id, expected_version=3)
+    prepared = core.prepare_dispense(actors["pharmacist"], amended.id, quantity=2, idempotency_key="dispense-001")
+    with pytest.raises(SyntheticAuthorizationError, match="DENY:dispense:complete"):
+        core.complete_dispense(actors["pharmacist"], prepared.id, expected_version=1)
+    completed = core.complete_dispense(actors["pharmacist_reviewer"], prepared.id, expected_version=1)
+    assert completed.state == "PARTIAL"
+    assert medication.fields["stock"] == 3
+
+
+def test_imaging_synthetic_adapter_path_rejects_duplicate_uid_and_releases_report(core: SyntheticCoreBackend, actors: dict[str, SyntheticActor]) -> None:
+    encounter = _signed_encounter(core, actors, "imaging-synthetic-slot")
+    order = core.place_imaging_order(actors["doctor"], encounter.id, modality="CT", idempotency_key="image-order-001")
+    technician = actors["imaging_technician"]
+    study = core.ingest_imaging_study(technician, order.id, study_uid="1.2.840.synthetic.1", source_message_id="synthetic-message-1", idempotency_key="study-001")
+    assert core.ingest_imaging_study(technician, order.id, study_uid="1.2.840.synthetic.1", source_message_id="synthetic-message-1", idempotency_key="study-001").id == study.id
+    with pytest.raises(SyntheticConflictError, match="duplicate DICOM"):
+        core.ingest_imaging_study(technician, order.id, study_uid="1.2.840.synthetic.1", source_message_id="synthetic-message-2", idempotency_key="study-002")
+    core.complete_imaging_study(technician, study.id)
+    report = core.release_imaging_report(actors["radiologist"], study.id, critical=True)
+    assert report.state == "RELEASED"
+    assert report.version == 3
+    assert report.fields["critical"] is True
+
+
+def test_unified_record_is_read_only_minimum_necessary_and_cursor_bounded(core: SyntheticCoreBackend, actors: dict[str, SyntheticActor]) -> None:
+    encounter = _signed_encounter(core, actors, "record-synthetic-slot")
+    medication = core.create_medication(actors["doctor"], code="SYN-MED-002", name="Synthetic Record Medication", idempotency_key="record-med-001")
+    core.receive_medication_stock(actors["pharmacist"], medication.id, quantity=2)
+    prescription = core.create_prescription(actors["doctor"], encounter.id, medication_id=medication.id, quantity=2, idempotency_key="record-rx-001")
+    core.sign_prescription(actors["doctor"], prescription.id)
+    order = core.place_imaging_order(actors["doctor"], encounter.id, modality="XR", idempotency_key="record-image-001")
+    study = core.ingest_imaging_study(actors["imaging_technician"], order.id, study_uid="1.2.840.synthetic.2", source_message_id="record-message-1", idempotency_key="record-study-001")
+    core.complete_imaging_study(actors["imaging_technician"], study.id)
+    core.release_imaging_report(actors["radiologist"], study.id)
+    first = core.unified_clinical_record(actors["citizen"], patient_id="patient-001", limit=1)
+    assert first["minimum_necessary"] is True
+    assert first["next_cursor"] == "1"
+    assert first["items"][0]["source"]["domain"] in {"encounter", "pharmacy", "imaging"}
+    second = core.unified_clinical_record(actors["citizen"], patient_id="patient-001", limit=1, cursor=first["next_cursor"])
+    assert second["items"]
+    with pytest.raises(SyntheticAuthorizationError, match="DENY:clinical-record:read"):
+        core.unified_clinical_record(actors["other_org_doctor"], patient_id="patient-001")
+    with pytest.raises(SyntheticConflictError, match="invalid record cursor"):
+        core.unified_clinical_record(actors["citizen"], patient_id="patient-001", cursor="not-a-cursor")

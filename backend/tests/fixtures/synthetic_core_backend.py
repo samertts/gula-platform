@@ -9,9 +9,15 @@ from uuid import uuid4
 from app.contracts.clinical_core import (
     APPOINTMENT,
     CLINICAL_NOTE,
+    CLINICAL_RECORD,
     CONSENT,
+    DISPENSE,
     ENCOUNTER,
+    IMAGING_ORDER,
+    IMAGING_REPORT,
+    IMAGING_STUDY,
     LAB_ORDER,
+    PRESCRIPTION,
     RESULT,
     SPECIMEN,
     require_transition,
@@ -112,6 +118,12 @@ class SyntheticCoreBackend:
         self.specimens: dict[str, SyntheticRecord] = {}
         self.results: dict[str, SyntheticRecord] = {}
         self.consents: dict[str, SyntheticRecord] = {}
+        self.medications: dict[str, SyntheticRecord] = {}
+        self.prescriptions: dict[str, SyntheticRecord] = {}
+        self.dispenses: dict[str, SyntheticRecord] = {}
+        self.imaging_orders: dict[str, SyntheticRecord] = {}
+        self.imaging_studies: dict[str, SyntheticRecord] = {}
+        self.imaging_reports: dict[str, SyntheticRecord] = {}
         self._appointment_idempotency: dict[tuple[str, str], str] = {}
         self._used_slots: dict[tuple[str, str], str] = {}
         self.audit: list[SyntheticAuditEvent] = []
@@ -120,6 +132,9 @@ class SyntheticCoreBackend:
         self._specimen_idempotency: dict[tuple[str, str], str] = {}
         self._result_idempotency: dict[tuple[str, str], str] = {}
         self._consent_idempotency: dict[tuple[str, str], str] = {}
+        self._pharmacy_idempotency: dict[tuple[str, str], str] = {}
+        self._imaging_idempotency: dict[tuple[str, str], str] = {}
+        self._used_dicom_uids: set[str] = set()
         self.access_history: list[dict[str, Any]] = []
 
     def register_identity(self, *, account_id: str, person_id: str, kind: str = "citizen") -> SyntheticIdentity:
@@ -357,6 +372,225 @@ class SyntheticCoreBackend:
         entries = [entry for entry in self.access_history if result_id is None or entry.get("result_id") == result_id]
         entries = [entry for entry in entries if entry.get("actor_id") == actor.id or actor.patient_id is not None]
         return entries[offset : offset + min(limit, 100)]
+
+    def create_medication(self, actor: SyntheticActor, *, code: str, name: str, idempotency_key: str) -> SyntheticRecord:
+        self._require_active_context(actor, "medication:create")
+        self._require(actor, bool(actor.roles & {"doctor", "pharmacist", "catalog_manager"}), "medication:create")
+        key = (actor.id, f"medication:{idempotency_key}")
+        with self._clinical_lock:
+            existing_id = self._pharmacy_idempotency.get(key)
+            if existing_id:
+                existing = self.medications[existing_id]
+                if existing.fields["code"] != code or existing.fields["name"] != name:
+                    raise SyntheticConflictError("idempotency key reused with a different medication")
+                return existing
+            medication = SyntheticRecord(str(uuid4()), "ACTIVE", fields={"code": code, "name": name, "organization_id": actor.organization_id, "workspace_id": actor.workspace_id, "stock": 0})
+            self.medications[medication.id] = medication
+            self._pharmacy_idempotency[key] = medication.id
+            self._audit(actor, "medication.created", "medication", medication.id, None, medication.state, medication.version)
+            return medication
+
+    def receive_medication_stock(self, actor: SyntheticActor, medication_id: str, *, quantity: int) -> SyntheticRecord:
+        self._require_active_context(actor, "inventory:receive")
+        self._require(actor, "pharmacist" in actor.roles, "inventory:receive")
+        if quantity <= 0:
+            raise SyntheticConflictError("stock quantity must be positive")
+        medication = self._get(self.medications, medication_id)
+        with self._clinical_lock:
+            before = int(medication.fields.get("stock", 0))
+            medication.fields["stock"] = before + quantity
+            medication.version += 1
+            self._audit(actor, "inventory.received", "medication", medication.id, str(before), str(medication.fields["stock"]), medication.version)
+            return medication
+
+    def create_prescription(self, actor: SyntheticActor, encounter_id: str, *, medication_id: str, quantity: int, idempotency_key: str) -> SyntheticRecord:
+        self._require_active_context(actor, "prescription:create")
+        self._require(actor, "doctor" in actor.roles, "prescription:create")
+        encounter = self._get(self.encounters, encounter_id)
+        self._require(actor, actor.id == encounter.fields["practitioner_id"] and encounter.state == "SIGNED", "prescription:create")
+        medication = self._get(self.medications, medication_id)
+        if quantity <= 0:
+            raise SyntheticConflictError("prescription quantity must be positive")
+        key = (actor.id, f"prescription:{idempotency_key}")
+        with self._clinical_lock:
+            existing_id = self._pharmacy_idempotency.get(key)
+            if existing_id:
+                existing = self.prescriptions[existing_id]
+                if existing.fields["medication_id"] != medication.id or existing.fields["quantity"] != quantity:
+                    raise SyntheticConflictError("idempotency key reused with a different prescription")
+                return existing
+            prescription = SyntheticRecord(str(uuid4()), "DRAFT", fields={"encounter_id": encounter.id, "patient_id": encounter.fields["patient_id"], "practitioner_id": actor.id, "medication_id": medication.id, "medication_code": medication.fields["code"], "quantity": quantity, "organization_id": actor.organization_id, "workspace_id": actor.workspace_id})
+            self.prescriptions[prescription.id] = prescription
+            self._pharmacy_idempotency[key] = prescription.id
+            self._audit(actor, "prescription.created", "prescription", prescription.id, None, prescription.state, prescription.version)
+            return prescription
+
+    def sign_prescription(self, actor: SyntheticActor, prescription_id: str, *, expected_version: int = 1) -> SyntheticRecord:
+        self._require_active_context(actor, "prescription:sign")
+        prescription = self._get(self.prescriptions, prescription_id)
+        self._require(actor, "doctor" in actor.roles and actor.id == prescription.fields["practitioner_id"], "prescription:sign")
+        if prescription.version != expected_version:
+            raise SyntheticConflictError("prescription version conflict")
+        with self._clinical_lock:
+            self._transition(prescription, PRESCRIPTION, "SIGNED")
+            self._audit(actor, "prescription.signed", "prescription", prescription.id, "DRAFT", prescription.state, prescription.version)
+            return prescription
+
+    def amend_prescription(self, actor: SyntheticActor, prescription_id: str, *, quantity: int, reason: str, expected_version: int) -> SyntheticRecord:
+        self._require_active_context(actor, "prescription:amend")
+        original = self._get(self.prescriptions, prescription_id)
+        self._require(actor, "doctor" in actor.roles and actor.id == original.fields["practitioner_id"], "prescription:amend")
+        if original.version != expected_version or original.state not in {"SIGNED", "AMENDED"}:
+            raise SyntheticConflictError("prescription is not amendable")
+        if not reason.strip() or quantity <= 0:
+            raise SyntheticConflictError("amendment reason and positive quantity are required")
+        with self._clinical_lock:
+            new_version = original.version + 1
+            self._transition(original, PRESCRIPTION, "AMENDED")
+            amended = SyntheticRecord(str(uuid4()), "DRAFT", version=new_version, fields={**original.fields, "quantity": quantity, "amendment_reason": reason.strip(), "supersedes_id": original.id})
+            self.prescriptions[amended.id] = amended
+            self._audit(actor, "prescription.amended", "prescription", amended.id, "SIGNED", amended.state, amended.version)
+            return amended
+
+    def prepare_dispense(self, actor: SyntheticActor, prescription_id: str, *, quantity: int, idempotency_key: str) -> SyntheticRecord:
+        self._require_active_context(actor, "dispense:prepare")
+        self._require(actor, "pharmacist" in actor.roles, "dispense:prepare")
+        prescription = self._get(self.prescriptions, prescription_id)
+        self._require(actor, prescription.state in {"SIGNED", "AMENDED"} and actor.organization_id == prescription.fields["organization_id"], "dispense:prepare")
+        medication = self._get(self.medications, prescription.fields["medication_id"])
+        if quantity <= 0 or quantity > prescription.fields["quantity"]:
+            raise SyntheticConflictError("over-dispense")
+        key = (actor.id, f"dispense:{idempotency_key}")
+        with self._clinical_lock:
+            existing_id = self._pharmacy_idempotency.get(key)
+            if existing_id:
+                return self.dispenses[existing_id]
+            fulfilled = sum(item.fields["quantity"] for item in self.dispenses.values() if item.fields["prescription_id"] == prescription.id and item.state in {"PARTIAL", "COMPLETED"})
+            if quantity > prescription.fields["quantity"] - fulfilled:
+                raise SyntheticConflictError("over-dispense")
+            if medication.fields.get("stock", 0) < quantity:
+                raise SyntheticConflictError("insufficient stock")
+            dispense = SyntheticRecord(str(uuid4()), "PREPARED", fields={"prescription_id": prescription.id, "medication_id": medication.id, "quantity": quantity, "prepared_by": actor.id, "organization_id": actor.organization_id, "workspace_id": actor.workspace_id})
+            self.dispenses[dispense.id] = dispense
+            self._pharmacy_idempotency[key] = dispense.id
+            self._audit(actor, "dispense.prepared", "dispense", dispense.id, None, dispense.state, dispense.version)
+            return dispense
+
+    def complete_dispense(self, actor: SyntheticActor, dispense_id: str, *, expected_version: int = 1) -> SyntheticRecord:
+        self._require_active_context(actor, "dispense:complete")
+        self._require(actor, "pharmacist" in actor.roles, "dispense:complete")
+        dispense = self._get(self.dispenses, dispense_id)
+        self._require(actor, actor.id != dispense.fields["prepared_by"] and actor.organization_id == dispense.fields["organization_id"], "dispense:complete")
+        if dispense.version != expected_version or dispense.state != "PREPARED":
+            raise SyntheticConflictError("dispense version or state conflict")
+        with self._clinical_lock:
+            medication = self._get(self.medications, dispense.fields["medication_id"])
+            if medication.fields.get("stock", 0) < dispense.fields["quantity"]:
+                raise SyntheticConflictError("insufficient stock")
+            prescription = self._get(self.prescriptions, dispense.fields["prescription_id"])
+            fulfilled = sum(item.fields["quantity"] for item in self.dispenses.values() if item.fields["prescription_id"] == prescription.id and item.state in {"PARTIAL", "COMPLETED"})
+            next_state = "COMPLETED" if fulfilled + dispense.fields["quantity"] >= prescription.fields["quantity"] else "PARTIAL"
+            medication.fields["stock"] -= dispense.fields["quantity"]
+            medication.version += 1
+            self._transition(dispense, DISPENSE, next_state)
+            dispense.fields["verified_by"] = actor.id
+            dispense.fields["dispensed_by"] = actor.id
+            self._audit(actor, "dispense.completed", "dispense", dispense.id, "PREPARED", dispense.state, dispense.version)
+            return dispense
+
+    def place_imaging_order(self, actor: SyntheticActor, encounter_id: str, *, modality: str, idempotency_key: str) -> SyntheticRecord:
+        self._require_active_context(actor, "imaging-order:create")
+        self._require(actor, "doctor" in actor.roles, "imaging-order:create")
+        encounter = self._get(self.encounters, encounter_id)
+        self._require(actor, actor.id == encounter.fields["practitioner_id"] and encounter.state == "SIGNED", "imaging-order:create")
+        key = (actor.id, f"imaging-order:{idempotency_key}")
+        with self._clinical_lock:
+            existing_id = self._imaging_idempotency.get(key)
+            if existing_id:
+                return self.imaging_orders[existing_id]
+            order = SyntheticRecord(str(uuid4()), "DRAFT", fields={"encounter_id": encounter.id, "patient_id": encounter.fields["patient_id"], "practitioner_id": actor.id, "modality": modality, "organization_id": actor.organization_id, "workspace_id": actor.workspace_id, "accession": f"SYN-ACC-{uuid4().hex[:10].upper()}"})
+            self._transition(order, IMAGING_ORDER, "PLACED")
+            self.imaging_orders[order.id] = order
+            self._imaging_idempotency[key] = order.id
+            self._audit(actor, "imaging-order.placed", "imaging-order", order.id, "DRAFT", order.state, order.version)
+            return order
+
+    def ingest_imaging_study(self, actor: SyntheticActor, order_id: str, *, study_uid: str, source_message_id: str, idempotency_key: str) -> SyntheticRecord:
+        self._require_active_context(actor, "imaging-study:ingest")
+        self._require(actor, bool(actor.roles & {"imaging_technician", "imaging_adapter"}), "imaging-study:ingest")
+        order = self._get(self.imaging_orders, order_id)
+        self._require(actor, actor.organization_id == order.fields["organization_id"], "imaging-study:ingest")
+        key = (actor.id, f"imaging-study:{idempotency_key}")
+        with self._clinical_lock:
+            existing_id = self._imaging_idempotency.get(key)
+            if existing_id:
+                return self.imaging_studies[existing_id]
+            if study_uid in self._used_dicom_uids or any(item.fields["source_message_id"] == source_message_id for item in self.imaging_studies.values()):
+                raise SyntheticConflictError("duplicate DICOM source message or study UID")
+            if order.state == "PLACED":
+                self._transition(order, IMAGING_ORDER, "SCHEDULED")
+            if order.state == "SCHEDULED":
+                self._transition(order, IMAGING_ORDER, "IN_PROGRESS")
+            study = SyntheticRecord(str(uuid4()), "RECEIVED", fields={"order_id": order.id, "patient_id": order.fields["patient_id"], "study_uid": study_uid, "source_message_id": source_message_id, "organization_id": order.fields["organization_id"], "workspace_id": order.fields["workspace_id"], "instances": 0})
+            self.imaging_studies[study.id] = study
+            self._imaging_idempotency[key] = study.id
+            self._used_dicom_uids.add(study_uid)
+            self._audit(actor, "imaging-study.received", "imaging-study", study.id, None, study.state, study.version)
+            return study
+
+    def complete_imaging_study(self, actor: SyntheticActor, study_id: str) -> SyntheticRecord:
+        self._require_active_context(actor, "imaging-study:complete")
+        self._require(actor, "imaging_technician" in actor.roles, "imaging-study:complete")
+        study = self._get(self.imaging_studies, study_id)
+        self._require(actor, actor.organization_id == study.fields["organization_id"], "imaging-study:complete")
+        with self._clinical_lock:
+            self._transition(study, IMAGING_STUDY, "MATCHED")
+            self._transition(study, IMAGING_STUDY, "ACQUIRED")
+            self._transition(study, IMAGING_STUDY, "COMPLETED")
+            order = self._get(self.imaging_orders, study.fields["order_id"])
+            if order.state == "IN_PROGRESS":
+                self._transition(order, IMAGING_ORDER, "COMPLETED")
+            self._audit(actor, "imaging-study.completed", "imaging-study", study.id, "RECEIVED", study.state, study.version)
+            return study
+
+    def release_imaging_report(self, actor: SyntheticActor, study_id: str, *, critical: bool = False) -> SyntheticRecord:
+        self._require_active_context(actor, "imaging-report:release")
+        self._require(actor, "radiologist" in actor.roles, "imaging-report:release")
+        study = self._get(self.imaging_studies, study_id)
+        self._require(actor, study.state == "COMPLETED" and actor.organization_id == study.fields["organization_id"], "imaging-report:release")
+        with self._clinical_lock:
+            report = SyntheticRecord(str(uuid4()), "DRAFT", fields={"study_id": study.id, "patient_id": study.fields["patient_id"], "radiologist_id": actor.id, "impression": "synthetic impression", "critical": critical, "organization_id": study.fields["organization_id"], "workspace_id": study.fields["workspace_id"]})
+            self._transition(report, IMAGING_REPORT, "SIGNED")
+            self._transition(report, IMAGING_REPORT, "RELEASED")
+            self.imaging_reports[report.id] = report
+            self._audit(actor, "imaging-report.released", "imaging-report", report.id, "DRAFT", report.state, report.version)
+            return report
+
+    def unified_clinical_record(self, actor: SyntheticActor, *, patient_id: str, limit: int = 50, cursor: str | None = None, sections: frozenset[str] | None = None) -> dict[str, Any]:
+        self._require_active_context(actor, "clinical-record:read")
+        allowed_sections = {"encounters", "medications", "imaging", "timeline"}
+        requested = sections or frozenset(allowed_sections)
+        self._require(actor, requested.issubset(allowed_sections), "clinical-record:sections")
+        self._require(actor, actor.patient_id == patient_id or "record_reader" in actor.roles, "clinical-record:read")
+        if not 1 <= limit <= 100:
+            raise SyntheticConflictError("record limit is out of bounds")
+        try:
+            start = int(cursor or "0")
+        except ValueError as exc:
+            raise SyntheticConflictError("invalid record cursor") from exc
+        if start < 0:
+            raise SyntheticConflictError("invalid record cursor")
+        events: list[dict[str, Any]] = []
+        if "encounters" in requested or "timeline" in requested:
+            events.extend({"type": "encounter", "id": row.id, "status": row.state, "source": {"domain": "encounter", "version": row.version}} for row in self.encounters.values() if row.fields.get("patient_id") == patient_id and row.state == "SIGNED")
+        if "medications" in requested or "timeline" in requested:
+            events.extend({"type": "prescription", "id": row.id, "status": row.state, "source": {"domain": "pharmacy", "version": row.version}, "medication_code": row.fields["medication_code"], "quantity": row.fields["quantity"]} for row in self.prescriptions.values() if row.fields.get("patient_id") == patient_id and row.state in {"SIGNED", "AMENDED", "COMPLETED"})
+        if "imaging" in requested or "timeline" in requested:
+            events.extend({"type": "imaging_report", "id": row.id, "status": row.state, "source": {"domain": "imaging", "version": row.version}, "impression": row.fields["impression"]} for row in self.imaging_reports.values() if row.fields.get("patient_id") == patient_id and row.state == "RELEASED")
+        page = events[start : start + limit]
+        next_cursor = str(start + limit) if start + limit < len(events) else None
+        self._audit(actor, "clinical-record.projected", "clinical-record", patient_id, None, "PROJECTED", 1)
+        return {"state": "PROJECTED", "patient_id": patient_id, "items": page, "next_cursor": next_cursor, "minimum_necessary": True}
 
     def _require_active_context(self, actor: SyntheticActor, action: str) -> None:
         # Existing legacy fixtures omit identity/session objects; retain their

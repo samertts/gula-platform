@@ -354,6 +354,65 @@ def scan_repository(repo_root: str | Path) -> EngineeringInventoryReport:
             },
             root / "backend/tests/test_core_lab_result_access_api.py",
         ),
+        (
+            "pharmacy",
+            (
+                root / "backend/app/clinical/pharmacy/models.py",
+                root / "backend/app/clinical/pharmacy/service.py",
+                root / "backend/app/clinical/pharmacy/routes.py",
+            ),
+            {
+                "authorization": "require_permission",
+                "audit": "SyncCanonicalAuditService",
+                "state_machine": "require_transition",
+                "idempotency": "_claim",
+                "version": "expected_version",
+                "concurrency": "with_for_update",
+                "immutable_prescription": "signed",
+                "ledger": "CoreMedicationStockLedger",
+                "no_overdispense": "OverDispenseError",
+            },
+            root / "backend/tests/test_core_pharmacy_api.py",
+        ),
+        (
+            "imaging",
+            (
+                root / "backend/app/clinical/imaging/models.py",
+                root / "backend/app/clinical/imaging/adapters.py",
+                root / "backend/app/clinical/imaging/service.py",
+                root / "backend/app/clinical/imaging/routes.py",
+            ),
+            {
+                "authorization": "require_permission",
+                "audit": "SyncCanonicalAuditService",
+                "state_machine": "require_transition",
+                "idempotency": "_claim",
+                "version": "expected_version",
+                "concurrency": "with_for_update",
+                "provenance": "provenance_type",
+                "dicom_duplicate": "DICOM_DUPLICATE",
+                "immutable_report": "REPORT_ALREADY_FINAL",
+                "synthetic_adapter": "SyntheticImagingAdapter",
+            },
+            root / "backend/tests/test_core_imaging_api.py",
+        ),
+        (
+            "clinical_record",
+            (
+                root / "backend/app/clinical/record/service.py",
+                root / "backend/app/clinical/record/routes.py",
+            ),
+            {
+                "authorization": "_authorize_read",
+                "audit": "CLINICAL_RECORD_VIEWED",
+                "provenance": "source_domain",
+                "pagination": "next_cursor",
+                "minimum_necessary": "minimum_necessary",
+                "released_only": 'status == "RELEASED"',
+                "read_only": "Read-only",
+            },
+            root / "backend/tests/test_clinical_record_api.py",
+        ),
     )
     for domain, bundle_files, tokens, test_file in domain_bundles:
         present = tuple(str(path.relative_to(root)) for path in bundle_files if path.exists())
@@ -383,6 +442,30 @@ def scan_repository(repo_root: str | Path) -> EngineeringInventoryReport:
                     files=present,
                 ),
             )
+
+    legacy_overlap_files = tuple(
+        str(path.relative_to(root))
+        for path in (
+            root / "backend/app/pharmacy/models.py",
+            root / "backend/app/ehr/models/medication.py",
+            root / "backend/app/radiology/models.py",
+            root / "backend/app/radiology/routes.py",
+            root / "backend/app/ehr/models/timeline.py",
+        )
+        if path.exists()
+    )
+    if legacy_overlap_files:
+        findings.append(
+            InventoryFinding(
+                detected="legacy_canonical_overlap",
+                why="توجد owners legacy متداخلة مع حدود pharmacy/imaging/clinical-record الجديدة.",
+                impact="قد يحدث dual-write أو اختلاف authorization/state إذا استُخدمت legacy routes كمصدر حقيقة.",
+                recommended_fix="أبقِ legacy read/compatibility فقط، وثّق owner canonical، وأضف migration bridge قابلاً للعكس قبل أي deprecation.",
+                test_required="ownership and no-dual-write regression test",
+                status="EXTERNAL_DEPENDENCY",
+                files=legacy_overlap_files,
+            ),
+        )
 
     legacy_lab_routes = tuple(
         str(path.relative_to(root))

@@ -28,6 +28,12 @@ def test_core_contract_registry_contains_the_safe_golden_path_domains() -> None:
         "result",
         "critical-result",
         "notification",
+        "prescription",
+        "dispense",
+        "imaging-order",
+        "imaging-study",
+        "imaging-report",
+        "clinical-record",
     ]
     assert get_contract("appointment") is APPOINTMENT
 

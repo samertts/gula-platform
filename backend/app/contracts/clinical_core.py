@@ -228,6 +228,49 @@ CRITICAL_RESULT = ContractDefinition(
     transitions={"DETECTED": ("NOTIFIED", "ESCALATED"), "NOTIFIED": ("ACKNOWLEDGED", "ESCALATED"), "ACKNOWLEDGED": ("ACTIONED", "ESCALATED"), "ACTIONED": ("CLOSED",), "ESCALATED": ("ACKNOWLEDGED", "ACTIONED", "CLOSED"), "CLOSED": ()},
 )
 
+PRESCRIPTION = ContractDefinition(
+    contract_id="CONTRACT-016",
+    domain="prescription",
+    states=("DRAFT", "SIGNED", "AMENDED", "CANCELLED", "COMPLETED"),
+    transitions={"DRAFT": ("SIGNED", "CANCELLED"), "SIGNED": ("AMENDED", "COMPLETED"), "AMENDED": ("SIGNED", "COMPLETED"), "COMPLETED": (), "CANCELLED": ()},
+)
+
+DISPENSE = ContractDefinition(
+    contract_id="CONTRACT-017",
+    domain="dispense",
+    states=("PREPARED", "PARTIAL", "COMPLETED", "REVERSED"),
+    transitions={"PREPARED": ("PARTIAL", "COMPLETED"), "PARTIAL": ("COMPLETED", "REVERSED"), "COMPLETED": (), "REVERSED": ()},
+)
+
+IMAGING_ORDER = ContractDefinition(
+    contract_id="CONTRACT-018",
+    domain="imaging-order",
+    states=("DRAFT", "PLACED", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"),
+    transitions={"DRAFT": ("PLACED", "CANCELLED"), "PLACED": ("SCHEDULED", "CANCELLED"), "SCHEDULED": ("IN_PROGRESS", "CANCELLED"), "IN_PROGRESS": ("COMPLETED",), "COMPLETED": (), "CANCELLED": ()},
+)
+
+IMAGING_STUDY = ContractDefinition(
+    contract_id="CONTRACT-019",
+    domain="imaging-study",
+    states=("RECEIVED", "MATCHED", "ACQUIRED", "COMPLETED", "QUARANTINED"),
+    transitions={"RECEIVED": ("MATCHED", "QUARANTINED"), "MATCHED": ("ACQUIRED", "COMPLETED", "QUARANTINED"), "ACQUIRED": ("COMPLETED", "QUARANTINED"), "COMPLETED": (), "QUARANTINED": ()},
+)
+
+IMAGING_REPORT = ContractDefinition(
+    contract_id="CONTRACT-020",
+    domain="imaging-report",
+    states=("DRAFT", "SIGNED", "RELEASED", "AMENDED"),
+    transitions={"DRAFT": ("SIGNED",), "SIGNED": ("RELEASED", "AMENDED"), "RELEASED": ("AMENDED",), "AMENDED": (),},
+)
+
+CLINICAL_RECORD = ContractDefinition(
+    contract_id="CONTRACT-021",
+    domain="clinical-record",
+    states=("PROJECTED",),
+    transitions={"PROJECTED": ()},
+    write_safety=WriteSafetyRequirements(idempotency=False, concurrency=False),
+)
+
 NOTIFICATION = ContractDefinition(
     contract_id="CONTRACT-015",
     domain="notification",
@@ -239,7 +282,8 @@ NOTIFICATION = ContractDefinition(
 CORE_CONTRACTS: tuple[ContractDefinition, ...] = (
     APPOINTMENT, SESSION, DEVICE, PATIENT_ACCESS, CONSENT, ACCESS_HISTORY,
     DELEGATION, TASK, ENCOUNTER, CLINICAL_NOTE, LAB_ORDER, SPECIMEN,
-    RESULT, CRITICAL_RESULT, NOTIFICATION,
+    RESULT, CRITICAL_RESULT, NOTIFICATION, PRESCRIPTION, DISPENSE, IMAGING_ORDER,
+    IMAGING_STUDY, IMAGING_REPORT, CLINICAL_RECORD,
 )
 
 CONTRACTS_BY_DOMAIN = {contract.domain: contract for contract in CORE_CONTRACTS}

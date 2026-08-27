@@ -9,7 +9,7 @@ class GrantAccessRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     workspace_id: str = Field(min_length=1, max_length=26)
-    resource_type: str = Field(default="lab_result", pattern="^lab_result$")
+    resource_type: str = Field(default="lab_result", pattern="^(lab_result|imaging_report)$")
     resource_id: str = Field(min_length=1, max_length=26)
     grantee_account_id: str = Field(min_length=1, max_length=26)
     purpose: str = Field(pattern="^(TREATMENT|RESEARCH|BILLING|AUDIT|PUBLIC_HEALTH)$")
@@ -20,11 +20,10 @@ class GrantAccessRequest(BaseModel):
     @classmethod
     def scope_must_be_explicit(cls, value: dict[str, Any]) -> dict[str, Any]:
         clean = {str(key): item for key, item in value.items() if isinstance(key, str) and str(key).strip()}
-        if not clean or "read_result" not in clean:
-            raise ValueError("scope must explicitly include read_result")
-        if clean.get("read_result") is not True:
-            raise ValueError("read_result scope must be true")
-        if any(key not in {"read_result", "read_summary"} for key in clean):
+        supported = {"read_result", "read_summary", "read_report", "read_imaging"}
+        if not clean or not any(clean.get(key) is True for key in ("read_result", "read_report", "read_imaging")):
+            raise ValueError("scope must explicitly include one readable clinical resource")
+        if any(key not in supported for key in clean):
             raise ValueError("scope contains an unsupported field")
         return clean
 

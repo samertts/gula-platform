@@ -7,7 +7,10 @@ All fixtures are function-scoped so each test starts with a clean slate.
 The backend/ package is installed via `pip install -e backend/` (or through
 the backend/pyproject.toml). No sys.path manipulation is needed.
 """
+
 from __future__ import annotations
+
+pytest_plugins = ("tests.test_core_appointment_api",)
 
 import os
 import tempfile
