@@ -46,6 +46,17 @@ describe("التنقل العربي الأساسي في GULA", () => {
     }
   });
 
+  it("يحمي بوابة المؤسسة الصحية بنطاق أدوار مؤسسية مستقل", () => {
+    const items = Object.values(NAV_ITEMS).flat();
+    const organizationItem = items.find((item) => item.path === "/organization-workspace");
+    expect(organizationItem).toMatchObject({
+      label: "بوابة المؤسسة الصحية",
+      permissions: ["dashboard:read"],
+    });
+    expect(getRouteRoles("/organization-workspace")).toEqual(expect.arrayContaining(["doctor", "admin", "technician"]));
+    expect(getRouteRoles("/organization-workspace")).not.toContain("citizen");
+  });
+
   it("لا يعرض أسطح الإدارة والمستشفى للطبيب أو الفني", () => {
     const items = Object.values(NAV_ITEMS).flat();
     const visibleFor = (role: string) =>

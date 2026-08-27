@@ -4,6 +4,7 @@ import {
   FINANCIAL_ROLES,
   LAB_ROLES,
   READONLY_ROLES,
+  ORGANIZATION_ROLES,
   ROUTE_ROLE_POLICIES,
   STAFF_ROLES,
 } from "./routePolicies";
@@ -129,6 +130,7 @@ export const NAV_ITEMS: Record<string, NavigationItem[]> = {
   main: [
     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
     { label: "مركز هويتي ومساحاتي", path: "/my-record", icon: "UserCircle" },
+    { label: "بوابة المؤسسة الصحية", path: "/organization-workspace", icon: "Building2", permissions: ["dashboard:read"], roles: ORGANIZATION_ROLES },
     { label: "nav.citizenWorkspace", path: "/citizen", icon: "UserCircle", permissions: ["citizen:workspace"], roles: ROUTE_ROLE_POLICIES["/citizen"] },
     { label: "nav.patients", path: "/patients", icon: "Users", permissions: ["patients:read"], roles: STAFF_ROLES },
     { label: "إدارة المرضى المتقدمة", path: "/patient-management", icon: "HeartPulse", permissions: ["dashboard:read"], roles: READONLY_ROLES },

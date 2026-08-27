@@ -21,6 +21,7 @@ const LegalPage = lazy(() => import("@/pages/legal/LegalPage").then(m => ({ defa
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const PatientsPage = lazy(() => import("@/pages/patients/PatientsPage").then(m => ({ default: m.PatientsPage })));
 const PatientManagementWorkspacePageLazy = lazy(() => import("@/pages/patients/PatientManagementWorkspacePage"));
+const OrganizationWorkspacePageLazy = lazy(() => import("@/pages/organization/OrganizationWorkspacePage"));
 const LabOperationsWorkspacePageLazy = lazy(() => import("@/pages/lab/LabOperationsWorkspacePage"));
 const OrdersPage = lazy(() => import("@/pages/orders/OrdersPage").then(m => ({ default: m.OrdersPage })));
 const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage").then(m => ({ default: m.ReportsPage })));
@@ -147,6 +148,7 @@ export const router = createBrowserRouter([
       { path: "dashboard", element: <LazyPage><DashboardPage /></LazyPage> },
       { path: "patients", element: <RoleGuard roles={STAFF_ROLES}><LazyPage><PatientsPage /></LazyPage></RoleGuard> },
       { path: "patient-management", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><PatientManagementWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "organization-workspace", element: <RoleGuard roles={ROUTE_ROLE_POLICIES["/organization-workspace"]}><LazyPage><OrganizationWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "lab-operations", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><LabOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "orders", element: <RoleGuard roles={STAFF_ROLES}><LazyPage><OrdersPage /></LazyPage></RoleGuard> },
       { path: "reports", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><ReportsPage /></LazyPage></RoleGuard> },
