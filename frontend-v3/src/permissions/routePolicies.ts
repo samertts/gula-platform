@@ -74,6 +74,10 @@ export const HOSPITAL_OPERATIONS_ROLES = [
   "demo_viewer",
 ] as const satisfies readonly UserRole[];
 
+export const ACUTE_CARE_OPERATIONS_ROLES = [
+  ...HOSPITAL_OPERATIONS_ROLES,
+] as const satisfies readonly UserRole[];
+
 export const ORGANIZATION_ROLES = [
   ...READONLY_ROLES,
   "technician",
@@ -154,8 +158,9 @@ export const ROUTE_ROLE_POLICIES = {
   "/command-center": ADMIN_ROLES,
   "/command-intelligence": ADMIN_ROLES,
   "/control-plane": ADMIN_ROLES,
-  "/critical-care": ADMIN_ROLES,
-  "/ems": ADMIN_ROLES,
+  "/acute-care-operations": ACUTE_CARE_OPERATIONS_ROLES,
+  "/critical-care": ACUTE_CARE_OPERATIONS_ROLES,
+  "/ems": ACUTE_CARE_OPERATIONS_ROLES,
   "/health-data": ADMIN_ROLES,
   "/integration": ADMIN_ROLES,
   "/integration/connectors": ADMIN_ROLES,

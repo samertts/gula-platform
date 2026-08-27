@@ -63,6 +63,18 @@ describe("التنقل العربي الأساسي في GULA", () => {
     expect(getRouteRoles("/hospital-operations")).not.toContain("citizen");
   });
 
+  it("يقصر بوابة الرعاية الحادة ويحوّل aliases EMS وCritical Care إلى نفس السياسة الآمنة", () => {
+    const acuteItem = (NAV_ITEMS.systems ?? []).find((item) => item.path === "/acute-care-operations");
+    expect(acuteItem).toMatchObject({
+      label: "بوابة الطوارئ والإسعاف والرعاية الحادة",
+      permissions: ["dashboard:read"],
+    });
+    for (const path of ["/acute-care-operations", "/ems", "/critical-care"]) {
+      expect(getRouteRoles(path), path).toEqual(expect.arrayContaining(["doctor", "staff", "lab_staff", "technician", "demo_viewer"]));
+      expect(getRouteRoles(path), path).not.toContain("citizen");
+    }
+  });
+
   it("يقصر بوابة العيادة على الأدوار السريرية والتشغيلية وDemo", () => {
     expect(getRouteRoles("/clinic-operations")).toEqual(expect.arrayContaining(["doctor", "staff", "technician", "demo_viewer"]));
     expect(getRouteRoles("/clinic-operations")).not.toContain("citizen");

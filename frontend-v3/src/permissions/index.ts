@@ -10,6 +10,7 @@ import {
   RADIOLOGY_OPERATIONS_ROLES,
   CLINIC_OPERATIONS_ROLES,
   HOSPITAL_OPERATIONS_ROLES,
+  ACUTE_CARE_OPERATIONS_ROLES,
   ROUTE_ROLE_POLICIES,
   STAFF_ROLES,
 } from "./routePolicies";
@@ -217,8 +218,7 @@ export const NAV_ITEMS: Record<string, NavigationItem[]> = {
     { label: "مركز القيادة", path: "/command-center", icon: "Monitor", permissions: ["system:admin"], roles: ADMIN_ROLES },
     { label: "الاستخبارات", path: "/command-intelligence", icon: "BrainCircuit", permissions: ["system:admin"], roles: ADMIN_ROLES },
     { label: "طائرة التحكم", path: "/control-plane", icon: "Gamepad2", permissions: ["system:admin"], roles: ADMIN_ROLES },
-    { label: "العناية الحرجة", path: "/critical-care", icon: "HeartPulse", permissions: ["system:admin"], roles: ADMIN_ROLES },
-    { label: "الطوارئ", path: "/ems", icon: "Ambulance", permissions: ["system:admin"], roles: ADMIN_ROLES },
+    { label: "بوابة الطوارئ والإسعاف والرعاية الحادة", path: "/acute-care-operations", icon: "Ambulance", permissions: ["dashboard:read"], roles: ACUTE_CARE_OPERATIONS_ROLES },
     { label: "البيانات الصحية", path: "/health-data", icon: "Database", permissions: ["system:admin"], roles: ADMIN_ROLES },
     { label: "التكامل", path: "/integration", icon: "Cable", permissions: ["system:admin"], roles: ADMIN_ROLES },
     { label: "منظومة القدرات الصحية", path: "/health-ecosystem", icon: "HeartPulse", permissions: ["dashboard:read"], roles: READONLY_ROLES },

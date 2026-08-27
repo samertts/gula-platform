@@ -13,6 +13,7 @@ import {
   RADIOLOGY_OPERATIONS_ROLES,
   CLINIC_OPERATIONS_ROLES,
   HOSPITAL_OPERATIONS_ROLES,
+  ACUTE_CARE_OPERATIONS_ROLES,
   READONLY_ROLES,
   STAFF_ROLES,
   ROUTE_ROLE_POLICIES,
@@ -84,8 +85,7 @@ const MyRecordPageLazy = lazy(() => import("@/pages/my-record/MyRecordPage"));
 const CommandCenterApiPageLazy = lazy(() => import("@/pages/command-center/CommandCenterApiPage"));
 const CommandIntelligencePageLazy = lazy(() => import("@/pages/command-intelligence/CommandIntelligencePage"));
 const ControlPlanePageLazy = lazy(() => import("@/pages/control-plane/ControlPlanePage"));
-const CriticalCareApiPageLazy = lazy(() => import("@/pages/critical-care/CriticalCareApiPage"));
-const EmsApiPageLazy = lazy(() => import("@/pages/ems/EmsApiPage"));
+const AcuteCareOperationsWorkspacePageLazy = lazy(() => import("@/pages/acute-care/AcuteCareOperationsWorkspacePage"));
 const HealthDataPageLazy = lazy(() => import("@/pages/health-data/HealthDataPage"));
 const IntegrationPageLazy = lazy(() => import("@/pages/integration/IntegrationPage"));
 const IntegrationConnectorsPageLazy = lazy(() => import("@/pages/integration/connectors/IntegrationConnectorsPage"));
@@ -212,8 +212,9 @@ export const router = createBrowserRouter([
       { path: "command-center", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CommandCenterApiPageLazy /></LazyPage></RoleGuard> },
       { path: "command-intelligence", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CommandIntelligencePageLazy /></LazyPage></RoleGuard> },
       { path: "control-plane", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><ControlPlanePageLazy /></LazyPage></RoleGuard> },
-      { path: "critical-care", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CriticalCareApiPageLazy /></LazyPage></RoleGuard> },
-      { path: "ems", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><EmsApiPageLazy /></LazyPage></RoleGuard> },
+      { path: "acute-care-operations", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "critical-care", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "ems", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "health-data", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><HealthDataPageLazy /></LazyPage></RoleGuard> },
       { path: "integration", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><IntegrationPageLazy /></LazyPage></RoleGuard> },
       { path: "integration/connectors", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><IntegrationConnectorsPageLazy /></LazyPage></RoleGuard> },
