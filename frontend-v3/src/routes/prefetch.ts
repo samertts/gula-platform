@@ -10,6 +10,7 @@ const routeLoaders: Record<string, RouteLoader> = {
   "/patient-management": () => import("@/pages/patients/PatientManagementWorkspacePage"),
   "/lab-operations": () => import("@/pages/lab/LabOperationsWorkspacePage"),
   "/radiology-operations": () => import("@/pages/radiology/RadiologyOperationsWorkspacePage"),
+  "/clinic-operations": () => import("@/pages/clinic/ClinicOperationsWorkspacePage"),
   "/pharmacy-operations": () => import("@/pages/pharmacy/PharmacyOperationsWorkspacePage"),
 };
 

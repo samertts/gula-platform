@@ -8,6 +8,7 @@ import {
   ORGANIZATION_ROLES,
   PHARMACY_OPERATIONS_ROLES,
   RADIOLOGY_OPERATIONS_ROLES,
+  CLINIC_OPERATIONS_ROLES,
   ROUTE_ROLE_POLICIES,
   STAFF_ROLES,
 } from "./routePolicies";
@@ -225,6 +226,7 @@ export const NAV_ITEMS: Record<string, NavigationItem[]> = {
     { label: "الصيدلة", path: "/pharmacy", icon: "Pill", permissions: ["system:admin"], roles: ADMIN_ROLES },
     { label: "إدارة الصيدلية والأدوية", path: "/pharmacy-operations", icon: "Pill", permissions: ["dashboard:read"], roles: PHARMACY_OPERATIONS_ROLES },
     { label: "عمليات الأشعة والتصوير", path: "/radiology-operations", icon: "Activity", permissions: ["dashboard:read"], roles: RADIOLOGY_OPERATIONS_ROLES },
+    { label: "بوابة العيادة الطبية", path: "/clinic-operations", icon: "Stethoscope", permissions: ["dashboard:read"], roles: CLINIC_OPERATIONS_ROLES },
     { label: "إدارة الفوترة والتأمين", path: "/billing-insurance", icon: "ReceiptText", permissions: ["dashboard:read"], roles: READONLY_ROLES },
     { label: "مركز ربط الأجهزة", path: "/device-integration", icon: "Cable", permissions: ["lab:read"], roles: READONLY_ROLES, institutionalOnly: true },
     { label: "المنصة التجريبية", path: "/pilot-platform", icon: "FlaskConical", permissions: ["system:admin"], roles: ADMIN_ROLES },
