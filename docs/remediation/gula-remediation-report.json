@@ -249,6 +249,34 @@
       "migration": "backend/migrations/versions/20260827_0011_core_encounter_note_slice.py",
       "status": "local-api-evidence-only"
     },
+    "canonical_lab_result_access_slices": {
+      "laboratory": {
+        "models": "backend/app/clinical/laboratory/models.py",
+        "schemas": "backend/app/clinical/laboratory/schemas.py",
+        "authorization": "backend/app/clinical/laboratory/authorization.py",
+        "service": "backend/app/clinical/laboratory/service.py",
+        "routes": "backend/app/clinical/laboratory/routes.py",
+        "status": "local-api-evidence-only"
+      },
+      "result": {
+        "models": "backend/app/clinical/results/models.py",
+        "schemas": "backend/app/clinical/results/schemas.py",
+        "service": "backend/app/clinical/results/service.py",
+        "routes": "backend/app/clinical/results/routes.py",
+        "fhir_projection": "backend/app/clinical/results/fhir.py",
+        "status": "local-api-evidence-only"
+      },
+      "access": {
+        "models": "backend/app/clinical/access/models.py",
+        "schemas": "backend/app/clinical/access/schemas.py",
+        "service": "backend/app/clinical/access/service.py",
+        "routes": "backend/app/clinical/access/routes.py",
+        "status": "local-api-evidence-only"
+      },
+      "command_guard": "backend/app/clinical/command_guard.py",
+      "migration": "backend/migrations/versions/20260828_0013_lab_result_access_core.py",
+      "status": "development-and-local-test-evidence-only"
+    },
     "architectural_drift_fix": {
       "canonical_owner": "backend/app/national/domain/facility.py",
       "bridge": "backend/app/models/clinical_scope.py",
@@ -261,21 +289,26 @@
       "backend/tests/test_synthetic_core_backend.py",
       "backend/tests/test_core_appointment_api.py",
       "backend/tests/test_core_encounter_api.py",
+      "backend/tests/test_core_lab_result_access_api.py",
       "backend/tests/test_redis_security_policy.py",
+      "backend/app/clinical/results/fhir.py",
       "backend/tests/identity/test_core_appointment_migration.py",
       "backend/migrations/versions/20260827_0012_migration_compatibility_guard.py",
+      "backend/migrations/versions/20260828_0013_lab_result_access_core.py",
       "backend/tests/test_migrations.py"
     ],
-    "local_focused_result": "35 passed, 1 skipped for Appointment/Encounter/contracts/inventory/read-gate/migration-chain focused run",
+    "local_focused_result": "35 passed, 1 skipped for Appointment/Encounter/contracts/inventory/read-gate/migration-chain focused run (prior wave)",
+    "slice_03_05_focused_result": "5 passed, 1 warning for Lab/Result/Access API and FHIR projection; 6 passed, 1 warning for SyntheticCoreBackend; 14 passed, 1 warning for Appointment/Encounter/Synthetic regression",
     "redis_focused_result": "3 passed for production fail-closed, missing REDIS_URL fail-closed, and explicit degraded acknowledgement",
-    "full_backend_result": "2797 passed, 5 skipped, 165 warnings in 308.37s; exit code 0 captured from the final tree after Redis hardening and migration guard 0012",
+    "full_backend_result": "2803 passed, 5 skipped, 165 warnings in 313.59s; exit code 0 captured from the final tree after Slice 03–05 implementation, Redis hardening, and migration guards",
     "postgresql_disposable_proof": {
       "database": "PostgreSQL 16.15 local disposable",
-      "upgrade_head": "20260827_0012",
-      "schema_gate": "1 passed",
-      "rollback_reupgrade": "passed; downgraded to 20260814_0002 and re-upgraded to 20260827_0012 head",
+      "upgrade_head": "20260828_0013",
+      "schema_gate": "1 passed; asserts Laboratory/Result/Access tables, constraints, and 21 permission keys",
+      "rollback_reupgrade": "passed; downgraded to 20260814_0002 and re-upgraded to 20260828_0013 head",
       "row_lock_concurrency": "pass; one winner and one conflict across two connections",
       "compatibility_guard": "20260827_0012 passed; missing index may be recreated, unsafe FK/type/parent drift fails closed without casting or inferred DDL",
+      "lab_result_access_migration": "20260828_0013 additive; canonical tables, FK/check/unique/index, guarded permission seeds, no legacy table mutation",
       "scope": "local disposable evidence only; not staging or production"
     },
     "redis_shared_controls_proof": {
@@ -294,15 +327,25 @@
       "observed_duration": "about five seconds",
       "classification": "external runner-level blocker; no application step or log failure was observable"
     },
+    "engineering_inventory_evidence": {
+      "scanned_files": 1947,
+      "status": "READY_FOR_REVIEW",
+      "production_ready": false,
+      "findings": ["migration_present", "encounter_migration_present", "legacy_lab_route", "production_evidence_gap"],
+      "scope": "local advisory inventory; legacy routes remain explicitly outside canonical clinical write path"
+    },
     "status": "development-and-local-test-evidence-only",
     "not_production_ready": true,
     "missing_for_production": [
-      "remote/staging PostgreSQL migration execution and schema evidence for 0010 through 0012",
+      "remote/staging PostgreSQL migration execution and schema evidence for 0010 through 0013",
       "production-like API/worker concurrency and contention evidence beyond the primitive row-lock proof",
       "rate-limit capacity and 429 evidence under production-like load",
       "Redis HA/failover and production observability evidence",
       "database-backed object authorization integration review",
       "production immutable audit integration review",
+      "Lab/Result/Access API multi-worker concurrency and fault-injection evidence",
+      "independent patient/provider/lab actor matrix across organization and facility boundaries",
+      "digital-signature, MFA, fresh-session, break-glass, and notification-provider assurance",
       "frontend contract integration and browser E2E",
       "remote CI",
       "staging smoke and rollback"
