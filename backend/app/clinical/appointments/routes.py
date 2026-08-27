@@ -44,6 +44,12 @@ _ERROR_MESSAGES: dict[str, tuple[int, str, str]] = {
     "UNAUTHORIZED": (401, "Authentication is required.", "المصادقة مطلوبة."),
     "FORBIDDEN": (403, "This appointment operation is not permitted.", "عملية الموعد هذه غير مسموحة."),
     "INTERNAL_ERROR": (500, "The appointment operation could not be completed.", "تعذر إكمال عملية الموعد."),
+    "ENCOUNTER_NOT_FOUND": (404, "The encounter was not found.", "لم يتم العثور على الزيارة السريرية."),
+    "APPOINTMENT_NOT_ELIGIBLE": (409, "The appointment is not eligible for this operation.", "الموعد غير مؤهل لهذه العملية."),
+    "ALREADY_CHECKED_IN": (409, "The appointment is already checked in.", "تم تسجيل حضور الموعد مسبقاً."),
+    "ENCOUNTER_STATE_CONFLICT": (409, "The encounter state does not allow this operation.", "حالة الزيارة لا تسمح بهذه العملية."),
+    "CLINICAL_NOTE_NOT_FOUND": (404, "The clinical note was not found.", "لم يتم العثور على الملاحظة السريرية."),
+    "CLINICAL_NOTE_IMMUTABLE": (409, "The clinical note requires an explicit amendment.", "الملاحظة السريرية تتطلب تعديلاً صريحاً."),
 }
 
 

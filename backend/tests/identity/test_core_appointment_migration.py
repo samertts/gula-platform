@@ -22,8 +22,18 @@ def test_core_appointment_schema_has_integrity_guards() -> None:
             "core_appointment_slots",
             "core_appointments",
             "core_appointment_idempotency",
+            "core_encounters",
+            "core_encounter_queue",
+            "core_clinical_notes",
         }
         assert expected_tables.issubset(tables)
+
+        encounter_columns = {column["name"] for column in inspector.get_columns("core_encounters")}
+        assert {"appointment_id", "patient_person_id", "provider_account_id", "organization_id", "facility_id", "workspace_id", "status", "version"}.issubset(encounter_columns)
+        queue_columns = {column["name"] for column in inspector.get_columns("core_encounter_queue")}
+        assert {"encounter_id", "organization_id", "facility_id", "workspace_id", "status", "position", "version"}.issubset(queue_columns)
+        note_columns = {column["name"] for column in inspector.get_columns("core_clinical_notes")}
+        assert {"note_id", "encounter_id", "patient_person_id", "author_account_id", "status", "version", "amendment_reason", "supersedes_id"}.issubset(note_columns)
 
         slot_columns = {column["name"] for column in inspector.get_columns("core_appointment_slots")}
         assert {
@@ -41,6 +51,13 @@ def test_core_appointment_schema_has_integrity_guards() -> None:
             "organization_id", "facility_id", "workspace_id", "slot_id",
             "state", "version", "purpose",
         }.issubset(appointment_columns)
+
+        encounter_unique = {constraint["name"] for constraint in inspector.get_unique_constraints("core_encounters")}
+        queue_unique = {constraint["name"] for constraint in inspector.get_unique_constraints("core_encounter_queue")}
+        note_unique = {constraint["name"] for constraint in inspector.get_unique_constraints("core_clinical_notes")}
+        assert "uq_core_encounter_appointment" in encounter_unique
+        assert "uq_core_encounter_queue_encounter" in queue_unique
+        assert "uq_core_clinical_note_version" in note_unique
 
         slot_unique = {constraint["name"] for constraint in inspector.get_unique_constraints("core_appointment_slots")}
         appointment_unique = {constraint["name"] for constraint in inspector.get_unique_constraints("core_appointments")}
@@ -74,6 +91,13 @@ def test_core_appointment_schema_has_integrity_guards() -> None:
             ("core_appointment_slots", "id"),
         }.issubset(appointment_fks)
 
+        encounter_checks = {constraint["name"] for constraint in inspector.get_check_constraints("core_encounters")}
+        queue_checks = {constraint["name"] for constraint in inspector.get_check_constraints("core_encounter_queue")}
+        note_checks = {constraint["name"] for constraint in inspector.get_check_constraints("core_clinical_notes")}
+        assert {"ck_core_encounter_status", "ck_core_encounter_version_positive"}.issubset(encounter_checks)
+        assert {"ck_core_encounter_queue_status", "ck_core_encounter_queue_version_positive"}.issubset(queue_checks)
+        assert {"ck_core_clinical_note_status", "ck_core_clinical_note_version_positive"}.issubset(note_checks)
+
         index_names = {index["name"] for index in inspector.get_indexes("core_appointments")}
         assert {"ix_core_appointment_patient_scope", "ix_core_appointment_provider_scope"}.issubset(index_names)
 
@@ -81,9 +105,9 @@ def test_core_appointment_schema_has_integrity_guards() -> None:
             permission_count = connection.execute(
                 text(
                     "SELECT COUNT(*) FROM niam_permissions "
-                    "WHERE permission_key IN ('appointment.request','appointment.confirm','appointment.slot.manage','appointment.read')",
+                    "WHERE permission_key IN ('appointment.request','appointment.confirm','appointment.slot.manage','appointment.read','encounter.checkin','encounter.manage','encounter.read','clinical.note.write','clinical.note.sign','clinical.note.amend')",
                 ),
             ).scalar_one()
-        assert permission_count == 4
+        assert permission_count == 10
     finally:
         engine.dispose()

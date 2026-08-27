@@ -21,6 +21,14 @@
 | قائمة المواعيد | `GET /api/v1/appointments` | scoped query، pagination، owner/provider visibility عند غياب read permission |
 | قائمة الفترات | `GET /api/v1/appointments/slots` | scoped query، time filtering، pagination، available-only |
 
+## Vertical Slice 02 — Check-in وEncounter وClinical Note
+
+أُضيفت حزمة `backend/app/clinical/encounters/` كمسار canonical منفصل. ينشئ `POST /api/v1/encounters/check-in` Encounter وQueue entry بحالة `CHECKED_IN/WAITING` داخل transaction واحدة، ثم يدعم `start` و`complete` مع `If-Match` وidempotency وprovider/object authorization. لا يسمح المسار بإنشاء Encounter مزدوجاً لنفس Appointment بسبب unique constraint وrow lock.
+
+يدعم Clinical Note إنشاء `DRAFT`، والتحديث بإصدار متوقع، و`COMPLETED` و`SIGNED`، ثم amendment immutable بحالة `AMENDED` و`supersedes_id` وسبب إلزامي. لا يوجد تعديل مباشر بعد SIGNED. كل العمليات تمر عبر `SyncCanonicalAuditService`، وتستخدم صلاحيات `encounter.checkin`, `encounter.manage`, `encounter.read`, `clinical.note.write`, `clinical.note.sign`, و`clinical.note.amend` ضمن scope.
+
+أُضيفت migration additive `20260827_0011_core_encounter_note_slice.py` لجداول `core_encounters` و`core_encounter_queue` و`core_clinical_notes` مع FKs وchecks وunique/indexes. بقيت الجداول legacy دون حذف. واختير `app.national.domain.facility.Facility` كـcanonical owner لـ`national_facilities`، وأزيل ORM duplicate من `clinical_scope.py` مع إبقاء bridge opaque وFK migration-only.
+
 ## Identity وSession وWorkspace
 
 تُعاد الاستفادة من NIAM القائم عبر `get_current_niam_actor_sync` و`Account` و`UserSession` و`WorkspaceSessionContext` و`Membership` و`RoleAssignment` و`RolePermission`. يتحقق `AppointmentAuthorizationService` من نشاط الحساب والجلسة وعدم انتهائها، ومن تطابق session مع account، ومن workspace context، ومن نشاط organization/facility/workspace/membership، ومن permission المرتبطة بـrole داخل scope.
@@ -52,14 +60,15 @@
 | البند | الحالة | الدليل |
 |---|---|---|
 | Architecture reconciliation | `READY_FOR_REVIEW` | ADR والخريطة بين National Scheduling وcanonical model |
-| Domain/model/state machine | `BUILDING` | models و`clinical_core.py` واختبارات transition |
-| API/error contract | `TESTING` | typed DTOs وFastAPI routes وAPI tests |
+| Domain/model/state machine | `TESTING` | models و`clinical_core.py` واختبارات Appointment وEncounter/Note transition |
+| API/error contract | `TESTING` | typed DTOs وFastAPI routes لـAppointment وEncounter/Note وAPI tests |
 | Authorization/tenant/IDOR | `TESTING` | workspace/membership/object filters وnegative tests |
 | Idempotency/version | `TESTING` | replay وpayload conflict وstale If-Match tests |
 | Audit | `TESTING` | CanonicalAuditService وassertions على denial/success |
-| Synthetic Golden Path | `TESTING` | 5 synthetic tests و6 API tests تشمل context/session/error/rate-limit |
-| Full backend regression | `LOCAL_PASS` | `2791 passed, 5 skipped, 165 warnings`، exit code `0` من الشجرة النهائية |
-| Migration | `EXTERNAL_DEPENDENCY` | migration موجودة، تحقق PostgreSQL مشروط بـ`MIGRATION_DATABASE_URL` |
+| Synthetic Golden Path | `TESTING` | 5 synthetic tests و6 Appointment API tests و3 Encounter/Note API tests تشمل context/session/error/rate-limit |
+| Slice 02 focused regression | `LOCAL_PASS` | 35 passed، 1 skipped، ويشمل Encounter/Note وAppointment وcontracts وread-gate وmigration-chain |
+| Full backend regression | `LOCAL_PASS` | `2794 passed, 5 skipped, 165 warnings in 309.26s`، وexit code `0` ملتقط من الشجرة الحالية بعد Slice 02 |
+| Migration | `EXTERNAL_DEPENDENCY` | migration 0010/0011 موجودتان، تحقق PostgreSQL الفعلي مشروط بـ`MIGRATION_DATABASE_URL`؛ Docker غير متوفر محلياً |
 | Engineering Inventory | `TESTING` | `backend/scripts/engineering_inventory.py` يصدر JSON advisory عن routes/models/migration/evidence gaps |
 | Performance | `IMPROVING` | request timing logs؛ لا يوجد baseline PostgreSQL متعدد العمال بعد |
 | Frontend integration | `DISCOVERED` | allowlist لم تُفتح، Demo بقي read-only |

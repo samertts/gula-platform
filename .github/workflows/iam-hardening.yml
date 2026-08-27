@@ -106,7 +106,7 @@ jobs:
         run: |
           set -o pipefail
           cd backend
-          python -m pytest tests/identity/test_workspace_migration_phase5.py tests/identity/test_membership_migration_phase6.py tests/identity/test_security_audit_migration_phase9.py tests/identity/test_clinical_gateway_migration_phase10b.py -q --junitxml=../artifacts/pytest-migration.xml 2>&1 | tee ../artifacts/pytest-migration.log
+          python -m pytest tests/identity/test_workspace_migration_phase5.py tests/identity/test_membership_migration_phase6.py tests/identity/test_security_audit_migration_phase9.py tests/identity/test_clinical_gateway_migration_phase10b.py tests/identity/test_core_appointment_migration.py -q --junitxml=../artifacts/pytest-migration.xml 2>&1 | tee ../artifacts/pytest-migration.log
       - name: Verify reversible workspace migration
         run: |
           set -o pipefail
@@ -114,6 +114,11 @@ jobs:
           alembic downgrade 20260814_0002 2>&1 | tee ../artifacts/alembic-downgrade.log
           alembic upgrade head 2>&1 | tee ../artifacts/alembic-reupgrade.log
           alembic current 2>&1 | tee ../artifacts/alembic-reupgrade-current.log
+      - name: Run isolated canonical appointment and encounter contract tests
+        run: |
+          set -o pipefail
+          cd backend
+          python -m pytest tests/test_core_appointment_api.py tests/test_core_encounter_api.py -q --junitxml=../artifacts/pytest-core-journeys.xml 2>&1 | tee ../artifacts/pytest-core-journeys.log
       - name: Upload migration evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

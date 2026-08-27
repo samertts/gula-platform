@@ -143,6 +143,7 @@ def import_all_models() -> None:
     )
     from .capabilities.fhir_interoperability.models import FHIRResourceRecord  # noqa: F401
     from .clinical.appointments import models as appointment_models  # noqa: F401
+    from .clinical.encounters import models as encounter_models  # noqa: F401
     from .devices.models import (  # noqa: F401
         DeviceConnector,
         DeviceEvent,
@@ -832,6 +833,9 @@ def _register_routes(app: FastAPI) -> None:
 
     from .clinical_gateway.routes import router as clinical_gateway_router
     app.include_router(clinical_gateway_router)
+
+    from .clinical.encounters.routes import router as clinical_encounters_router
+    app.include_router(clinical_encounters_router)
 
     from .routes.authorization import router as authorization_router
     app.include_router(authorization_router)

@@ -224,6 +224,75 @@ def scan_repository(repo_root: str | Path) -> EngineeringInventoryReport:
                 status="TESTING",
             ),
         )
+    encounter_files = (
+        root / "backend/app/clinical/encounters/models.py",
+        root / "backend/app/clinical/encounters/schemas.py",
+        root / "backend/app/clinical/encounters/authorization.py",
+        root / "backend/app/clinical/encounters/service.py",
+        root / "backend/app/clinical/encounters/routes.py",
+    )
+    encounter_present = tuple(str(path.relative_to(root)) for path in encounter_files if path.exists())
+    missing_encounter = tuple(str(path.relative_to(root)) for path in encounter_files if not path.exists())
+    encounter_migrations = tuple((backend / "migrations/versions").glob("*encounter*")) if (backend / "migrations/versions").exists() else ()
+    encounter_tokens = {
+        "authorization": "require_provider",
+        "audit": "SyncCanonicalAuditService",
+        "idempotency": "Idempotency-Key",
+        "concurrency": "with_for_update",
+        "versioning": "expected_version",
+        "state_machine": "require_transition",
+    }
+    for evidence, token in encounter_tokens.items():
+        evidence_files = tuple(str(path.relative_to(root)) for path in encounter_files if token in texts.get(path, ""))
+        if not evidence_files:
+            findings.append(
+                InventoryFinding(
+                    detected=f"missing_encounter_{evidence}",
+                    why=f"لم يجد فاحص Encounter token evidence صريحاً: {token}.",
+                    impact="قد توجد كتابة سريرية بلا الضابط المطلوب أو لا يمكن إثباته من inventory.",
+                    recommended_fix=f"راجع Check-in/Encounter/Clinical Note وأضف evidence واختبار regression لـ{evidence}.",
+                    test_required=f"Encounter {evidence} negative/integration test",
+                    status="REPAIRING",
+                    files=encounter_present,
+                ),
+            )
+    if missing_encounter:
+        findings.append(
+            InventoryFinding(
+                detected="encounter_contract_mismatch",
+                why="Canonical encounter package ناقص بالنسبة إلى الملفات المتوقعة.",
+                impact="قد لا يتطابق model أو service أو route أو authorization أو schema.",
+                recommended_fix="أكمل contract bundle قبل فتح frontend clinical write integration.",
+                test_required="Encounter API contract and import smoke test",
+                status="BUILDING",
+                files=missing_encounter,
+            ),
+        )
+    if not encounter_migrations:
+        findings.append(
+            InventoryFinding(
+                detected="missing_encounter_migration",
+                why="لم يجد inventory migration لجداول encounter/clinical note canonical.",
+                impact="قد تعمل الاختبارات على create_all بينما بيئة PostgreSQL لا تملك schema.",
+                recommended_fix="أضف additive migration وPostgreSQL schema gate قبل staging.",
+                test_required="Encounter PostgreSQL migration test",
+                status="BUILDING",
+                files=encounter_present,
+            ),
+        )
+    else:
+        findings.append(
+            InventoryFinding(
+                detected="encounter_migration_present",
+                why="وجد inventory migration canonical encounter/note.",
+                impact="وجود الملف لا يثبت تطبيقه على PostgreSQL أو rollback فعلياً.",
+                recommended_fix="شغّل migration وdowngrade/re-upgrade في PostgreSQL disposable واحتفظ بملفات الدليل.",
+                test_required="PostgreSQL encounter schema/rollback test",
+                status="EXTERNAL_DEPENDENCY",
+                files=tuple(str(path.relative_to(root)) for path in encounter_migrations),
+            ),
+        )
+
     findings.append(
         InventoryFinding(
             detected="production_evidence_gap",

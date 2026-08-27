@@ -38,3 +38,19 @@
 ## Definition of Evidence
 
 نجاح الاختبارات المحلية يثبت contract وsemantics في بيئة الاختبار فقط. لا يُرقّى status إلى `READY_FOR_STAGING` أو `READY_FOR_PRODUCTION` إلا بعد تشغيل migration وsecurity وperformance وrollback على بيئة مصرح بها، ونجاح remote CI وstaging smoke. أي فشل مستقبلي يجب أن يسجل المشكلة والسبب والملفات والتأثير والإصلاح واختبار regression في remediation report.
+
+## ملحق Slice 02 — Check-in / Encounter / Clinical Note
+
+| الفئة | الحالة | الدليل المحلي الحالي | حالة PostgreSQL/production-like |
+|---|---|---:|---|
+| Check-in | confirmed appointment → CHECKED_IN | مثبت | يحتاج PostgreSQL schema gate وAPI integration |
+| Queue | check-in ينشئ WAITING ثم start/complete يحدّث الحالة | مثبت | multi-worker queue race غير مثبت |
+| Encounter | stale If-Match وinvalid transition | مثبت جزئياً عبر API | يلزم إثبات multi-connection |
+| Clinical Note | DRAFT → COMPLETED → SIGNED | مثبت | يلزم تشغيل schema gate على PostgreSQL |
+| Amendment | signed note → immutable AMENDED version مع reason | مثبت | يلزم transaction/rollback proof على PostgreSQL |
+| IDOR | wrong workspace وobject scope | مثبت | يلزم matrix أوسع عبر org/facility في staging |
+| Audit | check-in/create/sign/amend events | مثبت محلياً | يلزم tamper/retention verification في البيئة المستهدفة |
+| Mobile/Desktop | نفس domain contract | لم تُفتح Live writes | خارج نطاق هذه الموجة |
+| Offline clinical writes | لا writes غير متصلة | policy maintained | sync authorization مؤجل |
+
+اختبارات Slice 02 الجديدة هي `backend/tests/test_core_encounter_api.py`، وتغطي golden path وreplay وstale version وcross-workspace denial وsigned-note direct patch denial وqueue state وaudit existence. اختبار PostgreSQL schema gate في `backend/tests/identity/test_core_appointment_migration.py` يطلب رأس Alembic 0011؛ عند غياب `MIGRATION_DATABASE_URL` يتجاوز الاختبار بأمان ولا يختلق دليلاً.

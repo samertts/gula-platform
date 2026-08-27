@@ -240,20 +240,36 @@
       "migration": "backend/migrations/versions/20260827_0010_core_appointment_vertical_slice.py",
       "status": "local-api-evidence-only"
     },
+    "canonical_encounter_slice": {
+      "models": "backend/app/clinical/encounters/models.py",
+      "schemas": "backend/app/clinical/encounters/schemas.py",
+      "authorization": "backend/app/clinical/encounters/authorization.py",
+      "service": "backend/app/clinical/encounters/service.py",
+      "routes": "backend/app/clinical/encounters/routes.py",
+      "migration": "backend/migrations/versions/20260827_0011_core_encounter_note_slice.py",
+      "status": "local-api-evidence-only"
+    },
+    "architectural_drift_fix": {
+      "canonical_owner": "backend/app/national/domain/facility.py",
+      "bridge": "backend/app/models/clinical_scope.py",
+      "status": "duplicate_orm_owner_removed_non_destructively"
+    },
     "tests": [
       "backend/tests/test_clinical_core_contracts.py",
       "backend/tests/test_contract_engineering_intelligence.py",
       "backend/tests/test_engineering_inventory.py",
       "backend/tests/test_synthetic_core_backend.py",
       "backend/tests/test_core_appointment_api.py",
-      "backend/tests/identity/test_core_appointment_migration.py"
+      "backend/tests/test_core_encounter_api.py",
+      "backend/tests/identity/test_core_appointment_migration.py",
+      "backend/tests/test_migrations.py"
     ],
-    "local_focused_result": "18 passed, 1 skipped",
-    "full_backend_result": "2791 passed, 5 skipped, 165 warnings in 306.39s; exit code 0 captured from the final tree after final fingerprint change",
+    "local_focused_result": "35 passed, 1 skipped for Appointment/Encounter/contracts/inventory/read-gate/migration-chain focused run",
+    "full_backend_result": "2794 passed, 5 skipped, 165 warnings in 309.26s; exit code 0 captured from the current tree after Slice 02",
     "status": "development-and-local-test-evidence-only",
     "not_production_ready": true,
     "missing_for_production": [
-      "PostgreSQL migration execution and schema evidence",
+      "PostgreSQL migration execution and schema evidence for 0010 and 0011",
       "multi-connection database concurrency evidence",
       "rate-limit capacity and 429 evidence under production-like load",
       "database-backed object authorization integration review",

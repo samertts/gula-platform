@@ -109,3 +109,14 @@
 ## التوافق والتراجع
 
 تبقى National Scheduling tables وroutes القديمة دون حذف. migration الجديدة additive. يتم الانتقال المستقبلي عبر `add → backfill → validate → shadow-read → switch → deprecate → remove` مع rollback plan منفصل. لا توجد migration تلقائية إلى الإنتاج من هذا العقد.
+
+
+## ملحق Vertical Slice 02 — Check-in → Encounter → Clinical Note
+
+هذا الملحق يضيف المسار السريري فوق Appointment canonical ولا يحول الموعد إلى زيارة. يتم تسجيل الحضور عبر `POST /api/v1/encounters/check-in` باستخدام `Idempotency-Key` و`appointment_id` و`workspace_id`. تنشئ العملية `CoreEncounter` بحالة `CHECKED_IN` و`CoreEncounterQueueEntry` بحالة `WAITING` داخل transaction واحدة، وتنتقل حالة الموعد إلى `CHECKED_IN`.
+
+تتبع الزيارة الحالات `PLANNED → CHECKED_IN → IN_PROGRESS → COMPLETED`، مع `CANCELLED` كحالة نهائية مسموحة حيث ينطبق ذلك. الانتقال إلى `IN_PROGRESS` أو `COMPLETED` متاح عبر `POST /api/v1/encounters/{id}/start` و`POST /api/v1/encounters/{id}/complete`، ويتطلب `If-Match` و`Idempotency-Key` وprovider permission داخل نفس organization/facility/workspace. لا يسمح النظام بـlast-write-wins.
+
+تنشأ الملاحظة عبر `POST /api/v1/encounters/{id}/notes` بحالة `DRAFT`. يدعم العقد `PATCH /api/v1/clinical-notes/{id}` و`POST .../complete` و`POST .../sign`، وكلها تتطلب سياق provider والنسخة المتوقعة. بعد `SIGNED` لا يوجد patch مباشر؛ يستخدم العميل `POST .../amend` مع سبب، فينشأ immutable version جديد بحالة `AMENDED` و`supersedes_id` وتدقيق قبل/بعد. لا يمثل sign تلقائياً توقيعاً قانونياً؛ هو clinical sign intent مع session assurance وauthorization وaudit، والتوقيع الرقمي اللاحق adapter منفصل.
+
+الـlegacy `national_encounters` و`ehr_clinical_notes` لم تُحذف ولم تُوصل مباشرة بهذه routes. أي mapping مستقبلي يجب أن يمر عبر add/backfill/validate/shadow-read/switch/deprecate/remove مع evidence مستقل.

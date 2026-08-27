@@ -179,15 +179,25 @@ TASK = ContractDefinition(
 ENCOUNTER = ContractDefinition(
     contract_id="CONTRACT-009",
     domain="encounter",
-    states=("DRAFT", "IN_PROGRESS", "COMPLETED", "SIGNED", "AMENDMENT", "CANCELLED"),
-    transitions={"DRAFT": ("IN_PROGRESS", "CANCELLED"), "IN_PROGRESS": ("COMPLETED",), "COMPLETED": ("SIGNED",), "SIGNED": ("AMENDMENT",), "AMENDMENT": ("SIGNED",), "CANCELLED": ()},
+    states=("PLANNED", "CHECKED_IN", "DRAFT", "IN_PROGRESS", "COMPLETED", "SIGNED", "AMENDMENT", "AMENDED", "CANCELLED"),
+    transitions={
+        "PLANNED": ("CHECKED_IN", "CANCELLED"),
+        "CHECKED_IN": ("IN_PROGRESS", "CANCELLED"),
+        "DRAFT": ("IN_PROGRESS", "CANCELLED"),
+        "IN_PROGRESS": ("COMPLETED",),
+        "COMPLETED": ("SIGNED",),
+        "SIGNED": ("AMENDMENT", "AMENDED"),
+        "AMENDMENT": ("SIGNED",),
+        "AMENDED": ("SIGNED",),
+        "CANCELLED": (),
+    },
 )
 
 CLINICAL_NOTE = ContractDefinition(
     contract_id="CONTRACT-010",
     domain="clinical-note",
-    states=("DRAFT", "IN_PROGRESS", "COMPLETED", "SIGNED", "AMENDMENT"),
-    transitions={"DRAFT": ("IN_PROGRESS", "COMPLETED"), "IN_PROGRESS": ("COMPLETED",), "COMPLETED": ("SIGNED",), "SIGNED": ("AMENDMENT",), "AMENDMENT": ("SIGNED",)},
+    states=("DRAFT", "IN_PROGRESS", "COMPLETED", "SIGNED", "AMENDMENT", "AMENDED"),
+    transitions={"DRAFT": ("IN_PROGRESS", "COMPLETED"), "IN_PROGRESS": ("COMPLETED",), "COMPLETED": ("SIGNED",), "SIGNED": ("AMENDMENT", "AMENDED"), "AMENDMENT": ("SIGNED",), "AMENDED": ("SIGNED",)},
 )
 
 LAB_ORDER = ContractDefinition(

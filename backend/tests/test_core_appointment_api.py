@@ -162,6 +162,12 @@ def appointment_context(client: TestClient, db):
         "appointment.confirm",
         "appointment.slot.manage",
         "appointment.read",
+        "encounter.checkin",
+        "encounter.manage",
+        "encounter.read",
+        "clinical.note.write",
+        "clinical.note.sign",
+        "clinical.note.amend",
     ):
         permission = db.query(Permission).filter(Permission.permission_key == key).first()
         if permission is None:
