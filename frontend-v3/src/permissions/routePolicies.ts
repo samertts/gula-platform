@@ -100,6 +100,7 @@ export type RouteRolePolicy = readonly UserRole[];
 export const ROUTE_ROLE_POLICIES = {
   "/patients": STAFF_ROLES,
   "/patient-management": READONLY_ROLES,
+  "/screen-by-screen": READONLY_ROLES,
   "/organization-workspace": ORGANIZATION_ROLES,
   "/lab-operations": LAB_OPERATIONS_ROLES,
   "/orders": STAFF_ROLES,

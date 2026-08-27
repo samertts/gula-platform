@@ -86,6 +86,7 @@ const CommandCenterApiPageLazy = lazy(() => import("@/pages/command-center/Comma
 const CommandIntelligencePageLazy = lazy(() => import("@/pages/command-intelligence/CommandIntelligencePage"));
 const ControlPlanePageLazy = lazy(() => import("@/pages/control-plane/ControlPlanePage"));
 const AcuteCareOperationsWorkspacePageLazy = lazy(() => import("@/pages/acute-care/AcuteCareOperationsWorkspacePage"));
+const ScreenByScreenPageLazy = lazy(() => import("@/pages/screen-by-screen/ScreenByScreenPage"));
 const HealthDataPageLazy = lazy(() => import("@/pages/health-data/HealthDataPage"));
 const IntegrationPageLazy = lazy(() => import("@/pages/integration/IntegrationPage"));
 const IntegrationConnectorsPageLazy = lazy(() => import("@/pages/integration/connectors/IntegrationConnectorsPage"));
@@ -213,6 +214,7 @@ export const router = createBrowserRouter([
       { path: "command-intelligence", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CommandIntelligencePageLazy /></LazyPage></RoleGuard> },
       { path: "control-plane", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><ControlPlanePageLazy /></LazyPage></RoleGuard> },
       { path: "acute-care-operations", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "screen-by-screen", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><ScreenByScreenPageLazy /></LazyPage></RoleGuard> },
       { path: "critical-care", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "ems", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "health-data", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><HealthDataPageLazy /></LazyPage></RoleGuard> },

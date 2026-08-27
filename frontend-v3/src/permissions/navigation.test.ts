@@ -26,6 +26,13 @@ describe("التنقل العربي الأساسي في GULA", () => {
     expect(ar.nav.reports).toBe("التقارير");
   });
 
+  it("يسجل معرض الشاشات كمدخل قراءة فقط ولا يمنحه للمواطن", () => {
+    const galleryItem = (NAV_ITEMS.main ?? []).find((item) => item.path === "/screen-by-screen");
+    expect(galleryItem).toMatchObject({ label: "معرض الشاشات الفعلية", roles: expect.any(Array) });
+    expect(getRouteRoles("/screen-by-screen")).toEqual(expect.arrayContaining(["doctor", "staff", "demo_viewer"]));
+    expect(getRouteRoles("/screen-by-screen")).not.toContain("citizen");
+  });
+
   it("لا يطلب سطح التقارير صلاحية تشغيلية غير موثقة", () => {
     const reportsItem = (NAV_ITEMS.main ?? []).find((item) => item.path === "/reports");
 

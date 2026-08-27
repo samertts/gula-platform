@@ -155,7 +155,7 @@ export interface ClinicalTimelineEvent {
   date: string;
   label: string;
   description?: string;
-  status?: ClinicalSurfaceState | "critical";
+  status?: ClinicalSurfaceState | "critical" | "urgent" | "routine" | "safe" | "restricted";
 }
 
 export function ClinicalTimeline({ events, emptyMessage = "لا توجد أحداث ضمن النطاق الحالي.", className }: { events: ClinicalTimelineEvent[]; emptyMessage?: string; className?: string }) {

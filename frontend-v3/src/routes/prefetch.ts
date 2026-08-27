@@ -13,6 +13,7 @@ const routeLoaders: Record<string, RouteLoader> = {
   "/clinic-operations": () => import("@/pages/clinic/ClinicOperationsWorkspacePage"),
   "/hospital-operations": () => import("@/pages/hospital/HospitalOperationsWorkspacePage"),
   "/acute-care-operations": () => import("@/pages/acute-care/AcuteCareOperationsWorkspacePage"),
+  "/screen-by-screen": () => import("@/pages/screen-by-screen/ScreenByScreenPage"),
   "/pharmacy-operations": () => import("@/pages/pharmacy/PharmacyOperationsWorkspacePage"),
 };
 

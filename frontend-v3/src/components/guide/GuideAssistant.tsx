@@ -53,6 +53,10 @@ const routeTips: Record<string, { ar: string; en: string }[]> = {
     { ar: "الصرف والإعطاء عمليتان مختلفتان؛ لا تحولهما الواجهة إلى زر واحد.", en: "Dispensing and administration are distinct; the UI never collapses them into one action." },
     { ar: "الأدوية الخاضعة للرقابة تحتاج تحققًا وسياسة خادمية متخصصة.", en: "Controlled medicines require specialized server-side verification and policy." },
   ],
+  "/screen-by-screen": [
+    { ar: "هذا معرض تصميم وتفاعل اصطناعي؛ لا يمثل ملفاً صحياً أو صلاحية حقيقية.", en: "This is a synthetic design and interaction gallery; it is not a real health record or permission." },
+    { ar: "اختر الدور ثم الشاشة لمراجعة حالات loading وempty وgated وresponsive.", en: "Choose a role and screen to review loading, empty, gated, and responsive states." },
+  ],
 };
 
 export function GuideAssistant() {

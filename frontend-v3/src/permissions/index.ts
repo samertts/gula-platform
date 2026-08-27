@@ -135,6 +135,7 @@ export type NavigationItem = {
 export const NAV_ITEMS: Record<string, NavigationItem[]> = {
   main: [
     { label: "nav.dashboard", path: "/dashboard", icon: "LayoutDashboard", permissions: ["dashboard:read"] },
+    { label: "معرض الشاشات الفعلية", path: "/screen-by-screen", icon: "Monitor", roles: READONLY_ROLES },
     { label: "مركز هويتي ومساحاتي", path: "/my-record", icon: "UserCircle" },
     { label: "بوابة المؤسسة الصحية", path: "/organization-workspace", icon: "Building2", permissions: ["dashboard:read"], roles: ORGANIZATION_ROLES },
     { label: "nav.citizenWorkspace", path: "/citizen", icon: "UserCircle", permissions: ["citizen:workspace"], roles: ROUTE_ROLE_POLICIES["/citizen"] },
