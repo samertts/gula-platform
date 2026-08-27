@@ -319,13 +319,14 @@
       "scope": "local disposable evidence only; no HA/failover or production capacity proof"
     },
     "remote_ci_observation": {
-      "head": "28bd319ae95a1394f4cad143ae4ba4783262095d",
-      "iam_hardening_run": "33116654019",
-      "frontend_bundle_budget_run": "33116654036",
+      "head": "b5ca73bf628af12064af3e251a507d6696f0e5d7",
+      "iam_hardening_run": "33122077174",
+      "frontend_bundle_budget_run": "33122077172",
       "conclusion": "failure",
       "job_steps": "all jobs reported steps=[] through GitHub API",
       "observed_duration": "about five seconds",
-      "classification": "external runner-level blocker; no application step or log failure was observable"
+      "classification": "external runner-level blocker; no application step or log failure was observable",
+      "job_summary": "IAM: 4 jobs failed before steps; Frontend Bundle Budget: 1 job failed before steps; all jobs reported steps=[]"
     },
     "engineering_inventory_evidence": {
       "scanned_files": 1947,
