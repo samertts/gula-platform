@@ -293,6 +293,118 @@ def scan_repository(repo_root: str | Path) -> EngineeringInventoryReport:
             ),
         )
 
+    domain_bundles = (
+        (
+            "laboratory",
+            (
+                root / "backend/app/clinical/laboratory/models.py",
+                root / "backend/app/clinical/laboratory/authorization.py",
+                root / "backend/app/clinical/laboratory/service.py",
+                root / "backend/app/clinical/laboratory/routes.py",
+            ),
+            {
+                "authorization": "require_permission",
+                "audit": "SyncCanonicalAuditService",
+                "state_machine": "require_transition",
+                "idempotency": "_claim",
+                "version": "expected_version",
+                "concurrency": "with_for_update",
+                "pagination": "offset",
+                "chain_of_custody": "CoreSpecimenEvent",
+            },
+            root / "backend/tests/test_core_lab_result_access_api.py",
+        ),
+        (
+            "result",
+            (
+                root / "backend/app/clinical/results/models.py",
+                root / "backend/app/clinical/results/service.py",
+                root / "backend/app/clinical/results/routes.py",
+            ),
+            {
+                "authorization": "require_result_operator",
+                "audit": "SyncCanonicalAuditService",
+                "state_machine": "require_transition",
+                "idempotency": "_claim",
+                "version": "expected_version",
+                "provenance": "provenance_type",
+                "critical_policy": "CRITICAL_ACK_REQUIRED",
+                "immutable_correction": "supersedes_id",
+            },
+            root / "backend/tests/test_core_lab_result_access_api.py",
+        ),
+        (
+            "access",
+            (
+                root / "backend/app/clinical/access/models.py",
+                root / "backend/app/clinical/access/service.py",
+                root / "backend/app/clinical/access/routes.py",
+            ),
+            {
+                "authorization": "resolve_scope",
+                "audit": "ACCESS_DENIED",
+                "state_machine": "REVOKED",
+                "idempotency": "_claim",
+                "version": "expected_version",
+                "pagination": "offset",
+                "expiry": "expires_at",
+                "purpose": "purpose",
+                "scope": "scope_payload",
+                "history": "CoreAccessHistory",
+            },
+            root / "backend/tests/test_core_lab_result_access_api.py",
+        ),
+    )
+    for domain, bundle_files, tokens, test_file in domain_bundles:
+        present = tuple(str(path.relative_to(root)) for path in bundle_files if path.exists())
+        for evidence, token in tokens.items():
+            evidence_files = tuple(str(path.relative_to(root)) for path in bundle_files if token in texts.get(path, ""))
+            if not evidence_files:
+                findings.append(
+                    InventoryFinding(
+                        detected=f"missing_{domain}_{evidence}",
+                        why=f"لم يجد فاحص {domain} token evidence صريحاً: {token}.",
+                        impact=f"لا يمكن إثبات ضابط {evidence} في {domain} من inventory.",
+                        recommended_fix=f"أضف evidence قابل القراءة واختبار regression لـ{domain}/{evidence}.",
+                        test_required=f"{domain} {evidence} negative/integration test",
+                        status="REPAIRING",
+                        files=present,
+                    ),
+                )
+        if not test_file.exists():
+            findings.append(
+                InventoryFinding(
+                    detected=f"missing_{domain}_regression_test",
+                    why=f"لم يجد inventory اختبار API مركزي لـ{domain}.",
+                    impact="قد توجد semantics صحيحة نظرياً بلا إثبات قابل لإعادة التشغيل.",
+                    recommended_fix="أضف API/security/negative/concurrency regression tests.",
+                    test_required=f"{domain} regression suite",
+                    status="TESTING",
+                    files=present,
+                ),
+            )
+
+    legacy_lab_routes = tuple(
+        str(path.relative_to(root))
+        for path in (
+            root / "backend/app/routes/results.py",
+            root / "backend/app/routes/test_results.py",
+        )
+        if path.exists()
+    )
+    if legacy_lab_routes:
+        findings.append(
+            InventoryFinding(
+                detected="legacy_lab_route",
+                why="توجد مسارات legacy للمختبر/النتائج إلى جانب canonical Lab/Result Core.",
+                impact="قد يحدث اختلاف في authorization أو state أو exposure إذا استُخدمت المسارات القديمة للرحلة الجديدة.",
+                recommended_fix="أبقِ legacy خلف deprecation/compatibility policy واستخدم canonical routes للكتابات السريرية الجديدة.",
+                test_required="legacy-to-canonical route contract and authorization test",
+                status="EXTERNAL_DEPENDENCY",
+                files=legacy_lab_routes,
+            ),
+        )
+
     findings.append(
         InventoryFinding(
             detected="production_evidence_gap",

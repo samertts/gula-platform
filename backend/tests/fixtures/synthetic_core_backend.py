@@ -116,6 +116,11 @@ class SyntheticCoreBackend:
         self._used_slots: dict[tuple[str, str], str] = {}
         self.audit: list[SyntheticAuditEvent] = []
         self._booking_lock = Lock()
+        self._clinical_lock = Lock()
+        self._specimen_idempotency: dict[tuple[str, str], str] = {}
+        self._result_idempotency: dict[tuple[str, str], str] = {}
+        self._consent_idempotency: dict[tuple[str, str], str] = {}
+        self.access_history: list[dict[str, Any]] = []
 
     def register_identity(self, *, account_id: str, person_id: str, kind: str = "citizen") -> SyntheticIdentity:
         identity = SyntheticIdentity(str(uuid4()), account_id, person_id, kind)
@@ -239,53 +244,100 @@ class SyntheticCoreBackend:
         self._audit(actor, "lab-order.placed", "lab-order", order.id, "DRAFT", order.state, order.version)
         return order
 
-    def collect_and_receive_specimen(self, actor: SyntheticActor, order_id: str) -> SyntheticRecord:
+    def collect_and_receive_specimen(self, actor: SyntheticActor, order_id: str, *, idempotency_key: str | None = None) -> SyntheticRecord:
+        self._require_active_context(actor, "specimen:collect")
         order = self._get(self.lab_orders, order_id)
         self._require(actor, "lab_technician" in actor.roles and actor.organization_id == order.fields["organization_id"], "specimen:collect")
-        self._transition(order, LAB_ORDER, "ACCEPTED")
-        self._transition(order, LAB_ORDER, "IN_PROGRESS")
-        specimen = SyntheticRecord(str(uuid4()), "ORDERED", fields={"order_id": order.id, "patient_id": order.fields["patient_id"], "collector_id": actor.id, "receiver_id": actor.id, "organization_id": actor.organization_id, "barcode": f"SYN-{uuid4().hex[:8].upper()}"})
-        self._transition(specimen, SPECIMEN, "COLLECTED")
-        self._transition(specimen, SPECIMEN, "RECEIVED")
-        self._transition(specimen, SPECIMEN, "PROCESSING")
-        self._transition(specimen, SPECIMEN, "ANALYZING")
-        self.specimens[specimen.id] = specimen
-        self._audit(actor, "specimen.received", "specimen", specimen.id, "COLLECTED", specimen.state, specimen.version)
-        return specimen
+        with self._clinical_lock:
+            if idempotency_key:
+                existing_id = self._specimen_idempotency.get((actor.id, idempotency_key))
+                if existing_id:
+                    return self.specimens[existing_id]
+            existing = next((item for item in self.specimens.values() if item.fields.get("order_id") == order.id), None)
+            if existing:
+                raise SyntheticConflictError("specimen already exists")
+            self._transition(order, LAB_ORDER, "ACCEPTED")
+            self._transition(order, LAB_ORDER, "IN_PROGRESS")
+            specimen = SyntheticRecord(str(uuid4()), "ORDERED", fields={"order_id": order.id, "patient_id": order.fields["patient_id"], "collector_id": actor.id, "receiver_id": actor.id, "organization_id": actor.organization_id, "barcode": f"SYN-{uuid4().hex[:8].upper()}"})
+            self._transition(specimen, SPECIMEN, "COLLECTED")
+            self._transition(specimen, SPECIMEN, "RECEIVED")
+            self._transition(specimen, SPECIMEN, "PROCESSING")
+            self._transition(specimen, SPECIMEN, "ANALYZING")
+            self.specimens[specimen.id] = specimen
+            if idempotency_key:
+                self._specimen_idempotency[(actor.id, idempotency_key)] = specimen.id
+            self._audit(actor, "specimen.received", "specimen", specimen.id, "COLLECTED", specimen.state, specimen.version)
+            return specimen
 
-    def release_result(self, actor: SyntheticActor, specimen_id: str) -> SyntheticRecord:
+    def release_result(self, actor: SyntheticActor, specimen_id: str, *, idempotency_key: str | None = None) -> SyntheticRecord:
+        self._require_active_context(actor, "result:create")
         specimen = self._get(self.specimens, specimen_id)
         self._require(actor, "lab_technician" in actor.roles and actor.organization_id == specimen.fields["organization_id"], "result:create")
-        self._transition(specimen, SPECIMEN, "VALIDATED")
-        result = SyntheticRecord(str(uuid4()), "DRAFT", fields={"specimen_id": specimen.id, "patient_id": specimen.fields["patient_id"], "organization_id": specimen.fields["organization_id"], "value": "synthetic-normal"})
-        self._transition(result, RESULT, "TECHNICALLY_VALIDATED")
-        self._require(actor, "senior_lab" in actor.roles, "result:clinical_validate")
-        self._transition(result, RESULT, "CLINICALLY_VALIDATED")
-        self._transition(result, RESULT, "RELEASED")
-        self.results[result.id] = result
-        self._audit(actor, "result.released", "result", result.id, "CLINICALLY_VALIDATED", result.state, result.version)
-        self._transition(order := self._get(self.lab_orders, specimen.fields["order_id"]), LAB_ORDER, "COMPLETED")
-        self._audit(actor, "lab-order.completed", "lab-order", order.id, "IN_PROGRESS", order.state, order.version)
-        return result
+        with self._clinical_lock:
+            if idempotency_key:
+                existing_id = self._result_idempotency.get((actor.id, idempotency_key))
+                if existing_id:
+                    return self.results[existing_id]
+            if specimen.state != "ANALYZING":
+                raise SyntheticConflictError("result requires an analyzing specimen")
+            self._transition(specimen, SPECIMEN, "VALIDATED")
+            result = SyntheticRecord(str(uuid4()), "DRAFT", fields={"specimen_id": specimen.id, "patient_id": specimen.fields["patient_id"], "organization_id": specimen.fields["organization_id"], "value": "synthetic-normal", "version": 1})
+            self._transition(result, RESULT, "TECHNICALLY_VALIDATED")
+            self._require(actor, "senior_lab" in actor.roles, "result:clinical_validate")
+            self._transition(result, RESULT, "CLINICALLY_VALIDATED")
+            self._transition(result, RESULT, "RELEASED")
+            self.results[result.id] = result
+            if idempotency_key:
+                self._result_idempotency[(actor.id, idempotency_key)] = result.id
+            self._audit(actor, "result.released", "result", result.id, "CLINICALLY_VALIDATED", result.state, result.version)
+            self._transition(order := self._get(self.lab_orders, specimen.fields["order_id"]), LAB_ORDER, "COMPLETED")
+            self._audit(actor, "lab-order.completed", "lab-order", order.id, "IN_PROGRESS", order.state, order.version)
+            return result
 
-    def grant_result_share(self, actor: SyntheticActor, *, recipient_id: str, recipient_organization_id: str, result_id: str, scope: str, duration_hours: int) -> SyntheticRecord:
-        self._require(actor, actor.patient_id == self._get(self.results, result_id).fields["patient_id"], "consent:grant")
+    def grant_result_share(self, actor: SyntheticActor, *, recipient_id: str, recipient_organization_id: str, result_id: str, scope: str, duration_hours: int, idempotency_key: str | None = None) -> SyntheticRecord:
+        result = self._get(self.results, result_id)
+        self._require(actor, actor.patient_id == result.fields["patient_id"] and result.state == "RELEASED", "consent:grant")
         self._require(actor, actor.organization_id == recipient_organization_id, "consent:recipient_scope")
-        consent = SyntheticRecord(str(uuid4()), "ACTIVE", fields={"patient_id": actor.patient_id, "recipient_id": recipient_id, "recipient_organization_id": recipient_organization_id, "result_id": result_id, "scope": scope, "expires_at": datetime.now(UTC) + timedelta(hours=duration_hours)})
-        self.consents[consent.id] = consent
-        self._audit(actor, "consent.granted", "consent", consent.id, None, consent.state, consent.version)
-        return consent
+        self._require(actor, scope == "lab_results" and 1 <= duration_hours <= 72, "consent:bounded_scope")
+        with self._clinical_lock:
+            if idempotency_key:
+                existing_id = self._consent_idempotency.get((actor.id, idempotency_key))
+                if existing_id:
+                    return self.consents[existing_id]
+            if any(consent.state == "ACTIVE" and consent.fields["recipient_id"] == recipient_id and consent.fields["result_id"] == result.id for consent in self.consents.values()):
+                raise SyntheticConflictError("active share already exists")
+            consent = SyntheticRecord(str(uuid4()), "ACTIVE", fields={"patient_id": actor.patient_id, "recipient_id": recipient_id, "recipient_organization_id": recipient_organization_id, "result_id": result_id, "scope": scope, "expires_at": datetime.now(UTC) + timedelta(hours=duration_hours)})
+            self.consents[consent.id] = consent
+            if idempotency_key:
+                self._consent_idempotency[(actor.id, idempotency_key)] = consent.id
+            self.access_history.append({"action": "GRANT_CREATED", "decision": "ALLOW", "result_id": result.id, "actor_id": actor.id, "purpose": "TREATMENT"})
+            self._audit(actor, "consent.granted", "consent", consent.id, None, consent.state, consent.version)
+            return consent
 
-    def revoke_share(self, actor: SyntheticActor, consent_id: str) -> SyntheticRecord:
+    def revoke_share(self, actor: SyntheticActor, consent_id: str, *, expected_version: int | None = None, idempotency_key: str | None = None) -> SyntheticRecord:
         consent = self._get(self.consents, consent_id)
         self._require(actor, actor.patient_id == consent.fields["patient_id"], "consent:revoke")
-        self._transition(consent, CONSENT, "REVOKED")
-        self._audit(actor, "consent.revoked", "consent", consent.id, "ACTIVE", consent.state, consent.version)
-        return consent
+        with self._clinical_lock:
+            if idempotency_key:
+                existing_id = self._consent_idempotency.get((actor.id, idempotency_key))
+                if existing_id:
+                    return self.consents[existing_id]
+            if expected_version is not None and expected_version != consent.version:
+                raise SyntheticConflictError("version conflict")
+            if consent.state != "ACTIVE":
+                raise SyntheticConflictError("share is not active")
+            self._transition(consent, CONSENT, "REVOKED")
+            if idempotency_key:
+                self._consent_idempotency[(actor.id, idempotency_key)] = consent.id
+            self.access_history.append({"action": "GRANT_REVOKED", "decision": "ALLOW", "result_id": consent.fields["result_id"], "actor_id": actor.id, "purpose": "TREATMENT"})
+            self._audit(actor, "consent.revoked", "consent", consent.id, "ACTIVE", consent.state, consent.version)
+            return consent
 
     def read_result(self, actor: SyntheticActor, result_id: str) -> SyntheticRecord:
+        self._require_active_context(actor, "result:read")
         result = self._get(self.results, result_id)
         if actor.patient_id == result.fields["patient_id"]:
+            self._require(actor, result.state == "RELEASED", "result:read")
             return result
         allowed = any(
             consent.state == "ACTIVE"
@@ -297,7 +349,14 @@ class SyntheticCoreBackend:
             for consent in self.consents.values()
         )
         self._require(actor, allowed, "result:read")
+        self.access_history.append({"action": "ACCESS_USED", "decision": "ALLOW", "result_id": result.id, "actor_id": actor.id, "purpose": "TREATMENT"})
         return result
+
+    def list_access_history(self, actor: SyntheticActor, *, result_id: str | None = None, limit: int = 50, offset: int = 0) -> list[dict[str, Any]]:
+        self._require_active_context(actor, "access:history")
+        entries = [entry for entry in self.access_history if result_id is None or entry.get("result_id") == result_id]
+        entries = [entry for entry in entries if entry.get("actor_id") == actor.id or actor.patient_id is not None]
+        return entries[offset : offset + min(limit, 100)]
 
     def _require_active_context(self, actor: SyntheticActor, action: str) -> None:
         # Existing legacy fixtures omit identity/session objects; retain their

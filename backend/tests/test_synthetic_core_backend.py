@@ -118,3 +118,26 @@ def test_technician_cannot_release_without_senior_validation(core: SyntheticCore
     specimen = core.collect_and_receive_specimen(actors["lab"], order.id)
     with pytest.raises(SyntheticAuthorizationError, match="result:clinical_validate"):
         core.release_result(actors["lab"], specimen.id)
+
+
+def test_synthetic_clinical_commands_are_replay_safe_and_share_is_bounded(core: SyntheticCoreBackend, actors: dict[str, SyntheticActor]) -> None:
+    appointment = core.book_appointment(actors["citizen"], patient_id="patient-001", practitioner_id="doctor-001", slot="2030-09-01T10:00Z", idempotency_key="replay-book")
+    core.confirm_appointment(actors["doctor"], appointment.id)
+    core.check_in(actors["citizen"], appointment.id)
+    encounter = core.create_encounter(actors["doctor"], appointment.id)
+    core.complete_and_sign_note(actors["doctor"], encounter.id)
+    order = core.place_lab_order(actors["doctor"], encounter.id, idempotency_key="replay-order")
+    specimen = core.collect_and_receive_specimen(actors["lab"], order.id, idempotency_key="replay-specimen")
+    assert core.collect_and_receive_specimen(actors["lab"], order.id, idempotency_key="replay-specimen").id == specimen.id
+    result = core.release_result(actors["senior_lab"], specimen.id, idempotency_key="replay-result")
+    assert core.release_result(actors["senior_lab"], specimen.id, idempotency_key="replay-result").id == result.id
+    consent = core.grant_result_share(actors["citizen"], recipient_id=actors["doctor"].id, recipient_organization_id="org-001", result_id=result.id, scope="lab_results", duration_hours=72, idempotency_key="replay-grant")
+    assert core.grant_result_share(actors["citizen"], recipient_id=actors["doctor"].id, recipient_organization_id="org-001", result_id=result.id, scope="lab_results", duration_hours=72, idempotency_key="replay-grant").id == consent.id
+    assert core.read_result(actors["doctor"], result.id).id == result.id
+    with pytest.raises(SyntheticAuthorizationError, match="bounded_scope"):
+        core.grant_result_share(actors["citizen"], recipient_id=actors["doctor"].id, recipient_organization_id="org-001", result_id=result.id, scope="all_records", duration_hours=72)
+    with pytest.raises(SyntheticConflictError, match="version conflict"):
+        core.revoke_share(actors["citizen"], consent.id, expected_version=99)
+    revoked = core.revoke_share(actors["citizen"], consent.id, expected_version=1, idempotency_key="replay-revoke")
+    assert revoked.state == "REVOKED" and revoked.version == 2
+    assert {entry["action"] for entry in core.list_access_history(actors["citizen"], result_id=result.id)} >= {"GRANT_CREATED", "ACCESS_USED", "GRANT_REVOKED"}

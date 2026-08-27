@@ -717,6 +717,14 @@ def _register_routes(app: FastAPI) -> None:
 
     from .clinical.appointments.routes import router as core_appointment_router
     app.include_router(core_appointment_router)
+    from .clinical.encounters.routes import router as core_encounter_router
+    app.include_router(core_encounter_router)
+    from .clinical.laboratory.routes import router as core_laboratory_router
+    app.include_router(core_laboratory_router)
+    from .clinical.results.routes import router as core_result_router
+    app.include_router(core_result_router)
+    from .clinical.access.routes import router as core_access_router
+    app.include_router(core_access_router)
 
     from .national.scheduling_platform.api.routes import router as scheduling_router
     app.include_router(scheduling_router)

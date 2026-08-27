@@ -25,6 +25,16 @@ def test_core_appointment_schema_has_integrity_guards() -> None:
             "core_encounters",
             "core_encounter_queue",
             "core_clinical_notes",
+            "core_clinical_command_receipts",
+            "core_lab_orders",
+            "core_lab_order_items",
+            "core_specimens",
+            "core_specimen_events",
+            "core_lab_results",
+            "core_critical_result_events",
+            "core_clinical_notifications",
+            "core_access_grants",
+            "core_access_history",
         }
         assert expected_tables.issubset(tables)
 
@@ -98,18 +108,27 @@ def test_core_appointment_schema_has_integrity_guards() -> None:
         assert {"ck_core_encounter_queue_status", "ck_core_encounter_queue_version_positive"}.issubset(queue_checks)
         assert {"ck_core_clinical_note_status", "ck_core_clinical_note_version_positive"}.issubset(note_checks)
 
+        lab_order_checks = {constraint["name"] for constraint in inspector.get_check_constraints("core_lab_orders")}
+        specimen_checks = {constraint["name"] for constraint in inspector.get_check_constraints("core_specimens")}
+        result_checks = {constraint["name"] for constraint in inspector.get_check_constraints("core_lab_results")}
+        grant_checks = {constraint["name"] for constraint in inspector.get_check_constraints("core_access_grants")}
+        assert {"ck_core_lab_order_status", "ck_core_lab_order_priority", "ck_core_lab_order_version_positive"}.issubset(lab_order_checks)
+        assert {"ck_core_specimen_status", "ck_core_specimen_version_positive"}.issubset(specimen_checks)
+        assert {"ck_core_lab_result_status", "ck_core_lab_result_provenance", "ck_core_lab_result_version_positive"}.issubset(result_checks)
+        assert {"ck_core_access_grant_status", "ck_core_access_grant_purpose", "ck_core_access_grant_version_positive"}.issubset(grant_checks)
+
         index_names = {index["name"] for index in inspector.get_indexes("core_appointments")}
         assert {"ix_core_appointment_patient_scope", "ix_core_appointment_provider_scope"}.issubset(index_names)
 
         with engine.connect() as connection:
             revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-            assert revision == "20260827_0012"
+            assert revision == "20260828_0013"
             permission_count = connection.execute(
                 text(
                     "SELECT COUNT(*) FROM niam_permissions "
-                    "WHERE permission_key IN ('appointment.request','appointment.confirm','appointment.slot.manage','appointment.read','encounter.checkin','encounter.manage','encounter.read','clinical.note.write','clinical.note.sign','clinical.note.amend')",
+                    "WHERE permission_key IN ('appointment.request','appointment.confirm','appointment.slot.manage','appointment.read','encounter.checkin','encounter.manage','encounter.read','clinical.note.write','clinical.note.sign','clinical.note.amend','clinical.lab_order.create','clinical.lab_order.read','clinical.lab_order.verify','clinical.specimen.manage','clinical.result.write','clinical.result.read','clinical.result.validate_technical','clinical.result.validate_clinical','clinical.result.release','clinical.result.amend','clinical.critical.acknowledge')",
                 ),
             ).scalar_one()
-        assert permission_count == 10
+        assert permission_count == 21
     finally:
         engine.dispose()

@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
+from app.clinical.appointments.service import IdempotencyConflictError
 from app.clinical.observability import clinical_safety_metrics, reason_code
 from app.models.clinical_command import ClinicalCommandReceipt
 from app.services.audit_service import log_action
@@ -260,3 +261,41 @@ class ClinicalCommandGuard:
             resource_type=resource_type,
             outcome="completed",
         )
+
+
+class CanonicalClinicalCommandGuard:
+    """NIAM-compatible durable idempotency guard for canonical clinical slices."""
+
+    def __init__(self, db, *, actor_account_id: str):
+        from app.clinical.laboratory.models import CoreClinicalCommandReceipt
+
+        self.db = db
+        self.actor_account_id = actor_account_id
+        self.receipt_model = CoreClinicalCommandReceipt
+
+    def claim(self, *, operation: str, idempotency_key: str, payload: Any):
+        if not idempotency_key or len(idempotency_key) > 128:
+            raise ValueError("Idempotency-Key is required and must be at most 128 characters")
+        fingerprint = hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False, default=str).encode()).hexdigest()
+        existing = self.db.query(self.receipt_model).filter(self.receipt_model.actor_account_id == self.actor_account_id, self.receipt_model.operation == operation, self.receipt_model.idempotency_key == idempotency_key).first()
+        if existing is not None:
+            if existing.request_fingerprint != fingerprint:
+                raise IdempotencyConflictError("The Idempotency-Key was reused for a different request")
+            if existing.status == "COMPLETED" and existing.response_body:
+                return existing.response_body
+            raise IdempotencyConflictError("The request is already being processed")
+        self.db.add(self.receipt_model(actor_account_id=self.actor_account_id, operation=operation, idempotency_key=idempotency_key, request_fingerprint=fingerprint, status="CLAIMED"))
+        try:
+            self.db.flush()
+        except IntegrityError as exc:
+            self.db.rollback()
+            raise IdempotencyConflictError("The request is already being processed") from exc
+        return None
+
+    def complete(self, *, operation: str, idempotency_key: str, resource_id: str, response_body: dict[str, Any]) -> None:
+        receipt = self.db.query(self.receipt_model).filter(self.receipt_model.actor_account_id == self.actor_account_id, self.receipt_model.operation == operation, self.receipt_model.idempotency_key == idempotency_key).with_for_update().one()
+        receipt.status = "COMPLETED"
+        receipt.resource_id = resource_id
+        receipt.response_body = response_body
+        receipt.completed_at = datetime.now(UTC)
+        self.db.flush()

@@ -50,6 +50,22 @@ _ERROR_MESSAGES: dict[str, tuple[int, str, str]] = {
     "ENCOUNTER_STATE_CONFLICT": (409, "The encounter state does not allow this operation.", "حالة الزيارة لا تسمح بهذه العملية."),
     "CLINICAL_NOTE_NOT_FOUND": (404, "The clinical note was not found.", "لم يتم العثور على الملاحظة السريرية."),
     "CLINICAL_NOTE_IMMUTABLE": (409, "The clinical note requires an explicit amendment.", "الملاحظة السريرية تتطلب تعديلاً صريحاً."),
+    "LAB_ORDER_NOT_FOUND": (404, "The laboratory order was not found.", "لم يتم العثور على طلب المختبر."),
+    "LAB_ORDER_STATE_CONFLICT": (409, "The laboratory order state does not allow this operation.", "حالة طلب المختبر لا تسمح بهذه العملية."),
+    "SPECIMEN_NOT_FOUND": (404, "The specimen was not found.", "لم يتم العثور على العينة."),
+    "SPECIMEN_STATE_CONFLICT": (409, "The specimen state does not allow this operation.", "حالة العينة لا تسمح بهذه العملية."),
+    "SPECIMEN_ALREADY_EXISTS": (409, "A specimen already exists for this order item.", "توجد عينة لهذا العنصر مسبقاً."),
+    "RESULT_NOT_FOUND": (404, "The laboratory result was not found.", "لم يتم العثور على نتيجة المختبر."),
+    "RESULT_STATE_CONFLICT": (409, "The result state does not allow this operation.", "حالة النتيجة لا تسمح بهذه العملية."),
+    "CRITICAL_ACK_REQUIRED": (409, "Critical-result acknowledgement is required.", "يجب تأكيد النتيجة الحرجة أولاً."),
+    "CRITICAL_RESULT_NOT_FOUND": (404, "No critical-result event was found.", "لم يتم العثور على حدث نتيجة حرجة."),
+    "SEPARATION_OF_DUTIES_REQUIRED": (403, "Separate authorized actors are required.", "يلزم مستخدمان مخولان منفصلان."),
+    "ACCESS_GRANT_NOT_FOUND": (404, "The access grant was not found.", "لم يتم العثور على منح الوصول."),
+    "ACCESS_NOT_GRANTED": (403, "Access to this clinical resource is not granted.", "لا توجد صلاحية للوصول إلى هذا المورد السريري."),
+    "ACCESS_EXPIRED": (403, "Access to this clinical resource has expired.", "انتهت صلاحية الوصول إلى هذا المورد السريري."),
+    "ACCESS_REVOKED": (403, "Access to this clinical resource was revoked.", "تم سحب صلاحية الوصول إلى هذا المورد السريري."),
+    "DUPLICATE_ACCESS_GRANT": (409, "An active access grant already exists.", "توجد صلاحية وصول فعالة مسبقاً."),
+    "ACCESS_STATE_CONFLICT": (409, "The access grant state does not allow this operation.", "حالة منحة الوصول لا تسمح بهذه العملية."),
 }
 
 
