@@ -58,6 +58,11 @@ describe("التنقل العربي الأساسي في GULA", () => {
     expect(getRouteRoles("/pharmacy-operations")).not.toContain("doctor");
   });
 
+  it("يقصر بوابة المستشفى على الأدوار المؤسسية والسريرية وDemo", () => {
+    expect(getRouteRoles("/hospital-operations")).toEqual(expect.arrayContaining(["doctor", "staff", "lab_staff", "technician", "demo_viewer"]));
+    expect(getRouteRoles("/hospital-operations")).not.toContain("citizen");
+  });
+
   it("يقصر بوابة العيادة على الأدوار السريرية والتشغيلية وDemo", () => {
     expect(getRouteRoles("/clinic-operations")).toEqual(expect.arrayContaining(["doctor", "staff", "technician", "demo_viewer"]));
     expect(getRouteRoles("/clinic-operations")).not.toContain("citizen");

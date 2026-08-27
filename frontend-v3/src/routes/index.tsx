@@ -12,6 +12,7 @@ import {
   PHARMACY_OPERATIONS_ROLES,
   RADIOLOGY_OPERATIONS_ROLES,
   CLINIC_OPERATIONS_ROLES,
+  HOSPITAL_OPERATIONS_ROLES,
   READONLY_ROLES,
   STAFF_ROLES,
   ROUTE_ROLE_POLICIES,
@@ -28,6 +29,7 @@ const OrganizationWorkspacePageLazy = lazy(() => import("@/pages/organization/Or
 const LabOperationsWorkspacePageLazy = lazy(() => import("@/pages/lab/LabOperationsWorkspacePage"));
 const RadiologyOperationsWorkspacePageLazy = lazy(() => import("@/pages/radiology/RadiologyOperationsWorkspacePage"));
 const ClinicOperationsWorkspacePageLazy = lazy(() => import("@/pages/clinic/ClinicOperationsWorkspacePage"));
+const HospitalOperationsWorkspacePageLazy = lazy(() => import("@/pages/hospital/HospitalOperationsWorkspacePage"));
 const OrdersPage = lazy(() => import("@/pages/orders/OrdersPage").then(m => ({ default: m.OrdersPage })));
 const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage").then(m => ({ default: m.ReportsPage })));
 const ResultsPage = lazy(() => import("@/pages/results/ResultsPage").then(m => ({ default: m.ResultsPage })));
@@ -234,6 +236,7 @@ export const router = createBrowserRouter([
       { path: "pharmacy-operations", element: <RoleGuard roles={PHARMACY_OPERATIONS_ROLES}><LazyPage><PharmacyOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "radiology-operations", element: <RoleGuard roles={RADIOLOGY_OPERATIONS_ROLES}><LazyPage><RadiologyOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "clinic-operations", element: <RoleGuard roles={CLINIC_OPERATIONS_ROLES}><LazyPage><ClinicOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "hospital-operations", element: <RoleGuard roles={HOSPITAL_OPERATIONS_ROLES}><LazyPage><HospitalOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "billing-insurance", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><BillingInsuranceWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "device-integration", element: <InstitutionalOnlyRoute><RoleGuard roles={READONLY_ROLES}><LazyPage><DeviceIntegrationWorkspacePageLazy /></LazyPage></RoleGuard></InstitutionalOnlyRoute> },
       { path: "pilot-platform", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><PilotPlatformApiPageLazy /></LazyPage></RoleGuard> },

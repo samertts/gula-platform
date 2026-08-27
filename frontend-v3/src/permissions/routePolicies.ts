@@ -65,6 +65,15 @@ export const CLINIC_OPERATIONS_ROLES = [
   "demo_viewer",
 ] as const satisfies readonly UserRole[];
 
+export const HOSPITAL_OPERATIONS_ROLES = [
+  ...ADMIN_ROLES,
+  "doctor",
+  "staff",
+  "lab_staff",
+  "technician",
+  "demo_viewer",
+] as const satisfies readonly UserRole[];
+
 export const ORGANIZATION_ROLES = [
   ...READONLY_ROLES,
   "technician",
@@ -168,6 +177,7 @@ export const ROUTE_ROLE_POLICIES = {
   "/pharmacy-operations": PHARMACY_OPERATIONS_ROLES,
   "/radiology-operations": RADIOLOGY_OPERATIONS_ROLES,
   "/clinic-operations": CLINIC_OPERATIONS_ROLES,
+  "/hospital-operations": HOSPITAL_OPERATIONS_ROLES,
   "/billing-insurance": READONLY_ROLES,
   "/device-integration": READONLY_ROLES,
   "/pilot-platform": ADMIN_ROLES,
