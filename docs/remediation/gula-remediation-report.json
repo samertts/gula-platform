@@ -228,19 +228,37 @@
   "backend_core_evidence": {
     "contract_registry": "backend/app/contracts/clinical_core.py",
     "engineering_intelligence": "backend/app/contracts/engineering_intelligence.py",
+    "engineering_inventory": "backend/app/contracts/engineering_inventory.py",
+    "engineering_inventory_command": "backend/scripts/engineering_inventory.py",
     "synthetic_backend_fixture": "backend/tests/fixtures/synthetic_core_backend.py",
+    "canonical_appointment": {
+      "models": "backend/app/clinical/appointments/models.py",
+      "schemas": "backend/app/clinical/appointments/schemas.py",
+      "authorization": "backend/app/clinical/appointments/authorization.py",
+      "service": "backend/app/clinical/appointments/service.py",
+      "routes": "backend/app/clinical/appointments/routes.py",
+      "migration": "backend/migrations/versions/20260827_0010_core_appointment_vertical_slice.py",
+      "status": "local-api-evidence-only"
+    },
     "tests": [
       "backend/tests/test_clinical_core_contracts.py",
       "backend/tests/test_contract_engineering_intelligence.py",
-      "backend/tests/test_synthetic_core_backend.py"
+      "backend/tests/test_engineering_inventory.py",
+      "backend/tests/test_synthetic_core_backend.py",
+      "backend/tests/test_core_appointment_api.py",
+      "backend/tests/identity/test_core_appointment_migration.py"
     ],
-    "status": "development-evidence-only",
+    "local_focused_result": "18 passed, 1 skipped",
+    "full_backend_result": "2791 passed, 5 skipped, 165 warnings in 306.39s; exit code 0 captured from the final tree after final fingerprint change",
+    "status": "development-and-local-test-evidence-only",
     "not_production_ready": true,
     "missing_for_production": [
-      "migrations",
-      "versioned production API/error envelope",
-      "database-backed object authorization integration",
-      "production immutable audit integration",
+      "PostgreSQL migration execution and schema evidence",
+      "multi-connection database concurrency evidence",
+      "rate-limit capacity and 429 evidence under production-like load",
+      "database-backed object authorization integration review",
+      "production immutable audit integration review",
+      "frontend contract integration and browser E2E",
       "remote CI",
       "staging smoke and rollback"
     ]

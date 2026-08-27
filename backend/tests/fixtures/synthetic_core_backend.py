@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+from threading import Lock
 from typing import Any
 from uuid import uuid4
 
@@ -37,6 +38,44 @@ class SyntheticActor:
     workspace_id: str
     roles: frozenset[str] = frozenset()
     patient_id: str | None = None
+    account_id: str | None = None
+    session_id: str | None = None
+    identity_id: str | None = None
+
+
+@dataclass(frozen=True)
+class SyntheticIdentity:
+    id: str
+    account_id: str
+    person_id: str
+    kind: str
+    active: bool = True
+
+
+@dataclass
+class SyntheticSession:
+    id: str
+    account_id: str
+    device_id: str
+    state: str = "ACTIVE"
+    version: int = 1
+    expires_at: datetime = field(default_factory=lambda: datetime.now(UTC) + timedelta(hours=1))
+
+
+@dataclass(frozen=True)
+class SyntheticWorkspace:
+    id: str
+    organization_id: str
+    facility_id: str
+    active: bool = True
+
+
+@dataclass(frozen=True)
+class SyntheticMembership:
+    account_id: str
+    workspace_id: str
+    roles: frozenset[str]
+    active: bool = True
 
 
 @dataclass
@@ -62,6 +101,10 @@ class SyntheticCoreBackend:
     """Test-only backend with no production imports, network, or persistence."""
 
     def __init__(self) -> None:
+        self.identities: dict[str, SyntheticIdentity] = {}
+        self.sessions: dict[str, SyntheticSession] = {}
+        self.workspaces: dict[str, SyntheticWorkspace] = {}
+        self.memberships: dict[tuple[str, str], SyntheticMembership] = {}
         self.appointments: dict[str, SyntheticRecord] = {}
         self.encounters: dict[str, SyntheticRecord] = {}
         self.notes: dict[str, SyntheticRecord] = {}
@@ -72,28 +115,78 @@ class SyntheticCoreBackend:
         self._appointment_idempotency: dict[tuple[str, str], str] = {}
         self._used_slots: dict[tuple[str, str], str] = {}
         self.audit: list[SyntheticAuditEvent] = []
+        self._booking_lock = Lock()
+
+    def register_identity(self, *, account_id: str, person_id: str, kind: str = "citizen") -> SyntheticIdentity:
+        identity = SyntheticIdentity(str(uuid4()), account_id, person_id, kind)
+        self.identities[identity.id] = identity
+        return identity
+
+    def open_session(self, *, account_id: str, device_id: str, expires_at: datetime | None = None) -> SyntheticSession:
+        session = SyntheticSession(str(uuid4()), account_id, device_id, expires_at=expires_at or (datetime.now(UTC) + timedelta(hours=1)))
+        self.sessions[session.id] = session
+        return session
+
+    def revoke_session(self, session_id: str) -> None:
+        session = self._get(self.sessions, session_id)
+        session.state = "REVOKED"
+        session.version += 1
+
+    def register_workspace(self, *, workspace_id: str, organization_id: str, facility_id: str) -> SyntheticWorkspace:
+        workspace = SyntheticWorkspace(workspace_id, organization_id, facility_id)
+        self.workspaces[workspace.id] = workspace
+        return workspace
+
+    def add_membership(self, *, account_id: str, workspace_id: str, roles: frozenset[str]) -> SyntheticMembership:
+        membership = SyntheticMembership(account_id, workspace_id, roles)
+        self.memberships[(account_id, workspace_id)] = membership
+        return membership
+
+    def build_actor(
+        self,
+        *,
+        actor_id: str,
+        account_id: str,
+        identity_id: str,
+        organization_id: str,
+        workspace_id: str,
+        roles: frozenset[str] = frozenset(),
+        patient_id: str | None = None,
+        session_id: str,
+    ) -> SyntheticActor:
+        return SyntheticActor(actor_id, "citizen" if patient_id else "professional", organization_id, workspace_id, roles, patient_id, account_id, session_id, identity_id)
 
     def book_appointment(self, actor: SyntheticActor, *, patient_id: str, practitioner_id: str, slot: str, idempotency_key: str) -> SyntheticRecord:
+        self._require_active_context(actor, "appointment:book")
         self._require(actor, patient_id == actor.patient_id or "scheduler" in actor.roles, "appointment:book")
-        key = (actor.id, idempotency_key)
-        existing_id = self._appointment_idempotency.get(key)
-        if existing_id:
-            existing = self.appointments[existing_id]
-            if existing.fields["slot"] != slot or existing.fields["patient_id"] != patient_id:
-                raise SyntheticConflictError("idempotency key reused with a different request")
-            return existing
-        slot_key = (actor.organization_id, slot)
-        if slot_key in self._used_slots:
-            raise SyntheticConflictError("slot already booked")
-        appointment = SyntheticRecord(str(uuid4()), "REQUESTED", fields={"patient_id": patient_id, "practitioner_id": practitioner_id, "slot": slot, "organization_id": actor.organization_id})
-        self.appointments[appointment.id] = appointment
-        self._appointment_idempotency[key] = appointment.id
-        self._used_slots[slot_key] = appointment.id
-        self._audit(actor, "appointment.booked", "appointment", appointment.id, None, appointment.state, appointment.version)
-        return appointment
+        with self._booking_lock:
+            key = (actor.id, idempotency_key)
+            existing_id = self._appointment_idempotency.get(key)
+            if existing_id:
+                existing = self.appointments[existing_id]
+                if existing.fields["slot"] != slot or existing.fields["patient_id"] != patient_id:
+                    raise SyntheticConflictError("idempotency key reused with a different request")
+                return existing
+            slot_key = (actor.organization_id, slot)
+            if slot_key in self._used_slots:
+                raise SyntheticConflictError("slot already booked")
+            appointment = SyntheticRecord(str(uuid4()), "REQUESTED", fields={"patient_id": patient_id, "practitioner_id": practitioner_id, "slot": slot, "organization_id": actor.organization_id, "workspace_id": actor.workspace_id})
+            self.appointments[appointment.id] = appointment
+            self._appointment_idempotency[key] = appointment.id
+            self._used_slots[slot_key] = appointment.id
+            self._audit(actor, "appointment.booked", "appointment", appointment.id, None, appointment.state, appointment.version)
+            return appointment
 
     def confirm_appointment(self, actor: SyntheticActor, appointment_id: str) -> SyntheticRecord:
         appointment = self._get(self.appointments, appointment_id)
+        self._require_active_context(actor, "appointment:confirm")
+        if actor.account_id or actor.session_id or actor.identity_id:
+            self._require(
+                actor,
+                actor.organization_id == appointment.fields["organization_id"]
+                and actor.workspace_id == appointment.fields["workspace_id"],
+                "appointment:confirm",
+            )
         self._require(actor, "scheduler" in actor.roles or actor.id == appointment.fields["practitioner_id"], "appointment:confirm")
         self._transition(appointment, APPOINTMENT, "CONFIRMED")
         self._audit(actor, "appointment.confirmed", "appointment", appointment.id, "REQUESTED", appointment.state, appointment.version)
@@ -205,6 +298,33 @@ class SyntheticCoreBackend:
         )
         self._require(actor, allowed, "result:read")
         return result
+
+    def _require_active_context(self, actor: SyntheticActor, action: str) -> None:
+        # Existing legacy fixtures omit identity/session objects; retain their
+        # appointment semantics while making the new context-aware path strict.
+        if actor.account_id is None and actor.session_id is None and actor.identity_id is None:
+            return
+        identity = self.identities.get(actor.identity_id or "")
+        session = self.sessions.get(actor.session_id or "")
+        workspace = self.workspaces.get(actor.workspace_id)
+        membership = self.memberships.get((actor.account_id or "", actor.workspace_id))
+        now = datetime.now(UTC)
+        valid = (
+            identity is not None
+            and identity.active
+            and identity.account_id == actor.account_id
+            and session is not None
+            and session.account_id == actor.account_id
+            and session.state == "ACTIVE"
+            and session.expires_at.replace(tzinfo=UTC) > now
+            and workspace is not None
+            and workspace.active
+            and workspace.organization_id == actor.organization_id
+            and membership is not None
+            and membership.active
+            and actor.roles.issubset(membership.roles)
+        )
+        self._require(actor, valid, action)
 
     @staticmethod
     def _get(collection: dict[str, SyntheticRecord], record_id: str) -> SyntheticRecord:

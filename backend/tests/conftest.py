@@ -111,6 +111,7 @@ def _session_engine():
     from app.governance.base import GovernanceBase
     from app.health_data.base import HealthDataBase
     from app.hospital.base import HospitalBase
+    from app.identity.base import IdentityBase
     from app.national.base import NationalBase
     from app.national_data.base import DataPlatformBase
     from app.nhdw.base import NHDWBase
@@ -130,6 +131,17 @@ def _session_engine():
         RadiologyBase.metadata, TrustBase.metadata, FinBase.metadata,
     ]
     _ddl_meta = _CombinedMeta()
+    _identity_tables = {
+        "niam_persons", "niam_identities", "niam_accounts", "niam_sessions", "niam_devices",
+        "niam_organizations", "niam_admin_branches", "niam_admin_facilities",
+        "niam_admin_departments", "niam_admin_units", "niam_workspaces", "niam_workspace_contexts",
+        "niam_memberships", "niam_roles", "niam_permissions", "niam_role_permissions",
+        "niam_role_assignments", "niam_audit_entries",
+    }
+    for _table_name in _identity_tables:
+        _table = IdentityBase.metadata.tables.get(_table_name)
+        if _table is not None:
+            _table.to_metadata(_ddl_meta)
     for _meta in _all_metas:
         for _tname, _tbl in list(_meta.tables.items()):
             if _tname not in _ddl_meta.tables:
@@ -200,13 +212,19 @@ def client(db, db_engine, monkeypatch):
     from app.main import app
     from sqlalchemy.orm import sessionmaker
 
-    def _override_get_db():
-        try:
-            yield db
-        finally:
-            pass
+    test_session_factory = sessionmaker(
+        bind=db.get_bind(),
+        autoflush=False,
+        join_transaction_mode="create_savepoint",
+    )
 
-    test_session_factory = sessionmaker(bind=db_engine, autoflush=False)
+    def _override_get_db():
+        request_session = test_session_factory()
+        try:
+            yield request_session
+        finally:
+            request_session.close()
+
     monkeypatch.setattr(_database, "SessionLocal", test_session_factory, raising=True)
     monkeypatch.setattr(_database, "engine", db_engine, raising=True)
 
