@@ -45,14 +45,6 @@
       "status": "non-operational"
     },
     {
-      "source": "src/components/auth/RoleGuard.tsx",
-      "kinds": [
-        "demo-surface"
-      ],
-      "classification": "demo-only",
-      "status": "non-operational"
-    },
-    {
       "source": "src/components/guide/GuideAssistant.tsx",
       "kinds": [
         "demo-surface"
@@ -62,6 +54,22 @@
     },
     {
       "source": "src/components/navigation/MobileBottomNav.tsx",
+      "kinds": [
+        "demo-surface"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/components/shared/AppRuntimeIndicator.tsx",
+      "kinds": [
+        "demo-surface"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/components/workspace/WorkspaceContextHeader.tsx",
       "kinds": [
         "demo-surface"
       ],
@@ -124,6 +132,16 @@
       "source": "src/layouts/Sidebar.tsx",
       "kinds": [
         "demo-surface"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/acute-care/AcuteCareOperationsWorkspacePage.tsx",
+      "kinds": [
+        "demo-surface",
+        "react-query-read",
+        "workspace-scoped-read"
       ],
       "classification": "demo-only",
       "status": "non-operational"
@@ -302,10 +320,21 @@
     {
       "source": "src/pages/citizen-platform/CitizenWorkspacePage.tsx",
       "kinds": [
+        "demo-surface",
         "direct-api-client",
         "react-query-read"
       ],
-      "classification": "unbound",
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/clinic/ClinicOperationsWorkspacePage.tsx",
+      "kinds": [
+        "demo-surface",
+        "react-query-read",
+        "workspace-scoped-read"
+      ],
+      "classification": "demo-only",
       "status": "non-operational"
     },
     {
@@ -358,6 +387,16 @@
       "kinds": [
         "demo-surface",
         "endpoint-import"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/dashboard/DoctorWorkspacePanel.tsx",
+      "kinds": [
+        "demo-surface",
+        "react-query-read",
+        "workspace-scoped-read"
       ],
       "classification": "demo-only",
       "status": "non-operational"
@@ -462,6 +501,16 @@
       "status": "non-operational"
     },
     {
+      "source": "src/pages/hospital/HospitalOperationsWorkspacePage.tsx",
+      "kinds": [
+        "demo-surface",
+        "react-query-read",
+        "workspace-scoped-read"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
       "source": "src/pages/hospital/HospitalPage.tsx",
       "kinds": [
         "endpoint-import",
@@ -499,6 +548,16 @@
       "status": "non-operational"
     },
     {
+      "source": "src/pages/lab/LabOperationsWorkspacePage.tsx",
+      "kinds": [
+        "demo-surface",
+        "react-query-read",
+        "workspace-scoped-read"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
       "source": "src/pages/labs/LabsPage.tsx",
       "kinds": [
         "endpoint-import",
@@ -522,6 +581,15 @@
         "safe-bridge-marker"
       ],
       "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/my-record/MyRecordPage.tsx",
+      "kinds": [
+        "demo-surface",
+        "react-query-read"
+      ],
+      "classification": "demo-only",
       "status": "non-operational"
     },
     {
@@ -711,12 +779,29 @@
       "status": "blocked-until-server-enforcement"
     },
     {
+      "source": "src/pages/organization/OrganizationWorkspacePage.tsx",
+      "kinds": [
+        "demo-surface",
+        "react-query-read"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
+    },
+    {
       "source": "src/pages/patient-card/PatientCardPage.tsx",
       "kinds": [
         "endpoint-import",
         "react-query-read"
       ],
       "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/patients/PatientManagementWorkspacePage.tsx",
+      "kinds": [
+        "demo-surface"
+      ],
+      "classification": "demo-only",
       "status": "non-operational"
     },
     {
@@ -727,6 +812,16 @@
       ],
       "classification": "contract-bound",
       "status": "blocked-until-server-enforcement"
+    },
+    {
+      "source": "src/pages/pharmacy/PharmacyOperationsWorkspacePage.tsx",
+      "kinds": [
+        "demo-surface",
+        "endpoint-import",
+        "react-query-read"
+      ],
+      "classification": "demo-only",
+      "status": "non-operational"
     },
     {
       "source": "src/pages/pharmacy/PharmacyPage.tsx",
@@ -781,6 +876,16 @@
         "react-query-read"
       ],
       "classification": "unbound",
+      "status": "non-operational"
+    },
+    {
+      "source": "src/pages/radiology/RadiologyOperationsWorkspacePage.tsx",
+      "kinds": [
+        "demo-surface",
+        "endpoint-import",
+        "react-query-read"
+      ],
+      "classification": "demo-only",
       "status": "non-operational"
     },
     {

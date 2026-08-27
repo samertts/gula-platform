@@ -18,6 +18,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui";
 import { GuideAssistant } from "@/components/guide/GuideAssistant";
 import { DemoEnvironmentBadge, GulaBrand } from "@/components/shared/GulaBrand";
+import { AppRuntimeIndicator } from "@/components/shared/AppRuntimeIndicator";
 import { WorkspaceSelector } from "@/components/workspace/WorkspaceSelector";
 import { WorkspaceContextHeader } from "@/components/workspace/WorkspaceContextHeader";
 import type { WorkspaceSummary } from "@/api/client";
@@ -95,6 +96,7 @@ export function DashboardLayout() {
                 <DemoEnvironmentBadge />
               </div>
             )}
+            <AppRuntimeIndicator />
             <div className="hidden sm:block">
               <WorkspaceSelector onActiveWorkspace={handleActiveWorkspace} />
             </div>

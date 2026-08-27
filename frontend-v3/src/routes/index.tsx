@@ -87,6 +87,7 @@ const CommandIntelligencePageLazy = lazy(() => import("@/pages/command-intellige
 const ControlPlanePageLazy = lazy(() => import("@/pages/control-plane/ControlPlanePage"));
 const AcuteCareOperationsWorkspacePageLazy = lazy(() => import("@/pages/acute-care/AcuteCareOperationsWorkspacePage"));
 const ScreenByScreenPageLazy = lazy(() => import("@/pages/screen-by-screen/ScreenByScreenPage"));
+const DomainRouteContractGatePageLazy = lazy(() => import("@/pages/domain/DomainRouteContractGatePage"));
 const HealthDataPageLazy = lazy(() => import("@/pages/health-data/HealthDataPage"));
 const IntegrationPageLazy = lazy(() => import("@/pages/integration/IntegrationPage"));
 const IntegrationConnectorsPageLazy = lazy(() => import("@/pages/integration/connectors/IntegrationConnectorsPage"));
@@ -215,6 +216,12 @@ export const router = createBrowserRouter([
       { path: "control-plane", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><ControlPlanePageLazy /></LazyPage></RoleGuard> },
       { path: "acute-care-operations", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "screen-by-screen", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><ScreenByScreenPageLazy /></LazyPage></RoleGuard> },
+      { path: "app/health", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Health" description="المسار العام لصحة المواطن سيعرض Summary ثم Timeline وResults وDocuments عند توفر العقود المناسبة." contract="CIT-002 / clinical read" /></LazyPage></RoleGuard> },
+      { path: "app/appointments", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Appointments" description="مسار الموعد يحتاج خدمة وطبيباً ومنشأة وSlot وتغطية وتأكيداً من الخادم." contract="CIT-004 / appointment lifecycle" /></LazyPage></RoleGuard> },
+      { path: "app/results", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Results" description="عرض النتائج يتطلب نطاقاً مصرحاً وإظهار قيمة ووحدة ومرجع ومصدر دون كشف زائد." contract="CIT-003 / result viewer" /></LazyPage></RoleGuard> },
+      { path: "workspace/doctor", element: <RoleGuard roles={STAFF_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Doctor Workspace" description="مساحة الطبيب تتطلب workspace وorganization وfacility وrole وpermissions معادة من الخادم." contract="PRO-001 / workspace scoped" /></LazyPage></RoleGuard> },
+      { path: "workspace/laboratory", element: <RoleGuard roles={LAB_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Laboratory Workspace" description="مساحة المختبر تحتاج عقود specimen وworklist وresult lifecycle قبل أي كتابة أو اعتماد." contract="LAB-001 / specimen lifecycle" /></LazyPage></RoleGuard> },
+      { path: "workspace/pharmacy", element: <RoleGuard roles={PHARMACY_OPERATIONS_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Pharmacy Workspace" description="مساحة الصيدلية تفصل prescription verification عن dispensing وتخضع لنطاق المنشأة." contract="PHARM-001 / dispensing lifecycle" /></LazyPage></RoleGuard> },
       { path: "critical-care", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "ems", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "health-data", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><HealthDataPageLazy /></LazyPage></RoleGuard> },

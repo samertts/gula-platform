@@ -14,6 +14,12 @@ const routeLoaders: Record<string, RouteLoader> = {
   "/hospital-operations": () => import("@/pages/hospital/HospitalOperationsWorkspacePage"),
   "/acute-care-operations": () => import("@/pages/acute-care/AcuteCareOperationsWorkspacePage"),
   "/screen-by-screen": () => import("@/pages/screen-by-screen/ScreenByScreenPage"),
+  "/app/health": () => import("@/pages/domain/DomainRouteContractGatePage"),
+  "/app/appointments": () => import("@/pages/domain/DomainRouteContractGatePage"),
+  "/app/results": () => import("@/pages/domain/DomainRouteContractGatePage"),
+  "/workspace/doctor": () => import("@/pages/domain/DomainRouteContractGatePage"),
+  "/workspace/laboratory": () => import("@/pages/domain/DomainRouteContractGatePage"),
+  "/workspace/pharmacy": () => import("@/pages/domain/DomainRouteContractGatePage"),
   "/pharmacy-operations": () => import("@/pages/pharmacy/PharmacyOperationsWorkspacePage"),
 };
 
