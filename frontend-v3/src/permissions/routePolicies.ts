@@ -42,6 +42,13 @@ export const LAB_OPERATIONS_ROLES = [
   "demo_viewer",
 ] as const satisfies readonly UserRole[];
 
+export const PHARMACY_OPERATIONS_ROLES = [
+  ...ADMIN_ROLES,
+  "staff",
+  "cashier",
+  "demo_viewer",
+] as const satisfies readonly UserRole[];
+
 export const ORGANIZATION_ROLES = [
   ...READONLY_ROLES,
   "technician",
@@ -142,7 +149,7 @@ export const ROUTE_ROLE_POLICIES = {
   "/national/task-engine": ADMIN_ROLES,
   "/national/workflow-runtime": ADMIN_ROLES,
   "/pharmacy": ADMIN_ROLES,
-  "/pharmacy-operations": READONLY_ROLES,
+  "/pharmacy-operations": PHARMACY_OPERATIONS_ROLES,
   "/billing-insurance": READONLY_ROLES,
   "/device-integration": READONLY_ROLES,
   "/pilot-platform": ADMIN_ROLES,

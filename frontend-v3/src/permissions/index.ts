@@ -6,6 +6,7 @@ import {
   LAB_ROLES,
   READONLY_ROLES,
   ORGANIZATION_ROLES,
+  PHARMACY_OPERATIONS_ROLES,
   ROUTE_ROLE_POLICIES,
   STAFF_ROLES,
 } from "./routePolicies";
@@ -221,7 +222,7 @@ export const NAV_ITEMS: Record<string, NavigationItem[]> = {
     { label: "النواة", path: "/kernel", icon: "Cpu", permissions: ["system:admin"], roles: ADMIN_ROLES },
     { label: "دورة حياة المنصة", path: "/lifecycle-platform", icon: "RefreshCw", permissions: ["system:admin"], roles: ADMIN_ROLES },
     { label: "الصيدلة", path: "/pharmacy", icon: "Pill", permissions: ["system:admin"], roles: ADMIN_ROLES },
-    { label: "إدارة الصيدلية والأدوية", path: "/pharmacy-operations", icon: "Pill", permissions: ["dashboard:read"], roles: READONLY_ROLES },
+    { label: "إدارة الصيدلية والأدوية", path: "/pharmacy-operations", icon: "Pill", permissions: ["dashboard:read"], roles: PHARMACY_OPERATIONS_ROLES },
     { label: "إدارة الفوترة والتأمين", path: "/billing-insurance", icon: "ReceiptText", permissions: ["dashboard:read"], roles: READONLY_ROLES },
     { label: "مركز ربط الأجهزة", path: "/device-integration", icon: "Cable", permissions: ["lab:read"], roles: READONLY_ROLES, institutionalOnly: true },
     { label: "المنصة التجريبية", path: "/pilot-platform", icon: "FlaskConical", permissions: ["system:admin"], roles: ADMIN_ROLES },
