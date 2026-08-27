@@ -1,7 +1,7 @@
 # Backend Warning Inventory — Vertical Slice 01B/02
 
 **المصدر:** full backend suite على الشجرة الحالية
-**النتيجة:** `2794 passed, 5 skipped, 165 warnings in 309.26s`، `exit code=0`
+**النتيجة:** `2794 passed, 5 skipped, 165 warnings in 322.58s`، `exit code=0`
 **السياسة:** التحذير ليس blocker تلقائياً، لكن لا يبقى مجهول السبب.
 
 | التصنيف | الدليل الحالي | القرار |

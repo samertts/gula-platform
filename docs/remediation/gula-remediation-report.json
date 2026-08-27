@@ -265,7 +265,7 @@
       "backend/tests/test_migrations.py"
     ],
     "local_focused_result": "35 passed, 1 skipped for Appointment/Encounter/contracts/inventory/read-gate/migration-chain focused run",
-    "full_backend_result": "2794 passed, 5 skipped, 165 warnings in 309.26s; exit code 0 captured from the current tree after Slice 02",
+    "full_backend_result": "2794 passed, 5 skipped, 165 warnings in 322.58s; exit code 0 captured from the current tree after Slice 02 and migration-chain hardening",
     "postgresql_disposable_proof": {
       "database": "PostgreSQL 16.15 local disposable",
       "upgrade_head": "20260827_0011",
