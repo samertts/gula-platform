@@ -102,6 +102,8 @@ def test_core_appointment_schema_has_integrity_guards() -> None:
         assert {"ix_core_appointment_patient_scope", "ix_core_appointment_provider_scope"}.issubset(index_names)
 
         with engine.connect() as connection:
+            revision = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
+            assert revision == "20260827_0012"
             permission_count = connection.execute(
                 text(
                     "SELECT COUNT(*) FROM niam_permissions "
