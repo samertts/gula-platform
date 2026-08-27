@@ -3,7 +3,7 @@
 **التاريخ:** 27 أغسطس 2026
 **المستودع:** [samertts/gula-platform](https://github.com/samertts/gula-platform)
 **الفرع:** `feat/citizen-journey-20260827`
-**آخر commit:** `54d225c1` — `docs(remediation): record postgres chain proof`
+**آخر commit:** `af187f39` — `docs(remediation): add arabic vertical slice report`
 **PR:** [#250](https://github.com/samertts/gula-platform/pull/250) — مفتوح وDraft
 
 ## الملخص التنفيذي
@@ -81,7 +81,7 @@
 
 ## حالة التسليم
 
-الفرع نظيف ومرفوع إلى `origin/feat/citizen-journey-20260827`، وآخر commit هو `54d225c1`. PR #250 مفتوح وDraft فوق `fix/external-ingestion-dmz-er-20260825`. لم يحدث merge أو force push أو deployment أو store submission.
+الفرع نظيف ومرفوع إلى `origin/feat/citizen-journey-20260827`، وآخر commit هو `af187f39`. PR #250 مفتوح وDraft فوق `fix/external-ingestion-dmz-er-20260825`. لم يحدث merge أو force push أو deployment أو store submission.
 
 ### المراجع
 
