@@ -1,7 +1,7 @@
 {
   "report_id": "GULA-REMEDIATION-20260827",
   "source_of_truth": "docs/remaining-work-12-workstreams-ar.md",
-  "scope": "frontend-v3 safe foundation and backend-contract readiness",
+  "scope": "frontend-v3 safe foundation, backend core contract readiness, and synthetic E2E evidence",
   "generated_for": "PROGRAM-BACKEND-CONTRACT-002 + FRONTEND-008",
   "policy": "Do not mark a workstream completed without backend contract, authorization, state machine, audit, idempotency, concurrency, tests, remote CI and staging evidence where applicable.",
   "summary": {
@@ -12,7 +12,12 @@
     "demo_only": true,
     "real_data_used": false,
     "golden_path_passed": false,
-    "production_ready": false
+    "production_ready": false,
+    "backend_core_registry": true,
+    "synthetic_core_e2e": true,
+    "production_api_e2e": false,
+    "remote_ci_passed": false,
+    "staging_passed": false
   },
   "items": [
     {
@@ -219,5 +224,25 @@
       "evidenceRequired": ["backend contract bundle", "migrations", "API tests", "E2E", "remote CI", "staging/rollback"],
       "status": "partial"
     }
-  ]
+  ],
+  "backend_core_evidence": {
+    "contract_registry": "backend/app/contracts/clinical_core.py",
+    "engineering_intelligence": "backend/app/contracts/engineering_intelligence.py",
+    "synthetic_backend_fixture": "backend/tests/fixtures/synthetic_core_backend.py",
+    "tests": [
+      "backend/tests/test_clinical_core_contracts.py",
+      "backend/tests/test_contract_engineering_intelligence.py",
+      "backend/tests/test_synthetic_core_backend.py"
+    ],
+    "status": "development-evidence-only",
+    "not_production_ready": true,
+    "missing_for_production": [
+      "migrations",
+      "versioned production API/error envelope",
+      "database-backed object authorization integration",
+      "production immutable audit integration",
+      "remote CI",
+      "staging smoke and rollback"
+    ]
+  }
 }

@@ -21,17 +21,17 @@
 | 9 | الطوارئ والإسعاف والرعاية الحادة | Acute Care Demo، `/ems` و`/critical-care` aliases آمنة، Live patients/orders فقط | emergency encounter، temporary identity، triage، break-glass، dispatch/GPS/ePCR، pre-alert/handover، ICU telemetry، critical escalation | break-glass والـEMS تتطلب سبباً إلزامياً وdataset محدوداً وتنبيهاً وتدقيقاً وانتهاءً تلقائياً وتكاملاً مفوضاً | تبقى جميعها gated؛ لا اتصال إسعاف أو GPS حقيقي |
 | 10 | Unified Clinical Journey & Design System | tokens، RTL/dark/reduced-motion، clinical states/primitives، AsyncBoundary، shell، GuideAssistant، runtime indicator | i18n الكامل لكل الموارد الخمسة، visual regression، device parity، production telemetry، formal component governance | بعض هذه العناصر تحتاج product/content review وبيئات Web/Mobile/Desktop وremote observability | أستكمل typed status/state catalog واختبارات الوصول، دون ادعاء parity إنتاجية |
 | 11 | Screen-by-Screen | معرض تفاعلي اصطناعي للأدوار والمنصات، gated states، lazy route، prefetch code-only | كل شاشة domain-aware حقيقية، backend bindings، mobile/desktop native packaging، E2E عبر بيئات حقيقية اصطناعية | الشاشة وحدها لا تثبت contract أو authorization أو integration أو store readiness | يبقى المعرض مرجع UX؛ المسارات الحية تظل مصدر الحقيقة |
-| 12 | Frontend Master / Golden Path | domain routes، contract gate، Golden Path Readiness، governance artifacts، 39 ملف اختبار/129 اختباراً في آخر تحقق | Appointment → Encounter → Lab → Result → Review → Citizen → Share → Revoke → Audit كرحلة E2E حقيقية، backend contracts، remote CI، staging/canary | هذا هو الفرق بين readiness وproduction؛ العقود الحالية تقبل patients/orders فقط، والـremote PR ما يزال UNSTABLE | أبدأ typed contract registry وnegative/security fixtures، ولا أعلن GOLDEN PATH PASSED |
+| 12 | Frontend Master / Golden Path | domain routes، contract gate، Golden Path Readiness، governance artifacts، Backend Contract Registry، Synthetic Core E2E fixture، 41 ملف اختبار/135 اختباراً في آخر تحقق frontend | Appointment → Encounter → Lab → Result → Review → Citizen → Share → Revoke → Audit كرحلة E2E خادمية قابلة للنشر، migrations/API contracts، remote CI، staging/canary | ما أُضيف هو contract/state-machine evidence وTest Backend اصطناعي داخل الاختبارات؛ لا توجد بعد خدمة إنتاجية أو migrations أو Remote CI/Staging مثبتة، والـremote PR ما يزال UNSTABLE | أستمر من Synthetic Core إلى backend domain services الفعلية، ولا أعلن GOLDEN PATH PASSED |
 
 ## فجوات مشتركة لم تُغلق
 
 ### العقود الخلفية
 
-لا تزال العقود المجالّية الرسمية للمواعيد والجلسات والأجهزة والوصول الكائني والإنابة والمهام وEncounter وClinical Note وLab Order وSpecimen وResult وCritical Result وNotification وAudit الحي غير مقبولة داخل frontend safety boundary. وجود wrappers قديمة في `src/api/endpoints.ts` لا يجعلها عقوداً آمنة؛ المرجع الفعلي هو allowlist والـcanonical gateway في `src/api/client.ts` و`workspaceScopedReads.ts`.
+أضيف Backend Contract Registry typed في `backend/app/contracts/clinical_core.py` لعقود المواعيد والجلسات والأجهزة والوصول الكائني والموافقة والإنابة والمهام وEncounter وClinical Note وLab Order وSpecimen وResult وCritical Result وNotification، مع حارس انتقالات واختبارات. لكنه سجل قواعد واختبارات ومرجع للمطور، وليس بعد API أو migrations أو authorization engine إنتاجياً. تبقى wrappers القديمة في `src/api/endpoints.ts` غير كافية؛ المرجع الحي للواجهة هو allowlist والـcanonical gateway في `src/api/client.ts` و`workspaceScopedReads.ts`.
 
 ### الاختبارات العابرة للمجالات
 
-الاختبارات الحالية تثبت العزل والحجب والقراءات المحدودة، لكنها لا تثبت رحلة end-to-end خادمية حقيقية لأن endpoints الكتابة والعقود المتسلسلة غير متاحة. لذلك لا يمكن تسمية Golden E2E ناجحاً، ولا يجوز إنشاء بيانات اختبار تشبه مواطنين حقيقيين أو الاتصال ببيئة إنتاج.
+أضيفت Synthetic Core Backend fixture واختبارات Golden E2E تغطي الحجز idempotency، منع double booking، check-in، Encounter/Note signing، Lab Order، Specimen chain، senior validation، Result release، Share/Revoke، cross-tenant وaudit. هذه رحلة اختبار محلية داخل الذاكرة وليست Test Backend خدمة مستقلة أو دليلاً على production E2E؛ لذلك لا تزال عبارة Golden Path Passed ممنوعة.
 
 ### التوطين والمنصات
 
@@ -47,7 +47,7 @@ Dependabot #471 ما يزال مفتوحاً ولم يُخفَ أو يُdismiss�
 
 ## ما يمكن تنفيذه محلياً الآن بأمان
 
-يمكن تنفيذ typed domain contracts وstate-machine guards وrequest/response/error fixtures، وتوسيع negative/security/accessibility tests، وتحسين contract gates وUX states، وتدقيق route/data-source inventories، وتوثيق runbooks وmigration plans. هذه الأعمال لا تفتح صلاحيات ولا تستبدل تحقق الخادم، لكنها تقلل الغموض وتمنع إضافة واجهات وهمية.
+تم تنفيذ typed domain contracts وstate-machine guards وrequest/response/error fixtures وEngineering Intelligence وSynthetic Core E2E fixture، مع توسيع negative/security/accessibility tests وcontract gates وUX states وتدقيق route/data-source inventories. هذه الأعمال تساعد المطور ولا تفتح صلاحيات إنتاجية ولا تستبدل تحقق الخادم، لكنها تقلل الغموض وتمنع إضافة واجهات وهمية.
 
 أما ما لا يمكن تنفيذه بأمان من الواجهة وحدها فهو إنشاء الأدوار والمساحات والعلاقات والتحققات والموافقات والسجلات الصحية، أو تشغيل appointment/encounter/lab/prescription/dispense/emergency/audit writes، أو الادعاء بتكامل حكومي أو DICOM/PACS أو SMS/Telegram حي، أو اعتبار Remote CI وDependabot محلولين دون صلاحية ونجاح فعلي.
 
