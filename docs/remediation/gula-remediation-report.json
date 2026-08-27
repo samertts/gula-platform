@@ -285,6 +285,15 @@
       "cross_process_revocation_visibility": "pass",
       "scope": "local disposable evidence only; no HA/failover or production capacity proof"
     },
+    "remote_ci_observation": {
+      "head": "7c1770b0f4a3a9e9a4711f62fb16e15b89cf500c",
+      "iam_hardening_run": "33116457147",
+      "frontend_bundle_budget_run": "33116457139",
+      "conclusion": "failure",
+      "job_steps": "all jobs reported steps=[] through GitHub API",
+      "observed_duration": "about five seconds",
+      "classification": "external runner-level blocker; no application step or log failure was observable"
+    },
     "status": "development-and-local-test-evidence-only",
     "not_production_ready": true,
     "missing_for_production": [
