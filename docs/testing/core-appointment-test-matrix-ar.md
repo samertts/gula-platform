@@ -12,11 +12,11 @@
 | IDOR | wrong patient وwrong workspace | `test_core_appointment_api.py` | ناجح محلياً |
 | Tenant isolation | organization/facility/workspace filters | service queries وsynthetic cross-scope tests | ناجح جزئياً؛ multi-membership PostgreSQL مطلوب |
 | Idempotency | replay نفسه وpayload مختلف | API test | ناجح محلياً |
-| Concurrency | lock داخل synthetic وslot unique في DB | `test_synthetic_core_backend.py` | synthetic ناجح؛ multi-worker PostgreSQL مطلوب |
+| Concurrency | lock داخل synthetic وslot unique في DB | synthetic + `backend/scripts/postgres_concurrency_probe.py` | row-lock عبر اتصالين نجح محلياً؛ API/worker load production-like مطلوب |
 | Audit | success وauthorization denial وoperation rejection | IdentityAuditEntry assertions | ناجح محلياً |
 | Rate limit | route limiter و429 envelope | monkeypatch test + global middleware | ناجح contractياً؛ capacity tuning مطلوب |
 | Error contract | `VALIDATION_ERROR`, `VERSION_CONFLICT`, `IDEMPOTENCY_CONFLICT`, `CONFLICT`, `FORBIDDEN`, `RATE_LIMITED` | API assertions | ناجح محلياً |
-| Migration | tables/columns/FKs/checks/indexes/seeds | `test_core_appointment_migration.py` | skipped محلياً دون PostgreSQL |
+| Migration | tables/columns/FKs/checks/indexes/seeds | `test_core_appointment_migration.py` + PostgreSQL disposable | schema gate 0010/0011 نجح محلياً؛ remote/staging evidence مطلوب |
 | Synthetic E2E | Identity→Session→Workspace→Appointment | 5 synthetic tests | ناجح |
 | Frontend contract | Demo/Live boundary | frontend-v3 existing suite | لم يتغير ولم يُفتح write integration |
 | Performance | request timing and query path | middleware logs + test duration | measurement seed، لا baseline production |
@@ -30,8 +30,8 @@
 | Invalid workspace | `FORBIDDEN` دون كشف scope details | API wrong workspace test |
 | Unauthorized patient | `FORBIDDEN` ولا يُنشأ appointment | API wrong patient test |
 | Slot already taken | `CONFLICT` أو `SLOT_UNAVAILABLE` ولا duplicate | API slot conflict test |
-| Concurrent booking | فائز واحد وفشل آمن | synthetic ThreadPool lock؛ PostgreSQL multi-connection لاحق |
-| Database rollback | claimed idempotency وslot mutation لا يبقيان عند transaction failure | service transaction design؛ integration fault injection لاحق |
+| Concurrent booking | فائز واحد وفشل آمن | synthetic ThreadPool + PostgreSQL row-lock primitive؛ API/worker contention لاحق |
+| Database rollback | claimed idempotency وslot mutation لا يبقيان عند transaction failure | PostgreSQL downgrade/re-upgrade نجح؛ fault injection للـAPI لاحق |
 | Partial failure/audit failure | لا يعلن النجاح إن تعذر audit؛ rollback وإشارة correlation | audit commit path؛ fault injection/staging لاحق |
 | Stale If-Match | `VERSION_CONFLICT` ورفض silent overwrite | API stale version test |
 

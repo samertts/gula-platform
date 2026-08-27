@@ -68,11 +68,11 @@
 | Synthetic Golden Path | `TESTING` | 5 synthetic tests و6 Appointment API tests و3 Encounter/Note API tests تشمل context/session/error/rate-limit |
 | Slice 02 focused regression | `LOCAL_PASS` | 35 passed، 1 skipped، ويشمل Encounter/Note وAppointment وcontracts وread-gate وmigration-chain |
 | Full backend regression | `LOCAL_PASS` | `2794 passed, 5 skipped, 165 warnings in 309.26s`، وexit code `0` ملتقط من الشجرة الحالية بعد Slice 02 |
-| Migration | `EXTERNAL_DEPENDENCY` | migration 0010/0011 موجودتان، تحقق PostgreSQL الفعلي مشروط بـ`MIGRATION_DATABASE_URL`؛ Docker غير متوفر محلياً |
+| Migration | `LOCAL_POSTGRES_PASS` | upgrade head إلى 0011 وschema gate وdowngrade/re-upgrade نجحت على PostgreSQL 16.15 disposable؛ remote/staging proof ما زال مطلوباً |
 | Engineering Inventory | `TESTING` | `backend/scripts/engineering_inventory.py` يصدر JSON advisory عن routes/models/migration/evidence gaps |
-| Performance | `IMPROVING` | request timing logs؛ لا يوجد baseline PostgreSQL متعدد العمال بعد |
+| Performance | `IMPROVING` | request timing logs؛ يوجد row-lock primitive proof عبر اتصالين، ولا يوجد API/worker load baseline بعد |
 | Frontend integration | `DISCOVERED` | allowlist لم تُفتح، Demo بقي read-only |
-| Remote CI/staging/rollback | `EXTERNAL_DEPENDENCY` | صلاحيات وبيئات خارجية مطلوبة |
+| Remote CI/staging/rollback | `EXTERNAL_DEPENDENCY` | local PostgreSQL proof نجح، لكن remote CI الحالي كان فاشلاً ويحتاج rerun؛ staging smoke وrollback التشغيلي ما زالا مطلوبين |
 
 ## ما لم يُنفذ عمداً
 
@@ -88,6 +88,9 @@
 | 500 عند session في SQLite | timestamp صار naive بعد persistence | تطبيع session expiry إلى UTC قبل المقارنة | API Golden Path |
 | error code عام في الاختبار | `HTTPException` dict يعاد إلى handler كـ`Request failed` | استخدام `DomainError` مع explicit code/details | stale `If-Match` assertion |
 | mapper failure بعد cross-metadata FK | Base وIdentityBase منفصلان | نقل FK enforcement إلى migration مع توثيق السبب | إنشاء SQLite + API tests |
+| فشل migration بسبب duplicate index | migration 507ea11c820a أنشأت اسماً مملوكاً لـ20260503_0001 بلا guard | إضافة index existence guard وعدم إسقاط index المملوك سابقاً | PostgreSQL disposable upgrade |
+| فشل drug substitution FK | VARCHAR FK إلى pharmacy_drug_catalog.id من نوع INTEGER | مواءمة rule FK columns إلى Integer | PostgreSQL disposable upgrade |
+| فشل OperationTheater dependency | جدول ORM موجود بلا DDL في migration chain | DDL مشروط لـhospitals/departments/operation_theaters داخل migration owner مع إبقاء parent عند downgrade | PostgreSQL upgrade + rollback/re-upgrade |
 | تسرب permissions أو rollback بين اختبارات API | commit داخل TestClient مع savepoint غير مضبوط، وfixture يعيد إدخال permission | session/savepoint مستقل لكل request، وpermission fixture idempotent، والتقاط scalar IDs بعد rollback | تشغيل auth وappointment suites معاً ثم full backend suite |
 
 ## القرار التالي

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 revision = "20260820_0007"
@@ -16,7 +17,72 @@ branch_labels = None
 depends_on = None
 
 
+def _table_exists(table: str) -> bool:
+    return inspect(op.get_bind()).has_table(table)
+
+
 def upgrade() -> None:
+    # These Hospital resources are referenced by later domain tables but were
+    # absent from the historical migration chain. Create only when missing;
+    # existing production tables remain untouched.
+    if not _table_exists("hospitals"):
+        op.create_table(
+            "hospitals",
+            sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+            sa.Column("code", sa.String(50), nullable=False),
+            sa.Column("name", sa.String(300), nullable=False),
+            sa.Column("name_ar", sa.String(300), nullable=True),
+            sa.Column("hospital_type", sa.String(50), nullable=False, server_default="hospital"),
+            sa.Column("license_number", sa.String(100), nullable=True),
+            sa.Column("phone", sa.String(20), nullable=True),
+            sa.Column("email", sa.String(200), nullable=True),
+            sa.Column("website", sa.String(300), nullable=True),
+            sa.Column("address", sa.String(500), nullable=True),
+            sa.Column("city", sa.String(100), nullable=True),
+            sa.Column("province", sa.String(100), nullable=True),
+            sa.Column("country", sa.String(10), nullable=False, server_default="IQ"),
+            sa.PrimaryKeyConstraint("id"),
+            sa.UniqueConstraint("code", name="uq_hospitals_code"),
+        )
+        op.create_index("ix_hospitals_id", "hospitals", ["id"])
+        op.create_index("ix_hospitals_code", "hospitals", ["code"])
+        op.create_index("ix_hospitals_hospital_type", "hospitals", ["hospital_type"])
+
+    if not _table_exists("hospital_departments"):
+        op.create_table(
+            "hospital_departments",
+            sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+            sa.Column("hospital_id", sa.Integer(), sa.ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("parent_id", sa.Integer(), sa.ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True),
+            sa.Column("code", sa.String(50), nullable=False),
+            sa.Column("name", sa.String(300), nullable=False),
+            sa.Column("name_ar", sa.String(300), nullable=True),
+            sa.Column("department_type", sa.String(50), nullable=True),
+            sa.Column("phone", sa.String(20), nullable=True),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        for column in ("id", "hospital_id", "parent_id", "code", "department_type"):
+            op.create_index(f"ix_hospital_departments_{column}", "hospital_departments", [column])
+
+    # OperationTheater is the owning Hospital resource referenced by the
+    # checklist. Older history had the ORM model but omitted its DDL.
+    if not _table_exists("hospital_operation_theaters"):
+        op.create_table(
+            "hospital_operation_theaters",
+            sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+            sa.Column("hospital_id", sa.Integer(), sa.ForeignKey("hospitals.id", ondelete="CASCADE"), nullable=False),
+            sa.Column("department_id", sa.Integer(), sa.ForeignKey("hospital_departments.id", ondelete="SET NULL"), nullable=True),
+            sa.Column("code", sa.String(50), nullable=False),
+            sa.Column("name", sa.String(300), nullable=False),
+            sa.Column("name_ar", sa.String(300), nullable=True),
+            sa.Column("theater_type", sa.String(50), nullable=False),
+            sa.Column("status", sa.String(20), nullable=False, server_default="available"),
+            sa.Column("current_surgery_id", sa.Integer(), nullable=True),
+            sa.PrimaryKeyConstraint("id"),
+        )
+        for column in ("id", "hospital_id", "department_id", "code", "theater_type", "status"):
+            op.create_index(f"ix_hospital_operation_theaters_{column}", "hospital_operation_theaters", [column])
+
     op.create_table(
         "hospital_surgical_safety_checklists",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -95,3 +161,5 @@ def downgrade() -> None:
         table_name="hospital_surgical_safety_checklists",
     )
     op.drop_table("hospital_surgical_safety_checklists")
+    # The OperationTheater resource is owned by Hospital and is retained to
+    # avoid deleting pre-existing operational data during checklist rollback.

@@ -114,6 +114,11 @@ jobs:
           alembic downgrade 20260814_0002 2>&1 | tee ../artifacts/alembic-downgrade.log
           alembic upgrade head 2>&1 | tee ../artifacts/alembic-reupgrade.log
           alembic current 2>&1 | tee ../artifacts/alembic-reupgrade-current.log
+      - name: Run PostgreSQL row-lock concurrency proof
+        run: |
+          set -o pipefail
+          cd backend
+          GULA_PROOF_DATABASE_URL="$MIGRATION_DATABASE_URL" python scripts/postgres_concurrency_probe.py 2>&1 | tee ../artifacts/postgres-concurrency-proof.log
       - name: Run isolated canonical appointment and encounter contract tests
         run: |
           set -o pipefail
