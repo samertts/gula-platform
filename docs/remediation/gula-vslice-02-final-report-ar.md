@@ -3,7 +3,7 @@
 **التاريخ:** 27 أغسطس 2026
 **المستودع:** [samertts/gula-platform](https://github.com/samertts/gula-platform)
 **الفرع:** `feat/citizen-journey-20260827`
-**آخر commit:** `af187f39` — `docs(remediation): add arabic vertical slice report`
+**سلسلة commits الوظيفية:** `eced1320` (Slice 02)، `fd2366f7` (migration/locks)، `54d225c1` (evidence)
 **PR:** [#250](https://github.com/samertts/gula-platform/pull/250) — مفتوح وDraft
 
 ## الملخص التنفيذي
@@ -81,7 +81,7 @@
 
 ## حالة التسليم
 
-الفرع نظيف ومرفوع إلى `origin/feat/citizen-journey-20260827`، وآخر commit هو `af187f39`. PR #250 مفتوح وDraft فوق `fix/external-ingestion-dmz-er-20260825`. لم يحدث merge أو force push أو deployment أو store submission.
+الفرع نظيف ومرفوع إلى `origin/feat/citizen-journey-20260827`، وHEAD النهائي يُتحقق منه في PR #250. PR #250 مفتوح وDraft فوق `fix/external-ingestion-dmz-er-20260825`. لم يحدث merge أو force push أو deployment أو store submission.
 
 ### المراجع
 
