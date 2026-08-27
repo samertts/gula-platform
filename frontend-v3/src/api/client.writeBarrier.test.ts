@@ -34,6 +34,7 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
 
   it("يسمح فقط باستثناءات الهوية والتحقق الضيقة اللازمة لبدء جلسة أو فحص قرار قراءة", () => {
     expect(() => assertFrontendWriteIsAllowed("post", "/login")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/auth/refresh")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/authz/check")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("get", "/patients")).not.toThrow();
   });
@@ -61,6 +62,9 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
     expect(() => assertFrontendReadIsAllowed("get", "/pharmacy/drugs?query=paracetamol")).not.toThrow();
     expect(() => assertFrontendReadIsAllowed("get", "/pharmacy/pos/summary?days=30")).not.toThrow();
     expect(() => assertFrontendReadIsAllowed("get", "/citizen-platform/me/medication-dispenses")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/consents/me")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/consents/consent-1/withdraw")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/consents/consent-1/grant")).toThrow(OperationalWriteBlockedError);
     expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/pos/sales")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/inventory/stock-levels/adjust")).toThrow(OperationalWriteBlockedError);
   });

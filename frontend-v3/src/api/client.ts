@@ -31,6 +31,25 @@ export interface WorkspaceContextResponse {
   workspace: WorkspaceSummary;
 }
 
+export interface ConsentSummary {
+  id: string;
+  uuid: string;
+  subject_account_id: string;
+  grantee_account_id: string;
+  purpose: string;
+  scope: Record<string, unknown>;
+  resource_domain: string;
+  status: string;
+  granted_at: string;
+  withdrawn_at?: string | null;
+  expires_at: string;
+  version: number;
+  source: string;
+  legal_basis?: string | null;
+  supersedes_id?: string | null;
+  reason?: string | null;
+}
+
 export interface MembershipSummary {
   id: string;
   uuid: string;
@@ -210,6 +229,7 @@ const IDENTITY_AND_DECISION_ALLOWLIST = new Set([
   "POST /demo/access",
   "POST /auth/verification/request",
   "POST /auth/verification/confirm",
+  "POST /auth/refresh",
   "POST /auth/forgot-password",
   "POST /auth/reset-password",
   "POST /auth/change-password",
@@ -256,6 +276,8 @@ const FINANCIAL_CONTROL_READ_PATTERN = /^GET \/payments\/controls\/(summary|requ
 const DEVICE_INTEGRATION_READ_PATTERN = /^GET \/device-integration\/(protocols|summary|devices(?:\/[^/]+)?|connectors|protocol-profiles|simulators|events|printer-jobs|monitoring|monitoring\/alerts)$/;
 const PHARMACY_READ_PATTERN = /^GET \/pharmacy\/(drugs(?:\/[^/]+)?|batches\/[^/]+|suppliers|prescriptions(?:\/[^/]+)?|dispense-queue|dispense\/dispense-records\/[^/]+|pos\/(?:sales(?:\/[^/]+)?|summary)|clinical\/guidelines|inventory\/stock-levels(?:\/alerts)?|inventory\/movements|inventory\/transfers|inventory\/recalls|dashboard(?:\/(queue-summary|stock-alerts|expiry-alerts))?)$/;
 const CITIZEN_READ_PATTERN = /^GET \/citizen-platform\/me\/(dashboard|profile|health-summary|appointments|medications|medication-dispenses|lab-results)$/;
+const CONSENT_READ_PATTERN = /^GET \/consents\/me$/;
+const CONSENT_WRITE_PATTERN = /^POST \/consents\/[^/]+\/withdraw$/;
 const BILLING_WRITE_PATTERN = /^POST \/billing\/(invoices|coverages|claims\/\d+\/advance|coverages\/\d+\/verify-local|invoices\/\d+\/simulate-settlement)$/;
 const PHARMACY_WRITE_PATTERN = /^POST \/pharmacy\/pos\/sales$/;
 const DEVICE_INTEGRATION_WRITE_PATTERN = /^POST \/device-integration\/(devices|devices\/[^/]+\/(status|probe)|connectors|connectors\/[^/]+\/(status|simulate)|protocol-profiles|printer-jobs|monitoring\/metrics|monitoring\/alerts\/\d+\/acknowledge)$/;
@@ -297,7 +319,7 @@ export function assertFrontendWriteIsAllowed(method?: string, url?: string): voi
   const key = toRequestKey(normalizedMethod, url);
   const workspaceSwitch = normalizedMethod === "post" && /^POST \/niam\/workspaces\/[^/]+\/switch$/.test(key);
   const membershipMutation = normalizedMethod === "post" && /^POST \/niam\/memberships\/(?:applications(?:\/[^/]+\/approve)?|invitations(?:\/[^/]+\/(?:accept|revoke))?|[^/]+\/(?:revoke|suspend|reactivate))$/.test(key);
-  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && (BILLING_WRITE_PATTERN.test(key) || PHARMACY_WRITE_PATTERN.test(key) || DEVICE_INTEGRATION_WRITE_PATTERN.test(key))) {
+  if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation && (CONSENT_WRITE_PATTERN.test(key) || BILLING_WRITE_PATTERN.test(key) || PHARMACY_WRITE_PATTERN.test(key) || DEVICE_INTEGRATION_WRITE_PATTERN.test(key))) {
     return;
   }
   if (!IDENTITY_AND_DECISION_ALLOWLIST.has(key) && !workspaceSwitch && !membershipMutation) {
@@ -316,7 +338,7 @@ export function assertFrontendReadIsAllowed(method?: string, url?: string): void
 
   const key = toRequestKey(normalizedMethod, url);
   const workspaceDetail = /^GET \/niam\/workspaces\/[^/]+$/.test(key);
-  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || PHARMACY_READ_PATTERN.test(key) || CITIZEN_READ_PATTERN.test(key)) return;
+  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || PHARMACY_READ_PATTERN.test(key) || CITIZEN_READ_PATTERN.test(key) || CONSENT_READ_PATTERN.test(key)) return;
   if (!INITIALIZATION_READ_ALLOWLIST.has(key) && !workspaceDetail) {
     throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }
@@ -386,8 +408,20 @@ class ApiClient {
     return response.data;
   }
 
+  async listMyConsents(limit = 25, offset = 0) {
+    const response = await this.instance.get<{ consents: ConsentSummary[]; limit: number; offset: number }>("/consents/me", {
+      params: { limit, offset },
+    });
+    return response.data;
+  }
+
   async switchWorkspace(workspaceId: string) {
     const response = await this.instance.post<WorkspaceContextResponse>(`/niam/workspaces/${encodeURIComponent(workspaceId)}/switch`, {});
+    return response.data;
+  }
+
+  async withdrawConsent(consentId: string, reason?: string) {
+    const response = await this.instance.post<ConsentSummary>(`/consents/${encodeURIComponent(consentId)}/withdraw`, reason ? { reason } : {});
     return response.data;
   }
 
