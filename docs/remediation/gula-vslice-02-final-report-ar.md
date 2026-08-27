@@ -59,7 +59,7 @@
 
 ## Remote CI وحالة GitHub
 
-بعد commit `54d225c1` بدأ GitHub Actions runs جديدة لـIAM Hardening وFrontend Bundle Budget، لكن كلاهما انتهى `failure`. metadata أظهرت أن jobs فشلت خلال ثوانٍ وجميعها بلا steps قابلة للقراءة، وسجلات job أعادت `BlobNotFound`. لذلك لم أعتبر remote CI أخضر، ولم أغيّر حالة الجاهزية. الاختبارات المقابلة محلياً نجحت: backend identity `205 passed, 5 deselected`، security/tenant `76 passed`، وfrontend test/lint/typecheck/build/bundle budget نجحت.
+بعد آخر pushes في هذه الموجة بدأ GitHub Actions runs جديدة لـIAM Hardening وFrontend Bundle Budget، لكن كلاهما انتهى `failure`. metadata أظهرت أن jobs فشلت خلال ثوانٍ وجميعها بلا steps قابلة للقراءة، وسجلات job أعادت `BlobNotFound`. لذلك لم أعتبر remote CI أخضر، ولم أغيّر حالة الجاهزية. الاختبارات المقابلة محلياً نجحت: backend identity `205 passed, 5 deselected`، security/tenant `76 passed`، وfrontend test/lint/typecheck/build/bundle budget نجحت.
 
 هذا يبقي remote CI **external/unresolved** وليس فشلاً وظيفياً مثبتاً في الكود. يلزم تشغيل GitHub Actions بصلاحية logs/runner صحيحة أو فحص إعدادات billing/runner من مالك المستودع قبل الاعتماد على نتيجة بعيدة.
 
@@ -86,6 +86,6 @@
 ### المراجع
 
 [1]: https://github.com/samertts/gula-platform/pull/250 "GULA PR #250"
-[2]: https://github.com/samertts/gula-platform/actions/runs/33112384433 "IAM Hardening Gate run for commit 54d225c1"
-[3]: https://github.com/samertts/gula-platform/actions/runs/33112384425 "Frontend Bundle Budget run for commit 54d225c1"
+[2]: https://github.com/samertts/gula-platform/actions/runs/33112693085 "Latest IAM Hardening Gate run in this wave"
+[3]: https://github.com/samertts/gula-platform/actions/runs/33112693098 "Latest Frontend Bundle Budget run in this wave"
 [4]: https://github.com/samertts/gula-platform/security/dependabot/471 "Dependabot alert #471"
