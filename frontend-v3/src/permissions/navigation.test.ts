@@ -46,6 +46,12 @@ describe("التنقل العربي الأساسي في GULA", () => {
     }
   });
 
+  it("يقصر عمليات المختبر على أدوار المختبر وDemo", () => {
+    expect(getRouteRoles("/lab-operations")).toEqual(expect.arrayContaining(["lab_admin", "lab_staff", "demo_viewer"]));
+    expect(getRouteRoles("/lab-operations")).not.toContain("citizen");
+    expect(getRouteRoles("/lab-operations")).not.toContain("doctor");
+  });
+
   it("يحمي بوابة المؤسسة الصحية بنطاق أدوار مؤسسية مستقل", () => {
     const items = Object.values(NAV_ITEMS).flat();
     const organizationItem = items.find((item) => item.path === "/organization-workspace");

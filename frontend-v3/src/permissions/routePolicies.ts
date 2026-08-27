@@ -37,6 +37,11 @@ export const LAB_ROLES = [
   "lab_staff",
 ] as const satisfies readonly UserRole[];
 
+export const LAB_OPERATIONS_ROLES = [
+  ...LAB_ROLES,
+  "demo_viewer",
+] as const satisfies readonly UserRole[];
+
 export const ORGANIZATION_ROLES = [
   ...READONLY_ROLES,
   "technician",
@@ -60,7 +65,7 @@ export const ROUTE_ROLE_POLICIES = {
   "/patients": STAFF_ROLES,
   "/patient-management": READONLY_ROLES,
   "/organization-workspace": ORGANIZATION_ROLES,
-  "/lab-operations": READONLY_ROLES,
+  "/lab-operations": LAB_OPERATIONS_ROLES,
   "/orders": STAFF_ROLES,
   "/reports": READONLY_ROLES,
   "/results": STAFF_ROLES,

@@ -2,6 +2,7 @@ import type { UserRole } from "@/types";
 import {
   ADMIN_ROLES,
   FINANCIAL_ROLES,
+  LAB_OPERATIONS_ROLES,
   LAB_ROLES,
   READONLY_ROLES,
   ORGANIZATION_ROLES,
@@ -134,7 +135,7 @@ export const NAV_ITEMS: Record<string, NavigationItem[]> = {
     { label: "nav.citizenWorkspace", path: "/citizen", icon: "UserCircle", permissions: ["citizen:workspace"], roles: ROUTE_ROLE_POLICIES["/citizen"] },
     { label: "nav.patients", path: "/patients", icon: "Users", permissions: ["patients:read"], roles: STAFF_ROLES },
     { label: "إدارة المرضى المتقدمة", path: "/patient-management", icon: "HeartPulse", permissions: ["dashboard:read"], roles: READONLY_ROLES },
-    { label: "إدارة المختبر", path: "/lab-operations", icon: "FlaskConical", permissions: ["dashboard:read"], roles: READONLY_ROLES },
+    { label: "إدارة المختبر", path: "/lab-operations", icon: "FlaskConical", permissions: ["dashboard:read"], roles: LAB_OPERATIONS_ROLES },
     { label: "nav.orders", path: "/orders", icon: "ClipboardList", permissions: ["orders:read"], roles: STAFF_ROLES },
     { label: "nav.reports", path: "/reports", icon: "FileBarChart2", permissions: ["dashboard:read"], roles: READONLY_ROLES },
     { label: "nav.results", path: "/results", icon: "FlaskConical", permissions: ["results:read"], roles: STAFF_ROLES },
