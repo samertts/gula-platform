@@ -37,13 +37,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r backend/requirements.txt -r backend/requirements-dev.txt
-      - name: Run read-only Ruff identity and clinical gateway gate
-        run: ruff check --no-fix backend/app/identity backend/app/clinical_gateway backend/tests/identity backend/tests/test_clinical_gateway_contracts.py backend/tests/test_clinical_gateway_service.py
+      - name: Run read-only Ruff identity, Redis and clinical gateway gate
+        run: ruff check --no-fix backend/app/identity backend/app/security/redis_client.py backend/app/clinical_gateway backend/tests/identity backend/tests/test_redis_security_policy.py backend/tests/test_clinical_gateway_contracts.py backend/tests/test_clinical_gateway_service.py
       - name: Run identity tests
         run: |
           set -o pipefail
           mkdir -p artifacts
-          python -m pytest backend/tests/identity backend/tests/test_clinical_gateway_contracts.py backend/tests/test_clinical_gateway_service.py -m "not integration" -q --junitxml=artifacts/pytest-identity.xml 2>&1 | tee artifacts/pytest-identity.log
+          python -m pytest backend/tests/identity backend/tests/test_clinical_gateway_contracts.py backend/tests/test_clinical_gateway_service.py backend/tests/test_redis_security_policy.py -m "not integration" -q --junitxml=artifacts/pytest-identity.xml 2>&1 | tee artifacts/pytest-identity.log
       - name: Compile backend source
         run: python -m compileall -q backend/app backend/migrations
       - name: Upload backend evidence
@@ -73,15 +73,26 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
+      redis:
+        image: redis:7.2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gula_test
       MIGRATION_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gula_test
       RUNTIME_MODE: migration
       ENV: migration
       SECRET_KEY: ci-migration-secret-key-not-for-production
+      REFRESH_TOKEN_SECRET: ci-migration-refresh-secret-not-for-production
+      AUDIT_ANCHOR_KEY: ci-migration-audit-secret-not-for-production
       ENCRYPTION_KEY: ci-test-encryption-fixture-not-secret
       NID_HMAC_KEY: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-      REDIS_URL: ""
+      REDIS_URL: redis://127.0.0.1:6379/0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
@@ -119,6 +130,11 @@ jobs:
           set -o pipefail
           cd backend
           GULA_PROOF_DATABASE_URL="$MIGRATION_DATABASE_URL" python scripts/postgres_concurrency_probe.py 2>&1 | tee ../artifacts/postgres-concurrency-proof.log
+      - name: Run Redis shared controls proof
+        run: |
+          set -o pipefail
+          cd backend
+          GULA_PROOF_REDIS_URL="$REDIS_URL" python scripts/redis_shared_controls_probe.py 2>&1 | tee ../artifacts/redis-shared-controls-proof.log
       - name: Run isolated canonical appointment and encounter contract tests
         run: |
           set -o pipefail

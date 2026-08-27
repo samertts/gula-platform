@@ -1,7 +1,7 @@
 """Redis client for GULA Platform.
-Provides a thin wrapper with automatic fallback to an in-memory store
-when Redis is not configured or unreachable — so the app works in dev
-without Redis and in production with it.
+Provides a thin wrapper with an in-memory fallback for development and an
+explicitly acknowledged degraded mode. Production/staging fail closed when
+Redis is missing or unreachable unless ALLOW_DEGRADED_REDIS=true is set.
 
 Usage:
     from .redis_client import cache
@@ -14,7 +14,7 @@ import logging
 import threading
 import time
 
-from ..config import IS_PRODUCTION, REDIS_URL
+from ..config import ALLOW_DEGRADED_REDIS, IS_PRODUCTION, REDIS_URL
 
 logger = logging.getLogger("gula.redis")
 
@@ -129,21 +129,31 @@ def _build_cache() -> _MemoryStore | _RedisWrapper:
         try:
             return _RedisWrapper(REDIS_URL)
         except Exception as exc:
+            if IS_PRODUCTION and not ALLOW_DEGRADED_REDIS:
+                # Shared rate limiting and revocation are security controls. A
+                # production process must not silently lose them at startup.
+                raise RuntimeError(
+                    "Redis is required in production; set ALLOW_DEGRADED_REDIS=true "
+                    "only for an explicitly approved degraded deployment"
+                ) from exc
             if IS_PRODUCTION:
-                # In production Redis is mandatory for full functionality, but we allow
-                # the system to start in degraded mode if it's unreachable.
-                # The self-healing system will attempt to recover it.
                 logger.critical(
-                    "[GULA CRITICAL] Redis is unreachable in production: %s. "
-                    "Falling back to in-memory store (degraded mode).",
+                    "[GULA CRITICAL] Redis is unreachable in production; "
+                    "explicit degraded mode is enabled: %s",
                     exc,
                 )
             logger.warning("Redis unavailable (%s) — falling back to in-memory store", exc)
     else:
+        if IS_PRODUCTION and not ALLOW_DEGRADED_REDIS:
+            # config.py normally exits earlier; retain a defensive guard here so
+            # direct imports cannot bypass the production policy.
+            raise RuntimeError(
+                "REDIS_URL must be set in production unless ALLOW_DEGRADED_REDIS=true"
+            )
         if IS_PRODUCTION:
             logger.critical(
-                "[GULA CRITICAL] REDIS_URL is not set in production. "
-                "Falling back to in-memory store (degraded mode).",
+                "[GULA CRITICAL] REDIS_URL is not set in production and explicit "
+                "degraded mode is enabled; using in-memory store.",
             )
         logger.info("REDIS_URL not set — using in-memory store (not shared across workers)")
     return _MemoryStore()

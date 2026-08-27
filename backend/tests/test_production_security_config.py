@@ -5,7 +5,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -14,7 +13,11 @@ _BASE_ENV = {
     "RUNTIME_MODE": "openapi",
     "BASE_URL": "https://api.gula-platform.org",
     "DATABASE_URL": "postgresql://db.example.invalid/gula",
-    "REDIS_URL": "redis://redis.example.invalid:6379/0",
+    # These subprocesses test config guards, not Redis networking. Explicitly
+    # acknowledge degraded mode so fail-closed Redis policy remains testable in
+    # test_redis_security_policy.py without an external service dependency.
+    "REDIS_URL": "",
+    "ALLOW_DEGRADED_REDIS": "true",
     "SECRET_KEY": "prod-" + "a" * 64,
     "REFRESH_TOKEN_SECRET": "refresh-" + "b" * 64,
     "ENCRYPTION_KEY": "enc-" + "c" * 64,
