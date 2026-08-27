@@ -102,9 +102,9 @@ describe("التنقل العربي الأساسي في GULA", () => {
       "/orders",
       "/results",
     ]));
-    expect(doctorPaths).not.toContain("/hospital");
+    expect(doctorPaths).toContain("/hospital");
     expect(doctorPaths).not.toContain("/admin");
-    expect(technicianPaths).not.toContain("/hospital");
+    expect(technicianPaths).toContain("/hospital");
     expect(technicianPaths).not.toContain("/admin");
     expect(technicianPaths).not.toContain("/reports");
   });

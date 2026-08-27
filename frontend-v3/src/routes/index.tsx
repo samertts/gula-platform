@@ -54,7 +54,6 @@ const AdminLabsPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({
 const AdminUsersPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminUsersPage })));
 const AdminAuditPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminAuditPage })));
 const FhirPage = lazy(() => import("@/pages/fhir/FhirPage").then(m => ({ default: m.FhirPage })));
-const HospitalPage = lazy(() => import("@/pages/hospital/HospitalPage").then(m => ({ default: m.HospitalPage })));
 const EdgePage = lazy(() => import("@/pages/edge/EdgePage").then(m => ({ default: m.EdgePage })));
 const FinancialPage = lazy(() => import("@/pages/financial/FinancialPage").then(m => ({ default: m.FinancialPage })));
 const FinancialGovernancePage = lazy(() => import("@/pages/financial-governance/FinancialGovernancePage").then(m => ({ default: m.FinancialGovernancePage })));
@@ -182,7 +181,7 @@ export const router = createBrowserRouter([
       { path: "admin/audit", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><AdminAuditPage /></LazyPage></RoleGuard> },
       { path: "fhir", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><FhirPage /></LazyPage></RoleGuard> },
       { path: "ehr", element: <RoleGuard roles={ADMIN_ROLES}><LegacyRouteBridge /></RoleGuard> },
-      { path: "hospital", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><HospitalPage /></LazyPage></RoleGuard> },
+      { path: "hospital", element: <RoleGuard roles={HOSPITAL_OPERATIONS_ROLES}><LazyPage><HospitalOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "edge", element: <RoleGuard roles={ROUTE_ROLE_POLICIES["/edge"]}><LazyPage><EdgePage /></LazyPage></RoleGuard> },
       { path: "financial", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><FinancialPage /></LazyPage></RoleGuard> },
       { path: "financial-governance", element: <RoleGuard roles={FINANCIAL_ROLES}><LazyPage><FinancialGovernancePage /></LazyPage></RoleGuard> },

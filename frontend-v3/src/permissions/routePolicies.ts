@@ -120,7 +120,7 @@ export const ROUTE_ROLE_POLICIES = {
   "/admin/audit": ADMIN_ROLES,
   "/fhir": ADMIN_ROLES,
   "/ehr": ADMIN_ROLES,
-  "/hospital": ADMIN_ROLES,
+  "/hospital": HOSPITAL_OPERATIONS_ROLES,
   "/edge": ["master_admin", "admin"] as const satisfies readonly UserRole[],
   "/financial": ADMIN_ROLES,
   "/financial-governance": FINANCIAL_ROLES,

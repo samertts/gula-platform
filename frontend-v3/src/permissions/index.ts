@@ -163,7 +163,7 @@ export const NAV_ITEMS: Record<string, NavigationItem[]> = {
     { label: "nav.tiers", path: "/tiers", icon: "Crown", permissions: ["dashboard:read"], roles: READONLY_ROLES },
   ],
   enterprise: [
-    { label: "nav.hospital", path: "/hospital", icon: "Building", permissions: ["lab:read"], roles: ADMIN_ROLES },
+    { label: "بوابة عمليات المستشفى", path: "/hospital", icon: "Building", permissions: ["dashboard:read"], roles: HOSPITAL_OPERATIONS_ROLES },
     { label: "nav.edgePlatform", path: "/edge", icon: "Server", permissions: ["system:admin"], roles: ROUTE_ROLE_POLICIES["/edge"] },
     { label: "nav.financial", path: "/financial", icon: "DollarSign", permissions: ["lab:manage"], roles: ADMIN_ROLES },
     { label: "الحوكمة المالية والجاهزية الاستثمارية", path: "/financial-governance", icon: "ShieldCheck", permissions: ["payments:control:read"], roles: FINANCIAL_ROLES },

@@ -68,7 +68,7 @@ describe("MobileBottomNav", () => {
     );
 
     expect(screen.getByRole("link", { name: "إدارة المرضى المتقدمة" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Hospital — Current page" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "بوابة عمليات المستشفى — Current page" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Reports" })).toBeInTheDocument();
   });
 
