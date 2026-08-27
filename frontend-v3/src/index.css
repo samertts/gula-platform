@@ -2,7 +2,10 @@
 
 @theme {
   --font-sans:
-    "Tajawal", "Noto Naskh Arabic", ui-sans-serif, system-ui, sans-serif;
+    "Tajawal", "Noto Naskh Arabic", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-display:
+    "Tajawal", "IBM Plex Sans Arabic", "Noto Naskh Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-ui: "Tajawal", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
   --color-primary: #0b3658;
@@ -40,6 +43,18 @@
   --color-warning-container: #fffbeb;
   --color-on-warning-container: #92400e;
 
+  --color-info: #0284c7;
+  --color-info-container: #f0f9ff;
+  --color-on-info-container: #075985;
+  --color-clinical-critical: #be123c;
+  --color-clinical-critical-container: #fff1f2;
+  --color-clinical-urgent: #b45309;
+  --color-clinical-urgent-container: #fffbeb;
+  --color-clinical-routine: #475569;
+  --color-clinical-routine-container: #f8fafc;
+  --color-clinical-safe: #047857;
+  --color-clinical-safe-container: #ecfdf5;
+
   --shadow-xs: 0 1px 2px 0 rgba(15, 43, 68, 0.04);
   --shadow-sm:
     0 1px 3px 0 rgba(15, 43, 68, 0.06), 0 1px 2px -1px rgba(15, 43, 68, 0.04);
@@ -59,6 +74,18 @@
     color-scheme: light;
     --gula-focus-ring: rgba(13, 148, 136, 0.42);
     --gula-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --gula-space-1: 0.25rem;
+    --gula-space-2: 0.5rem;
+    --gula-space-3: 0.75rem;
+    --gula-space-4: 1rem;
+    --gula-space-5: 1.25rem;
+    --gula-space-6: 1.5rem;
+    --gula-space-8: 2rem;
+    --gula-space-10: 2.5rem;
+    --gula-space-12: 3rem;
+    --gula-space-16: 4rem;
+    --gula-touch-target: 2.75rem;
+    --gula-content-max: 80rem;
   }
 
   .dark {
@@ -130,6 +157,59 @@
 }
 
 @layer components {
+  .gula-shell {
+    @apply min-h-[100dvh] bg-background text-foreground;
+  }
+
+  .gula-topbar {
+    @apply border-b border-outline/80 bg-surface/90 shadow-sm backdrop-blur-xl;
+  }
+
+  .gula-content {
+    @apply flex-1 overflow-y-auto bg-background p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-7;
+  }
+
+  .gula-page-header {
+    @apply flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between;
+  }
+
+  .gula-section-label {
+    @apply text-[10px] font-bold uppercase tracking-[0.16em] text-primary;
+  }
+
+  .gula-touch-target {
+    min-height: var(--gula-touch-target);
+    min-width: var(--gula-touch-target);
+  }
+
+  .gula-nav-link {
+    @apply group flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm transition-colors;
+  }
+
+  .gula-nav-link-active {
+    @apply bg-primary-light font-semibold text-primary shadow-sm ring-1 ring-primary/10 dark:bg-primary/20 dark:text-teal-200 dark:ring-primary/30;
+  }
+
+  .gula-interactive-surface {
+    @apply rounded-2xl border border-outline bg-surface shadow-sm transition-[box-shadow,border-color,transform] duration-200;
+  }
+
+  .gula-interactive-surface:hover {
+    @apply border-primary/30 shadow-md;
+  }
+
+  .gula-status-critical {
+    @apply border-rose-300 bg-rose-50/80 text-rose-950 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-100;
+  }
+
+  .gula-status-urgent {
+    @apply border-amber-300 bg-amber-50/80 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100;
+  }
+
+  .gula-status-safe {
+    @apply border-emerald-300 bg-emerald-50/80 text-emerald-950 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-100;
+  }
+
   .glass-panel {
     @apply border border-white/70 bg-white/80 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/70;
   }

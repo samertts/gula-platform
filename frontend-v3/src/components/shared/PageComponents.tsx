@@ -11,10 +11,10 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions, className }: PageHeaderProps) {
   return (
-    <div className={cn("flex items-center justify-between", className)}>
+    <div className={cn("gula-page-header", className)}>
       <div>
-        <h1 className="text-2xl font-bold">{title}</h1>
-        {description && <p className="text-muted-foreground">{description}</p>}
+        <h1 className="font-display text-2xl font-bold tracking-tight">{title}</h1>
+        {description && <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>

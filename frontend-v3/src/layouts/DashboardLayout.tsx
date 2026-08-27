@@ -56,7 +56,7 @@ export function DashboardLayout() {
 
   return (
     <div
-      className="flex min-h-[100dvh] overflow-x-clip bg-[#F8FAFC] text-foreground dark:bg-slate-950"
+      className="gula-shell flex overflow-x-clip"
       dir={isRTL ? "rtl" : "ltr"}
     >
       <a
@@ -70,7 +70,7 @@ export function DashboardLayout() {
         id="main-content"
         className="flex min-h-screen min-w-0 flex-1 flex-col"
       >
-        <header className="sticky top-0 z-30 flex min-h-[4.5rem] items-center gap-3 border-b border-slate-200/80 bg-white/90 px-4 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.58)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/85 md:px-7">
+        <header         className="gula-topbar sticky top-0 z-30 flex min-h-[4.5rem] items-center gap-3 px-4 md:px-7">
           <Button
             variant="ghost"
             size="icon"
@@ -206,7 +206,7 @@ export function DashboardLayout() {
             </Button>
           </div>
         )}
-        <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top_left,rgba(13,148,136,0.08),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.06),transparent_34%)] p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:p-7">
+        <div className="gula-content bg-[radial-gradient(circle_at_top_left,rgba(13,148,136,0.08),transparent_30%),radial-gradient(circle_at_bottom_right,rgba(14,165,233,0.06),transparent_34%)]">
           <div className="mx-auto mb-5 max-w-7xl">
             <WorkspaceContextHeader
               workspace={activeWorkspace}

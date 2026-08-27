@@ -26,6 +26,7 @@ import {
   workspaceScopedReads,
 } from "@/api/workspaceScopedReads";
 import { useAuth } from "@/contexts/AuthContext";
+import { ClinicalStatePanel } from "@/components/clinical";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -276,7 +277,8 @@ function GatedPanel({ title, description }: { title: string; description: string
 }
 
 function ClinicalReadCard({ title, icon: Icon, loading, error, empty, emptyMessage, items }: { title: string; icon: LucideIcon; loading: boolean; error: unknown; empty: boolean; emptyMessage: string; items: React.ReactNode[] }) {
-  return <Card className="rounded-2xl border-slate-200/80 bg-white shadow-sm dark:border-white/10 dark:bg-slate-900/70"><CardHeader className="flex flex-row items-center justify-between space-y-0"><CardTitle className="flex items-center gap-2 text-base"><Icon className="h-5 w-5 text-[#0D9488]" />{title}</CardTitle><Badge variant="outline">{error ? "محجوب" : "حد أدنى"}</Badge></CardHeader><CardContent className="space-y-2">{loading ? <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">جارٍ التحقق من سياق القراءة…</div> : error ? <GatedPanel title="القراءة موقوفة بأمان" description={errorMessage(error)} /> : empty ? <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">{emptyMessage}</div> : items.length ? items : <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">لا توجد سجلات ضمن النطاق الحالي.</div>}</CardContent></Card>;
+  const state = loading ? "loading" : error ? "error" : empty ? "forbidden" : items.length ? "loaded" : "empty";
+  return <Card className="gula-interactive-surface"><CardHeader className="flex flex-row items-center justify-between space-y-0"><CardTitle className="flex items-center gap-2 text-base"><Icon className="h-5 w-5 text-[#0D9488]" />{title}</CardTitle><Badge variant={error || empty ? "warning" : "outline"}>{error || empty ? "محجوب" : "حد أدنى"}</Badge></CardHeader><CardContent className="space-y-2">{state === "loading" ? <ClinicalStatePanel state="loading" title="جارٍ التحقق من سياق القراءة" description="ننتظر استجابة الخادم قبل عرض أي بيانات سريرية." /> : state === "error" ? <ClinicalStatePanel state="error" title="القراءة موقوفة بأمان" description={errorMessage(error)} /> : state === "forbidden" ? <ClinicalStatePanel state="forbidden" title="سياق القراءة مطلوب" description={emptyMessage} /> : state === "empty" ? <ClinicalStatePanel state="empty" title="لا توجد سجلات" description="لا توجد سجلات ضمن النطاق الحالي." /> : items}</CardContent></Card>;
 }
 
 export default DoctorWorkspacePanel;

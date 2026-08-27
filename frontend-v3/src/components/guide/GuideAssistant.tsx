@@ -17,6 +17,42 @@ const routeTips: Record<string, { ar: string; en: string }[]> = {
     { ar: "لا يمكن اعتماد نتيجة قبل اكتمال دورة العينة والصلاحيات المطلوبة.", en: "A result cannot be validated before the sample workflow and permissions are complete." },
     { ar: "كل تغيير سريري يجب أن يترك أثرًا تدقيقيًا قابلًا للتتبع.", en: "Every clinical change must leave a traceable audit record." },
   ],
+  "/acute-care-operations": [
+    { ar: "الفرز يحدد الأولوية ولا يساوي التشخيص؛ أي إجراء حرج يحتاج عقدًا خادميًا.", en: "Triage sets priority; it is not a diagnosis. Critical actions require a server contract." },
+    { ar: "في Demo كل البلاغات والهويات والإسعافات اصطناعية ومعزولة.", en: "In Demo, incidents, identities, and ambulance workflows are synthetic and isolated." },
+  ],
+  "/ems": [
+    { ar: "هذا alias آمن لبوابة الرعاية الحادة؛ لا تستخدم الصفحة واجهات EMS الخام.", en: "This is a safe alias for Acute Care; raw EMS endpoints are not used here." },
+    { ar: "لا يقرر المرشد الوجهة أو الإرسال أو العلاج.", en: "The guide does not decide destination, dispatch, or treatment." },
+  ],
+  "/critical-care": [
+    { ar: "قراءات ICU والأجهزة والـtelemetry محجوبة حتى تتوفر عقود نطاقية موثقة.", en: "ICU, device, and telemetry reads remain gated until scoped contracts exist." },
+    { ar: "لا يعني وجود دور سريري أن كل مرضى العناية متاحون.", en: "A clinical role does not grant access to every critical-care patient." },
+  ],
+  "/hospital": [
+    { ar: "بوابة المستشفى تقرأ فقط ما يعكسه الخادم ضمن مساحة العمل الحالية.", en: "The hospital workspace reads only what the server reflects for the current workspace." },
+    { ar: "الإدخال والأسرة والعمليات والعناية والدم والخروج تحتاج عقودًا مستقلة.", en: "Admissions, beds, OR, ICU, blood, and discharge require independent contracts." },
+  ],
+  "/hospital-operations": [
+    { ar: "ابدأ بنظرة المستشفى ثم اختر نطاقًا؛ لا يمنح التبويب صلاحية تنفيذ.", en: "Start with the hospital overview, then choose a scope; tabs never grant execution rights." },
+    { ar: "الوصول الحي يتطلب تفعيل مساحة عمل أعادها الخادم.", en: "Live access requires activating a workspace returned by the server." },
+  ],
+  "/clinic-operations": [
+    { ar: "Appointment وEncounter مساران مختلفان؛ لا تنشئ الواجهة زيارة سريرية محليًا.", en: "Appointment and Encounter are distinct; the UI never creates a local clinical visit." },
+    { ar: "اعرض فقط المرضى والأوامر ضمن السياق المعاد من الخادم.", en: "Show only patients and orders within the server-reflected context." },
+  ],
+  "/lab-operations": [
+    { ar: "لا تعتمد نتيجة قبل اكتمال العينة والصلاحية والتدقيق.", en: "Never validate a result before specimen, authorization, and audit requirements are complete." },
+    { ar: "الوضع التجريبي لا يستدعي LIS أو محللًا حقيقيًا.", en: "Demo mode never calls a real LIS or analyzer." },
+  ],
+  "/radiology-operations": [
+    { ar: "لا تعرض DICOM أو PACS أو تقريرًا موقّعًا قبل العقد المناسب.", en: "Do not expose DICOM, PACS, or signed reports without the proper contract." },
+    { ar: "المعرّفات السريرية تُعرض بأدنى قدر لازم للسياق.", en: "Clinical identifiers are minimized to what the context requires." },
+  ],
+  "/pharmacy-operations": [
+    { ar: "الصرف والإعطاء عمليتان مختلفتان؛ لا تحولهما الواجهة إلى زر واحد.", en: "Dispensing and administration are distinct; the UI never collapses them into one action." },
+    { ar: "الأدوية الخاضعة للرقابة تحتاج تحققًا وسياسة خادمية متخصصة.", en: "Controlled medicines require specialized server-side verification and policy." },
+  ],
 };
 
 export function GuideAssistant() {
@@ -34,13 +70,13 @@ export function GuideAssistant() {
   );
 
   return (
-    <aside className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] end-3 z-50 sm:bottom-5 sm:end-5" dir={isArabic ? "rtl" : "ltr"} aria-live="polite">
+    <aside className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] end-3 z-50 sm:bottom-5 sm:end-5" dir={isArabic ? "rtl" : "ltr"} aria-live="polite" data-assistant-state={open ? "responding" : "idle"}>
       {open && (
         <section id="gula-guide-panel" className="mb-3 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-primary/20 bg-card p-4 shadow-xl" aria-label={isArabic ? "المساعد الإرشادي" : "Guide assistant"}>
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-foreground">{isArabic ? "مساعد GULA" : "GULA Guide"}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{isArabic ? "إرشادات محلية لا ترسل بياناتك للخارج" : "Local guidance; your data is not sent anywhere"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{isArabic ? "مرشد محلي؛ لا يملك وصولًا مستقلاً إلى قاعدة البيانات" : "Local guide; no independent database access"}</p>
             </div>
             <button className="rounded-lg p-1 text-muted-foreground hover:bg-muted" onClick={() => setOpen(false)} aria-label={isArabic ? "إغلاق" : "Close"}>
               <X className="h-4 w-4" />
@@ -52,6 +88,7 @@ export function GuideAssistant() {
               <span>{isArabic ? "وضع تجريبي: البيانات اصطناعية ومعزولة" : "Demo mode: synthetic, isolated data"}</span>
             </div>
           )}
+          <div className="mb-3 flex items-center justify-between gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50/70 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-100"><span>{isArabic ? "الحالة: جاهز للإرشاد" : "State: ready to guide"}</span><span>{isArabic ? "محلي" : "Local"}</span></div>
           <ol className="space-y-3 text-sm leading-6 text-foreground">
             {tips.map((tip, index) => (
               <li key={`${location.pathname}-${index}`} className="flex gap-2">
@@ -67,7 +104,7 @@ export function GuideAssistant() {
         </section>
       )}
       <button
-        className="flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+        className="gula-touch-target gula-focus-ring flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-lg transition hover:opacity-90"
         onClick={() => setOpen((value) => !value)}
         aria-expanded={open}
         aria-controls="gula-guide-panel"

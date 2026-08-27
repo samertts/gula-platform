@@ -133,9 +133,9 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             aria-current={active ? "page" : undefined}
             title={collapsed ? label : undefined}
             className={cn(
-              "group flex min-h-10 items-center gap-3 rounded-xl px-3 text-sm transition-colors",
+              "gula-nav-link",
               active
-                ? "bg-teal-50 font-semibold text-[#0D9488] shadow-sm ring-1 ring-teal-100 dark:bg-teal-950/35 dark:text-teal-200 dark:ring-teal-900/60"
+                ? "gula-nav-link-active"
                 : "text-muted-foreground hover:bg-slate-100 hover:text-[#0F172A] dark:hover:bg-white/[0.06] dark:hover:text-white",
               collapsed && "justify-center px-0",
             )}
@@ -211,7 +211,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
               collapsed && "justify-center",
             )}
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-xs font-bold text-[#0D9488] dark:bg-teal-950/40 dark:text-teal-200">
+            <span className="gula-touch-target flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-xs font-bold text-[#0D9488] dark:bg-teal-950/40 dark:text-teal-200">
               {user?.name?.charAt(0) || t("mobileNav.userFallback").charAt(0)}
             </span>
             {!collapsed && (
