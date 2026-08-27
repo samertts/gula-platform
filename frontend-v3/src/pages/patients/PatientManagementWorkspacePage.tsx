@@ -1,10 +1,9 @@
-import { FormEvent, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity,
   ArrowLeft,
   CalendarDays,
-  CheckCircle2,
   ClipboardList,
   Clock3,
   LockKeyhole,
@@ -21,7 +20,6 @@ import {
 import { PageHeader } from "@/components/shared/PageComponents";
 import { useAuth } from "@/contexts/AuthContext";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 
@@ -96,18 +94,14 @@ const statusVariant = (status: PatientStatus | Appointment["status"] | QueueEntr
   return "default";
 };
 
-const initialForm = { name: "", phone: "", birthDate: "", gender: "أنثى" as Gender, city: "بغداد", carePath: "استشارة عامة" };
-
 export function PatientManagementWorkspacePage() {
   const { demoMode } = useAuth();
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("patients");
-  const [patients, setPatients] = useState<PatientRecord[]>(INITIAL_PATIENTS);
+  const [patients] = useState<PatientRecord[]>(INITIAL_PATIENTS);
   const [appointments] = useState<Appointment[]>(INITIAL_APPOINTMENTS);
   const [queue] = useState<QueueEntry[]>(INITIAL_QUEUE);
   const [selectedPatientId, setSelectedPatientId] = useState(INITIAL_PATIENTS[0]?.id ?? 101);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState(initialForm);
-  const [message, setMessage] = useState("");
 
   const filteredPatients = useMemo(() => {
     const term = search.trim().toLocaleLowerCase("ar");
@@ -118,32 +112,6 @@ export function PatientManagementWorkspacePage() {
   const selectedPatient = patients.find((patient) => patient.id === selectedPatientId) ?? patients[0];
 
   if (!demoMode) return <LiveDataBoundary />;
-
-  const submitRegistration = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!form.name.trim() || !form.phone.trim() || !form.birthDate) {
-      setMessage("يرجى إكمال الاسم ورقم الهاتف وتاريخ الميلاد.");
-      return;
-    }
-    const nextId = Math.max(...patients.map((patient) => patient.id), 100) + 1;
-    const newPatient: PatientRecord = {
-      id: nextId,
-      healthId: `GULA-${String(nextId).padStart(6, "0")}`,
-      name: form.name.trim(),
-      phone: form.phone.trim(),
-      birthDate: form.birthDate,
-      gender: form.gender,
-      city: form.city,
-      status: "جديد",
-      lastVisit: "اليوم",
-      carePath: form.carePath,
-    };
-    setPatients((current) => [newPatient, ...current]);
-    setSelectedPatientId(newPatient.id);
-    setForm(initialForm);
-    setMessage(`تم إنشاء ملف تجريبي للمريض ${newPatient.name}.`);
-    setActiveTab("patients");
-  };
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -173,16 +141,14 @@ export function PatientManagementWorkspacePage() {
           <div className="flex flex-wrap border-b">
             {tabs.map((tab) => {
               const Icon = tab.icon;
-              return <button key={tab.id} type="button" onClick={() => { setActiveTab(tab.id); setMessage(""); }} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id ? "border-b-2 border-emerald-600 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground hover:text-foreground"}`}><Icon className="h-4 w-4" />{tab.label}</button>;
+              return <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id ? "border-b-2 border-emerald-600 text-emerald-700 dark:text-emerald-300" : "text-muted-foreground hover:text-foreground"}`}><Icon className="h-4 w-4" />{tab.label}</button>;
             })}
           </div>
         </CardContent>
       </Card>
 
-      {message && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/30 dark:text-emerald-300" role="status"><CheckCircle2 className="ml-2 inline h-4 w-4" />{message}</div>}
-
       {activeTab === "patients" && <PatientsDirectory patients={filteredPatients} selectedPatient={selectedPatient} search={search} onSearch={setSearch} onSelect={setSelectedPatientId} />}
-      {activeTab === "registration" && <RegistrationForm form={form} onChange={setForm} onSubmit={submitRegistration} />}
+      {activeTab === "registration" && <RegistrationPreview />}
       {activeTab === "appointments" && <AppointmentsBoard appointments={appointments} />}
       {activeTab === "queue" && <QueueBoard queue={queue} />}
 
@@ -212,12 +178,13 @@ function PatientProfile({ patient }: { patient?: PatientRecord }) {
 
 function Info({ label, value }: { label: string; value: string }) { return <div className="rounded-lg border p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-1 font-medium">{value}</p></div>; }
 
-function RegistrationForm({ form, onChange, onSubmit }: { form: typeof initialForm; onChange: (value: typeof initialForm) => void; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
-  const update = (key: keyof typeof initialForm, value: string) => onChange({ ...form, [key]: value });
-  return <Card><CardHeader><div className="flex items-center gap-3"><div className="rounded-xl bg-indigo-100 p-3 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"><FilePlus2 className="h-5 w-5" /></div><div><CardTitle className="text-base">تسجيل مريض جديد</CardTitle><p className="mt-1 text-sm text-muted-foreground">نموذج GULA أصلي قابل للتحويل لاحقًا إلى مورد Patient.</p></div></div></CardHeader><CardContent><form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-2"><Field label="الاسم الكامل" required><Input value={form.name} onChange={(event) => update("name", event.target.value)} placeholder="مثال: أحمد علي" /></Field><Field label="رقم الهاتف" required><Input value={form.phone} onChange={(event) => update("phone", event.target.value)} placeholder="+964 7XX XXX XXXX" /></Field><Field label="تاريخ الميلاد" required><Input type="date" value={form.birthDate} onChange={(event) => update("birthDate", event.target.value)} /></Field><Field label="الجنس"><select value={form.gender} onChange={(event) => update("gender", event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option>أنثى</option><option>ذكر</option></select></Field><Field label="المحافظة"><Input value={form.city} onChange={(event) => update("city", event.target.value)} /></Field><Field label="مسار الرعاية"><select value={form.carePath} onChange={(event) => update("carePath", event.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option>استشارة عامة</option><option>طب الأسرة</option><option>متابعة السكري</option><option>أمراض القلب</option></select></Field><div className="flex items-center justify-between gap-3 border-t pt-4 md:col-span-2"><p className="text-xs text-muted-foreground">سيُنشأ السجل محليًا في العرض التجريبي فقط.</p><Button type="submit"><UserPlus className="h-4 w-4" />إنشاء ملف تجريبي</Button></div></form></CardContent></Card>;
+function RegistrationPreview() {
+  return <Card><CardHeader><div className="flex items-center gap-3"><div className="rounded-xl bg-indigo-100 p-3 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"><FilePlus2 className="h-5 w-5" /></div><div><CardTitle className="text-base">مسار تسجيل المريض</CardTitle><p className="mt-1 text-sm text-muted-foreground">هذه معاينة UX فقط؛ لا يتم إنشاء Patient أو حفظ بيانات شخصية في العرض التجريبي.</p></div></div></CardHeader><CardContent className="space-y-4"><div className="grid gap-3 md:grid-cols-3"><PreviewStep number="01" title="التحقق من الهوية" detail="يتطلب عقد هوية خادمي" /><PreviewStep number="02" title="التحقق من العلاقة" detail="يتطلب نطاق مؤسسة وتفويضاً" /><PreviewStep number="03" title="إنشاء المورد" detail="يتطلب ACID وAudit وIdempotency" /></div><div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/70 p-4 text-sm leading-7 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-200"><ShieldCheck className="mt-1 h-5 w-5 shrink-0" /><p><strong>غير مفعّل في هذا الإصدار:</strong> لا يوجد زر حفظ أو إرسال، ولا تُنشأ سجلات محلية؛ عند توفر العقد الخادمي فقط يمكن إضافة نموذج يمر عبر Authorization وConsent وAudit.</p></div></CardContent></Card>;
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) { return <label className="space-y-1.5 text-sm"><span className="font-medium">{label}{required && <span className="mr-1 text-destructive">*</span>}</span>{children}</label>; }
+function PreviewStep({ number, title, detail }: { number: string; title: string; detail: string }) {
+  return <div className="rounded-xl border border-slate-200/80 p-4 dark:border-white/10"><span className="text-xs font-bold text-indigo-600 dark:text-indigo-300">{number}</span><p className="mt-2 text-sm font-bold">{title}</p><p className="mt-1 text-xs leading-6 text-muted-foreground">{detail}</p></div>;
+}
 
 function AppointmentsBoard({ appointments }: { appointments: Appointment[] }) {
   return <Card><CardHeader><CardTitle className="text-base">مواعيد اليوم</CardTitle></CardHeader><CardContent className="grid gap-3 md:grid-cols-2">{appointments.map((appointment) => <div key={appointment.id} className="rounded-xl border p-4"><div className="flex items-center justify-between gap-3"><div><p className="font-semibold">{appointment.time} · {appointment.patientName}</p><p className="mt-1 text-sm text-muted-foreground">{appointment.service} · {appointment.clinician}</p></div><Badge variant={statusVariant(appointment.status)}>{appointment.status}</Badge></div><div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground"><span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{appointment.location}</span><span className="inline-flex items-center gap-1"><MessageSquareText className="h-3.5 w-3.5" />إشعار محلي</span></div></div>)}</CardContent></Card>;

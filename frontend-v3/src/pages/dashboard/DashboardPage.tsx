@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { dashboardApi } from "@/api/endpoints";
 import { useAuth } from "@/contexts/AuthContext";
+import { DoctorWorkspacePanel } from "./DoctorWorkspacePanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui";
 import {
   Activity,
@@ -157,6 +158,8 @@ const demoActivity = [
 
 export function DashboardPage() {
   const { demoMode, user } = useAuth();
+
+  if (user?.role === "doctor") return <DoctorWorkspacePanel />;
   const experience = dashboardExperienceFor(user?.role);
   const demoRole = DEMO_ROLE_SUMMARIES[user?.role ?? ""] ?? DEMO_ROLE_SUMMARIES.doctor!;
   const { data, isLoading, isError } = useQuery<Record<string, unknown>>({
