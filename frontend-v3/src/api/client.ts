@@ -275,6 +275,7 @@ const BILLING_READ_PATTERN = /^GET \/billing\/(summary|invoices(?:\/\d+)?|claims
 const FINANCIAL_CONTROL_READ_PATTERN = /^GET \/payments\/controls\/(summary|requests)$/;
 const DEVICE_INTEGRATION_READ_PATTERN = /^GET \/device-integration\/(protocols|summary|devices(?:\/[^/]+)?|connectors|protocol-profiles|simulators|events|printer-jobs|monitoring|monitoring\/alerts)$/;
 const PHARMACY_READ_PATTERN = /^GET \/pharmacy\/(drugs(?:\/[^/]+)?|batches\/[^/]+|suppliers|prescriptions(?:\/[^/]+)?|dispense-queue|dispense\/dispense-records\/[^/]+|pos\/(?:sales(?:\/[^/]+)?|summary)|clinical\/guidelines|inventory\/stock-levels(?:\/alerts)?|inventory\/movements|inventory\/transfers|inventory\/recalls|dashboard(?:\/(queue-summary|stock-alerts|expiry-alerts))?)$/;
+const RADIOLOGY_READ_PATTERN = /^GET \/radiology\/(orders(?:\/search)?|appointments|exams|radiologist-worklist|technologist-worklist)$/;
 const CITIZEN_READ_PATTERN = /^GET \/citizen-platform\/me\/(dashboard|profile|health-summary|appointments|medications|medication-dispenses|lab-results)$/;
 const CONSENT_READ_PATTERN = /^GET \/consents\/me$/;
 const CONSENT_WRITE_PATTERN = /^POST \/consents\/[^/]+\/withdraw$/;
@@ -338,7 +339,7 @@ export function assertFrontendReadIsAllowed(method?: string, url?: string): void
 
   const key = toRequestKey(normalizedMethod, url);
   const workspaceDetail = /^GET \/niam\/workspaces\/[^/]+$/.test(key);
-  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || PHARMACY_READ_PATTERN.test(key) || CITIZEN_READ_PATTERN.test(key) || CONSENT_READ_PATTERN.test(key)) return;
+  if (BILLING_READ_PATTERN.test(key) || FINANCIAL_CONTROL_READ_PATTERN.test(key) || DEVICE_INTEGRATION_READ_PATTERN.test(key) || PHARMACY_READ_PATTERN.test(key) || RADIOLOGY_READ_PATTERN.test(key) || CITIZEN_READ_PATTERN.test(key) || CONSENT_READ_PATTERN.test(key)) return;
   if (!INITIALIZATION_READ_ALLOWLIST.has(key) && !workspaceDetail) {
     throw new OperationalReadBlockedError(normalizedMethod.toUpperCase(), url ?? "/");
   }

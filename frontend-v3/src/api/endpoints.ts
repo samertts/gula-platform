@@ -1610,6 +1610,56 @@ export const kernelRuntimeApi = {
 };
 
 
+// ── Radiology reads ──
+export type RadiologyOrderRecord = {
+  id: string;
+  patient_id?: string | null;
+  modality?: string | null;
+  body_part?: string | null;
+  priority?: string | null;
+  status?: string | null;
+  clinical_indication?: string | null;
+  created_at?: string | null;
+};
+
+export type RadiologyAppointmentRecord = {
+  id: string;
+  order_id?: string | null;
+  patient_id?: string | null;
+  modality?: string | null;
+  status?: string | null;
+  scheduled_date?: string | null;
+  scheduled_time?: string | null;
+  room?: string | null;
+};
+
+export type RadiologyExamRecord = {
+  id: string;
+  order_id?: string | null;
+  appointment_id?: string | null;
+  patient_id?: string | null;
+  accession_number?: string | null;
+  modality?: string | null;
+  body_part?: string | null;
+  status?: string | null;
+  images_count?: number | null;
+  series_count?: number | null;
+  created_at?: string | null;
+};
+
+export const radiologyApi = {
+  orders: (params?: { modality?: string; status?: string; priority?: string; skip?: number; limit?: number }) =>
+    api.get<{ items: RadiologyOrderRecord[]; total: number }>("/radiology/orders", { params }).then((r) => r.data),
+  appointments: (params?: { modality?: string; status?: string; skip?: number; limit?: number }) =>
+    api.get<{ items: RadiologyAppointmentRecord[]; total: number }>("/radiology/appointments", { params }).then((r) => r.data),
+  exams: (params?: { modality?: string; status?: string; skip?: number; limit?: number }) =>
+    api.get<{ items: RadiologyExamRecord[]; total: number }>("/radiology/exams", { params }).then((r) => r.data),
+  radiologistWorklist: (params?: { status?: string; priority?: string }) =>
+    api.get<{ items: RadiologyExamRecord[]; total: number }>("/radiology/radiologist-worklist", { params }).then((r) => r.data),
+  technologistWorklist: (params?: { modality?: string; date?: string }) =>
+    api.get<{ items: RadiologyExamRecord[]; total: number }>("/radiology/technologist-worklist", { params }).then((r) => r.data),
+};
+
 // ── Pharmacy POS ──
 export type PharmacyDrugRecord = {
   id: string;

@@ -69,6 +69,16 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
     expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/inventory/stock-levels/adjust")).toThrow(OperationalWriteBlockedError);
   });
 
+  it("يسمح بقراءات الأشعة المحدودة ويرفض كتابات التصوير أو روابط الصور العامة", () => {
+    expect(() => assertFrontendReadIsAllowed("get", "/radiology/orders?limit=50")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/radiology/appointments?limit=50")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/radiology/exams?limit=50")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/radiology/reports")).toThrow(OperationalReadBlockedError);
+    expect(() => assertFrontendReadIsAllowed("get", "/radiology/studies/study-1/images")).toThrow(OperationalReadBlockedError);
+    expect(() => assertFrontendWriteIsAllowed("post", "/radiology/orders")).toThrow(OperationalWriteBlockedError);
+    expect(() => assertFrontendWriteIsAllowed("put", "/radiology/reports/report-1/finalize")).toThrow(OperationalWriteBlockedError);
+  });
+
   it("يرفض قراءة REST غير مصنفة ويحصر الاستثناء في تهيئة الجلسة العامة", () => {
     expect(() => assertFrontendReadIsAllowed("get", "/patients")).toThrow(OperationalReadBlockedError);
     expect(() => assertFrontendReadIsAllowed("get", "/r/public-token")).toThrow(OperationalReadBlockedError);

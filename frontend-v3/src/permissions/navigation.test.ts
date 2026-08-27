@@ -58,6 +58,11 @@ describe("التنقل العربي الأساسي في GULA", () => {
     expect(getRouteRoles("/pharmacy-operations")).not.toContain("doctor");
   });
 
+  it("يقصر عمليات الأشعة على الأدوار السريرية والتشغيلية وDemo", () => {
+    expect(getRouteRoles("/radiology-operations")).toEqual(expect.arrayContaining(["doctor", "staff", "technician", "demo_viewer"]));
+    expect(getRouteRoles("/radiology-operations")).not.toContain("citizen");
+  });
+
   it("يحمي بوابة المؤسسة الصحية بنطاق أدوار مؤسسية مستقل", () => {
     const items = Object.values(NAV_ITEMS).flat();
     const organizationItem = items.find((item) => item.path === "/organization-workspace");
