@@ -286,9 +286,9 @@
       "scope": "local disposable evidence only; no HA/failover or production capacity proof"
     },
     "remote_ci_observation": {
-      "head": "7c1770b0f4a3a9e9a4711f62fb16e15b89cf500c",
-      "iam_hardening_run": "33116457147",
-      "frontend_bundle_budget_run": "33116457139",
+      "head": "28bd319ae95a1394f4cad143ae4ba4783262095d",
+      "iam_hardening_run": "33116654019",
+      "frontend_bundle_budget_run": "33116654036",
       "conclusion": "failure",
       "job_steps": "all jobs reported steps=[] through GitHub API",
       "observed_duration": "about five seconds",
