@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -95,6 +96,10 @@ class PrescriptionResponse(_StrictModel):
     status: str
     purpose: str
     controlled_policy_status: str
+    controlled_policy_approved_by_account_id: str | None
+    controlled_policy_approved_at: datetime | None
+    controlled_policy_reason: str | None
+    controlled_policy_evidence: dict | None
     signed_at: datetime | None
     supersedes_id: str | None
     items: list[dict]
@@ -115,3 +120,34 @@ class DispenseResponse(_StrictModel):
     verified_by_account_id: str | None
     dispensed_by_account_id: str | None
     correlation_id: str
+
+
+class ControlledPolicyActionRequest(_StrictModel):
+    workspace_id: str = Field(min_length=1, max_length=26)
+    reason: str = Field(min_length=4, max_length=500)
+
+
+class FefoDispenseCreateRequest(_StrictModel):
+    prescription_row_id: str = Field(min_length=1, max_length=26)
+    prescription_item_id: str = Field(min_length=1, max_length=26)
+    workspace_id: str = Field(min_length=1, max_length=26)
+    quantity: int = Field(gt=0, le=1_000_000)
+
+
+class BatchActionRequest(_StrictModel):
+    workspace_id: str = Field(min_length=1, max_length=26)
+    reason: str = Field(min_length=4, max_length=500)
+
+
+class StockAdjustmentRequest(_StrictModel):
+    workspace_id: str = Field(min_length=1, max_length=26)
+    quantity_delta: int = Field(ge=-100_000, le=100_000)
+    kind: Literal["WASTE", "REVERSAL"]
+    reason: str = Field(min_length=4, max_length=500)
+
+    @field_validator("quantity_delta")
+    @classmethod
+    def quantity_must_not_be_zero(cls, value: int) -> int:
+        if value == 0:
+            raise ValueError("quantity_delta must not be zero")
+        return value

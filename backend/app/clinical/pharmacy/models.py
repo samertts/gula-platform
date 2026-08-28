@@ -71,6 +71,11 @@ class CorePrescription(Base):  # type: ignore[misc]
     status = Column(String(24), nullable=False, default="DRAFT", index=True)
     purpose = Column(String(40), nullable=False, default="treatment")
     controlled_policy_status = Column(String(32), nullable=False, default="NOT_CONTROLLED")
+    # Identity tables use a separate SQLAlchemy metadata; the database migration owns this FK.
+    controlled_policy_approved_by_account_id = Column(String(26), nullable=True)
+    controlled_policy_approved_at = Column(DateTime(timezone=True), nullable=True)
+    controlled_policy_reason = Column(String(500), nullable=True)
+    controlled_policy_evidence = Column(JSON, nullable=True)
     signed_by_account_id = Column(String(26), nullable=True)
     signed_at = Column(DateTime(timezone=True), nullable=True)
     supersedes_id = Column(String(26), nullable=True, index=True)
@@ -83,7 +88,7 @@ class CorePrescription(Base):  # type: ignore[misc]
         UniqueConstraint("prescription_number", "version", name="uq_core_prescription_number_version"),
         CheckConstraint("version > 0", name="ck_core_prescription_version_positive"),
         CheckConstraint("status IN ('DRAFT','SIGNED','AMENDED','CANCELLED','COMPLETED')", name="ck_core_prescription_status"),
-        CheckConstraint("controlled_policy_status IN ('NOT_CONTROLLED','PENDING_POLICY_REVIEW','REJECTED_BY_POLICY')", name="ck_core_prescription_controlled_policy"),
+        CheckConstraint("controlled_policy_status IN ('NOT_CONTROLLED','PENDING_POLICY_REVIEW','APPROVED_BY_POLICY','REJECTED_BY_POLICY')", name="ck_core_prescription_controlled_policy"),
         Index("ix_core_prescription_scope_status", "organization_id", "facility_id", "workspace_id", "status", "created_at"),
         Index("ix_core_prescription_patient_created", "patient_person_id", "created_at"),
     )
@@ -133,6 +138,7 @@ class CoreMedicationBatch(Base):  # type: ignore[misc]
     quantity_received = Column(Integer, nullable=False)
     quantity_available = Column(Integer, nullable=False)
     quarantined = Column(Integer, nullable=False, default=0)
+    version = Column(Integer, nullable=False, default=1)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
 
     __table_args__ = (
@@ -141,6 +147,7 @@ class CoreMedicationBatch(Base):  # type: ignore[misc]
         CheckConstraint("quantity_available >= 0", name="ck_core_medication_batch_available_nonnegative"),
         CheckConstraint("quantity_available <= quantity_received", name="ck_core_medication_batch_available_lte_received"),
         CheckConstraint("quarantined IN (0,1)", name="ck_core_medication_batch_quarantine_bool"),
+        CheckConstraint("version > 0", name="ck_core_medication_batch_version_positive"),
         Index("ix_core_medication_batch_scope_expiry", "organization_id", "facility_id", "workspace_id", "expiry_date"),
     )
 

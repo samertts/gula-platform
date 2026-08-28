@@ -41,8 +41,24 @@ def test_core_contract_registry_contains_the_safe_golden_path_domains() -> None:
         "hospital-discharge",
         "emergency-incident",
         "emergency-dispatch",
+        "lis-analyzer",
+        "lis-qc",
+        "financial-coverage",
+        "financial-eligibility",
+        "financial-preauthorization",
+        "financial-claim",
+        "financial-payment",
+        "financial-refund",
+        "financial-settlement",
+        "pharmacy-controlled-policy",
+        "pharmacy-recall",
     ]
     assert get_contract("appointment") is APPOINTMENT
+    assert get_contract("financial-payment").allows("PENDING", "CAPTURED")
+    assert not get_contract("financial-payment").allows("CAPTURED", "PAID")
+    assert get_contract("lis-analyzer").allows("ACTIVE", "QUARANTINED")
+    assert not get_contract("lis-analyzer").allows("QUARANTINED", "ACTIVE")
+    assert get_contract("pharmacy-controlled-policy").allows("PENDING_POLICY_REVIEW", "APPROVED_BY_POLICY")
 
 
 def test_state_machine_rejects_invalid_transitions() -> None:
@@ -89,3 +105,4 @@ def test_readiness_requires_evidence_and_never_infers_production_from_frontend_t
     )
     assert review.readiness(APPOINTMENT) is ReadinessState.READY_FOR_REVIEW
     assert review.readiness(CLINICAL_NOTE) is ReadinessState.READY_FOR_REVIEW
+    assert review.readiness(get_contract("financial-payment")) is ReadinessState.EXTERNAL_DEPENDENCY

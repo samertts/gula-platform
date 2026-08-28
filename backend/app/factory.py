@@ -144,6 +144,8 @@ def import_all_models() -> None:
     from .capabilities.fhir_interoperability.models import FHIRResourceRecord  # noqa: F401
     from .clinical.appointments import models as appointment_models  # noqa: F401
     from .clinical.encounters import models as encounter_models  # noqa: F401
+    from .clinical.laboratory import advanced_models as laboratory_advanced_models  # noqa: F401
+    from .clinical.pharmacy import advanced_models as pharmacy_advanced_models  # noqa: F401
     from .devices.models import (  # noqa: F401
         DeviceConnector,
         DeviceEvent,
@@ -186,6 +188,7 @@ def import_all_models() -> None:
         ExternalProfessionalRecord,
         ExternalSource,
     )
+    from .financial import canonical_models as financial_canonical_models  # noqa: F401
     from .hospital.models import (  # noqa: F401
         Bed,
         BedAssignment,
@@ -590,8 +593,10 @@ def _register_routes(app: FastAPI) -> None:
     app.include_router(tiers_routes.router)
     app.include_router(billing_routes.router)
 
+    from .financial import register_canonical_routes as register_canonical_financial_routes
     from .financial import register_routes as register_financial_routes
     register_financial_routes(app)
+    register_canonical_financial_routes(app)
 
     from .payments.control_routes import router as payments_control_router
     from .payments.fx_routes import router as payments_fx_router
@@ -719,8 +724,10 @@ def _register_routes(app: FastAPI) -> None:
     app.include_router(core_appointment_router)
     from .clinical.encounters.routes import router as core_encounter_router
     app.include_router(core_encounter_router)
+    from .clinical.laboratory.advanced_routes import router as core_laboratory_advanced_router
     from .clinical.laboratory.routes import router as core_laboratory_router
     app.include_router(core_laboratory_router)
+    app.include_router(core_laboratory_advanced_router)
     from .clinical.results.routes import router as core_result_router
     app.include_router(core_result_router)
     from .clinical.access.routes import router as core_access_router

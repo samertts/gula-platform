@@ -16,6 +16,7 @@ from app.contracts.clinical_core import require_transition
 from app.identity.api.workspaces import NiamActor
 from app.identity.services.canonical_audit import AuditEventInput, SyncCanonicalAuditService
 
+from .advanced_models import CoreMedicationRecall
 from .models import (
     CoreDispense,
     CoreMedicationBatch,
@@ -135,7 +136,7 @@ class CanonicalPharmacyService:
             return cached
         if prescription.status != "DRAFT":
             raise PharmacyStateConflictError("Only a draft prescription can be signed", code="PRESCRIPTION_NOT_SIGNABLE")
-        if prescription.controlled_policy_status != "NOT_CONTROLLED":
+        if prescription.controlled_policy_status not in {"NOT_CONTROLLED", "APPROVED_BY_POLICY"}:
             raise ControlledMedicationPolicyError("Controlled medication requires an explicit policy review before signing")
         before = prescription.status
         require_transition("prescription", before, "SIGNED")
@@ -269,6 +270,85 @@ class CanonicalPharmacyService:
         response = self._dispense_response(dispense)
         self._complete(actor, "dispense.complete", idempotency_key, response, dispense.id)
         self._audit(actor, "DISPENSING_COMPLETED", "dispense", dispense.id, scope, correlation_id, request_id, {"state_before": before, "state_after": dispense.status, "quantity": dispense.quantity, "batch_remaining": batch.quantity_available, "version_after": dispense.version})
+        return response
+
+    def approve_controlled_policy(self, actor: NiamActor, *, prescription_id: str, workspace_id: str, expected_version: int, reason: str, idempotency_key: str, correlation_id: str, request_id: str | None) -> dict[str, Any]:
+        scope = self.authz.resolve_scope(actor, workspace_id)
+        prescription = self._prescription_for_update(prescription_id, scope)
+        self.authz.require_permission(actor, scope, "clinical.medication.controlled_approve")
+        self._assert_version(prescription.version, expected_version)
+        if prescription.prescriber_account_id == actor.account.id:
+            raise PharmacyStateConflictError("A separate authorized actor must approve controlled medication policy", code="SEPARATION_OF_DUTIES_REQUIRED", status_code=403)
+        if prescription.controlled_policy_status != "PENDING_POLICY_REVIEW":
+            raise ControlledMedicationPolicyError("The controlled medication policy is not pending review")
+        payload = {"resource_id": prescription.id, "workspace_id": scope.workspace_id, "expected_version": expected_version, "reason": reason.strip()}
+        cached = self._claim(actor, "prescription.controlled_policy.approve", idempotency_key, payload)
+        if cached is not None:
+            return cached
+        prescription.controlled_policy_status = "APPROVED_BY_POLICY"
+        prescription.controlled_policy_approved_by_account_id = actor.account.id
+        prescription.controlled_policy_approved_at = datetime.now(UTC)
+        prescription.controlled_policy_reason = reason.strip()
+        prescription.controlled_policy_evidence = {"source": "SYNTHETIC_POLICY_REVIEW", "decision": "APPROVED", "approved_by": actor.account.id}
+        prescription.version += 1
+        self.db.flush()
+        response = self._prescription_response(prescription, correlation_id)
+        self._complete(actor, "prescription.controlled_policy.approve", idempotency_key, response, prescription.id)
+        self._audit(actor, "CONTROLLED_POLICY_APPROVED", "prescription", prescription.id, scope, correlation_id, request_id, {"reason": reason.strip(), "version_after": prescription.version})
+        return response
+
+    def prepare_dispense_fefo(self, actor: NiamActor, *, prescription_row_id: str, prescription_item_id: str, workspace_id: str, quantity: int, idempotency_key: str, correlation_id: str, request_id: str | None) -> dict[str, Any]:
+        scope = self.authz.resolve_scope(actor, workspace_id)
+        self.authz.require_permission(actor, scope, "clinical.medication.dispense")
+        prescription, item = self._prescription_and_item(prescription_row_id, prescription_item_id, scope)
+        candidates = self.db.query(CoreMedicationBatch).filter(CoreMedicationBatch.medication_catalog_id == item.medication_catalog_id, CoreMedicationBatch.organization_id == scope.organization_id, CoreMedicationBatch.facility_id == scope.facility_id, CoreMedicationBatch.workspace_id == scope.workspace_id, CoreMedicationBatch.quantity_available >= quantity, CoreMedicationBatch.quarantined == 0, CoreMedicationBatch.expiry_date > date.today()).order_by(CoreMedicationBatch.expiry_date.asc(), CoreMedicationBatch.id.asc()).with_for_update().all()
+        if not candidates:
+            raise InventoryConflictError("No eligible FEFO batch has sufficient stock", code="INVENTORY_CONFLICT")
+        return self.prepare_dispense(actor, prescription_row_id=prescription.id, prescription_item_id=item.id, batch_id=candidates[0].id, workspace_id=scope.workspace_id, quantity=quantity, idempotency_key=idempotency_key, correlation_id=correlation_id, request_id=request_id)
+
+    def recall_batch(self, actor: NiamActor, *, batch_id: str, workspace_id: str, reason: str, expected_version: int, idempotency_key: str, correlation_id: str, request_id: str | None) -> dict[str, Any]:
+        scope = self.authz.resolve_scope(actor, workspace_id)
+        self.authz.require_permission(actor, scope, "clinical.medication.inventory")
+        batch = self._batch_for_update(batch_id, scope)
+        payload = {"resource_id": batch.id, "workspace_id": scope.workspace_id, "reason": reason.strip(), "expected_version": expected_version}
+        cached = self._claim(actor, "medication.batch.recall", idempotency_key, payload)
+        if cached is not None:
+            return cached
+        self._assert_version(batch.version, expected_version)
+        if batch.quarantined or self.db.query(CoreMedicationRecall).filter_by(batch_id=batch.id, status="OPEN").first() is not None:
+            raise PharmacyStateConflictError("The batch is already quarantined", code="BATCH_ALREADY_QUARANTINED")
+        batch.quarantined = 1
+        batch.version += 1
+        recall = CoreMedicationRecall(batch_id=batch.id, organization_id=scope.organization_id, facility_id=scope.facility_id, workspace_id=scope.workspace_id, recall_reference="SYN-RECALL-" + secrets.token_hex(10).upper(), reason=reason.strip(), status="OPEN", created_by_account_id=actor.account.id)
+        self.db.add(recall)
+        self.db.flush()
+        response = self._batch_response(batch, correlation_id)
+        response["recall_id"] = recall.id
+        self._complete(actor, "medication.batch.recall", idempotency_key, response, batch.id)
+        self._audit(actor, "MEDICATION_BATCH_RECALLED", "medication_batch", batch.id, scope, correlation_id, request_id, {"reason": reason.strip(), "quantity_blocked": batch.quantity_available})
+        return response
+
+    def adjust_stock(self, actor: NiamActor, *, batch_id: str, workspace_id: str, quantity_delta: int, kind: str, reason: str, expected_version: int, idempotency_key: str, correlation_id: str, request_id: str | None) -> dict[str, Any]:
+        scope = self.authz.resolve_scope(actor, workspace_id)
+        self.authz.require_permission(actor, scope, "clinical.medication.inventory")
+        batch = self._batch_for_update(batch_id, scope)
+        if kind == "WASTE" and quantity_delta > 0:
+            raise PharmacyStateConflictError("Waste cannot increase stock", code="STOCK_ADJUSTMENT_INVALID", status_code=422)
+        next_available = batch.quantity_available + quantity_delta
+        if next_available < 0 or next_available > batch.quantity_received:
+            raise InventoryConflictError("The stock adjustment would create an invalid balance", code="INVENTORY_CONFLICT")
+        payload = {"resource_id": batch.id, "workspace_id": scope.workspace_id, "quantity_delta": quantity_delta, "kind": kind, "reason": reason.strip(), "expected_version": expected_version}
+        cached = self._claim(actor, "medication.stock.adjust", idempotency_key, payload)
+        if cached is not None:
+            return cached
+        self._assert_version(batch.version, expected_version)
+        batch.quantity_available = next_available
+        batch.version += 1
+        self.db.add(CoreMedicationStockLedger(batch_id=batch.id, medication_catalog_id=batch.medication_catalog_id, organization_id=scope.organization_id, facility_id=scope.facility_id, workspace_id=scope.workspace_id, movement_type="ADJUSTMENT_REVERSAL", quantity_delta=quantity_delta, reference_type=kind.lower(), reference_id=batch.id, actor_account_id=actor.account.id, correlation_id=correlation_id, metadata_={"reason": reason.strip(), "kind": kind}))
+        self.db.flush()
+        response = self._batch_response(batch, correlation_id)
+        self._complete(actor, "medication.stock.adjust", idempotency_key, response, batch.id)
+        self._audit(actor, "MEDICATION_STOCK_ADJUSTED", "medication_batch", batch.id, scope, correlation_id, request_id, {"quantity_delta": quantity_delta, "kind": kind, "reason": reason.strip(), "available_after": batch.quantity_available})
         return response
 
     def get_prescription(self, actor: NiamActor, *, prescription_id: str, workspace_id: str, correlation_id: str) -> dict[str, Any]:
@@ -407,7 +487,7 @@ class CanonicalPharmacyService:
 
     def _prescription_response(self, row: CorePrescription, correlation_id: str) -> dict[str, Any]:
         items = self.db.query(CorePrescriptionItem).filter(CorePrescriptionItem.prescription_row_id == row.id).order_by(CorePrescriptionItem.created_at.asc(), CorePrescriptionItem.id.asc()).all()
-        return {"id": row.id, "prescription_id": row.prescription_id, "prescription_number": row.prescription_number, "version": row.version, "encounter_id": row.encounter_id, "patient_person_id": row.patient_person_id, "prescriber_account_id": row.prescriber_account_id, "organization_id": row.organization_id, "facility_id": row.facility_id, "workspace_id": row.workspace_id, "status": row.status, "purpose": row.purpose, "controlled_policy_status": row.controlled_policy_status, "signed_at": row.signed_at.isoformat() if row.signed_at else None, "supersedes_id": row.supersedes_id, "items": [{"id": item.id, "medication_catalog_id": item.medication_catalog_id, "medication_code": item.medication_code, "medication_name": item.medication_name, "dose_value": item.dose_value, "dose_unit": item.dose_unit, "frequency": item.frequency, "route": item.route, "duration_days": item.duration_days, "quantity": item.quantity, "quantity_unit": item.quantity_unit, "instructions": item.instructions} for item in items], "correlation_id": correlation_id}
+        return {"id": row.id, "prescription_id": row.prescription_id, "prescription_number": row.prescription_number, "version": row.version, "encounter_id": row.encounter_id, "patient_person_id": row.patient_person_id, "prescriber_account_id": row.prescriber_account_id, "organization_id": row.organization_id, "facility_id": row.facility_id, "workspace_id": row.workspace_id, "status": row.status, "purpose": row.purpose, "controlled_policy_status": row.controlled_policy_status, "controlled_policy_approved_by_account_id": row.controlled_policy_approved_by_account_id, "controlled_policy_approved_at": row.controlled_policy_approved_at.isoformat() if row.controlled_policy_approved_at else None, "controlled_policy_reason": row.controlled_policy_reason, "controlled_policy_evidence": row.controlled_policy_evidence, "signed_at": row.signed_at.isoformat() if row.signed_at else None, "supersedes_id": row.supersedes_id, "items": [{"id": item.id, "medication_catalog_id": item.medication_catalog_id, "medication_code": item.medication_code, "medication_name": item.medication_name, "dose_value": item.dose_value, "dose_unit": item.dose_unit, "frequency": item.frequency, "route": item.route, "duration_days": item.duration_days, "quantity": item.quantity, "quantity_unit": item.quantity_unit, "instructions": item.instructions} for item in items], "correlation_id": correlation_id}
 
     @staticmethod
     def _medication_response(row: CoreMedicationCatalog, correlation_id: str) -> dict[str, Any]:
@@ -415,7 +495,7 @@ class CanonicalPharmacyService:
 
     @staticmethod
     def _batch_response(row: CoreMedicationBatch, correlation_id: str) -> dict[str, Any]:
-        return {"id": row.id, "medication_catalog_id": row.medication_catalog_id, "batch_number": row.batch_number, "facility_id": row.facility_id, "workspace_id": row.workspace_id, "expiry_date": row.expiry_date.isoformat() if row.expiry_date else None, "quantity_received": row.quantity_received, "quantity_available": row.quantity_available, "quarantined": bool(row.quarantined), "correlation_id": correlation_id}
+        return {"id": row.id, "medication_catalog_id": row.medication_catalog_id, "batch_number": row.batch_number, "facility_id": row.facility_id, "workspace_id": row.workspace_id, "expiry_date": row.expiry_date.isoformat() if row.expiry_date else None, "quantity_received": row.quantity_received, "quantity_available": row.quantity_available, "quarantined": bool(row.quarantined), "version": row.version, "correlation_id": correlation_id}
 
     @staticmethod
     def _dispense_response(row: CoreDispense) -> dict[str, Any]:

@@ -361,6 +361,90 @@ EMERGENCY_DISPATCH = ContractDefinition(
     },
 )
 
+LIS_ANALYZER = ContractDefinition(
+    contract_id="CONTRACT-029",
+    domain="lis-analyzer",
+    states=("REGISTERED", "VALIDATED", "ACTIVE", "MAINTENANCE", "QUARANTINED", "RETIRED"),
+    transitions={"REGISTERED": ("VALIDATED", "QUARANTINED", "RETIRED"), "VALIDATED": ("ACTIVE", "MAINTENANCE", "QUARANTINED", "RETIRED"), "ACTIVE": ("MAINTENANCE", "QUARANTINED", "RETIRED"), "MAINTENANCE": ("ACTIVE", "QUARANTINED", "RETIRED"), "QUARANTINED": ("VALIDATED", "RETIRED"), "RETIRED": ()},
+)
+
+LIS_QC = ContractDefinition(
+    contract_id="CONTRACT-030",
+    domain="lis-qc",
+    states=("PENDING", "PASS", "FAILED", "OVERRIDDEN"),
+    transitions={"PENDING": ("PASS", "FAILED", "OVERRIDDEN"), "PASS": (), "FAILED": (), "OVERRIDDEN": ()},
+)
+
+FINANCIAL_COVERAGE = ContractDefinition(
+    contract_id="CONTRACT-031",
+    domain="financial-coverage",
+    states=("PENDING", "ACTIVE", "EXPIRED", "SUSPENDED", "UNKNOWN", "TERMINATED"),
+    transitions={"PENDING": ("ACTIVE", "SUSPENDED", "UNKNOWN", "TERMINATED"), "ACTIVE": ("EXPIRED", "SUSPENDED", "TERMINATED"), "SUSPENDED": ("ACTIVE", "TERMINATED"), "EXPIRED": (), "UNKNOWN": ("ACTIVE", "SUSPENDED", "TERMINATED"), "TERMINATED": ()},
+    external_dependencies=("insurance-provider",),
+)
+
+FINANCIAL_ELIGIBILITY = ContractDefinition(
+    contract_id="CONTRACT-032",
+    domain="financial-eligibility",
+    states=("REQUESTED", "PROCESSING", "ELIGIBLE", "INELIGIBLE", "UNKNOWN", "FAILED"),
+    transitions={"REQUESTED": ("PROCESSING", "UNKNOWN", "FAILED"), "PROCESSING": ("ELIGIBLE", "INELIGIBLE", "UNKNOWN", "FAILED"), "ELIGIBLE": (), "INELIGIBLE": (), "UNKNOWN": (), "FAILED": ()},
+    external_dependencies=("insurance-provider",),
+)
+
+FINANCIAL_PREAUTH = ContractDefinition(
+    contract_id="CONTRACT-033",
+    domain="financial-preauthorization",
+    states=("REQUESTED", "UNDER_REVIEW", "APPROVED", "PARTIALLY_APPROVED", "DENIED", "EXPIRED", "CANCELLED"),
+    transitions={"REQUESTED": ("UNDER_REVIEW", "DENIED", "EXPIRED", "CANCELLED"), "UNDER_REVIEW": ("APPROVED", "PARTIALLY_APPROVED", "DENIED", "EXPIRED", "CANCELLED"), "APPROVED": (), "PARTIALLY_APPROVED": (), "DENIED": (), "EXPIRED": (), "CANCELLED": ()},
+    external_dependencies=("insurance-provider",),
+)
+
+FINANCIAL_CLAIM = ContractDefinition(
+    contract_id="CONTRACT-034",
+    domain="financial-claim",
+    states=("DRAFT", "SUBMITTED", "RECEIVED", "UNDER_REVIEW", "APPROVED", "PARTIALLY_APPROVED", "DENIED", "PAID", "REJECTED", "APPEALED"),
+    transitions={"DRAFT": ("SUBMITTED",), "SUBMITTED": ("RECEIVED", "REJECTED", "UNDER_REVIEW"), "RECEIVED": ("UNDER_REVIEW",), "UNDER_REVIEW": ("APPROVED", "PARTIALLY_APPROVED", "DENIED"), "APPROVED": ("PAID",), "PARTIALLY_APPROVED": ("PAID",), "DENIED": ("APPEALED",), "PAID": (), "REJECTED": (), "APPEALED": ()},
+    external_dependencies=("insurance-provider",),
+)
+
+FINANCIAL_PAYMENT = ContractDefinition(
+    contract_id="CONTRACT-035",
+    domain="financial-payment",
+    states=("INITIATED", "AUTHORIZED", "CAPTURED", "SETTLED", "FAILED", "CANCELLED", "REFUNDED", "PARTIALLY_REFUNDED", "PENDING"),
+    transitions={"INITIATED": ("AUTHORIZED", "CAPTURED", "PENDING", "FAILED", "CANCELLED"), "AUTHORIZED": ("CAPTURED", "PENDING", "FAILED", "CANCELLED"), "PENDING": ("CAPTURED", "FAILED", "CANCELLED"), "CAPTURED": ("SETTLED", "PARTIALLY_REFUNDED", "REFUNDED"), "SETTLED": ("PARTIALLY_REFUNDED", "REFUNDED"), "PARTIALLY_REFUNDED": ("REFUNDED",), "FAILED": (), "CANCELLED": (), "REFUNDED": ()},
+    external_dependencies=("payment-provider",),
+)
+
+FINANCIAL_REFUND = ContractDefinition(
+    contract_id="CONTRACT-036",
+    domain="financial-refund",
+    states=("REQUESTED", "COMPLETED", "FAILED", "CANCELLED"),
+    transitions={"REQUESTED": ("COMPLETED", "FAILED", "CANCELLED"), "COMPLETED": (), "FAILED": (), "CANCELLED": ()},
+    external_dependencies=("payment-provider",),
+)
+
+FINANCIAL_SETTLEMENT = ContractDefinition(
+    contract_id="CONTRACT-037",
+    domain="financial-settlement",
+    states=("PROPOSED", "APPROVED", "PAID", "CONFLICT", "CANCELLED"),
+    transitions={"PROPOSED": ("APPROVED", "CONFLICT", "CANCELLED"), "APPROVED": ("PAID", "CONFLICT", "CANCELLED"), "PAID": (), "CONFLICT": (), "CANCELLED": ()},
+    external_dependencies=("payment-provider", "insurance-provider"),
+)
+
+PHARMACY_CONTROLLED_POLICY = ContractDefinition(
+    contract_id="CONTRACT-038",
+    domain="pharmacy-controlled-policy",
+    states=("NOT_CONTROLLED", "PENDING_POLICY_REVIEW", "APPROVED_BY_POLICY", "REJECTED_BY_POLICY"),
+    transitions={"NOT_CONTROLLED": (), "PENDING_POLICY_REVIEW": ("APPROVED_BY_POLICY", "REJECTED_BY_POLICY"), "APPROVED_BY_POLICY": (), "REJECTED_BY_POLICY": ()},
+)
+
+PHARMACY_RECALL = ContractDefinition(
+    contract_id="CONTRACT-039",
+    domain="pharmacy-recall",
+    states=("OPEN", "CLEARED"),
+    transitions={"OPEN": ("CLEARED",), "CLEARED": ()},
+)
+
 NOTIFICATION = ContractDefinition(
     contract_id="CONTRACT-015",
     domain="notification",
@@ -376,6 +460,9 @@ CORE_CONTRACTS: tuple[ContractDefinition, ...] = (
     IMAGING_STUDY, IMAGING_REPORT, CLINICAL_RECORD, HOSPITAL_ADMISSION,
     HOSPITAL_TASK, HOSPITAL_EMAR, HOSPITAL_TRANSFER, HOSPITAL_DISCHARGE,
     EMERGENCY_INCIDENT, EMERGENCY_DISPATCH,
+    LIS_ANALYZER, LIS_QC, FINANCIAL_COVERAGE, FINANCIAL_ELIGIBILITY,
+    FINANCIAL_PREAUTH, FINANCIAL_CLAIM, FINANCIAL_PAYMENT, FINANCIAL_REFUND,
+    FINANCIAL_SETTLEMENT, PHARMACY_CONTROLLED_POLICY, PHARMACY_RECALL,
 )
 
 CONTRACTS_BY_DOMAIN = {contract.domain: contract for contract in CORE_CONTRACTS}
