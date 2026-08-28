@@ -50,3 +50,9 @@ def register_routes(app) -> None:
     app.include_router(financial_router)
     import logging
     logging.getLogger("gula.financial").info("Financial Engine routes registered")
+
+
+def register_canonical_routes(app) -> None:
+    """Mount the NIAM-scoped canonical finance core; legacy routes remain separate."""
+    from .canonical_routes import router as canonical_financial_router
+    app.include_router(canonical_financial_router)

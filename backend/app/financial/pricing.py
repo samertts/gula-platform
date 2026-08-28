@@ -38,7 +38,7 @@ def calculate_fee(
 
 def apply_quality_discount(fee: Decimal, quality_score: float) -> Decimal:
     if not 0.0 <= quality_score <= 1.0:
-        raise ValueError("quality_score must be 0.0–1.0")
+        raise ValueError("quality_score must be between 0.0 and 1.0")
     discount = fee * Decimal(str(quality_score)) * QUALITY_DISCOUNT_RATE
     return max(fee - discount, MINIMUM_BILL).quantize(Decimal(1))
 
