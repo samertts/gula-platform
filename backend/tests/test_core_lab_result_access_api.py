@@ -50,6 +50,7 @@ LAB_PERMISSIONS = (
     "clinical.result.release",
     "clinical.result.amend",
     "clinical.critical.acknowledge",
+    "clinical.laboratory.qc.write",
 )
 
 
@@ -206,6 +207,8 @@ def test_lab_result_access_golden_path_and_revoke(client, context):
     _set_actor(reviewer_account, reviewer_session)
     clinical = client.post(f"/api/v1/clinical/results/{result_body['id']}/validate-clinical", headers={"Idempotency-Key": "result-clinical-1", "If-Match": '"2"'}, json={"workspace_id": workspace_id})
     assert clinical.status_code == 200 and clinical.json()["status"] == "CLINICALLY_VALIDATED"
+    qc = client.post("/api/v1/clinical/lab/qc", headers={"Idempotency-Key": "result-qc-1", "If-Match": '"3"'}, json={"workspace_id": workspace_id, "result_id": result_body["id"], "status": "PASS"})
+    assert qc.status_code == 201, qc.text
     released = client.post(f"/api/v1/clinical/results/{result_body['id']}/release", headers={"Idempotency-Key": "result-release-1", "If-Match": '"3"'}, json={"workspace_id": workspace_id})
     assert released.status_code == 200 and released.json()["status"] == "RELEASED"
 

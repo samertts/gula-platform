@@ -11,6 +11,7 @@ from app.clinical.appointments.service import (
     VersionConflictError,
 )
 from app.clinical.command_guard import CanonicalClinicalCommandGuard
+from app.clinical.laboratory.advanced_models import CoreLabQualityControl
 from app.clinical.laboratory.authorization import LaboratoryAuthorizationService
 from app.clinical.laboratory.models import (
     CoreLabOrder,
@@ -47,6 +48,11 @@ class SeparationOfDutiesError(AppointmentError):
 class CriticalResultNotFoundError(AppointmentError):
     code = "CRITICAL_RESULT_NOT_FOUND"
     status_code = 404
+
+
+class QualityGateFailedError(AppointmentError):
+    code = "QC_FAILED"
+    status_code = 409
 
 
 class ResultService:
@@ -160,6 +166,10 @@ class ResultService:
         critical = self.db.query(CoreCriticalResultEvent).filter(CoreCriticalResultEvent.result_id == result.id).with_for_update().first()
         if critical is not None and critical.status not in {"ACKNOWLEDGED", "ACTIONED", "CLOSED"}:
             raise CriticalAckRequiredError("Critical result acknowledgement is required before release")
+        if result.provenance_type in {"ANALYZER", "IMPORTED_SYNTHETIC"}:
+            qc = self.db.query(CoreLabQualityControl).filter_by(result_id=result.id).with_for_update().first()
+            if qc is None or qc.status not in {"PASS", "OVERRIDDEN"}:
+                raise QualityGateFailedError("QC pass or authorized override is required before release")
         return self._transition_result_after_loaded(actor, result, scope, "RELEASED", expected_version, idempotency_key, correlation_id, request_id, "clinical.result.release", "RESULT_RELEASED", released=True)
 
     def acknowledge_critical(self, actor: NiamActor, *, result_id: str, workspace_id: str, expected_version: int, reason: str, idempotency_key: str, correlation_id: str, request_id: str | None) -> dict[str, Any]:
