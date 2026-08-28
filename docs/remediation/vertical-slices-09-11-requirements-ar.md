@@ -86,3 +86,7 @@ Fraud/risk intelligence explainable/auditable/reviewable ولا يغلق موا�
 أُضيفت الآن مسارات provisioning للـward/room/bed وعضوية Care Team مع membership object check، ومسار manual reconciliation للهوية المؤقتة، وhandover/ePCR amendments كسجلات جديدة مرتبطة بـ`supersedes_id`، وDeviceGateway protocols/adapters اصطناعية لا تحفظ raw telemetry. كما أصبحت summary signing تعتمد `summary_version` بدلاً من `discharge.version`، وأصبح transfer allocation يتحرك حصراً عند `IN_TRANSIT → RECEIVED`، وأزيلت إضافة discharge المكررة.
 
 تبقى التكاملات الحكومية وGPS والأجهزة وPACS/LIS/RIS/HIS وSMS/Telegram/WhatsApp وبيانات المواطنين الحقيقية خارج النطاق عمداً. كما لا يزال إثبات remote CI محجوباً عندما تعود runs بحالة `steps=[]`، ولا يوجد staging rollback أو frontend E2E جديد لهذه الشرائح؛ لذلك تبقى `golden_path_passed=false` و`production_ready=false`.
+
+## ملاحظة CI بعد الدفع
+
+على SHA `7443e28e6e5963613d8b82c37196f6c6ed944e9e` انتهى [IAM Hardening Gate run 33131930617](https://github.com/samertts/gula-platform/actions/runs/33131930617) و[Frontend Bundle Budget run 33131930755](https://github.com/samertts/gula-platform/actions/runs/33131930755) بالفشل خلال نحو ثلاث ثوانٍ، وكانت كل الوظائف في الـrunين `steps=[]`. لا يوجد application log أو خطوة اختبار قابلة للتشخيص؛ لذلك سُجلت النتيجة كـexternal runner/workflow blocker، وليست نجاحاً ولا دليلاً على فشل الكود، وتبقى readiness flags false.
