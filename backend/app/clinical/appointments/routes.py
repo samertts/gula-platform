@@ -101,6 +101,87 @@ _ERROR_MESSAGES: dict[str, tuple[int, str, str]] = {
     "RECORD_NOT_FOUND": (404, "The clinical record was not found.", "لم يتم العثور على السجل السريري."),
     "INVALID_RECORD_SECTION": (422, "The clinical-record section is invalid.", "قسم السجل السريري غير صالح."),
     "INVALID_RECORD_CURSOR": (422, "The clinical-record cursor is invalid.", "مؤشر السجل السريري غير صالح."),
+    "HOSPITAL_RESOURCE_NOT_FOUND": (404, "The hospital resource was not found.", "لم يتم العثور على مورد المستشفى."),
+    "HOSPITAL_STATE_CONFLICT": (409, "The hospital workflow conflicts with its current state.", "تتعارض عملية المستشفى مع الحالة الحالية."),
+    "WARD_NOT_FOUND": (404, "The hospital ward was not found.", "لم يتم العثور على جناح المستشفى."),
+    "ROOM_NOT_FOUND": (404, "The hospital room was not found.", "لم يتم العثور على غرفة المستشفى."),
+    "BED_NOT_FOUND": (404, "The hospital bed was not found.", "لم يتم العثور على سرير المستشفى."),
+    "ENCOUNTER_NOT_FOUND": (404, "The clinical encounter was not found.", "لم يتم العثور على الزيارة السريرية."),
+    "ADMISSION_NOT_FOUND": (404, "The hospital admission was not found.", "لم يتم العثور على قبول المستشفى."),
+    "TASK_NOT_FOUND": (404, "The nursing task was not found.", "لم يتم العثور على مهمة التمريض."),
+    "EMAR_NOT_FOUND": (404, "The medication administration was not found.", "لم يتم العثور على سجل إعطاء الدواء."),
+    "TRANSFER_NOT_FOUND": (404, "The patient transfer was not found.", "لم يتم العثور على نقل المريض."),
+    "DISCHARGE_NOT_FOUND": (404, "The discharge workflow was not found.", "لم يتم العثور على مسار الخروج."),
+    "DISCHARGE_SUMMARY_NOT_FOUND": (404, "The discharge summary was not found.", "لم يتم العثور على ملخص الخروج."),
+    "WARD_EXISTS": (409, "A ward with this code already exists in the facility.", "يوجد جناح بهذا الرمز في المنشأة."),
+    "ROOM_EXISTS": (409, "A room with this code already exists in the ward.", "توجد غرفة بهذا الرمز في الجناح."),
+    "BED_EXISTS": (409, "A bed with this code already exists in the room.", "يوجد سرير بهذا الرمز في الغرفة."),
+    "ROOM_CAPACITY_REACHED": (409, "The room capacity has been reached.", "تم بلوغ سعة الغرفة."),
+    "WARD_SCOPE_MISMATCH": (409, "The bed is outside the admission ward.", "السرير خارج جناح القبول."),
+    "ADMISSION_REQUEST_EXISTS": (409, "This admission request already exists.", "طلب القبول موجود مسبقاً."),
+    "CARE_TEAM_ACCOUNT_NOT_FOUND": (404, "The care-team account was not found.", "لم يتم العثور على حساب عضو فريق الرعاية."),
+    "CARE_TEAM_MEMBER_EXISTS": (409, "This account is already on the active care team.", "الحساب عضو فعّال بالفعل في فريق الرعاية."),
+    "CARE_TEAM_ROLE_INVALID": (422, "The care-team role is not allowed.", "دور عضو فريق الرعاية غير مسموح."),
+    "CARE_TEAM_TIME_INVALID": (422, "The care-team time window is invalid.", "الفترة الزمنية لفريق الرعاية غير صالحة."),
+    "DISCHARGE_EXISTS": (409, "This discharge request already exists.", "طلب الخروج موجود مسبقاً."),
+    "DISCHARGE_SUMMARY_EXISTS": (409, "A draft discharge summary already exists.", "يوجد ملخص خروج مسودة بالفعل."),
+    "DISCHARGE_SUMMARY_IMMUTABLE": (409, "A signed discharge summary is immutable.", "ملخص الخروج الموقع غير قابل للتعديل."),
+    "DISCHARGE_NOT_READY": (409, "Discharge prerequisites are incomplete.", "متطلبات الخروج غير مكتملة."),
+    "DISCHARGE_NOT_COMPLETABLE": (409, "The discharge is not completable in its current state.", "لا يمكن إتمام الخروج في حالته الحالية."),
+    "PRESCRIPTION_NOT_ADMINISTRABLE": (409, "The prescription is not eligible for administration.", "الوصفة غير مؤهلة لإعطاء الدواء."),
+    "PRESCRIPTION_PATIENT_MISMATCH": (409, "The prescription does not belong to the admitted patient.", "الوصفة لا تخص المريض المقبول."),
+    "MEDICATION_MISMATCH": (409, "The medication identity could not be verified.", "تعذر التحقق من هوية الدواء."),
+    "EMAR_REASON_REQUIRED": (422, "A reason is required for this medication outcome.", "يلزم سبب لهذه النتيجة الدوائية."),
+    "DUPLICATE_ADMINISTRATION": (409, "This medication administration key already exists.", "مفتاح إعطاء الدواء موجود مسبقاً."),
+    "TRANSFER_EXISTS": (409, "This transfer request already exists.", "طلب النقل موجود مسبقاً."),
+    "TRANSFER_SAME_WARD": (409, "The transfer must target a different ward.", "يجب أن يستهدف النقل جناحاً مختلفاً."),
+    "EMERGENCY_RESOURCE_NOT_FOUND": (404, "The emergency resource was not found.", "لم يتم العثور على مورد الطوارئ."),
+    "EMERGENCY_STATE_CONFLICT": (409, "The emergency workflow conflicts with its current state.", "تتعارض عملية الطوارئ مع الحالة الحالية."),
+    "TEMPORARY_SUBJECT_NOT_FOUND": (404, "The temporary emergency subject was not found.", "لم يتم العثور على هوية الطوارئ المؤقتة."),
+    "INCIDENT_NOT_FOUND": (404, "The emergency incident was not found.", "لم يتم العثور على حادثة الطوارئ."),
+    "DISPATCH_NOT_FOUND": (404, "The EMS dispatch was not found.", "لم يتم العثور على إرسال الإسعاف."),
+    "PREALERT_NOT_FOUND": (404, "The hospital pre-alert was not found.", "لم يتم العثور على التنبيه المسبق للمستشفى."),
+    "HANDOVER_NOT_FOUND": (404, "The emergency handover was not found.", "لم يتم العثور على تسليم الطوارئ."),
+    "EPCR_NOT_FOUND": (404, "The emergency care report was not found.", "لم يتم العثور على تقرير الرعاية الإسعافية."),
+    "SUBJECT_REFERENCE_INVALID": (422, "Exactly one known patient or temporary subject is required.", "يجب تحديد مريض معروف أو هوية مؤقتة واحدة فقط."),
+    "TEMPORARY_SUBJECT_NOT_ACTIVE": (409, "The temporary emergency subject is not active.", "هوية الطوارئ المؤقتة غير فعالة."),
+    "INCIDENT_EXISTS": (409, "An emergency incident with this reference already exists.", "توجد حادثة طوارئ بهذا المرجع مسبقاً."),
+    "TRIAGE_EXISTS": (409, "A triage assessment with this reference already exists.", "يوجد تقييم فرز بهذا المرجع مسبقاً."),
+    "DISPATCH_EXISTS": (409, "A dispatch request with this reference already exists.", "يوجد طلب إرسال بهذا المرجع مسبقاً."),
+    "TREATMENT_EXISTS": (409, "A treatment request with this reference already exists.", "يوجد طلب علاج بهذا المرجع مسبقاً."),
+    "PREALERT_EXISTS": (409, "A pre-alert request with this reference already exists.", "يوجد طلب تنبيه مسبق بهذا المرجع مسبقاً."),
+    "HANDOVER_EXISTS": (409, "A handover request with this reference already exists.", "يوجد طلب تسليم بهذا المرجع مسبقاً."),
+    "EPCR_EXISTS": (409, "An emergency care report with this reference already exists.", "يوجد تقرير رعاية إسعافية بهذا المرجع مسبقاً."),
+    "PREALERT_NOT_PENDING": (409, "Only a pending pre-alert can be acknowledged.", "لا يمكن تأكيد إلا التنبيه المسبق المعلّق."),
+    "HANDOVER_NOT_PENDING": (409, "Only a submitted handover can be acknowledged.", "لا يمكن تأكيد إلا التسليم المرسل."),
+    "DEDICATED_WORKFLOW_REQUIRED": (409, "This emergency transition must use its dedicated workflow.", "يجب استخدام مسار الطوارئ المخصص لهذا الانتقال."),
+    "EPCR_IMMUTABLE": (409, "A signed emergency care report is immutable; create an amendment.", "تقرير الرعاية الموقع غير قابل للتعديل؛ أنشئ تعديلاً."),
+    "EPCR_SIGNATURE_REQUIRED": (422, "Signature evidence is required before signing the emergency care report.", "يلزم دليل التوقيع قبل توقيع تقرير الرعاية الإسعافية."),
+    "RECONCILIATION_ALREADY_FINAL": (409, "This temporary identity requires an explicit correction workflow.", "هذه الهوية المؤقتة تحتاج مسار تصحيح صريحاً."),
+    "RECONCILIATION_PERSON_REQUIRED": (422, "A person reference is required for a matched resolution.", "يلزم مرجع الشخص عند اعتماد المطابقة."),
+    "RECONCILIATION_PERSON_INVALID": (422, "A person reference is only allowed for a matched resolution.", "لا يسمح بمرجع الشخص إلا عند اعتماد المطابقة."),
+    "RECONCILIATION_PERSON_NOT_FOUND": (404, "The reconciliation person was not found.", "لم يتم العثور على الشخص المطلوب للمطابقة."),
+    "HANDOVER_AMENDMENT_INVALID": (409, "The handover cannot be amended in its current state.", "لا يمكن تعديل التسليم في حالته الحالية."),
+    "EPCR_AMENDMENT_REQUIRES_SIGNED": (409, "Only a signed ePCR can be amended.", "لا يمكن تعديل إلا تقرير رعاية إسعافية موقع."),
+    "EPCR_AMENDMENT_PENDING": (409, "An ePCR amendment is already pending signature.", "يوجد تعديل لتقرير الرعاية بانتظار التوقيع."),
+    "HEALTH_IDENTITY_ERROR": (409, "The health-identity workflow conflicts with its current state.", "تتعارض عملية الهوية الصحية مع الحالة الحالية."),
+    "HEALTH_IDENTITY_RESOURCE_NOT_FOUND": (404, "The health-identity resource was not found.", "لم يتم العثور على مورد الهوية الصحية."),
+    "VERIFICATION_PROVIDER_UNAVAILABLE": (503, "The verification provider is not connected; no verification was asserted.", "مزود التحقق غير متصل؛ لم يتم إثبات التحقق."),
+    "VERIFICATION_PROOF_REJECTED": (422, "The verification proof was rejected.", "تم رفض دليل التحقق."),
+    "VERIFICATION_REQUIRED": (422, "Verified identity evidence is required.", "يلزم دليل هوية متحقق منه."),
+    "CONSENT_EXPIRY_INVALID": (422, "Consent expiry is outside the allowed bound.", "مدة الموافقة خارج الحد المسموح."),
+    "CONSENT_SCOPE_INVALID": (422, "Consent scope must be explicit and non-public.", "يجب أن يكون نطاق الموافقة صريحاً وغير عام."),
+    "DEVICE_OWNERSHIP_CONFLICT": (403, "The device is bound to another identity.", "الجهاز مرتبط بهوية أخرى."),
+    "SESSION_INVALID": (403, "An active account session is required.", "يلزم وجود جلسة حساب فعالة."),
+    "RECOVERY_PROOF_REJECTED": (422, "The recovery proof was rejected.", "تم رفض دليل الاسترداد."),
+    "RECOVERY_EXPIRED": (409, "The recovery operation has expired.", "انتهت عملية استرداد الحساب."),
+    "VERIFICATION_NOT_PENDING": (409, "The verification operation is no longer pending.", "عملية التحقق لم تعد معلقة."),
+    "IDENTITY_PERSON_UNRESOLVED": (403, "The identity is not linked to an active person.", "الهوية غير مرتبطة بشخص فعال."),
+    "CONSENT_NOT_ACTIVE": (409, "The consent is not active.", "الموافقة غير فعالة."),
+    "CONSENT_SELF_GRANT": (422, "Self-consent is implicit and cannot be created as a sharing grant.", "الموافقة الذاتية ضمنية ولا تنشأ كمنحة مشاركة."),
+    "ONE_PERSON_HEALTH_ID_CONFLICT": (409, "Multiple Health IDs exist for one person; manual review is required.", "توجد معرفات صحية متعددة لشخص واحد؛ تلزم مراجعة بشرية."),
+    "RECOVERY_OPERATION_INVALID": (409, "The recovery operation is invalid.", "عملية الاسترداد غير صالحة."),
+    "RECOVERY_NOT_PENDING": (409, "The recovery operation is no longer pending.", "عملية الاسترداد لم تعد معلقة."),
 }
 
 
@@ -130,8 +211,9 @@ def _require_if_match(value: str | None) -> int:
         raise ValidationError("If-Match must contain an integer version.") from exc
 
 
-def _raise_safe(code: str, correlation_id: str) -> None:
-    http_status, message, message_ar = _ERROR_MESSAGES.get(code, _ERROR_MESSAGES["INTERNAL_ERROR"])
+def _raise_safe(code: str, correlation_id: str, *, fallback_status: int = 500) -> None:
+    default = (fallback_status, "The clinical operation was rejected.", "تم رفض العملية السريرية.")
+    http_status, message, message_ar = _ERROR_MESSAGES.get(code, default)
     raise AppointmentError(
         message,
         status_code=http_status,
@@ -253,7 +335,7 @@ def _handle_error(
             db.rollback()
             logger.exception("Could not persist appointment rejection")
             raise
-        _raise_safe(exc.code, correlation_id)
+        _raise_safe(exc.code, correlation_id, fallback_status=getattr(exc, "status_code", 500))
     logger.exception("Unexpected appointment operation failure; correlation_id=%s", correlation_id)
     _raise_safe("INTERNAL_ERROR", correlation_id)
 

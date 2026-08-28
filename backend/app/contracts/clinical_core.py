@@ -271,6 +271,96 @@ CLINICAL_RECORD = ContractDefinition(
     write_safety=WriteSafetyRequirements(idempotency=False, concurrency=False),
 )
 
+HOSPITAL_ADMISSION = ContractDefinition(
+    contract_id="CONTRACT-022",
+    domain="hospital-admission",
+    states=("REQUESTED", "ACCEPTED", "ADMITTED", "IN_CARE", "DISCHARGE_PLANNED", "DISCHARGED", "CANCELLED", "REJECTED", "TRANSFERRED"),
+    transitions={
+        "REQUESTED": ("ACCEPTED", "REJECTED", "CANCELLED"),
+        "ACCEPTED": ("ADMITTED", "REJECTED", "CANCELLED"),
+        "ADMITTED": ("IN_CARE", "DISCHARGE_PLANNED", "TRANSFERRED"),
+        "IN_CARE": ("DISCHARGE_PLANNED", "TRANSFERRED"),
+        "DISCHARGE_PLANNED": ("DISCHARGED", "CANCELLED"),
+        "DISCHARGED": (), "CANCELLED": (), "REJECTED": (), "TRANSFERRED": (),
+    },
+)
+
+HOSPITAL_TASK = ContractDefinition(
+    contract_id="CONTRACT-023",
+    domain="hospital-task",
+    states=("OPEN", "CLAIMED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "DEFERRED"),
+    transitions={
+        "OPEN": ("CLAIMED", "CANCELLED", "DEFERRED"),
+        "CLAIMED": ("IN_PROGRESS", "COMPLETED", "CANCELLED", "DEFERRED"),
+        "IN_PROGRESS": ("COMPLETED", "CANCELLED", "DEFERRED"),
+        "COMPLETED": (), "CANCELLED": (), "DEFERRED": (),
+    },
+)
+
+HOSPITAL_EMAR = ContractDefinition(
+    contract_id="CONTRACT-024",
+    domain="hospital-emar",
+    states=("ORDERED", "VERIFIED", "SCHEDULED", "ADMINISTERED", "HELD", "REFUSED", "MISSED", "CANCELLED"),
+    transitions={
+        "ORDERED": ("VERIFIED", "HELD", "REFUSED", "MISSED", "CANCELLED"),
+        "VERIFIED": ("SCHEDULED", "ADMINISTERED", "HELD", "REFUSED", "MISSED", "CANCELLED"),
+        "SCHEDULED": ("ADMINISTERED", "HELD", "REFUSED", "MISSED", "CANCELLED"),
+        "ADMINISTERED": (), "HELD": (), "REFUSED": (), "MISSED": (), "CANCELLED": (),
+    },
+)
+
+HOSPITAL_TRANSFER = ContractDefinition(
+    contract_id="CONTRACT-025",
+    domain="hospital-transfer",
+    states=("REQUESTED", "ACCEPTED", "PREPARING", "IN_TRANSIT", "RECEIVED", "COMPLETED", "CANCELLED", "REJECTED"),
+    transitions={
+        "REQUESTED": ("ACCEPTED", "REJECTED", "CANCELLED"),
+        "ACCEPTED": ("PREPARING", "REJECTED", "CANCELLED"),
+        "PREPARING": ("IN_TRANSIT", "CANCELLED"),
+        "IN_TRANSIT": ("RECEIVED", "CANCELLED"),
+        "RECEIVED": ("COMPLETED",),
+        "COMPLETED": (), "CANCELLED": (), "REJECTED": (),
+    },
+)
+
+HOSPITAL_DISCHARGE = ContractDefinition(
+    contract_id="CONTRACT-026",
+    domain="hospital-discharge",
+    states=("PLANNED", "APPROVED", "COMPLETED", "CANCELLED"),
+    transitions={"PLANNED": ("APPROVED", "COMPLETED", "CANCELLED"), "APPROVED": ("COMPLETED", "CANCELLED"), "COMPLETED": (), "CANCELLED": ()},
+)
+
+EMERGENCY_INCIDENT = ContractDefinition(
+    contract_id="CONTRACT-027",
+    domain="emergency-incident",
+    states=("REPORTED", "TRIAGED", "DISPATCHED", "EN_ROUTE", "ON_SCENE", "TRANSPORTING", "AT_DESTINATION", "HANDOVER_COMPLETE", "CLOSED", "CANCELLED"),
+    transitions={
+        "REPORTED": ("TRIAGED", "CANCELLED"),
+        "TRIAGED": ("DISPATCHED", "CANCELLED"),
+        "DISPATCHED": ("EN_ROUTE", "CANCELLED"),
+        "EN_ROUTE": ("ON_SCENE", "CANCELLED"),
+        "ON_SCENE": ("TRANSPORTING", "AT_DESTINATION", "CANCELLED"),
+        "TRANSPORTING": ("AT_DESTINATION", "HANDOVER_COMPLETE", "CANCELLED"),
+        "AT_DESTINATION": ("HANDOVER_COMPLETE",),
+        "HANDOVER_COMPLETE": ("CLOSED",),
+        "CLOSED": (), "CANCELLED": (),
+    },
+)
+
+EMERGENCY_DISPATCH = ContractDefinition(
+    contract_id="CONTRACT-028",
+    domain="emergency-dispatch",
+    states=("ASSIGNED", "EN_ROUTE", "ON_SCENE", "TRANSPORTING", "AT_DESTINATION", "COMPLETED", "CANCELLED"),
+    transitions={
+        "ASSIGNED": ("EN_ROUTE", "CANCELLED"),
+        "EN_ROUTE": ("ON_SCENE", "CANCELLED"),
+        "ON_SCENE": ("TRANSPORTING", "AT_DESTINATION", "CANCELLED"),
+        "TRANSPORTING": ("AT_DESTINATION", "CANCELLED"),
+        "AT_DESTINATION": ("COMPLETED",),
+        "COMPLETED": (), "CANCELLED": (),
+    },
+)
+
 NOTIFICATION = ContractDefinition(
     contract_id="CONTRACT-015",
     domain="notification",
@@ -283,7 +373,9 @@ CORE_CONTRACTS: tuple[ContractDefinition, ...] = (
     APPOINTMENT, SESSION, DEVICE, PATIENT_ACCESS, CONSENT, ACCESS_HISTORY,
     DELEGATION, TASK, ENCOUNTER, CLINICAL_NOTE, LAB_ORDER, SPECIMEN,
     RESULT, CRITICAL_RESULT, NOTIFICATION, PRESCRIPTION, DISPENSE, IMAGING_ORDER,
-    IMAGING_STUDY, IMAGING_REPORT, CLINICAL_RECORD,
+    IMAGING_STUDY, IMAGING_REPORT, CLINICAL_RECORD, HOSPITAL_ADMISSION,
+    HOSPITAL_TASK, HOSPITAL_EMAR, HOSPITAL_TRANSFER, HOSPITAL_DISCHARGE,
+    EMERGENCY_INCIDENT, EMERGENCY_DISPATCH,
 )
 
 CONTRACTS_BY_DOMAIN = {contract.domain: contract for contract in CORE_CONTRACTS}

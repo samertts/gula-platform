@@ -34,6 +34,13 @@ def test_core_contract_registry_contains_the_safe_golden_path_domains() -> None:
         "imaging-study",
         "imaging-report",
         "clinical-record",
+        "hospital-admission",
+        "hospital-task",
+        "hospital-emar",
+        "hospital-transfer",
+        "hospital-discharge",
+        "emergency-incident",
+        "emergency-dispatch",
     ]
     assert get_contract("appointment") is APPOINTMENT
 
