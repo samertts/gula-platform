@@ -139,7 +139,7 @@ def _session_engine():
         "niam_organizations", "niam_admin_branches", "niam_admin_facilities",
         "niam_admin_departments", "niam_admin_units", "niam_workspaces", "niam_workspace_contexts",
         "niam_memberships", "niam_roles", "niam_permissions", "niam_role_permissions",
-        "niam_role_assignments", "niam_audit_entries",
+        "niam_role_assignments", "niam_audit_entries", "niam_health_identity_operations", "niam_lifecycle_citizen", "niam_consents",
     }
     for _table_name in _identity_tables:
         _table = IdentityBase.metadata.tables.get(_table_name)

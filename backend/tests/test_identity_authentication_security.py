@@ -36,8 +36,9 @@ async def test_refresh_session_uses_refresh_token_identifier(monkeypatch):
         user_agent="test-agent",
         device_id="device-1",
         id="session-1",
+        refresh_family_id="family-1",
     )
-    account = SimpleNamespace(is_active=True)
+    account = SimpleNamespace(id="account-1", is_active=True)
     service.session_repo.find_by_refresh_token_jti.return_value = session
     service.account_repo.get_by_id.return_value = account
     blacklist = Mock()
@@ -49,5 +50,5 @@ async def test_refresh_session_uses_refresh_token_identifier(monkeypatch):
     assert result == {"access_token": "rotated"}
     service.session_repo.find_by_refresh_token_jti.assert_awaited_once_with("refresh-jti")
     service.session_repo.find_by_token_jti.assert_not_called()
-    service.session_repo.soft_delete.assert_awaited_once_with("session-1")
+    service.session_repo.terminate_session.assert_awaited_once_with("session-1", reason="refresh_token_rotated", terminated_by="account-1")
     blacklist.assert_called_once()

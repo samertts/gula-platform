@@ -27,6 +27,28 @@ class SessionRepository(IdentityRepositoryBase[UserSession]):
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def find_any_by_refresh_token_jti(self, jti: str) -> UserSession | None:
+        stmt = select(self.model_class).where(self.model_class.refresh_token_jti == jti)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def terminate_refresh_family(self, family_id: str, *, reason: str, detected_at: datetime) -> None:
+        stmt = (
+            update(self.model_class)
+            .where(
+                self.model_class.refresh_family_id == family_id,
+                self.model_class.is_active.is_(True),
+            )
+            .values(
+                is_active=False,
+                terminated_at=detected_at,
+                termination_reason=reason,
+                refresh_reuse_detected_at=detected_at,
+            )
+        )
+        await self.session.execute(stmt)
+        await self.session.flush()
+
     async def find_by_account_id(self, account_id: str) -> list[UserSession]:
         stmt = (
             select(self.model_class)

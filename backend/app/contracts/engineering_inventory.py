@@ -414,6 +414,86 @@ def scan_repository(repo_root: str | Path) -> EngineeringInventoryReport:
             root / "backend/tests/test_clinical_record_api.py",
         ),
     )
+    domain_bundles = (*domain_bundles,
+        (
+            "hospital",
+            (
+                root / "backend/app/clinical/hospital/models.py",
+                root / "backend/app/clinical/hospital/schemas.py",
+                root / "backend/app/clinical/hospital/service.py",
+                root / "backend/app/clinical/hospital/routes.py",
+                root / "backend/app/clinical/device_gateway.py",
+            ),
+            {
+                "authorization": "require_permission",
+                "audit": "SyncCanonicalAuditService",
+                "state_machine": "require_transition",
+                "idempotency": "_claim",
+                "version": "expected_version",
+                "concurrency": "with_for_update",
+                "care_team": "CoreCareTeamMember",
+                "device_boundary": "HospitalDeviceGateway",
+            },
+            root / "backend/tests/test_core_hospital_api.py",
+        ),
+        (
+            "emergency",
+            (
+                root / "backend/app/clinical/emergency/models.py",
+                root / "backend/app/clinical/emergency/schemas.py",
+                root / "backend/app/clinical/emergency/service.py",
+                root / "backend/app/clinical/emergency/routes.py",
+                root / "backend/app/clinical/device_gateway.py",
+            ),
+            {
+                "authorization": "_scope",
+                "audit": "SyncCanonicalAuditService",
+                "state_machine": "require_transition",
+                "idempotency": "_claim",
+                "version": "expected_version",
+                "concurrency": "with_for_update",
+                "outbox": "SYNTHETIC_INTENT",
+                "temporary_reconciliation": "reconcile_temporary_subject",
+                "immutable_amendment": "supersedes_id",
+                "device_boundary": "EMSDeviceGateway",
+            },
+            root / "backend/tests/test_core_emergency_api.py",
+        ),
+        (
+            "health_identity",
+            (
+                root / "backend/app/identity/models/health_identity.py",
+                root / "backend/app/identity/services/health_identity_service.py",
+                root / "backend/app/identity/routes/health_identity.py",
+                root / "backend/app/identity/schemas/health_identity.py",
+            ),
+            {
+                "authorization": "_active_actor",
+                "audit": "NiamHealthIdentityOperation",
+                "idempotency": "idempotency_key",
+                "version": "version",
+                "fail_closed_provider": "NotConnectedProvider",
+                "one_person_one_id": "health_id",
+            },
+            root / "backend/tests/test_health_identity_api.py",
+        ),
+        (
+            "identity_session",
+            (
+                root / "backend/app/identity/models/session.py",
+                root / "backend/app/identity/repositories/session_repository.py",
+                root / "backend/app/identity/services/authentication_service.py",
+            ),
+            {
+                "refresh_lineage": "refresh_family_id",
+                "replay_lookup": "find_any_by_refresh_token_jti",
+                "family_revocation": "terminate_refresh_family",
+                "rotation": "parent_refresh_token_jti",
+                "reuse_audit_state": "refresh_reuse_detected_at",
+            },
+            root / "backend/tests/identity/test_auth_session_security_phase2.py",
+        ),
+    )
     for domain, bundle_files, tokens, test_file in domain_bundles:
         present = tuple(str(path.relative_to(root)) for path in bundle_files if path.exists())
         for evidence, token in tokens.items():
