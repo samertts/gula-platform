@@ -25,6 +25,7 @@ from app.blood_bank.domain.enums import (
     DonorStatus,
     TransfusionStatus,
 )
+from app.blood_bank.domain.state_machine import transition
 from app.blood_bank.exceptions import (
     BloodBankValidationError,
     BloodBankWorkflowError,
@@ -45,6 +46,7 @@ from app.blood_bank.infrastructure.models import (
     CrossmatchModel,
     DonorDeferralModel,
     TransfusionModel,
+    InventoryMovementModel,
 )
 from app.national.events.base import NationalDomainEvent
 
@@ -327,10 +329,18 @@ class BloodBankService:
         if len(units) != quantity:
             raise InsufficientStockError("Insufficient screened, processed, unexpired units for this request")
         for unit in units:
+            transition(unit.status, ComponentStatus.ISSUED.value, entity="blood_unit")
+            previous_status = unit.status
             unit.status = ComponentStatus.ISSUED.value
             unit.issued_to = request.patient_id
             unit.issued_at = now
             unit.version += 1
+            self.db.add(InventoryMovementModel(
+                unit_id=unit.id, facility_id=unit.facility_id or request.facility_id,
+                from_location=unit.storage_location, to_location="issued",
+                movement_type="issued", performed_by=issued_by, performed_at=now,
+                notes=f"{previous_status} -> issued for request {request.id}", lab_id=lab_id,
+            ))
         request.fulfilled_units = (request.fulfilled_units or 0) + quantity
         request.status = "fulfilled" if request.fulfilled_units == request.units_requested else "partially_fulfilled"
         request.version += 1
@@ -524,6 +534,7 @@ class BloodBankService:
             raise TransfusionNotFoundError()
         if model.status != TransfusionStatus.VERIFIED.value:
             raise BloodBankWorkflowError("Only bedside-verified transfusions can be started")
+        transition(model.status, TransfusionStatus.IN_PROGRESS.value, entity="transfusion")
         if not administered_by.strip() or administered_by == model.verified_by:
             raise BloodBankValidationError("Transfusion administration requires a second clinical actor")
         unit = (
@@ -564,14 +575,22 @@ class BloodBankService:
         )
         if not unit or unit.status != ComponentStatus.ISSUED.value:
             raise BloodBankWorkflowError("Issued unit is not available for completion")
+        transition(model.status, TransfusionStatus.COMPLETED.value, entity="transfusion")
         model.post_vitals = data["post_vitals"]
         model.status = TransfusionStatus.COMPLETED.value
         model.end_time = datetime.now(UTC)
         model.outcome = data.get("outcome") or "completed"
         model.version += 1
+        transition(unit.status, ComponentStatus.TRANSFUSED.value, entity="blood_unit")
         unit.status = ComponentStatus.TRANSFUSED.value
         unit.transfused_at = model.end_time
         unit.version += 1
+        self.db.add(InventoryMovementModel(
+            unit_id=unit.id, facility_id=unit.facility_id, from_location="issued",
+            to_location="transfused", movement_type="transferred",
+            performed_by=str(data.get("completed_by") or model.administered_by or "system"),
+            performed_at=model.end_time, notes=f"issued -> transfused for transfusion {model.id}", lab_id=lab_id,
+        ))
         self.db.flush()
         return model
 
