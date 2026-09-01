@@ -758,6 +758,35 @@ class BloodBankService:
         self._trace(lab_id=lab_id, unit_id=unit.id, facility_id=facility_id, event_type="discarded", object_type="discard", object_id=discarded.id, actor_id=actor_id, reason=reason, metadata={"category": category})
         return discarded
 
+    def reconcile_inventory(self, lab_id: int, facility_id: str | None = None) -> dict[str, Any]:
+        unit_query = self.db.query(BloodUnitModel).filter(BloodUnitModel.lab_id == lab_id)
+        movement_query = self.db.query(InventoryMovementModel).filter(InventoryMovementModel.lab_id == lab_id)
+        if facility_id:
+            unit_query = unit_query.filter(BloodUnitModel.facility_id == facility_id)
+            movement_query = movement_query.filter(InventoryMovementModel.facility_id == facility_id)
+        units = unit_query.all()
+        movements = movement_query.order_by(InventoryMovementModel.performed_at.asc()).all()
+        by_unit: dict[str, list[InventoryMovementModel]] = {}
+        for movement in movements:
+            if movement.unit_id:
+                by_unit.setdefault(movement.unit_id, []).append(movement)
+        findings: list[dict[str, Any]] = []
+        for unit in units:
+            history = by_unit.get(unit.id, [])
+            if not history:
+                findings.append({"type": "missing_movement", "unit_id": unit.id, "current_status": unit.status})
+                continue
+            last = history[-1]
+            destination = (last.to_location or "").strip()
+            status_location = {"available": "available", "reserved": "reserved", "issued": "issued", "transfused": "transfused", "quarantined": "quarantined", "discarded": "discarded"}.get(unit.status)
+            if status_location and destination and destination != status_location:
+                findings.append({"type": "state_ledger_divergence", "unit_id": unit.id, "current_status": unit.status, "ledger_last_location": destination, "last_movement_id": last.id})
+        existing_ids = {unit.id for unit in units}
+        for movement in movements:
+            if movement.unit_id and movement.unit_id not in existing_ids:
+                findings.append({"type": "orphan_movement", "movement_id": movement.id, "unit_id": movement.unit_id})
+        return {"lab_id": lab_id, "facility_id": facility_id, "unit_count": len(units), "movement_count": len(movements), "finding_count": len(findings), "consistent": not findings, "findings": findings}
+
     def trace_unit(self, unit_id: str, lab_id: int) -> list[BloodTraceabilityEventModel]:
         return self.db.query(BloodTraceabilityEventModel).filter(BloodTraceabilityEventModel.unit_id == unit_id, BloodTraceabilityEventModel.lab_id == lab_id).order_by(BloodTraceabilityEventModel.occurred_at.asc()).all()
 

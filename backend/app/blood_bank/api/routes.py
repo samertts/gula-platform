@@ -763,3 +763,10 @@ async def discard_blood_unit(
         return _phase2_dict(discarded)
     except Exception as exc:
         db.rollback(); _raise_blood_error(exc); raise
+
+
+@router.get("/inventory/reconciliation")
+async def reconcile_blood_inventory(
+    facility_id: str | None = Query(None), current_user: LabUser = Depends(get_current_user), db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    return BloodBankService(db).reconcile_inventory(_lab_id(current_user), facility_id)
