@@ -24,6 +24,8 @@ from app.blood_bank.infrastructure.models import (
     PatientBloodSampleModel,
     BloodReservationModel,
     TransfusionReactionModel,
+    BloodReturnModel,
+    BloodDiscardModel,
 )
 from app.clinical.command_guard import ClinicalCommandGuard
 from app.database import get_db
@@ -731,3 +733,33 @@ async def get_unit_traceability(
     if not unit:
         raise HTTPException(status_code=404, detail="Resource not found")
     return [_phase2_dict(event) for event in BloodBankService(db).trace_unit(unit_id, lab_id)]
+
+
+@router.post("/returns", status_code=status.HTTP_201_CREATED)
+async def return_blood_unit(
+    body: dict[str, Any], current_user: LabUser = Depends(get_current_user), db: Session = Depends(get_db),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> dict[str, Any]:
+    guard = _guard(db, current_user)
+    guard.require_idempotency_key(idempotency_key)
+    try:
+        returned = BloodBankService(db).return_unit({**body, "lab_id": _lab_id(current_user), "actor_id": str(current_user.id)})
+        db.commit(); db.refresh(returned)
+        return _phase2_dict(returned)
+    except Exception as exc:
+        db.rollback(); _raise_blood_error(exc); raise
+
+
+@router.post("/discards", status_code=status.HTTP_201_CREATED)
+async def discard_blood_unit(
+    body: dict[str, Any], current_user: LabUser = Depends(get_current_user), db: Session = Depends(get_db),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> dict[str, Any]:
+    guard = _guard(db, current_user)
+    guard.require_idempotency_key(idempotency_key)
+    try:
+        discarded = BloodBankService(db).discard_unit({**body, "lab_id": _lab_id(current_user), "actor_id": str(current_user.id)})
+        db.commit(); db.refresh(discarded)
+        return _phase2_dict(discarded)
+    except Exception as exc:
+        db.rollback(); _raise_blood_error(exc); raise

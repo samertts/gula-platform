@@ -339,3 +339,32 @@ class BloodTraceabilityEventModel(TenantAuditEntity):
     metadata_json = Column(JSON, nullable=False, default=dict)
 
     # No update/delete API is exposed for this model; history is append-only.
+
+
+class BloodReturnModel(TenantAuditEntity):
+    __tablename__ = "blood_bank_returns"
+
+    unit_id = Column(String(100), nullable=False, index=True)
+    reservation_id = Column(String(100), nullable=True, index=True)
+    issue_id = Column(String(100), nullable=True, index=True)
+    patient_id = Column(String(100), nullable=True, index=True)
+    facility_id = Column(String(100), nullable=False, index=True)
+    status = Column(String(40), nullable=False, default="return_requested", index=True)
+    reason = Column(Text, nullable=False)
+    integrity = Column(String(40), nullable=True)
+    inspected_by = Column(String(100), nullable=True)
+    inspected_at = Column(DateTime(timezone=True), nullable=True)
+    outcome = Column(String(40), nullable=True)
+
+
+class BloodDiscardModel(TenantAuditEntity):
+    __tablename__ = "blood_bank_discards"
+
+    unit_id = Column(String(100), nullable=False, index=True)
+    issue_id = Column(String(100), nullable=True, index=True)
+    patient_id = Column(String(100), nullable=True, index=True)
+    facility_id = Column(String(100), nullable=False, index=True)
+    category = Column(String(60), nullable=False)
+    reason = Column(Text, nullable=False)
+    discarded_by = Column(String(100), nullable=False)
+    discarded_at = Column(DateTime(timezone=True), nullable=False)
