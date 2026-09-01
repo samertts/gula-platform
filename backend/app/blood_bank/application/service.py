@@ -629,8 +629,9 @@ class BloodBankService:
             raise BloodBankValidationError("Patient blood sample not found")
         if model.expires_at and model.expires_at <= datetime.now(UTC) and target not in {"sample_expired", "rejected"}:
             raise BloodBankWorkflowError("Expired samples cannot be used")
-        aliases = {"received": "received_sample", "testing": "testing", "validated": "validated", "rejected": "sample_rejected"}
-        transition(model.status, aliases.get(target, target), entity="patient_blood_sample")
+        persisted_transitions = {"collected": {"identified", "rejected"}, "identified": {"received", "rejected"}, "received": {"testing", "rejected", "sample_expired"}, "testing": {"validated", "rejected", "sample_expired"}}
+        if target not in persisted_transitions.get(model.status, set()):
+            raise BloodBankWorkflowError(f"Invalid patient_blood_sample transition: {model.status} -> {target}")
         model.status = target
         if target == "validated":
             model.validated_by, model.validated_at = actor_id, datetime.now(UTC)
