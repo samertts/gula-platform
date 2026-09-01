@@ -21,6 +21,9 @@ from app.blood_bank.infrastructure.models import (
     BloodUnitModel,
     CrossmatchModel,
     TransfusionModel,
+    PatientBloodSampleModel,
+    BloodReservationModel,
+    TransfusionReactionModel,
 )
 from app.clinical.command_guard import ClinicalCommandGuard
 from app.database import get_db
@@ -621,3 +624,110 @@ def _request_to_dict(r: Any) -> dict[str, Any]:
         "id": r.id, "patient_id": r.patient_id, "blood_group": r.blood_group,
         "units_requested": r.units_requested, "urgency": r.urgency, "status": r.status,
     }
+
+
+# ---- Phase 2 operational endpoints ----
+
+def _phase2_dict(model: Any) -> dict[str, Any]:
+    return model.to_dict() if hasattr(model, "to_dict") else {c.name: getattr(model, c.name) for c in model.__table__.columns}
+
+
+@router.post("/samples", status_code=status.HTTP_201_CREATED)
+async def create_patient_blood_sample(
+    body: dict[str, Any], current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db), idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> dict[str, Any]:
+    lab_id = _lab_id(current_user)
+    guard = _guard(db, current_user)
+    guard.require_idempotency_key(idempotency_key)
+    try:
+        sample = BloodBankService(db).create_patient_sample({**body, "lab_id": lab_id, "collected_by": str(current_user.id)})
+        db.commit()
+        db.refresh(sample)
+        return _phase2_dict(sample)
+    except Exception as exc:
+        db.rollback()
+        _raise_blood_error(exc)
+        raise
+
+
+@router.post("/samples/{sample_id}/transition")
+async def transition_patient_blood_sample(
+    sample_id: str, body: dict[str, Any], current_user: LabUser = Depends(get_current_user),
+    db: Session = Depends(get_db), if_match: str | None = Header(None, alias="If-Match"),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> dict[str, Any]:
+    lab_id = _lab_id(current_user)
+    sample = db.query(PatientBloodSampleModel).filter(PatientBloodSampleModel.id == sample_id, PatientBloodSampleModel.lab_id == lab_id).first()
+    if not sample:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    guard = _guard(db, current_user)
+    guard.require_expected_version(if_match, current_version=sample.version, resource_name="patient blood sample")
+    guard.require_idempotency_key(idempotency_key)
+    try:
+        updated = BloodBankService(db).transition_patient_sample(sample_id, lab_id, str(body.get("target", "")), str(current_user.id))
+        db.commit(); db.refresh(updated)
+        return _phase2_dict(updated)
+    except Exception as exc:
+        db.rollback(); _raise_blood_error(exc); raise
+
+
+@router.post("/reservations", status_code=status.HTTP_201_CREATED)
+async def reserve_blood_unit(
+    body: dict[str, Any], current_user: LabUser = Depends(get_current_user), db: Session = Depends(get_db),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> dict[str, Any]:
+    guard = _guard(db, current_user)
+    guard.require_idempotency_key(idempotency_key)
+    try:
+        reservation = BloodBankService(db).reserve_unit({**body, "lab_id": _lab_id(current_user), "requested_by": str(current_user.id)})
+        db.commit(); db.refresh(reservation)
+        return _phase2_dict(reservation)
+    except Exception as exc:
+        db.rollback(); _raise_blood_error(exc); raise
+
+
+@router.post("/reservations/{reservation_id}/release")
+async def release_blood_reservation(
+    reservation_id: str, body: dict[str, Any], current_user: LabUser = Depends(get_current_user), db: Session = Depends(get_db),
+    if_match: str | None = Header(None, alias="If-Match"), idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> dict[str, Any]:
+    lab_id = _lab_id(current_user)
+    reservation = db.query(BloodReservationModel).filter(BloodReservationModel.id == reservation_id, BloodReservationModel.lab_id == lab_id).first()
+    if not reservation:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    guard = _guard(db, current_user)
+    guard.require_expected_version(if_match, current_version=reservation.version, resource_name="blood reservation")
+    guard.require_idempotency_key(idempotency_key)
+    try:
+        result = BloodBankService(db).release_reservation(reservation_id, lab_id, str(current_user.id), str(body.get("reason", "")))
+        db.commit(); db.refresh(result)
+        return _phase2_dict(result)
+    except Exception as exc:
+        db.rollback(); _raise_blood_error(exc); raise
+
+
+@router.post("/reactions", status_code=status.HTTP_201_CREATED)
+async def create_transfusion_reaction(
+    body: dict[str, Any], current_user: LabUser = Depends(get_current_user), db: Session = Depends(get_db),
+    idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
+) -> dict[str, Any]:
+    guard = _guard(db, current_user)
+    guard.require_idempotency_key(idempotency_key)
+    try:
+        reaction = BloodBankService(db).create_reaction({**body, "lab_id": _lab_id(current_user), "reporter_id": str(current_user.id)})
+        db.commit(); db.refresh(reaction)
+        return _phase2_dict(reaction)
+    except Exception as exc:
+        db.rollback(); _raise_blood_error(exc); raise
+
+
+@router.get("/units/{unit_id}/traceability")
+async def get_unit_traceability(
+    unit_id: str, current_user: LabUser = Depends(get_current_user), db: Session = Depends(get_db),
+) -> list[dict[str, Any]]:
+    lab_id = _lab_id(current_user)
+    unit = db.query(BloodUnitModel).filter(BloodUnitModel.id == unit_id, BloodUnitModel.lab_id == lab_id).first()
+    if not unit:
+        raise HTTPException(status_code=404, detail="Resource not found")
+    return [_phase2_dict(event) for event in BloodBankService(db).trace_unit(unit_id, lab_id)]

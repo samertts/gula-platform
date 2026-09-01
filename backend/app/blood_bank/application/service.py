@@ -47,6 +47,10 @@ from app.blood_bank.infrastructure.models import (
     DonorDeferralModel,
     TransfusionModel,
     InventoryMovementModel,
+    PatientBloodSampleModel,
+    BloodReservationModel,
+    TransfusionReactionModel,
+    BloodTraceabilityEventModel,
 )
 from app.national.events.base import NationalDomainEvent
 
@@ -593,6 +597,114 @@ class BloodBankService:
         ))
         self.db.flush()
         return model
+
+    # ---- Phase 2 operational workflows ----
+
+    def _trace(self, *, lab_id: int, unit_id: str, facility_id: str, event_type: str, object_type: str, object_id: str, actor_id: str, reason: str | None = None, metadata: dict[str, Any] | None = None) -> None:
+        self.db.add(BloodTraceabilityEventModel(
+            lab_id=lab_id, unit_id=unit_id, facility_id=facility_id,
+            event_type=event_type, object_type=object_type, object_id=object_id,
+            actor_id=actor_id, occurred_at=datetime.now(UTC), reason=reason,
+            metadata_json=metadata or {}, created_by=actor_id,
+        ))
+
+    def create_patient_sample(self, data: dict[str, Any]) -> PatientBloodSampleModel:
+        required = ("patient_id", "facility_id", "specimen_identifier", "collected_by")
+        if not all(str(data.get(key, "")).strip() for key in required):
+            raise BloodBankValidationError("patient, facility, specimen identifier, and collector are required")
+        model = PatientBloodSampleModel(
+            lab_id=int(data["lab_id"]), patient_id=str(data["patient_id"]),
+            encounter_id=data.get("encounter_id"), facility_id=str(data["facility_id"]),
+            specimen_identifier=str(data["specimen_identifier"]), status="collected",
+            collected_by=str(data["collected_by"]), collected_at=data.get("collected_at") or datetime.now(UTC),
+            expires_at=data.get("expires_at"), created_by=str(data.get("collected_by")),
+        )
+        self.db.add(model)
+        self.db.flush()
+        return model
+
+    def transition_patient_sample(self, sample_id: str, lab_id: int, target: str, actor_id: str) -> PatientBloodSampleModel:
+        model = self.db.query(PatientBloodSampleModel).filter(PatientBloodSampleModel.id == sample_id, PatientBloodSampleModel.lab_id == lab_id).with_for_update().first()
+        if not model or model.is_deleted:
+            raise BloodBankValidationError("Patient blood sample not found")
+        if model.expires_at and model.expires_at <= datetime.now(UTC) and target not in {"sample_expired", "rejected"}:
+            raise BloodBankWorkflowError("Expired samples cannot be used")
+        aliases = {"received": "received_sample", "testing": "testing", "validated": "validated", "rejected": "sample_rejected"}
+        transition(model.status, aliases.get(target, target), entity="patient_blood_sample")
+        model.status = target
+        if target == "validated":
+            model.validated_by, model.validated_at = actor_id, datetime.now(UTC)
+        elif target == "received":
+            model.received_at = datetime.now(UTC)
+        model.version += 1
+        self.db.flush()
+        return model
+
+    def reserve_unit(self, data: dict[str, Any]) -> BloodReservationModel:
+        lab_id = self._require_lab_id(data)
+        unit_id, order_id, patient_id = (str(data.get(k, "")).strip() for k in ("unit_id", "order_id", "patient_id"))
+        facility_id, actor_id = str(data.get("facility_id", "")).strip(), str(data.get("requested_by", "")).strip()
+        if not all((unit_id, order_id, patient_id, facility_id, actor_id)):
+            raise BloodBankValidationError("unit, order, patient, facility, and requester are required")
+        unit = self.db.query(BloodUnitModel).filter(BloodUnitModel.id == unit_id, BloodUnitModel.lab_id == lab_id, BloodUnitModel.facility_id == facility_id).with_for_update().first()
+        if not unit:
+            raise BloodBankValidationError("Blood unit is outside the authorized facility scope")
+        if unit.status != ComponentStatus.AVAILABLE.value or unit.recalled or (unit.expiry_date and unit.expiry_date <= datetime.now(UTC)):
+            raise BloodBankWorkflowError("Only available, non-recalled, unexpired units can be reserved")
+        match = self.db.query(CrossmatchModel).filter(CrossmatchModel.lab_id == lab_id, CrossmatchModel.patient_id == patient_id, CrossmatchModel.unit_id == unit_id, CrossmatchModel.status == CrossmatchStatus.COMPATIBLE.value, CrossmatchModel.verified_at.isnot(None), CrossmatchModel.expires_at > datetime.now(UTC)).first()
+        if not match:
+            raise BloodBankWorkflowError("A current verified compatible crossmatch is required")
+        existing = self.db.query(BloodReservationModel).filter(BloodReservationModel.lab_id == lab_id, BloodReservationModel.unit_id == unit_id, BloodReservationModel.status == "reserved").with_for_update().first()
+        if existing:
+            raise BloodBankWorkflowError("Blood unit is already reserved")
+        now = datetime.now(UTC)
+        reservation = BloodReservationModel(lab_id=lab_id, order_id=order_id, patient_id=patient_id, encounter_id=data.get("encounter_id"), unit_id=unit_id, component_id=unit.component_id, facility_id=facility_id, requested_by=actor_id, status="reserved", expires_at=data.get("expires_at") or (now + timedelta(hours=24)), created_by=actor_id)
+        self.db.add(reservation)
+        transition(unit.status, ComponentStatus.RESERVED.value, entity="blood_unit")
+        unit.status, unit.version = ComponentStatus.RESERVED.value, unit.version + 1
+        self.db.add(InventoryMovementModel(unit_id=unit.id, facility_id=facility_id, from_location=unit.storage_location, to_location="reserved", movement_type="reserved", performed_by=actor_id, performed_at=now, notes=f"reserved for order {order_id}", lab_id=lab_id))
+        self.db.flush()
+        self._trace(lab_id=lab_id, unit_id=unit.id, facility_id=facility_id, event_type="reserved", object_type="reservation", object_id=reservation.id, actor_id=actor_id, reason=f"order {order_id}")
+        return reservation
+
+    def release_reservation(self, reservation_id: str, lab_id: int, actor_id: str, reason: str) -> BloodReservationModel:
+        if not reason.strip():
+            raise BloodBankValidationError("Release reason is required")
+        reservation = self.db.query(BloodReservationModel).filter(BloodReservationModel.id == reservation_id, BloodReservationModel.lab_id == lab_id).with_for_update().first()
+        if not reservation or reservation.status != "reserved":
+            raise BloodBankWorkflowError("Only active reservations can be released")
+        unit = self.db.query(BloodUnitModel).filter(BloodUnitModel.id == reservation.unit_id, BloodUnitModel.lab_id == lab_id).with_for_update().first()
+        if not unit or unit.status != ComponentStatus.RESERVED.value:
+            raise BloodBankWorkflowError("Reserved unit is not in a releasable state")
+        now = datetime.now(UTC)
+        reservation.status, reservation.released_at, reservation.release_reason = "released", now, reason
+        transition(unit.status, ComponentStatus.AVAILABLE.value, entity="blood_unit")
+        unit.status, unit.version = ComponentStatus.AVAILABLE.value, unit.version + 1
+        self.db.add(InventoryMovementModel(unit_id=unit.id, facility_id=unit.facility_id, from_location="reserved", to_location=unit.storage_location, movement_type="unreserved", performed_by=actor_id, performed_at=now, notes=reason, lab_id=lab_id))
+        self._trace(lab_id=lab_id, unit_id=unit.id, facility_id=unit.facility_id, event_type="reservation_released", object_type="reservation", object_id=reservation.id, actor_id=actor_id, reason=reason)
+        self.db.flush()
+        return reservation
+
+    def create_reaction(self, data: dict[str, Any]) -> TransfusionReactionModel:
+        lab_id = self._require_lab_id(data)
+        required = ("patient_id", "transfusion_id", "unit_id", "facility_id", "reporter_id")
+        if not all(str(data.get(k, "")).strip() for k in required):
+            raise BloodBankValidationError("reaction patient, transfusion, unit, facility, and reporter are required")
+        unit = self.db.query(BloodUnitModel).filter(BloodUnitModel.id == data["unit_id"], BloodUnitModel.lab_id == lab_id, BloodUnitModel.facility_id == data["facility_id"]).with_for_update().first()
+        transfusion = self.db.query(TransfusionModel).filter(TransfusionModel.id == data["transfusion_id"], TransfusionModel.lab_id == lab_id, TransfusionModel.patient_id == data["patient_id"], TransfusionModel.unit_id == data["unit_id"]).first()
+        if not unit or not transfusion:
+            raise BloodBankValidationError("Reaction context does not match the authorized transfusion")
+        reaction = TransfusionReactionModel(lab_id=lab_id, patient_id=data["patient_id"], transfusion_id=data["transfusion_id"], unit_id=data["unit_id"], component_id=unit.component_id, encounter_id=data.get("encounter_id"), facility_id=data["facility_id"], reporter_id=data["reporter_id"], status="suspected", severity=data.get("severity"), symptoms=data.get("symptoms") or {}, investigation={}, related_sample_ids=data.get("related_sample_ids") or [], occurred_at=data.get("occurred_at") or datetime.now(UTC), created_by=data["reporter_id"])
+        self.db.add(reaction)
+        transition(unit.status, ComponentStatus.QUARANTINED.value, entity="blood_unit")
+        unit.status, unit.version = ComponentStatus.QUARANTINED.value, unit.version + 1
+        self.db.add(InventoryMovementModel(unit_id=unit.id, facility_id=unit.facility_id, from_location=unit.storage_location, to_location="quarantined", movement_type="recalled", performed_by=data["reporter_id"], performed_at=datetime.now(UTC), notes=f"reaction {reaction.id or 'pending'}", lab_id=lab_id))
+        self.db.flush()
+        self._trace(lab_id=lab_id, unit_id=unit.id, facility_id=unit.facility_id, event_type="quarantined", object_type="reaction", object_id=reaction.id, actor_id=data["reporter_id"], reason="transfusion reaction")
+        return reaction
+
+    def trace_unit(self, unit_id: str, lab_id: int) -> list[BloodTraceabilityEventModel]:
+        return self.db.query(BloodTraceabilityEventModel).filter(BloodTraceabilityEventModel.unit_id == unit_id, BloodTraceabilityEventModel.lab_id == lab_id).order_by(BloodTraceabilityEventModel.occurred_at.asc()).all()
 
     # ---- Blood Requests ----
 
