@@ -10,24 +10,27 @@
     "database_name": "gula_bloodbank_verify"
   },
   "verified": {
-    "blood_bank_tests": {"passed": 7, "failed": 0, "skipped": 0},
-    "postgres_concurrency_harness": {"passed": 1, "failed": 0, "skipped": 0, "connections": 2, "transactions": 2, "row_lock": "SELECT FOR UPDATE", "result": "one success and one conflict"},
-    "migration_targeted_upgrade_to_20260901_0002": "passed",
-    "migration_downgrade_20260901_0002_to_20260901_0001": "passed",
-    "migration_reupgrade_to_20260901_0002": "passed",
-    "schema_assertions": ["alembic_version=20260901_0002", "blood_bank_reservations exists", "blood_bank_returns exists", "blood_bank_discards exists"],
+    "blood_bank_tests": {"passed": 8, "failed": 0, "skipped": 0},
+    "low_level_lock_harness": {"passed": 1, "result": "one success and one conflict"},
+    "canonical_service_reservation_race": {"passed": 1, "result": "one service success and one fail-closed conflict", "connections": 2, "transactions": 2, "barrier": true, "row_lock": "SELECT FOR UPDATE", "final_active_reservations": 1, "final_unit_state": "reserved", "reserved_inventory_movements": 1},
+    "migration_targeted_upgrade_to_20260901_0004": "passed",
+    "migration_downgrade_and_reupgrade_previous_chain": "passed through 20260901_0002",
+    "schema_alignment_fixes": ["updated_by audit column", "fhir_id", "fhir_resource_type"],
     "compile": true,
     "git_diff_check": true
   },
-  "blocked_or_not_covered": {
-    "alembic_upgrade_head": "blocked by pre-existing duplicate revision 20260819_0003 and multiple unrelated heads; no old migration was modified",
-    "reservation_service_concurrency": "not covered by the existing harness; existing harness proves database locking primitive, not the full service workflow",
-    "issue_concurrency": "not implemented in available test suite",
-    "idempotency_concurrency": "not implemented in available test suite",
-    "authorization_idor": "not implemented in available test suite",
-    "failure_injection": "not implemented in available test suite",
-    "full_backend_regression": "not run in this phase",
-    "e2e": "not run in this phase"
+  "not_verified": {
+    "canonical_service_issue_race": "no dedicated test yet",
+    "concurrent_idempotency_requests": "no dedicated test yet",
+    "idempotency_payload_collision": "no dedicated test yet",
+    "failure_injection_and_retry": "no dedicated test yet",
+    "authorization_idor": "no dedicated test yet",
+    "full_e2e": "not run",
+    "full_backend_regression": "not run"
+  },
+  "infrastructure_findings": {
+    "alembic_upgrade_head": "blocked by pre-existing duplicate revision 20260819_0003 and multiple unrelated heads; old migrations were not changed",
+    "migration_targeted_path": "usable for Blood Bank verification"
   },
   "warnings": [
     "pytest reports Starlette/httpx deprecation warning",

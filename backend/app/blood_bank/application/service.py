@@ -607,7 +607,7 @@ class BloodBankService:
             lab_id=lab_id, unit_id=unit_id, facility_id=facility_id,
             event_type=event_type, object_type=object_type, object_id=object_id,
             actor_id=actor_id, occurred_at=datetime.now(UTC), reason=reason,
-            metadata_json=metadata or {}, created_by=actor_id,
+            metadata_json=metadata or {},
         ))
 
     def create_patient_sample(self, data: dict[str, Any]) -> PatientBloodSampleModel:
@@ -618,8 +618,7 @@ class BloodBankService:
             lab_id=int(data["lab_id"]), patient_id=str(data["patient_id"]),
             encounter_id=data.get("encounter_id"), facility_id=str(data["facility_id"]),
             specimen_identifier=str(data["specimen_identifier"]), status="collected",
-            collected_by=str(data["collected_by"]), collected_at=data.get("collected_at") or datetime.now(UTC),
-            expires_at=data.get("expires_at"), created_by=str(data.get("collected_by")),
+            collected_by=str(data["collected_by"]), collected_at=data.get("collected_at") or datetime.now(UTC), expires_at=data.get("expires_at"),
         )
         self.db.add(model)
         self.db.flush()
@@ -697,7 +696,7 @@ class BloodBankService:
         transfusion = self.db.query(TransfusionModel).filter(TransfusionModel.id == data["transfusion_id"], TransfusionModel.lab_id == lab_id, TransfusionModel.patient_id == data["patient_id"], TransfusionModel.unit_id == data["unit_id"]).first()
         if not unit or not transfusion:
             raise BloodBankValidationError("Reaction context does not match the authorized transfusion")
-        reaction = TransfusionReactionModel(lab_id=lab_id, patient_id=data["patient_id"], transfusion_id=data["transfusion_id"], unit_id=data["unit_id"], component_id=unit.component_id, encounter_id=data.get("encounter_id"), facility_id=data["facility_id"], reporter_id=data["reporter_id"], status="suspected", severity=data.get("severity"), symptoms=data.get("symptoms") or {}, investigation={}, related_sample_ids=data.get("related_sample_ids") or [], occurred_at=data.get("occurred_at") or datetime.now(UTC), created_by=data["reporter_id"])
+        reaction = TransfusionReactionModel(lab_id=lab_id, patient_id=data["patient_id"], transfusion_id=data["transfusion_id"], unit_id=data["unit_id"], component_id=unit.component_id, encounter_id=data.get("encounter_id"), facility_id=data["facility_id"], reporter_id=data["reporter_id"], status="suspected", severity=data.get("severity"), symptoms=data.get("symptoms") or {}, investigation={}, related_sample_ids=data.get("related_sample_ids") or [], occurred_at=data.get("occurred_at") or datetime.now(UTC))
         self.db.add(reaction)
         transition(unit.status, ComponentStatus.QUARANTINED.value, entity="blood_unit")
         unit.status, unit.version = ComponentStatus.QUARANTINED.value, unit.version + 1
