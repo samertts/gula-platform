@@ -10,9 +10,11 @@
     "database_name": "gula_bloodbank_verify"
   },
   "verified": {
-    "blood_bank_tests": {"passed": 8, "failed": 0, "skipped": 0},
+    "blood_bank_tests": {"passed": 10, "failed": 0, "skipped": 0},
     "low_level_lock_harness": {"passed": 1, "result": "one success and one conflict"},
     "canonical_service_reservation_race": {"passed": 1, "result": "one service success and one fail-closed conflict", "connections": 2, "transactions": 2, "barrier": true, "row_lock": "SELECT FOR UPDATE", "final_active_reservations": 1, "final_unit_state": "reserved", "reserved_inventory_movements": 1},
+    "canonical_service_issue_race": {"passed": 1, "result": "one service success and one fail-closed conflict", "connections": 2, "transactions": 2, "barrier": true, "row_lock": "SELECT FOR UPDATE", "final_issue_effects": 1, "final_unit_state": "issued", "issued_inventory_movements": 1, "fulfilled_request_quantity": 1},
+    "concurrent_clinical_command_idempotency": {"passed": 1, "result": "one claim and one canonical conflict", "connections": 2, "transactions": 2, "barrier": true, "final_receipts": 1, "implementation": "ClinicalCommandGuard.claim"},
     "migration_targeted_upgrade_to_20260901_0004": "passed",
     "migration_downgrade_and_reupgrade_previous_chain": "passed through 20260901_0002",
     "schema_alignment_fixes": ["updated_by audit column", "fhir_id", "fhir_resource_type"],
@@ -20,8 +22,7 @@
     "git_diff_check": true
   },
   "not_verified": {
-    "canonical_service_issue_race": "no dedicated test yet",
-    "concurrent_idempotency_requests": "no dedicated test yet",
+    "concurrent_idempotency_full_api_side_effects": "guard claim is verified; full HTTP side-effect replay tests are not yet implemented",
     "idempotency_payload_collision": "no dedicated test yet",
     "failure_injection_and_retry": "no dedicated test yet",
     "authorization_idor": "no dedicated test yet",
