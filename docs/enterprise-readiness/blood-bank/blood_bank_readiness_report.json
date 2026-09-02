@@ -1,0 +1,29 @@
+{
+  "program": "BLOOD-BANK-COMPLETE",
+  "branch": "feat/blood-bank-complete",
+  "production_ready": false,
+  "status": "partially_verified",
+  "implemented": [
+    "canonical Blood Bank service and state machine",
+    "persistent reservations, samples, reactions, returns, discards",
+    "facility-scoped API commands",
+    "append-only inventory movement and traceability records",
+    "machine-readable inventory reconciliation",
+    "real PostgreSQL concurrency test harness"
+  ],
+  "verified": {
+    "compile": true,
+    "focused_domain_tests": {"passed": 6, "failed": 0, "skipped": 0},
+    "git_diff_check": true
+  },
+  "blocked": [
+    "BLOOD_BANK_POSTGRES_URL is not configured in the sandbox",
+    "PostgreSQL concurrency execution",
+    "migration upgrade/downgrade on disposable PostgreSQL",
+    "full E2E and failure-injection execution"
+  ],
+  "warnings": [
+    "pytest reports three repository configuration/deprecation warnings",
+    "GitHub default branch has one existing moderate Dependabot vulnerability"
+  ]
+}
