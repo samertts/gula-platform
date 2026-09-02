@@ -641,9 +641,11 @@ async def create_patient_blood_sample(
 ) -> dict[str, Any]:
     lab_id = _lab_id(current_user)
     guard = _guard(db, current_user)
-    guard.require_idempotency_key(idempotency_key)
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(operation="blood.sample.create", resource_type="patient_sample", resource_id=body.get("specimen_identifier", "new"), idempotency_key=key, payload=body)
     try:
         sample = BloodBankService(db).create_patient_sample({**body, "lab_id": lab_id, "collected_by": str(current_user.id)})
+        guard.complete(receipt, resource_type="patient_sample", resource_id=sample.id, state_before=None, state_after=sample.status, version_before=0, version_after=sample.version)
         db.commit()
         db.refresh(sample)
         return _phase2_dict(sample)
@@ -680,9 +682,11 @@ async def reserve_blood_unit(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
     guard = _guard(db, current_user)
-    guard.require_idempotency_key(idempotency_key)
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(operation="blood.reservation.create", resource_type="blood_unit", resource_id=body.get("unit_id", "new"), idempotency_key=key, payload=body)
     try:
         reservation = BloodBankService(db).reserve_unit({**body, "lab_id": _lab_id(current_user), "requested_by": str(current_user.id)})
+        guard.complete(receipt, resource_type="reservation", resource_id=reservation.id, state_before="available", state_after=reservation.status, version_before=0, version_after=reservation.version)
         db.commit(); db.refresh(reservation)
         return _phase2_dict(reservation)
     except Exception as exc:
@@ -700,9 +704,11 @@ async def release_blood_reservation(
         raise HTTPException(status_code=404, detail="Resource not found")
     guard = _guard(db, current_user)
     guard.require_expected_version(if_match, current_version=reservation.version, resource_name="blood reservation")
-    guard.require_idempotency_key(idempotency_key)
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(operation="blood.reservation.release", resource_type="reservation", resource_id=reservation_id, idempotency_key=key, payload=body)
     try:
         result = BloodBankService(db).release_reservation(reservation_id, lab_id, str(current_user.id), str(body.get("reason", "")))
+        guard.complete(receipt, resource_type="reservation", resource_id=result.id, state_before="reserved", state_after=result.status, version_before=reservation.version - 1, version_after=result.version)
         db.commit(); db.refresh(result)
         return _phase2_dict(result)
     except Exception as exc:
@@ -715,9 +721,11 @@ async def create_transfusion_reaction(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
     guard = _guard(db, current_user)
-    guard.require_idempotency_key(idempotency_key)
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(operation="blood.reaction.create", resource_type="transfusion", resource_id=body.get("transfusion_id", "new"), idempotency_key=key, payload=body)
     try:
         reaction = BloodBankService(db).create_reaction({**body, "lab_id": _lab_id(current_user), "reporter_id": str(current_user.id)})
+        guard.complete(receipt, resource_type="reaction", resource_id=reaction.id, state_before=None, state_after=reaction.status, version_before=0, version_after=reaction.version)
         db.commit(); db.refresh(reaction)
         return _phase2_dict(reaction)
     except Exception as exc:
@@ -741,9 +749,11 @@ async def return_blood_unit(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
     guard = _guard(db, current_user)
-    guard.require_idempotency_key(idempotency_key)
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(operation="blood.return.create", resource_type="blood_unit", resource_id=body.get("unit_id", "new"), idempotency_key=key, payload=body)
     try:
         returned = BloodBankService(db).return_unit({**body, "lab_id": _lab_id(current_user), "actor_id": str(current_user.id)})
+        guard.complete(receipt, resource_type="return", resource_id=returned.id, state_before="issued", state_after=returned.status, version_before=0, version_after=returned.version)
         db.commit(); db.refresh(returned)
         return _phase2_dict(returned)
     except Exception as exc:
@@ -756,9 +766,11 @@ async def discard_blood_unit(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ) -> dict[str, Any]:
     guard = _guard(db, current_user)
-    guard.require_idempotency_key(idempotency_key)
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(operation="blood.discard.create", resource_type="blood_unit", resource_id=body.get("unit_id", "new"), idempotency_key=key, payload=body)
     try:
         discarded = BloodBankService(db).discard_unit({**body, "lab_id": _lab_id(current_user), "actor_id": str(current_user.id)})
+        guard.complete(receipt, resource_type="discard", resource_id=discarded.id, state_before=None, state_after="discarded", version_before=0, version_after=discarded.version)
         db.commit(); db.refresh(discarded)
         return _phase2_dict(discarded)
     except Exception as exc:
