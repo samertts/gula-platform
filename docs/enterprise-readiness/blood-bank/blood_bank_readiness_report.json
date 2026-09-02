@@ -3,27 +3,35 @@
   "branch": "feat/blood-bank-complete",
   "production_ready": false,
   "status": "partially_verified",
-  "implemented": [
-    "canonical Blood Bank service and state machine",
-    "persistent reservations, samples, reactions, returns, discards",
-    "facility-scoped API commands",
-    "append-only inventory movement and traceability records",
-    "machine-readable inventory reconciliation",
-    "real PostgreSQL concurrency test harness"
-  ],
+  "environment": {
+    "database": "disposable local PostgreSQL",
+    "postgresql_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+    "dsn_scope": "BLOOD_BANK_POSTGRES_URL verification process only",
+    "database_name": "gula_bloodbank_verify"
+  },
   "verified": {
+    "blood_bank_tests": {"passed": 7, "failed": 0, "skipped": 0},
+    "postgres_concurrency_harness": {"passed": 1, "failed": 0, "skipped": 0, "connections": 2, "transactions": 2, "row_lock": "SELECT FOR UPDATE", "result": "one success and one conflict"},
+    "migration_targeted_upgrade_to_20260901_0002": "passed",
+    "migration_downgrade_20260901_0002_to_20260901_0001": "passed",
+    "migration_reupgrade_to_20260901_0002": "passed",
+    "schema_assertions": ["alembic_version=20260901_0002", "blood_bank_reservations exists", "blood_bank_returns exists", "blood_bank_discards exists"],
     "compile": true,
-    "focused_domain_tests": {"passed": 6, "failed": 0, "skipped": 0},
     "git_diff_check": true
   },
-  "blocked": [
-    "BLOOD_BANK_POSTGRES_URL is not configured in the sandbox",
-    "PostgreSQL concurrency execution",
-    "migration upgrade/downgrade on disposable PostgreSQL",
-    "full E2E and failure-injection execution"
-  ],
+  "blocked_or_not_covered": {
+    "alembic_upgrade_head": "blocked by pre-existing duplicate revision 20260819_0003 and multiple unrelated heads; no old migration was modified",
+    "reservation_service_concurrency": "not covered by the existing harness; existing harness proves database locking primitive, not the full service workflow",
+    "issue_concurrency": "not implemented in available test suite",
+    "idempotency_concurrency": "not implemented in available test suite",
+    "authorization_idor": "not implemented in available test suite",
+    "failure_injection": "not implemented in available test suite",
+    "full_backend_regression": "not run in this phase",
+    "e2e": "not run in this phase"
+  },
   "warnings": [
-    "pytest reports three repository configuration/deprecation warnings",
+    "pytest reports Starlette/httpx deprecation warning",
+    "pytest reports two unknown asyncio configuration options",
     "GitHub default branch has one existing moderate Dependabot vulnerability"
   ]
 }
