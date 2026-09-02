@@ -6,36 +6,42 @@
   "environment": {
     "database": "disposable local PostgreSQL",
     "postgresql_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
-    "dsn_scope": "BLOOD_BANK_POSTGRES_URL verification process only",
-    "database_name": "gula_bloodbank_verify"
+    "database_name": "gula_bloodbank_verify",
+    "dsn_scope": "BLOOD_BANK_POSTGRES_URL verification process only"
   },
   "verified": {
-    "blood_bank_tests": {"passed": 10, "failed": 0, "skipped": 0},
-    "low_level_lock_harness": {"passed": 1, "result": "one success and one conflict"},
-    "canonical_service_reservation_race": {"passed": 1, "result": "one service success and one fail-closed conflict", "connections": 2, "transactions": 2, "barrier": true, "row_lock": "SELECT FOR UPDATE", "final_active_reservations": 1, "final_unit_state": "reserved", "reserved_inventory_movements": 1},
-    "canonical_service_issue_race": {"passed": 1, "result": "one service success and one fail-closed conflict", "connections": 2, "transactions": 2, "barrier": true, "row_lock": "SELECT FOR UPDATE", "final_issue_effects": 1, "final_unit_state": "issued", "issued_inventory_movements": 1, "fulfilled_request_quantity": 1},
-    "concurrent_clinical_command_idempotency": {"passed": 1, "result": "one claim and one canonical conflict", "connections": 2, "transactions": 2, "barrier": true, "final_receipts": 1, "implementation": "ClinicalCommandGuard.claim"},
-    "migration_targeted_upgrade_to_20260901_0004": "passed",
-    "migration_downgrade_and_reupgrade_previous_chain": "passed through 20260901_0002",
-    "schema_alignment_fixes": ["updated_by audit column", "fhir_id", "fhir_resource_type"],
+    "blood_bank_postgres_suite_before_phase_14": {"passed": 10, "failed": 0, "skipped": 0},
+    "canonical_service_reservation_race": "passed: two independent PostgreSQL sessions, deterministic barrier, SELECT FOR UPDATE, one success, one fail-closed conflict, one reservation and one reserved movement",
+    "canonical_service_issue_race": "passed: two independent PostgreSQL sessions, deterministic barrier, SELECT FOR UPDATE, one success, one fail-closed conflict, one issue effect and one issued movement",
+    "concurrent_clinical_command_idempotency_claim": "passed: one claim and one canonical conflict, one final receipt",
+    "targeted_blood_bank_migrations": "passed through 20260901_0004",
     "compile": true,
     "git_diff_check": true
   },
+  "phase_14": {
+    "http_idempotency_contract_test": "BLOCKED",
+    "test_file": "backend/tests/blood_bank/test_http_idempotency_contract.py",
+    "real_stack_attempted": true,
+    "blocker": "The repository application factory cannot finish importing in the current verification environment because the runtime dependency 'webauthn' is not installed. Earlier missing imports qrcode and python-multipart were installed; the next import blocker is webauthn.",
+    "not_converted_to_pass": true,
+    "route_target": "/blood-bank/reservations",
+    "intended_assertion": "missing Idempotency-Key returns structured HTTP 400 before business side effects"
+  },
   "not_verified": {
-    "concurrent_idempotency_full_api_side_effects": "guard claim is verified; full HTTP side-effect replay tests are not yet implemented",
-    "idempotency_payload_collision": "no dedicated test yet",
-    "failure_injection_and_retry": "no dedicated test yet",
-    "authorization_idor": "no dedicated test yet",
+    "http_reservation_replay": "blocked by application import dependency",
+    "http_issue_replay": "blocked by application import dependency",
+    "concurrent_http_idempotency": "blocked by application import dependency",
+    "sequential_payload_collision": "blocked by application import dependency",
+    "concurrent_payload_collision": "blocked by application import dependency",
+    "failure_injection_and_retry": "not implemented in this phase",
+    "authorization_idor": "not implemented in this phase",
     "full_e2e": "not run",
     "full_backend_regression": "not run"
   },
-  "infrastructure_findings": {
-    "alembic_upgrade_head": "blocked by pre-existing duplicate revision 20260819_0003 and multiple unrelated heads; old migrations were not changed",
-    "migration_targeted_path": "usable for Blood Bank verification"
-  },
   "warnings": [
-    "pytest reports Starlette/httpx deprecation warning",
+    "FastAPI TestClient reports an httpx/Starlette deprecation warning",
     "pytest reports two unknown asyncio configuration options",
-    "GitHub default branch has one existing moderate Dependabot vulnerability"
+    "GitHub default branch has one existing moderate Dependabot vulnerability",
+    "The repository has pre-existing duplicate Alembic revision 20260819_0003 and unrelated multiple heads"
   ]
 }
