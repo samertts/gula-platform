@@ -32,7 +32,7 @@ describe("DashboardPage role-aware experience", () => {
     vi.clearAllMocks();
   });
 
-  it("presents a doctor-centered workspace with patient and report shortcuts", async () => {
+  it("presents a doctor-centered workspace with scoped clinical shortcuts", async () => {
     vi.mocked(useAuth).mockReturnValue({
       demoMode: true,
       user: { name: "طبيب تجريبي", role: "doctor" },
@@ -40,11 +40,11 @@ describe("DashboardPage role-aware experience", () => {
 
     renderDashboard();
 
-    expect(await screen.findByRole("heading", { name: "مركز عمل الطبيب" })).toBeInTheDocument();
-    expect(screen.getByText("سياق الطبيب")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /مساحة المرضى/ })).toHaveAttribute("href", "/patient-management");
-    expect(screen.getByRole("link", { name: /التقارير/ })).toHaveAttribute("href", "/reports");
-    expect(vi.mocked(dashboardApi.demo)).toHaveBeenCalledWith("doctor");
+    expect(await screen.findByRole("heading", { name: "مركز العمل السريري للطبيب" })).toBeInTheDocument();
+    expect(screen.getByText("مساحة الطبيب")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /دليل المرضى/ })).toHaveAttribute("href", "/patient-management");
+    expect(screen.getByRole("link", { name: /النتائج/ })).toHaveAttribute("href", "/results");
+    expect(vi.mocked(dashboardApi.demo)).not.toHaveBeenCalled();
   });
 
   it("presents a clinic-centered workspace without enabling a write action", async () => {

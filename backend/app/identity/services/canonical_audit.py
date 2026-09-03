@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -9,6 +10,7 @@ from typing import Any
 
 from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.identity.models.audit import IdentityAuditEntry
 
@@ -143,6 +145,7 @@ class CanonicalAuditService:
     async def record(self, event: AuditEventInput) -> IdentityAuditEntry:
         occurred_at = datetime.now(UTC)
         entry = IdentityAuditEntry(
+            uuid=str(uuid.uuid4()),
             event_type=event.event_type,
             event_version="2",
             category=event.category,
@@ -258,3 +261,58 @@ class CanonicalAuditService:
             "first_event_id": entries[0].id,
             "last_event_id": entries[-1].id,
         }
+
+
+class SyncCanonicalAuditService:
+    """Synchronous adapter over the same canonical NIAM audit table and hash."""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def _last_canonical_hash(self) -> str | None:
+        row = (
+            self.session.query(IdentityAuditEntry.entry_hash)
+            .filter(IdentityAuditEntry.event_version == "2")
+            .order_by(IdentityAuditEntry.occurred_at.desc(), IdentityAuditEntry.id.desc())
+            .first()
+        )
+        return row[0] if row else None
+
+    def record(self, event: AuditEventInput) -> IdentityAuditEntry:
+        entry = IdentityAuditEntry(
+            uuid=str(uuid.uuid4()),
+            event_type=event.event_type,
+            event_version="2",
+            category=event.category,
+            action=event.action,
+            actor_id=event.actor_id,
+            actor_identity_id=event.actor_identity_id,
+            actor_type=event.actor_type,
+            target_type=event.target_type,
+            target_id=event.target_id,
+            facility_id=event.facility_id,
+            department_id=event.department_id,
+            workspace_id=event.workspace_id,
+            decision=event.decision,
+            reason_code=event.reason_code,
+            request_id=event.request_id,
+            correlation_id=event.correlation_id,
+            source=event.source,
+            data_classification=event.data_classification,
+            changes=_redact(event.changes),
+            extra_data=_redact(event.metadata),
+            context=_redact(event.context),
+            ip_address=event.ip_address,
+            user_agent=event.user_agent[:500] if event.user_agent else None,
+            session_id=event.session_id,
+            occurred_at=datetime.now(UTC),
+            organization_id=event.organization_id,
+            outcome=event.outcome,
+            error_message=event.error_message,
+        )
+        entry.previous_hash = self._last_canonical_hash()
+        self.session.add(entry)
+        self.session.flush()
+        entry.entry_hash = CanonicalAuditService._hash(entry)
+        self.session.flush()
+        return entry

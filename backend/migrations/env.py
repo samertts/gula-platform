@@ -93,6 +93,7 @@ import app.care_continuum.models  # noqa: E402
 # IdentityBase models (NIAM — National Identity & Access Management)
 from app.identity.base import IdentityBase  # noqa: E402
 import app.identity.models  # noqa: E402
+import app.clinical.appointments.models  # noqa: E402
 
 # ── Alembic Config object ─────────────────────────────────────────────────────
 config = context.config

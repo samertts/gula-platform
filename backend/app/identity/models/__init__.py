@@ -42,6 +42,7 @@ from .device import Device
 from .employment import Employment, EmploymentStatus
 from .enterprise_account import EnterpriseAccount
 from .identity import IdentityRecord, IdentityType
+from .health_identity import NiamHealthIdentityOperation
 from .legacy_account_link import LegacyAccountLink, LegacyAccountLinkSource, LegacyAccountLinkStatus
 from .license import LicenseStatus, ProfessionalLicense
 from .machine_identity import MachineIdentity
@@ -96,6 +97,7 @@ __all__ = [
     "IdentityPolicy",
     "IdentityRecord",
     "IdentityType",
+    "NiamHealthIdentityOperation",
     "IncidentSeverity",
     "IncidentStatus",
     "InvitationStatus",

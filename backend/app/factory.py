@@ -142,6 +142,10 @@ def import_all_models() -> None:
         InsuranceCoverage,
     )
     from .capabilities.fhir_interoperability.models import FHIRResourceRecord  # noqa: F401
+    from .clinical.appointments import models as appointment_models  # noqa: F401
+    from .clinical.encounters import models as encounter_models  # noqa: F401
+    from .clinical.laboratory import advanced_models as laboratory_advanced_models  # noqa: F401
+    from .clinical.pharmacy import advanced_models as pharmacy_advanced_models  # noqa: F401
     from .devices.models import (  # noqa: F401
         DeviceConnector,
         DeviceEvent,
@@ -184,6 +188,7 @@ def import_all_models() -> None:
         ExternalProfessionalRecord,
         ExternalSource,
     )
+    from .financial import canonical_models as financial_canonical_models  # noqa: F401
     from .hospital.models import (  # noqa: F401
         Bed,
         BedAssignment,
@@ -588,8 +593,10 @@ def _register_routes(app: FastAPI) -> None:
     app.include_router(tiers_routes.router)
     app.include_router(billing_routes.router)
 
+    from .financial import register_canonical_routes as register_canonical_financial_routes
     from .financial import register_routes as register_financial_routes
     register_financial_routes(app)
+    register_canonical_financial_routes(app)
 
     from .payments.control_routes import router as payments_control_router
     from .payments.fx_routes import router as payments_fx_router
@@ -713,6 +720,31 @@ def _register_routes(app: FastAPI) -> None:
     from .national.document_platform.api.routes import router as document_router
     app.include_router(document_router)
 
+    from .clinical.appointments.routes import router as core_appointment_router
+    app.include_router(core_appointment_router)
+    from .clinical.encounters.routes import router as core_encounter_router
+    app.include_router(core_encounter_router)
+    from .clinical.laboratory.advanced_routes import router as core_laboratory_advanced_router
+    from .clinical.laboratory.routes import router as core_laboratory_router
+    app.include_router(core_laboratory_router)
+    app.include_router(core_laboratory_advanced_router)
+    from .clinical.results.routes import router as core_result_router
+    app.include_router(core_result_router)
+    from .clinical.access.routes import router as core_access_router
+    app.include_router(core_access_router)
+    from .clinical.pharmacy.routes import router as core_pharmacy_router
+    app.include_router(core_pharmacy_router)
+    from .clinical.imaging.routes import router as core_imaging_router
+    app.include_router(core_imaging_router)
+    from .clinical.record.routes import router as clinical_record_router
+    app.include_router(clinical_record_router)
+    from .clinical.hospital.routes import router as core_hospital_router
+    app.include_router(core_hospital_router)
+    from .clinical.emergency.routes import router as core_emergency_router
+    app.include_router(core_emergency_router)
+    from .identity.routes.health_identity import router as health_identity_router
+    app.include_router(health_identity_router)
+
     from .national.scheduling_platform.api.routes import router as scheduling_router
     app.include_router(scheduling_router)
 
@@ -828,6 +860,9 @@ def _register_routes(app: FastAPI) -> None:
 
     from .clinical_gateway.routes import router as clinical_gateway_router
     app.include_router(clinical_gateway_router)
+
+    from .clinical.encounters.routes import router as clinical_encounters_router
+    app.include_router(clinical_encounters_router)
 
     from .routes.authorization import router as authorization_router
     app.include_router(authorization_router)

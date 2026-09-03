@@ -55,9 +55,12 @@ class AuthenticationService:
         device_id: str | None = None,
         location_city: str | None = None,
         location_country: str | None = None,
+        refresh_family_id: str | None = None,
+        parent_refresh_token_jti: str | None = None,
     ) -> dict:
         access_jti = str(uuid.uuid4())
         refresh_jti = str(uuid.uuid4())
+        refresh_family_id = refresh_family_id or uuid.uuid4().hex
 
         from app.security.auth import create_refresh_token, create_token
 
@@ -70,7 +73,7 @@ class AuthenticationService:
         )
 
         refresh_token = create_refresh_token(
-            {"jti": refresh_jti, "account_uuid": account.uuid},
+            {"jti": refresh_jti, "account_uuid": account.uuid, "refresh_family_id": refresh_family_id},
         )
 
         session = UserSession(
@@ -78,6 +81,8 @@ class AuthenticationService:
             account_id=account.id,
             token_jti=access_jti,
             refresh_token_jti=refresh_jti,
+            refresh_family_id=refresh_family_id,
+            parent_refresh_token_jti=parent_refresh_token_jti,
             session_type="web",
             is_active=True,
             ip_address=ip_address,
@@ -115,7 +120,15 @@ class AuthenticationService:
             return None
 
         session = await self.session_repo.find_by_refresh_token_jti(refresh_jti)
-        if not session or not session.is_active or session.expires_at < datetime.now(UTC):
+        if not session:
+            replayed = await self.session_repo.find_any_by_refresh_token_jti(refresh_jti)
+            if replayed and replayed.refresh_family_id:
+                detected_at = datetime.now(UTC)
+                replayed.refresh_reuse_detected_at = detected_at
+                replayed.termination_reason = "refresh_token_reuse_detected"
+                await self.session_repo.terminate_refresh_family(replayed.refresh_family_id, reason="refresh_token_reuse_detected", detected_at=detected_at)
+            return None
+        if not session.is_active or _expired(session.expires_at):
             return None
 
         account = await self.account_repo.get_by_id(session.account_id)
@@ -124,12 +137,14 @@ class AuthenticationService:
 
         remaining_seconds = max(1, int((session.expires_at - datetime.now(UTC)).total_seconds()))
         blacklist_token(refresh_jti, remaining_seconds)
-        await self.session_repo.soft_delete(session.id)
+        await self.session_repo.terminate_session(session.id, reason="refresh_token_rotated", terminated_by=account.id)
         return await self._create_session(
             account=account,
             ip_address=session.ip_address,
             user_agent=session.user_agent,
             device_id=session.device_id,
+            refresh_family_id=session.refresh_family_id,
+            parent_refresh_token_jti=refresh_jti,
         )
 
     async def logout(
@@ -162,3 +177,8 @@ class AuthenticationService:
             terminated_by=actor_account_id,
         )
         return True
+
+
+def _expired(value: datetime) -> bool:
+    normalized = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+    return normalized < datetime.now(UTC)

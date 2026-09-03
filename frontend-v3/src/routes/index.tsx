@@ -9,6 +9,11 @@ import {
   ADMIN_ROLES,
   FINANCIAL_ROLES,
   LAB_ROLES,
+  PHARMACY_OPERATIONS_ROLES,
+  RADIOLOGY_OPERATIONS_ROLES,
+  CLINIC_OPERATIONS_ROLES,
+  HOSPITAL_OPERATIONS_ROLES,
+  ACUTE_CARE_OPERATIONS_ROLES,
   READONLY_ROLES,
   STAFF_ROLES,
   ROUTE_ROLE_POLICIES,
@@ -21,7 +26,11 @@ const LegalPage = lazy(() => import("@/pages/legal/LegalPage").then(m => ({ defa
 const DashboardPage = lazy(() => import("@/pages/dashboard/DashboardPage").then(m => ({ default: m.DashboardPage })));
 const PatientsPage = lazy(() => import("@/pages/patients/PatientsPage").then(m => ({ default: m.PatientsPage })));
 const PatientManagementWorkspacePageLazy = lazy(() => import("@/pages/patients/PatientManagementWorkspacePage"));
+const OrganizationWorkspacePageLazy = lazy(() => import("@/pages/organization/OrganizationWorkspacePage"));
 const LabOperationsWorkspacePageLazy = lazy(() => import("@/pages/lab/LabOperationsWorkspacePage"));
+const RadiologyOperationsWorkspacePageLazy = lazy(() => import("@/pages/radiology/RadiologyOperationsWorkspacePage"));
+const ClinicOperationsWorkspacePageLazy = lazy(() => import("@/pages/clinic/ClinicOperationsWorkspacePage"));
+const HospitalOperationsWorkspacePageLazy = lazy(() => import("@/pages/hospital/HospitalOperationsWorkspacePage"));
 const OrdersPage = lazy(() => import("@/pages/orders/OrdersPage").then(m => ({ default: m.OrdersPage })));
 const ReportsPage = lazy(() => import("@/pages/reports/ReportsPage").then(m => ({ default: m.ReportsPage })));
 const ResultsPage = lazy(() => import("@/pages/results/ResultsPage").then(m => ({ default: m.ResultsPage })));
@@ -46,7 +55,6 @@ const AdminLabsPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({
 const AdminUsersPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminUsersPage })));
 const AdminAuditPage = lazy(() => import("@/pages/admin/AdminPages").then(m => ({ default: m.AdminAuditPage })));
 const FhirPage = lazy(() => import("@/pages/fhir/FhirPage").then(m => ({ default: m.FhirPage })));
-const HospitalPage = lazy(() => import("@/pages/hospital/HospitalPage").then(m => ({ default: m.HospitalPage })));
 const EdgePage = lazy(() => import("@/pages/edge/EdgePage").then(m => ({ default: m.EdgePage })));
 const FinancialPage = lazy(() => import("@/pages/financial/FinancialPage").then(m => ({ default: m.FinancialPage })));
 const FinancialGovernancePage = lazy(() => import("@/pages/financial-governance/FinancialGovernancePage").then(m => ({ default: m.FinancialGovernancePage })));
@@ -77,8 +85,11 @@ const MyRecordPageLazy = lazy(() => import("@/pages/my-record/MyRecordPage"));
 const CommandCenterApiPageLazy = lazy(() => import("@/pages/command-center/CommandCenterApiPage"));
 const CommandIntelligencePageLazy = lazy(() => import("@/pages/command-intelligence/CommandIntelligencePage"));
 const ControlPlanePageLazy = lazy(() => import("@/pages/control-plane/ControlPlanePage"));
-const CriticalCareApiPageLazy = lazy(() => import("@/pages/critical-care/CriticalCareApiPage"));
-const EmsApiPageLazy = lazy(() => import("@/pages/ems/EmsApiPage"));
+const AcuteCareOperationsWorkspacePageLazy = lazy(() => import("@/pages/acute-care/AcuteCareOperationsWorkspacePage"));
+const ScreenByScreenPageLazy = lazy(() => import("@/pages/screen-by-screen/ScreenByScreenPage"));
+const DomainRouteContractGatePageLazy = lazy(() => import("@/pages/domain/DomainRouteContractGatePage"));
+const GoldenPathReadinessPageLazy = lazy(() => import("@/pages/domain/GoldenPathReadinessPage"));
+const RemainingWorkstreamsPageLazy = lazy(() => import("@/pages/domain/RemainingWorkstreamsPage"));
 const HealthDataPageLazy = lazy(() => import("@/pages/health-data/HealthDataPage"));
 const IntegrationPageLazy = lazy(() => import("@/pages/integration/IntegrationPage"));
 const IntegrationConnectorsPageLazy = lazy(() => import("@/pages/integration/connectors/IntegrationConnectorsPage"));
@@ -147,6 +158,7 @@ export const router = createBrowserRouter([
       { path: "dashboard", element: <LazyPage><DashboardPage /></LazyPage> },
       { path: "patients", element: <RoleGuard roles={STAFF_ROLES}><LazyPage><PatientsPage /></LazyPage></RoleGuard> },
       { path: "patient-management", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><PatientManagementWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "organization-workspace", element: <RoleGuard roles={ROUTE_ROLE_POLICIES["/organization-workspace"]}><LazyPage><OrganizationWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "lab-operations", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><LabOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "orders", element: <RoleGuard roles={STAFF_ROLES}><LazyPage><OrdersPage /></LazyPage></RoleGuard> },
       { path: "reports", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><ReportsPage /></LazyPage></RoleGuard> },
@@ -173,7 +185,7 @@ export const router = createBrowserRouter([
       { path: "admin/audit", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><AdminAuditPage /></LazyPage></RoleGuard> },
       { path: "fhir", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><FhirPage /></LazyPage></RoleGuard> },
       { path: "ehr", element: <RoleGuard roles={ADMIN_ROLES}><LegacyRouteBridge /></RoleGuard> },
-      { path: "hospital", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><HospitalPage /></LazyPage></RoleGuard> },
+      { path: "hospital", element: <RoleGuard roles={HOSPITAL_OPERATIONS_ROLES}><LazyPage><HospitalOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "edge", element: <RoleGuard roles={ROUTE_ROLE_POLICIES["/edge"]}><LazyPage><EdgePage /></LazyPage></RoleGuard> },
       { path: "financial", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><FinancialPage /></LazyPage></RoleGuard> },
       { path: "financial-governance", element: <RoleGuard roles={FINANCIAL_ROLES}><LazyPage><FinancialGovernancePage /></LazyPage></RoleGuard> },
@@ -204,8 +216,18 @@ export const router = createBrowserRouter([
       { path: "command-center", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CommandCenterApiPageLazy /></LazyPage></RoleGuard> },
       { path: "command-intelligence", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CommandIntelligencePageLazy /></LazyPage></RoleGuard> },
       { path: "control-plane", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><ControlPlanePageLazy /></LazyPage></RoleGuard> },
-      { path: "critical-care", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><CriticalCareApiPageLazy /></LazyPage></RoleGuard> },
-      { path: "ems", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><EmsApiPageLazy /></LazyPage></RoleGuard> },
+      { path: "acute-care-operations", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "screen-by-screen", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><ScreenByScreenPageLazy /></LazyPage></RoleGuard> },
+      { path: "golden-path", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><GoldenPathReadinessPageLazy /></LazyPage></RoleGuard> },
+      { path: "remaining-work", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><RemainingWorkstreamsPageLazy /></LazyPage></RoleGuard> },
+      { path: "app/health", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Health" description="المسار العام لصحة المواطن سيعرض Summary ثم Timeline وResults وDocuments عند توفر العقود المناسبة." contract="CIT-002 / clinical read" /></LazyPage></RoleGuard> },
+      { path: "app/appointments", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Appointments" description="مسار الموعد يحتاج خدمة وطبيباً ومنشأة وSlot وتغطية وتأكيداً من الخادم." contract="CIT-004 / appointment lifecycle" /></LazyPage></RoleGuard> },
+      { path: "app/results", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Results" description="عرض النتائج يتطلب نطاقاً مصرحاً وإظهار قيمة ووحدة ومرجع ومصدر دون كشف زائد." contract="CIT-003 / result viewer" /></LazyPage></RoleGuard> },
+      { path: "workspace/doctor", element: <RoleGuard roles={STAFF_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Doctor Workspace" description="مساحة الطبيب تتطلب workspace وorganization وfacility وrole وpermissions معادة من الخادم." contract="PRO-001 / workspace scoped" /></LazyPage></RoleGuard> },
+      { path: "workspace/laboratory", element: <RoleGuard roles={LAB_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Laboratory Workspace" description="مساحة المختبر تحتاج عقود specimen وworklist وresult lifecycle قبل أي كتابة أو اعتماد." contract="LAB-001 / specimen lifecycle" /></LazyPage></RoleGuard> },
+      { path: "workspace/pharmacy", element: <RoleGuard roles={PHARMACY_OPERATIONS_ROLES}><LazyPage><DomainRouteContractGatePageLazy title="Pharmacy Workspace" description="مساحة الصيدلية تفصل prescription verification عن dispensing وتخضع لنطاق المنشأة." contract="PHARM-001 / dispensing lifecycle" /></LazyPage></RoleGuard> },
+      { path: "critical-care", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "ems", element: <RoleGuard roles={ACUTE_CARE_OPERATIONS_ROLES}><LazyPage><AcuteCareOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "health-data", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><HealthDataPageLazy /></LazyPage></RoleGuard> },
       { path: "integration", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><IntegrationPageLazy /></LazyPage></RoleGuard> },
       { path: "integration/connectors", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><IntegrationConnectorsPageLazy /></LazyPage></RoleGuard> },
@@ -224,7 +246,10 @@ export const router = createBrowserRouter([
       { path: "national/task-engine", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><NationalTaskEngineApiPageLazy /></LazyPage></RoleGuard> },
       { path: "national/workflow-runtime", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><NationalWorkflowRuntimeApiPageLazy /></LazyPage></RoleGuard> },
       { path: "pharmacy", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><PharmacyPageLazy /></LazyPage></RoleGuard> },
-      { path: "pharmacy-operations", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><PharmacyOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "pharmacy-operations", element: <RoleGuard roles={PHARMACY_OPERATIONS_ROLES}><LazyPage><PharmacyOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "radiology-operations", element: <RoleGuard roles={RADIOLOGY_OPERATIONS_ROLES}><LazyPage><RadiologyOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "clinic-operations", element: <RoleGuard roles={CLINIC_OPERATIONS_ROLES}><LazyPage><ClinicOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
+      { path: "hospital-operations", element: <RoleGuard roles={HOSPITAL_OPERATIONS_ROLES}><LazyPage><HospitalOperationsWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "billing-insurance", element: <RoleGuard roles={READONLY_ROLES}><LazyPage><BillingInsuranceWorkspacePageLazy /></LazyPage></RoleGuard> },
       { path: "device-integration", element: <InstitutionalOnlyRoute><RoleGuard roles={READONLY_ROLES}><LazyPage><DeviceIntegrationWorkspacePageLazy /></LazyPage></RoleGuard></InstitutionalOnlyRoute> },
       { path: "pilot-platform", element: <RoleGuard roles={ADMIN_ROLES}><LazyPage><PilotPlatformApiPageLazy /></LazyPage></RoleGuard> },

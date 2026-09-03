@@ -43,9 +43,12 @@ class _SessionRepository:
         self.session = session
         self.created = []
         self.deleted = []
+        self.terminated = []
+        self.records = [self.session_record] if self.session_record is not None else []
 
     async def create(self, session):
         self.created.append(session)
+        self.records.append(session)
         self.session_record = session
         return session
 
@@ -56,10 +59,20 @@ class _SessionRepository:
         return None
 
     async def soft_delete(self, session_id: str):
-        session = self.session_record
-        if session and session.id == session_id:
+        session = next((item for item in self.records if item.id == session_id), None)
+        if session:
             session.is_active = False
             self.deleted.append(session_id)
+
+    async def find_any_by_refresh_token_jti(self, refresh_jti: str):
+        return next((item for item in self.records if item.refresh_token_jti == refresh_jti), None)
+
+    async def terminate_refresh_family(self, family_id: str, *, reason: str, detected_at: datetime):
+        for item in self.records:
+            if item.refresh_family_id == family_id and item.is_active:
+                item.is_active = False
+                item.termination_reason = reason
+                item.refresh_reuse_detected_at = detected_at
 
     async def get_by_uuid(self, session_uuid: str):
         return self.session_record if self.session_record and self.session_record.uuid == session_uuid else None
@@ -67,8 +80,9 @@ class _SessionRepository:
     async def terminate_session(self, session_id: str, reason: str, terminated_by: str):
         if self.session_record and self.session_record.id == session_id:
             self.session_record.is_active = False
+            self.terminated.append((session_id, reason))
 
-    async def terminate_all_for_account(self, account_id: str, reason: str):
+    async def terminate_all_for_account(self, account_id: str, reason: str, terminated_by: str | None = None):
         if self.session_record and self.session_record.account_id == account_id:
             self.session_record.is_active = False
 
@@ -90,6 +104,10 @@ def _build_service(monkeypatch, *, active_account: bool = True):
         ip_address="127.0.0.1",
         user_agent="test-agent",
         device_id="device-1",
+        refresh_family_id="family-1",
+        parent_refresh_token_jti=None,
+        refresh_reuse_detected_at=None,
+        termination_reason=None,
     )
     _AccountRepository.account = account
     _AccountService.account = account
@@ -112,7 +130,7 @@ def _build_service(monkeypatch, *, active_account: bool = True):
     monkeypatch.setattr(
         security_auth,
         "create_refresh_token",
-        lambda payload: f"refresh:{payload['jti']}",
+        lambda payload: f"refresh:{payload['jti']}:{payload.get('refresh_family_id')}",
     )
     monkeypatch.setattr(
         security_auth,
@@ -142,17 +160,24 @@ async def test_refresh_rotates_jti_blacklists_old_token_and_deactivates_old_sess
     assert result["refresh_token"].startswith("refresh:")
     assert blacklisted and blacklisted[0][0] == "old-refresh-jti"
     assert old_session.is_active is False
-    assert service.session_repo.deleted == ["session-1"]
+    assert service.session_repo.terminated == [("session-1", "refresh_token_rotated")]
     assert len(service.session_repo.created) == 1
     assert service.session_repo.created[0].refresh_token_jti != "old-refresh-jti"
+    assert service.session_repo.created[0].refresh_family_id == "family-1"
+    assert service.session_repo.created[0].parent_refresh_token_jti == "old-refresh-jti"
 
 
 @pytest.mark.asyncio
-async def test_refresh_replay_is_rejected_after_rotation(monkeypatch):
-    service, _, _ = _build_service(monkeypatch)
+async def test_refresh_replay_rejects_and_terminates_entire_refresh_family(monkeypatch):
+    service, old_session, _ = _build_service(monkeypatch)
 
     assert await service.refresh_session("old-token") is not None
+    rotated_session = service.session_repo.created[0]
+    assert rotated_session.is_active is True
     assert await service.refresh_session("old-token") is None
+    assert old_session.refresh_reuse_detected_at is not None
+    assert old_session.termination_reason == "refresh_token_reuse_detected"
+    assert rotated_session.is_active is False
 
 
 @pytest.mark.asyncio

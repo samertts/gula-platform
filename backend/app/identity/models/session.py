@@ -16,6 +16,10 @@ class UserSession(IdentityBaseEntity):
 
     token_jti = Column(String(128), unique=True, nullable=False, index=True)
     refresh_token_jti = Column(String(128), unique=True, nullable=True, index=True)
+    refresh_family_id = Column(String(64), nullable=True, index=True)
+    parent_refresh_token_jti = Column(String(128), nullable=True, index=True)
+    refresh_reuse_detected_at = Column(DateTime(timezone=True), nullable=True)
+    device_trust_required = Column(Boolean, default=False, nullable=False)
 
     session_type = Column(String(20), default="web", nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)

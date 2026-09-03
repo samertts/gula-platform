@@ -34,6 +34,7 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
 
   it("يسمح فقط باستثناءات الهوية والتحقق الضيقة اللازمة لبدء جلسة أو فحص قرار قراءة", () => {
     expect(() => assertFrontendWriteIsAllowed("post", "/login")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/auth/refresh")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/authz/check")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("get", "/patients")).not.toThrow();
   });
@@ -61,8 +62,21 @@ describe("حاجز الكتابات التشغيلية في frontend-v3", () => 
     expect(() => assertFrontendReadIsAllowed("get", "/pharmacy/drugs?query=paracetamol")).not.toThrow();
     expect(() => assertFrontendReadIsAllowed("get", "/pharmacy/pos/summary?days=30")).not.toThrow();
     expect(() => assertFrontendReadIsAllowed("get", "/citizen-platform/me/medication-dispenses")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/consents/me")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/consents/consent-1/withdraw")).not.toThrow();
+    expect(() => assertFrontendWriteIsAllowed("post", "/consents/consent-1/grant")).toThrow(OperationalWriteBlockedError);
     expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/pos/sales")).not.toThrow();
     expect(() => assertFrontendWriteIsAllowed("post", "/pharmacy/inventory/stock-levels/adjust")).toThrow(OperationalWriteBlockedError);
+  });
+
+  it("يسمح بقراءات الأشعة المحدودة ويرفض كتابات التصوير أو روابط الصور العامة", () => {
+    expect(() => assertFrontendReadIsAllowed("get", "/radiology/orders?limit=50")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/radiology/appointments?limit=50")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/radiology/exams?limit=50")).not.toThrow();
+    expect(() => assertFrontendReadIsAllowed("get", "/radiology/reports")).toThrow(OperationalReadBlockedError);
+    expect(() => assertFrontendReadIsAllowed("get", "/radiology/studies/study-1/images")).toThrow(OperationalReadBlockedError);
+    expect(() => assertFrontendWriteIsAllowed("post", "/radiology/orders")).toThrow(OperationalWriteBlockedError);
+    expect(() => assertFrontendWriteIsAllowed("put", "/radiology/reports/report-1/finalize")).toThrow(OperationalWriteBlockedError);
   });
 
   it("يرفض قراءة REST غير مصنفة ويحصر الاستثناء في تهيئة الجلسة العامة", () => {

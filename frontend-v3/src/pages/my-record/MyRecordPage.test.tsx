@@ -14,6 +14,8 @@ vi.mock("@/contexts/AuthContext", () => ({
 vi.mock("@/api/client", () => ({
   apiClient: {
     listWorkspaces: vi.fn(),
+    listMyConsents: vi.fn(),
+    withdrawConsent: vi.fn(),
     switchWorkspace: vi.fn(),
   },
 }));
@@ -28,6 +30,29 @@ function renderPage() {
     </QueryClientProvider>,
   );
 }
+
+const liveConsents = {
+  consents: [
+    {
+      id: "consent-1",
+      uuid: "consent-uuid-1",
+      subject_account_id: "account-1",
+      grantee_account_id: "account-2",
+      purpose: "متابعة علاجية",
+      scope: { laboratory_results: true },
+      resource_domain: "نتائج المختبر",
+      status: "ACTIVE",
+      granted_at: "2026-08-27T08:00:00Z",
+      withdrawn_at: null,
+      expires_at: "2026-08-28T08:00:00Z",
+      version: 1,
+      source: "citizen",
+      legal_basis: null,
+      supersedes_id: null,
+      reason: null,
+    },
+  ],
+};
 
 const liveWorkspaces = {
   workspaces: [
@@ -68,6 +93,8 @@ describe("MyRecordPage", () => {
       user: { name: "سالم تجريبي", email: "samer@example.invalid", role: "doctor", is_verified: true },
     } as ReturnType<typeof useAuth>);
     vi.mocked(apiClient.listWorkspaces).mockResolvedValue(liveWorkspaces);
+    vi.mocked(apiClient.listMyConsents).mockResolvedValue(liveConsents);
+    vi.mocked(apiClient.withdrawConsent).mockResolvedValue(liveConsents.consents[0]);
     vi.mocked(apiClient.switchWorkspace).mockResolvedValue({
       context: { account_id: "account-1", identity_id: "identity-1", workspace_id: "workspace-physician", version: 2 },
       workspace: liveWorkspaces.workspaces[1],
@@ -77,13 +104,31 @@ describe("MyRecordPage", () => {
   it("renders only server-reflected workspaces and never exposes raw national identity data", async () => {
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "سجلك يبدأ بهويتك، لا بكل بيانات الدولة" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "هوية واحدة، وسياقات صحية واضحة" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "مساحة المواطن" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "مساحة طبيب" })).toBeInTheDocument();
-    expect(screen.getByText("لا يظهر رقم وطني أو سجل صحي خام")).toBeInTheDocument();
+    expect(screen.getByText("لا يظهر رقم وطني أو معرف صحي خام")).toBeInTheDocument();
     expect(screen.queryByText("national_id")).not.toBeInTheDocument();
     expect(screen.queryByText("health_id")).not.toBeInTheDocument();
     expect(apiClient.listWorkspaces).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders only server-reflected active consent metadata", async () => {
+    renderPage();
+
+    expect(await screen.findByText("نتائج المختبر")).toBeInTheDocument();
+    expect(screen.getByText("حتى ٢٨‏/٨‏/٢٠٢٦ · نطاق محدد")).toBeInTheDocument();
+    expect(apiClient.listMyConsents).toHaveBeenCalledWith();
+  });
+
+  it("withdraws access only through the server consent endpoint", async () => {
+    renderPage();
+
+    const withdrawButton = await screen.findByRole("button", { name: "إلغاء الوصول" });
+    fireEvent.click(withdrawButton);
+
+    await waitFor(() => expect(apiClient.withdrawConsent).toHaveBeenCalledWith("consent-1"));
+    expect(apiClient.withdrawConsent).toHaveBeenCalledTimes(1);
   });
 
   it("switches context only through the server workspace endpoint", async () => {
@@ -99,11 +144,12 @@ describe("MyRecordPage", () => {
 
   it("has no automated accessibility violations in the live shell", async () => {
     const { container } = renderPage();
-    await screen.findByRole("heading", { name: "سجلك يبدأ بهويتك، لا بكل بيانات الدولة" });
+    await screen.findByRole("heading", { name: "هوية واحدة، وسياقات صحية واضحة" });
 
     const results = await axe(container, { rules: { "color-contrast": { enabled: false } } });
     expect(results.violations).toEqual([]);
   });
+
 
   it("keeps demo synthetic and does not request live workspaces", async () => {
     vi.mocked(useAuth).mockReturnValue({
@@ -116,6 +162,8 @@ describe("MyRecordPage", () => {
     expect(await screen.findByText("مساحة المواطن التجريبية")).toBeInTheDocument();
     expect(screen.getByText("اصطناعية")).toBeInTheDocument();
     expect(apiClient.listWorkspaces).not.toHaveBeenCalled();
+    expect(apiClient.listMyConsents).not.toHaveBeenCalled();
+    expect(apiClient.withdrawConsent).not.toHaveBeenCalled();
     expect(apiClient.switchWorkspace).not.toHaveBeenCalled();
   });
 });

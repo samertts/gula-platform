@@ -37,6 +37,52 @@ export const LAB_ROLES = [
   "lab_staff",
 ] as const satisfies readonly UserRole[];
 
+export const LAB_OPERATIONS_ROLES = [
+  ...LAB_ROLES,
+  "demo_viewer",
+] as const satisfies readonly UserRole[];
+
+export const PHARMACY_OPERATIONS_ROLES = [
+  ...ADMIN_ROLES,
+  "staff",
+  "cashier",
+  "demo_viewer",
+] as const satisfies readonly UserRole[];
+
+export const RADIOLOGY_OPERATIONS_ROLES = [
+  ...ADMIN_ROLES,
+  "doctor",
+  "staff",
+  "technician",
+  "demo_viewer",
+] as const satisfies readonly UserRole[];
+
+export const CLINIC_OPERATIONS_ROLES = [
+  ...ADMIN_ROLES,
+  "doctor",
+  "staff",
+  "technician",
+  "demo_viewer",
+] as const satisfies readonly UserRole[];
+
+export const HOSPITAL_OPERATIONS_ROLES = [
+  ...ADMIN_ROLES,
+  "doctor",
+  "staff",
+  "lab_staff",
+  "technician",
+  "demo_viewer",
+] as const satisfies readonly UserRole[];
+
+export const ACUTE_CARE_OPERATIONS_ROLES = [
+  ...HOSPITAL_OPERATIONS_ROLES,
+] as const satisfies readonly UserRole[];
+
+export const ORGANIZATION_ROLES = [
+  ...READONLY_ROLES,
+  "technician",
+] as const satisfies readonly UserRole[];
+
 export const FINANCIAL_ROLES = [
   "master_admin",
   "admin",
@@ -54,7 +100,17 @@ export type RouteRolePolicy = readonly UserRole[];
 export const ROUTE_ROLE_POLICIES = {
   "/patients": STAFF_ROLES,
   "/patient-management": READONLY_ROLES,
-  "/lab-operations": READONLY_ROLES,
+  "/screen-by-screen": READONLY_ROLES,
+  "/golden-path": READONLY_ROLES,
+  "/remaining-work": READONLY_ROLES,
+  "/app/health": READONLY_ROLES,
+  "/app/appointments": READONLY_ROLES,
+  "/app/results": READONLY_ROLES,
+  "/workspace/doctor": STAFF_ROLES,
+  "/workspace/laboratory": LAB_ROLES,
+  "/workspace/pharmacy": PHARMACY_OPERATIONS_ROLES,
+  "/organization-workspace": ORGANIZATION_ROLES,
+  "/lab-operations": LAB_OPERATIONS_ROLES,
   "/orders": STAFF_ROLES,
   "/reports": READONLY_ROLES,
   "/results": STAFF_ROLES,
@@ -77,7 +133,7 @@ export const ROUTE_ROLE_POLICIES = {
   "/admin/audit": ADMIN_ROLES,
   "/fhir": ADMIN_ROLES,
   "/ehr": ADMIN_ROLES,
-  "/hospital": ADMIN_ROLES,
+  "/hospital": HOSPITAL_OPERATIONS_ROLES,
   "/edge": ["master_admin", "admin"] as const satisfies readonly UserRole[],
   "/financial": ADMIN_ROLES,
   "/financial-governance": FINANCIAL_ROLES,
@@ -111,8 +167,9 @@ export const ROUTE_ROLE_POLICIES = {
   "/command-center": ADMIN_ROLES,
   "/command-intelligence": ADMIN_ROLES,
   "/control-plane": ADMIN_ROLES,
-  "/critical-care": ADMIN_ROLES,
-  "/ems": ADMIN_ROLES,
+  "/acute-care-operations": ACUTE_CARE_OPERATIONS_ROLES,
+  "/critical-care": ACUTE_CARE_OPERATIONS_ROLES,
+  "/ems": ACUTE_CARE_OPERATIONS_ROLES,
   "/health-data": ADMIN_ROLES,
   "/integration": ADMIN_ROLES,
   "/integration/connectors": ADMIN_ROLES,
@@ -131,7 +188,10 @@ export const ROUTE_ROLE_POLICIES = {
   "/national/task-engine": ADMIN_ROLES,
   "/national/workflow-runtime": ADMIN_ROLES,
   "/pharmacy": ADMIN_ROLES,
-  "/pharmacy-operations": READONLY_ROLES,
+  "/pharmacy-operations": PHARMACY_OPERATIONS_ROLES,
+  "/radiology-operations": RADIOLOGY_OPERATIONS_ROLES,
+  "/clinic-operations": CLINIC_OPERATIONS_ROLES,
+  "/hospital-operations": HOSPITAL_OPERATIONS_ROLES,
   "/billing-insurance": READONLY_ROLES,
   "/device-integration": READONLY_ROLES,
   "/pilot-platform": ADMIN_ROLES,

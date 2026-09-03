@@ -26,6 +26,13 @@ describe("التنقل العربي الأساسي في GULA", () => {
     expect(ar.nav.reports).toBe("التقارير");
   });
 
+  it("يسجل معرض الشاشات كمدخل قراءة فقط ولا يمنحه للمواطن", () => {
+    const galleryItem = (NAV_ITEMS.main ?? []).find((item) => item.path === "/screen-by-screen");
+    expect(galleryItem).toMatchObject({ label: "معرض الشاشات الفعلية", roles: expect.any(Array) });
+    expect(getRouteRoles("/screen-by-screen")).toEqual(expect.arrayContaining(["doctor", "staff", "demo_viewer"]));
+    expect(getRouteRoles("/screen-by-screen")).not.toContain("citizen");
+  });
+
   it("لا يطلب سطح التقارير صلاحية تشغيلية غير موثقة", () => {
     const reportsItem = (NAV_ITEMS.main ?? []).find((item) => item.path === "/reports");
 
@@ -46,6 +53,56 @@ describe("التنقل العربي الأساسي في GULA", () => {
     }
   });
 
+  it("يقصر عمليات المختبر على أدوار المختبر وDemo", () => {
+    expect(getRouteRoles("/lab-operations")).toEqual(expect.arrayContaining(["lab_admin", "lab_staff", "demo_viewer"]));
+    expect(getRouteRoles("/lab-operations")).not.toContain("citizen");
+    expect(getRouteRoles("/lab-operations")).not.toContain("doctor");
+  });
+
+  it("يقصر عمليات الصيدلية على أدوار الصيدلية وDemo", () => {
+    expect(getRouteRoles("/pharmacy-operations")).toEqual(expect.arrayContaining(["staff", "cashier", "demo_viewer"]));
+    expect(getRouteRoles("/pharmacy-operations")).not.toContain("citizen");
+    expect(getRouteRoles("/pharmacy-operations")).not.toContain("doctor");
+  });
+
+  it("يقصر بوابة المستشفى على الأدوار المؤسسية والسريرية وDemo", () => {
+    expect(getRouteRoles("/hospital-operations")).toEqual(expect.arrayContaining(["doctor", "staff", "lab_staff", "technician", "demo_viewer"]));
+    expect(getRouteRoles("/hospital-operations")).not.toContain("citizen");
+  });
+
+  it("يقصر بوابة الرعاية الحادة ويحوّل aliases EMS وCritical Care إلى نفس السياسة الآمنة", () => {
+    const acuteItem = (NAV_ITEMS.systems ?? []).find((item) => item.path === "/acute-care-operations");
+    expect(acuteItem).toMatchObject({
+      label: "بوابة الطوارئ والإسعاف والرعاية الحادة",
+      permissions: ["dashboard:read"],
+    });
+    for (const path of ["/acute-care-operations", "/ems", "/critical-care"]) {
+      expect(getRouteRoles(path), path).toEqual(expect.arrayContaining(["doctor", "staff", "lab_staff", "technician", "demo_viewer"]));
+      expect(getRouteRoles(path), path).not.toContain("citizen");
+    }
+  });
+
+  it("يقصر بوابة العيادة على الأدوار السريرية والتشغيلية وDemo", () => {
+    expect(getRouteRoles("/clinic-operations")).toEqual(expect.arrayContaining(["doctor", "staff", "technician", "demo_viewer"]));
+    expect(getRouteRoles("/clinic-operations")).not.toContain("citizen");
+  });
+
+  it("يقصر عمليات الأشعة على الأدوار السريرية والتشغيلية وDemo", () => {
+    expect(getRouteRoles("/radiology-operations")).toEqual(expect.arrayContaining(["doctor", "staff", "technician", "demo_viewer"]));
+    expect(getRouteRoles("/radiology-operations")).not.toContain("citizen");
+  });
+
+  it("يحمي بوابة المؤسسة الصحية بنطاق أدوار مؤسسية مستقل", () => {
+    const items = Object.values(NAV_ITEMS).flat();
+    const organizationItem = items.find((item) => item.path === "/organization-workspace");
+    expect(organizationItem).toMatchObject({
+      label: "بوابة المؤسسة الصحية",
+      permissions: ["dashboard:read"],
+    });
+    expect(getRouteRoles("/organization-workspace")).toEqual(expect.arrayContaining(["doctor", "admin", "technician"]));
+    expect(getRouteRoles("/organization-workspace")).not.toContain("citizen");
+  });
+
   it("لا يعرض أسطح الإدارة والمستشفى للطبيب أو الفني", () => {
     const items = Object.values(NAV_ITEMS).flat();
     const visibleFor = (role: string) =>
@@ -64,9 +121,9 @@ describe("التنقل العربي الأساسي في GULA", () => {
       "/orders",
       "/results",
     ]));
-    expect(doctorPaths).not.toContain("/hospital");
+    expect(doctorPaths).toContain("/hospital");
     expect(doctorPaths).not.toContain("/admin");
-    expect(technicianPaths).not.toContain("/hospital");
+    expect(technicianPaths).toContain("/hospital");
     expect(technicianPaths).not.toContain("/admin");
     expect(technicianPaths).not.toContain("/reports");
   });
