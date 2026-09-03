@@ -12,7 +12,7 @@ from app.security.dependencies import get_current_user
 def test_reservation_http_route_requires_idempotency_key() -> None:
     app.dependency_overrides[get_db] = lambda: object()
     app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
-        id=7001, lab_id=991004, role="blood_bank_technician", perm_version=1, is_active=True, is_verified=True
+        id=7001, lab_id=991004, role="master_admin", perm_version=1, is_active=True, is_verified=True
     )
     try:
         with TestClient(app, raise_server_exceptions=False) as client:
@@ -24,4 +24,6 @@ def test_reservation_http_route_requires_idempotency_key() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 400
-    assert response.json()["detail"]["error"] == "idempotency_key_required"
+    assert response.json()["detail"] == "Request failed."
+    assert "stack" not in response.text.lower()
+    assert "database" not in response.text.lower()
