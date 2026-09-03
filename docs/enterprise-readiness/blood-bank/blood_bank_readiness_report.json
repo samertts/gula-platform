@@ -4,55 +4,56 @@
   "production_ready": false,
   "status": "partially_verified",
   "environment": {
-    "database": "disposable local PostgreSQL for DB tests; isolated SQLite test-runtime DB for startup contract only",
-    "postgresql_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+    "database": "disposable local PostgreSQL",
+    "postgresql_version": "16.15",
     "database_name": "gula_bloodbank_verify",
+    "http_runtime": "ENV=test, RUNTIME_MODE=test, real FastAPI application and TestClient",
     "dsn_scope": "verification process only"
   },
-  "phase_14a": {
-    "dependency_source_inspected": ["backend/requirements.txt", "backend/requirements-lock.txt", "backend/pyproject.toml", "backend/uv.lock", ".github/workflows/ci.yml"],
-    "webauthn_requirement": "declared runtime dependency",
-    "webauthn_declared_constraint": "backend/requirements.txt: webauthn>=3.0.0",
-    "webauthn_lock_version": "3.0.0",
-    "webauthn_installed_version": "3.0.0",
-    "repository_dependency_files_changed": false,
-    "installation_command": "sudo pip3 install -q webauthn==3.0.0",
-    "other_declared_runtime_dependencies_installed_for_import": ["qrcode 8.2", "python-multipart 0.0.32", "pyotp 2.10.0", "email-validator 2.2.0+", "signxml 4.2.0+"],
-    "security_implementation": "shared/auth/webauthn.py imports and calls real webauthn 3.x APIs; no stub, fake module, or security bypass added",
-    "application_factory_import": "passed in ENV=test, RUNTIME_MODE=test",
-    "testclient_startup": "passed",
-    "route_registration": "Blood Bank router imported by factory; POST /blood-bank/reservations exercised successfully",
-    "authentication_authorization": "authentication dependency remained in the route; test used canonical master_admin permission role, with only test dependency overrides for synthetic user and DB",
-    "http_contract_test": {"status": "passed", "result": "HTTP 400 with existing safe error envelope Request failed.; no stack trace or database detail; test file tests/blood_bank/test_http_idempotency_contract.py"}
-  },
   "verified": {
-    "blood_bank_suite": {"passed": 11, "failed": 0, "skipped": 0},
-    "canonical_service_reservation_race": "passed",
-    "canonical_service_issue_race": "passed",
-    "concurrent_clinical_command_idempotency_claim": "passed",
-    "targeted_blood_bank_migrations": "passed through 20260901_0004",
+    "phase_14a_fastapi_startup": "passed",
+    "phase_14a_http_missing_key_contract": "passed: POST /blood-bank/reservations returns HTTP 400 through the existing safe error envelope",
+    "blood_bank_regression_before_phase_14b": {"passed": 11, "failed": 0, "skipped": 0},
+    "phase_14b_http_tests": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "tests": {
+        "reservation_replay": "passed: first HTTP request 201, same key and same payload 409, one reservation, one reserved movement, unit reserved",
+        "issue_replay": "passed: first HTTP request 200, same key and same payload 409, fulfilled quantity 1, one issued movement, unit issued",
+        "concurrent_same_key_reservation": "passed: two independent TestClients with deterministic Barrier produced [201, 409], one reservation and one reserved movement",
+        "sequential_reservation_payload_collision": "passed: same key with different order_id rejected 409, no second side effect",
+        "concurrent_reservation_payload_collision": "passed: same key with different payloads produced [201, 409], no duplicate reservation or movement"
+      },
+      "http_stack": "real FastAPI app, authentication dependency active, canonical master_admin permission used for synthetic test actor",
+      "database_assertions": "direct PostgreSQL queries after each scenario"
+    },
+    "postgres_service_and_claim_tests": "passed",
+    "targeted_migrations": "passed through 20260901_0004",
     "compile": true,
     "git_diff_check": true
   },
+  "implementation_changes": {
+    "clinical_command_guard": "non-integer Blood Bank resource IDs are kept in structured audit details while legacy integer audit_logs.resource_id remains compatible",
+    "audit_service": "PostgreSQL audit chain hash is computed before INSERT using a reserved sequence ID, preserving the append-only trigger",
+    "tests": "added real PostgreSQL HTTP replay, concurrency, and collision tests in backend/tests/blood_bank/test_http_idempotency_postgres.py"
+  },
   "not_verified": {
-    "http_reservation_replay": "not run in Phase 14A",
-    "http_issue_replay": "not run in Phase 14A",
-    "concurrent_http_idempotency": "not run in Phase 14A",
-    "sequential_payload_collision": "not run in Phase 14A",
-    "concurrent_payload_collision": "not run in Phase 14A",
-    "failure_injection_and_retry": "not implemented in Phase 14A",
-    "authorization_idor": "not implemented in Phase 14A",
+    "failure_injection_and_retry": "not implemented in Phase 14B",
+    "authorization_idor": "not implemented in Phase 14B",
     "full_e2e": "not run",
-    "full_backend_regression": "not run"
+    "full_backend_regression": "not run",
+    "operation_namespace_collision": "not separately tested; current tests cover same-operation reservation collisions",
+    "completed_replay_response": "current canonical guard deterministically returns 409 rather than persisting/replaying the original response payload"
   },
   "blocked": {
-    "none_for_phase_14a_startup_and_contract": true,
-    "alembic_upgrade_head": "still blocked by pre-existing duplicate revision 20260819_0003 and multiple unrelated heads; legacy migrations unchanged"
+    "none_for_phase_14b_http_tests": true,
+    "alembic_upgrade_head": "pre-existing duplicate revision 20260819_0003 and unrelated multiple heads; unchanged"
   },
   "warnings": [
-    "FastAPI TestClient reports Starlette/httpx deprecation warning",
-    "pytest reports two unknown asyncio configuration options",
-    "Test runtime logs existing missing optional production secrets and in-memory Redis fallback; no production configuration was modified",
-    "GitHub default branch has one existing moderate Dependabot vulnerability"
+    "FastAPI TestClient reports an existing Starlette/httpx deprecation warning",
+    "pytest reports two existing unknown asyncio configuration options",
+    "Test runtime logs existing missing optional production secrets and in-memory Redis fallback; production configuration was not modified",
+    "GitHub reports existing Dependabot vulnerabilities on the default branch"
   ]
 }
