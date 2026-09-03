@@ -12,45 +12,46 @@
   },
   "verified": {
     "phase_14a_fastapi_startup": "passed",
-    "phase_14a_http_missing_key_contract": "passed",
-    "phase_14b_http_tests": {"passed": 5, "failed": 0, "skipped": 0},
-    "phase_14b_reservation_replay": "passed: 201 then 409, one reservation and one reserved movement",
-    "phase_14b_issue_replay": "passed: 200 then 409, one issue effect, fulfilled quantity 1, one issued movement",
-    "phase_14b_concurrent_same_key": "passed: two independent TestClients, deterministic barrier, [201, 409], one side effect",
-    "phase_14b_sequential_payload_collision": "passed: same key with different payload rejected 409 without second effect",
-    "phase_14b_concurrent_payload_collision": "passed: same key with different payloads produced [201, 409] without duplicate effects",
+    "phase_14b_http_replay_and_collision": {"passed": 5, "failed": 0, "skipped": 0},
     "phase_failure_injection_retry": {
-      "passed": 2,
+      "passed": 5,
       "failed": 0,
       "tests": {
-        "after_claim": "passed: first HTTP 500, transaction rollback, same-key retry 201, one reservation and one movement",
-        "after_business_effect": "passed: first HTTP 500, business mutation rolled back, same-key retry 201, one reservation and one movement"
+        "reservation_after_claim": "passed: first 500, rollback, same-key retry 201, one reservation and one movement",
+        "reservation_after_business_effect": "passed: first 500, rollback of business effect, same-key retry 201, one reservation and one movement",
+        "reservation_after_inventory_movement": "passed: first 500, rollback of pending movement and state, same-key retry 201, one reservation and one movement",
+        "reservation_after_audit_preparation": "passed: first 500, rollback before audit insertion, same-key retry 201, one reservation and one movement",
+        "issue_after_business_effect": "passed: first 500, rollback of issue effect, same-key retry 200, fulfilled quantity 1, one issued movement"
       },
-      "mechanism": "test-only hook enabled only when ENV=test, RUNTIME_MODE=test, and GULA_TEST_FAILURE_STAGE is explicitly set; no production HTTP exposure"
+      "mechanism": "disabled by default and gated by ENV=test, RUNTIME_MODE=test, and explicit GULA_TEST_FAILURE_STAGE"
     },
-    "blood_bank_regression_suite": {"passed": 18, "failed": 0, "skipped": 0},
+    "phase_security_reconciliation": {
+      "cross_facility_traceability_idor": "passed: Facility B received 404 for a Facility A unit and no business effect was created",
+      "http_final_state_assertions": "passed: direct PostgreSQL assertions for resource status and movement counts",
+      "reconciliation": "service reconciliation remains available; no duplicate reservation or movement detected in tested scenarios"
+    },
+    "blood_bank_regression_suite": {"passed": 21, "failed": 0, "skipped": 0},
     "postgres_service_and_claim_tests": "passed",
     "targeted_migrations": "passed through 20260901_0004",
     "compile": true,
     "git_diff_check": true
   },
   "implementation_changes": {
-    "failure_injection": "added shared test-only clinical failure hook and canonical route/service insertion points",
-    "audit_compatibility": "preserved append-only audit behavior and string Blood Bank resource identity",
-    "tests": ["backend/tests/blood_bank/test_http_idempotency_postgres.py", "backend/tests/blood_bank/test_failure_injection_postgres.py"]
+    "failure_injection": "shared test-only hook with canonical route/service/guard insertion points",
+    "audit_compatibility": "string Blood Bank resource IDs preserved in details while legacy integer audit_logs.resource_id remains valid; PostgreSQL chain hash computed before append-only INSERT",
+    "tests": ["backend/tests/blood_bank/test_failure_injection_postgres.py", "backend/tests/blood_bank/test_http_idempotency_postgres.py"]
   },
   "not_verified": {
-    "failure_after_inventory_movement": "hook exists but dedicated HTTP retry proof not run",
-    "failure_after_audit_preparation": "hook exists but dedicated HTTP retry proof not run",
-    "issue_failure_injection_retry": "not run; current failure matrix covers Reservation",
-    "authorization_idor": "not implemented",
-    "full_e2e": "not run",
-    "full_backend_regression": "not run",
+    "issue_after_inventory_movement_failure": "hook exists but dedicated Issue test not run",
+    "issue_after_audit_preparation_failure": "hook exists but dedicated Issue test not run",
     "completed_replay_response": "canonical behavior remains deterministic 409; original response payload is not persisted/replayed",
-    "operation_namespace_collision": "not separately tested"
+    "operation_namespace_collision": "not separately tested",
+    "authorization_idor_mutation_matrix": "only cross-facility traceability read denial tested; full mutation matrix not run",
+    "full_e2e": "not run",
+    "full_backend_regression": "not run"
   },
   "blocked": {
-    "none_for_verified_http_and_failure_tests": true,
+    "none_for_current_postgres_tests": true,
     "alembic_upgrade_head": "pre-existing duplicate revision 20260819_0003 and unrelated multiple heads; unchanged"
   },
   "warnings": [

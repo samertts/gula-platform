@@ -77,7 +77,7 @@ def _prepare(Session) -> None:
         session.commit()
 
 
-def _client(Session):
+def _client(Session, actor_lab_id: int = LAB_ID, actor_id: int = ACTOR_ID):
     def db_override():
         session = Session()
         try:
@@ -86,7 +86,7 @@ def _client(Session):
             session.close()
 
     app.dependency_overrides[get_db] = db_override
-    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=ACTOR_ID, lab_id=LAB_ID, role="master_admin", perm_version=1, is_active=True, is_verified=True)
+    app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(id=actor_id, lab_id=actor_lab_id, role="master_admin", perm_version=1, is_active=True, is_verified=True)
     return TestClient(app, raise_server_exceptions=False)
 
 
@@ -201,6 +201,21 @@ def test_http_issue_replay_has_one_side_effect() -> None:
         assert first.status_code == 200
         assert second.status_code == 409
         assert _issue_counts(Session, request_id, unit_id) == {"fulfilled_units": 1, "unit_status": ComponentStatus.ISSUED.value, "movements": 1}
+    finally:
+        app.dependency_overrides.clear()
+        Session.kw["bind"].dispose()
+
+
+def test_http_cross_facility_traceability_is_denied() -> None:
+    Session = _session_factory()
+    _prepare(Session)
+    try:
+        with Session.kw["bind"].begin() as conn:
+            conn.execute(text("INSERT INTO labs (id, name, is_active) VALUES (:id, :name, true) ON CONFLICT (id) DO NOTHING"), {"id": LAB_ID + 1, "name": "Synthetic Other Facility"})
+        with _client(Session, actor_lab_id=LAB_ID + 1) as client:
+            response = client.get(f"/blood-bank/units/{UNIT_ID}/traceability")
+        assert response.status_code == 404
+        assert _counts(Session) == {"reservations": 0, "movements": 0, "unit_status": ComponentStatus.AVAILABLE.value}
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
