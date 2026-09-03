@@ -241,6 +241,8 @@ class ClinicalCommandGuard:
         receipt.resource_id = str(resource_id)
         receipt.completed_at = datetime.now(UTC)
         self.db.flush()
+        from app.clinical.failure_injection import maybe_fail
+        maybe_fail("after_audit_preparation")
         try:
             log_action(
                 self.db,

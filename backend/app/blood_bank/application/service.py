@@ -26,6 +26,7 @@ from app.blood_bank.domain.enums import (
     TransfusionStatus,
 )
 from app.blood_bank.domain.state_machine import transition
+from app.clinical.failure_injection import maybe_fail
 from app.blood_bank.exceptions import (
     BloodBankValidationError,
     BloodBankWorkflowError,
@@ -347,6 +348,7 @@ class BloodBankService:
                 movement_type="issued", performed_by=issued_by, performed_at=now,
                 notes=f"{previous_status} -> issued for request {request.id}", lab_id=lab_id,
             ))
+            maybe_fail("after_inventory_movement")
         request.fulfilled_units = (request.fulfilled_units or 0) + quantity
         request.status = "fulfilled" if request.fulfilled_units == request.units_requested else "partially_fulfilled"
         request.version += 1
@@ -665,6 +667,7 @@ class BloodBankService:
         transition(unit.status, ComponentStatus.RESERVED.value, entity="blood_unit")
         unit.status, unit.version = ComponentStatus.RESERVED.value, unit.version + 1
         self.db.add(InventoryMovementModel(unit_id=unit.id, facility_id=facility_id, from_location=unit.storage_location, to_location="reserved", movement_type="reserved", performed_by=actor_id, performed_at=now, notes=f"reserved for order {order_id}", lab_id=lab_id))
+        maybe_fail("after_inventory_movement")
         self.db.flush()
         self._trace(lab_id=lab_id, unit_id=unit.id, facility_id=facility_id, event_type="reserved", object_type="reservation", object_id=reservation.id, actor_id=actor_id, reason=f"order {order_id}")
         return reservation

@@ -12,42 +12,45 @@
   },
   "verified": {
     "phase_14a_fastapi_startup": "passed",
-    "phase_14a_http_missing_key_contract": "passed: POST /blood-bank/reservations returns HTTP 400 through the existing safe error envelope",
-    "blood_bank_regression_before_phase_14b": {"passed": 11, "failed": 0, "skipped": 0},
-    "phase_14b_http_tests": {
-      "passed": 5,
+    "phase_14a_http_missing_key_contract": "passed",
+    "phase_14b_http_tests": {"passed": 5, "failed": 0, "skipped": 0},
+    "phase_14b_reservation_replay": "passed: 201 then 409, one reservation and one reserved movement",
+    "phase_14b_issue_replay": "passed: 200 then 409, one issue effect, fulfilled quantity 1, one issued movement",
+    "phase_14b_concurrent_same_key": "passed: two independent TestClients, deterministic barrier, [201, 409], one side effect",
+    "phase_14b_sequential_payload_collision": "passed: same key with different payload rejected 409 without second effect",
+    "phase_14b_concurrent_payload_collision": "passed: same key with different payloads produced [201, 409] without duplicate effects",
+    "phase_failure_injection_retry": {
+      "passed": 2,
       "failed": 0,
-      "skipped": 0,
       "tests": {
-        "reservation_replay": "passed: first HTTP request 201, same key and same payload 409, one reservation, one reserved movement, unit reserved",
-        "issue_replay": "passed: first HTTP request 200, same key and same payload 409, fulfilled quantity 1, one issued movement, unit issued",
-        "concurrent_same_key_reservation": "passed: two independent TestClients with deterministic Barrier produced [201, 409], one reservation and one reserved movement",
-        "sequential_reservation_payload_collision": "passed: same key with different order_id rejected 409, no second side effect",
-        "concurrent_reservation_payload_collision": "passed: same key with different payloads produced [201, 409], no duplicate reservation or movement"
+        "after_claim": "passed: first HTTP 500, transaction rollback, same-key retry 201, one reservation and one movement",
+        "after_business_effect": "passed: first HTTP 500, business mutation rolled back, same-key retry 201, one reservation and one movement"
       },
-      "http_stack": "real FastAPI app, authentication dependency active, canonical master_admin permission used for synthetic test actor",
-      "database_assertions": "direct PostgreSQL queries after each scenario"
+      "mechanism": "test-only hook enabled only when ENV=test, RUNTIME_MODE=test, and GULA_TEST_FAILURE_STAGE is explicitly set; no production HTTP exposure"
     },
+    "blood_bank_regression_suite": {"passed": 18, "failed": 0, "skipped": 0},
     "postgres_service_and_claim_tests": "passed",
     "targeted_migrations": "passed through 20260901_0004",
     "compile": true,
     "git_diff_check": true
   },
   "implementation_changes": {
-    "clinical_command_guard": "non-integer Blood Bank resource IDs are kept in structured audit details while legacy integer audit_logs.resource_id remains compatible",
-    "audit_service": "PostgreSQL audit chain hash is computed before INSERT using a reserved sequence ID, preserving the append-only trigger",
-    "tests": "added real PostgreSQL HTTP replay, concurrency, and collision tests in backend/tests/blood_bank/test_http_idempotency_postgres.py"
+    "failure_injection": "added shared test-only clinical failure hook and canonical route/service insertion points",
+    "audit_compatibility": "preserved append-only audit behavior and string Blood Bank resource identity",
+    "tests": ["backend/tests/blood_bank/test_http_idempotency_postgres.py", "backend/tests/blood_bank/test_failure_injection_postgres.py"]
   },
   "not_verified": {
-    "failure_injection_and_retry": "not implemented in Phase 14B",
-    "authorization_idor": "not implemented in Phase 14B",
+    "failure_after_inventory_movement": "hook exists but dedicated HTTP retry proof not run",
+    "failure_after_audit_preparation": "hook exists but dedicated HTTP retry proof not run",
+    "issue_failure_injection_retry": "not run; current failure matrix covers Reservation",
+    "authorization_idor": "not implemented",
     "full_e2e": "not run",
     "full_backend_regression": "not run",
-    "operation_namespace_collision": "not separately tested; current tests cover same-operation reservation collisions",
-    "completed_replay_response": "current canonical guard deterministically returns 409 rather than persisting/replaying the original response payload"
+    "completed_replay_response": "canonical behavior remains deterministic 409; original response payload is not persisted/replayed",
+    "operation_namespace_collision": "not separately tested"
   },
   "blocked": {
-    "none_for_phase_14b_http_tests": true,
+    "none_for_verified_http_and_failure_tests": true,
     "alembic_upgrade_head": "pre-existing duplicate revision 20260819_0003 and unrelated multiple heads; unchanged"
   },
   "warnings": [

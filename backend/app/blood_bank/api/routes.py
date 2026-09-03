@@ -28,6 +28,7 @@ from app.blood_bank.infrastructure.models import (
     BloodDiscardModel,
 )
 from app.clinical.command_guard import ClinicalCommandGuard
+from app.clinical.failure_injection import maybe_fail
 from app.database import get_db
 from app.models.lab_user import LabUser
 from app.security.dependencies import get_current_user, require_permission
@@ -210,6 +211,7 @@ async def issue_units(
             quantity=body.get("quantity", 1),
             issued_by=str(current_user.id),
         )
+        maybe_fail("after_business_effect")
         guard.complete(
             receipt, resource_type="blood_request", resource_id=request.id,
             state_before=state_before, state_after=request.status,
@@ -684,8 +686,10 @@ async def reserve_blood_unit(
     guard = _guard(db, current_user)
     key = guard.require_idempotency_key(idempotency_key)
     receipt = guard.claim(operation="blood.reservation.create", resource_type="blood_unit", resource_id=body.get("unit_id", "new"), idempotency_key=key, payload=body)
+    maybe_fail("after_claim")
     try:
         reservation = BloodBankService(db).reserve_unit({**body, "lab_id": _lab_id(current_user), "requested_by": str(current_user.id)})
+        maybe_fail("after_business_effect")
         guard.complete(receipt, resource_type="reservation", resource_id=reservation.id, state_before="available", state_after=reservation.status, version_before=0, version_after=reservation.version)
         db.commit(); db.refresh(reservation)
         return _phase2_dict(reservation)
