@@ -9,6 +9,20 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
+class BreakGlassRequest(_StrictModel):
+    request_id: str = Field(min_length=8, max_length=100)
+    workspace_id: str = Field(min_length=1, max_length=26)
+    patient_person_id: str = Field(min_length=1, max_length=26)
+    reason: str = Field(min_length=8, max_length=2000)
+    purpose: str = Field(min_length=3, max_length=160)
+    resource_scope: dict[str, Any]
+    duration_minutes: int = Field(ge=1, le=60)
+
+
+class BreakGlassActionRequest(_StrictModel):
+    workspace_id: str = Field(min_length=1, max_length=26)
+
+
 class TemporarySubjectCreateRequest(_StrictModel):
     workspace_id: str = Field(min_length=1, max_length=26)
     synthetic_label: str = Field(min_length=1, max_length=160)

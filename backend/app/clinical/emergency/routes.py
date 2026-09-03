@@ -17,6 +17,8 @@ from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor_sync
 
 from .schemas import (
+    BreakGlassActionRequest,
+    BreakGlassRequest,
     DispatchCreateRequest,
     EPCRActionRequest,
     EPCRAmendRequest,
@@ -45,6 +47,26 @@ def _run(request: Request, actor: NiamActor, db: Session, operation: str, target
     except Exception as exc:
         _handle_error(exc, db=db, actor=actor, request=request, operation=operation, target_type=target_type, target_id=target_id, workspace_id=workspace_id)
         raise AssertionError("unreachable") from exc
+
+
+@router.post("/api/v1/emergency/break-glass", status_code=status.HTTP_201_CREATED)
+def request_break_glass(body: BreakGlassRequest, request: Request, actor: NiamActor = Depends(get_current_niam_actor_sync), db: Session = Depends(get_db), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key")) -> dict[str, Any]:
+    key = _require_idempotency_key(idempotency_key)
+    return _run(request, actor, db, "emergency.break_glass.request", "emergency_break_glass", None, body.workspace_id, lambda: CanonicalEmergencyService(db).request_break_glass(actor, request_id=body.request_id, workspace_id=body.workspace_id, patient_person_id=body.patient_person_id, reason=body.reason, purpose=body.purpose, resource_scope=body.resource_scope, duration_minutes=body.duration_minutes, idempotency_key=key, correlation_id=_correlation_id(request), request_id_header=getattr(request.state, "request_id", None)))
+
+
+@router.post("/api/v1/emergency/break-glass/{break_glass_id}/activate")
+def activate_break_glass(break_glass_id: str, body: BreakGlassActionRequest, request: Request, actor: NiamActor = Depends(get_current_niam_actor_sync), db: Session = Depends(get_db), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), if_match: str | None = Header(default=None, alias="If-Match")) -> dict[str, Any]:
+    key = _require_idempotency_key(idempotency_key)
+    expected = _require_if_match(if_match)
+    return _run(request, actor, db, "emergency.break_glass.activate", "emergency_break_glass", break_glass_id, body.workspace_id, lambda: CanonicalEmergencyService(db).activate_break_glass(actor, break_glass_id=break_glass_id, workspace_id=body.workspace_id, expected_version=expected, idempotency_key=key, correlation_id=_correlation_id(request), request_id=getattr(request.state, "request_id", None)))
+
+
+@router.post("/api/v1/emergency/break-glass/{break_glass_id}/revoke")
+def revoke_break_glass(break_glass_id: str, body: BreakGlassActionRequest, request: Request, actor: NiamActor = Depends(get_current_niam_actor_sync), db: Session = Depends(get_db), idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"), if_match: str | None = Header(default=None, alias="If-Match")) -> dict[str, Any]:
+    key = _require_idempotency_key(idempotency_key)
+    expected = _require_if_match(if_match)
+    return _run(request, actor, db, "emergency.break_glass.revoke", "emergency_break_glass", break_glass_id, body.workspace_id, lambda: CanonicalEmergencyService(db).revoke_break_glass(actor, break_glass_id=break_glass_id, workspace_id=body.workspace_id, expected_version=expected, idempotency_key=key, correlation_id=_correlation_id(request), request_id=getattr(request.state, "request_id", None)))
 
 
 @router.post("/api/v1/emergency/temporary-subjects", status_code=status.HTTP_201_CREATED)

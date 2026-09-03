@@ -41,6 +41,7 @@ def test_core_contract_registry_contains_the_safe_golden_path_domains() -> None:
         "hospital-discharge",
         "emergency-incident",
         "emergency-dispatch",
+        "emergency-break-glass",
         "lis-analyzer",
         "lis-qc",
         "financial-coverage",
@@ -56,6 +57,8 @@ def test_core_contract_registry_contains_the_safe_golden_path_domains() -> None:
     assert get_contract("appointment") is APPOINTMENT
     assert get_contract("financial-payment").allows("PENDING", "CAPTURED")
     assert not get_contract("financial-payment").allows("CAPTURED", "PAID")
+    assert get_contract("emergency-break-glass").allows("REQUESTED", "ACTIVE")
+    assert not get_contract("emergency-break-glass").allows("ACTIVE", "REQUESTED")
     assert get_contract("lis-analyzer").allows("ACTIVE", "QUARANTINED")
     assert not get_contract("lis-analyzer").allows("QUARANTINED", "ACTIVE")
     assert get_contract("pharmacy-controlled-policy").allows("PENDING_POLICY_REVIEW", "APPROVED_BY_POLICY")

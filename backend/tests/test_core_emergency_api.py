@@ -31,6 +31,9 @@ def emergency_context(client: TestClient, appointment_context: dict[str, object]
         "clinical.emergency.handover.write",
         "clinical.emergency.epcr.write",
         "clinical.emergency.epcr.sign",
+        "clinical.emergency.break_glass.write",
+        "clinical.emergency.break_glass.activate",
+        "clinical.emergency.break_glass.revoke",
     )
     for key in keys:
         permission = db.query(Permission).filter(Permission.permission_key == key).first()
@@ -101,6 +104,22 @@ def test_emergency_temporary_subject_dispatch_prealert_handover_epcr(client: Tes
     amended_signed = client.post(f"/api/v1/emergency/epcr/{epcr_amend.json()['id']}/sign", headers=_headers("epcr-amend-sign", 3), json={"workspace_id": workspace_id, "signature_evidence": {"method": "synthetic-amendment-signature"}})
     assert amended_signed.status_code == 200, amended_signed.text
     assert amended_signed.json()["status"] == "SIGNED"
+
+
+def test_break_glass_is_scoped_expiring_and_revocable(client: TestClient, emergency_context: dict[str, object]):
+    workspace_id = emergency_context["workspace"].id
+    request = client.post("/api/v1/emergency/break-glass", headers=_headers("break-glass-request"), json={"request_id": "synthetic-bg-001", "workspace_id": workspace_id, "patient_person_id": emergency_context["person"].id, "reason": "Synthetic immediate safety review", "purpose": "Emergency clinical access", "resource_scope": {"resources": ["emergency_summary"]}, "duration_minutes": 15})
+    assert request.status_code == 201, request.text
+    body = request.json()
+    assert body["status"] == "REQUESTED"
+    activated = client.post(f"/api/v1/emergency/break-glass/{body['id']}/activate", headers=_headers("break-glass-activate", 1), json={"workspace_id": workspace_id})
+    assert activated.status_code == 200, activated.text
+    assert activated.json()["status"] == "ACTIVE"
+    stale = client.post(f"/api/v1/emergency/break-glass/{body['id']}/revoke", headers=_headers("break-glass-stale", 1), json={"workspace_id": workspace_id})
+    assert stale.status_code == 409
+    revoked = client.post(f"/api/v1/emergency/break-glass/{body['id']}/revoke", headers=_headers("break-glass-revoke", 2), json={"workspace_id": workspace_id})
+    assert revoked.status_code == 200, revoked.text
+    assert revoked.json()["status"] == "REVOKED"
 
 
 def test_emergency_manual_reconciliation_requires_explicit_match_and_blocks_wrong_patient(client: TestClient, emergency_context: dict[str, object]):

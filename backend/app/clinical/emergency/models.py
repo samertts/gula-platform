@@ -226,6 +226,52 @@ class CoreEmergencyEPCR(Base):  # type: ignore[misc]
     )
 
 
+class CoreEmergencyBreakGlass(Base):  # type: ignore[misc]
+    __tablename__ = "core_emergency_break_glass"
+
+    id = Column(String(26), primary_key=True, default=_core_id)
+    request_id = Column(String(100), nullable=False, unique=True, index=True)
+    patient_person_id = Column(String(26), nullable=False, index=True)
+    organization_id = Column(String(26), nullable=False, index=True)
+    facility_id = Column(String(26), nullable=False, index=True)
+    workspace_id = Column(String(26), nullable=False, index=True)
+    requested_by_account_id = Column(String(26), nullable=False, index=True)
+    reason = Column(Text, nullable=False)
+    purpose = Column(String(160), nullable=False)
+    resource_scope = Column(JSON, nullable=False)
+    status = Column(String(24), nullable=False, default="REQUESTED", index=True)
+    version = Column(Integer, nullable=False, default=1)
+    requested_at = Column(DateTime(timezone=True), nullable=False, default=_now)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    activated_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
+
+    __table_args__ = (
+        CheckConstraint("status IN ('REQUESTED','ACTIVE','EXPIRED','REVOKED','DENIED')", name="ck_core_break_glass_status"),
+        CheckConstraint("version > 0", name="ck_core_break_glass_version"),
+        CheckConstraint("expires_at > requested_at", name="ck_core_break_glass_expiry"),
+        Index("ix_core_break_glass_active_scope", "organization_id", "facility_id", "workspace_id", "patient_person_id", "status"),
+    )
+
+
+class CoreEmergencyBreakGlassEvent(Base):  # type: ignore[misc]
+    __tablename__ = "core_emergency_break_glass_events"
+
+    id = Column(String(26), primary_key=True, default=_core_id)
+    break_glass_id = Column(String(26), nullable=False, index=True)
+    event_key = Column(String(160), nullable=False, unique=True, index=True)
+    event_type = Column(String(48), nullable=False)
+    actor_account_id = Column(String(26), nullable=False, index=True)
+    payload = Column(JSON, nullable=False)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
+
+    __table_args__ = (
+        CheckConstraint("event_type IN ('ATTEMPTED','ACTIVATED','EXPIRED','REVOKED','DENIED','REVIEWED')", name="ck_core_break_glass_event_type"),
+    )
+
+
 class CoreEmergencyOutbox(Base):  # type: ignore[misc]
     __tablename__ = "core_emergency_outbox"
 
@@ -251,6 +297,8 @@ class CoreEmergencyOutbox(Base):  # type: ignore[misc]
 
 
 __all__ = [
+    "CoreEmergencyBreakGlass",
+    "CoreEmergencyBreakGlassEvent",
     "CoreEmergencyDispatch",
     "CoreEmergencyEPCR",
     "CoreEmergencyHandover",

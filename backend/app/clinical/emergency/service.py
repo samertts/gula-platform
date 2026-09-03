@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.clinical.appointments.authorization import (
@@ -14,6 +14,8 @@ from app.identity.api.workspaces import NiamActor
 from app.identity.services.canonical_audit import AuditEventInput, SyncCanonicalAuditService
 
 from .models import (
+    CoreEmergencyBreakGlass,
+    CoreEmergencyBreakGlassEvent,
     CoreEmergencyDispatch,
     CoreEmergencyEPCR,
     CoreEmergencyHandover,
@@ -425,6 +427,80 @@ class CanonicalEmergencyService:
         event_key = f"{event_type}:{aggregate_id}"
         if self.db.query(CoreEmergencyOutbox).filter(CoreEmergencyOutbox.event_key == event_key).first() is None:
             self.db.add(CoreEmergencyOutbox(event_key=event_key, event_type=event_type, aggregate_type=aggregate_type, aggregate_id=aggregate_id, payload=payload, delivery_mode="SYNTHETIC_INTENT", status="PENDING", attempt_count=0))
+
+    def request_break_glass(self, actor: NiamActor, *, request_id: str, workspace_id: str, patient_person_id: str, reason: str, purpose: str, resource_scope: dict[str, Any], duration_minutes: int, idempotency_key: str, correlation_id: str, request_id_header: str | None) -> dict[str, Any]:
+        scope = self._scope(actor, workspace_id, "clinical.emergency.break_glass.write")
+        if not reason.strip():
+            raise EmergencyStateError("Break-glass reason is required", code="BREAK_GLASS_REASON_REQUIRED")
+        if duration_minutes < 1 or duration_minutes > 60:
+            raise EmergencyStateError("Break-glass duration must be between 1 and 60 minutes", code="BREAK_GLASS_SCOPE_INVALID")
+        if not resource_scope or not isinstance(resource_scope, dict):
+            raise EmergencyStateError("Break-glass resource scope is required", code="BREAK_GLASS_SCOPE_INVALID")
+        payload = {"request_id": request_id, "workspace_id": scope.workspace_id, "patient_person_id": patient_person_id, "purpose": purpose, "resource_scope": resource_scope, "duration_minutes": duration_minutes}
+        cached = self._claim(actor, "emergency.break_glass.request", idempotency_key, payload)
+        if cached is not None:
+            return cached
+        now = datetime.now(UTC)
+        row = CoreEmergencyBreakGlass(request_id=request_id, patient_person_id=patient_person_id.strip(), organization_id=scope.organization_id, facility_id=scope.facility_id, workspace_id=scope.workspace_id, requested_by_account_id=actor.account.id, reason=reason.strip(), purpose=purpose.strip(), resource_scope=resource_scope, status="REQUESTED", version=1, requested_at=now, expires_at=now + timedelta(minutes=duration_minutes))
+        self.db.add(row)
+        self.db.flush()
+        self.db.add(CoreEmergencyBreakGlassEvent(break_glass_id=row.id, event_key=f"{request_id}:ATTEMPTED", event_type="ATTEMPTED", actor_account_id=actor.account.id, payload={"reason": row.reason, "purpose": row.purpose, "resource_scope": resource_scope}))
+        response = self._break_glass_response(row, correlation_id)
+        self._complete(actor, "emergency.break_glass.request", idempotency_key, response, row.id)
+        self._audit(actor, "BREAK_GLASS_ATTEMPTED", "emergency_break_glass", row.id, scope, correlation_id, request_id_header, {"status_after": row.status, "reason": row.reason, "resource_scope": resource_scope})
+        return response
+
+    def activate_break_glass(self, actor: NiamActor, *, break_glass_id: str, workspace_id: str, expected_version: int, idempotency_key: str, correlation_id: str, request_id: str | None) -> dict[str, Any]:
+        scope = self._scope(actor, workspace_id, "clinical.emergency.break_glass.activate")
+        row = self.db.query(CoreEmergencyBreakGlass).filter(CoreEmergencyBreakGlass.id == break_glass_id, CoreEmergencyBreakGlass.organization_id == scope.organization_id, CoreEmergencyBreakGlass.facility_id == scope.facility_id, CoreEmergencyBreakGlass.workspace_id == scope.workspace_id).with_for_update().first()
+        if row is None:
+            raise EmergencyNotFoundError("Break-glass request was not found", code="BREAK_GLASS_NOT_FOUND")
+        self._assert_version(row.version, expected_version)
+        if row.status != "REQUESTED":
+            raise EmergencyStateError("Break-glass request is not activatable", code="INVALID_STATE_TRANSITION")
+        expiry_at = row.expires_at if row.expires_at.tzinfo else row.expires_at.replace(tzinfo=UTC)
+        if expiry_at <= datetime.now(UTC):
+            row.status = "EXPIRED"
+            row.version += 1
+            self.db.add(CoreEmergencyBreakGlassEvent(break_glass_id=row.id, event_key=f"{row.request_id}:EXPIRED", event_type="EXPIRED", actor_account_id=actor.account.id, payload={"reason": "expiry"}))
+            raise EmergencyStateError("Break-glass request has expired", code="BREAK_GLASS_EXPIRED")
+        payload = {"break_glass_id": row.id, "workspace_id": scope.workspace_id, "expected_version": expected_version}
+        cached = self._claim(actor, "emergency.break_glass.activate", idempotency_key, payload)
+        if cached is not None:
+            return cached
+        row.status = "ACTIVE"
+        row.activated_at = datetime.now(UTC)
+        row.version += 1
+        self.db.add(CoreEmergencyBreakGlassEvent(break_glass_id=row.id, event_key=f"{row.request_id}:ACTIVATED", event_type="ACTIVATED", actor_account_id=actor.account.id, payload={"expires_at": row.expires_at.isoformat(), "resource_scope": row.resource_scope}))
+        response = self._break_glass_response(row, correlation_id)
+        self._complete(actor, "emergency.break_glass.activate", idempotency_key, response, row.id)
+        self._audit(actor, "BREAK_GLASS_ACTIVATED", "emergency_break_glass", row.id, scope, correlation_id, request_id, {"status_before": "REQUESTED", "status_after": row.status, "expires_at": row.expires_at.isoformat()})
+        return response
+
+    def revoke_break_glass(self, actor: NiamActor, *, break_glass_id: str, workspace_id: str, expected_version: int, idempotency_key: str, correlation_id: str, request_id: str | None) -> dict[str, Any]:
+        scope = self._scope(actor, workspace_id, "clinical.emergency.break_glass.revoke")
+        row = self.db.query(CoreEmergencyBreakGlass).filter(CoreEmergencyBreakGlass.id == break_glass_id, CoreEmergencyBreakGlass.organization_id == scope.organization_id, CoreEmergencyBreakGlass.facility_id == scope.facility_id, CoreEmergencyBreakGlass.workspace_id == scope.workspace_id).with_for_update().first()
+        if row is None:
+            raise EmergencyNotFoundError("Break-glass session was not found", code="BREAK_GLASS_NOT_FOUND")
+        self._assert_version(row.version, expected_version)
+        if row.status != "ACTIVE":
+            raise EmergencyStateError("Only active break-glass sessions can be revoked", code="INVALID_STATE_TRANSITION")
+        payload = {"break_glass_id": row.id, "workspace_id": scope.workspace_id, "expected_version": expected_version}
+        cached = self._claim(actor, "emergency.break_glass.revoke", idempotency_key, payload)
+        if cached is not None:
+            return cached
+        row.status = "REVOKED"
+        row.revoked_at = datetime.now(UTC)
+        row.version += 1
+        self.db.add(CoreEmergencyBreakGlassEvent(break_glass_id=row.id, event_key=f"{row.request_id}:REVOKED", event_type="REVOKED", actor_account_id=actor.account.id, payload={"revoked_at": row.revoked_at.isoformat()}))
+        response = self._break_glass_response(row, correlation_id)
+        self._complete(actor, "emergency.break_glass.revoke", idempotency_key, response, row.id)
+        self._audit(actor, "BREAK_GLASS_REVOKED", "emergency_break_glass", row.id, scope, correlation_id, request_id, {"status_before": "ACTIVE", "status_after": row.status})
+        return response
+
+    @staticmethod
+    def _break_glass_response(row, correlation_id):
+        return {"id": row.id, "request_id": row.request_id, "patient_person_id": row.patient_person_id, "status": row.status, "purpose": row.purpose, "resource_scope": row.resource_scope, "version": row.version, "expires_at": row.expires_at.isoformat(), "activated_at": row.activated_at.isoformat() if row.activated_at else None, "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None, "correlation_id": correlation_id}
 
     def _scope(self, actor: NiamActor, workspace_id: str, permission: str):
         scope = self.authz.resolve_scope(actor, workspace_id)
