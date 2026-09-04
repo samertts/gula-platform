@@ -58,6 +58,25 @@ def _prepare_issue(Session) -> tuple[str, str]:
     return request_id, issue_unit_id
 
 
+def _prepare_issued(Session) -> str:
+    issued_unit_id = "http-issued-id-or-unit"
+    now = datetime.now(UTC)
+    with Session() as session:
+        session.query(ClinicalCommandReceipt).filter(ClinicalCommandReceipt.lab_id == LAB_ID).delete(synchronize_session=False)
+        session.query(InventoryMovementModel).filter(InventoryMovementModel.lab_id == LAB_ID).delete(synchronize_session=False)
+        session.query(BloodUnitModel).filter(BloodUnitModel.lab_id == LAB_ID).delete(synchronize_session=False)
+        session.commit()
+    engine = Session.kw["bind"]
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO labs (id, name, is_active) VALUES (:id, :name, true) ON CONFLICT (id) DO NOTHING"), {"id": LAB_ID, "name": "Synthetic HTTP Blood Bank Lab"})
+        conn.execute(text("INSERT INTO labs (id, name, is_active) VALUES (:id, :name, true) ON CONFLICT (id) DO NOTHING"), {"id": LAB_ID + 1, "name": "Synthetic Other Facility"})
+        conn.execute(text("INSERT INTO lab_users (id, lab_id, name, email, password_hash, role, is_active, perm_version) VALUES (:id, :lab_id, :name, :email, :password_hash, :role, true, 1) ON CONFLICT (id) DO NOTHING"), {"id": ACTOR_ID, "lab_id": LAB_ID, "name": "Synthetic HTTP Verifier", "email": "http-verifier@example.invalid", "password_hash": "!synthetic-only", "role": "master_admin"})
+    with Session() as session:
+        session.add(BloodUnitModel(id=issued_unit_id, lab_id=LAB_ID, facility_id=FACILITY_ID, blood_group="O", rh_factor="positive", component="packed_rbc", status=ComponentStatus.ISSUED.value, issued_to=PATIENT_ID, issued_at=now, screening_complete=True, processing_complete=True, storage_location="issued", expiry_date=now + timedelta(days=10)))
+        session.commit()
+    return issued_unit_id
+
+
 def _prepare(Session) -> None:
     now = datetime.now(UTC)
     with Session() as session:
@@ -216,6 +235,43 @@ def test_http_cross_facility_traceability_is_denied() -> None:
             response = client.get(f"/blood-bank/units/{UNIT_ID}/traceability")
         assert response.status_code == 404
         assert _counts(Session) == {"reservations": 0, "movements": 0, "unit_status": ComponentStatus.AVAILABLE.value}
+    finally:
+        app.dependency_overrides.clear()
+        Session.kw["bind"].dispose()
+
+
+def test_http_idor_reservation_return_and_discard_are_facility_scoped() -> None:
+    Session = _session_factory()
+    _prepare(Session)
+    issued_unit_id = _prepare_issued(Session)
+    try:
+        with _client(Session, actor_lab_id=LAB_ID + 1) as client:
+            reservation = client.post("/blood-bank/reservations", headers={"Idempotency-Key": "HTTP-IDOR-RES-001"}, json=_payload())
+            returned = client.post("/blood-bank/returns", headers={"Idempotency-Key": "HTTP-IDOR-RETURN-001"}, json={"unit_id": issued_unit_id, "facility_id": FACILITY_ID, "reason": "unauthorized return", "integrity": "intact", "outcome": "available"})
+            discarded = client.post("/blood-bank/discards", headers={"Idempotency-Key": "HTTP-IDOR-DISCARD-001"}, json={"unit_id": issued_unit_id, "facility_id": FACILITY_ID, "reason": "unauthorized discard", "category": "other"})
+        assert reservation.status_code == 422
+        assert returned.status_code == 422
+        assert discarded.status_code == 422
+        with Session() as session:
+            assert session.query(BloodUnitModel).filter(BloodUnitModel.id == issued_unit_id).one().status == ComponentStatus.ISSUED.value
+    finally:
+        app.dependency_overrides.clear()
+        Session.kw["bind"].dispose()
+
+
+def test_idempotency_key_namespace_is_operation_scoped() -> None:
+    Session = _session_factory()
+    _prepare(Session)
+    key = "HTTP-NAMESPACE-SAME-KEY-001"
+    try:
+        with _client(Session) as client:
+            reservation = client.post("/blood-bank/reservations", headers={"Idempotency-Key": key}, json=_payload("namespace-order"))
+        assert reservation.status_code == 201
+        request_id, unit_id = _prepare_issue(Session)
+        with _client(Session) as client:
+            issue = client.post("/blood-bank/inventory/issue", headers={"Idempotency-Key": key, "If-Match": "1"}, json={"request_id": request_id, "quantity": 1})
+        assert issue.status_code == 200
+        assert _issue_counts(Session, request_id, unit_id) == {"fulfilled_units": 1, "unit_status": ComponentStatus.ISSUED.value, "movements": 1}
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()

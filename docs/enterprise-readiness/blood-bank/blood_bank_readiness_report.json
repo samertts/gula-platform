@@ -13,40 +13,36 @@
   "verified": {
     "phase_14a_fastapi_startup": "passed",
     "phase_14b_http_replay_and_collision": {"passed": 5, "failed": 0, "skipped": 0},
-    "phase_failure_injection_retry": {
-      "passed": 5,
+    "failure_injection_retry": {
+      "passed": 6,
       "failed": 0,
-      "tests": {
-        "reservation_after_claim": "passed: first 500, rollback, same-key retry 201, one reservation and one movement",
-        "reservation_after_business_effect": "passed: first 500, rollback of business effect, same-key retry 201, one reservation and one movement",
-        "reservation_after_inventory_movement": "passed: first 500, rollback of pending movement and state, same-key retry 201, one reservation and one movement",
-        "reservation_after_audit_preparation": "passed: first 500, rollback before audit insertion, same-key retry 201, one reservation and one movement",
-        "issue_after_business_effect": "passed: first 500, rollback of issue effect, same-key retry 200, fulfilled quantity 1, one issued movement"
-      },
-      "mechanism": "disabled by default and gated by ENV=test, RUNTIME_MODE=test, and explicit GULA_TEST_FAILURE_STAGE"
+      "reservation_after_claim": "passed: first 500, rollback, retry 201, one reservation and one movement",
+      "reservation_after_business_effect": "passed: first 500, rollback, retry 201, one reservation and one movement",
+      "reservation_after_inventory_movement": "passed: first 500, rollback, retry 201, one reservation and one movement",
+      "reservation_after_audit_preparation": "passed: first 500, rollback, retry 201, one reservation and one movement",
+      "issue_after_business_effect": "passed: first 500, rollback, retry 200, fulfilled quantity 1, one issued movement",
+      "mechanism": "test-only and gated by ENV=test, RUNTIME_MODE=test, and explicit GULA_TEST_FAILURE_STAGE"
     },
-    "phase_security_reconciliation": {
-      "cross_facility_traceability_idor": "passed: Facility B received 404 for a Facility A unit and no business effect was created",
-      "http_final_state_assertions": "passed: direct PostgreSQL assertions for resource status and movement counts",
-      "reconciliation": "service reconciliation remains available; no duplicate reservation or movement detected in tested scenarios"
+    "authorization_and_namespace": {
+      "cross_facility_traceability_idor": "passed: Facility B received 404 for a Facility A unit",
+      "cross_facility_reservation_return_discard_idor": "passed: all three mutation attempts rejected with 422 and issued unit remained unchanged",
+      "operation_scoped_idempotency_namespace": "passed: same key reused for Reservation and Issue succeeded independently with one effect per operation",
+      "final_database_assertions": "passed: no duplicate reservation, movement, issue, or unauthorized state change"
     },
-    "blood_bank_regression_suite": {"passed": 21, "failed": 0, "skipped": 0},
+    "blood_bank_regression_suite": {"passed": 24, "failed": 0, "skipped": 0},
     "postgres_service_and_claim_tests": "passed",
     "targeted_migrations": "passed through 20260901_0004",
     "compile": true,
     "git_diff_check": true
   },
   "implementation_changes": {
-    "failure_injection": "shared test-only hook with canonical route/service/guard insertion points",
-    "audit_compatibility": "string Blood Bank resource IDs preserved in details while legacy integer audit_logs.resource_id remains valid; PostgreSQL chain hash computed before append-only INSERT",
-    "tests": ["backend/tests/blood_bank/test_failure_injection_postgres.py", "backend/tests/blood_bank/test_http_idempotency_postgres.py"]
+    "tests": ["backend/tests/blood_bank/test_failure_injection_postgres.py", "backend/tests/blood_bank/test_http_idempotency_postgres.py"],
+    "scope": "no production database configuration changes; no merge, deploy, or force-push"
   },
   "not_verified": {
     "issue_after_inventory_movement_failure": "hook exists but dedicated Issue test not run",
     "issue_after_audit_preparation_failure": "hook exists but dedicated Issue test not run",
     "completed_replay_response": "canonical behavior remains deterministic 409; original response payload is not persisted/replayed",
-    "operation_namespace_collision": "not separately tested",
-    "authorization_idor_mutation_matrix": "only cross-facility traceability read denial tested; full mutation matrix not run",
     "full_e2e": "not run",
     "full_backend_regression": "not run"
   },
@@ -55,7 +51,7 @@
     "alembic_upgrade_head": "pre-existing duplicate revision 20260819_0003 and unrelated multiple heads; unchanged"
   },
   "warnings": [
-    "FastAPI TestClient reports an existing Starlette/httpx deprecation warning",
+    "FastAPI TestClient reports existing Starlette/httpx deprecation warnings",
     "pytest reports two existing unknown asyncio configuration options",
     "Test runtime logs existing missing optional production secrets and in-memory Redis fallback; production configuration was not modified",
     "GitHub reports existing Dependabot vulnerabilities on the default branch"
