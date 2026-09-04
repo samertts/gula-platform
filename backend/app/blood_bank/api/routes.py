@@ -58,7 +58,8 @@ def _guard(db: Session, current_user: LabUser) -> ClinicalCommandGuard:
 
 def _raise_blood_error(error: Exception) -> None:
     if isinstance(error, (BloodBankValidationError, BloodBankWorkflowError, CrossmatchConflictError)):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
+        unprocessable_status = getattr(status, "HTTP_422_UNPROCESSABLE_CONTENT", 422)
+        raise HTTPException(status_code=unprocessable_status, detail=str(error)) from error
     if isinstance(error, InsufficientStockError):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Insufficient safe stock") from error
     if isinstance(error, TransfusionNotFoundError):
