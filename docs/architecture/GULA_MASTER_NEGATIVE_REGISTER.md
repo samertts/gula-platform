@@ -14,7 +14,7 @@ session. Nothing was inferred from plausibility. Where evidence is weak, the fin
 > **Absence of a finding in a category does NOT mean that category is clean.**
 > The majority of the 123 requested risk categories were **not audited**. See
 > §7 Audit Coverage Matrix and finding **NR-013**. Treat unaudited categories as
-> *unknown risk*, never as *no risk*.
+> _unknown risk_, never as _no risk_.
 
 Existing architecture standards were **linked, not duplicated** — see
 `CANONICAL_ARCHITECTURE.md`, `ARCHITECTURE_RULES_PROGRAM_CONSTITUTION_001.md`,
@@ -23,35 +23,35 @@ and `docs/adr/`.
 
 ## 1. Summary
 
-| Severity | Count | Fixed this session | Open |
-|---|---|---|---|
-| P0 | 3 | 2 | 1 (blocker) |
-| P1 | 4 | 2 | 2 |
-| P2 | 5 | 0 | 5 |
-| P3 | 3 | 0 | 3 |
-| **Total** | **15** | **4** | **11** |
+| Severity  | Count  | Fixed this session | Open        |
+| --------- | ------ | ------------------ | ----------- |
+| P0        | 3      | 2                  | 1 (blocker) |
+| P1        | 4      | 2                  | 2           |
+| P2        | 5      | 0                  | 5           |
+| P3        | 3      | 0                  | 3           |
+| **Total** | **15** | **4**              | **11**      |
 
 **Single true deployment blocker today:** **NR-003** — pharmacy primary-key type divergence.
 
 ## 2. Findings index
 
-| ID | Sev | Domain | Title | Status |
-|---|---|---|---|---|
-| NR-001 | P0 | Platform/Alembic | Duplicate revision id made `clinical_command_receipts` unreachable | FIXED — VERIFIED |
-| NR-002 | P0 | Platform/Alembic | Three unmerged heads made clean deployment impossible | FIXED — VERIFIED |
-| NR-003 | P0 | Pharmacy | PK type divergence blocks any full `upgrade head` | **OPEN — BLOCKED** |
-| NR-004 | P1 | Blood Bank | Shared transition table shadowed the blood-unit `reserved` state | FIXED — VERIFIED |
-| NR-005 | P1 | Platform/Alembic | Unguarded duplicate index could never succeed | FIXED — VERIFIED |
-| NR-006 | P1 | National + Core | `national_facilities` mapped by two ORM classes | OPEN — DECISION |
-| NR-007 | P1 | Clinical/Blood Bank | State machine is entity-agnostic by construction | OPEN — ARCH DECISION |
-| NR-008 | P2 | Platform | `signxml` missing from lock file | OPEN |
-| NR-009 | P2 | Platform CI | Artifact quota exhausted; evidence jobs all red | OPEN — EXTERNAL |
-| NR-010 | P2 | Platform CI | `if:always()` upload masks the true failing step | OPEN |
-| NR-011 | P2 | frontend-v3 | Mobile nav accessible name contradicts its test | OPEN |
-| NR-012 | P2 | Clinical | Replay returns deterministic 409, not original response | ACCEPTED DESIGN |
-| NR-013 | P3 | Platform | Audit coverage is narrow | NOT STARTED |
-| NR-014 | P3 | Platform | No verified national capacity numbers | NOT STARTED — GAP |
-| NR-015 | P3 | Platform CI | Postgres auth failure in migration gate | OPEN — LOW EVIDENCE |
+| ID     | Sev | Domain              | Title                                                              | Status               |
+| ------ | --- | ------------------- | ------------------------------------------------------------------ | -------------------- |
+| NR-001 | P0  | Platform/Alembic    | Duplicate revision id made `clinical_command_receipts` unreachable | FIXED — VERIFIED     |
+| NR-002 | P0  | Platform/Alembic    | Three unmerged heads made clean deployment impossible              | FIXED — VERIFIED     |
+| NR-003 | P0  | Pharmacy            | PK type divergence blocks any full `upgrade head`                  | **OPEN — BLOCKED**   |
+| NR-004 | P1  | Blood Bank          | Shared transition table shadowed the blood-unit `reserved` state   | FIXED — VERIFIED     |
+| NR-005 | P1  | Platform/Alembic    | Unguarded duplicate index could never succeed                      | FIXED — VERIFIED     |
+| NR-006 | P1  | National + Core     | `national_facilities` mapped by two ORM classes                    | OPEN — DECISION      |
+| NR-007 | P1  | Clinical/Blood Bank | State machine is entity-agnostic by construction                   | OPEN — ARCH DECISION |
+| NR-008 | P2  | Platform            | `signxml` missing from lock file                                   | OPEN                 |
+| NR-009 | P2  | Platform CI         | Artifact quota exhausted; evidence jobs all red                    | OPEN — EXTERNAL      |
+| NR-010 | P2  | Platform CI         | `if:always()` upload masks the true failing step                   | OPEN                 |
+| NR-011 | P2  | frontend-v3         | Mobile nav accessible name contradicts its test                    | OPEN                 |
+| NR-012 | P2  | Clinical            | Replay returns deterministic 409, not original response            | ACCEPTED DESIGN      |
+| NR-013 | P3  | Platform            | Audit coverage is narrow                                           | NOT STARTED          |
+| NR-014 | P3  | Platform            | No verified national capacity numbers                              | NOT STARTED — GAP    |
+| NR-015 | P3  | Platform CI         | Postgres auth failure in migration gate                            | OPEN — LOW EVIDENCE  |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.
@@ -71,28 +71,28 @@ described this as a Blood Bank issue; that understated it.
 
 ## 4. Contradiction register
 
-| ID | Contradiction | Evidence | Status |
-|---|---|---|---|
-| C-01 | Policy "every migration must be idempotent" vs. a shipped unguarded migration | NR-005 | **VERIFIED** — resolved |
-| C-02 | Policy "never modify an existing migration" vs. the need to repair a migration that never ran anywhere | NR-001 | **VERIFIED** — resolved on evidence that no DB applied it |
-| C-03 | Pharmacy ORM uses `String(26)` ULIDs; pharmacy migrations create `Integer` ids | NR-003 | **VERIFIED** — unresolved |
-| C-04 | Per-entity clinical state semantics vs. one shared entity-agnostic transition table | NR-004, NR-007 | **VERIFIED** — partially resolved |
-| C-05 | `production_ready=false` gating vs. CI that structurally cannot certify (all evidence jobs fail at upload) | NR-009 | **VERIFIED** |
-| C-06 | Domain ownership boundaries vs. two domains mapping one physical table | NR-006 | **VERIFIED** |
-| C-07 | Reproducible-build intent vs. lock file that cannot start the app | NR-008 | **VERIFIED** |
-| C-08 | "National scale" ambition vs. absence of any capacity numbers | NR-014 | **VERIFIED as a gap** |
-| C-09..C-20 | offline-first vs clinical authority · CRDT vs clinical truth · privacy vs emergency access · consent withdrawal vs legal retention · AI assistance vs clinical responsibility · HA vs strong consistency · green vs performance · citizen ownership vs record integrity | — | **NOT AUDITED** — candidates only, no evidence gathered |
+| ID         | Contradiction                                                                                                                                                                                                                                                           | Evidence       | Status                                                    |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- | --------------------------------------------------------- |
+| C-01       | Policy "every migration must be idempotent" vs. a shipped unguarded migration                                                                                                                                                                                           | NR-005         | **VERIFIED** — resolved                                   |
+| C-02       | Policy "never modify an existing migration" vs. the need to repair a migration that never ran anywhere                                                                                                                                                                  | NR-001         | **VERIFIED** — resolved on evidence that no DB applied it |
+| C-03       | Pharmacy ORM uses `String(26)` ULIDs; pharmacy migrations create `Integer` ids                                                                                                                                                                                          | NR-003         | **VERIFIED** — unresolved                                 |
+| C-04       | Per-entity clinical state semantics vs. one shared entity-agnostic transition table                                                                                                                                                                                     | NR-004, NR-007 | **VERIFIED** — partially resolved                         |
+| C-05       | `production_ready=false` gating vs. CI that structurally cannot certify (all evidence jobs fail at upload)                                                                                                                                                              | NR-009         | **VERIFIED**                                              |
+| C-06       | Domain ownership boundaries vs. two domains mapping one physical table                                                                                                                                                                                                  | NR-006         | **VERIFIED**                                              |
+| C-07       | Reproducible-build intent vs. lock file that cannot start the app                                                                                                                                                                                                       | NR-008         | **VERIFIED**                                              |
+| C-08       | "National scale" ambition vs. absence of any capacity numbers                                                                                                                                                                                                           | NR-014         | **VERIFIED as a gap**                                     |
+| C-09..C-20 | offline-first vs clinical authority · CRDT vs clinical truth · privacy vs emergency access · consent withdrawal vs legal retention · AI assistance vs clinical responsibility · HA vs strong consistency · green vs performance · citizen ownership vs record integrity | —              | **NOT AUDITED** — candidates only, no evidence gathered   |
 
 ## 5. Intersection register
 
-| ID | Change point | Domains affected | Evidence |
-|---|---|---|---|
-| I-01 | `ClinicalCommandGuard` / `clinical_command_receipts` | blood_bank, pharmacy, radiology, lims, ems, critical_care, clinical, routes | grep of guard usage (8 packages) |
-| I-02 | Alembic graph | every domain — no schema without it | NR-001/002 |
-| I-03 | Pharmacy id type | pharmacy + any FK referencing pharmacy entities | NR-003 |
-| I-04 | Blood Bank state machine | units, orders, samples, crossmatches, transfusions, reactions (one shared table) | NR-004/007 |
-| I-05 | `national_facilities` | national platform + core clinical scope + authorization scoping | NR-006 |
-| I-06 | Identity change → Patient → Consent → Clinical → Lab → Pharmacy → Audit → FHIR → Analytics | all | **NOT AUDITED** — asserted by the brief, not verified here |
+| ID   | Change point                                                                               | Domains affected                                                                 | Evidence                                                   |
+| ---- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| I-01 | `ClinicalCommandGuard` / `clinical_command_receipts`                                       | blood_bank, pharmacy, radiology, lims, ems, critical_care, clinical, routes      | grep of guard usage (8 packages)                           |
+| I-02 | Alembic graph                                                                              | every domain — no schema without it                                              | NR-001/002                                                 |
+| I-03 | Pharmacy id type                                                                           | pharmacy + any FK referencing pharmacy entities                                  | NR-003                                                     |
+| I-04 | Blood Bank state machine                                                                   | units, orders, samples, crossmatches, transfusions, reactions (one shared table) | NR-004/007                                                 |
+| I-05 | `national_facilities`                                                                      | national platform + core clinical scope + authorization scoping                  | NR-006                                                     |
+| I-06 | Identity change → Patient → Consent → Clinical → Lab → Pharmacy → Audit → FHIR → Analytics | all                                                                              | **NOT AUDITED** — asserted by the brief, not verified here |
 
 **Rule:** none of I-01..I-05 may be remediated inside a single domain in isolation.
 
@@ -100,40 +100,40 @@ described this as a Blood Bank issue; that understated it.
 
 Only rows with real evidence are filled. Everything else is explicitly unaudited.
 
-| Domain / data | Source of truth | Writable by | Consumers | Failure behaviour | Status |
-|---|---|---|---|---|---|
-| Clinical command idempotency claims | `clinical_command_receipts` (single table) | `ClinicalCommandGuard` only | 8 domains (I-01) | Guard fails closed → 409 | **VERIFIED** |
-| Blood unit lifecycle state | `blood_bank_units.status` via state machine | Blood Bank routes/service under guard | traceability, reservations, issue | Transition rejected → 422 | **VERIFIED** |
-| Blood inventory movements | `blood_bank_inventory_movements` | Blood Bank service | traceability, reconciliation | Rolled back with the transaction | **VERIFIED** |
-| `national_facilities` | **CONTESTED — two ORM owners** | `app/models` and `app/national` | authorization scoping, national platform | Undefined | **CONFLICT (NR-006)** |
-| Pharmacy catalog / substitution | Undefined — schema and ORM disagree | n/a (cannot deploy) | pharmacy | Migration fails | **BROKEN (NR-003)** |
-| Patient / MPI / National ID | — | — | — | — | **NOT AUDITED** |
-| Consent, provider identity, device identity, analytics, FHIR | — | — | — | — | **NOT AUDITED** |
+| Domain / data                                                | Source of truth                             | Writable by                           | Consumers                                | Failure behaviour                | Status                |
+| ------------------------------------------------------------ | ------------------------------------------- | ------------------------------------- | ---------------------------------------- | -------------------------------- | --------------------- |
+| Clinical command idempotency claims                          | `clinical_command_receipts` (single table)  | `ClinicalCommandGuard` only           | 8 domains (I-01)                         | Guard fails closed → 409         | **VERIFIED**          |
+| Blood unit lifecycle state                                   | `blood_bank_units.status` via state machine | Blood Bank routes/service under guard | traceability, reservations, issue        | Transition rejected → 422        | **VERIFIED**          |
+| Blood inventory movements                                    | `blood_bank_inventory_movements`            | Blood Bank service                    | traceability, reconciliation             | Rolled back with the transaction | **VERIFIED**          |
+| `national_facilities`                                        | **CONTESTED — two ORM owners**              | `app/models` and `app/national`       | authorization scoping, national platform | Undefined                        | **CONFLICT (NR-006)** |
+| Pharmacy catalog / substitution                              | Undefined — schema and ORM disagree         | n/a (cannot deploy)                   | pharmacy                                 | Migration fails                  | **BROKEN (NR-003)**   |
+| Patient / MPI / National ID                                  | —                                           | —                                     | —                                        | —                                | **NOT AUDITED**       |
+| Consent, provider identity, device identity, analytics, FHIR | —                                           | —                                     | —                                        | —                                | **NOT AUDITED**       |
 
 828 mapped tables were scanned for dual ownership; exactly one conflict was found (NR-006).
 
 ## 7. Audit coverage matrix
 
-| Category group | Status |
-|---|---|
-| Migration safety, deployment reproducibility | **AUDITED — findings NR-001/002/003/005** |
-| Clinical state machines (Blood Bank) | **AUDITED — NR-004/007** |
-| Idempotency, concurrency, transaction boundaries, failure/retry (Blood Bank + shared guard) | **VERIFIED in Phases 14B/14B.1/14C** |
-| Authorization / IDOR (Blood Bank cross-facility only) | **PARTIALLY VERIFIED** — Blood Bank paths only |
-| Source-of-truth / data ownership (ORM table mapping) | **AUDITED — NR-006** |
-| Dependency reproducibility | **AUDITED — NR-008** |
-| CI/CD failure classification | **AUDITED — NR-009/010/015** |
-| Frontend accessibility (one component) | **AUDITED — NR-011** |
-| National identity / MPI / duplicate patients / newborn / deceased / proxy | **NOT STARTED** |
-| Consent, break-glass, privacy, purpose-of-use | **NOT STARTED** |
-| Offline / sync / CRDT / event ordering / outbox / inbox | **NOT STARTED** |
-| FHIR / HL7 / DICOM / terminology | **NOT STARTED** |
-| AI safety and governance | **NOT STARTED** |
-| Security (authn, secrets, PKI, uploads, export, insider threat) | **NOT STARTED** |
-| Backup / restore / DR / failover / split-brain | **NOT STARTED** |
-| Performance, scalability, capacity, Green GULA | **NOT STARTED — NR-014** |
-| Legal, retention, portability, localization, accessibility programme-wide | **NOT STARTED** |
-| Pharmacy, imaging, hospital, EMS, public health, maternal/child, vaccination domains | **NOT STARTED** (except NR-003) |
+| Category group                                                                              | Status                                         |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------- |
+| Migration safety, deployment reproducibility                                                | **AUDITED — findings NR-001/002/003/005**      |
+| Clinical state machines (Blood Bank)                                                        | **AUDITED — NR-004/007**                       |
+| Idempotency, concurrency, transaction boundaries, failure/retry (Blood Bank + shared guard) | **VERIFIED in Phases 14B/14B.1/14C**           |
+| Authorization / IDOR (Blood Bank cross-facility only)                                       | **PARTIALLY VERIFIED** — Blood Bank paths only |
+| Source-of-truth / data ownership (ORM table mapping)                                        | **AUDITED — NR-006**                           |
+| Dependency reproducibility                                                                  | **AUDITED — NR-008**                           |
+| CI/CD failure classification                                                                | **AUDITED — NR-009/010/015**                   |
+| Frontend accessibility (one component)                                                      | **AUDITED — NR-011**                           |
+| National identity / MPI / duplicate patients / newborn / deceased / proxy                   | **NOT STARTED**                                |
+| Consent, break-glass, privacy, purpose-of-use                                               | **NOT STARTED**                                |
+| Offline / sync / CRDT / event ordering / outbox / inbox                                     | **NOT STARTED**                                |
+| FHIR / HL7 / DICOM / terminology                                                            | **NOT STARTED**                                |
+| AI safety and governance                                                                    | **NOT STARTED**                                |
+| Security (authn, secrets, PKI, uploads, export, insider threat)                             | **NOT STARTED**                                |
+| Backup / restore / DR / failover / split-brain                                              | **NOT STARTED**                                |
+| Performance, scalability, capacity, Green GULA                                              | **NOT STARTED — NR-014**                       |
+| Legal, retention, portability, localization, accessibility programme-wide                   | **NOT STARTED**                                |
+| Pharmacy, imaging, hospital, EMS, public health, maternal/child, vaccination domains        | **NOT STARTED** (except NR-003)                |
 
 ## 8. Offline capability matrix
 
@@ -143,26 +143,26 @@ remediation plan rather than guessed at here.
 
 ## 9. Verification / evidence gap matrix (Blood Bank — the only certified-depth domain)
 
-| Control | Evidence | Result |
-|---|---|---|
-| HTTP replay idempotency (reservation, issue) | Phase 14B | VERIFIED |
-| Concurrent same-key HTTP (reservation, issue) | Phase 14B / 14B.1 | VERIFIED |
-| Sequential + concurrent payload collision | Phase 14B | VERIFIED |
-| Failure before commit (7 boundaries) | Phase 14C | VERIFIED |
-| Failure after commit / lost response | Phase 14C | VERIFIED |
-| Lifecycle E2E (reserve → trace → release) | Phase 14D | VERIFIED |
-| Cross-facility IDOR | Phase 14B | VERIFIED |
-| Schema built by migrations alone | Migration remediation | VERIFIED |
-| Full `upgrade head` | — | **FAILED — NR-003** |
-| Existing-database upgrade path | — | **NOT VERIFIED** |
-| Contract / property-based / mutation / chaos / performance / DR restore | — | **NOT STARTED** |
+| Control                                                                 | Evidence              | Result              |
+| ----------------------------------------------------------------------- | --------------------- | ------------------- |
+| HTTP replay idempotency (reservation, issue)                            | Phase 14B             | VERIFIED            |
+| Concurrent same-key HTTP (reservation, issue)                           | Phase 14B / 14B.1     | VERIFIED            |
+| Sequential + concurrent payload collision                               | Phase 14B             | VERIFIED            |
+| Failure before commit (7 boundaries)                                    | Phase 14C             | VERIFIED            |
+| Failure after commit / lost response                                    | Phase 14C             | VERIFIED            |
+| Lifecycle E2E (reserve → trace → release)                               | Phase 14D             | VERIFIED            |
+| Cross-facility IDOR                                                     | Phase 14B             | VERIFIED            |
+| Schema built by migrations alone                                        | Migration remediation | VERIFIED            |
+| Full `upgrade head`                                                     | —                     | **FAILED — NR-003** |
+| Existing-database upgrade path                                          | —                     | **NOT VERIFIED**    |
+| Contract / property-based / mutation / chaos / performance / DR restore | —                     | **NOT STARTED**     |
 
 ## 10. Decisions required (do not guess)
 
-| Ref | Decision | Owner |
-|---|---|---|
+| Ref    | Decision                                                                     | Owner                    |
+| ------ | ---------------------------------------------------------------------------- | ------------------------ |
 | NR-003 | Canonical pharmacy primary-key type, then a migration strategy for 23 tables | Pharmacy + Platform/Data |
-| NR-006 | Which domain owns `national_facilities`; the other becomes a consumer | National + Core |
-| NR-007 | Per-entity state machine keying vs. accepting union semantics | Clinical Standards |
-| NR-012 | Whether stored-response replay is required by API clients | Clinical Standards + API |
-| NR-014 | National capacity targets | Programme |
+| NR-006 | Which domain owns `national_facilities`; the other becomes a consumer        | National + Core          |
+| NR-007 | Per-entity state machine keying vs. accepting union semantics                | Clinical Standards       |
+| NR-012 | Whether stored-response replay is required by API clients                    | Clinical Standards + API |
+| NR-014 | National capacity targets                                                    | Programme                |
