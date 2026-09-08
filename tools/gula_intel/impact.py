@@ -45,7 +45,7 @@ def _domain_for(path: str) -> tuple[str, str, str]:
         return "tests", DIRECT, "changes a test module"
     if p.startswith("backend/app/"):
         return "backend", POSSIBLE, "changes backend application code outside a mapped domain"
-    if p.startswith("frontend-v3/") or p.startswith("frontend/"):
+    if p.startswith(("frontend-v3/", "frontend/")):
         return "frontend", POSSIBLE, "changes frontend code"
     if p.startswith("docs/"):
         return "docs", NONE, "documentation only"

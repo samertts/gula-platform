@@ -10,19 +10,22 @@ from __future__ import annotations
 import ast
 import collections
 import pathlib
-
-import pytest
+from typing import Any
 
 VERSIONS = pathlib.Path(__file__).resolve().parents[2] / "migrations" / "versions"
 
 
-def _module_level_assignment(tree: ast.Module, name: str):
+def _module_level_assignment(tree: ast.Module, name: str) -> Any:
     for node in tree.body:
-        targets = []
+        targets: list[ast.expr]
         if isinstance(node, ast.Assign):
-            targets = node.targets
+            targets = list(node.targets)
         elif isinstance(node, ast.AnnAssign):
             targets = [node.target]
+        else:
+            continue
+        if node.value is None:
+            continue
         if any(getattr(t, "id", None) == name for t in targets):
             try:
                 return ast.literal_eval(node.value)
@@ -72,13 +75,16 @@ def test_migration_graph_has_exactly_one_head() -> None:
     assert len(heads) == 1, f"expected exactly one Alembic head, found {heads}"
 
 
-@pytest.mark.parametrize("required", ["clinical_command_receipts"])
-def test_safety_critical_tables_are_created_by_a_migration(required: str) -> None:
-    """The guarded clinical write path depends on this table existing."""
-    creators = [
-        path.name
-        for path in VERSIONS.glob("*.py")
-        if f'"{required}"' in path.read_text(encoding="utf-8")
-        and "create_table" in path.read_text(encoding="utf-8")
-    ]
-    assert creators, f"no migration creates {required}"
+SAFETY_CRITICAL_TABLES = ("clinical_command_receipts",)
+
+
+def test_safety_critical_tables_are_created_by_a_migration() -> None:
+    """The guarded clinical write path depends on these tables existing."""
+    for required in SAFETY_CRITICAL_TABLES:
+        creators = [
+            path.name
+            for path in VERSIONS.glob("*.py")
+            if f'"{required}"' in path.read_text(encoding="utf-8")
+            and "create_table" in path.read_text(encoding="utf-8")
+        ]
+        assert creators, f"no migration creates {required}"

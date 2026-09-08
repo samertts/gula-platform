@@ -18,6 +18,7 @@ import collections
 import dataclasses
 import json
 import pathlib
+from collections.abc import Iterator
 from typing import Any
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -46,9 +47,15 @@ class Inventory:
 
 def _module_assign(tree: ast.Module, name: str) -> Any:
     for node in tree.body:
-        targets = node.targets if isinstance(node, ast.Assign) else (
-            [node.target] if isinstance(node, ast.AnnAssign) else []
-        )
+        targets: list[ast.expr]
+        if isinstance(node, ast.Assign):
+            targets = list(node.targets)
+        elif isinstance(node, ast.AnnAssign):
+            targets = [node.target]
+        else:
+            continue
+        if node.value is None:
+            continue
         if any(getattr(t, "id", None) == name for t in targets):
             try:
                 return ast.literal_eval(node.value)
@@ -57,7 +64,7 @@ def _module_assign(tree: ast.Module, name: str) -> Any:
     return None
 
 
-def _iter_python(root: pathlib.Path):
+def _iter_python(root: pathlib.Path) -> Iterator[pathlib.Path]:
     for path in sorted(root.rglob("*.py")):
         if "__pycache__" in path.parts:
             continue
@@ -77,9 +84,12 @@ def collect_tables() -> dict[str, list[str]]:
             if not isinstance(node, ast.ClassDef):
                 continue
             for stmt in node.body:
-                if isinstance(stmt, ast.Assign) and any(
-                    getattr(t, "id", None) == "__tablename__" for t in stmt.targets
-                ) and isinstance(stmt.value, ast.Constant):
+                if (
+                    isinstance(stmt, ast.Assign)
+                    and any(getattr(t, "id", None) == "__tablename__" for t in stmt.targets)
+                    and isinstance(stmt.value, ast.Constant)
+                    and isinstance(stmt.value.value, str)
+                ):
                     owners[stmt.value.value].add(package)
     return {table: sorted(pkgs) for table, pkgs in owners.items()}
 
@@ -139,9 +149,10 @@ def _load_json(rel: str) -> dict[str, Any] | None:
     if not path.is_file():
         return None
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, UnicodeDecodeError):
         return None
+    return payload if isinstance(payload, dict) else None
 
 
 def collect() -> Inventory:

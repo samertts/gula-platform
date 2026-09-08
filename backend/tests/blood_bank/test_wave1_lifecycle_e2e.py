@@ -8,13 +8,16 @@ guard and the transaction boundaries are the production ones.
 from __future__ import annotations
 
 import os
+from typing import Any
 
 import pytest
-
 from app.blood_bank.domain.enums import ComponentStatus
-from app.blood_bank.infrastructure.models import BloodReservationModel, BloodUnitModel, InventoryMovementModel
+from app.blood_bank.infrastructure.models import (
+    BloodReservationModel,
+    BloodUnitModel,
+    InventoryMovementModel,
+)
 from app.main import app
-
 from test_http_idempotency_postgres import (
     LAB_ID,
     UNIT_ID,
@@ -29,12 +32,13 @@ POSTGRES_URL = os.getenv("BLOOD_BANK_POSTGRES_URL")
 pytestmark = pytest.mark.skipif(not POSTGRES_URL, reason="BLOOD_BANK_POSTGRES_URL is not configured")
 
 
-def _unit_status(Session) -> str:
+def _unit_status(Session: Any) -> str:
     with Session() as session:
-        return session.query(BloodUnitModel).filter(BloodUnitModel.id == UNIT_ID).one().status
+        status: str = session.query(BloodUnitModel).filter(BloodUnitModel.id == UNIT_ID).one().status
+        return status
 
 
-def _movement_types(Session) -> list[str]:
+def _movement_types(Session: Any) -> list[str]:
     with Session() as session:
         rows = (
             session.query(InventoryMovementModel)

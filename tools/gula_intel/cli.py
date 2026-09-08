@@ -15,9 +15,11 @@ import argparse
 import json
 import subprocess
 import sys
+from collections.abc import Sequence
+from typing import Any
 
 from . import detectors, impact, inventory, planner, registry
-from .model import Health, Severity
+from .model import CheckResult, Health, Severity
 
 
 def _commit() -> str:
@@ -30,7 +32,7 @@ def _commit() -> str:
         return "unknown"
 
 
-def _health(results: list) -> Health:
+def _health(results: Sequence[CheckResult]) -> Health:
     if any(f.blocker for r in results for f in r.findings):
         return Health.BLOCKED
     if any(r.detector_state.name.startswith("RAN") is False for r in results):
@@ -54,9 +56,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "plan":
         if not args.paths:
             parser.error("plan requires at least one path")
-        print(_render(planner.plan(args.paths).to_dict()))
+        _emit(_render(planner.plan(args.paths).to_dict()))
         return 0
 
+    payload: dict[str, Any]
     if args.command in {"impact", "tests-for"}:
         if not args.paths:
             parser.error(f"{args.command} requires at least one path")
@@ -66,13 +69,13 @@ def main(argv: list[str] | None = None) -> int:
         else:
             payload = {"selected_tests": impact.select_tests(args.paths),
                        "note": impact.unaffected_note(args.paths)}
-        print(json.dumps(payload, indent=2, ensure_ascii=False) if args.json else _render(payload))
+        _emit(json.dumps(payload, indent=2, ensure_ascii=False) if args.json else _render(payload))
         return 0
 
     inv = inventory.collect()
     if args.command == "inspect":
         payload = inv.summary()
-        print(json.dumps(payload, indent=2, ensure_ascii=False) if args.json else _render(payload))
+        _emit(json.dumps(payload, indent=2, ensure_ascii=False) if args.json else _render(payload))
         return 0
 
     results = detectors.run_all(inv)
@@ -92,11 +95,15 @@ def main(argv: list[str] | None = None) -> int:
     }
     if args.command == "health":
         payload.pop("checks")
-    print(json.dumps(payload, indent=2, ensure_ascii=False) if args.json else _render(payload))
+    _emit(json.dumps(payload, indent=2, ensure_ascii=False) if args.json else _render(payload))
     return 0
 
 
-def _render(payload: dict) -> str:
+def _emit(text: str) -> None:
+    sys.stdout.write(text + "\n")
+
+
+def _render(payload: dict[str, Any]) -> str:
     return json.dumps(payload, indent=2, ensure_ascii=False)
 
 

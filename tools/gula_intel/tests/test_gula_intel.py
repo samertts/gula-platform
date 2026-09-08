@@ -9,14 +9,15 @@ from __future__ import annotations
 
 import pathlib
 import sys
+from typing import Any
 
 import pytest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
 
-from gula_intel import detectors, impact, inventory, registry  # noqa: E402
-from gula_intel.ai_boundary import AdapterViolation, assert_capability, build_context  # noqa: E402
-from gula_intel.model import (  # noqa: E402
+from gula_intel import detectors, impact, inventory, registry
+from gula_intel.ai_boundary import AdapterViolation, assert_capability, build_context
+from gula_intel.model import (
     CheckResult,
     DetectorState,
     Finding,
@@ -27,8 +28,15 @@ from gula_intel.model import (  # noqa: E402
 )
 
 
-def _inv(**kw):
-    base = dict(tables={}, migrations={}, endpoints=0, modules=[], transition_tables={}, sources={})
+def _inv(**kw: Any) -> inventory.Inventory:
+    base: dict[str, Any] = {
+        "tables": {},
+        "migrations": {},
+        "endpoints": 0,
+        "modules": [],
+        "transition_tables": {},
+        "sources": {},
+    }
     base.update(kw)
     return inventory.Inventory(**base)
 
