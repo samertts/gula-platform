@@ -1,0 +1,54 @@
+{
+  "program": "BLOOD-BANK-COMPLETE",
+  "branch": "feat/blood-bank-complete",
+  "production_ready": false,
+  "status": "partially_verified",
+  "quality_goal": "world-class measurable hardening; no unverified production-ready claim",
+  "environment": {
+    "database": "disposable local PostgreSQL",
+    "postgresql_version": "16.15",
+    "database_name": "gula_bloodbank_verify",
+    "http_runtime": "ENV=test, RUNTIME_MODE=test, real FastAPI application and TestClient",
+    "dsn_scope": "verification process only"
+  },
+  "verified": {
+    "phase_14a_fastapi_startup": "passed",
+    "phase_14b_http_replay_and_collision": {"passed": 5, "failed": 0, "skipped": 0},
+    "failure_injection_retry": {
+      "passed": 7,
+      "failed": 0,
+      "boundaries": ["reservation.after_claim", "reservation.after_business_effect", "reservation.after_inventory_movement", "reservation.after_audit_preparation", "issue.after_business_effect", "issue.after_inventory_movement", "issue.after_audit_preparation"],
+      "evidence": "each injected first request rolled back and a same-key retry produced exactly one final clinical and inventory effect",
+      "mechanism": "test-only and gated by ENV=test, RUNTIME_MODE=test, and explicit GULA_TEST_FAILURE_STAGE"
+    },
+    "authorization_and_namespace": {
+      "cross_facility_traceability_idor": "passed: Facility B received 404 for a Facility A unit",
+      "cross_facility_reservation_return_discard_idor": "passed: all three mutation attempts rejected and the unit remained unchanged",
+      "operation_scoped_idempotency_namespace": "passed: same key reused for Reservation and Issue succeeded independently with one effect per operation",
+      "final_database_assertions": "passed: no duplicate reservation, movement, issue, or unauthorized state change"
+    },
+    "blood_bank_regression_suite": {"passed": 27, "failed": 0, "skipped": 0},
+    "postgres_service_and_claim_tests": "passed",
+    "targeted_migrations": "passed through 20260901_0004",
+    "compile": true,
+    "git_diff_check": true,
+    "http_status_quality_cleanup": "passed: legacy 422 fallback no longer eagerly evaluates the deprecated constant"
+  },
+  "not_verified": {
+    "completed_replay_response": "canonical behavior remains deterministic 409; original response payload is not persisted/replayed",
+    "full_e2e": "not run",
+    "full_backend_regression": "not run",
+    "production_dependency_remediation": "Dependabot findings remain on the default branch and were not changed in this branch",
+    "general_clinical_audit_chain_concurrency": "not separately load-tested"
+  },
+  "blocked": {
+    "none_for_current_postgres_tests": true,
+    "alembic_upgrade_head": "pre-existing duplicate revision 20260819_0003 and unrelated multiple heads; unchanged"
+  },
+  "warnings": [
+    "FastAPI TestClient reports an existing Starlette/httpx deprecation warning",
+    "pytest reports two existing unknown asyncio configuration options",
+    "Test runtime logs existing missing optional production secrets and in-memory Redis fallback; production configuration was not modified",
+    "GitHub reports existing Dependabot vulnerabilities on the default branch"
+  ]
+}

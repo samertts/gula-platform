@@ -211,15 +211,28 @@ def log_action(
         ip_address=ip_address,
         created_at=datetime.now(UTC),
     )
-    db.add(entry)
-    db.flush()
-
-    prev_hash = _get_last_chain_hash(db)
-    entry.chain_hash = _compute_chain_hash(prev_hash, entry)
-
+    bind = db.get_bind()
+    if bind is not None and bind.dialect.name == "postgresql":
+        # The append-only trigger correctly rejects UPDATE, so reserve the
+        # serial ID before INSERT and compute the hash on the final row image.
+        next_id = db.execute(
+            text("SELECT nextval(pg_get_serial_sequence('audit_logs', 'id'))"),
+        ).scalar_one()
+        entry.id = int(next_id)
+        prev_hash = _get_last_chain_hash(db)
+        entry.chain_hash = _compute_chain_hash(prev_hash, entry)
+        db.add(entry)
+        db.flush()
+    else:
+        db.add(entry)
+        db.flush()
+        prev_hash = _get_last_chain_hash(db)
+        entry.chain_hash = _compute_chain_hash(prev_hash, entry)
+        db.flush()
     # Write anchor checkpoint every N entries
     if entry.id % _ANCHOR_INTERVAL == 0:
         _write_anchor(entry.id, entry.chain_hash)
+
 
 
 def verify_audit_chain(db: Session, limit: int = 1000) -> dict:

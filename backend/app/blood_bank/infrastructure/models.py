@@ -270,3 +270,101 @@ class InventoryMovementModel(TenantEntity):
     performed_by = Column(String(200), nullable=True)
     performed_at = Column(DateTime(timezone=True), nullable=False)
     notes = Column(Text, nullable=True)
+
+
+class PatientBloodSampleModel(TenantAuditEntity):
+    __tablename__ = "blood_bank_patient_samples"
+
+    patient_id = Column(String(100), nullable=False, index=True)
+    encounter_id = Column(String(100), nullable=True, index=True)
+    facility_id = Column(String(100), nullable=False, index=True)
+    specimen_identifier = Column(String(120), nullable=False, unique=True, index=True)
+    status = Column(String(40), nullable=False, default="collected", index=True)
+    collected_by = Column(String(100), nullable=False)
+    collected_at = Column(DateTime(timezone=True), nullable=False)
+    received_at = Column(DateTime(timezone=True), nullable=True)
+    validated_by = Column(String(100), nullable=True)
+    validated_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True, index=True)
+    rejection_reason = Column(Text, nullable=True)
+
+
+class BloodReservationModel(TenantAuditEntity):
+    __tablename__ = "blood_bank_reservations"
+
+    order_id = Column(String(100), nullable=False, index=True)
+    patient_id = Column(String(100), nullable=False, index=True)
+    encounter_id = Column(String(100), nullable=True, index=True)
+    unit_id = Column(String(100), nullable=False, index=True)
+    component_id = Column(String(100), nullable=True)
+    facility_id = Column(String(100), nullable=False, index=True)
+    requested_by = Column(String(100), nullable=False)
+    status = Column(String(40), nullable=False, default="reserved", index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    released_at = Column(DateTime(timezone=True), nullable=True)
+    release_reason = Column(Text, nullable=True)
+
+
+class TransfusionReactionModel(TenantAuditEntity):
+    __tablename__ = "blood_bank_reactions"
+
+    patient_id = Column(String(100), nullable=False, index=True)
+    transfusion_id = Column(String(100), nullable=False, index=True)
+    unit_id = Column(String(100), nullable=False, index=True)
+    component_id = Column(String(100), nullable=True)
+    encounter_id = Column(String(100), nullable=True)
+    facility_id = Column(String(100), nullable=False, index=True)
+    reporter_id = Column(String(100), nullable=False)
+    status = Column(String(40), nullable=False, default="suspected", index=True)
+    severity = Column(String(40), nullable=True)
+    symptoms = Column(JSON, nullable=False, default=dict)
+    investigation = Column(JSON, nullable=False, default=dict)
+    related_sample_ids = Column(JSON, nullable=False, default=list)
+    outcome = Column(Text, nullable=True)
+    occurred_at = Column(DateTime(timezone=True), nullable=False)
+    resolved_at = Column(DateTime(timezone=True), nullable=True)
+
+
+class BloodTraceabilityEventModel(TenantAuditEntity):
+    __tablename__ = "blood_bank_traceability_events"
+
+    unit_id = Column(String(100), nullable=False, index=True)
+    facility_id = Column(String(100), nullable=False, index=True)
+    event_type = Column(String(60), nullable=False, index=True)
+    object_type = Column(String(60), nullable=False)
+    object_id = Column(String(100), nullable=False, index=True)
+    actor_id = Column(String(100), nullable=False)
+    occurred_at = Column(DateTime(timezone=True), nullable=False, index=True)
+    reason = Column(Text, nullable=True)
+    metadata_json = Column(JSON, nullable=False, default=dict)
+
+    # No update/delete API is exposed for this model; history is append-only.
+
+
+class BloodReturnModel(TenantAuditEntity):
+    __tablename__ = "blood_bank_returns"
+
+    unit_id = Column(String(100), nullable=False, index=True)
+    reservation_id = Column(String(100), nullable=True, index=True)
+    issue_id = Column(String(100), nullable=True, index=True)
+    patient_id = Column(String(100), nullable=True, index=True)
+    facility_id = Column(String(100), nullable=False, index=True)
+    status = Column(String(40), nullable=False, default="return_requested", index=True)
+    reason = Column(Text, nullable=False)
+    integrity = Column(String(40), nullable=True)
+    inspected_by = Column(String(100), nullable=True)
+    inspected_at = Column(DateTime(timezone=True), nullable=True)
+    outcome = Column(String(40), nullable=True)
+
+
+class BloodDiscardModel(TenantAuditEntity):
+    __tablename__ = "blood_bank_discards"
+
+    unit_id = Column(String(100), nullable=False, index=True)
+    issue_id = Column(String(100), nullable=True, index=True)
+    patient_id = Column(String(100), nullable=True, index=True)
+    facility_id = Column(String(100), nullable=False, index=True)
+    category = Column(String(60), nullable=False)
+    reason = Column(Text, nullable=False)
+    discarded_by = Column(String(100), nullable=False)
+    discarded_at = Column(DateTime(timezone=True), nullable=False)

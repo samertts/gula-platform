@@ -175,6 +175,16 @@ class ClinicalCommandGuard:
         )
         return receipt
 
+    @staticmethod
+    def _audit_resource_id(resource_id: str | int | None) -> int | None:
+        """Map legacy integer audit IDs without losing string resource identity."""
+        if resource_id is None:
+            return None
+        try:
+            return int(resource_id)
+        except (TypeError, ValueError):
+            return None
+
     def reject(
         self,
         *,
@@ -191,12 +201,13 @@ class ClinicalCommandGuard:
                 self.db,
                 action=f"clinical.{operation}.rejected",
                 resource_type=resource_type,
-                resource_id=str(resource_id),
+                resource_id=self._audit_resource_id(resource_id),
                 user_id=self.actor_user_id,
                 user_role=self.actor_role,
                 lab_id=self.lab_id,
                 details={
                     "operation": operation,
+                    "resource_id": str(resource_id),
                     "state_before": state_before,
                     "version_before": version_before,
                     "reason": reason,
@@ -230,17 +241,20 @@ class ClinicalCommandGuard:
         receipt.resource_id = str(resource_id)
         receipt.completed_at = datetime.now(UTC)
         self.db.flush()
+        from app.clinical.failure_injection import maybe_fail
+        maybe_fail("after_audit_preparation")
         try:
             log_action(
                 self.db,
                 action=f"clinical.{receipt.operation}",
                 resource_type=resource_type,
-                resource_id=str(resource_id),
+                resource_id=self._audit_resource_id(resource_id),
                 user_id=self.actor_user_id,
                 user_role=self.actor_role,
                 lab_id=self.lab_id,
                 details={
                     "operation": receipt.operation,
+                    "resource_id": str(resource_id),
                     "idempotency_key": receipt.idempotency_key,
                     "state_before": state_before,
                     "state_after": state_after,
