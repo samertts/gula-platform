@@ -16,7 +16,7 @@
   "verified": {
     "phase_14a_fastapi_startup": "passed",
     "phase_14b_http_replay_and_collision": {
-      "passed": 5,
+      "passed": 6,
       "failed": 0,
       "skipped": 0,
       "executed_on": "2026-09-08 against PostgreSQL 16.13 with the real FastAPI app and TestClient",
@@ -57,6 +57,17 @@
           "http": "responses were exactly [201, 409]; only one payload committed",
           "side_effects": "reservations=1, inventory movements=1, unit status=reserved; no conflicting duplicate effect",
           "idempotency_claims": "exactly 1 completed claim"
+        },
+        "concurrent_http_issue_idempotency": {
+          "test": "tests/blood_bank/test_http_idempotency_postgres.py::test_http_issue_same_key_concurrency_has_one_side_effect",
+          "result": "passed",
+          "concurrency": "two OS threads released by a threading.Barrier issue the same POST /blood-bank/inventory/issue through separate TestClient instances against separate PostgreSQL sessions; the route takes SELECT ... FOR UPDATE on the blood request, so the two requests serialize on that row lock",
+          "http": "responses were exactly [200, 409]; the winner returned the issued unit and the loser returned the canonical safe envelope with code CONFLICT; no unhandled exception in either thread",
+          "business_effect": "exactly 1 issue effect: fulfilled_units=1 and unit status=issued",
+          "inventory_movement": "exactly 1 issued inventory movement for the lab",
+          "idempotency_claims": "exactly 1 clinical_command_receipts row for blood.issue with status completed",
+          "fingerprint": "the stored request fingerprint equals ClinicalCommandGuard._fingerprint for this exact command, asserted against the production helper rather than a copy",
+          "partial_state": "no partial commit: exactly 1 issued unit and exactly 1 blood.issue receipt across the whole lab"
         }
       },
       "external_contract_note": "the safe error envelope returns a generic 409 with code CONFLICT for both an identical replay and a payload reuse; the discriminating guard reason (clinical_command_already_processed vs idempotency_key_reused) is not exposed over HTTP and is observable only on the durable claim record"
@@ -64,7 +75,15 @@
     "failure_injection_retry": {
       "passed": 7,
       "failed": 0,
-      "boundaries": ["reservation.after_claim", "reservation.after_business_effect", "reservation.after_inventory_movement", "reservation.after_audit_preparation", "issue.after_business_effect", "issue.after_inventory_movement", "issue.after_audit_preparation"],
+      "boundaries": [
+        "reservation.after_claim",
+        "reservation.after_business_effect",
+        "reservation.after_inventory_movement",
+        "reservation.after_audit_preparation",
+        "issue.after_business_effect",
+        "issue.after_inventory_movement",
+        "issue.after_audit_preparation"
+      ],
       "evidence": "each injected first request rolled back and a same-key retry produced exactly one final clinical and inventory effect",
       "mechanism": "test-only and gated by ENV=test, RUNTIME_MODE=test, and explicit GULA_TEST_FAILURE_STAGE",
       "re_executed": "2026-09-08, passed as part of the Blood Bank suite"
@@ -77,11 +96,11 @@
       "re_executed": "2026-09-08, passed"
     },
     "blood_bank_regression_suite": {
-      "passed": 26,
+      "passed": 27,
       "failed": 0,
       "skipped": 0,
       "command": "pytest tests/blood_bank/ -p no:randomly",
-      "note": "an earlier revision of this report recorded 27; the suite contains 26 tests and the previous figure was an over-count"
+      "note": "26 before Phase 14B.1; the concurrent HTTP issue proof added by Phase 14B.1 brings the suite to 27"
     },
     "postgres_service_and_claim_tests": "passed",
     "targeted_migrations": "passed through 20260901_0004",
@@ -91,7 +110,6 @@
   },
   "not_verified": {
     "completed_replay_response": "canonical behavior remains deterministic 409; original response payload is not persisted/replayed",
-    "concurrent_http_issue_idempotency": "NOT_VERIFIED: concurrent same-key HTTP execution was proven for the reservation endpoint only; the issue endpoint was proven for sequential replay and for service-level concurrency, not for concurrent HTTP",
     "full_e2e": "NOT_VERIFIED: not run",
     "full_backend_regression": "NOT_VERIFIED: not run; the Phase 14B change is additive test-only and confined to the Blood Bank suite",
     "production_dependency_remediation": "Dependabot findings remain on the default branch and were not changed in this branch",
