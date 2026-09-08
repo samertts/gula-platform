@@ -44,3 +44,19 @@ def test_state_machine_allows_issue_after_release() -> None:
 def test_state_machine_rejects_completion_without_start() -> None:
     with pytest.raises(BloodBankWorkflowError):
         transition("verified", "completed", entity="transfusion")
+
+
+def test_reserved_unit_can_return_to_the_available_pool() -> None:
+    """Regression: the shared transition table must not shadow the unit lifecycle.
+
+    "reserved" is reachable by both a blood unit and an order.  When the order
+    entry was declared a second time it silently replaced the unit entry, so a
+    reserved unit could never be released back into stock.
+    """
+    assert transition("reserved", "available", entity="blood_unit") == "available"
+    assert transition("reserved", "released", entity="blood_unit") == "released"
+
+
+def test_reserved_order_transitions_are_still_allowed() -> None:
+    assert transition("reserved", "issued", entity="blood_request") == "issued"
+    assert transition("reserved", "cancelled", entity="blood_request") == "cancelled"
