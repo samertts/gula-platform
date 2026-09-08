@@ -42,26 +42,20 @@ def convert(
 
     # Prefer concept-scoped rows (mass↔molar depends on molecule).
     stmt = (
-        select(MedicalOntologyUnitConversion.factor,
-               MedicalOntologyUnitConversion.offset)
+        select(MedicalOntologyUnitConversion.factor, MedicalOntologyUnitConversion.offset)
         .where(MedicalOntologyUnitConversion.from_unit_key == from_unit_key)
         .where(MedicalOntologyUnitConversion.to_unit_key == to_unit_key)
     )
     if concept_scope_key:
         scoped = session.execute(
-            stmt.where(
-                MedicalOntologyUnitConversion.concept_scope_key
-                == concept_scope_key
-            )
+            stmt.where(MedicalOntologyUnitConversion.concept_scope_key == concept_scope_key)
         ).first()
         if scoped is not None:
             factor, offset = scoped
             return value * float(factor) + float(offset)
 
     universal = session.execute(
-        stmt.where(
-            MedicalOntologyUnitConversion.concept_scope_key.is_(None)
-        )
+        stmt.where(MedicalOntologyUnitConversion.concept_scope_key.is_(None))
     ).first()
     if universal is not None:
         factor, offset = universal

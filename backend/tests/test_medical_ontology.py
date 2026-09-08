@@ -13,6 +13,7 @@ Covers:
 Every test sets up its ontology rows fresh — the seed loader is not
 exercised here (that has its own smoke test at the bottom).
 """
+
 # mypy: ignore-errors
 # The mypy config already excludes ``tests/`` at project scope; the CI
 # changed-files gate bypasses that exclude by passing test files as
@@ -48,6 +49,7 @@ def _now() -> _dt.datetime:
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
+
 
 def _make_concept(
     db,
@@ -141,6 +143,7 @@ def _make_range(
 
 # ─── normalize_text ──────────────────────────────────────────────────────────
 
+
 class TestNormalize:
     def test_lowercase_english(self):
         assert normalize_text("HbA1c") == "hba1c"
@@ -185,20 +188,20 @@ class TestNormalize:
 
 # ─── resolve_concept ─────────────────────────────────────────────────────────
 
+
 class TestResolveConcept:
     def _setup_hba1c(self, db):
         c = _make_concept(
-            db, key="biomarker:hba1c",
+            db,
+            key="biomarker:hba1c",
             canonical_unit="unit:pct",
             display_en="Hemoglobin A1c",
             display_ar="الهيموغلوبين السكري",
         )
         _make_synonym(db, c, term="HbA1c", locale="en", variant="preferred")
         _make_synonym(db, c, term="A1C", locale="en", variant="abbreviation")
-        _make_synonym(db, c, term="السكر التراكمي",
-                      locale="ar-IQ", variant="colloquial")
-        _make_synonym(db, c, term="الهيموغلوبين السكري",
-                      locale="ar", variant="preferred")
+        _make_synonym(db, c, term="السكر التراكمي", locale="ar-IQ", variant="colloquial")
+        _make_synonym(db, c, term="الهيموغلوبين السكري", locale="ar", variant="preferred")
         return c
 
     def test_exact_english_match(self, db):
@@ -209,12 +212,10 @@ class TestResolveConcept:
 
     def test_matches_arabizi_input_after_folding(self, db):
         c = _make_concept(db, key="biomarker:hba1c")
-        _make_synonym(db, c, term="سكر تراكمي",
-                      locale="ar-IQ", variant="colloquial")
+        _make_synonym(db, c, term="سكر تراكمي", locale="ar-IQ", variant="colloquial")
         # User types Arabizi with digit — normalizer folds the 3 → ع inside
         # Arabic context.  Seed the folded form so we can prove the pipeline.
-        _make_synonym(db, c, term="سكر تركمي",
-                      locale="arabizi", variant="phonetic")
+        _make_synonym(db, c, term="سكر تركمي", locale="arabizi", variant="phonetic")
         # This tests the normalizer + resolver together end-to-end.
         m = resolve_concept(db, "سكر تراكمي")
         assert m is not None and m.concept_key == "biomarker:hba1c"
@@ -228,11 +229,9 @@ class TestResolveConcept:
 
     def test_preferred_variant_beats_abbreviation_when_tied(self, db):
         c = _make_concept(db, key="biomarker:hba1c")
-        _make_synonym(db, c, term="HbA1c",
-                      locale="en", variant="preferred", confidence=1.0)
+        _make_synonym(db, c, term="HbA1c", locale="en", variant="preferred", confidence=1.0)
         c2 = _make_concept(db, key="biomarker:other")
-        _make_synonym(db, c2, term="HbA1c",
-                      locale="en", variant="abbreviation", confidence=1.0)
+        _make_synonym(db, c2, term="HbA1c", locale="en", variant="abbreviation", confidence=1.0)
         m = resolve_concept(db, "HbA1c")
         assert m is not None
         assert m.concept_key == "biomarker:hba1c"
@@ -243,8 +242,7 @@ class TestResolveConcept:
 
     def test_below_confidence_floor_returns_none(self, db):
         c = _make_concept(db, key="biomarker:hba1c")
-        _make_synonym(db, c, term="typo",
-                      locale="en", variant="misspelling", confidence=0.4)
+        _make_synonym(db, c, term="typo", locale="en", variant="misspelling", confidence=0.4)
         # variant misspelling deducts 0.20 → 0.20; floor 0.5 rejects.
         assert resolve_concept(db, "typo", min_confidence=0.5) is None
 
@@ -255,43 +253,56 @@ class TestResolveConcept:
 
 # ─── Unit conversion ─────────────────────────────────────────────────────────
 
+
 class TestUnitConversion:
     def test_same_unit_returns_unchanged(self, db):
         assert convert(db, 5.0, "unit:mg_per_dL", "unit:mg_per_dL") == 5.0
 
     def test_universal_conversion(self, db):
-        db.add(MedicalOntologyUnitConversion(
-            from_unit_key="unit:g_per_dL",
-            to_unit_key="unit:g_per_L",
-            factor=10.0,
-            offset=0.0,
-            concept_scope_key=None,
-            source="SI",
-            created_at=_now(),
-        ))
+        db.add(
+            MedicalOntologyUnitConversion(
+                from_unit_key="unit:g_per_dL",
+                to_unit_key="unit:g_per_L",
+                factor=10.0,
+                offset=0.0,
+                concept_scope_key=None,
+                source="SI",
+                created_at=_now(),
+            )
+        )
         db.flush()
         assert convert(db, 12.0, "unit:g_per_dL", "unit:g_per_L") == 120.0
 
     def test_concept_scoped_conversion_wins(self, db):
         # A universal fallback exists but a glucose-specific factor must win.
-        db.add(MedicalOntologyUnitConversion(
-            from_unit_key="unit:mg_per_dL",
-            to_unit_key="unit:mmol_per_L",
-            factor=99.0, offset=0.0, concept_scope_key=None,
-            source="wrong-universal",
-            created_at=_now(),
-        ))
-        db.add(MedicalOntologyUnitConversion(
-            from_unit_key="unit:mg_per_dL",
-            to_unit_key="unit:mmol_per_L",
-            factor=0.05551, offset=0.0,
-            concept_scope_key="biomarker:glucose_fasting",
-            source="MW glucose",
-            created_at=_now(),
-        ))
+        db.add(
+            MedicalOntologyUnitConversion(
+                from_unit_key="unit:mg_per_dL",
+                to_unit_key="unit:mmol_per_L",
+                factor=99.0,
+                offset=0.0,
+                concept_scope_key=None,
+                source="wrong-universal",
+                created_at=_now(),
+            )
+        )
+        db.add(
+            MedicalOntologyUnitConversion(
+                from_unit_key="unit:mg_per_dL",
+                to_unit_key="unit:mmol_per_L",
+                factor=0.05551,
+                offset=0.0,
+                concept_scope_key="biomarker:glucose_fasting",
+                source="MW glucose",
+                created_at=_now(),
+            )
+        )
         db.flush()
         result = convert(
-            db, 180.0, "unit:mg_per_dL", "unit:mmol_per_L",
+            db,
+            180.0,
+            "unit:mg_per_dL",
+            "unit:mmol_per_L",
             concept_scope_key="biomarker:glucose_fasting",
         )
         assert abs(result - 9.99) < 0.05
@@ -303,161 +314,215 @@ class TestUnitConversion:
 
 # ─── Reference range engine ──────────────────────────────────────────────────
 
+
 class TestReferenceRange:
     def test_unknown_concept_raises(self, db):
         with pytest.raises(ReferenceRangeError):
             interpret(
-                db, "biomarker:not_seeded", 1.0, "unit:mg_per_dL",
-                age_years=30, sex="male",
+                db,
+                "biomarker:not_seeded",
+                1.0,
+                "unit:mg_per_dL",
+                age_years=30,
+                sex="male",
             )
 
     def test_adult_alp_uses_adult_range_not_pediatric(self, db):
-        c = _make_concept(db, key="biomarker:alp",
-                          canonical_unit="unit:U_per_L")
-        _make_range(db, c, unit="unit:U_per_L",
-                    age_min=1, age_max=9,
-                    low=100, high=350,
-                    source="Mayo", source_version="peds")
-        _make_range(db, c, unit="unit:U_per_L",
-                    age_min=18,
-                    low=44, high=121,
-                    source="Mayo", source_version="adult")
+        c = _make_concept(db, key="biomarker:alp", canonical_unit="unit:U_per_L")
+        _make_range(
+            db,
+            c,
+            unit="unit:U_per_L",
+            age_min=1,
+            age_max=9,
+            low=100,
+            high=350,
+            source="Mayo",
+            source_version="peds",
+        )
+        _make_range(
+            db,
+            c,
+            unit="unit:U_per_L",
+            age_min=18,
+            low=44,
+            high=121,
+            source="Mayo",
+            source_version="adult",
+        )
 
-        adult = interpret(db, "biomarker:alp", 80.0, "unit:U_per_L",
-                          age_years=45, sex="any")
+        adult = interpret(db, "biomarker:alp", 80.0, "unit:U_per_L", age_years=45, sex="any")
         assert adult.direction == "in_range"
         assert adult.matched_range.age_min_years == 18
         assert adult.provenance.source_version == "adult"
 
-        child = interpret(db, "biomarker:alp", 200.0, "unit:U_per_L",
-                          age_years=5, sex="any")
+        child = interpret(db, "biomarker:alp", 200.0, "unit:U_per_L", age_years=5, sex="any")
         # 200 U/L is normal for a 5-year-old (100-350) -> in_range.
         assert child.direction == "in_range"
         assert child.matched_range.age_min_years == 1
         assert child.provenance.source_version == "peds"
 
     def test_sex_adjusted_creatinine(self, db):
-        c = _make_concept(db, key="biomarker:creatinine",
-                          canonical_unit="unit:mg_per_dL")
-        _make_range(db, c, unit="unit:mg_per_dL", age_min=18, sex="male",
-                    low=0.74, high=1.35, source="Mayo")
-        _make_range(db, c, unit="unit:mg_per_dL", age_min=18, sex="female",
-                    low=0.59, high=1.04, source="Mayo")
+        c = _make_concept(db, key="biomarker:creatinine", canonical_unit="unit:mg_per_dL")
+        _make_range(
+            db, c, unit="unit:mg_per_dL", age_min=18, sex="male", low=0.74, high=1.35, source="Mayo"
+        )
+        _make_range(
+            db,
+            c,
+            unit="unit:mg_per_dL",
+            age_min=18,
+            sex="female",
+            low=0.59,
+            high=1.04,
+            source="Mayo",
+        )
 
         # 1.1 mg/dL is normal for a man, elevated for a woman.
-        m = interpret(db, "biomarker:creatinine", 1.1, "unit:mg_per_dL",
-                      age_years=40, sex="male")
+        m = interpret(db, "biomarker:creatinine", 1.1, "unit:mg_per_dL", age_years=40, sex="male")
         assert m.direction == "in_range"
 
-        f = interpret(db, "biomarker:creatinine", 1.1, "unit:mg_per_dL",
-                      age_years=40, sex="female")
+        f = interpret(db, "biomarker:creatinine", 1.1, "unit:mg_per_dL", age_years=40, sex="female")
         assert f.direction == "high"
         assert f.matched_range.sex == "female"
 
     def test_pregnancy_adjusted_hemoglobin(self, db):
-        c = _make_concept(db, key="biomarker:hemoglobin",
-                          canonical_unit="unit:g_per_dL")
-        _make_range(db, c, unit="unit:g_per_dL",
-                    age_min=15, sex="female",
-                    pregnancy_status="not_pregnant",
-                    low=12.0, high=15.5, source="WHO")
-        _make_range(db, c, unit="unit:g_per_dL",
-                    age_min=15, sex="female",
-                    pregnancy_status="pregnant",
-                    low=11.0, high=14.0, source="WHO")
+        c = _make_concept(db, key="biomarker:hemoglobin", canonical_unit="unit:g_per_dL")
+        _make_range(
+            db,
+            c,
+            unit="unit:g_per_dL",
+            age_min=15,
+            sex="female",
+            pregnancy_status="not_pregnant",
+            low=12.0,
+            high=15.5,
+            source="WHO",
+        )
+        _make_range(
+            db,
+            c,
+            unit="unit:g_per_dL",
+            age_min=15,
+            sex="female",
+            pregnancy_status="pregnant",
+            low=11.0,
+            high=14.0,
+            source="WHO",
+        )
 
         non_preg = interpret(
-            db, "biomarker:hemoglobin", 11.5, "unit:g_per_dL",
-            age_years=30, sex="female", pregnancy_status="not_pregnant",
+            db,
+            "biomarker:hemoglobin",
+            11.5,
+            "unit:g_per_dL",
+            age_years=30,
+            sex="female",
+            pregnancy_status="not_pregnant",
         )
         assert non_preg.direction == "low"
         assert non_preg.matched_range.pregnancy_status == "not_pregnant"
 
         preg = interpret(
-            db, "biomarker:hemoglobin", 11.5, "unit:g_per_dL",
-            age_years=30, sex="female", pregnancy_status="pregnant",
+            db,
+            "biomarker:hemoglobin",
+            11.5,
+            "unit:g_per_dL",
+            age_years=30,
+            sex="female",
+            pregnancy_status="pregnant",
         )
         assert preg.direction == "in_range"
         assert preg.matched_range.pregnancy_status == "pregnant"
 
     def test_hba1c_severity_and_risk_level(self, db):
-        c = _make_concept(db, key="biomarker:hba1c",
-                          canonical_unit="unit:pct")
-        _make_range(db, c, unit="unit:pct", age_min=18,
-                    low=4.0, high=5.6, critical_high=12.0,
-                    source="ADA", source_version="2024")
+        c = _make_concept(db, key="biomarker:hba1c", canonical_unit="unit:pct")
+        _make_range(
+            db,
+            c,
+            unit="unit:pct",
+            age_min=18,
+            low=4.0,
+            high=5.6,
+            critical_high=12.0,
+            source="ADA",
+            source_version="2024",
+        )
 
         # Normal
-        n = interpret(db, "biomarker:hba1c", 5.2, "unit:pct",
-                      age_years=40, sex="any")
+        n = interpret(db, "biomarker:hba1c", 5.2, "unit:pct", age_years=40, sex="any")
         assert n.level == "normal"
         assert n.risk_level == "informational"
         assert n.escalation_required is False
 
         # Prediabetes range (5.7-6.4) -> mildly high (deviation ~14%)
-        mild = interpret(db, "biomarker:hba1c", 6.0, "unit:pct",
-                         age_years=40, sex="any")
+        mild = interpret(db, "biomarker:hba1c", 6.0, "unit:pct", age_years=40, sex="any")
         assert mild.direction == "high"
         assert mild.level == "mildly_abnormal"
         assert mild.risk_level == "low_risk"
 
         # Severely elevated but not critical → high_risk + escalation
-        severe = interpret(db, "biomarker:hba1c", 9.0, "unit:pct",
-                           age_years=40, sex="any")
+        severe = interpret(db, "biomarker:hba1c", 9.0, "unit:pct", age_years=40, sex="any")
         assert severe.level == "severely_abnormal"
         assert severe.risk_level == "high_risk"
         assert severe.escalation_required is True
 
         # Critical band
-        crit = interpret(db, "biomarker:hba1c", 13.0, "unit:pct",
-                         age_years=40, sex="any")
+        crit = interpret(db, "biomarker:hba1c", 13.0, "unit:pct", age_years=40, sex="any")
         assert crit.level == "critical"
         assert crit.risk_level == "emergency_risk"
         assert crit.escalation_required is True
 
     def test_provenance_surfaces_source_and_version(self, db):
-        c = _make_concept(db, key="biomarker:hba1c",
-                          canonical_unit="unit:pct")
-        _make_range(db, c, unit="unit:pct", age_min=18,
-                    low=4.0, high=5.6,
-                    source="ADA", source_version="ADA 2024",
-                    source_url="https://example.org/ada2024")
-        r = interpret(db, "biomarker:hba1c", 5.0, "unit:pct",
-                      age_years=30, sex="any")
+        c = _make_concept(db, key="biomarker:hba1c", canonical_unit="unit:pct")
+        _make_range(
+            db,
+            c,
+            unit="unit:pct",
+            age_min=18,
+            low=4.0,
+            high=5.6,
+            source="ADA",
+            source_version="ADA 2024",
+            source_url="https://example.org/ada2024",
+        )
+        r = interpret(db, "biomarker:hba1c", 5.0, "unit:pct", age_years=30, sex="any")
         assert r.provenance.source == "ADA"
         assert r.provenance.source_version == "ADA 2024"
         assert r.provenance.source_url == "https://example.org/ada2024"
 
     def test_unit_conversion_applied_before_range_lookup(self, db):
-        c = _make_concept(db, key="biomarker:glucose_fasting",
-                          canonical_unit="unit:mg_per_dL")
-        _make_range(db, c, unit="unit:mg_per_dL", age_min=18,
-                    low=70, high=99, source="ADA")
-        db.add(MedicalOntologyUnitConversion(
-            from_unit_key="unit:mmol_per_L",
-            to_unit_key="unit:mg_per_dL",
-            factor=18.016, offset=0.0,
-            concept_scope_key="biomarker:glucose_fasting",
-            source="MW glucose",
-            created_at=_now(),
-        ))
+        c = _make_concept(db, key="biomarker:glucose_fasting", canonical_unit="unit:mg_per_dL")
+        _make_range(db, c, unit="unit:mg_per_dL", age_min=18, low=70, high=99, source="ADA")
+        db.add(
+            MedicalOntologyUnitConversion(
+                from_unit_key="unit:mmol_per_L",
+                to_unit_key="unit:mg_per_dL",
+                factor=18.016,
+                offset=0.0,
+                concept_scope_key="biomarker:glucose_fasting",
+                source="MW glucose",
+                created_at=_now(),
+            )
+        )
         db.flush()
 
         # 5.5 mmol/L ≈ 99 mg/dL → borderline in_range.
         r = interpret(
-            db, "biomarker:glucose_fasting", 5.5, "unit:mmol_per_L",
-            age_years=30, sex="any",
+            db,
+            "biomarker:glucose_fasting",
+            5.5,
+            "unit:mmol_per_L",
+            age_years=30,
+            sex="any",
         )
         assert r.unit_canonical == "unit:mg_per_dL"
         assert abs(r.value_canonical - 99.088) < 0.5
         assert r.direction in ("in_range", "high")  # rounding boundary
 
     def test_no_matching_demographic_raises(self, db):
-        c = _make_concept(db, key="biomarker:hba1c",
-                          canonical_unit="unit:pct")
-        _make_range(db, c, unit="unit:pct", age_min=18,
-                    low=4.0, high=5.6, source="ADA")
+        c = _make_concept(db, key="biomarker:hba1c", canonical_unit="unit:pct")
+        _make_range(db, c, unit="unit:pct", age_min=18, low=4.0, high=5.6, source="ADA")
         # Pediatric input with only an adult range seeded.
         with pytest.raises(ReferenceRangeError):
-            interpret(db, "biomarker:hba1c", 5.0, "unit:pct",
-                      age_years=5, sex="any")
+            interpret(db, "biomarker:hba1c", 5.0, "unit:pct", age_years=5, sex="any")

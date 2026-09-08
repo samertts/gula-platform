@@ -50,9 +50,7 @@ from ...models.medical_ontology import (
 
 # Combining marks + tatweel that MSA-unpointed Arabic medical text can drop
 # without loss. Kept as a set for O(1) membership tests.
-_ARABIC_DIACRITICS: frozenset[str] = frozenset(
-    chr(c) for c in [*range(0x064B, 0x0660), 0x0640]
-)
+_ARABIC_DIACRITICS: frozenset[str] = frozenset(chr(c) for c in [*range(0x064B, 0x0660), 0x0640])
 
 # Common Arabic letter normalisations — alef variants → bare alef, ya → alef
 # maqsura is *not* folded (they carry meaning), taa marbuta → haa is a common
@@ -132,9 +130,7 @@ def _maybe_apply_arabizi(s: str) -> str:
 
     out = []
     for i, ch in enumerate(s):
-        if ch in _ARABIZI_TABLE and (
-            is_arabic(nearest(i, -1)) or is_arabic(nearest(i, +1))
-        ):
+        if ch in _ARABIZI_TABLE and (is_arabic(nearest(i, -1)) or is_arabic(nearest(i, +1))):
             out.append(_ARABIZI_TABLE[ch])
             continue
         out.append(ch)
@@ -142,6 +138,7 @@ def _maybe_apply_arabizi(s: str) -> str:
 
 
 # ─── Concept resolution ──────────────────────────────────────────────────────
+
 
 @dataclass(frozen=True)
 class ConceptMatch:
@@ -152,6 +149,7 @@ class ConceptMatch:
     matches below their own confidence floor (typical: 0.5 for retrieval
     expansion, 0.7 for interpretation).
     """
+
     concept_key: str
     concept_id: object
     category: str
@@ -167,11 +165,11 @@ class ConceptMatch:
 _LOCALE_MATCH_BONUS = 0.0
 _LOCALE_MISS_PENALTY = 0.15
 _VARIANT_PENALTIES = {
-    "preferred":    0.0,
+    "preferred": 0.0,
     "abbreviation": 0.02,
-    "colloquial":   0.05,
-    "phonetic":     0.10,
-    "misspelling":  0.20,
+    "colloquial": 0.05,
+    "phonetic": 0.10,
+    "misspelling": 0.20,
 }
 
 
@@ -222,8 +220,17 @@ def resolve_concept(
     best_score = -1.0
 
     for row in rows:
-        (term, locale, variant, confidence, concept_id, concept_key,
-         category, display_en, display_ar) = row
+        (
+            term,
+            locale,
+            variant,
+            confidence,
+            concept_id,
+            concept_key,
+            category,
+            display_en,
+            display_ar,
+        ) = row
 
         score = float(confidence)
         if preferred_locales is not None:

@@ -46,6 +46,7 @@ from .units import UnitConversionError, convert
 
 # ─── Value objects ───────────────────────────────────────────────────────────
 
+
 @dataclass(frozen=True)
 class Provenance:
     source: str
@@ -80,10 +81,10 @@ class Interpretation:
     unit_canonical: str
     matched_range: MatchedRange
     provenance: Provenance
-    direction: str          # 'low' | 'high' | 'in_range'
-    level: str              # 'normal' | 'mildly_abnormal' | ... | 'critical'
+    direction: str  # 'low' | 'high' | 'in_range'
+    level: str  # 'normal' | 'mildly_abnormal' | ... | 'critical'
     deviation_pct: float | None
-    risk_level: str         # 'informational' ... 'emergency_risk'
+    risk_level: str  # 'informational' ... 'emergency_risk'
     escalation_required: bool
     warnings: list[str] = field(default_factory=list)
 
@@ -95,6 +96,7 @@ class ReferenceRangeError(Exception):
 
 
 # ─── Public entry point ──────────────────────────────────────────────────────
+
 
 def interpret(
     session: Session,
@@ -129,7 +131,10 @@ def interpret(
     # Convert into canonical unit for range comparison.
     try:
         value_canonical = convert(
-            session, value, unit_key, canonical_unit,
+            session,
+            value,
+            unit_key,
+            canonical_unit,
             concept_scope_key=concept_key,
         )
     except UnitConversionError as exc:
@@ -137,9 +142,7 @@ def interpret(
 
     candidates = _load_candidates(session, concept.id, canonical_unit, lab_id)
     if not candidates:
-        raise ReferenceRangeError(
-            f"No reference ranges seeded for {concept_key}"
-        )
+        raise ReferenceRangeError(f"No reference ranges seeded for {concept_key}")
 
     scored: list[tuple[int, Any]] = []
     for r in candidates:
@@ -211,6 +214,7 @@ def interpret(
 
 
 # ─── Internals ───────────────────────────────────────────────────────────────
+
 
 def _load_candidates(
     session: Session,

@@ -6,6 +6,7 @@ runtime perspective — writes happen exclusively through
 ``scripts/seed_medical_ontology.py`` and the (future) physician review
 console. Runtime read paths are gated on ``ENABLE_MEDICAL_ONTOLOGY``.
 """
+
 # mypy: ignore-errors
 # SQLAlchemy 2.0's Mypy plugin flags legacy-style declarative columns
 # ("Can't infer type from ORM mapped expression"). Every existing GULA
@@ -86,8 +87,9 @@ class MedicalOntologyConcept(Base):
 class MedicalOntologyCode(Base):
     __tablename__ = "medical_ontology_codes"
     __table_args__ = (
-        UniqueConstraint("code_system", "code", "concept_id",
-                         name="uq_medonto_codes_system_code_concept"),
+        UniqueConstraint(
+            "code_system", "code", "concept_id", name="uq_medonto_codes_system_code_concept"
+        ),
     )
 
     id = _uuid_pk()
@@ -107,8 +109,9 @@ class MedicalOntologyCode(Base):
 class MedicalOntologySynonym(Base):
     __tablename__ = "medical_ontology_synonyms"
     __table_args__ = (
-        UniqueConstraint("concept_id", "term_normalized", "locale",
-                         name="uq_medonto_syn_concept_norm_locale"),
+        UniqueConstraint(
+            "concept_id", "term_normalized", "locale", name="uq_medonto_syn_concept_norm_locale"
+        ),
     )
 
     id = _uuid_pk()
@@ -130,9 +133,12 @@ class MedicalOntologySynonym(Base):
 class MedicalOntologyRelation(Base):
     __tablename__ = "medical_ontology_relations"
     __table_args__ = (
-        UniqueConstraint("source_concept_id", "target_concept_id",
-                         "relation_type",
-                         name="uq_medonto_rel_src_tgt_type"),
+        UniqueConstraint(
+            "source_concept_id",
+            "target_concept_id",
+            "relation_type",
+            name="uq_medonto_rel_src_tgt_type",
+        ),
     )
 
     id = _uuid_pk()
@@ -195,8 +201,12 @@ class MedicalOntologyReferenceRange(Base):
 class MedicalOntologyUnitConversion(Base):
     __tablename__ = "medical_ontology_unit_conversions"
     __table_args__ = (
-        UniqueConstraint("from_unit_key", "to_unit_key", "concept_scope_key",
-                         name="uq_medonto_units_from_to_scope"),
+        UniqueConstraint(
+            "from_unit_key",
+            "to_unit_key",
+            "concept_scope_key",
+            name="uq_medonto_units_from_to_scope",
+        ),
     )
 
     id = _uuid_pk()
