@@ -219,6 +219,7 @@ async def issue_units(
             version_before=version_before, version_after=request.version,
         )
         db.commit()
+        maybe_fail("after_commit")
     except Exception as exc:
         db.rollback()
         guard.reject(
@@ -693,6 +694,7 @@ async def reserve_blood_unit(
         maybe_fail("after_business_effect")
         guard.complete(receipt, resource_type="reservation", resource_id=reservation.id, state_before="available", state_after=reservation.status, version_before=0, version_after=reservation.version)
         db.commit(); db.refresh(reservation)
+        maybe_fail("after_commit")
         return _phase2_dict(reservation)
     except Exception as exc:
         db.rollback(); _raise_blood_error(exc); raise
