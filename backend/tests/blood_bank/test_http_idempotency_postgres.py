@@ -11,6 +11,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.blood_bank.domain.enums import ComponentStatus, CrossmatchStatus
+from app.clinical.command_guard import ClinicalCommandGuard
 from app.blood_bank.infrastructure.models import (
     BloodReservationModel,
     BloodUnitModel,
@@ -255,6 +256,47 @@ def test_http_issue_replay_has_one_side_effect() -> None:
         claims = _claims(Session, "blood.issue", key)
         assert len(claims) == 1
         assert claims[0][0] == "completed"
+    finally:
+        app.dependency_overrides.clear()
+        Session.kw["bind"].dispose()
+
+
+def test_http_issue_same_key_concurrency_has_one_side_effect() -> None:
+    """Two concurrent HTTP issues under one Idempotency-Key commit exactly one effect."""
+    Session = _session_factory()
+    request_id, unit_id = _prepare_issue(Session)
+    key = "HTTP-ISSUE-CONCURRENT-001"
+    body = {"request_id": request_id, "quantity": 1}
+    barrier = threading.Barrier(2)
+    responses = []
+    errors = []
+
+    def send() -> None:
+        try:
+            with _client(Session) as client:
+                barrier.wait(timeout=10)
+                responses.append(client.post("/blood-bank/inventory/issue", headers={"Idempotency-Key": key, "If-Match": "1"}, json=body).status_code)
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=send) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=45)
+    try:
+        assert not errors
+        assert sorted(responses) == [200, 409]
+        assert _issue_counts(Session, request_id, unit_id) == {"fulfilled_units": 1, "unit_status": ComponentStatus.ISSUED.value, "movements": 1}
+        claims = _claims(Session, "blood.issue", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
+        # The stored fingerprint is the canonical one for this exact command.
+        assert claims[0][1] == ClinicalCommandGuard._fingerprint("blood.issue", "blood_request", request_id, body)
+        # No partially committed state: one issued unit and one claim for the whole lab.
+        with Session() as session:
+            assert session.query(BloodUnitModel).filter(BloodUnitModel.lab_id == LAB_ID, BloodUnitModel.status == ComponentStatus.ISSUED.value).count() == 1
+            assert session.query(ClinicalCommandReceipt).filter(ClinicalCommandReceipt.lab_id == LAB_ID, ClinicalCommandReceipt.operation == "blood.issue").count() == 1
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
