@@ -13,12 +13,15 @@ Covers:
 Every test sets up its ontology rows fresh — the seed loader is not
 exercised here (that has its own smoke test at the bottom).
 """
+# mypy: ignore-errors
+# The mypy config already excludes ``tests/`` at project scope; the CI
+# changed-files gate bypasses that exclude by passing test files as
+# explicit arguments. File-level silence keeps the intent consistent.
 from __future__ import annotations
 
 import datetime as _dt
 
 import pytest
-
 from app.models.medical_ontology import (
     MedicalOntologyConcept,
     MedicalOntologyReferenceRange,
@@ -41,7 +44,7 @@ from app.services.medical_ontology.units import (
 
 
 def _now() -> _dt.datetime:
-    return _dt.datetime.now(tz=_dt.timezone.utc)
+    return _dt.datetime.now(tz=_dt.UTC)
 
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -328,7 +331,7 @@ class TestReferenceRange:
 
         child = interpret(db, "biomarker:alp", 200.0, "unit:U_per_L",
                           age_years=5, sex="any")
-        # 200 U/L is normal for a 5-year-old (100–350) → in_range.
+        # 200 U/L is normal for a 5-year-old (100-350) -> in_range.
         assert child.direction == "in_range"
         assert child.matched_range.age_min_years == 1
         assert child.provenance.source_version == "peds"
@@ -391,7 +394,7 @@ class TestReferenceRange:
         assert n.risk_level == "informational"
         assert n.escalation_required is False
 
-        # Prediabetes range (5.7–6.4) → mildly high (deviation ~14%)
+        # Prediabetes range (5.7-6.4) -> mildly high (deviation ~14%)
         mild = interpret(db, "biomarker:hba1c", 6.0, "unit:pct",
                          age_years=40, sex="any")
         assert mild.direction == "high"

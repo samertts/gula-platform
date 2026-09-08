@@ -13,8 +13,6 @@ caller decides whether to reject the value or defer to a legacy engine.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -32,7 +30,7 @@ def convert(
     from_unit_key: str,
     to_unit_key: str,
     *,
-    concept_scope_key: Optional[str] = None,
+    concept_scope_key: str | None = None,
 ) -> float:
     """Convert ``value`` from ``from_unit_key`` to ``to_unit_key``.
 

@@ -26,12 +26,17 @@ and is logged (§7 labeling pipeline) so the physician review console can
 propose it as a candidate synonym.
 """
 
+# ruff: noqa: RUF001, RUF002
+# This module's job is to fold visually-ambiguous Arabic characters into a
+# canonical form; the "ambiguous" characters are the whole point, so we
+# suppress the RUF00x class of lints at file scope rather than sprinkling
+# per-line noqa comments through the fold tables and their docstrings.
 from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -41,13 +46,12 @@ from ...models.medical_ontology import (
     MedicalOntologySynonym,
 )
 
-
 # ─── Character folding ───────────────────────────────────────────────────────
 
 # Combining marks + tatweel that MSA-unpointed Arabic medical text can drop
 # without loss. Kept as a set for O(1) membership tests.
 _ARABIC_DIACRITICS: frozenset[str] = frozenset(
-    chr(c) for c in list(range(0x064B, 0x0660)) + [0x0640]
+    chr(c) for c in [*range(0x064B, 0x0660), 0x0640]
 )
 
 # Common Arabic letter normalisations — alef variants → bare alef, ya → alef
@@ -98,8 +102,7 @@ def normalize_text(text: str) -> str:
     s = "".join(c for c in s if c not in _ARABIC_DIACRITICS)
     s = "".join(_ARABIC_LETTER_FOLDS.get(c, c) for c in s)
     s = _maybe_apply_arabizi(s)
-    s = _WS_RE.sub(" ", s).strip()
-    return s
+    return _WS_RE.sub(" ", s).strip()
 
 
 def _maybe_apply_arabizi(s: str) -> str:
@@ -129,10 +132,11 @@ def _maybe_apply_arabizi(s: str) -> str:
 
     out = []
     for i, ch in enumerate(s):
-        if ch in _ARABIZI_TABLE:
-            if is_arabic(nearest(i, -1)) or is_arabic(nearest(i, +1)):
-                out.append(_ARABIZI_TABLE[ch])
-                continue
+        if ch in _ARABIZI_TABLE and (
+            is_arabic(nearest(i, -1)) or is_arabic(nearest(i, +1))
+        ):
+            out.append(_ARABIZI_TABLE[ch])
+            continue
         out.append(ch)
     return "".join(out)
 
@@ -151,11 +155,11 @@ class ConceptMatch:
     concept_key: str
     concept_id: object
     category: str
-    display_en: Optional[str]
-    display_ar: Optional[str]
+    display_en: str | None
+    display_ar: str | None
     matched_term: str
     matched_locale: str
-    matched_variant: Optional[str]
+    matched_variant: str | None
     confidence: float
 
 
@@ -175,9 +179,9 @@ def resolve_concept(
     session: Session,
     text: str,
     *,
-    locales: Optional[Iterable[str]] = None,
+    locales: Iterable[str] | None = None,
     min_confidence: float = 0.0,
-) -> Optional[ConceptMatch]:
+) -> ConceptMatch | None:
     """Resolve ``text`` to a canonical concept.
 
     ``locales`` narrows the search — pass ``['ar', 'ar-IQ']`` when the user
@@ -214,7 +218,7 @@ def resolve_concept(
         return None
 
     preferred_locales = set(locales) if locales else None
-    best: Optional[ConceptMatch] = None
+    best: ConceptMatch | None = None
     best_score = -1.0
 
     for row in rows:

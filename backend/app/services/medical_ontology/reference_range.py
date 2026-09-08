@@ -33,7 +33,7 @@ match but are less specific than an exact demographic row.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -44,32 +44,31 @@ from ...models.medical_ontology import (
 )
 from .units import UnitConversionError, convert
 
-
 # ─── Value objects ───────────────────────────────────────────────────────────
 
 @dataclass(frozen=True)
 class Provenance:
     source: str
-    source_version: Optional[str]
-    source_url: Optional[str]
-    notes: Optional[str]
+    source_version: str | None
+    source_url: str | None
+    notes: str | None
 
 
 @dataclass(frozen=True)
 class MatchedRange:
     range_id: Any
     unit_key: str
-    low: Optional[float]
-    high: Optional[float]
-    critical_low: Optional[float]
-    critical_high: Optional[float]
+    low: float | None
+    high: float | None
+    critical_low: float | None
+    critical_high: float | None
     specificity_score: int
-    age_min_years: Optional[float]
-    age_max_years: Optional[float]
+    age_min_years: float | None
+    age_max_years: float | None
     sex: str
     pregnancy_status: str
-    specimen_key: Optional[str]
-    analyzer: Optional[str]
+    specimen_key: str | None
+    analyzer: str | None
 
 
 @dataclass(frozen=True)
@@ -83,7 +82,7 @@ class Interpretation:
     provenance: Provenance
     direction: str          # 'low' | 'high' | 'in_range'
     level: str              # 'normal' | 'mildly_abnormal' | ... | 'critical'
-    deviation_pct: Optional[float]
+    deviation_pct: float | None
     risk_level: str         # 'informational' ... 'emergency_risk'
     escalation_required: bool
     warnings: list[str] = field(default_factory=list)
@@ -103,12 +102,12 @@ def interpret(
     value: float,
     unit_key: str,
     *,
-    age_years: Optional[float],
+    age_years: float | None,
     sex: str = "any",
     pregnancy_status: str = "any",
-    specimen: Optional[str] = None,
-    analyzer: Optional[str] = None,
-    lab_id: Optional[int] = None,
+    specimen: str | None = None,
+    analyzer: str | None = None,
+    lab_id: int | None = None,
 ) -> Interpretation:
     """Interpret ``value`` against the demographic-aware reference ranges.
 
@@ -217,7 +216,7 @@ def _load_candidates(
     session: Session,
     concept_id: Any,
     unit_key: str,
-    lab_id: Optional[int],
+    lab_id: int | None,
 ) -> list[MedicalOntologyReferenceRange]:
     stmt = (
         select(MedicalOntologyReferenceRange)
@@ -238,12 +237,12 @@ def _load_candidates(
 def _specificity_score(
     r: MedicalOntologyReferenceRange,
     *,
-    age_years: Optional[float],
+    age_years: float | None,
     sex: str,
     pregnancy_status: str,
-    specimen: Optional[str],
-    analyzer: Optional[str],
-    lab_id: Optional[int],
+    specimen: str | None,
+    analyzer: str | None,
+    lab_id: int | None,
 ) -> int:
     """Higher is better; -1 = row is not eligible."""
     if age_years is not None:
@@ -252,10 +251,9 @@ def _specificity_score(
         if r.age_max_years is not None and age_years > r.age_max_years:
             return -1
 
-    if r.sex not in ("any", sex, "any" if sex == "any" else None):
-        # r.sex is 'male' or 'female' — must equal input; 'any' matches all
-        if r.sex != sex:
-            return -1
+    # r.sex is 'male' | 'female' | 'any'; 'any' matches any input.
+    if r.sex not in ("any", sex):
+        return -1
 
     if r.pregnancy_status not in ("any", pregnancy_status):
         # Row is pregnancy-scoped — only match when the input matches exactly.
@@ -299,7 +297,7 @@ def _specificity_score(
 def _classify(
     value: float,
     r: MedicalOntologyReferenceRange,
-) -> tuple[str, str, Optional[float]]:
+) -> tuple[str, str, float | None]:
     """Return ``(direction, level, deviation_pct)`` for value vs range."""
     if r.critical_low is not None and value <= r.critical_low:
         return "low", "critical", None

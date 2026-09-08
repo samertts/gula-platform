@@ -30,21 +30,19 @@ import datetime as _dt
 import logging
 import os
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 try:
     import yaml  # PyYAML — already in requirements.txt
 except ImportError:  # pragma: no cover - explicit friendly message
-    print("PyYAML is required. Install with: pip install pyyaml", file=sys.stderr)
+    sys.stderr.write("PyYAML is required. Install with: pip install pyyaml\n")
     sys.exit(1)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND = REPO_ROOT / "backend"
 sys.path.insert(0, str(BACKEND))
-
-from sqlalchemy import create_engine, select  # noqa: E402
-from sqlalchemy.orm import Session  # noqa: E402
 
 # Model imports must come after sys.path munging.
 # Loading ``app.models`` registers the ontology tables plus every other ORM
@@ -52,7 +50,6 @@ from sqlalchemy.orm import Session  # noqa: E402
 # Citizen). Without the mpi.models import the mapper configuration blows up
 # on first query because ``Citizen`` lives in a separate package.
 from app import models  # noqa: F401,E402
-from app.services.mpi import models as _mpi_models  # noqa: F401,E402
 from app.models.medical_ontology import (  # noqa: E402
     MedicalOntologyCode,
     MedicalOntologyConcept,
@@ -62,6 +59,9 @@ from app.models.medical_ontology import (  # noqa: E402
     MedicalOntologyUnitConversion,
 )
 from app.services.medical_ontology.normalize import normalize_text  # noqa: E402
+from app.services.mpi import models as _mpi_models  # noqa: F401,E402
+from sqlalchemy import create_engine, select  # noqa: E402
+from sqlalchemy.orm import Session  # noqa: E402
 
 log = logging.getLogger("gula.seed.medical_ontology")
 
@@ -81,7 +81,7 @@ def _load_yaml(path: Path) -> dict[str, Any]:
 # ─── Upsert helpers ──────────────────────────────────────────────────────────
 
 def _now() -> _dt.datetime:
-    return _dt.datetime.now(tz=_dt.timezone.utc)
+    return _dt.datetime.now(tz=_dt.UTC)
 
 
 class Stats:
