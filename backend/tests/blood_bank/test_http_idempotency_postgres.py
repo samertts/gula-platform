@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import os
 import threading
+from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,6 +13,7 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.blood_bank.domain.enums import ComponentStatus, CrossmatchStatus
+from app.clinical.command_guard import ClinicalCommandGuard
 from app.blood_bank.infrastructure.models import (
     BloodReservationModel,
     BloodUnitModel,
@@ -33,11 +36,11 @@ UNIT_ID = "http-replay-unit"
 PATIENT_ID = "synthetic-http-patient"
 
 
-def _session_factory():
+def _session_factory() -> Any:
     return sessionmaker(bind=create_engine(POSTGRES_URL, future=True, pool_size=8, max_overflow=0), expire_on_commit=False)
 
 
-def _prepare_issue(Session) -> tuple[str, str]:
+def _prepare_issue(Session: Any) -> tuple[str, str]:
     request_id = "http-issue-request"
     issue_unit_id = "http-issue-unit"
     now = datetime.now(UTC)
@@ -58,7 +61,7 @@ def _prepare_issue(Session) -> tuple[str, str]:
     return request_id, issue_unit_id
 
 
-def _prepare_issued(Session) -> str:
+def _prepare_issued(Session: Any) -> str:
     issued_unit_id = "http-issued-id-or-unit"
     now = datetime.now(UTC)
     with Session() as session:
@@ -77,7 +80,7 @@ def _prepare_issued(Session) -> str:
     return issued_unit_id
 
 
-def _prepare(Session) -> None:
+def _prepare(Session: Any) -> None:
     now = datetime.now(UTC)
     with Session() as session:
         session.query(ClinicalCommandReceipt).filter(ClinicalCommandReceipt.lab_id == LAB_ID).delete(synchronize_session=False)
@@ -96,8 +99,8 @@ def _prepare(Session) -> None:
         session.commit()
 
 
-def _client(Session, actor_lab_id: int = LAB_ID, actor_id: int = ACTOR_ID):
-    def db_override():
+def _client(Session: Any, actor_lab_id: int = LAB_ID, actor_id: int = ACTOR_ID) -> TestClient:
+    def db_override() -> Iterator[Any]:
         session = Session()
         try:
             yield session
@@ -113,7 +116,7 @@ def _payload(order_id: str = "http-order-1") -> dict[str, str]:
     return {"unit_id": UNIT_ID, "order_id": order_id, "patient_id": PATIENT_ID, "facility_id": FACILITY_ID}
 
 
-def _issue_counts(Session, request_id: str, unit_id: str):
+def _issue_counts(Session: Any, request_id: str, unit_id: str) -> dict[str, Any]:
     with Session() as session:
         request = session.query(BloodRequestModel).filter(BloodRequestModel.id == request_id).one()
         return {
@@ -123,13 +126,35 @@ def _issue_counts(Session, request_id: str, unit_id: str):
         }
 
 
-def _counts(Session):
+def _counts(Session: Any) -> dict[str, Any]:
     with Session() as session:
         return {
             "reservations": session.query(BloodReservationModel).filter(BloodReservationModel.lab_id == LAB_ID, BloodReservationModel.unit_id == UNIT_ID, BloodReservationModel.status == "reserved").count(),
             "movements": session.query(InventoryMovementModel).filter(InventoryMovementModel.lab_id == LAB_ID, InventoryMovementModel.unit_id == UNIT_ID, InventoryMovementModel.movement_type == "reserved").count(),
             "unit_status": session.query(BloodUnitModel).filter(BloodUnitModel.id == UNIT_ID).one().status,
         }
+
+
+def _claims(Session: Any, operation: str, key: str) -> list[tuple[str, str]]:
+    """Return the durable idempotency claims for one actor/operation/key."""
+    with Session() as session:
+        receipts = (
+            session.query(ClinicalCommandReceipt)
+            .filter(
+                ClinicalCommandReceipt.lab_id == LAB_ID,
+                ClinicalCommandReceipt.actor_user_id == ACTOR_ID,
+                ClinicalCommandReceipt.operation == operation,
+                ClinicalCommandReceipt.idempotency_key == key,
+            )
+            .all()
+        )
+        return [(receipt.status, receipt.request_fingerprint) for receipt in receipts]
+
+
+def _conflict_code(response: Any) -> str | None:
+    """The canonical safe error envelope exposes a stable code and no internals."""
+    code: str | None = response.json().get("code")
+    return code
 
 
 def test_http_reservation_replay_has_one_side_effect() -> None:
@@ -142,7 +167,11 @@ def test_http_reservation_replay_has_one_side_effect() -> None:
             second = client.post("/blood-bank/reservations", headers={"Idempotency-Key": key}, json=_payload())
         assert first.status_code == 201
         assert second.status_code == 409
+        assert _conflict_code(second) == "CONFLICT"
         assert _counts(Session) == {"reservations": 1, "movements": 1, "unit_status": ComponentStatus.RESERVED.value}
+        claims = _claims(Session, "blood.reservation.create", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
@@ -173,6 +202,9 @@ def test_http_reservation_same_key_concurrency_has_one_side_effect() -> None:
         assert not errors
         assert sorted(responses) == [201, 409]
         assert _counts(Session) == {"reservations": 1, "movements": 1, "unit_status": ComponentStatus.RESERVED.value}
+        claims = _claims(Session, "blood.reservation.create", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
@@ -203,6 +235,9 @@ def test_http_reservation_concurrent_payload_collision_has_one_side_effect() -> 
         assert not errors
         assert sorted(responses) == [201, 409]
         assert _counts(Session) == {"reservations": 1, "movements": 1, "unit_status": ComponentStatus.RESERVED.value}
+        claims = _claims(Session, "blood.reservation.create", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
@@ -219,7 +254,52 @@ def test_http_issue_replay_has_one_side_effect() -> None:
             second = client.post("/blood-bank/inventory/issue", headers={"Idempotency-Key": key, "If-Match": "1"}, json=body)
         assert first.status_code == 200
         assert second.status_code == 409
+        assert _conflict_code(second) == "CONFLICT"
         assert _issue_counts(Session, request_id, unit_id) == {"fulfilled_units": 1, "unit_status": ComponentStatus.ISSUED.value, "movements": 1}
+        claims = _claims(Session, "blood.issue", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
+    finally:
+        app.dependency_overrides.clear()
+        Session.kw["bind"].dispose()
+
+
+def test_http_issue_same_key_concurrency_has_one_side_effect() -> None:
+    """Two concurrent HTTP issues under one Idempotency-Key commit exactly one effect."""
+    Session = _session_factory()
+    request_id, unit_id = _prepare_issue(Session)
+    key = "HTTP-ISSUE-CONCURRENT-001"
+    body = {"request_id": request_id, "quantity": 1}
+    barrier = threading.Barrier(2)
+    responses = []
+    errors = []
+
+    def send() -> None:
+        try:
+            with _client(Session) as client:
+                barrier.wait(timeout=10)
+                responses.append(client.post("/blood-bank/inventory/issue", headers={"Idempotency-Key": key, "If-Match": "1"}, json=body).status_code)
+        except Exception as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=send) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=45)
+    try:
+        assert not errors
+        assert sorted(responses) == [200, 409]
+        assert _issue_counts(Session, request_id, unit_id) == {"fulfilled_units": 1, "unit_status": ComponentStatus.ISSUED.value, "movements": 1}
+        claims = _claims(Session, "blood.issue", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
+        # The stored fingerprint is the canonical one for this exact command.
+        assert claims[0][1] == ClinicalCommandGuard._fingerprint("blood.issue", "blood_request", request_id, body)
+        # No partially committed state: one issued unit and one claim for the whole lab.
+        with Session() as session:
+            assert session.query(BloodUnitModel).filter(BloodUnitModel.lab_id == LAB_ID, BloodUnitModel.status == ComponentStatus.ISSUED.value).count() == 1
+            assert session.query(ClinicalCommandReceipt).filter(ClinicalCommandReceipt.lab_id == LAB_ID, ClinicalCommandReceipt.operation == "blood.issue").count() == 1
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
@@ -284,10 +364,16 @@ def test_http_reservation_payload_collision_has_no_second_side_effect() -> None:
     try:
         with _client(Session) as client:
             first = client.post("/blood-bank/reservations", headers={"Idempotency-Key": key}, json=_payload("http-order-a"))
+            first_fingerprint = _claims(Session, "blood.reservation.create", key)[0][1]
             second = client.post("/blood-bank/reservations", headers={"Idempotency-Key": key}, json=_payload("http-order-b"))
         assert first.status_code == 201
         assert second.status_code == 409
+        assert _conflict_code(second) == "CONFLICT"
         assert _counts(Session) == {"reservations": 1, "movements": 1, "unit_status": ComponentStatus.RESERVED.value}
+        claims = _claims(Session, "blood.reservation.create", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
+        assert claims[0][1] == first_fingerprint
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()

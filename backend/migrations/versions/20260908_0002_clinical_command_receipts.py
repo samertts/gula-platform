@@ -1,7 +1,13 @@
 """Add durable receipts for safety-critical clinical commands.
 
-Revision ID: 20260819_0003
-Revises: 20260819_0002
+Revision ID: 20260908_0002
+Revises: 20260901_0004
+
+This migration originally declared revision id 20260819_0003, which was already
+used by 20260819_0003_research_entities.  Alembic resolved that id to the research
+migration, so this one was unreachable and never ran on any database.  It is
+re-identified here and chained into the Blood Bank lineage ahead of the head
+merge, so it applies to fresh and existing databases alike.  The schema operations are unchanged.
 """
 from __future__ import annotations
 
@@ -9,13 +15,21 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "20260819_0003"
-down_revision = "20260819_0002"
+revision = "20260908_0002"
+down_revision = "20260901_0004"
 branch_labels = None
 depends_on = None
 
 
+def _has_table(name: str) -> bool:
+    return sa.inspect(op.get_bind()).has_table(name)
+
+
 def upgrade() -> None:
+    if _has_table("clinical_command_receipts"):
+        # An operator may have created the table by hand while this migration was
+        # unreachable; adopt it rather than failing the upgrade.
+        return
     op.create_table(
         "clinical_command_receipts",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -45,5 +59,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if not _has_table("clinical_command_receipts"):
+        return
     op.drop_index("ix_clinical_command_receipt_resource", table_name="clinical_command_receipts")
     op.drop_table("clinical_command_receipts")

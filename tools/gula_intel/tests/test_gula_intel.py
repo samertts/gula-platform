@@ -1,0 +1,233 @@
+"""Focused tests for the deterministic platform core.
+
+Each test proves one capability from the acceptance criteria.  The detectors are
+exercised against synthetic fixtures so a pass cannot depend on the current
+state of the repository, plus one live assertion that the engine agrees with
+independently established ground truth.
+"""
+from __future__ import annotations
+
+import pathlib
+import sys
+from typing import Any
+
+import pytest
+
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2]))
+
+from gula_intel import detectors, impact, inventory, registry
+from gula_intel.ai_boundary import AdapterViolation, assert_capability, build_context
+from gula_intel.model import (
+    CheckResult,
+    DetectorState,
+    Finding,
+    FindingState,
+    Severity,
+    Status,
+    stable_id,
+)
+
+
+def _inv(**kw: Any) -> inventory.Inventory:
+    base: dict[str, Any] = {
+        "tables": {},
+        "migrations": {},
+        "endpoints": 0,
+        "modules": [],
+        "transition_tables": {},
+        "sources": {},
+    }
+    base.update(kw)
+    return inventory.Inventory(**base)
+
+
+# --- Evidence model: the mandatory not-run distinction -----------------------
+
+def test_detector_that_did_not_run_is_unknown_not_verified() -> None:
+    result = CheckResult("R", DetectorState.NOT_RUN)
+    assert result.status is Status.UNKNOWN
+    assert result.status is not Status.VERIFIED
+
+
+def test_clean_run_is_verified_and_findings_are_failed() -> None:
+    assert CheckResult("R", DetectorState.RAN_CLEAN).status is Status.VERIFIED
+    assert CheckResult("R", DetectorState.RAN_FOUND).status is Status.FAILED
+    assert CheckResult("R", DetectorState.RAN_NO_EVIDENCE).status is Status.PARTIALLY_VERIFIED
+
+
+def test_missing_migrations_directory_reports_not_run() -> None:
+    result = detectors.detect_duplicate_revisions(_inv())
+    assert result.detector_state is DetectorState.NOT_RUN
+    assert result.status is Status.UNKNOWN
+
+
+# --- Detectors --------------------------------------------------------------
+
+def test_duplicate_revision_is_detected() -> None:
+    migrations = {"a1": {"file": "a.py", "downs": [], "files": ["a.py", "b.py"]}}
+    result = detectors.detect_duplicate_revisions(_inv(migrations=migrations))
+    assert result.status is Status.FAILED
+    assert "a.py" in result.findings[0].affected
+
+
+def test_multiple_heads_is_detected_and_single_head_is_clean() -> None:
+    two = {"a": {"file": "a.py", "downs": [], "files": ["a.py"]},
+           "b": {"file": "b.py", "downs": [], "files": ["b.py"]}}
+    assert detectors.detect_multiple_heads(_inv(migrations=two)).status is Status.FAILED
+    one = {"a": {"file": "a.py", "downs": [], "files": ["a.py"]},
+           "b": {"file": "b.py", "downs": ["a"], "files": ["b.py"]}}
+    assert detectors.detect_multiple_heads(_inv(migrations=one)).status is Status.VERIFIED
+
+
+def test_table_owned_by_two_packages_is_detected() -> None:
+    result = detectors.detect_table_ownership_conflicts(_inv(tables={"t": ["a", "b"], "u": ["a"]}))
+    assert result.status is Status.FAILED
+    assert len(result.findings) == 1
+    assert result.findings[0].architecture_decision_required is True
+
+
+def test_duplicate_state_key_is_per_dict_not_per_file() -> None:
+    """A name reused by two separate maps is not a collision; within one map it is."""
+    two_maps = {"f.py": [[("reserved", 1), ("issued", 2), ("x", 3), ("y", 4)],
+                         [("reserved", 9), ("cancelled", 10), ("p", 11), ("q", 12)]]}
+    assert detectors.detect_duplicate_state_keys(_inv(transition_tables=two_maps)).status is Status.VERIFIED
+    one_map = {"f.py": [[("reserved", 1), ("issued", 2), ("x", 3), ("reserved", 9)]]}
+    result = detectors.detect_duplicate_state_keys(_inv(transition_tables=one_map))
+    assert result.status is Status.FAILED
+    assert "reserved" in result.findings[0].title
+
+
+# --- Live agreement with independently established ground truth --------------
+
+def test_engine_reproduces_the_known_pharmacy_fk_blocker() -> None:
+    """NR-003 was found by running migrations; the static engine must agree."""
+    result = detectors.detect_fk_type_mismatch()
+    assert result.status is Status.FAILED
+    columns = {f.title.split(": ")[1].split(" ->")[0] for f in result.findings}
+    assert {"original_drug_catalog_id", "alternative_drug_catalog_id"} <= columns
+    assert all(f.architecture_decision_required for f in result.findings)
+
+
+def test_repository_migration_graph_is_currently_clean() -> None:
+    inv = inventory.collect()
+    assert detectors.detect_duplicate_revisions(inv).status is Status.VERIFIED
+    assert detectors.detect_multiple_heads(inv).status is Status.VERIFIED
+
+
+# --- Change impact and test selection ---------------------------------------
+
+def test_docs_only_change_has_no_known_impact_and_selects_no_tests() -> None:
+    paths = ["docs/architecture/X.md"]
+    assert impact.analyse(paths)[0].level == impact.NONE
+    assert impact.select_tests(paths) == {}
+    assert "remains valid" in impact.unaffected_note(paths)
+
+
+def test_blood_bank_change_selects_blood_bank_tests_with_a_reason() -> None:
+    selected = impact.select_tests(["backend/app/blood_bank/domain/state_machine.py"])
+    assert "backend/tests/blood_bank/" in selected
+    assert "Blood Bank" in selected["backend/tests/blood_bank/"][0]
+
+
+def test_shared_clinical_guard_change_is_direct_impact() -> None:
+    result = impact.analyse(["backend/app/clinical/command_guard.py"])[0]
+    assert result.level == impact.DIRECT
+    assert "many domains" in result.reason
+
+
+def test_unmapped_path_is_possible_impact_never_safe() -> None:
+    assert impact.analyse(["something/unknown.py"])[0].level == impact.POSSIBLE
+
+
+# --- Recurrence memory ------------------------------------------------------
+
+def _finding(oid: str) -> Finding:
+    return Finding("R", oid, "t", Severity.P1, "c", "d", [], "e")
+
+
+def test_previously_fixed_finding_that_returns_is_reported_as_recurred() -> None:
+    state = {"occurrences": {"x": {"rule_id": "R", "state": FindingState.FIXED.value}}}
+    out = registry.reconcile([CheckResult("R", DetectorState.RAN_FOUND, [_finding("x")])], state, "c1")
+    assert out["transitions"]["x"] == registry.RECURRED
+
+
+def test_new_and_still_open_are_distinguished() -> None:
+    results = [CheckResult("R", DetectorState.RAN_FOUND, [_finding("a")])]
+    assert registry.reconcile(results, {"occurrences": {}}, "c1")["transitions"]["a"] == registry.NEW
+    open_state = {"occurrences": {"a": {"rule_id": "R", "state": FindingState.OPEN.value}}}
+    assert registry.reconcile(results, open_state, "c2")["transitions"]["a"] == registry.STILL_OPEN
+
+
+def test_a_detector_that_did_not_run_cannot_resolve_a_finding() -> None:
+    state = {"occurrences": {"a": {"rule_id": "R", "state": FindingState.OPEN.value}}}
+    out = registry.reconcile([CheckResult("R", DetectorState.NOT_RUN)], state, "c2")
+    assert "a" not in out["transitions"]
+    out2 = registry.reconcile([CheckResult("R", DetectorState.RAN_CLEAN)], state, "c2")
+    assert out2["transitions"]["a"] == registry.RESOLVED
+
+
+def test_occurrence_ids_are_stable_across_runs() -> None:
+    assert stable_id("R", "t") == stable_id("R", "t")
+    assert stable_id("R", "t") != stable_id("R", "u")
+
+
+# --- AI boundary ------------------------------------------------------------
+
+def test_ai_adapter_cannot_claim_a_deterministic_decision() -> None:
+    for forbidden in ("mark_finding_verified", "decide_production_readiness", "authorize_user"):
+        with pytest.raises(AdapterViolation):
+            assert_capability(forbidden)
+    assert_capability("explain")  # permitted
+
+
+def test_context_for_ai_contains_only_already_decided_facts() -> None:
+    ctx = build_context([CheckResult("R", DetectorState.RAN_CLEAN)], {"tables": 1})
+    assert ctx["checks"][0]["status"] == Status.VERIFIED.value
+    assert "mark_finding_verified" in ctx["contract"]["forbidden"]
+
+
+def test_core_imports_no_ai_provider() -> None:
+    for module in ("model", "inventory", "detectors", "impact", "registry"):
+        source = (pathlib.Path(__file__).resolve().parents[1] / f"{module}.py").read_text()
+        for banned in ("anthropic", "openai", "requests.post", "httpx"):
+            assert banned not in source, f"{module}.py must not reach a model provider"
+
+
+# --- Development planner ----------------------------------------------------
+
+def test_docs_only_change_is_low_risk_and_requires_no_tests() -> None:
+    from gula_intel import planner
+    result = planner.plan(["docs/x.md"], include_open_blockers=False)
+    assert result.risk == planner.LOW
+    assert result.required_tests == {}
+    assert result.migration_implications == []
+
+
+def test_migration_change_is_critical_and_demands_a_clean_database_proof() -> None:
+    from gula_intel import planner
+    result = planner.plan(["backend/migrations/versions/x.py"], include_open_blockers=False)
+    assert result.risk == planner.CRITICAL
+    assert any("clean-database" in e for e in result.evidence_required)
+    assert "backend/tests/migrations/" in result.required_tests
+
+
+def test_shared_clinical_guard_change_is_high_risk_with_safety_implications() -> None:
+    from gula_intel import planner
+    result = planner.plan(["backend/app/clinical/command_guard.py"], include_open_blockers=False)
+    assert result.risk == planner.HIGH
+    assert result.clinical_safety_implications
+    assert result.security_implications
+
+
+def test_risk_factors_are_explicit_and_explainable() -> None:
+    from gula_intel import planner
+    result = planner.plan(["backend/app/blood_bank/x.py"], include_open_blockers=False)
+    assert result.factors and all({"factor", "weight", "matched"} <= set(f) for f in result.factors)
+
+
+def test_planner_never_claims_deployment_safety() -> None:
+    from gula_intel import planner
+    for paths in (["docs/x.md"], ["backend/migrations/versions/x.py"]):
+        blob = str(planner.plan(paths, include_open_blockers=False).to_dict()).lower()
+        assert "safe to deploy" not in blob
+        assert "production ready" not in blob
