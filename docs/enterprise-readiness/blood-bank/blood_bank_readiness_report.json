@@ -117,31 +117,60 @@
       "re_executed": "2026-09-08, passed"
     },
     "blood_bank_regression_suite": {
-      "passed": 29,
+      "passed": 32,
       "failed": 0,
       "skipped": 0,
       "command": "pytest tests/blood_bank/ -p no:randomly",
-      "note": "27 after Phase 14B.1; the two Phase 14C post-commit retry proofs bring the suite to 29"
+      "note": "29 after Phase 14C; Phase 14D adds one lifecycle E2E and two state-machine regression tests"
     },
     "postgres_service_and_claim_tests": "passed",
     "targeted_migrations": "passed through 20260901_0004",
     "compile": true,
     "git_diff_check": true,
-    "http_status_quality_cleanup": "passed: legacy 422 fallback no longer eagerly evaluates the deprecated constant"
+    "http_status_quality_cleanup": "passed: legacy 422 fallback no longer eagerly evaluates the deprecated constant",
+    "wave1_lifecycle_e2e": {
+      "result": "passed",
+      "test": "tests/blood_bank/test_wave1_lifecycle_e2e.py::test_wave1_reserve_trace_release_lifecycle",
+      "scope": "Blood Bank only; no platform-wide E2E was run",
+      "path": "POST /blood-bank/reservations -> GET /blood-bank/units/{id}/traceability -> POST /blood-bank/reservations/{id}/release -> GET traceability, against real PostgreSQL with the real FastAPI app, real auth/authorisation and the real clinical command guard",
+      "evidence": "reserve 201 and unit reserved; traceability 200; release 200 and unit back to available with no reservation left in reserved state; exactly one completed claim for blood.reservation.create and one for blood.reservation.release; exactly one reserved inventory movement"
+    },
+    "completed_replay_response": {
+      "result": "verified by existing Phase 14B/14B.1/14C evidence; no retest performed",
+      "behaviour": "a completed command replayed under the same Idempotency-Key returns a deterministic 409 with the canonical safe envelope code CONFLICT and creates no second effect",
+      "covered_by": [
+        "reservation replay (14B)",
+        "issue replay (14B)",
+        "concurrent same-key reservation and issue (14B/14B.1)",
+        "post-commit retry for reservation and issue (14C)"
+      ],
+      "design_note": "the original 2xx response payload is deliberately not persisted and not replayed; the contract is a deterministic conflict, not a stored-response replay. Stored-response replay is an enhancement, not a Wave 1 gap."
+    },
+    "state_machine_duplicate_key_fix": {
+      "defect": "app/blood_bank/domain/state_machine.py declared the key \"reserved\" twice in the single _TRANSITIONS table shared by all Blood Bank entities. The later order-lifecycle entry silently shadowed the blood-unit entry, so reserved -> available and reserved -> released were rejected and a reserved unit could never be returned to the available pool.",
+      "discovered_by": "the Wave 1 lifecycle E2E: POST /blood-bank/reservations/{id}/release returned 422 'Invalid blood_unit transition: reserved -> available'",
+      "fix": "merged the two sets into one \"reserved\" entry and removed the duplicate key; no redesign, no other transition changed",
+      "audit": "an AST scan of _TRANSITIONS confirms 38 keys, 38 unique, no remaining shadowed key",
+      "regression_tests": [
+        "tests/blood_bank/test_domain_safety.py::test_reserved_unit_can_return_to_the_available_pool",
+        "tests/blood_bank/test_domain_safety.py::test_reserved_order_transitions_are_still_allowed"
+      ],
+      "residual_risk": "the table remains entity-agnostic, so the merged set is the union of the unit and order transitions and is slightly wider for orders. Per-entity keying is the correct structural fix and is deferred to a later Blood Bank hardening wave."
+    }
   },
   "not_verified": {
-    "completed_replay_response": "canonical behavior remains deterministic 409; original response payload is not persisted/replayed",
-    "full_e2e": "NOT_VERIFIED: not run",
-    "full_backend_regression": "NOT_VERIFIED: not run; the Phase 14B change is additive test-only and confined to the Blood Bank suite",
-    "production_dependency_remediation": "Dependabot findings remain on the default branch and were not changed in this branch",
-    "general_clinical_audit_chain_concurrency": "not separately load-tested"
+    "full_backend_regression": "DEFERRED to the platform-wide regression wave. Not required for Wave 1: the Phase 14C production change is confined to the Blood Bank routes plus one entry in the test-only failure-injection allowlist, and the Phase 14D change is confined to the Blood Bank state machine. maybe_fail call sites are only the Blood Bank routes and the shared guard's pre-existing after_audit_preparation stage, so there is no cross-domain impact. The 32-test Blood Bank suite is the narrower sufficient regression.",
+    "production_dependency_remediation": "SPLIT in Phase 14D: signxml is not a Wave 1 production blocker (see blocked.signxml_lock_gap); the Alembic head state IS a Wave 1 production blocker (see blocked.alembic_multiple_heads_blocks_fresh_deploy).",
+    "general_clinical_audit_chain_concurrency": "DEFERRED to the global Audit/Security/Integrity wave. No Blood Bank-specific requirement remains: Blood Bank command concurrency is proven in Phase 14B/14B.1 and the audit write shares the guarded transaction. Platform-wide hash-chain behaviour under load is not a Wave 1 Blood Bank item."
   },
   "blocked": {
     "clinical_command_receipts_lineage": "BLOCKED: clinical_command_receipts, the durable idempotency claim table, is created only by migration 20260819_0003_clinical_command_receipts, which sits on a different Alembic head from the Blood Bank lineage. Upgrading to 20260901_0004 alone leaves the table absent and every guarded Blood Bank write fails with UndefinedTable. The verification database required that migration's own DDL to be applied separately. Root cause is the pre-existing duplicate revision id 20260819_0003 and the unrelated multiple-head state, which are out of scope for this phase and were not modified.",
     "requirements_lock_missing_signxml": "BLOCKED for lock-only installs: signxml>=4.2.0 is declared in backend/requirements.txt but absent from backend/requirements-lock.txt, so an environment built from the lock file alone cannot import app.security.saml_service and therefore cannot start the application. Documented only; the dependency manifests were not modified in this phase.",
     "alembic_upgrade_head": "pre-existing duplicate revision 20260819_0003 and unrelated multiple heads; unchanged",
     "github_actions_artifact_quota": "BLOCKED and unchanged: the GitHub Actions artifact storage quota is exhausted account-wide, failing several CI jobs purely at the upload-artifact step. This session has no permission to re-run failed jobs (403 Resource not accessible by integration). Not investigated further in Phase 14C.",
-    "frontend_mobile_bottom_nav_test": "BLOCKED and unchanged: a pre-existing failing test in frontend-v3/src/components/navigation/MobileBottomNav.test.tsx, unrelated to the Blood Bank work and untouched by this branch."
+    "frontend_mobile_bottom_nav_test": "BLOCKED and unchanged: a pre-existing failing test in frontend-v3/src/components/navigation/MobileBottomNav.test.tsx, unrelated to the Blood Bank work and untouched by this branch.",
+    "alembic_multiple_heads_blocks_fresh_deploy": "BLOCKER for Wave 1 production operation, executed evidence, not fixed in this phase. On a clean PostgreSQL database both 'alembic upgrade head' and 'alembic upgrade heads' FAIL and create no tables at all: head fails with 'Multiple head revisions are present', heads fails with 'Requested revision 20260819_0004 overlaps with other requested revisions 20260819_0003'. alembic heads reports three heads (20260819_0004, 20260820_0005, 20260901_0004) and warns 'Revision 20260819_0003 is present more than once'. Consequence: a fresh deploy cannot create clinical_command_receipts, the table every guarded Blood Bank write depends on. Root cause is the pre-existing duplicate revision id and multiple-head state, explicitly out of scope for phases 14B-14D. Wave 1 must not be certified for production until this is remediated.",
+    "signxml_lock_gap": "NOT a Wave 1 production blocker. Both backend/Dockerfile and the root Dockerfile install from backend/requirements.txt, which declares signxml>=4.2.0, so the production image builds correctly. The gap affects only environments built from backend/requirements-lock.txt. Deferred to platform dependency hardening."
   },
   "warnings": [
     "FastAPI TestClient reports an existing Starlette/httpx deprecation warning",

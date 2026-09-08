@@ -60,7 +60,10 @@ _TRANSITIONS: dict[str, set[str]] = {
     "quarantined": {"testing", "released", "discarded"},
     "released": {"reserved", "issued", "expired", "discarded", "quarantined"},
     "available": {"reserved", "issued", "expired", "discarded", "quarantined"},
-    "reserved": {"released", "available", "issued", "expired", "discarded"},
+    # This table is shared by every Blood Bank entity, so a state name may only
+    # appear once: a repeated key silently shadows the earlier entry.  "reserved"
+    # is reached by both a blood unit and an order, so both sets are merged here.
+    "reserved": {"released", "available", "issued", "expired", "discarded", "cancelled"},
     "issued": {"received_at_bedside", "returned", "transfused", "discarded", "quarantined"},
     "received_at_bedside": {"verification", "returned"},
     "transfused": {"discarded", "quarantined"},
@@ -71,7 +74,6 @@ _TRANSITIONS: dict[str, set[str]] = {
     "reviewed": {"compatibility_pending", "ready", "rejected", "cancelled"},
     "compatibility_pending": {"ready", "rejected", "cancelled"},
     "ready": {"reserved", "cancelled", "expired"},
-    "reserved": {"issued", "cancelled", "expired"},
     "issued_order": {"completed", "cancelled"},
     "collected": {"identified", "rejected"},
     "identified": {"received", "rejected"},
