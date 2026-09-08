@@ -16,7 +16,7 @@ import json
 import subprocess
 import sys
 
-from . import detectors, impact, inventory, registry
+from . import detectors, impact, inventory, planner, registry
 from .model import Health, Severity
 
 
@@ -45,11 +45,17 @@ def _health(results: list) -> Health:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="gula-intel", description=__doc__)
-    parser.add_argument("command", choices=["health", "findings", "inspect", "impact", "tests-for"])
+    parser.add_argument("command", choices=["health", "findings", "inspect", "impact", "tests-for", "plan"])
     parser.add_argument("paths", nargs="*")
     parser.add_argument("--json", action="store_true", help="machine-readable output")
     parser.add_argument("--write-state", action="store_true", help="persist recurrence memory")
     args = parser.parse_args(argv)
+
+    if args.command == "plan":
+        if not args.paths:
+            parser.error("plan requires at least one path")
+        print(_render(planner.plan(args.paths).to_dict()))
+        return 0
 
     if args.command in {"impact", "tests-for"}:
         if not args.paths:

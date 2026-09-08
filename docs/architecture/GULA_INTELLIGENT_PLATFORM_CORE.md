@@ -90,6 +90,20 @@ runtime service, so it adds no API surface to the application. No shell executio
 user input, no patient data touched, no network calls. Analysis is static and bounded:
 no polling, no repeated full-repository passes, no AI calls.
 
+## 7b. Development planner
+
+`planner.py` turns a set of changed paths into a reviewable plan: affected components,
+direct and indirect dependencies, required and optional tests, evidence required,
+migration/security/clinical-safety implications, open blockers, architecture decisions,
+and a minimum safe change boundary.
+
+Risk is `LOW` / `MODERATE` / `HIGH` / `CRITICAL`, derived from **explicit factors that
+are reported alongside the score**, so the classification can be argued with rather than
+trusted. A migration change is `CRITICAL` and demands a clean-database proof; a change to
+the shared clinical guard is `HIGH` and pulls in safety and security implications.
+
+The planner never emits "safe to deploy" — a test enforces that.
+
 ## 8. Limits
 
 - Five rules only. The long detector list in the brief is **NOT STARTED**, not clean.
