@@ -132,6 +132,27 @@ def _counts(Session):
         }
 
 
+def _claims(Session, operation: str, key: str) -> list[tuple[str, str]]:
+    """Return the durable idempotency claims for one actor/operation/key."""
+    with Session() as session:
+        receipts = (
+            session.query(ClinicalCommandReceipt)
+            .filter(
+                ClinicalCommandReceipt.lab_id == LAB_ID,
+                ClinicalCommandReceipt.actor_user_id == ACTOR_ID,
+                ClinicalCommandReceipt.operation == operation,
+                ClinicalCommandReceipt.idempotency_key == key,
+            )
+            .all()
+        )
+        return [(receipt.status, receipt.request_fingerprint) for receipt in receipts]
+
+
+def _conflict_code(response) -> str:
+    """The canonical safe error envelope exposes a stable code and no internals."""
+    return response.json().get("code")
+
+
 def test_http_reservation_replay_has_one_side_effect() -> None:
     Session = _session_factory()
     _prepare(Session)
@@ -142,7 +163,11 @@ def test_http_reservation_replay_has_one_side_effect() -> None:
             second = client.post("/blood-bank/reservations", headers={"Idempotency-Key": key}, json=_payload())
         assert first.status_code == 201
         assert second.status_code == 409
+        assert _conflict_code(second) == "CONFLICT"
         assert _counts(Session) == {"reservations": 1, "movements": 1, "unit_status": ComponentStatus.RESERVED.value}
+        claims = _claims(Session, "blood.reservation.create", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
@@ -173,6 +198,9 @@ def test_http_reservation_same_key_concurrency_has_one_side_effect() -> None:
         assert not errors
         assert sorted(responses) == [201, 409]
         assert _counts(Session) == {"reservations": 1, "movements": 1, "unit_status": ComponentStatus.RESERVED.value}
+        claims = _claims(Session, "blood.reservation.create", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
@@ -203,6 +231,9 @@ def test_http_reservation_concurrent_payload_collision_has_one_side_effect() -> 
         assert not errors
         assert sorted(responses) == [201, 409]
         assert _counts(Session) == {"reservations": 1, "movements": 1, "unit_status": ComponentStatus.RESERVED.value}
+        claims = _claims(Session, "blood.reservation.create", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
@@ -219,7 +250,11 @@ def test_http_issue_replay_has_one_side_effect() -> None:
             second = client.post("/blood-bank/inventory/issue", headers={"Idempotency-Key": key, "If-Match": "1"}, json=body)
         assert first.status_code == 200
         assert second.status_code == 409
+        assert _conflict_code(second) == "CONFLICT"
         assert _issue_counts(Session, request_id, unit_id) == {"fulfilled_units": 1, "unit_status": ComponentStatus.ISSUED.value, "movements": 1}
+        claims = _claims(Session, "blood.issue", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
@@ -284,10 +319,16 @@ def test_http_reservation_payload_collision_has_no_second_side_effect() -> None:
     try:
         with _client(Session) as client:
             first = client.post("/blood-bank/reservations", headers={"Idempotency-Key": key}, json=_payload("http-order-a"))
+            first_fingerprint = _claims(Session, "blood.reservation.create", key)[0][1]
             second = client.post("/blood-bank/reservations", headers={"Idempotency-Key": key}, json=_payload("http-order-b"))
         assert first.status_code == 201
         assert second.status_code == 409
+        assert _conflict_code(second) == "CONFLICT"
         assert _counts(Session) == {"reservations": 1, "movements": 1, "unit_status": ComponentStatus.RESERVED.value}
+        claims = _claims(Session, "blood.reservation.create", key)
+        assert len(claims) == 1
+        assert claims[0][0] == "completed"
+        assert claims[0][1] == first_fingerprint
     finally:
         app.dependency_overrides.clear()
         Session.kw["bind"].dispose()
