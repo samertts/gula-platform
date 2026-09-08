@@ -73,20 +73,41 @@
       "external_contract_note": "the safe error envelope returns a generic 409 with code CONFLICT for both an identical replay and a payload reuse; the discriminating guard reason (clinical_command_already_processed vs idempotency_key_reused) is not exposed over HTTP and is observable only on the durable claim record"
     },
     "failure_injection_retry": {
-      "passed": 7,
+      "passed": 9,
       "failed": 0,
-      "boundaries": [
-        "reservation.after_claim",
-        "reservation.after_business_effect",
-        "reservation.after_inventory_movement",
-        "reservation.after_audit_preparation",
-        "issue.after_business_effect",
-        "issue.after_inventory_movement",
-        "issue.after_audit_preparation"
-      ],
-      "evidence": "each injected first request rolled back and a same-key retry produced exactly one final clinical and inventory effect",
-      "mechanism": "test-only and gated by ENV=test, RUNTIME_MODE=test, and explicit GULA_TEST_FAILURE_STAGE",
-      "re_executed": "2026-09-08, passed as part of the Blood Bank suite"
+      "skipped": 0,
+      "executed_on": "2026-09-08 against PostgreSQL 16.13 with the real FastAPI app and TestClient",
+      "class_a_failure_before_business_commit": {
+        "result": "passed",
+        "boundaries": [
+          "reservation.after_claim",
+          "reservation.after_business_effect",
+          "reservation.after_inventory_movement",
+          "reservation.after_audit_preparation",
+          "issue.after_business_effect",
+          "issue.after_inventory_movement",
+          "issue.after_audit_preparation"
+        ],
+        "evidence": "each injected first request returned 500 and rolled back; the same-key retry then succeeded (201 reservation / 200 issue) and produced exactly one clinical effect and one inventory movement",
+        "receipt_evidence": "added in Phase 14C: after the successful retry exactly 1 clinical_command_receipts row exists with status completed, proving the rolled-back claim left no orphan receipt"
+      },
+      "class_b_failure_after_business_commit": {
+        "result": "passed",
+        "tests": [
+          "tests/blood_bank/test_failure_injection_postgres.py::test_reservation_failure_after_commit_retry_does_not_duplicate",
+          "tests/blood_bank/test_failure_injection_postgres.py::test_issue_failure_after_commit_retry_does_not_duplicate"
+        ],
+        "scenario": "failure injected immediately after db.commit(), modelling a committed business transaction whose response never reaches the client",
+        "first_response": "500; the effect is nonetheless durably committed",
+        "retry_response": "409 with the canonical safe envelope code CONFLICT; the existing replay contract, no new API contract was invented",
+        "business_effect": "exactly 1 reservation / exactly 1 issue (fulfilled_units=1, unit status issued); unchanged by the retry",
+        "inventory_movement": "exactly 1 movement of the relevant type for the lab; unchanged by the retry",
+        "idempotency_claims": "exactly 1 clinical_command_receipts row with status completed both before and after the retry",
+        "fingerprint": "the stored request fingerprint is identical before and after the retry",
+        "partial_state": "no partial or orphan state: lab-wide counts of reservations, issued units and movements all remain 1"
+      },
+      "mechanism": "test-only and gated by ENV=test, RUNTIME_MODE=test, an explicit GULA_TEST_FAILURE_STAGE value, and a stage allowlist; Phase 14C added the after_commit stage to that same allowlist and one maybe_fail call after the commit in the reservation and issue routes",
+      "production_safety": "no production bypass, no suppressed exception, no weakened validation; the 27 pre-existing Blood Bank tests run through the same routes with no failure stage set and still pass"
     },
     "authorization_and_namespace": {
       "cross_facility_traceability_idor": "passed: Facility B received 404 for a Facility A unit",
@@ -96,11 +117,11 @@
       "re_executed": "2026-09-08, passed"
     },
     "blood_bank_regression_suite": {
-      "passed": 27,
+      "passed": 29,
       "failed": 0,
       "skipped": 0,
       "command": "pytest tests/blood_bank/ -p no:randomly",
-      "note": "26 before Phase 14B.1; the concurrent HTTP issue proof added by Phase 14B.1 brings the suite to 27"
+      "note": "27 after Phase 14B.1; the two Phase 14C post-commit retry proofs bring the suite to 29"
     },
     "postgres_service_and_claim_tests": "passed",
     "targeted_migrations": "passed through 20260901_0004",
@@ -118,7 +139,9 @@
   "blocked": {
     "clinical_command_receipts_lineage": "BLOCKED: clinical_command_receipts, the durable idempotency claim table, is created only by migration 20260819_0003_clinical_command_receipts, which sits on a different Alembic head from the Blood Bank lineage. Upgrading to 20260901_0004 alone leaves the table absent and every guarded Blood Bank write fails with UndefinedTable. The verification database required that migration's own DDL to be applied separately. Root cause is the pre-existing duplicate revision id 20260819_0003 and the unrelated multiple-head state, which are out of scope for this phase and were not modified.",
     "requirements_lock_missing_signxml": "BLOCKED for lock-only installs: signxml>=4.2.0 is declared in backend/requirements.txt but absent from backend/requirements-lock.txt, so an environment built from the lock file alone cannot import app.security.saml_service and therefore cannot start the application. Documented only; the dependency manifests were not modified in this phase.",
-    "alembic_upgrade_head": "pre-existing duplicate revision 20260819_0003 and unrelated multiple heads; unchanged"
+    "alembic_upgrade_head": "pre-existing duplicate revision 20260819_0003 and unrelated multiple heads; unchanged",
+    "github_actions_artifact_quota": "BLOCKED and unchanged: the GitHub Actions artifact storage quota is exhausted account-wide, failing several CI jobs purely at the upload-artifact step. This session has no permission to re-run failed jobs (403 Resource not accessible by integration). Not investigated further in Phase 14C.",
+    "frontend_mobile_bottom_nav_test": "BLOCKED and unchanged: a pre-existing failing test in frontend-v3/src/components/navigation/MobileBottomNav.test.tsx, unrelated to the Blood Bank work and untouched by this branch."
   },
   "warnings": [
     "FastAPI TestClient reports an existing Starlette/httpx deprecation warning",

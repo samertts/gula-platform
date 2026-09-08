@@ -8,6 +8,9 @@ _ALLOWED_STAGES = {
     "after_business_effect",
     "after_inventory_movement",
     "after_audit_preparation",
+    # Commit succeeded but the client never receives the response.  A retry must
+    # replay, not repeat, the clinical effect.
+    "after_commit",
 }
 
 
