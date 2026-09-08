@@ -1,0 +1,345 @@
+# GULA Medical Ontology — Demographic-Aware Reference Ranges
+#
+# Every entry becomes a row in `medical_ontology_reference_ranges`. The
+# reference-range engine (`services/medical_ontology/reference_range.py`)
+# selects the most-specific matching row for a given
+# (concept_key, value_in_canonical_unit, age_years, sex, pregnancy_status,
+#  specimen, analyzer) tuple.
+#
+# Match specificity (most specific wins):
+#   1. analyzer match
+#   2. pregnancy_status match
+#   3. sex match (male|female > any)
+#   4. age band match (both bounds > one bound > no bound)
+#   5. specimen match
+# `unit` is the canonical unit — inputs in other units are converted first.
+#
+# Ranges express `low` / `high` as the inclusive normal band, and optional
+# `critical_low` / `critical_high` for emergency-risk thresholds. If a value
+# falls into a critical band the engine returns risk_level = 'emergency_risk'
+# with `escalation_required: true`. Values outside normal but not critical
+# are graded on the severity ladder in `severity_bands`.
+#
+# `source` is the authoritative reference; `source_url` links to it where
+# public. `source_version` is the edition string ("CLSI C28-A3", "Mayo 2024",
+# "WHO 2011", …) — required so an older seed can be identified after upgrade.
+
+version: 1
+
+# Default severity bands used when the engine has no per-range override.
+# Percent deviation from the normal band edge → level.
+default_severity_bands:
+  - {level: mildly_abnormal,   deviation_pct_max: 15}
+  - {level: moderately_abnormal, deviation_pct_max: 40}
+  - {level: severely_abnormal, deviation_pct_max: 999}
+
+ranges:
+
+  # ─── Fasting plasma glucose (ADA + WHO) ────────────────────────────────────
+  - concept_key: biomarker:glucose_fasting
+    unit: unit:mg_per_dL
+    age_min_years: 18
+    sex: any
+    low: 70
+    high: 99
+    critical_low: 40
+    critical_high: 400
+    source: ADA
+    source_version: "ADA 2024"
+    source_url: "https://diabetesjournals.org/care/issue/47/Supplement_1"
+    notes: >-
+      100–125 mg/dL: impaired fasting glucose (prediabetes range). ≥126 mg/dL
+      on two occasions: diabetes.
+
+  - concept_key: biomarker:glucose_fasting
+    unit: unit:mg_per_dL
+    age_min_years: 2
+    age_max_years: 17
+    sex: any
+    low: 70
+    high: 99
+    critical_low: 45
+    critical_high: 300
+    source: Mayo
+    source_version: "Mayo Pediatric 2024"
+
+  - concept_key: biomarker:glucose_random
+    unit: unit:mg_per_dL
+    age_min_years: 18
+    sex: any
+    low: 70
+    high: 140
+    critical_low: 40
+    critical_high: 400
+    source: ADA
+    source_version: "ADA 2024"
+
+  # ─── HbA1c (ADA diagnostic thresholds) ─────────────────────────────────────
+  - concept_key: biomarker:hba1c
+    unit: unit:pct
+    age_min_years: 18
+    sex: any
+    low: 4.0
+    high: 5.6
+    critical_high: 12.0
+    source: ADA
+    source_version: "ADA 2024"
+    notes: >-
+      5.7–6.4%: prediabetes. ≥6.5%: diabetes range. Treatment target is
+      typically <7% but individualised.
+
+  # ─── Hemoglobin (WHO 2011 anaemia thresholds) ──────────────────────────────
+  # Adult men
+  - concept_key: biomarker:hemoglobin
+    unit: unit:g_per_dL
+    age_min_years: 15
+    sex: male
+    pregnancy_status: any
+    low: 13.0
+    high: 17.5
+    critical_low: 7.0
+    critical_high: 20.0
+    source: WHO
+    source_version: "WHO/NMH/NHD/MNM/11.1"
+    source_url: "https://www.who.int/publications/i/item/WHO-NMH-NHD-MNM-11.1"
+
+  # Adult non-pregnant women
+  - concept_key: biomarker:hemoglobin
+    unit: unit:g_per_dL
+    age_min_years: 15
+    sex: female
+    pregnancy_status: not_pregnant
+    low: 12.0
+    high: 15.5
+    critical_low: 7.0
+    critical_high: 18.0
+    source: WHO
+    source_version: "WHO/NMH/NHD/MNM/11.1"
+
+  # Pregnant women (all trimesters) — WHO cut-off 11 g/dL
+  - concept_key: biomarker:hemoglobin
+    unit: unit:g_per_dL
+    age_min_years: 15
+    sex: female
+    pregnancy_status: pregnant
+    low: 11.0
+    high: 14.0
+    critical_low: 7.0
+    critical_high: 17.0
+    source: WHO
+    source_version: "WHO/NMH/NHD/MNM/11.1"
+    notes: >-
+      Anaemia in pregnancy defined at <11 g/dL. Second-trimester values may
+      dip physiologically due to plasma volume expansion.
+
+  # Pediatric (6 months – 14 years)
+  - concept_key: biomarker:hemoglobin
+    unit: unit:g_per_dL
+    age_min_years: 0.5
+    age_max_years: 4
+    sex: any
+    low: 11.0
+    high: 14.0
+    critical_low: 6.0
+    source: WHO
+    source_version: "WHO/NMH/NHD/MNM/11.1"
+
+  - concept_key: biomarker:hemoglobin
+    unit: unit:g_per_dL
+    age_min_years: 5
+    age_max_years: 11
+    sex: any
+    low: 11.5
+    high: 15.0
+    critical_low: 6.0
+    source: WHO
+    source_version: "WHO/NMH/NHD/MNM/11.1"
+
+  - concept_key: biomarker:hemoglobin
+    unit: unit:g_per_dL
+    age_min_years: 12
+    age_max_years: 14
+    sex: any
+    low: 12.0
+    high: 15.5
+    critical_low: 7.0
+    source: WHO
+    source_version: "WHO/NMH/NHD/MNM/11.1"
+
+  # ─── Hematocrit ────────────────────────────────────────────────────────────
+  - {concept_key: biomarker:hematocrit, unit: unit:pct, age_min_years: 15, sex: male,   low: 40.0, high: 52.0, source: CLSI, source_version: "CLSI C28-A3"}
+  - {concept_key: biomarker:hematocrit, unit: unit:pct, age_min_years: 15, sex: female, low: 36.0, high: 46.0, source: CLSI, source_version: "CLSI C28-A3"}
+
+  # ─── MCV / MCH ─────────────────────────────────────────────────────────────
+  - {concept_key: biomarker:mcv, unit: unit:fL, age_min_years: 15, sex: any, low: 80.0, high: 100.0, source: CLSI, source_version: "CLSI C28-A3"}
+  - {concept_key: biomarker:mch, unit: unit:pg, age_min_years: 15, sex: any, low: 27.0, high: 33.0,  source: CLSI, source_version: "CLSI C28-A3"}
+
+  # ─── WBC / Platelets ───────────────────────────────────────────────────────
+  - concept_key: biomarker:wbc
+    unit: unit:cells_10e3_per_uL
+    age_min_years: 18
+    sex: any
+    low: 4.0
+    high: 11.0
+    critical_low: 1.0
+    critical_high: 30.0
+    source: CLSI
+    source_version: "CLSI C28-A3"
+
+  - concept_key: biomarker:platelets
+    unit: unit:cells_10e3_per_uL
+    age_min_years: 18
+    sex: any
+    low: 150
+    high: 450
+    critical_low: 20
+    critical_high: 1000
+    source: CLSI
+    source_version: "CLSI C28-A3"
+
+  # ─── Creatinine (sex-adjusted) ─────────────────────────────────────────────
+  - concept_key: biomarker:creatinine
+    unit: unit:mg_per_dL
+    age_min_years: 18
+    sex: male
+    low: 0.74
+    high: 1.35
+    critical_high: 5.0
+    source: Mayo
+    source_version: "Mayo 2024"
+    notes: "eGFR should be computed for clinical staging."
+  - concept_key: biomarker:creatinine
+    unit: unit:mg_per_dL
+    age_min_years: 18
+    sex: female
+    low: 0.59
+    high: 1.04
+    critical_high: 4.0
+    source: Mayo
+    source_version: "Mayo 2024"
+
+  # Pediatric creatinine (nonlinear with age; simplified band 2–12 y)
+  - concept_key: biomarker:creatinine
+    unit: unit:mg_per_dL
+    age_min_years: 2
+    age_max_years: 12
+    sex: any
+    low: 0.30
+    high: 0.70
+    source: Mayo
+    source_version: "Mayo Pediatric 2024"
+
+  # ─── Urea (BUN) ────────────────────────────────────────────────────────────
+  - {concept_key: biomarker:urea_bun, unit: unit:mg_per_dL, age_min_years: 18, sex: any, low: 7, high: 20, critical_high: 100, source: Mayo, source_version: "Mayo 2024"}
+
+  # ─── Electrolytes ──────────────────────────────────────────────────────────
+  - concept_key: biomarker:sodium
+    unit: unit:mEq_per_L
+    age_min_years: 0
+    sex: any
+    low: 135
+    high: 145
+    critical_low: 120
+    critical_high: 160
+    source: CLSI
+    source_version: "CLSI C28-A3"
+
+  - concept_key: biomarker:potassium
+    unit: unit:mEq_per_L
+    age_min_years: 0
+    sex: any
+    low: 3.5
+    high: 5.0
+    critical_low: 2.5
+    critical_high: 6.0
+    source: CLSI
+    source_version: "CLSI C28-A3"
+    notes: "Values ≥6.0 mEq/L warrant urgent evaluation for cardiac risk."
+
+  - {concept_key: biomarker:calcium_total, unit: unit:mg_per_dL, age_min_years: 18, sex: any, low: 8.6, high: 10.2, critical_low: 6.0, critical_high: 13.0, source: CLSI, source_version: "CLSI C28-A3"}
+
+  # ─── Liver panel ──────────────────────────────────────────────────────────
+  - {concept_key: biomarker:alt, unit: unit:U_per_L, age_min_years: 18, sex: male,   low: 7, high: 55, source: Mayo, source_version: "Mayo 2024"}
+  - {concept_key: biomarker:alt, unit: unit:U_per_L, age_min_years: 18, sex: female, low: 7, high: 45, source: Mayo, source_version: "Mayo 2024"}
+  - {concept_key: biomarker:ast, unit: unit:U_per_L, age_min_years: 18, sex: male,   low: 8, high: 48, source: Mayo, source_version: "Mayo 2024"}
+  - {concept_key: biomarker:ast, unit: unit:U_per_L, age_min_years: 18, sex: female, low: 8, high: 43, source: Mayo, source_version: "Mayo 2024"}
+
+  # ALP — physiologically elevated in growth. Age-banded.
+  - concept_key: biomarker:alp
+    unit: unit:U_per_L
+    age_min_years: 1
+    age_max_years: 9
+    sex: any
+    low: 100
+    high: 350
+    source: Mayo
+    source_version: "Mayo Pediatric 2024"
+    notes: "Pediatric elevation is physiologic (osteoblast activity); not pathologic in isolation."
+  - concept_key: biomarker:alp
+    unit: unit:U_per_L
+    age_min_years: 10
+    age_max_years: 17
+    sex: male
+    low: 130
+    high: 400
+    source: Mayo
+    source_version: "Mayo Pediatric 2024"
+  - concept_key: biomarker:alp
+    unit: unit:U_per_L
+    age_min_years: 10
+    age_max_years: 17
+    sex: female
+    low: 65
+    high: 300
+    source: Mayo
+    source_version: "Mayo Pediatric 2024"
+  - concept_key: biomarker:alp
+    unit: unit:U_per_L
+    age_min_years: 18
+    sex: any
+    low: 44
+    high: 121
+    source: Mayo
+    source_version: "Mayo 2024"
+
+  - {concept_key: biomarker:bilirubin_total, unit: unit:mg_per_dL, age_min_years: 1, sex: any, low: 0.1, high: 1.2, critical_high: 15, source: Mayo, source_version: "Mayo 2024"}
+
+  # ─── Lipids ────────────────────────────────────────────────────────────────
+  - {concept_key: biomarker:cholesterol_total, unit: unit:mg_per_dL, age_min_years: 18, sex: any, low: 0,    high: 199, source: NCEP, source_version: "NCEP ATP III"}
+  - {concept_key: biomarker:ldl,               unit: unit:mg_per_dL, age_min_years: 18, sex: any, low: 0,    high: 99,  source: NCEP, source_version: "NCEP ATP III"}
+  - {concept_key: biomarker:hdl,               unit: unit:mg_per_dL, age_min_years: 18, sex: male,   low: 40, high: 200, source: NCEP, source_version: "NCEP ATP III"}
+  - {concept_key: biomarker:hdl,               unit: unit:mg_per_dL, age_min_years: 18, sex: female, low: 50, high: 200, source: NCEP, source_version: "NCEP ATP III"}
+  - {concept_key: biomarker:triglycerides,     unit: unit:mg_per_dL, age_min_years: 18, sex: any, low: 0,    high: 149, critical_high: 1000, source: NCEP, source_version: "NCEP ATP III"}
+
+  # ─── Thyroid ───────────────────────────────────────────────────────────────
+  - {concept_key: biomarker:tsh, unit: unit:mIU_per_L, age_min_years: 18, sex: any, pregnancy_status: not_pregnant, low: 0.4, high: 4.5, critical_low: 0.05, critical_high: 20, source: Mayo, source_version: "Mayo 2024"}
+  - {concept_key: biomarker:tsh, unit: unit:mIU_per_L, age_min_years: 18, sex: female, pregnancy_status: trimester_1, low: 0.1, high: 2.5, source: ATA, source_version: "ATA 2017"}
+  - {concept_key: biomarker:tsh, unit: unit:mIU_per_L, age_min_years: 18, sex: female, pregnancy_status: trimester_2, low: 0.2, high: 3.0, source: ATA, source_version: "ATA 2017"}
+  - {concept_key: biomarker:tsh, unit: unit:mIU_per_L, age_min_years: 18, sex: female, pregnancy_status: trimester_3, low: 0.3, high: 3.0, source: ATA, source_version: "ATA 2017"}
+  - {concept_key: biomarker:free_t4, unit: unit:ng_per_mL, age_min_years: 18, sex: any, low: 0.8, high: 1.8, source: Mayo, source_version: "Mayo 2024"}
+
+  # ─── Vitamins / Iron studies ───────────────────────────────────────────────
+  - concept_key: biomarker:vitamin_d_25oh
+    unit: unit:ng_per_mL
+    age_min_years: 1
+    sex: any
+    low: 30
+    high: 100
+    critical_low: 10
+    critical_high: 150
+    source: Endocrine_Society
+    source_version: "Endocrine Society 2011"
+    notes: "20–29 ng/mL insufficient; <20 ng/mL deficient; >100 ng/mL potentially toxic."
+
+  - {concept_key: biomarker:vitamin_b12, unit: unit:ng_per_mL, age_min_years: 1, sex: any, low: 0.211, high: 0.911, source: Mayo, source_version: "Mayo 2024"}
+
+  - {concept_key: biomarker:iron,     unit: unit:ug_per_dL, age_min_years: 18, sex: male,   low: 65, high: 175, source: Mayo, source_version: "Mayo 2024"}
+  - {concept_key: biomarker:iron,     unit: unit:ug_per_dL, age_min_years: 18, sex: female, low: 50, high: 170, source: Mayo, source_version: "Mayo 2024"}
+  - {concept_key: biomarker:ferritin, unit: unit:ng_per_mL, age_min_years: 18, sex: male,   low: 24, high: 336, source: Mayo, source_version: "Mayo 2024"}
+  - {concept_key: biomarker:ferritin, unit: unit:ng_per_mL, age_min_years: 18, sex: female, low: 11, high: 307, source: Mayo, source_version: "Mayo 2024"}
+  - {concept_key: biomarker:tibc,     unit: unit:ug_per_dL, age_min_years: 18, sex: any,    low: 250, high: 450, source: Mayo, source_version: "Mayo 2024"}
+
+  # ─── Inflammation ──────────────────────────────────────────────────────────
+  - {concept_key: biomarker:crp, unit: unit:mg_per_L, age_min_years: 1, sex: any, low: 0, high: 5.0, critical_high: 100, source: CLSI, source_version: "CLSI C28-A3"}
+  - {concept_key: biomarker:esr, unit: unit:mm_per_hr, age_min_years: 18, sex: male,   low: 0, high: 15, source: Mayo, source_version: "Mayo 2024"}
+  - {concept_key: biomarker:esr, unit: unit:mm_per_hr, age_min_years: 18, sex: female, low: 0, high: 20, source: Mayo, source_version: "Mayo 2024"}

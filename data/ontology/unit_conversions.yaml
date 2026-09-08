@@ -1,0 +1,58 @@
+# GULA Medical Ontology — Unit Conversions
+#
+# Every entry becomes a row in `medical_ontology_unit_conversions`.
+# The engine converts `value * factor + offset` from `from_unit` to `to_unit`.
+#
+# `concept_scope` (optional) restricts a conversion to a specific concept —
+# mass↔molar conversions depend on molecular weight, so mg/dL↔mmol/L for
+# glucose (÷ 18.016) is different from mg/dL↔mmol/L for creatinine (× 88.4).
+#
+# When `concept_scope` is null, the conversion is universal (SI unit ratios).
+
+version: 1
+conversions:
+
+  # ─── Universal (SI ratios) ────────────────────────────────────────────────
+  - {from_unit: unit:g_per_dL,    to_unit: unit:g_per_L,     factor: 10.0,    concept_scope: null, source: SI}
+  - {from_unit: unit:g_per_L,     to_unit: unit:g_per_dL,    factor: 0.1,     concept_scope: null, source: SI}
+
+  # µg/dL ↔ ng/mL is a mass ratio and universal (1 µg/dL = 10 ng/mL)
+  - {from_unit: unit:ug_per_dL,   to_unit: unit:ng_per_mL,   factor: 10.0,    concept_scope: null, source: SI}
+  - {from_unit: unit:ng_per_mL,   to_unit: unit:ug_per_dL,   factor: 0.1,     concept_scope: null, source: SI}
+
+  # mg/L ↔ mg/dL is a volume ratio and universal
+  - {from_unit: unit:mg_per_L,    to_unit: unit:mg_per_dL,   factor: 0.1,     concept_scope: null, source: SI}
+  - {from_unit: unit:mg_per_dL,   to_unit: unit:mg_per_L,    factor: 10.0,    concept_scope: null, source: SI}
+
+  # ─── Concept-scoped (molar / mass conversions require molecular weight) ───
+  # Glucose: mg/dL ÷ 18.016 = mmol/L
+  - {from_unit: unit:mg_per_dL,   to_unit: unit:mmol_per_L,  factor: 0.05551, concept_scope: biomarker:glucose_fasting, source: "MW glucose 180.16"}
+  - {from_unit: unit:mmol_per_L,  to_unit: unit:mg_per_dL,   factor: 18.016,  concept_scope: biomarker:glucose_fasting, source: "MW glucose 180.16"}
+  - {from_unit: unit:mg_per_dL,   to_unit: unit:mmol_per_L,  factor: 0.05551, concept_scope: biomarker:glucose_random,  source: "MW glucose 180.16"}
+  - {from_unit: unit:mmol_per_L,  to_unit: unit:mg_per_dL,   factor: 18.016,  concept_scope: biomarker:glucose_random,  source: "MW glucose 180.16"}
+
+  # Creatinine: mg/dL × 88.4 = µmol/L (µmol/L not yet a canonical unit;
+  # mg/dL ↔ mmol/L for creatinine is 88.4 / 1000 = 0.0884). Provide the µmol
+  # scale via ng/mL fallback would be misleading — we keep mg/dL as canonical.
+  # No SI conversion row is registered for creatinine to avoid an incorrect
+  # universal fallback.
+
+  # Cholesterol: mg/dL ÷ 38.67 = mmol/L
+  - {from_unit: unit:mg_per_dL,   to_unit: unit:mmol_per_L,  factor: 0.02586, concept_scope: biomarker:cholesterol_total, source: "MW cholesterol 386.7"}
+  - {from_unit: unit:mmol_per_L,  to_unit: unit:mg_per_dL,   factor: 38.67,   concept_scope: biomarker:cholesterol_total, source: "MW cholesterol 386.7"}
+  - {from_unit: unit:mg_per_dL,   to_unit: unit:mmol_per_L,  factor: 0.02586, concept_scope: biomarker:ldl,               source: "MW cholesterol 386.7"}
+  - {from_unit: unit:mmol_per_L,  to_unit: unit:mg_per_dL,   factor: 38.67,   concept_scope: biomarker:ldl,               source: "MW cholesterol 386.7"}
+  - {from_unit: unit:mg_per_dL,   to_unit: unit:mmol_per_L,  factor: 0.02586, concept_scope: biomarker:hdl,               source: "MW cholesterol 386.7"}
+  - {from_unit: unit:mmol_per_L,  to_unit: unit:mg_per_dL,   factor: 38.67,   concept_scope: biomarker:hdl,               source: "MW cholesterol 386.7"}
+
+  # Triglycerides: mg/dL ÷ 88.6 = mmol/L
+  - {from_unit: unit:mg_per_dL,   to_unit: unit:mmol_per_L,  factor: 0.01129, concept_scope: biomarker:triglycerides, source: "Approx MW 885"}
+  - {from_unit: unit:mmol_per_L,  to_unit: unit:mg_per_dL,   factor: 88.57,   concept_scope: biomarker:triglycerides, source: "Approx MW 885"}
+
+  # Urea (BUN): mg/dL × 0.357 = mmol/L (urea)
+  - {from_unit: unit:mg_per_dL,   to_unit: unit:mmol_per_L,  factor: 0.357,   concept_scope: biomarker:urea_bun, source: "MW urea 60.06 / 2N"}
+  - {from_unit: unit:mmol_per_L,  to_unit: unit:mg_per_dL,   factor: 2.801,   concept_scope: biomarker:urea_bun, source: "MW urea 60.06 / 2N"}
+
+  # Calcium: mg/dL ÷ 4.0 = mmol/L
+  - {from_unit: unit:mg_per_dL,   to_unit: unit:mmol_per_L,  factor: 0.2495,  concept_scope: biomarker:calcium_total, source: "MW Ca 40.08"}
+  - {from_unit: unit:mmol_per_L,  to_unit: unit:mg_per_dL,   factor: 4.008,   concept_scope: biomarker:calcium_total, source: "MW Ca 40.08"}

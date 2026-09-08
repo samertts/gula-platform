@@ -1,0 +1,569 @@
+# GULA Medical Ontology — Canonical Concepts
+#
+# Every entry becomes a row in `medical_ontology_concepts`. `concept_key` is
+# the stable slug that migrations, relations, synonyms, and reference ranges
+# reference. Never rename an existing key.
+#
+# Category taxonomy: biomarker | symptom | disease | medication | panel |
+#                    organ_system | specimen | unit
+#
+# `codes` lists external code-system mappings written into
+# `medical_ontology_codes`. Every biomarker should have a LOINC code where one
+# exists; every disease an ICD-10 and SNOMED code; every medication an RxNorm
+# code.
+#
+# `canonical_unit` (biomarkers only) points to a unit concept_key; ranges and
+# unit conversions normalise into it.
+
+version: 1
+concepts:
+
+  # ─── Specimens ─────────────────────────────────────────────────────────────
+  - concept_key: specimen:serum
+    category: specimen
+    display_en: Serum
+    display_ar: مصل
+  - concept_key: specimen:plasma
+    category: specimen
+    display_en: Plasma
+    display_ar: بلازما
+  - concept_key: specimen:whole_blood
+    category: specimen
+    display_en: Whole blood
+    display_ar: دم كامل
+  - concept_key: specimen:urine
+    category: specimen
+    display_en: Urine
+    display_ar: بول
+
+  # ─── Units ─────────────────────────────────────────────────────────────────
+  - concept_key: unit:mg_per_dL
+    category: unit
+    display_en: mg/dL
+    display_ar: ملغم/دل
+  - concept_key: unit:mmol_per_L
+    category: unit
+    display_en: mmol/L
+    display_ar: مليمول/لتر
+  - concept_key: unit:g_per_dL
+    category: unit
+    display_en: g/dL
+    display_ar: غم/دل
+  - concept_key: unit:g_per_L
+    category: unit
+    display_en: g/L
+    display_ar: غم/لتر
+  - concept_key: unit:U_per_L
+    category: unit
+    display_en: U/L
+    display_ar: وحدة/لتر
+  - concept_key: unit:mIU_per_L
+    category: unit
+    display_en: mIU/L
+    display_ar: ملي وحدة دولية/لتر
+  - concept_key: unit:mEq_per_L
+    category: unit
+    display_en: mEq/L
+    display_ar: ملي مكافئ/لتر
+  - concept_key: unit:pct
+    category: unit
+    display_en: "%"
+    display_ar: "٪"
+  - concept_key: unit:ng_per_mL
+    category: unit
+    display_en: ng/mL
+    display_ar: نانوغم/مل
+  - concept_key: unit:ug_per_dL
+    category: unit
+    display_en: µg/dL
+    display_ar: مايكروغم/دل
+  - concept_key: unit:cells_10e3_per_uL
+    category: unit
+    display_en: ×10³/µL
+    display_ar: ×١٠³/مايكرولتر
+  - concept_key: unit:mg_per_L
+    category: unit
+    display_en: mg/L
+    display_ar: ملغم/لتر
+  - concept_key: unit:mm_per_hr
+    category: unit
+    display_en: mm/hr
+    display_ar: ملم/ساعة
+  - concept_key: unit:fL
+    category: unit
+    display_en: fL
+    display_ar: فمتولتر
+  - concept_key: unit:pg
+    category: unit
+    display_en: pg
+    display_ar: بيكوغم
+
+  # ─── Organ systems ─────────────────────────────────────────────────────────
+  - concept_key: system:endocrine_pancreas
+    category: organ_system
+    display_en: Endocrine pancreas
+    display_ar: بنكرياس صماء
+    codes:
+      - {system: SNOMEDCT, code: "113343008"}
+  - concept_key: system:kidney
+    category: organ_system
+    display_en: Kidney
+    display_ar: كلية
+    codes:
+      - {system: SNOMEDCT, code: "64033007"}
+  - concept_key: system:liver
+    category: organ_system
+    display_en: Liver
+    display_ar: كبد
+    codes:
+      - {system: SNOMEDCT, code: "10200004"}
+  - concept_key: system:thyroid
+    category: organ_system
+    display_en: Thyroid gland
+    display_ar: غدة درقية
+    codes:
+      - {system: SNOMEDCT, code: "69748006"}
+  - concept_key: system:hematologic
+    category: organ_system
+    display_en: Hematologic system
+    display_ar: جهاز دموي
+    codes:
+      - {system: SNOMEDCT, code: "414183005"}
+
+  # ─── Biomarkers ────────────────────────────────────────────────────────────
+  - concept_key: biomarker:glucose_fasting
+    category: biomarker
+    display_en: Fasting plasma glucose
+    display_ar: سكر الدم الصائم
+    canonical_unit: unit:mg_per_dL
+    default_specimen: specimen:plasma
+    codes:
+      - {system: LOINC, code: "1558-6", display: "Fasting glucose [Mass/volume] in Serum or Plasma"}
+      - {system: SNOMEDCT, code: "271062006"}
+    description_en: >-
+      Fasting plasma glucose reflects short-term glycemic status; used for
+      diabetes screening and diagnosis (ADA criteria).
+    description_ar: >-
+      يعكس سكر الدم الصائم الحالة السكرية قصيرة المدى، ويُستخدم لفحص وتشخيص
+      داء السكري وفق معايير جمعية السكري الأمريكية.
+
+  - concept_key: biomarker:glucose_random
+    category: biomarker
+    display_en: Random plasma glucose
+    display_ar: سكر الدم العشوائي
+    canonical_unit: unit:mg_per_dL
+    default_specimen: specimen:plasma
+    codes:
+      - {system: LOINC, code: "2345-7"}
+
+  - concept_key: biomarker:hba1c
+    category: biomarker
+    display_en: Hemoglobin A1c
+    display_ar: الهيموغلوبين السكري
+    canonical_unit: unit:pct
+    default_specimen: specimen:whole_blood
+    codes:
+      - {system: LOINC, code: "4548-4", display: "Hemoglobin A1c/Hemoglobin.total in Blood"}
+      - {system: SNOMEDCT, code: "43396009"}
+    description_en: >-
+      HbA1c reflects average glycemia over ~3 months. Diagnostic thresholds
+      (ADA): ≥6.5% diabetes, 5.7–6.4% prediabetes.
+    description_ar: >-
+      يعكس HbA1c متوسط سكر الدم خلال ثلاثة أشهر تقريباً. عتبات التشخيص
+      (ADA): ≥٦٫٥٪ سكري، ٥٫٧–٦٫٤٪ ما قبل السكري.
+
+  - concept_key: biomarker:hemoglobin
+    category: biomarker
+    display_en: Hemoglobin
+    display_ar: الهيموغلوبين
+    canonical_unit: unit:g_per_dL
+    default_specimen: specimen:whole_blood
+    codes:
+      - {system: LOINC, code: "718-7"}
+      - {system: SNOMEDCT, code: "38082009"}
+
+  - concept_key: biomarker:hematocrit
+    category: biomarker
+    display_en: Hematocrit
+    display_ar: الهيماتوكريت
+    canonical_unit: unit:pct
+    default_specimen: specimen:whole_blood
+    codes:
+      - {system: LOINC, code: "4544-3"}
+
+  - concept_key: biomarker:mcv
+    category: biomarker
+    display_en: Mean corpuscular volume
+    display_ar: متوسط حجم الكرية
+    canonical_unit: unit:fL
+    default_specimen: specimen:whole_blood
+    codes:
+      - {system: LOINC, code: "787-2"}
+
+  - concept_key: biomarker:mch
+    category: biomarker
+    display_en: Mean corpuscular hemoglobin
+    display_ar: متوسط هيموغلوبين الكرية
+    canonical_unit: unit:pg
+    default_specimen: specimen:whole_blood
+    codes:
+      - {system: LOINC, code: "785-6"}
+
+  - concept_key: biomarker:wbc
+    category: biomarker
+    display_en: White blood cell count
+    display_ar: تعداد كريات الدم البيضاء
+    canonical_unit: unit:cells_10e3_per_uL
+    default_specimen: specimen:whole_blood
+    codes:
+      - {system: LOINC, code: "6690-2"}
+      - {system: SNOMEDCT, code: "767002"}
+
+  - concept_key: biomarker:platelets
+    category: biomarker
+    display_en: Platelet count
+    display_ar: تعداد الصفيحات الدموية
+    canonical_unit: unit:cells_10e3_per_uL
+    default_specimen: specimen:whole_blood
+    codes:
+      - {system: LOINC, code: "777-3"}
+      - {system: SNOMEDCT, code: "61928009"}
+
+  - concept_key: biomarker:creatinine
+    category: biomarker
+    display_en: Creatinine
+    display_ar: الكرياتينين
+    canonical_unit: unit:mg_per_dL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2160-0", display: "Creatinine [Mass/volume] in Serum or Plasma"}
+      - {system: SNOMEDCT, code: "70901006"}
+    description_en: >-
+      Serum creatinine estimates renal filtration. Interpretation is
+      sex-adjusted; use eGFR for clinical staging.
+    description_ar: >-
+      يعكس الكرياتينين وظيفة ترشيح الكلية، ويُفسَّر حسب الجنس؛ يُستخدم eGFR
+      للتقييم السريري.
+
+  - concept_key: biomarker:urea_bun
+    category: biomarker
+    display_en: Blood urea nitrogen
+    display_ar: يوريا الدم
+    canonical_unit: unit:mg_per_dL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "3094-0"}
+
+  - concept_key: biomarker:sodium
+    category: biomarker
+    display_en: Sodium
+    display_ar: الصوديوم
+    canonical_unit: unit:mEq_per_L
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2951-2"}
+
+  - concept_key: biomarker:potassium
+    category: biomarker
+    display_en: Potassium
+    display_ar: البوتاسيوم
+    canonical_unit: unit:mEq_per_L
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2823-3"}
+
+  - concept_key: biomarker:calcium_total
+    category: biomarker
+    display_en: Calcium, total
+    display_ar: الكالسيوم الكلي
+    canonical_unit: unit:mg_per_dL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "17861-6"}
+
+  - concept_key: biomarker:alt
+    category: biomarker
+    display_en: Alanine aminotransferase
+    display_ar: إنزيم ALT
+    canonical_unit: unit:U_per_L
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "1742-6"}
+
+  - concept_key: biomarker:ast
+    category: biomarker
+    display_en: Aspartate aminotransferase
+    display_ar: إنزيم AST
+    canonical_unit: unit:U_per_L
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "1920-8"}
+
+  - concept_key: biomarker:alp
+    category: biomarker
+    display_en: Alkaline phosphatase
+    display_ar: الفوسفاتاز القلوية
+    canonical_unit: unit:U_per_L
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "6768-6"}
+    description_en: >-
+      ALP is physiologically elevated during pediatric bone growth. Adult
+      elevation may indicate cholestatic liver disease or bone pathology.
+    description_ar: >-
+      ترتفع ALP فسيولوجياً أثناء نمو العظام لدى الأطفال. الارتفاع لدى البالغين
+      قد يشير إلى ركود صفراوي أو مرض عظمي.
+
+  - concept_key: biomarker:bilirubin_total
+    category: biomarker
+    display_en: Bilirubin, total
+    display_ar: البيليروبين الكلي
+    canonical_unit: unit:mg_per_dL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "1975-2"}
+
+  - concept_key: biomarker:cholesterol_total
+    category: biomarker
+    display_en: Cholesterol, total
+    display_ar: الكوليسترول الكلي
+    canonical_unit: unit:mg_per_dL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2093-3"}
+
+  - concept_key: biomarker:ldl
+    category: biomarker
+    display_en: LDL cholesterol
+    display_ar: كوليسترول LDL
+    canonical_unit: unit:mg_per_dL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2089-1"}
+
+  - concept_key: biomarker:hdl
+    category: biomarker
+    display_en: HDL cholesterol
+    display_ar: كوليسترول HDL
+    canonical_unit: unit:mg_per_dL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2085-9"}
+
+  - concept_key: biomarker:triglycerides
+    category: biomarker
+    display_en: Triglycerides
+    display_ar: الدهون الثلاثية
+    canonical_unit: unit:mg_per_dL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2571-8"}
+
+  - concept_key: biomarker:tsh
+    category: biomarker
+    display_en: Thyroid stimulating hormone
+    display_ar: الهرمون المحفز للغدة الدرقية
+    canonical_unit: unit:mIU_per_L
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "3016-3"}
+      - {system: SNOMEDCT, code: "61167004"}
+
+  - concept_key: biomarker:free_t4
+    category: biomarker
+    display_en: Free T4
+    display_ar: T4 الحر
+    canonical_unit: unit:ng_per_mL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "3024-7"}
+
+  - concept_key: biomarker:vitamin_d_25oh
+    category: biomarker
+    display_en: 25-hydroxyvitamin D
+    display_ar: فيتامين د ٢٥
+    canonical_unit: unit:ng_per_mL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "1989-3"}
+
+  - concept_key: biomarker:vitamin_b12
+    category: biomarker
+    display_en: Vitamin B12
+    display_ar: فيتامين ب ١٢
+    canonical_unit: unit:ng_per_mL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2132-9"}
+
+  - concept_key: biomarker:iron
+    category: biomarker
+    display_en: Serum iron
+    display_ar: حديد المصل
+    canonical_unit: unit:ug_per_dL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2498-4"}
+
+  - concept_key: biomarker:ferritin
+    category: biomarker
+    display_en: Ferritin
+    display_ar: الفيريتين
+    canonical_unit: unit:ng_per_mL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2276-4"}
+
+  - concept_key: biomarker:tibc
+    category: biomarker
+    display_en: Total iron binding capacity
+    display_ar: القدرة الكلية لربط الحديد
+    canonical_unit: unit:ug_per_dL
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "2500-7"}
+
+  - concept_key: biomarker:crp
+    category: biomarker
+    display_en: C-reactive protein
+    display_ar: البروتين المتفاعل C
+    canonical_unit: unit:mg_per_L
+    default_specimen: specimen:serum
+    codes:
+      - {system: LOINC, code: "1988-5"}
+
+  - concept_key: biomarker:esr
+    category: biomarker
+    display_en: Erythrocyte sedimentation rate
+    display_ar: سرعة ترسيب الكريات الحمر
+    canonical_unit: unit:mm_per_hr
+    default_specimen: specimen:whole_blood
+    codes:
+      - {system: LOINC, code: "4537-7"}
+
+  # ─── Panels ────────────────────────────────────────────────────────────────
+  - concept_key: panel:cbc
+    category: panel
+    display_en: Complete blood count
+    display_ar: تعداد الدم الكامل
+    codes:
+      - {system: LOINC, code: "58410-2"}
+
+  - concept_key: panel:bmp
+    category: panel
+    display_en: Basic metabolic panel
+    display_ar: لوحة الأيض الأساسية
+    codes:
+      - {system: LOINC, code: "24320-4"}
+
+  - concept_key: panel:lipid
+    category: panel
+    display_en: Lipid panel
+    display_ar: لوحة الدهون
+    codes:
+      - {system: LOINC, code: "57698-3"}
+
+  - concept_key: panel:liver_function
+    category: panel
+    display_en: Liver function tests
+    display_ar: وظائف الكبد
+    codes:
+      - {system: LOINC, code: "24325-3"}
+
+  - concept_key: panel:thyroid_function
+    category: panel
+    display_en: Thyroid function panel
+    display_ar: وظائف الغدة الدرقية
+    codes:
+      - {system: LOINC, code: "24347-7"}
+
+  - concept_key: panel:iron_studies
+    category: panel
+    display_en: Iron studies
+    display_ar: دراسات الحديد
+
+  # ─── Diseases ──────────────────────────────────────────────────────────────
+  - concept_key: disease:diabetes_type_2
+    category: disease
+    display_en: Type 2 diabetes mellitus
+    display_ar: داء السكري من النوع الثاني
+    codes:
+      - {system: ICD10, code: "E11", display: "Type 2 diabetes mellitus"}
+      - {system: SNOMEDCT, code: "44054006"}
+
+  - concept_key: disease:prediabetes
+    category: disease
+    display_en: Prediabetes
+    display_ar: ما قبل السكري
+    codes:
+      - {system: ICD10, code: "R73.03"}
+      - {system: SNOMEDCT, code: "714628002"}
+
+  - concept_key: disease:iron_deficiency_anemia
+    category: disease
+    display_en: Iron deficiency anemia
+    display_ar: فقر الدم بعوز الحديد
+    codes:
+      - {system: ICD10, code: "D50"}
+      - {system: SNOMEDCT, code: "87522002"}
+
+  - concept_key: disease:hypothyroidism
+    category: disease
+    display_en: Hypothyroidism
+    display_ar: قصور الغدة الدرقية
+    codes:
+      - {system: ICD10, code: "E03"}
+      - {system: SNOMEDCT, code: "40930008"}
+
+  - concept_key: disease:hyperthyroidism
+    category: disease
+    display_en: Hyperthyroidism
+    display_ar: فرط الغدة الدرقية
+    codes:
+      - {system: ICD10, code: "E05"}
+      - {system: SNOMEDCT, code: "34486009"}
+
+  - concept_key: disease:vitamin_d_deficiency
+    category: disease
+    display_en: Vitamin D deficiency
+    display_ar: نقص فيتامين د
+    codes:
+      - {system: ICD10, code: "E55.9"}
+      - {system: SNOMEDCT, code: "34713006"}
+
+  - concept_key: disease:ckd
+    category: disease
+    display_en: Chronic kidney disease
+    display_ar: مرض الكلى المزمن
+    codes:
+      - {system: ICD10, code: "N18"}
+      - {system: SNOMEDCT, code: "709044004"}
+
+  # ─── Symptoms ──────────────────────────────────────────────────────────────
+  - concept_key: symptom:polyuria
+    category: symptom
+    display_en: Excessive urination
+    display_ar: كثرة التبول
+    codes:
+      - {system: SNOMEDCT, code: "80394007"}
+
+  - concept_key: symptom:polydipsia
+    category: symptom
+    display_en: Excessive thirst
+    display_ar: العطش المفرط
+    codes:
+      - {system: SNOMEDCT, code: "17173007"}
+
+  - concept_key: symptom:fatigue
+    category: symptom
+    display_en: Fatigue
+    display_ar: التعب
+    codes:
+      - {system: SNOMEDCT, code: "84229001"}
+
+  - concept_key: symptom:pallor
+    category: symptom
+    display_en: Pallor
+    display_ar: الشحوب
+    codes:
+      - {system: SNOMEDCT, code: "398979000"}
