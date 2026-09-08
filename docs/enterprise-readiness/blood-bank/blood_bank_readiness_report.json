@@ -6,28 +6,83 @@
   "quality_goal": "world-class measurable hardening; no unverified production-ready claim",
   "environment": {
     "database": "disposable local PostgreSQL",
-    "postgresql_version": "16.15",
+    "postgresql_version": "16.13",
     "database_name": "gula_bloodbank_verify",
+    "python_version": "3.13.12",
     "http_runtime": "ENV=test, RUNTIME_MODE=test, real FastAPI application and TestClient",
-    "dsn_scope": "verification process only"
+    "dsn_scope": "verification process only",
+    "schema_preparation": "alembic upgrade 20260901_0004, plus the canonical DDL of migration 20260819_0003_clinical_command_receipts applied separately (see blocked.clinical_command_receipts_lineage)"
   },
   "verified": {
     "phase_14a_fastapi_startup": "passed",
-    "phase_14b_http_replay_and_collision": {"passed": 5, "failed": 0, "skipped": 0},
+    "phase_14b_http_replay_and_collision": {
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "executed_on": "2026-09-08 against PostgreSQL 16.13 with the real FastAPI app and TestClient",
+      "proofs": {
+        "http_reservation_replay": {
+          "test": "tests/blood_bank/test_http_idempotency_postgres.py::test_http_reservation_replay_has_one_side_effect",
+          "result": "passed",
+          "http": "first POST /blood-bank/reservations returned 201, identical replay with the same Idempotency-Key returned 409 with the canonical safe envelope code CONFLICT",
+          "side_effects": "reserved reservations=1, reserved inventory movements=1, unit status=reserved",
+          "idempotency_claims": "exactly 1 clinical_command_receipts row for blood.reservation.create with status completed"
+        },
+        "http_issue_replay": {
+          "test": "tests/blood_bank/test_http_idempotency_postgres.py::test_http_issue_replay_has_one_side_effect",
+          "result": "passed",
+          "http": "first POST /blood-bank/inventory/issue returned 200, identical replay returned 409 with the canonical safe envelope code CONFLICT",
+          "side_effects": "fulfilled_units=1, issued inventory movements=1, unit status=issued",
+          "idempotency_claims": "exactly 1 clinical_command_receipts row for blood.issue with status completed"
+        },
+        "concurrent_http_idempotency": {
+          "test": "tests/blood_bank/test_http_idempotency_postgres.py::test_http_reservation_same_key_concurrency_has_one_side_effect",
+          "result": "passed",
+          "concurrency": "two OS threads released by a threading.Barrier issue the same request through separate TestClient instances against separate PostgreSQL sessions",
+          "http": "responses were exactly [201, 409]; no unhandled exception in either thread",
+          "side_effects": "reservations=1, inventory movements=1, unit status=reserved",
+          "idempotency_claims": "exactly 1 completed claim; the losing transaction was rejected by the unique claim constraint"
+        },
+        "sequential_payload_collision": {
+          "test": "tests/blood_bank/test_http_idempotency_postgres.py::test_http_reservation_payload_collision_has_no_second_side_effect",
+          "result": "passed",
+          "http": "same Idempotency-Key with a different order_id returned 409; the first operation returned 201 and remained intact",
+          "side_effects": "no second reservation and no second inventory movement were created",
+          "idempotency_claims": "still exactly 1 claim, and its request fingerprint was unchanged by the colliding payload"
+        },
+        "concurrent_payload_collision": {
+          "test": "tests/blood_bank/test_http_idempotency_postgres.py::test_http_reservation_concurrent_payload_collision_has_one_side_effect",
+          "result": "passed",
+          "concurrency": "two barrier-released threads submit different payloads under one Idempotency-Key",
+          "http": "responses were exactly [201, 409]; only one payload committed",
+          "side_effects": "reservations=1, inventory movements=1, unit status=reserved; no conflicting duplicate effect",
+          "idempotency_claims": "exactly 1 completed claim"
+        }
+      },
+      "external_contract_note": "the safe error envelope returns a generic 409 with code CONFLICT for both an identical replay and a payload reuse; the discriminating guard reason (clinical_command_already_processed vs idempotency_key_reused) is not exposed over HTTP and is observable only on the durable claim record"
+    },
     "failure_injection_retry": {
       "passed": 7,
       "failed": 0,
       "boundaries": ["reservation.after_claim", "reservation.after_business_effect", "reservation.after_inventory_movement", "reservation.after_audit_preparation", "issue.after_business_effect", "issue.after_inventory_movement", "issue.after_audit_preparation"],
       "evidence": "each injected first request rolled back and a same-key retry produced exactly one final clinical and inventory effect",
-      "mechanism": "test-only and gated by ENV=test, RUNTIME_MODE=test, and explicit GULA_TEST_FAILURE_STAGE"
+      "mechanism": "test-only and gated by ENV=test, RUNTIME_MODE=test, and explicit GULA_TEST_FAILURE_STAGE",
+      "re_executed": "2026-09-08, passed as part of the Blood Bank suite"
     },
     "authorization_and_namespace": {
       "cross_facility_traceability_idor": "passed: Facility B received 404 for a Facility A unit",
       "cross_facility_reservation_return_discard_idor": "passed: all three mutation attempts rejected and the unit remained unchanged",
       "operation_scoped_idempotency_namespace": "passed: same key reused for Reservation and Issue succeeded independently with one effect per operation",
-      "final_database_assertions": "passed: no duplicate reservation, movement, issue, or unauthorized state change"
+      "final_database_assertions": "passed: no duplicate reservation, movement, issue, or unauthorized state change",
+      "re_executed": "2026-09-08, passed"
     },
-    "blood_bank_regression_suite": {"passed": 27, "failed": 0, "skipped": 0},
+    "blood_bank_regression_suite": {
+      "passed": 26,
+      "failed": 0,
+      "skipped": 0,
+      "command": "pytest tests/blood_bank/ -p no:randomly",
+      "note": "an earlier revision of this report recorded 27; the suite contains 26 tests and the previous figure was an over-count"
+    },
     "postgres_service_and_claim_tests": "passed",
     "targeted_migrations": "passed through 20260901_0004",
     "compile": true,
@@ -36,19 +91,21 @@
   },
   "not_verified": {
     "completed_replay_response": "canonical behavior remains deterministic 409; original response payload is not persisted/replayed",
-    "full_e2e": "not run",
-    "full_backend_regression": "not run",
+    "concurrent_http_issue_idempotency": "NOT_VERIFIED: concurrent same-key HTTP execution was proven for the reservation endpoint only; the issue endpoint was proven for sequential replay and for service-level concurrency, not for concurrent HTTP",
+    "full_e2e": "NOT_VERIFIED: not run",
+    "full_backend_regression": "NOT_VERIFIED: not run; the Phase 14B change is additive test-only and confined to the Blood Bank suite",
     "production_dependency_remediation": "Dependabot findings remain on the default branch and were not changed in this branch",
     "general_clinical_audit_chain_concurrency": "not separately load-tested"
   },
   "blocked": {
-    "none_for_current_postgres_tests": true,
+    "clinical_command_receipts_lineage": "BLOCKED: clinical_command_receipts, the durable idempotency claim table, is created only by migration 20260819_0003_clinical_command_receipts, which sits on a different Alembic head from the Blood Bank lineage. Upgrading to 20260901_0004 alone leaves the table absent and every guarded Blood Bank write fails with UndefinedTable. The verification database required that migration's own DDL to be applied separately. Root cause is the pre-existing duplicate revision id 20260819_0003 and the unrelated multiple-head state, which are out of scope for this phase and were not modified.",
+    "requirements_lock_missing_signxml": "BLOCKED for lock-only installs: signxml>=4.2.0 is declared in backend/requirements.txt but absent from backend/requirements-lock.txt, so an environment built from the lock file alone cannot import app.security.saml_service and therefore cannot start the application. Documented only; the dependency manifests were not modified in this phase.",
     "alembic_upgrade_head": "pre-existing duplicate revision 20260819_0003 and unrelated multiple heads; unchanged"
   },
   "warnings": [
     "FastAPI TestClient reports an existing Starlette/httpx deprecation warning",
-    "pytest reports two existing unknown asyncio configuration options",
     "Test runtime logs existing missing optional production secrets and in-memory Redis fallback; production configuration was not modified",
+    "The application source uses PEP 695 generic syntax and cannot be imported on Python 3.11; verification ran on Python 3.13.12",
     "GitHub reports existing Dependabot vulnerabilities on the default branch"
   ]
 }
