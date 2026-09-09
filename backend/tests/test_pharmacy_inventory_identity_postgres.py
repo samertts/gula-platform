@@ -19,6 +19,7 @@ import os
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -493,6 +494,51 @@ def test_stock_uniqueness_holds_with_no_batch_and_no_store(session: Session) -> 
             )
         )
         session.flush()
+
+
+def test_warehouse_is_not_part_of_stock_identity(engine: Any) -> None:
+    """P0-2-M4-GAP-STOCK-WAREHOUSE: warehouse_id must stay out of the key.
+
+    Not because a warehouse is meaningless, but because nothing in the
+    application can put a value in that column. ``pharmacy_warehouses`` has no
+    creation path — no endpoint, no service, no seed, no migration insert — so
+    the enforced foreign key means every non-NULL ``warehouse_id`` is rejected.
+    A column that can only ever be NULL cannot distinguish two stock rows.
+
+    Adding it to the tuple would also *weaken* the guarantee rather than
+    strengthen it: a wider unique key admits more distinct combinations, so
+    duplicates that are currently refused would start being accepted.
+
+    Whether a warehouse should become a real inventory location is a separate,
+    open architecture question. If it is ever answered yes, this test is the
+    thing that should fail, and it should fail deliberately.
+    """
+    uniques = {
+        u["name"]: tuple(u["column_names"])
+        for u in inspect(engine).get_unique_constraints("pharmacy_stock_levels")
+    }
+    assert uniques["uq_pharmacy_stock"] == ("lab_id", "drug_id", "batch_id", "store_id")
+    assert "warehouse_id" not in uniques["uq_pharmacy_stock"]
+
+
+def test_nothing_can_create_a_warehouse_or_a_store(session: Session) -> None:
+    """The evidence behind the test above, asserted rather than remembered.
+
+    Both location tables are reachable only by direct SQL. If a creation path
+    is ever added, this test fails and the identity question above must be
+    re-answered rather than quietly inherited.
+    """
+    import app.pharmacy.routes as routes
+    import app.pharmacy.services as services
+
+    source = Path(routes.__file__).read_text(encoding="utf-8")
+    assert "pharmacy_warehouses" not in source
+    assert "Warehouse(" not in source
+    assert "Store(" not in source
+
+    service_source = Path(services.__file__).read_text(encoding="utf-8")
+    assert "Warehouse(" not in service_source
+    assert "Store(" not in service_source
 
 
 def test_the_stock_constraint_is_the_one_the_schema_carries(engine: Any) -> None:

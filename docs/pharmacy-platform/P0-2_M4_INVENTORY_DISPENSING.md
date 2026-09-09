@@ -179,17 +179,23 @@ an internal Integer key cannot leak into a payload.
 
 **P0-2-M4-GAP-STOCK-NULL-STORE — CLOSED** by `20260912_0001`. See §12.
 
-**P0-2-M4-GAP-STOCK-WAREHOUSE — open, needs a domain decision.** The schema and
-the application disagree about whether a warehouse is part of a stock row's
-identity. `uq_pharmacy_stock` covers `(lab_id, drug_id, batch_id, store_id)` and
-excludes `warehouse_id`, while `StockAdjustmentService` looked stock up by
-warehouse *and* store. M4 aligned the lookup to the constraint, because a filter
-on a column the schema does not treat as identifying can miss a row the database
-then refuses to insert. Nothing populates `warehouse_id` today — no production
-path writes it — so the question is not yet reachable, but it is unresolved:
-either warehouse-held stock is a first-class location and belongs in the
-uniqueness key, or `warehouse_id` is vestigial and should go. Neither is
-derivable from the repository.
+**P0-2-M4-GAP-STOCK-WAREHOUSE — analysed; split verdict.** Full evidence in
+`P0-2-M4-GAP-STOCK-WAREHOUSE.md`.
+
+The *identity* half is **VERIFIED — no change required**. `uq_pharmacy_stock`
+covers `(lab_id, drug_id, batch_id, store_id)` and correctly excludes
+`warehouse_id`: nothing in the repository can create a `Warehouse` or a `Store`,
+so the column is unconditionally NULL and any value fails its foreign key.
+Adding it to the key would weaken the constraint rather than strengthen it.
+M4's alignment of `StockAdjustmentService` to the constraint stands. Two
+regression guards now assert both the constraint columns and the premise behind
+them.
+
+The *architecture* half is **BLOCKED**. Whether a pharmacy warehouse is a real
+inventory location at all — first-class, or dead schema to retire — is not
+derivable from the repository: the schema models it across four tables and the
+org model names two warehouse roles, while no code implements it and no ADR
+decides it. Recorded as NR-017. Do not implement either direction speculatively.
 
 **External-domain identifiers.** `pharmacy_sales.patient_id`, `.citizen_id`,
 `.encounter_id`, `pharmacy_sale_lines.medication_dispense_id` and
