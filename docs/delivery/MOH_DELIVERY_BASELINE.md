@@ -16,7 +16,11 @@ FastAPI monolith (`backend/app/`) on PostgreSQL 17/16 + Redis 7, behind an nginx
 gateway. Arabic-first. A parallel `services/` tree exists but is not the
 deployment target.
 
-Canonical pharmacy identity model is fixed by **ADR-006** (`docs/pharmacy-platform/ADR.md`):
+Canonical pharmacy identity model is fixed by **ADR-006**
+(`docs/pharmacy-platform/ADR.md`, carried on PR 255) and frozen as a binding
+contract in `docs/pharmacy-platform/CANONICAL_DRUG_CONTRACT.md`. The one-off
+migration-policy exception is recorded in
+`docs/architecture/MIGRATION_EXCEPTION_20260815_0023.md`.
 
 | Concern                             | Identity              | Rule                                         |
 | ----------------------------------- | --------------------- | -------------------------------------------- |
