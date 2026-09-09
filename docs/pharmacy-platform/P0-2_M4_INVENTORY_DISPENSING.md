@@ -177,13 +177,19 @@ an internal Integer key cannot leak into a payload.
 
 ## 10. Remaining gaps
 
-**P0-2-M4-GAP-STOCK-NULL-STORE.** `uq_pharmacy_stock_lab_drug_batch_store`
-covers `(lab_id, drug_id, batch_id, store_id)`, and PostgreSQL treats NULLs as
-distinct in a unique constraint. Two stock rows for the same drug and batch with
-no store therefore do not collide. Closing it needs a partial unique index over
-the NULL-store case, which cannot be added blind: it would fail on any existing
-duplicate, and production row counts are not knowable from this repository. A
-test records the behaviour so it is not mistaken for a guarantee.
+**P0-2-M4-GAP-STOCK-NULL-STORE — CLOSED** by `20260912_0001`. See §12.
+
+**P0-2-M4-GAP-STOCK-WAREHOUSE — open, needs a domain decision.** The schema and
+the application disagree about whether a warehouse is part of a stock row's
+identity. `uq_pharmacy_stock` covers `(lab_id, drug_id, batch_id, store_id)` and
+excludes `warehouse_id`, while `StockAdjustmentService` looked stock up by
+warehouse *and* store. M4 aligned the lookup to the constraint, because a filter
+on a column the schema does not treat as identifying can miss a row the database
+then refuses to insert. Nothing populates `warehouse_id` today — no production
+path writes it — so the question is not yet reachable, but it is unresolved:
+either warehouse-held stock is a first-class location and belongs in the
+uniqueness key, or `warehouse_id` is vestigial and should go. Neither is
+derivable from the repository.
 
 **External-domain identifiers.** `pharmacy_sales.patient_id`, `.citizen_id`,
 `.encounter_id`, `pharmacy_sale_lines.medication_dispense_id` and
@@ -203,3 +209,43 @@ domains, not to P0-2. No Pharmacy entity keys on `String(26)` any more.
 The Generation B base is gone: `BaseEntity`, `TenantEntity`, `AuditEntity`,
 `TenantAuditEntity` and `_ulid()` are deleted from `app/pharmacy/base.py`, as
 that class's own docstring said they would be once the last model moved off.
+
+---
+
+## 12. Post-M4 hardening
+
+**P0-2-M4-GAP-STOCK-NULL-STORE is closed** (`20260912_0001`).
+
+The evidence settled it. `store_id` is **optional by design, not a legacy
+artifact**: `PharmacyService.create_batch` — the batch-receipt path, and the
+primary way stock enters the system — opens a stock row with no store *and* no
+warehouse, because a dispensing point is assigned later, if ever. Making
+`store_id` NOT NULL would break that path, so option A is disproven by the code
+that runs.
+
+What was wrong was never the nullability; it was that the constraint did not
+mean what it said. `uq_pharmacy_stock` has covered
+`(lab_id, drug_id, batch_id, store_id)` since the platform migration, and both
+`batch_id` and `store_id` are nullable, so SQL's default — every NULL distinct —
+voided the guarantee for exactly the rows that are the norm.
+
+PostgreSQL provides the exact remedy: `UNIQUE NULLS NOT DISTINCT` (15+; every
+deployment target here is 16 or 17, verified). It states the intent already
+written into the constraint, without a partial index per nullable combination
+and without touching nullability.
+
+Fail-closed: tightening a uniqueness rule can only fail on data that already
+violates it, so the migration counts the offending groups and aborts naming
+them, rather than letting PostgreSQL reject the index with one opaque row.
+Nothing is merged or deleted — which of two real stock rows is authoritative is
+a data question. Proven: with two location-less rows for the same drug present,
+the upgrade refused, the revision stayed `20260911_0001`, both rows survived and
+the constraint was untouched.
+
+Two smaller corrections came with it:
+
+* the ORM declared `uq_pharmacy_stock_lab_drug_batch_store`, a constraint name
+  that has never existed physically — M4 introduced it, and `GULA-SCHEMA-002`
+  compares columns and types rather than constraint names, so nothing caught it;
+* `adjust_stock` and `_stock_row` now filter on the uniqueness key itself, so a
+  lookup cannot miss a row the database would then reject as a duplicate.

@@ -71,6 +71,9 @@ PUBLIC_IDS = {
 
 @pytest.fixture(scope="module")
 def engine() -> Any:
+    # pytestmark skips this module when the URL is unset, but that is invisible
+    # to a type checker — and to a reader who runs the fixture directly.
+    assert POSTGRES_URL is not None
     return create_engine(POSTGRES_URL, future=True)
 
 
@@ -450,23 +453,59 @@ def test_a_stock_row_is_unique_per_drug_batch_and_store(session: Session) -> Non
         _stock(session, drug, batch, store_id=store.id)
 
 
-def test_stock_uniqueness_does_not_hold_without_a_store(session: Session) -> None:
-    """A finding, recorded rather than hidden.
+def test_stock_uniqueness_holds_without_a_store(session: Session) -> None:
+    """Regression for P0-2-M4-GAP-STOCK-NULL-STORE.
 
-    ``uq_pharmacy_stock_lab_drug_batch_store`` covers
-    ``(lab_id, drug_id, batch_id, store_id)``. PostgreSQL treats NULLs as
-    distinct in a unique constraint, so two stock rows for the same drug and
-    batch with no store DO NOT collide — the guarantee holds only once a store
-    is set. Closing this needs a partial unique index over the NULL-store case,
-    which cannot be added blind: it would fail on any existing duplicate.
-    Tracked as P0-2-M4-GAP-STOCK-NULL-STORE.
+    ``uq_pharmacy_stock`` covers ``(lab_id, drug_id, batch_id, store_id)``, and
+    both ``batch_id`` and ``store_id`` are legitimately NULL — receiving a batch
+    opens its stock row before any dispensing point is assigned. Under SQL's
+    default every NULL is distinct, so the constraint guaranteed nothing for
+    exactly those rows. It is now ``NULLS NOT DISTINCT``, which is what it always
+    meant.
     """
     _tenants(session)
     drug = _drug(session, "M4-NULLSTORE")
     batch = _batch(session, drug)
     _stock(session, drug, batch)
-    _stock(session, drug, batch)  # accepted: store_id IS NULL on both
-    assert session.query(StockLevel).filter(StockLevel.drug_id == drug.id).count() == 2
+    with pytest.raises(IntegrityError), session.begin_nested():
+        _stock(session, drug, batch)
+
+
+def test_stock_uniqueness_holds_with_no_batch_and_no_store(session: Session) -> None:
+    """The same guarantee when BOTH nullable members of the key are NULL.
+
+    This is the shape ``adjust_stock`` creates when no batch is named.
+    """
+    _tenants(session)
+    drug = _drug(session, "M4-NULLBOTH")
+    session.add(
+        StockLevel(
+            lab_id=LAB_A, drug_id=drug.id, batch_id=None, store_id=None,
+            quantity_on_hand=1, quantity_reserved=0, quantity_available=1, unit="unit",
+        )
+    )
+    session.flush()
+    with pytest.raises(IntegrityError), session.begin_nested():
+        session.add(
+            StockLevel(
+                lab_id=LAB_A, drug_id=drug.id, batch_id=None, store_id=None,
+                quantity_on_hand=2, quantity_reserved=0, quantity_available=2, unit="unit",
+            )
+        )
+        session.flush()
+
+
+def test_the_stock_constraint_is_the_one_the_schema_carries(engine: Any) -> None:
+    """M4 declared a constraint name that never existed physically.
+
+    The ORM said ``uq_pharmacy_stock_lab_drug_batch_store``; the schema has
+    ``uq_pharmacy_stock``. GULA-SCHEMA-002 compares columns and types, not
+    constraint names, so nothing caught it.
+    """
+    physical = {u["name"] for u in inspect(engine).get_unique_constraints("pharmacy_stock_levels")}
+    mapped = {c.name for c in StockLevel.__table__.constraints if c.name and "uq_" in str(c.name)}
+    assert "uq_pharmacy_stock" in physical
+    assert mapped <= physical, f"ORM declares constraint names the database lacks: {mapped - physical}"
 
 
 def test_a_movement_requires_an_actor(session: Session) -> None:

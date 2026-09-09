@@ -1572,10 +1572,14 @@ class PharmacyService:
         batch = self.get_batch_for_update(str(data.get("batch_id") or ""))
         batch_key = batch.id if batch else None
 
+        # Match on the uniqueness key `uq_pharmacy_stock`
+        # (lab_id, drug_id, batch_id, store_id) so the lookup cannot miss a row
+        # the database would then refuse to let us insert as a duplicate.
         stock = self.db.query(StockLevel).filter(
             StockLevel.lab_id == self.lab_id,
             StockLevel.drug_id == drug.id,
             StockLevel.batch_id == batch_key,
+            StockLevel.store_id == data.get("store_id"),
             ~StockLevel.is_deleted,
         ).with_for_update().first()
         if not stock:

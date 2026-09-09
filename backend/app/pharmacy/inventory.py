@@ -65,10 +65,19 @@ class StockAdjustmentService:
     def _stock_row(
         self, drug_id: int, batch_id: int | None, warehouse_id: int | None, store_id: int | None
     ) -> StockLevel | None:
+        """Find the one stock row for this drug, batch and dispensing point.
+
+        The filter is the uniqueness key `uq_pharmacy_stock` and nothing more:
+        `(lab_id, drug_id, batch_id, store_id)`. `warehouse_id` is deliberately
+        NOT part of it, because the constraint does not include it — filtering
+        on a column the schema does not treat as identifying would let this
+        method miss a row that the database then refuses to let it insert.
+        `warehouse_id` stays in the signature because callers set it on a row
+        they create; see P0-2-M4-GAP-STOCK-WAREHOUSE.
+        """
         query = self.db.query(StockLevel).filter(
             StockLevel.drug_id == drug_id,
             StockLevel.batch_id == batch_id,
-            StockLevel.warehouse_id == warehouse_id,
             StockLevel.store_id == store_id,
             ~StockLevel.is_deleted,
         )

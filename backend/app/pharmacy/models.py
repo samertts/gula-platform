@@ -493,8 +493,21 @@ class StockLevel(TenantScopedEntity):  # type: ignore[misc]
     batch = relationship("DrugBatch", lazy="selectin")
 
     __table_args__ = (
+        # The name is the one the schema already carries, not a new one: M4
+        # declared `uq_pharmacy_stock_lab_drug_batch_store`, which never existed
+        # physically.
+        #
+        # NULLS NOT DISTINCT because `batch_id` and `store_id` are legitimately
+        # NULL — receiving a batch opens a stock row before any dispensing point
+        # is assigned — and SQL's default treats each NULL as unique, so the
+        # constraint silently guaranteed nothing for exactly those rows.
         UniqueConstraint(
-            "lab_id", "drug_id", "batch_id", "store_id", name="uq_pharmacy_stock_lab_drug_batch_store"
+            "lab_id",
+            "drug_id",
+            "batch_id",
+            "store_id",
+            name="uq_pharmacy_stock",
+            postgresql_nulls_not_distinct=True,
         ),
         Index("ix_pharmacy_stock_levels_lab_available", "lab_id", "quantity_available"),
         {"extend_existing": True},

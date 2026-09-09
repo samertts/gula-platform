@@ -56,6 +56,9 @@ PUBLIC_IDS = {
 
 @pytest.fixture(scope="module")
 def engine() -> Any:
+    # pytestmark skips this module when the URL is unset, but that is invisible
+    # to a type checker — and to a reader who runs the fixture directly.
+    assert POSTGRES_URL is not None
     return create_engine(POSTGRES_URL, future=True)
 
 
