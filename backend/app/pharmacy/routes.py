@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
@@ -135,26 +135,31 @@ class DrugCatalogListResponse(BaseModel):
 
 class DrugBatchCreate(BaseModel):
     batch_number: str
-    manufacturer_batch: str | None = None
     expiry_date: date
     manufacturing_date: date | None = None
-    quantity_initial: int = 0
+    quantity_initial: float = 0
     storage_condition: StorageCondition | None = None
     location: str | None = None
-    supplier: str | None = None
     cost_price: float | None = None
     selling_price: float | None = None
 
 
 class DrugBatchResponse(BaseModel):
+    """A received lot.
+
+    ``id`` is the batch's public ``batch_id`` and ``drug_catalog_id`` the
+    drug's public ``drug_id``; neither internal Integer key is published
+    (CANONICAL_DRUG_CONTRACT §3). Quantities are floats because stock is
+    ``DOUBLE PRECISION`` physically — an integer would truncate a half tablet.
+    """
+
     id: str
     drug_catalog_id: str
     batch_number: str
-    manufacturer_batch: str | None
     expiry_date: str
     manufacturing_date: str | None
-    quantity_initial: int
-    quantity_remaining: int
+    quantity_initial: float
+    quantity_remaining: float
     storage_condition: str | None
     location: str | None
     received_date: str | None
@@ -162,14 +167,13 @@ class DrugBatchResponse(BaseModel):
     cost_price: float | None
     selling_price: float | None
     is_quarantined: bool
-
-    model_config = ConfigDict(from_attributes=True)
+    status: str
 
 
 class SupplierCreate(BaseModel):
-    name: str
-    name_ar: str | None = None
-    code: str
+    supplier_name: str
+    supplier_name_ar: str | None = None
+    supplier_code: str
     contact_person: str | None = None
     phone: str | None = None
     email: str | None = None
@@ -180,10 +184,10 @@ class SupplierCreate(BaseModel):
 
 
 class SupplierResponse(BaseModel):
-    id: str
-    name: str
-    name_ar: str | None
-    code: str
+    id: int
+    supplier_name: str
+    supplier_name_ar: str | None
+    supplier_code: str
     contact_person: str | None
     phone: str | None
     email: str | None
@@ -195,228 +199,215 @@ class SupplierResponse(BaseModel):
 
 
 class PrescriptionCreate(BaseModel):
-    patient_id: str
-    encounter_id: str | None = None
-    prescriber_id: str | None = None
-    prescription_number: str
-    intent: str = "order"
-    priority: str = "routine"
-    diagnosis: str | None = None
+    patient_id: int | None = None
+    prescription_number: str | None = None
+    prescribed_by: str
+    prescriber_license: str | None = None
+    prescription_type: str | None = None
     diagnosis_code: str | None = None
-    diagnosis_system: str | None = None
-    valid_from: date | None = None
-    valid_to: date | None = None
-    dispense_interval: int | None = None
-    substitution_allowed: bool = True
-    note: str | None = None
+    diagnosis_description: str | None = None
+    clinical_notes: str | None = None
+    is_stat: bool = False
+    is_verbal: bool = False
+    is_emergency: bool = False
+    refills_allowed: int = 0
+    valid_until: datetime | None = None
 
 
 class PrescriptionResponse(BaseModel):
-    id: str
-    patient_id: str
-    encounter_id: str | None
-    prescriber_id: str | None
-    prescription_number: str
-    status: str
-    intent: str
-    priority: str
-    diagnosis: str | None
-    diagnosis_code: str | None
-    diagnosis_system: str | None
-    authored_on: str | None
-    valid_from: str | None
-    valid_to: str | None
-    substitution_allowed: bool
-    note: str | None
+    """``id`` is the prescription's public ``prescription_id`` (UUID4).
 
-    model_config = ConfigDict(from_attributes=True)
+    The previous shape advertised ``intent``, ``priority``, ``diagnosis_system``
+    and ``substitution_allowed``; none exists in the schema, so the endpoint
+    could never have returned them. ``prescribed_by`` is the prescriber's name
+    as free text — there is no practitioner foreign key to expose.
+    """
+
+    id: str
+    patient_id: int | None
+    prescription_number: str
+    prescribed_by: str
+    prescriber_license: str | None
+    prescription_type: str | None
+    status: str
+    diagnosis_code: str | None
+    diagnosis_description: str | None
+    clinical_notes: str | None
+    prescribed_at: str | None
+    valid_until: str | None
+    refills_allowed: int | None
+    refills_used: int | None
+    is_stat: bool
+    is_emergency: bool
 
 
 class PrescriptionItemCreate(BaseModel):
-    drug_catalog_id: str | None = None
-    medication_code: str | None = None
-    medication_name: str
-    strength_value: str | None = None
-    strength_unit: str | None = None
-    form: str | None = None
+    drug_catalog_id: str
+    drug_name: str | None = None
+    dosage: str
+    frequency: str
     route: str | None = None
-    dose_quantity: str | None = None
-    dose_unit: str | None = None
-    frequency: str | None = None
-    duration: int | None = None
-    duration_unit: str | None = None
-    quantity: int | None = None
+    duration: str | None = None
+    quantity: float
     quantity_unit: str | None = None
-    refills: int = 0
+    refill_quantity: float | None = None
     instructions: str | None = None
-    substitution_allowed: bool = True
+    patient_education: str | None = None
+    is_substitution_allowed: bool = True
 
 
 class PrescriptionItemResponse(BaseModel):
     id: str
     prescription_id: str
-    drug_catalog_id: str | None
-    medication_code: str | None
-    medication_name: str
-    strength_value: str | None
-    strength_unit: str | None
-    form: str | None
+    drug_catalog_id: str
+    drug_name: str
+    dosage: str
+    frequency: str
     route: str | None
-    dose_quantity: str | None
-    dose_unit: str | None
-    frequency: str | None
-    duration: int | None
-    duration_unit: str | None
-    quantity: int | None
+    duration: str | None
+    quantity: float
     quantity_unit: str | None
-    refills: int
-    refills_used: int
+    refill_quantity: float | None
     instructions: str | None
-    substitution_allowed: bool
+    patient_education: str | None
+    is_substitution_allowed: bool
     status: str
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class DispenseRecordCreate(BaseModel):
     prescription_id: str | None = None
     prescription_item_id: str | None = None
-    patient_id: str
+    patient_id: int | None = None
     drug_catalog_id: str
-    dispensed_by: str | None = None
-    verified_by: str | None = None
-    quantity_dispensed: int
+    dispensed_by: int
+    verified_by: int
+    quantity_dispensed: float
     quantity_unit: str | None = None
     days_supply: int | None = None
-    batch_id: str | None = None
-    lot_number: str | None = None
-    expiry_date: date | None = None
-    cost_price: float | None = None
-    selling_price: float | None = None
-    discount: float | None = None
-    total_amount: float | None = None
-    pharmacist_notes: str | None = None
-    counseling_provided: bool = False
+    batch_id: str
+    dosage_dispensed: str | None = None
+    instructions: str | None = None
+    label_notes: str | None = None
 
 
 class DispenseRecordResponse(BaseModel):
-    id: str
+    id: int
     prescription_id: str | None
-    patient_id: str
-    dispensed_by: str | None
-    verified_by: str | None
+    patient_id: int | None
+    drug_catalog_id: str
+    batch_id: str | None
+    dispense_number: str
+    dispensed_by: int
+    verified_by: int | None
     dispensed_at: str | None
-    status: str
-    quantity_dispensed: int
+    quantity_dispensed: float
     quantity_unit: str | None
     days_supply: int | None
-    batch_id: str | None
-    lot_number: str | None
-    expiry_date: str | None
-    total_amount: float | None
-    pharmacist_notes: str | None
-
-    model_config = ConfigDict(from_attributes=True)
+    is_verified: bool
+    is_counselled: bool
+    instructions: str | None
 
 
 class StockLevelResponse(BaseModel):
-    id: str
+    id: int
     drug_catalog_id: str
     batch_id: str | None
-    warehouse_id: str | None
-    store_id: str | None
-    quantity: int
-    reserved_quantity: int
-    available_quantity: int
-    reorder_point: int | None
-    reorder_quantity: int | None
-    max_level: int | None
-    storage_condition: str | None
+    warehouse_id: int | None
+    store_id: int | None
+    quantity: float
+    reserved_quantity: float
+    available_quantity: float
+    reorder_point: float | None
+    reorder_quantity: float | None
+    max_level: float | None
+    unit: str
+    location: str | None
     last_count_date: str | None
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class StockAdjustRequest(BaseModel):
     drug_catalog_id: str
     batch_id: str | None = None
-    warehouse_id: str | None = None
-    store_id: str | None = None
-    adjustment: int
+    warehouse_id: int | None = None
+    store_id: int | None = None
+    adjustment: float
+    unit: str = "unit"
     reason: str = "Manual adjustment"
 
 
 class MovementCreate(BaseModel):
     drug_catalog_id: str
     batch_id: str | None = None
-    warehouse_id: str | None = None
-    store_id: str | None = None
     movement_type: StockMovementType
-    quantity: int
-    reference_type: str | None = None
-    reference_id: str | None = None
+    quantity: float
+    unit: str = "unit"
     reason: str | None = None
     notes: str | None = None
 
 
 class TransferCreate(BaseModel):
-    from_warehouse_id: str | None = None
-    to_warehouse_id: str | None = None
-    from_store_id: str | None = None
-    to_store_id: str | None = None
+    from_warehouse_id: int | None = None
+    to_warehouse_id: int | None = None
+    from_store_id: int | None = None
+    to_store_id: int | None = None
+    transfer_type: str = "internal"
+    transfer_number: str | None = None
     notes: str | None = None
 
 
 class TransferItemCreate(BaseModel):
     drug_catalog_id: str
     batch_id: str | None = None
-    quantity_requested: int
+    quantity: float
+    unit: str = "unit"
 
 
 class ReturnCreate(BaseModel):
-    patient_id: str | None = None
-    prescription_id: str | None = None
-    drug_catalog_id: str | None = None
+    patient_id: int | None = None
+    drug_catalog_id: str
     batch_id: str | None = None
+    return_type: str = "patient"
     return_reason: str
-    quantity: int
+    quantity: float
+    unit: str = "unit"
     disposition: str | None = None
-    notes: str | None = None
 
 
 class WasteCreate(BaseModel):
-    drug_catalog_id: str | None = None
+    drug_catalog_id: str
     batch_id: str | None = None
-    quantity: int
+    quantity: float
+    unit: str = "unit"
+    waste_type: str = "expired"
     waste_reason: str
-    witness_by: str | None = None
+    witnessed_by: int | None = None
     disposal_method: str | None = None
-    notes: str | None = None
 
 
 class RecallCreate(BaseModel):
     drug_catalog_id: str
     batch_id: str | None = None
+    recall_number: str | None = None
     recall_reason: str
-    recall_date: date
-    initiated_by: str | None = None
+    recall_source: str | None = None
     severity: str
+    status: str = "active"
     actions_taken: str | None = None
     notes: str | None = None
 
 
 class RecallResponse(BaseModel):
-    id: str
+    id: int
     drug_catalog_id: str
     batch_id: str | None
+    recall_number: str
     recall_reason: str
-    recall_date: str
+    recall_source: str | None
+    initiated_at: str
     severity: str
     status: str
     actions_taken: str | None
     notes: str | None
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class InteractionCheckRequest(BaseModel):
@@ -457,33 +448,34 @@ class PolypharmacyCheckRequest(BaseModel):
 
 
 class MovementResponse(BaseModel):
-    id: str
+    id: int
     drug_catalog_id: str
     batch_id: str | None
     movement_type: str
-    quantity: int
+    quantity: float
+    unit: str
     reference_type: str | None
-    reference_id: str | None
+    reference_id: int | None
     reason: str | None
-    performed_by: str | None
+    performed_by: int
     movement_date: str
     notes: str | None
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class TransferResponse(BaseModel):
     id: str
-    from_warehouse_id: str | None
-    to_warehouse_id: str | None
+    transfer_number: str
+    from_warehouse_id: int | None
+    to_warehouse_id: int | None
+    from_store_id: int | None
+    to_store_id: int | None
+    transfer_type: str
     status: str
-    initiated_by: str | None
-    approved_by: str | None
+    requested_by: int | None
+    approved_by: int | None
     dispatch_date: str | None
     received_date: str | None
     notes: str | None
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class DashboardResponse(BaseModel):
@@ -491,6 +483,183 @@ class DashboardResponse(BaseModel):
     active_prescriptions: int
     pending_queue: int
     dispensed_today: int
+
+
+
+# ── Response builders ──────────────────────────────────────────────────────────
+#
+# These entities are returned through explicit builders rather than
+# ``model_validate``, for one reason: after M4 their ``id`` is an internal
+# INTEGER key, and the contract forbids publishing it as an entity's identity
+# (§3). Each builder swaps in the entity's public identifier and resolves
+# related rows to *their* public identifiers.
+
+
+def _iso(value: Any) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def _drug_batch_response(batch: Any) -> DrugBatchResponse:
+    drug = batch.drug
+    supplier = batch.supplier
+    return DrugBatchResponse(
+        id=str(batch.batch_id),
+        drug_catalog_id=str(drug.drug_id) if drug else "",
+        batch_number=batch.batch_number,
+        expiry_date=batch.expiry_date.isoformat(),
+        manufacturing_date=_iso(batch.manufacturing_date),
+        quantity_initial=batch.quantity_received,
+        quantity_remaining=batch.quantity_remaining,
+        storage_condition=batch.storage_condition,
+        location=batch.location,
+        received_date=_iso(batch.received_date),
+        # There is no free-text supplier column: a batch names a supplier row.
+        supplier=supplier.supplier_name if supplier else None,
+        cost_price=float(batch.unit_cost) if batch.unit_cost is not None else None,
+        selling_price=float(batch.selling_price) if batch.selling_price is not None else None,
+        is_quarantined=bool(batch.is_quarantined),
+        status=batch.status,
+    )
+
+
+def _prescription_response(rx: Any) -> PrescriptionResponse:
+    return PrescriptionResponse(
+        id=str(rx.prescription_id),
+        patient_id=rx.patient_id,
+        prescription_number=rx.prescription_number,
+        prescribed_by=rx.prescribed_by,
+        prescriber_license=rx.prescriber_license,
+        prescription_type=rx.prescription_type,
+        status=rx.status,
+        diagnosis_code=rx.diagnosis_code,
+        diagnosis_description=rx.diagnosis_description,
+        clinical_notes=rx.clinical_notes,
+        prescribed_at=_iso(rx.prescribed_at),
+        valid_until=_iso(rx.valid_until),
+        refills_allowed=rx.refills_allowed,
+        refills_used=rx.refills_used,
+        is_stat=bool(rx.is_stat),
+        is_emergency=bool(rx.is_emergency),
+    )
+
+
+def _prescription_item_response(item: Any) -> PrescriptionItemResponse:
+    return PrescriptionItemResponse(
+        id=str(item.prescription_item_id),
+        prescription_id=str(item.prescription.prescription_id) if item.prescription else "",
+        drug_catalog_id=str(item.drug.drug_id) if item.drug else "",
+        drug_name=item.drug_name,
+        dosage=item.dosage,
+        frequency=item.frequency,
+        route=item.route,
+        duration=item.duration,
+        quantity=item.quantity,
+        quantity_unit=item.quantity_unit,
+        refill_quantity=item.refill_quantity,
+        instructions=item.instructions,
+        patient_education=item.patient_education,
+        is_substitution_allowed=bool(item.is_substitution_allowed),
+        status=item.status,
+    )
+
+
+def _dispense_record_response(record: Any, svc: Any) -> DispenseRecordResponse:
+    drug = svc.get_drug(record.drug_id)
+    batch = svc.get_batch(record.batch_id) if record.batch_id else None
+    rx = svc.get_prescription(record.prescription_id) if record.prescription_id else None
+    return DispenseRecordResponse(
+        id=record.id,
+        prescription_id=str(rx.prescription_id) if rx else None,
+        patient_id=record.patient_id,
+        drug_catalog_id=str(drug.drug_id) if drug else "",
+        batch_id=str(batch.batch_id) if batch else None,
+        dispense_number=record.dispense_number,
+        dispensed_by=record.dispensed_by,
+        verified_by=record.verified_by,
+        dispensed_at=_iso(record.dispensed_at),
+        quantity_dispensed=record.quantity_dispensed,
+        quantity_unit=record.quantity_unit,
+        days_supply=record.days_supply,
+        is_verified=bool(record.is_verified),
+        is_counselled=bool(record.is_counselled),
+        instructions=record.instructions,
+    )
+
+
+def _stock_level_response(stock: Any, svc: Any) -> StockLevelResponse:
+    drug = svc.get_drug(stock.drug_id)
+    batch = stock.batch
+    return StockLevelResponse(
+        id=stock.id,
+        drug_catalog_id=str(drug.drug_id) if drug else "",
+        batch_id=str(batch.batch_id) if batch else None,
+        warehouse_id=stock.warehouse_id,
+        store_id=stock.store_id,
+        quantity=stock.quantity_on_hand,
+        reserved_quantity=stock.quantity_reserved or 0,
+        available_quantity=stock.quantity_available,
+        reorder_point=stock.reorder_point,
+        reorder_quantity=stock.reorder_quantity,
+        max_level=stock.maximum_level,
+        unit=stock.unit,
+        location=stock.location,
+        last_count_date=_iso(stock.last_counted_at),
+    )
+
+
+def _movement_response(movement: Any, svc: Any) -> MovementResponse:
+    drug = svc.get_drug(movement.drug_id)
+    batch = svc.get_batch(movement.batch_id) if movement.batch_id else None
+    return MovementResponse(
+        id=movement.id,
+        drug_catalog_id=str(drug.drug_id) if drug else "",
+        batch_id=str(batch.batch_id) if batch else None,
+        movement_type=movement.movement_type,
+        quantity=movement.quantity,
+        unit=movement.unit,
+        reference_type=movement.reference_type,
+        reference_id=movement.reference_id,
+        reason=movement.reason,
+        performed_by=movement.performed_by,
+        movement_date=movement.performed_at.isoformat(),
+        notes=movement.notes,
+    )
+
+
+def _transfer_response(transfer: Any) -> TransferResponse:
+    return TransferResponse(
+        id=str(transfer.transfer_id),
+        transfer_number=transfer.transfer_number,
+        from_warehouse_id=transfer.from_warehouse_id,
+        to_warehouse_id=transfer.to_warehouse_id,
+        from_store_id=transfer.from_store_id,
+        to_store_id=transfer.to_store_id,
+        transfer_type=transfer.transfer_type,
+        status=transfer.status,
+        requested_by=transfer.requested_by,
+        approved_by=transfer.approved_by,
+        dispatch_date=_iso(transfer.dispatched_at),
+        received_date=_iso(transfer.received_at),
+        notes=transfer.notes,
+    )
+
+
+def _recall_response(recall: Any, svc: Any) -> RecallResponse:
+    drug = svc.get_drug(recall.drug_id)
+    batch = svc.get_batch(recall.batch_id) if recall.batch_id else None
+    return RecallResponse(
+        id=recall.id,
+        drug_catalog_id=str(drug.drug_id) if drug else "",
+        batch_id=str(batch.batch_id) if batch else None,
+        recall_number=recall.recall_number,
+        recall_reason=recall.recall_reason,
+        recall_source=recall.recall_source,
+        initiated_at=recall.initiated_at.isoformat(),
+        severity=recall.severity,
+        status=recall.status,
+        actions_taken=recall.actions_taken,
+        notes=recall.notes,
+    )
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -678,10 +847,19 @@ async def create_batch(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    batch = svc.create_batch(drug_id, data.model_dump(exclude_none=True))
+    drug = svc.get_drug_by_public_id(drug_id)
+    if not drug:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}")
+    payload = data.model_dump(exclude_none=True)
+    # `cost_price` is the wire name for the physical `unit_cost` column.
+    if "cost_price" in payload:
+        payload["unit_cost"] = payload.pop("cost_price")
+    batch = svc.create_batch(drug.id, payload)
     if not batch:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Drug not found: {drug_id}")
-    return batch
+    db.commit()
+    db.refresh(batch)
+    return _drug_batch_response(batch)
 
 
 @router.get("/drugs/{drug_id}/batches", response_model=list[DrugBatchResponse])
@@ -691,7 +869,10 @@ async def list_batches(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    return svc.get_batches(drug_id)
+    drug = svc.get_drug_by_public_id(drug_id)
+    if not drug:
+        return []
+    return [_drug_batch_response(b) for b in svc.get_batches(drug.id)]
 
 
 @router.get("/batches/{batch_id}", response_model=DrugBatchResponse)
@@ -701,10 +882,10 @@ async def get_batch(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    batch = svc.get_batch(batch_id)
+    batch = svc.get_batch_by_public_id(batch_id)
     if not batch:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Batch not found: {batch_id}")
-    return batch
+    return _drug_batch_response(batch)
 
 
 @router.get("/batches/expiring", response_model=list[DrugBatchResponse])
@@ -714,7 +895,7 @@ async def get_expiring_batches(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    return svc.get_expiring_batches(days)
+    return [_drug_batch_response(b) for b in svc.get_expiring_batches(days)]
 
 
 @router.get("/suppliers", response_model=list[SupplierResponse])
@@ -746,7 +927,10 @@ async def create_prescription(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    return svc.create_prescription(data.model_dump(exclude_none=True))
+    rx = svc.create_prescription(data.model_dump(exclude_none=True))
+    db.commit()
+    db.refresh(rx)
+    return _prescription_response(rx)
 
 
 @router.get("/prescriptions", response_model=list[PrescriptionResponse])
@@ -758,13 +942,15 @@ async def list_prescriptions(
     user=Depends(get_current_user),
 ):
     _get_pharmacy_service(db, user)
-    q = db.query(Prescription).filter(~~Prescription.is_deleted)
+    # Previously `~~Prescription.is_deleted`: the double negation cancels, so
+    # this listed the soft-deleted prescriptions and only those.
+    q = db.query(Prescription).filter(~Prescription.is_deleted)
     if user.lab_id:
         q = q.filter(Prescription.lab_id == user.lab_id)
     if status_filter:
         q = q.filter(Prescription.status == status_filter)
-    q.count()
-    return q.order_by(Prescription.created_at.desc()).offset(skip).limit(limit).all()
+    rows = q.order_by(Prescription.created_at.desc()).offset(skip).limit(limit).all()
+    return [_prescription_response(rx) for rx in rows]
 
 
 @router.get("/prescriptions/{rx_id}", response_model=PrescriptionResponse)
@@ -774,10 +960,10 @@ async def get_prescription(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    rx = svc.get_prescription(rx_id)
+    rx = svc.get_prescription_by_public_id(rx_id)
     if not rx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
-    return rx
+    return _prescription_response(rx)
 
 
 @router.put("/prescriptions/{rx_id}/status", response_model=PrescriptionResponse)
@@ -795,10 +981,13 @@ async def update_prescription_status(
         parsed = PrescriptionStatus(new_status)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Invalid status: {new_status}") from e
-    rx = svc.update_prescription_status(rx_id, parsed)
+    existing = svc.get_prescription_by_public_id(rx_id)
+    rx = svc.update_prescription_status(existing.id, parsed) if existing else None
     if not rx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
-    return rx
+    db.commit()
+    db.refresh(rx)
+    return _prescription_response(rx)
 
 
 @router.post("/prescriptions/{rx_id}/renew", response_model=PrescriptionResponse)
@@ -808,10 +997,13 @@ async def renew_prescription(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    renewal = svc.renew_prescription(rx_id)
+    existing = svc.get_prescription_by_public_id(rx_id)
+    renewal = svc.renew_prescription(existing.id) if existing else None
     if not renewal:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
-    return renewal
+    db.commit()
+    db.refresh(renewal)
+    return _prescription_response(renewal)
 
 
 @router.post("/prescriptions/{rx_id}/cancel", response_model=PrescriptionResponse)
@@ -821,10 +1013,13 @@ async def cancel_prescription(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    rx = svc.cancel_prescription(rx_id)
+    existing = svc.get_prescription_by_public_id(rx_id)
+    rx = svc.cancel_prescription(existing.id) if existing else None
     if not rx:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
-    return rx
+    db.commit()
+    db.refresh(rx)
+    return _prescription_response(rx)
 
 
 @router.post("/prescriptions/{rx_id}/items", response_model=PrescriptionItemResponse, status_code=status.HTTP_201_CREATED)
@@ -835,10 +1030,21 @@ async def add_prescription_item(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    item = svc.add_prescription_item(rx_id, data.model_dump(exclude_none=True))
+    rx = svc.get_prescription_by_public_id(rx_id)
+    if not rx:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
+    payload = data.model_dump(exclude_none=True)
+    drug = svc.get_drug_by_public_id(str(payload.pop("drug_catalog_id", "")))
+    if not drug:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Drug not found")
+    payload["drug_id"] = drug.id
+    payload.setdefault("drug_name", drug.drug_name)
+    item = svc.add_prescription_item(rx.id, payload)
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Prescription not found: {rx_id}")
-    return item
+    db.commit()
+    db.refresh(item)
+    return _prescription_item_response(item)
 
 
 @router.put("/prescriptions/{rx_id}/items/{item_id}/substitute", response_model=PrescriptionItemResponse)
@@ -853,10 +1059,19 @@ async def substitute_prescription_item(
     if not new_drug_id:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="drug_catalog_id required")
     svc = _get_pharmacy_service(db, user)
-    item = svc.substitute_prescription_item(rx_id, item_id, new_drug_id)
+    rx = svc.get_prescription_by_public_id(rx_id)
+    drug = svc.get_drug_by_public_id(new_drug_id)
+    if not rx or not drug:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prescription item not found")
+    existing = svc.get_prescription_item_by_public_id(item_id)
+    item = (
+        svc.substitute_prescription_item(rx.id, existing.id, drug.id) if existing else None
+    )
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prescription item not found")
-    return item
+    db.commit()
+    db.refresh(item)
+    return _prescription_item_response(item)
 
 
 # ── Dispensing Routes ──────────────────────────────────────────────────────────
@@ -985,12 +1200,17 @@ async def create_dispense_record(
     idempotency_key: str | None = Header(None, alias="Idempotency-Key"),
 ):
     """Create a manually recorded dispense only under locked, independently verified stock."""
-    stock = db.query(StockLevel).filter(
-        StockLevel.lab_id == user.lab_id,
-        StockLevel.batch_id == data.batch_id,
-        StockLevel.drug_catalog_id == data.drug_catalog_id,
-        ~StockLevel.is_deleted,
-    ).with_for_update().first()
+    svc = _get_pharmacy_service(db, user)
+    drug = svc.get_drug_by_public_id(data.drug_catalog_id)
+    batch = svc.get_batch_by_public_id(data.batch_id)
+    stock = None
+    if drug is not None and batch is not None:
+        stock = db.query(StockLevel).filter(
+            StockLevel.lab_id == user.lab_id,
+            StockLevel.batch_id == batch.id,
+            StockLevel.drug_id == drug.id,
+            ~StockLevel.is_deleted,
+        ).with_for_update().first()
     if stock is None:
         raise HTTPException(status_code=404, detail="Stock record not found for the requested medication batch")
     guard = ClinicalCommandGuard(
@@ -1000,7 +1220,7 @@ async def create_dispense_record(
         actor_role=user.role,
     )
     version_before = stock.version
-    quantity_before = stock.available_quantity
+    quantity_before = stock.quantity_available
     guard.require_expected_version(if_match, current_version=version_before, resource_name="pharmacy stock level")
     key = guard.require_idempotency_key(idempotency_key)
     receipt = guard.claim(
@@ -1011,14 +1231,14 @@ async def create_dispense_record(
         payload=data.model_dump(mode="json"),
     )
     try:
-        record = _get_pharmacy_service(db, user).create_dispense_record(data.model_dump(exclude_none=True))
+        record = svc.create_dispense_record(data.model_dump(exclude_none=True))
         db.flush()
         guard.complete(
             receipt,
             resource_type="pharmacy_stock_level",
             resource_id=stock.id,
             state_before=f"available={quantity_before}",
-            state_after=f"available={stock.available_quantity}",
+            state_after=f"available={stock.quantity_available}",
             version_before=version_before,
             version_after=stock.version,
         )
@@ -1046,7 +1266,7 @@ async def get_dispense_records(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    return svc.get_dispense_records(patient_id)
+    return [_dispense_record_response(r, svc) for r in svc.get_dispense_records(patient_id)]
 
 
 # ── Clinical Pharmacy Routes ───────────────────────────────────────────────────
@@ -1160,7 +1380,12 @@ async def get_stock_levels(
 ):
     svc = _get_pharmacy_service(db, user)
     items, total = svc.get_stock_levels(warehouse_id, store_id, drug_id, skip, limit)
-    return {"items": items, "total": total, "skip": skip, "limit": limit}
+    return {
+        "items": [_stock_level_response(i, svc) for i in items],
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.get("/inventory/stock-levels/alerts")
@@ -1180,7 +1405,11 @@ async def adjust_stock(
 ):
     svc = _get_pharmacy_service(db, user)
     stock = svc.adjust_stock(data.model_dump(exclude_none=True))
-    return {"status": "adjusted", "id": stock.id, "new_quantity": stock.quantity}
+    if stock is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Medication not found")
+    db.commit()
+    db.refresh(stock)
+    return {"status": "adjusted", "id": stock.id, "new_quantity": stock.quantity_on_hand}
 
 
 @router.get("/inventory/movements")
@@ -1194,7 +1423,12 @@ async def list_movements(
 ):
     svc = _get_pharmacy_service(db, user)
     items, total = svc.get_movements(drug_id, movement_type, skip, limit)
-    return {"items": items, "total": total, "skip": skip, "limit": limit}
+    return {
+        "items": [_movement_response(m, svc) for m in items],
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.post("/inventory/movements", response_model=MovementResponse, status_code=status.HTTP_201_CREATED)
@@ -1204,7 +1438,10 @@ async def create_movement(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    return svc.create_movement(data.model_dump(exclude_none=True))
+    movement = svc.create_movement(data.model_dump(exclude_none=True))
+    db.commit()
+    db.refresh(movement)
+    return _movement_response(movement, svc)
 
 
 @router.get("/inventory/transfers")
@@ -1217,7 +1454,12 @@ async def list_transfers(
 ):
     svc = _get_pharmacy_service(db, user)
     items, total = svc.get_transfers(status_filter, skip, limit)
-    return {"items": items, "total": total, "skip": skip, "limit": limit}
+    return {
+        "items": [_transfer_response(t) for t in items],
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.post("/inventory/transfers", response_model=TransferResponse, status_code=status.HTTP_201_CREATED)
@@ -1227,7 +1469,10 @@ async def create_transfer(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    return svc.create_transfer(data.model_dump(exclude_none=True))
+    transfer = svc.create_transfer(data.model_dump(exclude_none=True))
+    db.commit()
+    db.refresh(transfer)
+    return _transfer_response(transfer)
 
 
 @router.put("/inventory/transfers/{transfer_id}/approve")
@@ -1264,6 +1509,7 @@ async def create_return(
 ):
     svc = _get_pharmacy_service(db, user)
     ret = svc.create_return(data.model_dump(exclude_none=True))
+    db.commit()
     return {"status": "returned", "id": ret.id}
 
 
@@ -1275,6 +1521,7 @@ async def create_waste(
 ):
     svc = _get_pharmacy_service(db, user)
     waste = svc.create_waste(data.model_dump(exclude_none=True))
+    db.commit()
     return {"status": "wasted", "id": waste.id}
 
 
@@ -1288,7 +1535,12 @@ async def list_recalls(
 ):
     svc = _get_pharmacy_service(db, user)
     items, total = svc.list_recalls(status_filter, skip, limit)
-    return {"items": items, "total": total, "skip": skip, "limit": limit}
+    return {
+        "items": [_recall_response(r, svc) for r in items],
+        "total": total,
+        "skip": skip,
+        "limit": limit,
+    }
 
 
 @router.post("/inventory/recalls", response_model=RecallResponse, status_code=status.HTTP_201_CREATED)
@@ -1298,7 +1550,10 @@ async def create_recall(
     user=Depends(get_current_user),
 ):
     svc = _get_pharmacy_service(db, user)
-    return svc.create_recall(data.model_dump(exclude_none=True))
+    recall = svc.create_recall(data.model_dump(exclude_none=True))
+    db.commit()
+    db.refresh(recall)
+    return _recall_response(recall, svc)
 
 
 @router.get("/inventory/forecast/{drug_id}")

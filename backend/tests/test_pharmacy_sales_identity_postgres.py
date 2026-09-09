@@ -18,6 +18,7 @@ from __future__ import annotations
 import os
 import uuid
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -83,6 +84,26 @@ def _labs(db: Session) -> None:
     db.flush()
 
 
+def _batch(db: Session, drug: DrugCatalog, *, lab_id: int = LAB_A, number: str = "M3-BATCH") -> Any:
+    from datetime import date, timedelta
+
+    from app.pharmacy.models import DrugBatch
+
+    batch = DrugBatch(
+        lab_id=lab_id,
+        drug_id=drug.id,
+        batch_number=number,
+        expiry_date=date.today() + timedelta(days=180),
+        quantity_received=100,
+        quantity_remaining=100,
+        received_date=datetime.now(UTC),
+        status="active",
+    )
+    db.add(batch)
+    db.flush()
+    return batch
+
+
 def _drug(db: Session, code: str) -> DrugCatalog:
     drug = DrugCatalog(
         drug_code=code, drug_name="M3 Synthetic Drug", dosage_form="tablet", drug_id=uuid.uuid4()
@@ -109,12 +130,13 @@ def _sale(db: Session, *, lab_id: int = LAB_A, number: str = "M3-SALE-1", **kwar
 
 
 def _line(db: Session, sale: PharmacySale, drug: DrugCatalog, **kwargs: Any) -> PharmacySaleLine:
+    batch = kwargs.pop("batch", None) or _batch(db, drug, number=f"M3-B-{drug.drug_code}")
     line = PharmacySaleLine(
         lab_id=sale.lab_id,
         sale_id=sale.id,
         drug_catalog_id=drug.id,
-        # Group B: still a Generation B batch key until M4.
-        batch_id="01M3SYNTHETICBATCH00000000",
+        # M4 resolved Group B: this is now an enforced Integer foreign key.
+        batch_id=batch.id,
         line_number=kwargs.pop("line_number", 1),
         medication_name="M3 Synthetic Drug",
         quantity=1,
@@ -281,6 +303,8 @@ def test_a_sale_line_cannot_name_a_drug_that_does_not_exist(session: Session) ->
     ``VARCHAR(26)``, so any string at all could be stored as a drug reference.
     """
     _labs(session)
+    real_drug = _drug(session, "M3-FK-REAL")
+    batch = _batch(session, real_drug, number="M3-FK-BATCH")
     sale = _sale(session, number="M3-SALE-FK")
     missing_drug_pk = 2_000_000_001
     assert session.query(DrugCatalog).filter(DrugCatalog.id == missing_drug_pk).first() is None
@@ -290,7 +314,7 @@ def test_a_sale_line_cannot_name_a_drug_that_does_not_exist(session: Session) ->
                 lab_id=sale.lab_id,
                 sale_id=sale.id,
                 drug_catalog_id=missing_drug_pk,
-                batch_id="01M3SYNTHETICBATCH00000000",
+                batch_id=batch.id,
                 line_number=1,
                 medication_name="M3 Synthetic Drug",
                 quantity=1,
@@ -338,31 +362,12 @@ def test_deleting_a_sale_removes_its_lines(session: Session) -> None:
 # ── Group B: explicitly unresolved, and guarded against being guessed ───────
 
 
-GROUP_B = (
-    ("pharmacy_sale_lines", "batch_id", "pharmacy_drug_batches"),
-    ("pharmacy_sale_lines", "prescription_id", "pharmacy_prescriptions"),
-    ("pharmacy_drug_substitution_requests", "prescription_id", "pharmacy_prescriptions"),
-)
-
-
-@pytest.mark.parametrize(("table", "column", "target"), GROUP_B)
-def test_group_b_reference_is_still_an_unconstrained_generation_b_key(
-    engine: Any, table: str, column: str, target: str
-) -> None:
-    """M3 did not invent a batch or prescription identity, and must not.
-
-    These three columns stay ``VARCHAR(26)`` with no foreign key until M4
-    reconciles ``DrugBatch`` and ``Prescription``. If this test starts failing
-    because a foreign key appeared, check that M4 actually established the
-    canonical target rather than a cast that happens to typecheck.
-    """
-    physical = {c["name"]: c for c in inspect(engine).get_columns(table)}
-    assert isinstance(physical[column]["type"], String), f"{table}.{column} was retyped"
-    assert physical[column]["type"].length == 26
-    targets = {fk["referred_table"] for fk in inspect(engine).get_foreign_keys(table)}
-    assert target not in targets, (
-        f"{table}.{column} gained a foreign key onto {target}; that is M4's decision"
-    )
+# P0-2-SUBBLOCKER-A Group B was deferred by M3 and resolved by M4. The guard
+# that these three columns stay unconstrained lived here; it now lives in
+# tests/test_pharmacy_inventory_identity_postgres.py as
+# test_group_b_reference_is_now_an_enforced_integer_foreign_key, which asserts
+# the opposite because M4 established the canonical batch and prescription
+# targets they needed.
 
 
 @pytest.mark.parametrize("model", (PharmacySaleLine, DrugSubstitutionRequest))

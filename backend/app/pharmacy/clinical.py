@@ -5,7 +5,7 @@ import logging
 import uuid
 from typing import Any
 
-from sqlalchemy import or_
+from sqlalchemy import Text, cast, or_
 from sqlalchemy.orm import Session
 
 from app.pharmacy.enums import InteractionSeverity
@@ -510,11 +510,27 @@ class ClinicalGuidelineService:
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[ClinicalGuideline], int]:
-        q = self.db.query(ClinicalGuideline).filter(ClinicalGuideline.is_active, ~ClinicalGuideline.is_deleted)
+        """Guidelines are national reference data and are not tenant-filtered.
+
+        The previous filters read ``drug_codes`` and ``condition_codes`` — JSON
+        arrays that do not exist. The physical table stores drug advice in
+        ``drug_recommendations`` (JSON) and the condition as ``condition`` plus
+        an ``icd_code``, so those are what is matched here.
+        """
+        q = self.db.query(ClinicalGuideline).filter(
+            ClinicalGuideline.is_active.is_(True), ~ClinicalGuideline.is_deleted
+        )
         if drug_code:
-            q = q.filter(ClinicalGuideline.drug_codes.contains([drug_code]))
+            q = q.filter(cast(ClinicalGuideline.drug_recommendations, Text).ilike(f"%{drug_code}%"))
         if condition_code:
-            q = q.filter(ClinicalGuideline.condition_codes.contains([condition_code]))
+            q = q.filter(
+                or_(
+                    ClinicalGuideline.icd_code == condition_code,
+                    ClinicalGuideline.condition.ilike(f"%{condition_code}%"),
+                )
+            )
+        if specialty:
+            q = q.filter(ClinicalGuideline.guideline_type == specialty)
         total = q.count()
         items = q.order_by(ClinicalGuideline.title).offset(skip).limit(limit).all()
         return items, total

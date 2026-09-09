@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -22,6 +22,10 @@ from app.pharmacy.services import PharmacyService
 # the shared test DDL and SQLAlchemy mapper configuration run.
 NATIONAL_MODEL_REGISTRY = (_national_domain_models.Patient, _national_domain_models.Practitioner)
 
+# pharmacy_stock_movements.performed_by is NOT NULL — an inventory change is
+# always somebody's action, so these tests act as a real pharmacist.
+PHARMACIST_ID = 4242
+
 
 def _seed_pos(db: Any) -> tuple[Any, Any, Any, Any, Any]:
     lab = Lab(name="POS Test Lab", lab_type="pharmacy")
@@ -44,31 +48,35 @@ def _seed_pos(db: Any) -> tuple[Any, Any, Any, Any, Any]:
     db.flush()
     first_batch = DrugBatch(
         lab_id=lab.id,
-        drug_catalog_id=drug.id,
+        drug_id=drug.id,
         batch_number="BATCH-EXPIRING",
         expiry_date=date.today() + timedelta(days=30),
-        quantity_initial=2,
+        quantity_received=2,
         quantity_remaining=2,
-        cost_price=Decimal("2.00"),
+        unit_cost=Decimal("2.00"),
         selling_price=Decimal("5.00"),
         is_quarantined=False,
+        received_date=datetime.now(UTC),
+        status="active",
     )
     second_batch = DrugBatch(
         lab_id=lab.id,
-        drug_catalog_id=drug.id,
+        drug_id=drug.id,
         batch_number="BATCH-LATER",
         expiry_date=date.today() + timedelta(days=180),
-        quantity_initial=5,
+        quantity_received=5,
         quantity_remaining=5,
-        cost_price=Decimal("2.50"),
+        unit_cost=Decimal("2.50"),
         selling_price=Decimal("5.50"),
         is_quarantined=False,
+        received_date=datetime.now(UTC),
+        status="active",
     )
     db.add_all([first_batch, second_batch])
     db.flush()
     db.add_all([
-        StockLevel(lab_id=lab.id, drug_catalog_id=drug.id, batch_id=first_batch.id, quantity=2, reserved_quantity=0, available_quantity=2),
-        StockLevel(lab_id=lab.id, drug_catalog_id=drug.id, batch_id=second_batch.id, quantity=5, reserved_quantity=0, available_quantity=5),
+        StockLevel(lab_id=lab.id, drug_id=drug.id, batch_id=first_batch.id, quantity_on_hand=2, quantity_reserved=0, quantity_available=2, unit="unit"),
+        StockLevel(lab_id=lab.id, drug_id=drug.id, batch_id=second_batch.id, quantity_on_hand=5, quantity_reserved=0, quantity_available=5, unit="unit"),
     ])
     db.flush()
     return lab, patient, drug, first_batch, second_batch
@@ -76,7 +84,7 @@ def _seed_pos(db: Any) -> tuple[Any, Any, Any, Any, Any]:
 
 def test_pos_sale_uses_fefo_and_writes_billing_and_dispense(db: Any) -> None:
     lab, patient, drug, first_batch, second_batch = _seed_pos(db)
-    sale = PharmacyService(db, user_id=None, lab_id=lab.id).create_pos_sale(
+    sale = PharmacyService(db, user_id=PHARMACIST_ID, lab_id=lab.id).create_pos_sale(
         {
             "patient_id": "SYNTHETIC-NATIONAL-PATIENT",
             "citizen_id": "SYNTHETIC-CITIZEN-001",
@@ -99,7 +107,7 @@ def test_pos_sale_uses_fefo_and_writes_billing_and_dispense(db: Any) -> None:
     assert sale.lines[1].lot_number == second_batch.batch_number
     assert sale.lines[1].quantity == 1
     assert db.query(MedicationDispense).filter(MedicationDispense.citizen_id == "SYNTHETIC-CITIZEN-001").count() == 2
-    summary = PharmacyService(db, user_id=None, lab_id=lab.id).get_pos_summary(30)
+    summary = PharmacyService(db, user_id=PHARMACIST_ID, lab_id=lab.id).get_pos_summary(30)
     assert summary["sale_count"] == 1
     assert summary["units_sold"] == 3
     assert summary["sales_total"] == "15.50"
@@ -108,7 +116,7 @@ def test_pos_sale_uses_fefo_and_writes_billing_and_dispense(db: Any) -> None:
 
 def test_pos_sale_is_idempotent_and_does_not_double_decrement(db: Any) -> None:
     lab, patient, drug, _first_batch, _second_batch = _seed_pos(db)
-    service = PharmacyService(db, user_id=None, lab_id=lab.id)
+    service = PharmacyService(db, user_id=PHARMACIST_ID, lab_id=lab.id)
     payload = {
         "patient_id": "SYNTHETIC-PATIENT-002",
         "billing_patient_id": patient.id,
@@ -120,7 +128,7 @@ def test_pos_sale_is_idempotent_and_does_not_double_decrement(db: Any) -> None:
     assert first.id == second.id
     assert db.query(PharmacySale).filter(PharmacySale.lab_id == lab.id).count() == 1
     stock = db.query(StockLevel).filter(StockLevel.lab_id == lab.id, StockLevel.batch_id == first.lines[0].batch_id).one()
-    assert stock.quantity == 1
+    assert stock.quantity_on_hand == 1
 
 
 def test_approved_substitution_is_consumed_by_pos_and_audited(db: Any) -> None:
@@ -140,24 +148,27 @@ def test_approved_substitution_is_consumed_by_pos_and_audited(db: Any) -> None:
     db.flush()
     alt_batch = DrugBatch(
         lab_id=lab.id,
-        drug_catalog_id=alternative.id,
+        drug_id=alternative.id,
         batch_number="ALT-BATCH-001",
         expiry_date=date.today() + timedelta(days=180),
-        quantity_initial=4,
+        quantity_received=4,
         quantity_remaining=4,
-        cost_price=Decimal("3.00"),
+        unit_cost=Decimal("3.00"),
         selling_price=Decimal("6.00"),
         is_quarantined=False,
+        received_date=datetime.now(UTC),
+        status="active",
     )
     db.add(alt_batch)
     db.flush()
     db.add(StockLevel(
         lab_id=lab.id,
-        drug_catalog_id=alternative.id,
+        drug_id=alternative.id,
         batch_id=alt_batch.id,
-        quantity=4,
-        reserved_quantity=0,
-        available_quantity=4,
+        quantity_on_hand=4,
+        quantity_reserved=0,
+        quantity_available=4,
+        unit="unit",
     ))
     rule = DrugSubstitutionRule(
         lab_id=lab.id,
@@ -172,7 +183,7 @@ def test_approved_substitution_is_consumed_by_pos_and_audited(db: Any) -> None:
     )
     db.add(rule)
     db.flush()
-    service = PharmacyService(db, user_id=None, lab_id=lab.id)
+    service = PharmacyService(db, user_id=PHARMACIST_ID, lab_id=lab.id)
     with pytest.raises(ValueError, match="patient or prescription context"):
         service.create_substitution_request({
             "rule_id": str(rule.substitution_rule_id),
@@ -218,7 +229,7 @@ def test_approved_substitution_is_consumed_by_pos_and_audited(db: Any) -> None:
     # identifiers rather than internal keys.
     assert sale.lines[0].metadata_["original_drug_catalog_id"] == str(original.drug_id)
     assert sale.lines[0].metadata_["alternative_drug_catalog_id"] == str(alternative.drug_id)
-    assert db.query(StockLevel).filter(StockLevel.batch_id == alt_batch.id).one().quantity == 3
+    assert db.query(StockLevel).filter(StockLevel.batch_id == alt_batch.id).one().quantity_on_hand == 3
     assert db.query(MedicationDispense).filter(
         MedicationDispense.citizen_id == "SYNTHETIC-CITIZEN-SUB-001",
         MedicationDispense.medication_code == alternative.drug_code,

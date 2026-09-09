@@ -11,7 +11,6 @@ from sqlalchemy import (
     Date,
     DateTime,
     Double,
-    Float,
     ForeignKey,
     Index,
     Integer,
@@ -21,23 +20,19 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
 )
-from sqlalchemy import (
-    Enum as SAEnum,
-)
 from sqlalchemy.orm import relationship
 
 from app._compat import UTC
+from app.models.base import AuditMixin, SoftDeleteMixin
 from app.pharmacy.base import (
     CanonicalEntity,
     GlobalCatalogEntity,
-    TenantAuditEntity,
+    PharmacyBase,
     TenantScopedEntity,
 )
 from app.pharmacy.enums import (
     DispenseStatus,
     PrescriptionStatus,
-    StockMovementType,
-    StorageCondition,
 )
 
 
@@ -129,575 +124,635 @@ class DrugCatalog(GlobalCatalogEntity):
     def __repr__(self) -> str:
         return f"<DrugCatalog id={self.id} drug_id={self.drug_id} code={self.drug_code}>"
 
-class DrugBatch(TenantAuditEntity):
-    __tablename__ = "pharmacy_drug_batches"
+class DrugSupplier(TenantScopedEntity):  # type: ignore[misc]
+    """A laboratory's pharmaceutical supplier.
 
-    drug_catalog_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    batch_number = Column(String(100), nullable=False)
-    manufacturer_batch = Column(String(100), nullable=True)
-    expiry_date = Column(Date, nullable=False, index=True)
-    manufacturing_date = Column(Date, nullable=True)
+    Tenant-scoped: ``supplier_code`` is unique per lab, not nationally.
+    """
 
-    quantity_initial = Column(Integer, nullable=False, default=0)
-    quantity_remaining = Column(Integer, nullable=False, default=0)
-
-    storage_condition = Column(SAEnum(StorageCondition), nullable=True)
-    location = Column(String(200), nullable=True)
-
-    received_date = Column(DateTime(timezone=True), nullable=True)
-    received_by = Column(String(26), nullable=True)
-
-    supplier = Column(String(200), nullable=True)
-    cost_price = Column(Numeric(12, 2), nullable=True)
-    selling_price = Column(Numeric(12, 2), nullable=True)
-
-    is_quarantined = Column(Boolean, default=False)
-    metadata_ = Column("metadata", JSON, nullable=True)
-
-    __table_args__ = (
-        Index("ix_pharmacy_drug_batch_catalog", "drug_catalog_id"),
-        Index("ix_pharmacy_drug_batch_number", "batch_number"),
-        Index("ix_pharmacy_drug_batch_expiry", "expiry_date"),
-        Index("ix_pharmacy_drug_batch_quarantine", "is_quarantined"),
-        {"extend_existing": True},
-    )
-
-
-class DrugSupplier(TenantAuditEntity):
     __tablename__ = "pharmacy_drug_suppliers"
 
-    name = Column(String(200), nullable=False)
-    name_ar = Column(String(200), nullable=True)
-    code = Column(String(50), nullable=False, unique=True)
+    lab_id = Column(Integer, nullable=False, index=True)
+    supplier_code = Column(String(50), nullable=False)
+    supplier_name = Column(String(200), nullable=False)
+    supplier_name_ar = Column(String(200), nullable=True)
     contact_person = Column(String(200), nullable=True)
-    phone = Column(String(50), nullable=True)
-    email = Column(String(200), nullable=True)
-    address = Column(Text, nullable=True)
+    phone = Column(String(20), nullable=True)
+    email = Column(String(100), nullable=True)
+    address = Column(String(500), nullable=True)
     license_number = Column(String(100), nullable=True)
-    is_active = Column(Boolean, default=True)
-    payment_terms = Column(String(500), nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    contract_start = Column(Date, nullable=True)
+    contract_end = Column(Date, nullable=True)
+    payment_terms = Column(String(200), nullable=True)
+    is_active = Column(Boolean, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
 
     __table_args__ = (
-        Index("ix_pharmacy_supplier_code", "code"),
-        Index("ix_pharmacy_supplier_name", "name"),
+        UniqueConstraint("lab_id", "supplier_code", name="uq_pharmacy_supplier_lab_code"),
         {"extend_existing": True},
     )
 
 
-class Prescription(TenantAuditEntity):
-    __tablename__ = "pharmacy_prescriptions"
+class Warehouse(TenantScopedEntity):  # type: ignore[misc]
+    """A physical storage facility owned by one laboratory."""
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-    encounter_id = Column(String(26), ForeignKey("national_encounters.id", ondelete="SET NULL"), nullable=True, index=True)
-    prescriber_id = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
-
-    prescription_number = Column(String(50), nullable=False, unique=True)
-    status = Column(SAEnum(PrescriptionStatus), nullable=False, default=PrescriptionStatus.ACTIVE)
-    intent = Column(String(50), nullable=False, default="order")
-    priority = Column(String(20), default="routine")
-
-    diagnosis = Column(String(500), nullable=True)
-    diagnosis_code = Column(String(50), nullable=True)
-    diagnosis_system = Column(String(20), nullable=True)
-
-    authored_on = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    valid_from = Column(Date, nullable=True)
-    valid_to = Column(Date, nullable=True)
-    dispense_interval = Column(Integer, nullable=True)
-    substitution_allowed = Column(Boolean, default=True)
-
-    note = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
-
-    signed_by = Column(String(26), nullable=True)
-    signed_at = Column(DateTime(timezone=True), nullable=True)
-
-    __table_args__ = (
-        Index("ix_pharmacy_rx_patient", "patient_id", "status"),
-        Index("ix_pharmacy_rx_number", "prescription_number"),
-        Index("ix_pharmacy_rx_prescriber", "prescriber_id"),
-        Index("ix_pharmacy_rx_not_deleted", "is_deleted", "patient_id"),
-        {"extend_existing": True},
-    )
-
-
-class PrescriptionItem(TenantAuditEntity):
-    __tablename__ = "pharmacy_prescription_items"
-
-    prescription_id = Column(
-        String(26),
-        ForeignKey("pharmacy_prescriptions.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    drug_catalog_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_catalog.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    drug_batch_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    medication_code = Column(String(50), nullable=True)
-    medication_name = Column(String(300), nullable=False)
-    strength_value = Column(String(50), nullable=True)
-    strength_unit = Column(String(50), nullable=True)
-    form = Column(String(100), nullable=True)
-    route = Column(String(100), nullable=True)
-
-    dose_quantity = Column(String(50), nullable=True)
-    dose_unit = Column(String(50), nullable=True)
-    frequency = Column(String(200), nullable=True)
-    duration = Column(Integer, nullable=True)
-    duration_unit = Column(String(50), nullable=True)
-
-    quantity = Column(Integer, nullable=True)
-    quantity_unit = Column(String(50), nullable=True)
-    refills = Column(Integer, default=0)
-    refills_used = Column(Integer, default=0)
-
-    instructions = Column(Text, nullable=True)
-    substitution_allowed = Column(Boolean, default=True)
-    status = Column(String(50), nullable=False, default="active")
-    notes = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
-
-    __table_args__ = (
-        Index("ix_pharmacy_rx_item_prescription", "prescription_id"),
-        Index("ix_pharmacy_rx_item_catalog", "drug_catalog_id"),
-        Index("ix_pharmacy_rx_item_medication", "medication_code"),
-        {"extend_existing": True},
-    )
-
-
-class DispenseRecord(TenantAuditEntity):
-    __tablename__ = "pharmacy_dispense_records"
-
-    prescription_id = Column(
-        String(26),
-        ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    prescription_item_id = Column(
-        String(26),
-        ForeignKey("pharmacy_prescription_items.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="CASCADE"), nullable=False, index=True)
-
-    dispensed_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True, index=True)
-    verified_by = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
-
-    dispensed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=True)
-    status = Column(SAEnum(DispenseStatus), nullable=False, default=DispenseStatus.PENDING)
-
-    quantity_dispensed = Column(Integer, nullable=False)
-    quantity_unit = Column(String(50), nullable=True)
-    days_supply = Column(Integer, nullable=True)
-
-    batch_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-    lot_number = Column(String(100), nullable=True)
-    expiry_date = Column(Date, nullable=True)
-
-    cost_price = Column(Numeric(12, 2), nullable=True)
-    selling_price = Column(Numeric(12, 2), nullable=True)
-    discount = Column(Numeric(12, 2), nullable=True)
-    total_amount = Column(Numeric(12, 2), nullable=True)
-
-    patient_signature = Column(Text, nullable=True)
-    pharmacist_notes = Column(Text, nullable=True)
-    counseling_provided = Column(Boolean, default=False)
-    metadata_ = Column("metadata", JSON, nullable=True)
-
-    __table_args__ = (
-        Index("ix_pharmacy_dispense_patient", "patient_id"),
-        Index("ix_pharmacy_dispense_prescription", "prescription_id"),
-        Index("ix_pharmacy_dispense_dispenser", "dispensed_by"),
-        Index("ix_pharmacy_dispense_not_deleted", "is_deleted", "patient_id"),
-        {"extend_existing": True},
-    )
-
-
-class DispenseQueue(TenantAuditEntity):
-    __tablename__ = "pharmacy_dispense_queue"
-
-    prescription_id = Column(
-        String(26),
-        ForeignKey("pharmacy_prescriptions.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-    priority = Column(String(20), default="normal")
-    queued_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    status = Column(SAEnum(DispenseStatus), nullable=False, default=DispenseStatus.PENDING)
-
-    assigned_to = Column(String(26), ForeignKey("national_practitioners.id", ondelete="SET NULL"), nullable=True)
-    pickup_time = Column(DateTime(timezone=True), nullable=True)
-    ready_time = Column(DateTime(timezone=True), nullable=True)
-    completion_time = Column(DateTime(timezone=True), nullable=True)
-
-    notes = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
-
-    __table_args__ = (
-        Index("ix_pharmacy_queue_prescription", "prescription_id"),
-        Index("ix_pharmacy_queue_status", "status"),
-        Index("ix_pharmacy_queue_priority", "priority"),
-        {"extend_existing": True},
-    )
-
-
-class Warehouse(TenantAuditEntity):
     __tablename__ = "pharmacy_warehouses"
 
-    code = Column(String(50), nullable=False, unique=True)
-    name = Column(String(200), nullable=False)
-    name_ar = Column(String(200), nullable=True)
-    location = Column(String(200), nullable=True)
-    address = Column(Text, nullable=True)
-    contact_person = Column(String(200), nullable=True)
-    phone = Column(String(50), nullable=True)
-    is_active = Column(Boolean, default=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    lab_id = Column(Integer, nullable=False, index=True)
+    warehouse_code = Column(String(30), nullable=False)
+    warehouse_name = Column(String(200), nullable=False)
+    warehouse_name_ar = Column(String(200), nullable=True)
+    warehouse_type = Column(String(30), nullable=True)
+    location = Column(String(300), nullable=True)
+    capacity = Column(Double, nullable=True)
+    capacity_unit = Column(String(20), nullable=True)
+    temperature_min = Column(Double, nullable=True)
+    temperature_max = Column(Double, nullable=True)
+    humidity_min = Column(Double, nullable=True)
+    humidity_max = Column(Double, nullable=True)
+    is_active = Column(Boolean, nullable=True)
+    is_refrigerated = Column(Boolean, nullable=True)
+    is_controlled_substance_storage = Column(Boolean, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
 
     __table_args__ = (
-        Index("ix_pharmacy_warehouse_code", "code"),
+        UniqueConstraint("lab_id", "warehouse_code", name="uq_pharmacy_warehouse_lab_code"),
         {"extend_existing": True},
     )
 
 
-class Store(TenantAuditEntity):
+class Store(TenantScopedEntity):  # type: ignore[misc]
+    """A dispensing point inside a warehouse."""
+
     __tablename__ = "pharmacy_stores"
 
+    lab_id = Column(Integer, nullable=False, index=True)
     warehouse_id = Column(
-        String(26),
-        ForeignKey("pharmacy_warehouses.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+        Integer, ForeignKey("pharmacy_warehouses.id", ondelete="CASCADE"), nullable=True, index=True
     )
-    code = Column(String(50), nullable=False)
-    name = Column(String(200), nullable=False)
-    name_ar = Column(String(200), nullable=True)
-    location = Column(String(200), nullable=True)
-    store_type = Column(String(50), nullable=True)
-    is_active = Column(Boolean, default=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    store_code = Column(String(30), nullable=False)
+    store_name = Column(String(200), nullable=False)
+    store_name_ar = Column(String(200), nullable=True)
+    store_type = Column(String(30), nullable=True)
+    location = Column(String(300), nullable=True)
+    is_active = Column(Boolean, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
 
     __table_args__ = (
-        Index("ix_pharmacy_store_warehouse", "warehouse_id"),
-        Index("ix_pharmacy_store_code", "code"),
+        UniqueConstraint("lab_id", "store_code", name="uq_pharmacy_store_lab_code"),
         {"extend_existing": True},
     )
 
 
-class StockLevel(TenantAuditEntity):
+class DrugBatch(TenantScopedEntity):  # type: ignore[misc]
+    """A received lot of one catalog drug held by one laboratory.
+
+    Identity (P0-2 M4). Internal key ``id`` (Integer); public identity
+    ``batch_id`` (UUID4) because the internal key is never published
+    (CANONICAL_DRUG_CONTRACT §3). ``batch_number`` is the mutable business
+    lot code and is unique only within ``(lab_id, drug_id)`` — never a key.
+
+    The catalog reference is ``drug_id``, not ``drug_catalog_id``. That is not
+    a naming preference: ``pharmacy_drug_batches_drug_id_fkey`` is an enforced
+    constraint onto ``pharmacy_drug_catalog(id)``, while ``drug_catalog_id``
+    has never existed as a physical column. The previous ORM mapped the name
+    that does not exist, which is why every batch INSERT failed.
+    """
+
+    __tablename__ = "pharmacy_drug_batches"
+
+    batch_id = Column(Uuid(as_uuid=True), nullable=False, unique=True, index=True, default=uuid.uuid4)
+
+    lab_id = Column(Integer, nullable=False, index=True)
+    drug_id = Column(
+        Integer, ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    supplier_id = Column(
+        Integer, ForeignKey("pharmacy_drug_suppliers.id", ondelete="SET NULL"), nullable=True
+    )
+    batch_number = Column(String(100), nullable=False)
+    manufacturing_date = Column(Date, nullable=True)
+    expiry_date = Column(Date, nullable=False, index=True)
+    # Quantities are DOUBLE PRECISION physically: a dispensed amount can be
+    # fractional (half a tablet, millilitres), so an Integer would silently
+    # truncate stock.
+    quantity_received = Column(Double, nullable=False)
+    quantity_remaining = Column(Double, nullable=False)
+    unit_cost = Column(Numeric(12, 4), nullable=True)
+    selling_price = Column(Numeric(12, 4), nullable=True)
+    # VARCHAR physically, not a PostgreSQL enum type. The StorageCondition
+    # enum remains the source of valid values for application code.
+    storage_condition = Column(String(100), nullable=True)
+    location = Column(String(100), nullable=True)
+    received_date = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    received_by = Column(Integer, nullable=True)
+    is_quarantined = Column(Boolean, nullable=True, default=False)
+    quarantine_reason = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default="active")
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
+    fhir_id = Column(String(64), nullable=True)
+    fhir_resource_type = Column(String(32), nullable=True)
+
+    # selectin, not joined: a joined eager load emits a LEFT OUTER JOIN and
+    # PostgreSQL cannot apply FOR UPDATE to the nullable side of one, which
+    # would break every locked read of a batch during a stock change.
+    drug = relationship("DrugCatalog", lazy="selectin")
+    supplier = relationship("DrugSupplier", lazy="selectin")
+
+    __table_args__ = (
+        UniqueConstraint("lab_id", "batch_number", "drug_id", name="uq_pharmacy_batch_lab_number_drug"),
+        Index("ix_pharmacy_drug_batches_expiry_status", "expiry_date", "status"),
+        {"extend_existing": True},
+    )
+
+    def __repr__(self) -> str:
+        return f"<DrugBatch id={self.id} batch_id={self.batch_id} number={self.batch_number}>"
+
+
+class Prescription(TenantScopedEntity):  # type: ignore[misc]
+    """A prescription written for one patient at one laboratory.
+
+    Identity (P0-2 M4): internal ``id`` (Integer), public ``prescription_id``
+    (UUID4), business code ``prescription_number`` (unique per lab).
+
+    ``prescribed_by`` is the prescriber's NAME as free text and
+    ``prescriber_license`` their licence number — the physical schema has no
+    practitioner foreign key. The previous ORM declared ``prescriber_id``,
+    which does not exist; M4 does not invent a practitioner relationship the
+    schema does not define.
+    """
+
+    __tablename__ = "pharmacy_prescriptions"
+
+    prescription_id = Column(
+        Uuid(as_uuid=True), nullable=False, unique=True, index=True, default=uuid.uuid4
+    )
+
+    lab_id = Column(Integer, nullable=False, index=True)
+    # Integer foreign key to the core `patients` table, which belongs to a
+    # different declarative base; the constraint is enforced physically.
+    patient_id = Column(Integer, nullable=True, index=True)
+    prescription_number = Column(String(30), nullable=False)
+    prescribed_by = Column(String(200), nullable=False)
+    prescriber_license = Column(String(100), nullable=True)
+    prescribed_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    prescription_type = Column(String(30), nullable=True)
+    status = Column(String(20), nullable=False, default=PrescriptionStatus.ACTIVE.value)
+    diagnosis_code = Column(String(20), nullable=True)
+    diagnosis_description = Column(Text, nullable=True)
+    clinical_notes = Column(Text, nullable=True)
+    is_stat = Column(Boolean, nullable=True, default=False)
+    is_verbal = Column(Boolean, nullable=True, default=False)
+    is_emergency = Column(Boolean, nullable=True, default=False)
+    refills_allowed = Column(Integer, nullable=True, default=0)
+    refills_used = Column(Integer, nullable=True, default=0)
+    valid_until = Column(DateTime(timezone=True), nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
+    fhir_id = Column(String(64), nullable=True)
+    fhir_resource_type = Column(String(32), nullable=True)
+
+    items = relationship("PrescriptionItem", back_populates="prescription", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        UniqueConstraint("lab_id", "prescription_number", name="uq_pharmacy_rx_lab_number"),
+        Index("ix_pharmacy_prescriptions_lab_status", "lab_id", "status"),
+        {"extend_existing": True},
+    )
+
+    def __repr__(self) -> str:
+        return f"<Prescription id={self.id} prescription_id={self.prescription_id}>"
+
+
+class PrescriptionItem(CanonicalEntity):  # type: ignore[misc]
+    """One prescribed medication line.
+
+    Deliberately NOT tenant-scoped: the physical table has no ``lab_id``.
+    Tenancy is inherited from the parent prescription, so a query must reach
+    an item through its prescription rather than filtering the item directly.
+    """
+
+    __tablename__ = "pharmacy_prescription_items"
+
+    prescription_item_id = Column(
+        Uuid(as_uuid=True), nullable=False, unique=True, index=True, default=uuid.uuid4
+    )
+
+    prescription_id = Column(
+        Integer, ForeignKey("pharmacy_prescriptions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    drug_id = Column(
+        Integer, ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    batch_id = Column(Integer, ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True)
+    # Denormalised display copy of the drug's name. The authoritative
+    # relationship is drug_id (contract §7).
+    drug_name = Column(String(300), nullable=False)
+    dosage = Column(String(100), nullable=False)
+    frequency = Column(String(100), nullable=False)
+    route = Column(String(50), nullable=True)
+    duration = Column(String(100), nullable=True)
+    quantity = Column(Double, nullable=False)
+    quantity_unit = Column(String(20), nullable=True)
+    refill_quantity = Column(Double, nullable=True)
+    instructions = Column(Text, nullable=True)
+    patient_education = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default="pending")
+    is_substitution_allowed = Column(Boolean, nullable=True, default=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
+
+    prescription = relationship("Prescription", back_populates="items")
+    drug = relationship("DrugCatalog", lazy="selectin")
+
+    __table_args__ = (
+        Index("ix_pharmacy_prescription_items_rx_status", "prescription_id", "status"),
+        {"extend_existing": True},
+    )
+
+    def __repr__(self) -> str:
+        return f"<PrescriptionItem id={self.id} prescription_item_id={self.prescription_item_id}>"
+
+
+class DispenseRecord(TenantScopedEntity):  # type: ignore[misc]
+    """An immutable record that a quantity of a drug was handed to a patient."""
+
+    __tablename__ = "pharmacy_dispense_records"
+
+    lab_id = Column(Integer, nullable=False, index=True)
+    prescription_id = Column(
+        Integer, ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    prescription_item_id = Column(
+        Integer, ForeignKey("pharmacy_prescription_items.id", ondelete="SET NULL"), nullable=True
+    )
+    patient_id = Column(Integer, nullable=True, index=True)
+    drug_id = Column(
+        Integer, ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    batch_id = Column(Integer, ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True)
+    dispense_number = Column(String(30), nullable=False)
+    dispensed_by = Column(Integer, nullable=False)
+    dispensed_at = Column(
+        DateTime(timezone=True), nullable=False, index=True, default=lambda: datetime.now(UTC)
+    )
+    quantity_dispensed = Column(Double, nullable=False)
+    quantity_unit = Column(String(20), nullable=True)
+    days_supply = Column(Integer, nullable=True)
+    dosage_dispensed = Column(String(100), nullable=True)
+    instructions = Column(Text, nullable=True)
+    label_notes = Column(Text, nullable=True)
+    is_verified = Column(Boolean, nullable=True, default=False)
+    verified_by = Column(Integer, nullable=True)
+    verified_at = Column(DateTime(timezone=True), nullable=True)
+    is_counselled = Column(Boolean, nullable=True, default=False)
+    counselled_by = Column(Integer, nullable=True)
+    counselled_at = Column(DateTime(timezone=True), nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
+    fhir_id = Column(String(64), nullable=True)
+    fhir_resource_type = Column(String(32), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("lab_id", "dispense_number", name="uq_pharmacy_dispense_lab_number"),
+        {"extend_existing": True},
+    )
+
+
+class DispenseQueue(TenantScopedEntity):  # type: ignore[misc]
+    """A prescription waiting to be prepared, verified and handed over."""
+
+    __tablename__ = "pharmacy_dispense_queue"
+
+    queue_id = Column(Uuid(as_uuid=True), nullable=False, unique=True, index=True, default=uuid.uuid4)
+
+    lab_id = Column(Integer, nullable=False, index=True)
+    prescription_id = Column(
+        Integer, ForeignKey("pharmacy_prescriptions.id", ondelete="CASCADE"), nullable=False
+    )
+    prescription_item_id = Column(
+        Integer, ForeignKey("pharmacy_prescription_items.id", ondelete="SET NULL"), nullable=True
+    )
+    patient_id = Column(Integer, nullable=True)
+    queue_number = Column(String(20), nullable=False)
+    priority = Column(Integer, nullable=True, default=0)
+    status = Column(String(20), nullable=False, default=DispenseStatus.PENDING.value)
+    entered_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    assigned_to = Column(Integer, nullable=True, index=True)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    estimated_wait_minutes = Column(Integer, nullable=True)
+    notes = Column(Text, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
+
+    prescription = relationship("Prescription", lazy="selectin")
+
+    __table_args__ = (
+        Index("ix_pharmacy_dispense_queue_lab_status", "lab_id", "status"),
+        {"extend_existing": True},
+    )
+
+    def __repr__(self) -> str:
+        return f"<DispenseQueue id={self.id} queue_id={self.queue_id}>"
+
+
+class StockLevel(TenantScopedEntity):  # type: ignore[misc]
+    """Quantity of one drug batch held at one store, for one laboratory.
+
+    Inventory is tenant-scoped and references the GLOBAL catalog by internal
+    foreign key (contract §9). It never duplicates catalog identity: there is
+    one national drug record, and many per-facility stock rows pointing at it.
+    """
+
     __tablename__ = "pharmacy_stock_levels"
 
-    drug_catalog_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+    lab_id = Column(Integer, nullable=False, index=True)
+    drug_id = Column(
+        Integer, ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     batch_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_batches.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
-    )
-    warehouse_id = Column(
-        String(26),
-        ForeignKey("pharmacy_warehouses.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
+        Integer, ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True, index=True
     )
     store_id = Column(
-        String(26),
-        ForeignKey("pharmacy_stores.id", ondelete="CASCADE"),
-        nullable=True,
-        index=True,
+        Integer, ForeignKey("pharmacy_stores.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    warehouse_id = Column(
+        Integer, ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"), nullable=True
+    )
+    quantity_on_hand = Column(Double, nullable=False, default=0)
+    quantity_reserved = Column(Double, nullable=True, default=0)
+    quantity_available = Column(Double, nullable=False, default=0)
+    quantity_on_order = Column(Double, nullable=True, default=0)
+    reorder_point = Column(Double, nullable=True)
+    reorder_quantity = Column(Double, nullable=True)
+    maximum_level = Column(Double, nullable=True)
+    unit = Column(String(20), nullable=False, default="unit")
+    location = Column(String(100), nullable=True)
+    last_counted_at = Column(DateTime(timezone=True), nullable=True)
+    last_counted_by = Column(Integer, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
 
-    quantity = Column(Integer, nullable=False, default=0)
-    reserved_quantity = Column(Integer, nullable=False, default=0)
-    available_quantity = Column(Integer, nullable=False, default=0)
-
-    reorder_point = Column(Integer, nullable=True)
-    reorder_quantity = Column(Integer, nullable=True)
-    max_level = Column(Integer, nullable=True)
-
-    storage_condition = Column(SAEnum(StorageCondition), nullable=True)
-    last_count_date = Column(DateTime(timezone=True), nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    # selectin: this row is locked with FOR UPDATE during every stock change.
+    batch = relationship("DrugBatch", lazy="selectin")
 
     __table_args__ = (
-        Index("ix_pharmacy_stock_drug", "drug_catalog_id"),
-        Index("ix_pharmacy_stock_batch", "batch_id"),
-        Index("ix_pharmacy_stock_warehouse", "warehouse_id"),
-        Index("ix_pharmacy_stock_store", "store_id"),
-        Index("ix_pharmacy_stock_reorder", "reorder_point", "available_quantity"),
+        UniqueConstraint(
+            "lab_id", "drug_id", "batch_id", "store_id", name="uq_pharmacy_stock_lab_drug_batch_store"
+        ),
+        Index("ix_pharmacy_stock_levels_lab_available", "lab_id", "quantity_available"),
         {"extend_existing": True},
     )
 
 
-class StockMovement(TenantAuditEntity):
+class StockMovement(TenantScopedEntity):  # type: ignore[misc]
+    """An append-only record of one stock quantity change.
+
+    ``reference_type`` / ``reference_id`` are a polymorphic pointer at whatever
+    caused the movement. ``reference_id`` is INTEGER physically, so it holds
+    the referring row's internal key; it carries no foreign key because the
+    target table varies by ``reference_type``.
+    """
+
     __tablename__ = "pharmacy_stock_movements"
 
-    drug_catalog_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+    lab_id = Column(Integer, nullable=False, index=True)
+    drug_id = Column(
+        Integer, ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     batch_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
+        Integer, ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True, index=True
     )
-    warehouse_id = Column(
-        String(26),
-        ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-    )
-    store_id = Column(
-        String(26),
-        ForeignKey("pharmacy_stores.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    movement_type = Column(SAEnum(StockMovementType), nullable=False)
-    quantity = Column(Integer, nullable=False)
-
+    movement_type = Column(String(30), nullable=False)
+    quantity = Column(Double, nullable=False)
+    unit = Column(String(20), nullable=False, default="unit")
+    from_location = Column(String(100), nullable=True)
+    to_location = Column(String(100), nullable=True)
     reference_type = Column(String(50), nullable=True)
-    reference_id = Column(String(26), nullable=True)
-
-    reason = Column(String(500), nullable=True)
-    performed_by = Column(String(26), nullable=True)
-    movement_date = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    notes = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
-
-    __table_args__ = (
-        Index("ix_pharmacy_movement_drug", "drug_catalog_id"),
-        Index("ix_pharmacy_movement_batch", "batch_id"),
-        Index("ix_pharmacy_movement_type", "movement_type"),
-        Index("ix_pharmacy_movement_date", "movement_date"),
-        Index("ix_pharmacy_movement_reference", "reference_type", "reference_id"),
-        {"extend_existing": True},
+    reference_id = Column(Integer, nullable=True)
+    reason = Column(String(200), nullable=True)
+    performed_by = Column(Integer, nullable=False)
+    performed_at = Column(
+        DateTime(timezone=True), nullable=False, index=True, default=lambda: datetime.now(UTC)
     )
+    notes = Column(Text, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
+
+    __table_args__ = ({"extend_existing": True},)
 
 
-class InventoryTransfer(TenantAuditEntity):
+class InventoryTransfer(TenantScopedEntity):  # type: ignore[misc]
+    """A movement of stock between two stores or warehouses."""
+
     __tablename__ = "pharmacy_inventory_transfers"
 
-    from_warehouse_id = Column(
-        String(26),
-        ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-    to_warehouse_id = Column(
-        String(26),
-        ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"),
-        nullable=True,
-    )
+    transfer_id = Column(Uuid(as_uuid=True), nullable=False, unique=True, index=True, default=uuid.uuid4)
+
+    lab_id = Column(Integer, nullable=False, index=True)
     from_store_id = Column(
-        String(26),
-        ForeignKey("pharmacy_stores.id", ondelete="SET NULL"),
-        nullable=True,
+        Integer, ForeignKey("pharmacy_stores.id", ondelete="SET NULL"), nullable=True, index=True
     )
     to_store_id = Column(
-        String(26),
-        ForeignKey("pharmacy_stores.id", ondelete="SET NULL"),
-        nullable=True,
+        Integer, ForeignKey("pharmacy_stores.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    from_warehouse_id = Column(
+        Integer, ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"), nullable=True
+    )
+    to_warehouse_id = Column(
+        Integer, ForeignKey("pharmacy_warehouses.id", ondelete="SET NULL"), nullable=True
+    )
+    transfer_number = Column(String(30), nullable=False)
+    transfer_type = Column(String(30), nullable=False, default="internal")
+    status = Column(String(20), nullable=False, default="pending")
+    requested_by = Column(Integer, nullable=True)
+    requested_at = Column(DateTime(timezone=True), nullable=True, default=lambda: datetime.now(UTC))
+    approved_by = Column(Integer, nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    dispatched_by = Column(Integer, nullable=True)
+    dispatched_at = Column(DateTime(timezone=True), nullable=True)
+    received_by = Column(Integer, nullable=True)
+    received_at = Column(DateTime(timezone=True), nullable=True)
+    # There is no general `reason` column: the schema records only why a
+    # transfer was cancelled. Free-text context goes in `notes`.
+    cancelled_reason = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
+
+    items = relationship(
+        "InventoryTransferItem", back_populates="transfer", cascade="all, delete-orphan"
     )
 
-    status = Column(String(50), nullable=False, default="pending")
-    initiated_by = Column(String(26), nullable=True)
-    approved_by = Column(String(26), nullable=True)
-    dispatch_date = Column(DateTime(timezone=True), nullable=True)
-    received_date = Column(DateTime(timezone=True), nullable=True)
-    notes = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
-
     __table_args__ = (
-        Index("ix_pharmacy_transfer_from_wh", "from_warehouse_id"),
-        Index("ix_pharmacy_transfer_to_wh", "to_warehouse_id"),
-        Index("ix_pharmacy_transfer_status", "status"),
+        UniqueConstraint("lab_id", "transfer_number", name="uq_pharmacy_transfer_lab_number"),
+        Index("ix_pharmacy_inventory_transfers_lab_status", "lab_id", "status"),
         {"extend_existing": True},
     )
 
+    def __repr__(self) -> str:
+        return f"<InventoryTransfer id={self.id} transfer_id={self.transfer_id}>"
 
-class InventoryTransferItem(TenantAuditEntity):
+
+class InventoryTransferItem(PharmacyBase):  # type: ignore[misc]
+    """One drug line within a transfer. Tenancy comes from the parent transfer.
+
+    Declared directly on the base rather than on :class:`CanonicalEntity`,
+    because the physical table deliberately carries neither soft-delete
+    columns nor ``updated_by``: a transfer line is a record of what was moved,
+    and a transfer is withdrawn at the header through ``cancelled_reason``
+    rather than by deleting its lines. The columns below are exactly the
+    physical ones.
+    """
+
     __tablename__ = "pharmacy_inventory_transfer_items"
 
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
     transfer_id = Column(
-        String(26),
-        ForeignKey("pharmacy_inventory_transfers.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+        Integer, ForeignKey("pharmacy_inventory_transfers.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    drug_catalog_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
-        nullable=False,
+    drug_id = Column(
+        Integer, ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    batch_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    quantity_requested = Column(Integer, nullable=False)
-    quantity_shipped = Column(Integer, nullable=True)
-    quantity_received = Column(Integer, nullable=True)
+    batch_id = Column(Integer, ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True)
+    quantity = Column(Double, nullable=False)
+    unit = Column(String(20), nullable=False, default="unit")
     notes = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
 
-    __table_args__ = (
-        Index("ix_pharmacy_transfer_item_transfer", "transfer_id"),
-        {"extend_existing": True},
+    created_by = Column(Integer, nullable=True)
+    version = Column(Integer, nullable=False, default=1)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
 
+    transfer = relationship("InventoryTransfer", back_populates="items")
 
-class DrugReturn(TenantAuditEntity):
+    __table_args__ = ({"extend_existing": True},)
+
+
+class DrugReturn(TenantScopedEntity):  # type: ignore[misc]
+    """Stock returned by a patient or to a supplier."""
+
     __tablename__ = "pharmacy_drug_returns"
 
-    patient_id = Column(String(26), ForeignKey("national_patients.id", ondelete="SET NULL"), nullable=True, index=True)
-    prescription_id = Column(
-        String(26),
-        ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"),
-        nullable=True,
+    lab_id = Column(Integer, nullable=False, index=True)
+    drug_id = Column(
+        Integer, ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True
     )
-    drug_catalog_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_catalog.id", ondelete="SET NULL"),
-        nullable=True,
+    batch_id = Column(Integer, ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True)
+    return_type = Column(String(30), nullable=False)
+    return_reason = Column(Text, nullable=False)
+    quantity = Column(Double, nullable=False)
+    unit = Column(String(20), nullable=False, default="unit")
+    patient_id = Column(Integer, nullable=True)
+    returned_by = Column(Integer, nullable=True)
+    returned_at = Column(
+        DateTime(timezone=True), nullable=False, index=True, default=lambda: datetime.now(UTC)
     )
-    batch_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
-        nullable=True,
-    )
+    approved_by = Column(Integer, nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+    disposition = Column(String(30), nullable=True)
+    disposition_notes = Column(Text, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
 
-    return_reason = Column(String(500), nullable=False)
-    quantity = Column(Integer, nullable=False)
-    returned_by = Column(String(26), nullable=True)
-    returned_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False)
-    disposition = Column(String(50), nullable=True)
-    notes = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
-
-    __table_args__ = (
-        Index("ix_pharmacy_return_patient", "patient_id"),
-        Index("ix_pharmacy_return_drug", "drug_catalog_id"),
-        {"extend_existing": True},
-    )
+    __table_args__ = ({"extend_existing": True},)
 
 
-class WasteRecord(TenantAuditEntity):
+class WasteRecord(TenantScopedEntity):  # type: ignore[misc]
+    """Stock destroyed or disposed of, with the required witness."""
+
     __tablename__ = "pharmacy_waste_records"
 
-    drug_catalog_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_catalog.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
+    lab_id = Column(Integer, nullable=False, index=True)
+    drug_id = Column(
+        Integer, ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     batch_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"),
-        nullable=True,
+        Integer, ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True, index=True
     )
-
-    quantity = Column(Integer, nullable=False)
-    waste_reason = Column(String(500), nullable=False)
-    witness_by = Column(String(26), nullable=True)
+    waste_type = Column(String(30), nullable=False)
+    waste_reason = Column(Text, nullable=False)
+    quantity = Column(Double, nullable=False)
+    unit = Column(String(20), nullable=False, default="unit")
+    witnessed_by = Column(Integer, nullable=True)
+    wasted_by = Column(Integer, nullable=False)
+    wasted_at = Column(
+        DateTime(timezone=True), nullable=False, index=True, default=lambda: datetime.now(UTC)
+    )
     disposal_method = Column(String(100), nullable=True)
-    disposal_date = Column(DateTime(timezone=True), nullable=True)
-    notes = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
 
-    __table_args__ = (
-        Index("ix_pharmacy_waste_drug", "drug_catalog_id"),
-        Index("ix_pharmacy_waste_date", "disposal_date"),
-        {"extend_existing": True},
-    )
+    __table_args__ = ({"extend_existing": True},)
 
 
-class Recall(TenantAuditEntity):
+class Recall(TenantScopedEntity):  # type: ignore[misc]
+    """A drug or batch recall being tracked to completion."""
+
     __tablename__ = "pharmacy_recalls"
 
-    drug_catalog_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+    lab_id = Column(Integer, nullable=False, index=True)
+    drug_id = Column(
+        Integer, ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     batch_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_batches.id", ondelete="CASCADE"),
-        nullable=True,
+        Integer, ForeignKey("pharmacy_drug_batches.id", ondelete="SET NULL"), nullable=True, index=True
     )
-
-    recall_reason = Column(String(500), nullable=False)
-    recall_date = Column(DateTime(timezone=True), nullable=False)
-    initiated_by = Column(String(26), nullable=True)
-    severity = Column(String(50), nullable=False)
-    status = Column(String(50), nullable=False, default="active")
-
-    affected_patients = Column(JSON, nullable=True)
+    recall_number = Column(String(50), nullable=False)
+    recall_reason = Column(Text, nullable=False)
+    recall_source = Column(String(200), nullable=True)
+    severity = Column(String(20), nullable=False)
+    status = Column(String(20), nullable=False, default="open")
+    initiated_by = Column(Integer, nullable=True)
+    initiated_at = Column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+    affected_quantity = Column(Double, nullable=True)
+    recovered_quantity = Column(Double, nullable=True)
+    patient_notification_required = Column(Boolean, nullable=True, default=False)
+    notified_patients_count = Column(Integer, nullable=True, default=0)
     actions_taken = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
+    fhir_id = Column(String(64), nullable=True)
+    fhir_resource_type = Column(String(32), nullable=True)
 
     __table_args__ = (
-        Index("ix_pharmacy_recall_drug", "drug_catalog_id"),
-        Index("ix_pharmacy_recall_status", "status"),
+        Index("ix_pharmacy_recalls_lab_status", "lab_id", "status"),
         {"extend_existing": True},
     )
 
 
-class InventoryForecast(TenantAuditEntity):
+class InventoryForecast(TenantScopedEntity):  # type: ignore[misc]
+    """A predicted consumption window for one drug at one laboratory."""
+
     __tablename__ = "pharmacy_inventory_forecasts"
 
-    drug_catalog_id = Column(
-        String(26),
-        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
+    lab_id = Column(Integer, nullable=False, index=True)
+    drug_id = Column(
+        Integer, ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"), nullable=False, index=True
     )
-
-    period_start = Column(Date, nullable=False)
-    period_end = Column(Date, nullable=False)
-
-    predicted_consumption = Column(Integer, nullable=True)
-    actual_consumption = Column(Integer, nullable=True)
-
-    reorder_recommendation = Column(String(50), nullable=True)
-    recommendation_quantity = Column(Integer, nullable=True)
-    confidence_score = Column(Float, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    forecast_date = Column(Date, nullable=False)
+    forecast_period_start = Column(Date, nullable=False)
+    forecast_period_end = Column(Date, nullable=False)
+    predicted_consumption = Column(Double, nullable=False)
+    predicted_consumption_unit = Column(String(20), nullable=False, default="unit")
+    confidence_lower = Column(Double, nullable=True)
+    confidence_upper = Column(Double, nullable=True)
+    recommended_reorder_quantity = Column(Double, nullable=True)
+    current_stock = Column(Double, nullable=True)
+    days_until_stockout = Column(Integer, nullable=True)
+    seasonal_factor = Column(Double, nullable=True)
+    trend_factor = Column(Double, nullable=True)
+    model_used = Column(String(100), nullable=True)
+    notes = Column(Text, nullable=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
 
     __table_args__ = (
-        Index("ix_pharmacy_forecast_drug", "drug_catalog_id"),
-        Index("ix_pharmacy_forecast_period", "period_start", "period_end"),
+        Index(
+            "ix_pharmacy_inventory_forecasts_lab_drug_period",
+            "lab_id",
+            "drug_id",
+            "forecast_period_start",
+        ),
         {"extend_existing": True},
     )
 
@@ -908,27 +963,46 @@ class DrugMonitoring(TenantScopedEntity):
     )
 
 
-class ClinicalGuideline(TenantAuditEntity):
+class ClinicalGuideline(SoftDeleteMixin, AuditMixin, PharmacyBase):  # type: ignore[misc]
+    """A national clinical guideline. Global reference data, not tenant-scoped.
+
+    The physical table has no ``lab_id``: a guideline is curated nationally and
+    read by every laboratory, exactly like the drug catalog (contract §6). The
+    previous ORM inherited a tenant column that does not exist.
+
+    This is the one Pharmacy entity that carries no optimistic-lock counter:
+    its ``version`` column is ``VARCHAR(20) NOT NULL`` and holds the
+    *guideline's own document version* ("2024.1"), which is why it is declared
+    below rather than inherited. Inheriting :class:`CanonicalEntity` here would
+    silently redefine that column as the ``Integer`` lock counter.
+    """
+
     __tablename__ = "pharmacy_clinical_guidelines"
 
-    guideline_code = Column(String(50), nullable=False, unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+
+    # The guideline's published document version, not a concurrency counter.
+    version = Column(String(20), nullable=False, default="1")
+
+    guideline_code = Column(String(50), nullable=False, unique=True, index=True)
     title = Column(String(300), nullable=False)
     title_ar = Column(String(300), nullable=True)
-    drug_codes = Column(JSON, nullable=True)
-    condition_codes = Column(JSON, nullable=True)
+    guideline_type = Column(String(50), nullable=False, index=True)
+    condition = Column(String(200), nullable=True)
+    icd_code = Column(String(20), nullable=True)
     summary = Column(Text, nullable=True)
-    recommendations = Column(JSON, nullable=True)
-    evidence_level = Column(String(50), nullable=True)
+    content = Column(Text, nullable=True)
+    drug_recommendations = Column(JSON, nullable=True)
+    algorithms = Column(JSON, nullable=True)
+    effective_from = Column(Date, nullable=True)
+    effective_until = Column(Date, nullable=True)
     source = Column(String(200), nullable=True)
-    version = Column(String(20), nullable=True)
-    is_active = Column(Boolean, default=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    is_active = Column(Boolean, nullable=True, default=True)
+    sync_id = Column(String(26), nullable=True, index=True, unique=True)
+    fhir_id = Column(String(64), nullable=True)
+    fhir_resource_type = Column(String(32), nullable=True)
 
-    __table_args__ = (
-        Index("ix_pharmacy_guideline_code", "guideline_code"),
-        Index("ix_pharmacy_guideline_active", "is_active"),
-        {"extend_existing": True},
-    )
+    __table_args__ = ({"extend_existing": True},)
 
 class PharmacySale(TenantScopedEntity):  # type: ignore[misc]
     """Institution-scoped pharmacy POS sale.
@@ -1028,9 +1102,14 @@ class PharmacySaleLine(TenantScopedEntity):  # type: ignore[misc]
         nullable=False,
         index=True,
     )
-    # Group B — M4 dependency. See the class docstring.
-    batch_id = Column(String(26), nullable=False, index=True)
-    prescription_id = Column(String(26), nullable=True, index=True)
+    # P0-2-SUBBLOCKER-A Group B, resolved by M4: both targets now have a
+    # canonical integer-keyed application model to point at.
+    batch_id = Column(
+        Integer, ForeignKey("pharmacy_drug_batches.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    prescription_id = Column(
+        Integer, ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     medication_dispense_id = Column(String(26), nullable=True, index=True)
 
     line_number = Column(Integer, nullable=False)
@@ -1163,8 +1242,10 @@ class DrugSubstitutionRequest(TenantScopedEntity):  # type: ignore[misc]
         nullable=False,
         index=True,
     )
-    # Group B — M4 dependency.
-    prescription_id = Column(String(26), nullable=True, index=True)
+    # P0-2-SUBBLOCKER-A Group B, resolved by M4.
+    prescription_id = Column(
+        Integer, ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     patient_id = Column(String(26), nullable=True, index=True)
     citizen_id = Column(String(26), nullable=True, index=True)
     quantity = Column(Integer, nullable=False, default=1)
