@@ -930,15 +930,31 @@ class ClinicalGuideline(TenantAuditEntity):
         {"extend_existing": True},
     )
 
-
-class PharmacySale(TenantAuditEntity):  # type: ignore[misc]
+class PharmacySale(TenantScopedEntity):  # type: ignore[misc]
     """Institution-scoped pharmacy POS sale.
 
     A sale is the commercial envelope around stock movements, billing, and the
     citizen medication record. It never stores payment credentials.
+
+    Identity (P0-2 M3). The primary key is the internal Integer key every
+    physical Pharmacy table uses; the public identity is ``sale_id`` (UUID4),
+    because the internal key must never be exposed as an entity's public
+    identity (CANONICAL_DRUG_CONTRACT §3). ``sale_number`` stays a mutable
+    business code (§4) and is never a key. The previous ``String(26)``
+    ``_ulid()`` key was a Generation B assumption and is gone.
     """
 
     __tablename__ = "pharmacy_sales"
+
+    # PUBLIC_ID (contract §11). Named `<noun>_id` after the platform's existing
+    # public UUID identifiers — pharmacy_drug_catalog.drug_id, and the
+    # provider_id/campaign_id/interaction_id family — rather than a new suffix.
+    sale_id = Column(Uuid(as_uuid=True), nullable=False, unique=True, index=True, default=uuid.uuid4)
+
+    # TENANT_ID. Declared here, not inherited: the physical foreign key to
+    # `labs` lives in the migration because `labs` is on a different
+    # declarative base (same reasoning as DrugMonitoring).
+    lab_id = Column(Integer, nullable=False, index=True)
 
     patient_id = Column(String(26), nullable=True, index=True)
     citizen_id = Column(String(26), nullable=True, index=True)
@@ -978,16 +994,43 @@ class PharmacySale(TenantAuditEntity):  # type: ignore[misc]
         {"extend_existing": True},
     )
 
+    def __repr__(self) -> str:
+        return f"<PharmacySale id={self.id} sale_id={self.sale_id} number={self.sale_number}>"
 
-class PharmacySaleLine(TenantAuditEntity):  # type: ignore[misc]
-    """One stockable medication line within a POS sale."""
+
+class PharmacySaleLine(TenantScopedEntity):  # type: ignore[misc]
+    """One stockable medication line within a POS sale.
+
+    Identity (P0-2 M3): internal Integer key, public ``sale_line_id`` (UUID4).
+
+    ``drug_catalog_id`` is an INTERNAL_FK (contract §11) onto the catalog's
+    Integer key — this is P0-2-SUBBLOCKER-A Group A, resolved here.
+
+    ``batch_id`` and ``prescription_id`` are Group B and remain
+    ``String(26)``: ``pharmacy_drug_batches`` and ``pharmacy_prescriptions``
+    are integer-keyed physically, but their application models are still
+    Generation B, so no canonical batch/prescription identity exists to point
+    at yet. They deliberately carry no ORM ``ForeignKey``: the previous
+    declarations named a constraint PostgreSQL cannot create (varchar → integer)
+    and that the database therefore never had. Reconciled by M4.
+    """
 
     __tablename__ = "pharmacy_sale_lines"
 
-    sale_id = Column(String(26), ForeignKey("pharmacy_sales.id", ondelete="CASCADE"), nullable=False, index=True)
-    drug_catalog_id = Column(String(26), ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"), nullable=False, index=True)
-    batch_id = Column(String(26), ForeignKey("pharmacy_drug_batches.id", ondelete="RESTRICT"), nullable=False, index=True)
-    prescription_id = Column(String(26), ForeignKey("pharmacy_prescriptions.id", ondelete="SET NULL"), nullable=True, index=True)
+    sale_line_id = Column(Uuid(as_uuid=True), nullable=False, unique=True, index=True, default=uuid.uuid4)
+
+    lab_id = Column(Integer, nullable=False, index=True)
+
+    sale_id = Column(Integer, ForeignKey("pharmacy_sales.id", ondelete="CASCADE"), nullable=False, index=True)
+    drug_catalog_id = Column(
+        Integer,
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    # Group B — M4 dependency. See the class docstring.
+    batch_id = Column(String(26), nullable=False, index=True)
+    prescription_id = Column(String(26), nullable=True, index=True)
     medication_dispense_id = Column(String(26), nullable=True, index=True)
 
     line_number = Column(Integer, nullable=False)
@@ -1006,6 +1049,7 @@ class PharmacySaleLine(TenantAuditEntity):  # type: ignore[misc]
     metadata_ = Column("metadata", JSON, nullable=True)
 
     sale = relationship("PharmacySale", back_populates="lines")
+    drug = relationship("DrugCatalog", lazy="joined")
 
     __table_args__ = (
         UniqueConstraint("sale_id", "line_number", name="uq_pharmacy_sale_line_number"),
@@ -1018,11 +1062,24 @@ class PharmacySaleLine(TenantAuditEntity):  # type: ignore[misc]
         {"extend_existing": True},
     )
 
+    def __repr__(self) -> str:
+        return f"<PharmacySaleLine id={self.id} sale_line_id={self.sale_line_id}>"
 
-class DrugSubstitutionRule(TenantAuditEntity):  # type: ignore[misc]
-    """Institution-approved mapping between a requested drug and an equivalent."""
+
+class DrugSubstitutionRule(TenantScopedEntity):  # type: ignore[misc]
+    """Institution-approved mapping between a requested drug and an equivalent.
+
+    The catalog references were already canonical Integer foreign keys from the
+    NR-003 correction; M3 reconciles the entity's own identity to match.
+    """
 
     __tablename__ = "pharmacy_drug_substitution_rules"
+
+    substitution_rule_id = Column(
+        Uuid(as_uuid=True), nullable=False, unique=True, index=True, default=uuid.uuid4
+    )
+
+    lab_id = Column(Integer, nullable=False, index=True)
 
     # Foreign keys to the catalog's internal Integer primary key (NR-003 / ADR-006).
     # These are relational references, not the public drug identity: the public
@@ -1061,20 +1118,52 @@ class DrugSubstitutionRule(TenantAuditEntity):  # type: ignore[misc]
         {"extend_existing": True},
     )
 
+    def __repr__(self) -> str:
+        return f"<DrugSubstitutionRule id={self.id} substitution_rule_id={self.substitution_rule_id}>"
 
-class DrugSubstitutionRequest(TenantAuditEntity):  # type: ignore[misc]
-    """Auditable approval record consumed by a pharmacy POS sale."""
+
+class DrugSubstitutionRequest(TenantScopedEntity):  # type: ignore[misc]
+    """Auditable approval record consumed by a pharmacy POS sale.
+
+    Identity (P0-2 M3): internal Integer key, public
+    ``substitution_request_id`` (UUID4).
+
+    ``original_drug_catalog_id`` and ``alternative_drug_catalog_id`` are
+    P0-2-SUBBLOCKER-A Group A: INTERNAL_FKs onto the catalog's Integer key,
+    now with the foreign keys the database could never hold while they were
+    ``String(26)``.
+
+    ``prescription_id`` is Group B and stays ``String(26)`` without a foreign
+    key until M4 reconciles prescription identity.
+    """
 
     __tablename__ = "pharmacy_drug_substitution_requests"
 
+    substitution_request_id = Column(
+        Uuid(as_uuid=True), nullable=False, unique=True, index=True, default=uuid.uuid4
+    )
+
+    lab_id = Column(Integer, nullable=False, index=True)
+
     rule_id = Column(
-        String(26),
+        Integer,
         ForeignKey("pharmacy_drug_substitution_rules.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
     )
-    original_drug_catalog_id = Column(String(26), nullable=False, index=True)
-    alternative_drug_catalog_id = Column(String(26), nullable=False, index=True)
+    original_drug_catalog_id = Column(
+        Integer,
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    alternative_drug_catalog_id = Column(
+        Integer,
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    # Group B — M4 dependency.
     prescription_id = Column(String(26), nullable=True, index=True)
     patient_id = Column(String(26), nullable=True, index=True)
     citizen_id = Column(String(26), nullable=True, index=True)
@@ -1087,12 +1176,15 @@ class DrugSubstitutionRequest(TenantAuditEntity):  # type: ignore[misc]
     patient_consent = Column(Boolean, nullable=False, default=False)
     patient_notified_at = Column(DateTime(timezone=True), nullable=True)
     consumed_sale_id = Column(
-        String(26),
+        Integer,
         ForeignKey("pharmacy_sales.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
     metadata_ = Column("metadata", JSON, nullable=True)
+
+    rule = relationship("DrugSubstitutionRule", lazy="joined")
+    consumed_sale = relationship("PharmacySale", lazy="joined")
 
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_pharmacy_substitution_request_quantity_positive"),
@@ -1101,3 +1193,6 @@ class DrugSubstitutionRequest(TenantAuditEntity):  # type: ignore[misc]
         Index("ix_pharmacy_substitution_request_patient", "lab_id", "patient_id"),
         {"extend_existing": True},
     )
+
+    def __repr__(self) -> str:
+        return f"<DrugSubstitutionRequest id={self.id} substitution_request_id={self.substitution_request_id}>"

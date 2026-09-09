@@ -1365,6 +1365,9 @@ async def get_expiry_alerts(
 
 
 class POSSaleLineCreate(BaseModel):
+    # Public identifiers: drug_catalog_id is the drug's drug_id (UUID4) and
+    # substitution_request_id is the request's public identity. batch_id is
+    # still a Generation B batch key until M4.
     drug_catalog_id: str | None = None
     barcode: str | None = None
     substitution_request_id: str | None = None
@@ -1395,6 +1398,15 @@ class POSSaleCreate(BaseModel):
 
 
 class POSSaleLineResponse(BaseModel):
+    """Wire shape is unchanged from Generation B: every identifier is a string.
+
+    What changed is which value each one carries. ``id`` is the sale line's
+    public ``sale_line_id`` and ``drug_catalog_id`` is the drug's public
+    ``drug_id``; the internal Integer keys behind them are never published
+    (CANONICAL_DRUG_CONTRACT §3, §8). ``batch_id`` still carries the Generation
+    B batch key because batch identity is not reconciled until M4.
+    """
+
     id: str
     line_number: int
     drug_catalog_id: str
@@ -1417,6 +1429,9 @@ class POSSaleLineResponse(BaseModel):
 
 
 class POSSaleResponse(BaseModel):
+    """``id`` is the sale's public ``sale_id`` (UUID4); ``sale_number`` remains
+    the mutable business code and is never an identity (contract §4)."""
+
     id: str
     sale_number: str
     patient_id: str | None
@@ -1438,6 +1453,108 @@ class POSSaleResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+def _pos_sale_line_response(line: Any) -> POSSaleLineResponse:
+    return POSSaleLineResponse(
+        id=str(line.sale_line_id),
+        line_number=line.line_number,
+        # The drug's public identity, not the internal foreign key.
+        drug_catalog_id=str(line.drug.drug_id),
+        batch_id=line.batch_id,
+        medication_dispense_id=line.medication_dispense_id,
+        barcode=line.barcode,
+        medication_name=line.medication_name,
+        medication_name_ar=line.medication_name_ar,
+        quantity=line.quantity,
+        quantity_unit=line.quantity_unit,
+        lot_number=line.lot_number,
+        expiry_date=line.expiry_date,
+        unit_price=float(line.unit_price),
+        unit_cost=float(line.unit_cost),
+        discount=float(line.discount),
+        line_total=float(line.line_total),
+        line_cost=float(line.line_cost),
+    )
+
+
+def _pos_sale_response(sale: Any) -> POSSaleResponse:
+    return POSSaleResponse(
+        id=str(sale.sale_id),
+        sale_number=sale.sale_number,
+        patient_id=sale.patient_id,
+        citizen_id=sale.citizen_id,
+        billing_patient_id=sale.billing_patient_id,
+        billing_invoice_id=sale.billing_invoice_id,
+        status=sale.status,
+        currency=sale.currency,
+        subtotal=float(sale.subtotal),
+        discount=float(sale.discount),
+        total_amount=float(sale.total_amount),
+        cost_amount=float(sale.cost_amount),
+        gross_profit=float(sale.gross_profit),
+        payment_status=sale.payment_status,
+        payment_method=sale.payment_method,
+        sold_at=sale.sold_at.isoformat() if sale.sold_at is not None else "",
+        lines=[_pos_sale_line_response(line) for line in sale.lines],
+    )
+
+
+class SubstitutionRequestResponse(BaseModel):
+    """Public shape of a substitution request.
+
+    Replaces the previous ``to_dict()`` passthrough, which published every
+    column verbatim. After M3 those columns are internal Integer keys, and a
+    passthrough would both leak them and change the wire types.
+    """
+
+    id: str
+    rule_id: str
+    original_drug_catalog_id: str
+    alternative_drug_catalog_id: str
+    prescription_id: str | None
+    patient_id: str | None
+    citizen_id: str | None
+    quantity: int
+    status: str
+    reason: str
+    approval_level: str
+    approved_by: str | None
+    approved_at: str | None
+    patient_consent: bool
+    patient_notified_at: str | None
+    consumed_sale_id: str | None
+
+
+def _substitution_request_response(
+    request: Any, service: Any
+) -> SubstitutionRequestResponse:
+    original = service.get_drug(request.original_drug_catalog_id)
+    alternative = service.get_drug(request.alternative_drug_catalog_id)
+    return SubstitutionRequestResponse(
+        id=str(request.substitution_request_id),
+        rule_id=str(request.rule.substitution_rule_id),
+        original_drug_catalog_id=str(original.drug_id) if original else "",
+        alternative_drug_catalog_id=str(alternative.drug_id) if alternative else "",
+        # Group B: still the Generation B prescription key until M4.
+        prescription_id=request.prescription_id,
+        patient_id=request.patient_id,
+        citizen_id=request.citizen_id,
+        quantity=request.quantity,
+        status=request.status,
+        reason=request.reason,
+        approval_level=request.approval_level,
+        approved_by=request.approved_by,
+        approved_at=request.approved_at.isoformat() if request.approved_at else None,
+        patient_consent=bool(request.patient_consent),
+        patient_notified_at=(
+            request.patient_notified_at.isoformat() if request.patient_notified_at else None
+        ),
+        # The consuming sale's public identity, never its internal key.
+        consumed_sale_id=(
+            str(request.consumed_sale.sale_id) if request.consumed_sale is not None else None
+        ),
+    )
+
+
 @router.post("/pos/sales", response_model=POSSaleResponse, status_code=status.HTTP_201_CREATED)
 async def create_pos_sale(
     data: POSSaleCreate,
@@ -1456,7 +1573,7 @@ async def create_pos_sale(
         )
         db.commit()
         db.refresh(sale)
-        return POSSaleResponse.model_validate(sale)
+        return _pos_sale_response(sale)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -1474,7 +1591,7 @@ async def list_pos_sales(
     user: Any = Depends(require_institutional_permission("payments:read")),
 ) -> list[POSSaleResponse]:
     sales = _get_pharmacy_service(db, user).list_pos_sales(citizen_id=citizen_id, skip=skip, limit=limit)
-    return [POSSaleResponse.model_validate(sale) for sale in sales]
+    return [_pos_sale_response(sale) for sale in sales]
 
 
 @router.get("/pos/summary")
@@ -1499,13 +1616,14 @@ async def get_pos_sale(
     sale = _get_pharmacy_service(db, user).get_pos_sale(sale_id)
     if sale is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sale not found")
-    return POSSaleResponse.model_validate(sale)
+    return _pos_sale_response(sale)
 
 
 # ── Drug substitution routes ────────────────────────────────────────────────────
 
 
 class SubstitutionRequestCreate(BaseModel):
+    # The rule's public substitution_rule_id (UUID4), never its internal key.
     rule_id: str
     prescription_id: str | None = None
     patient_id: str | None = None
@@ -1522,13 +1640,17 @@ class SubstitutionRejectRequest(BaseModel):
 
 @router.get("/substitutions/candidates")
 async def list_substitution_candidates(
-    original_drug_id: str = Query(..., min_length=1, max_length=26),
+    # A drug is named publicly by drug_id (UUID4, 36 characters), never by the
+    # internal Integer key or the retired 26-character Generation B key.
+    original_drug_id: str = Query(..., min_length=1, max_length=36),
     quantity: int = Query(1, ge=1, le=10000),
     db: Session = Depends(get_db),
     user: Any = Depends(require_institutional_permission("lab:read")),
 ) -> list[dict[str, Any]]:
     try:
-        return _get_pharmacy_service(db, user).list_substitution_candidates(original_drug_id, quantity)
+        return _get_pharmacy_service(db, user).list_substitution_candidates_by_public_id(
+            original_drug_id, quantity
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -1538,12 +1660,13 @@ async def create_substitution_request(
     data: SubstitutionRequestCreate,
     db: Session = Depends(get_db),
     user: Any = Depends(require_institutional_permission("lab:manage")),
-) -> dict[str, Any]:
+) -> SubstitutionRequestResponse:
+    service = _get_pharmacy_service(db, user)
     try:
-        request = _get_pharmacy_service(db, user).create_substitution_request(data.model_dump())
+        request = service.create_substitution_request(data.model_dump())
         db.commit()
         db.refresh(request)
-        return request.to_dict()
+        return _substitution_request_response(request, service)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -1554,12 +1677,13 @@ async def approve_substitution_request(
     request_id: str,
     db: Session = Depends(get_db),
     user: Any = Depends(require_institutional_permission("lab:manage")),
-) -> dict[str, Any]:
+) -> SubstitutionRequestResponse:
+    service = _get_pharmacy_service(db, user)
     try:
-        request = _get_pharmacy_service(db, user).approve_substitution(request_id)
+        request = service.approve_substitution(request_id)
         db.commit()
         db.refresh(request)
-        return request.to_dict()
+        return _substitution_request_response(request, service)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
@@ -1571,12 +1695,13 @@ async def reject_substitution_request(
     data: SubstitutionRejectRequest,
     db: Session = Depends(get_db),
     user: Any = Depends(require_institutional_permission("lab:manage")),
-) -> dict[str, Any]:
+) -> SubstitutionRequestResponse:
+    service = _get_pharmacy_service(db, user)
     try:
-        request = _get_pharmacy_service(db, user).reject_substitution(request_id, data.reason)
+        request = service.reject_substitution(request_id, data.reason)
         db.commit()
         db.refresh(request)
-        return request.to_dict()
+        return _substitution_request_response(request, service)
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

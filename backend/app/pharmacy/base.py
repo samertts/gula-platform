@@ -28,13 +28,19 @@ class BaseEntity(TimestampMixin, SoftDeleteMixin, OptimisticLockMixin, PharmacyB
 
     The ``String(26)`` primary key below is the P0-2 identity defect: every
     physical Pharmacy table keys on ``INTEGER``, so a model inheriting this
-    base cannot execute against the migration-built schema.  Twenty-three
-    tables still inherit it and are reconciled milestone by milestone
-    (M2 clinical rules, M3 sales/substitution, M4 inventory/dispensing);
-    this class is deleted once the last one moves off it.
+    base cannot execute against the migration-built schema.  Seventeen tables
+    still inherit it, down from twenty-three, and are reconciled milestone by
+    milestone (M2 clinical rules and M3 sales/substitution are done; M4 covers
+    inventory, batches, prescriptions and dispensing); this class is deleted
+    once the last one moves off it.
 
-    Reconciled entities inherit :class:`GlobalCatalogEntity` (or the
-    tenant-scoped equivalent added when M4 needs one) instead.
+    The two ``fhir_*`` columns are part of the same defect: they are declared
+    here for every subclass, but only seven Pharmacy tables actually have them,
+    so an ORM ``INSERT`` against any of the others fails with
+    ``UndefinedColumn`` before a row is created.
+
+    Reconciled entities inherit :class:`GlobalCatalogEntity` or
+    :class:`TenantScopedEntity` instead.
     """
 
     __abstract__ = True

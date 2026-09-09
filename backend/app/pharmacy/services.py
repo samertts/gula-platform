@@ -64,6 +64,23 @@ _DISPENSE_TRANSITIONS: dict[DispenseStatus, set[DispenseStatus]] = {
 IMMUTABLE_CATALOG_IDENTITY_FIELDS = frozenset({"id", "drug_id", "uuid"})
 
 
+def _as_uuid(value: str | uuid.UUID | None) -> uuid.UUID | None:
+    """Parse a public UUID identifier, or ``None`` if it is not one.
+
+    A value that is not a UUID cannot identify anything, which is a lookup
+    miss rather than an error worth raising (same handling as
+    :meth:`PharmacyService.get_drug_by_public_id`).
+    """
+    if value is None:
+        return None
+    if isinstance(value, uuid.UUID):
+        return value
+    try:
+        return uuid.UUID(str(value))
+    except ValueError:
+        return None
+
+
 class PharmacyService:
     def __init__(self, db: Session, user_id: int | None = None, lab_id: int | None = None):
         self.db = db
@@ -590,12 +607,20 @@ class PharmacyService:
             q = q.filter(DispenseRecord.lab_id == self.lab_id)
         return q.order_by(DispenseRecord.dispensed_at.desc()).all()
 
-    def list_substitution_candidates(self, original_drug_id: str, quantity: int = 1) -> list[dict[str, Any]]:
+    def list_substitution_candidates(
+        self, original_drug_catalog_id: int, quantity: int = 1
+    ) -> list[dict[str, Any]]:
+        """Substitution candidates for a drug named by its INTERNAL catalog key.
+
+        Kept for internal callers that already hold a foreign key. Public
+        callers must use :meth:`list_substitution_candidates_by_public_id`;
+        the internal key is never the public identity (contract §3).
+        """
         if self.lab_id is None:
             raise ValueError("institutional pharmacy context is required")
         if quantity <= 0:
             raise ValueError("quantity must be positive")
-        original = self.get_drug(original_drug_id)
+        original = self.get_drug(original_drug_catalog_id)
         if original is None:
             raise ValueError("original drug not found")
         rules = self.db.query(DrugSubstitutionRule).filter(
@@ -622,9 +647,11 @@ class PharmacyService:
             )
             available = int(stock_query.scalar() or 0)
             candidates.append({
-                "rule_id": rule.id,
-                "original_drug_catalog_id": original.id,
-                "alternative_drug_catalog_id": alternative.id,
+                # Public identifiers only. The Integer keys behind these are
+                # internal and never appear on a public surface (contract §3).
+                "rule_id": str(rule.substitution_rule_id),
+                "original_drug_catalog_id": str(original.drug_id),
+                "alternative_drug_catalog_id": str(alternative.drug_id),
                 "equivalence_type": rule.equivalence_type,
                 "approval_level": rule.approval_level,
                 "requires_patient_consent": bool(rule.requires_patient_consent),
@@ -647,16 +674,39 @@ class PharmacyService:
             })
         return candidates
 
+    def list_substitution_candidates_by_public_id(
+        self, public_drug_id: str, quantity: int = 1
+    ) -> list[dict[str, Any]]:
+        """Substitution candidates for a drug named by its public ``drug_id``.
+
+        This is the lookup a public API surface uses (contract §8).
+        """
+        if self.lab_id is None:
+            raise ValueError("institutional pharmacy context is required")
+        original = self.get_drug_by_public_id(public_drug_id)
+        if original is None:
+            raise ValueError("original drug not found")
+        return self.list_substitution_candidates(original.id, quantity)
+
+    def get_substitution_rule_by_public_id(self, public_rule_id: str) -> DrugSubstitutionRule | None:
+        """Resolve an active substitution rule by its public UUID identity."""
+        rule_uuid = _as_uuid(public_rule_id)
+        if rule_uuid is None:
+            return None
+        return cast(
+            DrugSubstitutionRule | None,
+            self.db.query(DrugSubstitutionRule).filter(
+                DrugSubstitutionRule.substitution_rule_id == rule_uuid,
+                DrugSubstitutionRule.lab_id == self.lab_id,
+                DrugSubstitutionRule.is_active.is_(True),
+                ~DrugSubstitutionRule.is_deleted,
+            ).first(),
+        )
+
     def create_substitution_request(self, data: dict[str, Any]) -> DrugSubstitutionRequest:
         if self.lab_id is None:
             raise ValueError("institutional pharmacy context is required")
-        rule_id = str(data.get("rule_id") or "")
-        rule = self.db.query(DrugSubstitutionRule).filter(
-            DrugSubstitutionRule.id == rule_id,
-            DrugSubstitutionRule.lab_id == self.lab_id,
-            DrugSubstitutionRule.is_active.is_(True),
-            ~DrugSubstitutionRule.is_deleted,
-        ).first()
+        rule = self.get_substitution_rule_by_public_id(str(data.get("rule_id") or ""))
         if rule is None:
             raise ValueError("active substitution rule not found")
         quantity = int(data.get("quantity") or 0)
@@ -672,7 +722,11 @@ class PharmacyService:
         if original is None or alternative is None:
             raise ValueError("substitution drugs are not available")
         eligible = next(
-            (candidate for candidate in self.list_substitution_candidates(original.id, quantity) if candidate["rule_id"] == rule.id),
+            (
+                candidate
+                for candidate in self.list_substitution_candidates(original.id, quantity)
+                if candidate["rule_id"] == str(rule.substitution_rule_id)
+            ),
             None,
         )
         if eligible is None or not eligible["eligible"]:
@@ -697,17 +751,32 @@ class PharmacyService:
         )
         self.db.add(request)
         self.db.flush()
-        self._audit("pharmacy.substitution.request", "substitution_request", request.id, f"Requested {original.drug_code} -> {alternative.drug_code}")
+        self._audit(
+            "pharmacy.substitution.request",
+            "substitution_request",
+            str(request.substitution_request_id),
+            f"Requested {original.drug_code} -> {alternative.drug_code}",
+        )
         return request
+
+    def _substitution_request_for_update(self, public_request_id: str) -> DrugSubstitutionRequest | None:
+        """Lock a substitution request named by its public UUID identity."""
+        request_uuid = _as_uuid(public_request_id)
+        if request_uuid is None:
+            return None
+        return cast(
+            DrugSubstitutionRequest | None,
+            self.db.query(DrugSubstitutionRequest).filter(
+                DrugSubstitutionRequest.substitution_request_id == request_uuid,
+                DrugSubstitutionRequest.lab_id == self.lab_id,
+                ~DrugSubstitutionRequest.is_deleted,
+            ).with_for_update().first(),
+        )
 
     def approve_substitution(self, request_id: str) -> DrugSubstitutionRequest:
         if self.lab_id is None:
             raise ValueError("institutional pharmacy context is required")
-        request = self.db.query(DrugSubstitutionRequest).filter(
-            DrugSubstitutionRequest.id == request_id,
-            DrugSubstitutionRequest.lab_id == self.lab_id,
-            ~DrugSubstitutionRequest.is_deleted,
-        ).with_for_update().first()
+        request = self._substitution_request_for_update(request_id)
         if request is None:
             raise ValueError("substitution request not found")
         if request.status != "pending":
@@ -722,7 +791,13 @@ class PharmacyService:
         if rule.requires_patient_consent and not request.patient_consent:
             raise ValueError("patient consent is required before approval")
         eligible = next(
-            (candidate for candidate in self.list_substitution_candidates(request.original_drug_catalog_id, request.quantity) if candidate["rule_id"] == rule.id),
+            (
+                candidate
+                for candidate in self.list_substitution_candidates(
+                    request.original_drug_catalog_id, request.quantity
+                )
+                if candidate["rule_id"] == str(rule.substitution_rule_id)
+            ),
             None,
         )
         if eligible is None or not eligible["eligible"]:
@@ -731,18 +806,19 @@ class PharmacyService:
         request.approved_by = str(self.user_id) if self.user_id is not None else None
         request.approved_at = datetime.now(UTC)
         request.updated_by = self.user_id
-        self._audit("pharmacy.substitution.approve", "substitution_request", request.id, "Approved substitution")
+        self._audit(
+            "pharmacy.substitution.approve",
+            "substitution_request",
+            str(request.substitution_request_id),
+            "Approved substitution",
+        )
         self.db.flush()
         return request
 
     def reject_substitution(self, request_id: str, reason: str) -> DrugSubstitutionRequest:
         if self.lab_id is None:
             raise ValueError("institutional pharmacy context is required")
-        request = self.db.query(DrugSubstitutionRequest).filter(
-            DrugSubstitutionRequest.id == request_id,
-            DrugSubstitutionRequest.lab_id == self.lab_id,
-            ~DrugSubstitutionRequest.is_deleted,
-        ).with_for_update().first()
+        request = self._substitution_request_for_update(request_id)
         if request is None:
             raise ValueError("substitution request not found")
         if request.status != "pending":
@@ -750,7 +826,12 @@ class PharmacyService:
         request.status = "rejected"
         request.reason = f"{request.reason}; rejected: {reason.strip()}"
         request.updated_by = self.user_id
-        self._audit("pharmacy.substitution.reject", "substitution_request", request.id, "Rejected substitution")
+        self._audit(
+            "pharmacy.substitution.reject",
+            "substitution_request",
+            str(request.substitution_request_id),
+            "Rejected substitution",
+        )
         self.db.flush()
         return request
 
@@ -803,8 +884,11 @@ class PharmacyService:
             if substitution_request_id:
                 if substitution_request_id in used_substitution_ids:
                     raise ValueError("a substitution request can only be used once per sale")
-                substitution_request = self.db.query(DrugSubstitutionRequest).filter(
-                    DrugSubstitutionRequest.id == substitution_request_id,
+                request_uuid = _as_uuid(substitution_request_id)
+                substitution_request = None if request_uuid is None else self.db.query(
+                    DrugSubstitutionRequest
+                ).filter(
+                    DrugSubstitutionRequest.substitution_request_id == request_uuid,
                     DrugSubstitutionRequest.lab_id == self.lab_id,
                     DrugSubstitutionRequest.status == "approved",
                     DrugSubstitutionRequest.consumed_sale_id.is_(None),
@@ -829,12 +913,18 @@ class PharmacyService:
                 if substitution_request.prescription_id and str(substitution_request.prescription_id) != str(raw_line.get("prescription_id") or ""):
                     raise ValueError("substitution request belongs to another prescription")
                 used_substitution_ids.add(substitution_request_id)
-                drug_id = substitution_request.alternative_drug_catalog_id
+                # An approved substitution already names the alternative by its
+                # INTERNAL catalog key, so it resolves through get_drug. A line
+                # the caller wrote names a drug by its PUBLIC drug_id. The two
+                # value spaces are resolved separately and never interchanged.
+                internal_drug_id = substitution_request.alternative_drug_catalog_id
+                public_drug_id = None
             else:
-                drug_id = raw_line.get("drug_catalog_id")
+                internal_drug_id = None
+                public_drug_id = raw_line.get("drug_catalog_id")
 
             barcode = str(raw_line.get("barcode") or "").strip() or None
-            if drug_id is None and barcode:
+            if internal_drug_id is None and public_drug_id is None and barcode:
                 # Barcode lookup cannot resolve a drug against the real schema.
                 # A GS1 GTIN identifies a *package*, not a drug (contract §5),
                 # and the package entity does not exist yet, so the catalog has
@@ -842,8 +932,13 @@ class PharmacyService:
                 # that is not there, this resolves to no drug and falls through
                 # to the "drug not found" path below. Restoring barcode sale
                 # entry needs the package entity; tracked as P0-2-GAP-BARCODE.
-                drug_id = None
-            drug = self.get_drug(drug_id) if drug_id is not None else None
+                public_drug_id = None
+            if internal_drug_id is not None:
+                drug = self.get_drug(internal_drug_id)
+            elif public_drug_id is not None:
+                drug = self.get_drug_by_public_id(str(public_drug_id))
+            else:
+                drug = None
             if drug is None or not drug.is_active:
                 raise ValueError("drug not found or inactive")
 
@@ -1004,11 +1099,16 @@ class PharmacyService:
                 substitution_request.status = "consumed"
                 substitution_request.version += 1
                 substitution_request.updated_by = self.user_id
+                original_drug = self.get_drug(item["original_drug_catalog_id"])
                 sale_line.metadata_ = {
                     "synthetic": True,
-                    "substitution_request_id": substitution_request.id,
-                    "original_drug_catalog_id": item["original_drug_catalog_id"],
-                    "alternative_drug_catalog_id": drug.id,
+                    # Public identifiers: sale-line metadata is returned to
+                    # callers, and an internal key is never a public identity.
+                    "substitution_request_id": str(substitution_request.substitution_request_id),
+                    "original_drug_catalog_id": (
+                        str(original_drug.drug_id) if original_drug is not None else None
+                    ),
+                    "alternative_drug_catalog_id": str(drug.drug_id),
                     "equivalence_type": "approved",
                 }
             self.db.add(sale_line)
@@ -1023,7 +1123,12 @@ class PharmacyService:
                 movement_type=StockMovementType.DISPENSED,
                 quantity=item["quantity"],
                 reference_type="pharmacy_sale",
-                reference_id=sale.id,
+                # StockMovement is still Generation B: reference_id is a
+                # polymorphic String(26) internal trace column, too narrow for
+                # the sale's 36-character public UUID. It carries the internal
+                # key as text until M4 reconciles inventory identity; it is not
+                # a public identifier and no API resolves a sale through it.
+                reference_id=str(sale.id),
                 performed_by=str(self.user_id) if self.user_id else None,
                 notes="POS sale; FEFO allocation",
             )
@@ -1058,7 +1163,7 @@ class PharmacyService:
                     metadata_={
                         "source": "pharmacy_pos",
                         "synthetic": True,
-                        "pharmacy_sale_id": sale.id,
+                        "pharmacy_sale_id": str(sale.sale_id),
                         "pharmacy_sale_number": sale.sale_number,
                         "billing_invoice_id": invoice.id if invoice else None,
                         "lot_number": batch.batch_number,
@@ -1082,15 +1187,19 @@ class PharmacyService:
         self._audit(
             "pharmacy.pos.sale.create",
             "pharmacy_sale",
-            sale.id,
+            str(sale.sale_id),
             f"Created {sale.sale_number} with {len(dispense_rows)} allocated lines",
         )
         self.db.flush()
         return sale
 
     def get_pos_sale(self, sale_id: str) -> PharmacySale | None:
+        """Look a sale up by its public ``sale_id`` (UUID4, contract §3/§8)."""
+        sale_uuid = _as_uuid(sale_id)
+        if sale_uuid is None:
+            return None
         query = self.db.query(PharmacySale).filter(
-            PharmacySale.id == sale_id,
+            PharmacySale.sale_id == sale_uuid,
             ~PharmacySale.is_deleted,
         )
         if self.lab_id:
