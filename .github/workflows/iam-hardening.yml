@@ -48,6 +48,11 @@ jobs:
         run: python -m compileall -q backend/app backend/migrations
       - name: Upload backend evidence
         if: always()
+        # Evidence archival must not fail the gate it merely documents.
+        # The account's artifact storage quota is exhausted, which was
+        # turning every job red at this step while ruff, pytest, alembic
+        # and compileall all passed. Those gates stay blocking.
+        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: iam-backend-evidence-${{ github.run_id }}
@@ -116,6 +121,11 @@ jobs:
           alembic current 2>&1 | tee ../artifacts/alembic-reupgrade-current.log
       - name: Upload migration evidence
         if: always()
+        # Evidence archival must not fail the gate it merely documents.
+        # The account's artifact storage quota is exhausted, which was
+        # turning every job red at this step while ruff, pytest, alembic
+        # and compileall all passed. Those gates stay blocking.
+        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: iam-migration-evidence-${{ github.run_id }}
@@ -153,6 +163,11 @@ jobs:
           npm --prefix frontend-v3 run build 2>&1 | tee artifacts/frontend-build.log
       - name: Upload frontend evidence
         if: always()
+        # Evidence archival must not fail the gate it merely documents.
+        # The account's artifact storage quota is exhausted, which was
+        # turning every job red at this step while ruff, pytest, alembic
+        # and compileall all passed. Those gates stay blocking.
+        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: iam-frontend-evidence-${{ github.run_id }}
@@ -194,6 +209,11 @@ jobs:
           python -m pytest tests/test_security_regression.py tests/test_tenant_isolation_matrix.py tests/test_clinical_gateway_contracts.py tests/test_clinical_gateway_service.py -q --junitxml=../artifacts/pytest-security-regression.xml 2>&1 | tee ../artifacts/pytest-security-regression.log
       - name: Upload security evidence
         if: always()
+        # Evidence archival must not fail the gate it merely documents.
+        # The account's artifact storage quota is exhausted, which was
+        # turning every job red at this step while ruff, pytest, alembic
+        # and compileall all passed. Those gates stay blocking.
+        continue-on-error: true
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: iam-security-evidence-${{ github.run_id }}

@@ -98,7 +98,7 @@ buildings, floors, clinics, rooms, beds, units, medical equipment, cost centres,
 bed assignments) still have no migration. They block nothing and were
 deliberately left out of a minimal repair. Tracked as **P1-6**.
 
-**P0-2. Pharmacy ORM ↔ physical schema divergence — Phase 2A COMPLETE, M1 VERIFIED.**
+**P0-2. Pharmacy ORM ↔ physical schema divergence — Phase 2A COMPLETE, M1 and M2 VERIFIED.**
 The exact delta is now measured against the migration-built PostgreSQL schema
 (103 revisions) and recorded column by column in
 `docs/pharmacy-platform/P0-2_RECONCILIATION_MATRIX.md` with machine-readable
@@ -166,6 +166,57 @@ consequences, not regressions, and neither invents a column:
 FK adoption (M2), sales/substitution (M3), inventory/dispensing (M4), and the
 public API identity switch (M5/P1-1). The catalog service exposes
 `get_drug_by_public_id()` for `drug_id` lookups, but no route was changed.
+
+**M2 (Clinical rules) — VERIFIED.** The five clinical-rule models now match the
+migration-built schema exactly — **115 columns across 5 tables**, no ORM-only
+column, no unmapped physical column, no type or nullability mismatch — and the
+services resolve a drug through the catalog foreign key rather than a business
+code. No migration and no data migration were required: the integer `drug_id`
+foreign keys already existed, so there was nothing to transform.
+
+| Table                             | Scope             | Authoritative link                   |
+| --------------------------------- | ----------------- | ------------------------------------ |
+| `pharmacy_contraindication_rules` | global            | `drug_id` → catalog                  |
+| `pharmacy_allergy_rules`          | global            | `drug_id` → catalog                  |
+| `pharmacy_dose_guidelines`        | global            | `drug_id` → catalog                  |
+| `pharmacy_drug_interaction_rules` | global            | `drug_id_a`, `drug_id_b` → catalog   |
+| `pharmacy_drug_monitoring`        | **tenant-scoped** | `drug_id` → catalog, `lab_id` → labs |
+
+**The §7 invariant is now proven end to end, not just structurally.** A test
+renames a drug's `drug_code` with a contraindication attached and asserts the
+rule is still reachable through the foreign key and through the drug's new
+code, while the old code matches nothing. The ORM's rule-level `drug_code`
+fields were removed: they never existed physically, so no data was touched.
+
+**Two semantic corrections found by following the schema.** `DrugMonitoring`
+was modelled as a per-drug monitoring _rule_ (`required_tests`,
+`therapeutic_range`, `toxic_level`); the physical table records monitoring
+_events_ for a patient — a date, a measured value, a laboratory. The model and
+`get_monitoring_records()` now read what the table holds, replacing
+`check_therapeutic_monitoring(drug_code)`. Dose guidelines bound age in
+**years** as `double precision`, not months as integers, and doses are numeric
+rather than strings; the caller's months are converted rather than the column
+being reinterpreted. `renal_adjustment` is `TEXT`, so banded guidance is read
+when the text holds JSON and free text is surfaced as the recommendation. No
+clinical banding rule was changed.
+
+Verified against a disposable migrated PostgreSQL database: **22 focused M2
+tests**, including foreign-key integrity (a rule against a nonexistent drug is
+rejected), cascade behaviour, both column orders for an interaction pair,
+tenant isolation on monitoring records, and global visibility of national
+rules from any tenant context. 37 PostgreSQL tests pass across M1 and M2, plus
+12 pharmacy regression tests and 66 security and tenant-isolation tests.
+Changed-files MyPy moved 53 → **51** (two errors removed, none added).
+
+**CI artifact workflow — APPLIED.** The four evidence-upload steps in
+`iam-hardening.yml` now carry `continue-on-error: true`. The diff is **20
+insertions, zero deletions**, confined to those steps; `pytest`, `ruff`,
+`mypy`, `alembic`, `compileall` and the security and tenant-isolation tests
+remain blocking. Archival no longer fails the gate it merely documents.
+
+**Not done in M2, by design:** inventory, dispensing, sales, the remaining
+Generation C entities and the public API. `ClinicalGuideline` is untouched —
+it is a separate table, not one of the five rule domains.
 
 ### P1 — required for delivery
 

@@ -27,10 +27,14 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from app._compat import UTC
-from app.pharmacy.base import GlobalCatalogEntity, TenantAuditEntity
+from app.pharmacy.base import (
+    CanonicalEntity,
+    GlobalCatalogEntity,
+    TenantAuditEntity,
+    TenantScopedEntity,
+)
 from app.pharmacy.enums import (
     DispenseStatus,
-    InteractionSeverity,
     PrescriptionStatus,
     StockMovementType,
     StorageCondition,
@@ -698,103 +702,210 @@ class InventoryForecast(TenantAuditEntity):
     )
 
 
-class DrugInteractionRule(TenantAuditEntity):
+class DrugInteractionRule(CanonicalEntity):
+    """Drug-drug interaction, keyed on two catalog foreign keys.
+
+    Global national reference data: no tenant column exists physically.
+    ``severity`` is VARCHAR in the schema, not a PostgreSQL enum; the
+    InteractionSeverity vocabulary validates input at the schema layer.
+    """
+
     __tablename__ = "pharmacy_drug_interaction_rules"
 
-    drug_a_code = Column(String(50), nullable=False, index=True)
-    drug_b_code = Column(String(50), nullable=False, index=True)
-    severity = Column(SAEnum(InteractionSeverity), nullable=False)
-    mechanism = Column(String(500), nullable=True)
+    drug_id_a = Column(
+        Integer,
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    drug_id_b = Column(
+        Integer,
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    severity = Column(String(20), nullable=False, index=True)
     description = Column(Text, nullable=True)
+    clinical_consequence = Column(Text, nullable=True)
     recommendation = Column(Text, nullable=True)
-    evidence_level = Column(String(50), nullable=True)
-    reference = Column(String(500), nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    evidence_level = Column(String(20), nullable=True)
+    source = Column(String(200), nullable=True)
+    is_active = Column(Boolean, nullable=True, default=True)
+    sync_id = Column(String(26), nullable=True, unique=True)
 
     __table_args__ = (
-        Index("ix_pharmacy_interaction_drugs", "drug_a_code", "drug_b_code"),
+        UniqueConstraint("drug_id_a", "drug_id_b", name="uq_pharmacy_interaction_pair"),
         {"extend_existing": True},
     )
 
 
-class ContraindicationRule(TenantAuditEntity):
+class ContraindicationRule(CanonicalEntity):
+    """Contraindication for one drug. Global reference data.
+
+    The authoritative link is ``drug_id`` -> ``pharmacy_drug_catalog.id``.
+    There is no ``drug_code`` column here, so editing a business code cannot
+    detach this rule (contract §7).
+    """
+
     __tablename__ = "pharmacy_contraindication_rules"
 
-    drug_code = Column(String(50), nullable=False, index=True)
-    condition_code = Column(String(50), nullable=False, index=True)
-    condition_system = Column(String(20), nullable=True)
-    severity = Column(SAEnum(InteractionSeverity), nullable=False)
-    description = Column(Text, nullable=True)
-    recommendation = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
-
-    __table_args__ = (
-        Index("ix_pharmacy_contraindication_drug_condition", "drug_code", "condition_code"),
-        {"extend_existing": True},
+    drug_id = Column(
+        Integer,
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
+    contraindication_type = Column(String(50), nullable=False, index=True)
+    contraindication_value = Column(String(300), nullable=False)
+    severity = Column(String(20), nullable=False)
+    description = Column(Text, nullable=True)
+    clinical_consequence = Column(Text, nullable=True)
+    recommendation = Column(Text, nullable=True)
+    evidence_level = Column(String(20), nullable=True)
+    source = Column(String(200), nullable=True)
+    is_active = Column(Boolean, nullable=True, default=True)
+    sync_id = Column(String(26), nullable=True, unique=True)
+
+    __table_args__ = ({"extend_existing": True},)
 
 
-class AllergyRule(TenantAuditEntity):
+class AllergyRule(CanonicalEntity):
+    """Drug-allergen rule. Global reference data.
+
+    ``allergen_code`` is a coding-system code for the allergen, not a drug
+    identity; the drug relationship is ``drug_id``.
+    """
+
     __tablename__ = "pharmacy_allergy_rules"
 
-    allergen_code = Column(String(50), nullable=False, index=True)
-    allergen_system = Column(String(20), nullable=True)
-    drug_code = Column(String(50), nullable=False, index=True)
-    severity = Column(SAEnum(InteractionSeverity), nullable=False)
-    reaction = Column(String(500), nullable=True)
-    recommendation = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
-
-    __table_args__ = (
-        Index("ix_pharmacy_allergy_allergen_drug", "allergen_code", "drug_code"),
-        {"extend_existing": True},
+    drug_id = Column(
+        Integer,
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
+    allergen = Column(String(200), nullable=False, index=True)
+    allergen_code = Column(String(50), nullable=True)
+    reaction_type = Column(String(100), nullable=True)
+    severity = Column(String(20), nullable=False)
+    description = Column(Text, nullable=True)
+    recommendation = Column(Text, nullable=True)
+    evidence_level = Column(String(20), nullable=True)
+    source = Column(String(200), nullable=True)
+    is_active = Column(Boolean, nullable=True, default=True)
+    sync_id = Column(String(26), nullable=True, unique=True)
+
+    __table_args__ = ({"extend_existing": True},)
 
 
-class DoseGuideline(TenantAuditEntity):
+class DoseGuideline(CanonicalEntity):
+    """Dosing guidance for one drug. Global reference data.
+
+    Doses are numeric in the schema (double precision), not strings, and the
+    age bounds are in years rather than months.
+    """
+
     __tablename__ = "pharmacy_dose_guidelines"
 
-    drug_code = Column(String(50), nullable=False, index=True)
-    indication_code = Column(String(50), nullable=True)
+    drug_id = Column(
+        Integer,
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    route = Column(String(50), nullable=True)
+    indication = Column(String(300), nullable=True)
 
-    age_min_months = Column(Integer, nullable=True)
-    age_max_months = Column(Integer, nullable=True)
-    weight_min_kg = Column(Float, nullable=True)
-    weight_max_kg = Column(Float, nullable=True)
+    age_min_years = Column(Double, nullable=True)
+    age_max_years = Column(Double, nullable=True)
+    weight_min_kg = Column(Double, nullable=True)
+    weight_max_kg = Column(Double, nullable=True)
 
-    dose_min = Column(String(50), nullable=False)
-    dose_max = Column(String(50), nullable=True)
-    dose_unit = Column(String(50), nullable=False)
-    frequency = Column(String(200), nullable=True)
-    max_daily_dose = Column(String(50), nullable=True)
-    route = Column(String(100), nullable=True)
+    dose_min = Column(Double, nullable=False)
+    dose_max = Column(Double, nullable=True)
+    dose_unit = Column(String(30), nullable=False)
+    frequency = Column(String(100), nullable=False)
+    max_daily_dose = Column(Double, nullable=True)
+    duration = Column(String(100), nullable=True)
 
-    renal_adjustment = Column(JSON, nullable=True)
-    hepatic_adjustment = Column(JSON, nullable=True)
-
+    renal_adjustment = Column(Text, nullable=True)
+    hepatic_adjustment = Column(Text, nullable=True)
     pediatric_note = Column(Text, nullable=True)
-    pregnancy_note = Column(Text, nullable=True)
-    breastfeeding_note = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    geriatric_note = Column(Text, nullable=True)
+    pregnancy_category = Column(String(10), nullable=True)
+
+    evidence_level = Column(String(20), nullable=True)
+    source = Column(String(200), nullable=True)
+    is_active = Column(Boolean, nullable=True, default=True)
+    sync_id = Column(String(26), nullable=True, unique=True)
 
     __table_args__ = (
-        Index("ix_pharmacy_dose_guideline_drug", "drug_code"),
+        Index("ix_pharmacy_dose_guidelines_indication", "drug_id", "indication"),
         {"extend_existing": True},
     )
 
 
-class DrugMonitoring(TenantAuditEntity):
+class DrugMonitoring(TenantScopedEntity):
+    """A therapeutic-monitoring OBSERVATION for one patient on one drug.
+
+    Note the semantics: the physical table records a monitoring *event*
+    (a patient, a date, a measured value), not a drug-level monitoring rule.
+    The previous ORM modelled it as a per-drug rule keyed on ``drug_code``
+    with ``required_tests`` / ``therapeutic_range`` — none of which exists in
+    the schema. This model follows the schema.
+
+    Unlike the other rule tables this one IS tenant-scoped: ``lab_id`` is
+    NOT NULL with a foreign key to ``labs``, because a monitoring result is
+    patient data belonging to one laboratory.
+
+    ``patient_id``, ``prescription_id`` and ``performed_by`` carry no ORM
+    foreign key: ``patients`` and ``lab_users`` belong to a different
+    declarative base, and ``pharmacy_prescriptions`` still has a String(26)
+    key until M4. All four constraints exist and are enforced physically.
+    """
+
     __tablename__ = "pharmacy_drug_monitoring"
 
-    drug_code = Column(String(50), nullable=False, unique=True, index=True)
-    required_tests = Column(JSON, nullable=True)
-    monitoring_frequency = Column(String(200), nullable=True)
-    therapeutic_range = Column(String(200), nullable=True)
-    toxic_level = Column(String(200), nullable=True)
-    notes = Column(Text, nullable=True)
-    metadata_ = Column("metadata", JSON, nullable=True)
+    lab_id = Column(Integer, nullable=False, index=True)
+    patient_id = Column(Integer, nullable=False, index=True)
+    drug_id = Column(
+        Integer,
+        ForeignKey("pharmacy_drug_catalog.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    prescription_id = Column(Integer, nullable=True)
 
-    __table_args__ = {"extend_existing": True}
+    monitoring_type = Column(String(50), nullable=False)
+    monitoring_date = Column(DateTime(timezone=True), nullable=False)
+
+    value = Column(String(200), nullable=True)
+    value_numeric = Column(Double, nullable=True)
+    unit = Column(String(20), nullable=True)
+    therapeutic_range_low = Column(Double, nullable=True)
+    therapeutic_range_high = Column(Double, nullable=True)
+    is_within_range = Column(Boolean, nullable=True)
+
+    adverse_reaction = Column(Text, nullable=True)
+    severity = Column(String(20), nullable=True)
+    action_taken = Column(Text, nullable=True)
+    performed_by = Column(Integer, nullable=True)
+    next_monitoring_date = Column(DateTime(timezone=True), nullable=True)
+    notes = Column(Text, nullable=True)
+
+    sync_id = Column(String(26), nullable=True, unique=True)
+    fhir_id = Column(String(64), nullable=True)
+    fhir_resource_type = Column(String(32), nullable=True)
+
+    __table_args__ = (
+        Index(
+            "ix_pharmacy_drug_monitoring_patient_drug",
+            "patient_id",
+            "drug_id",
+            "monitoring_date",
+        ),
+        {"extend_existing": True},
+    )
 
 
 class ClinicalGuideline(TenantAuditEntity):

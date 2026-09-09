@@ -121,6 +121,18 @@ class CanonicalEntity(SoftDeleteMixin, OptimisticLockMixin, AuditMixin, Pharmacy
         return f"<{self.__class__.__name__} id={self.id}>"
 
 
+class TenantScopedEntity(CanonicalEntity):
+    """A canonical entity that genuinely belongs to one tenant.
+
+    Unlike the legacy ``TenantAuditEntity``, tenancy here is a deliberate
+    declaration rather than something inherited by every model. ``lab_id`` is
+    declared by the subclass so it can carry the foreign key its physical
+    table actually has (contract §6).
+    """
+
+    __abstract__ = True
+
+
 class GlobalCatalogEntity(CanonicalEntity):
     """A globally-scoped reference entity: national data, never tenant-scoped.
 

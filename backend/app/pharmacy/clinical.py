@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import logging
+import uuid
 from typing import Any
 
 from sqlalchemy import or_
@@ -12,6 +14,7 @@ from app.pharmacy.models import (
     ClinicalGuideline,
     ContraindicationRule,
     DoseGuideline,
+    DrugCatalog,
     DrugInteractionRule,
     DrugMonitoring,
 )
@@ -19,38 +22,111 @@ from app.pharmacy.models import (
 logger = logging.getLogger("gula.pharmacy.clinical")
 
 
+class DrugResolver:
+    """Resolves a caller-supplied drug reference to the internal catalog key.
+
+    Clinical rules are related to a drug by ``pharmacy_drug_catalog.id``
+    (CANONICAL_DRUG_CONTRACT §7), never by business code. Callers may still
+    pass a ``drug_code`` — it is a legitimate search key (§4) — but it is
+    resolved to the foreign key here, so editing a code can never detach a
+    rule. A reference that matches no drug resolves to ``None``, and every
+    engine below then returns no rules rather than falling back to a
+    code-based match.
+
+    The catalog is global (§6), so no tenant filter is applied to resolution.
+    """
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def by_code(self, drug_code: str) -> int | None:
+        row = (
+            self.db.query(DrugCatalog.id)
+            .filter(DrugCatalog.drug_code == drug_code, ~DrugCatalog.is_deleted)
+            .first()
+        )
+        return int(row[0]) if row else None
+
+    def by_public_id(self, public_drug_id: str | uuid.UUID) -> int | None:
+        if isinstance(public_drug_id, str):
+            try:
+                public_drug_id = uuid.UUID(public_drug_id)
+            except ValueError:
+                return None
+        row = (
+            self.db.query(DrugCatalog.id)
+            .filter(DrugCatalog.drug_id == public_drug_id, ~DrugCatalog.is_deleted)
+            .first()
+        )
+        return int(row[0]) if row else None
+
+    def codes_to_ids(self, drug_codes: list[str]) -> dict[str, int]:
+        """Resolve many codes in one query; unmatched codes are simply absent."""
+        if not drug_codes:
+            return {}
+        rows = (
+            self.db.query(DrugCatalog.drug_code, DrugCatalog.id)
+            .filter(DrugCatalog.drug_code.in_(drug_codes), ~DrugCatalog.is_deleted)
+            .all()
+        )
+        return {code: int(pk) for code, pk in rows}
+
+
 class DrugInteractionEngine:
     def __init__(self, db: Session, lab_id: int | None = None):
         self.db = db
         self.lab_id = lab_id
+        self.resolver = DrugResolver(db)
+
+    def check_interaction_by_id(
+        self, drug_id_a: int, drug_id_b: int,
+    ) -> DrugInteractionRule | None:
+        """The canonical lookup: both sides are catalog foreign keys.
+
+        A pair is stored once in either column order, so both orders are
+        matched.
+        """
+        return (
+            self.db.query(DrugInteractionRule)
+            .filter(
+                ~DrugInteractionRule.is_deleted,
+                or_(
+                    DrugInteractionRule.drug_id_a == drug_id_a,
+                    DrugInteractionRule.drug_id_b == drug_id_a,
+                ),
+                or_(
+                    DrugInteractionRule.drug_id_a == drug_id_b,
+                    DrugInteractionRule.drug_id_b == drug_id_b,
+                ),
+            )
+            .first()
+        )
 
     def check_interaction(
         self, drug_a_code: str, drug_b_code: str,
     ) -> DrugInteractionRule | None:
-        q = self.db.query(DrugInteractionRule).filter(
-            or_(
-                DrugInteractionRule.drug_a_code == drug_a_code,
-                DrugInteractionRule.drug_b_code == drug_a_code,
-            ),
-            or_(
-                DrugInteractionRule.drug_a_code == drug_b_code,
-                DrugInteractionRule.drug_b_code == drug_b_code,
-            ),
-        )
-        return q.first()
+        ids = self.resolver.codes_to_ids([drug_a_code, drug_b_code])
+        id_a, id_b = ids.get(drug_a_code), ids.get(drug_b_code)
+        if id_a is None or id_b is None:
+            return None
+        return self.check_interaction_by_id(id_a, id_b)
 
     def check_multiple_drugs(self, drug_codes: list[str]) -> list[dict[str, Any]]:
+        ids = self.resolver.codes_to_ids(drug_codes)
         interactions: list[dict[str, Any]] = []
         for i in range(len(drug_codes)):
             for j in range(i + 1, len(drug_codes)):
-                rule = self.check_interaction(drug_codes[i], drug_codes[j])
+                id_a, id_b = ids.get(drug_codes[i]), ids.get(drug_codes[j])
+                if id_a is None or id_b is None:
+                    continue
+                rule = self.check_interaction_by_id(id_a, id_b)
                 if rule:
                     interactions.append({
                         "drug_a": drug_codes[i],
                         "drug_b": drug_codes[j],
-                        "severity": rule.severity.value,
-                        "mechanism": rule.mechanism,
+                        "severity": rule.severity,
                         "description": rule.description,
+                        "clinical_consequence": rule.clinical_consequence,
                         "recommendation": rule.recommendation,
                         "evidence_level": rule.evidence_level,
                     })
@@ -101,24 +177,43 @@ class ContraindicationEngine:
     def __init__(self, db: Session, lab_id: int | None = None):
         self.db = db
         self.lab_id = lab_id
+        self.resolver = DrugResolver(db)
+
+    def check_drug_condition_by_id(
+        self, drug_id: int, condition_value: str,
+    ) -> list[ContraindicationRule]:
+        """The canonical lookup, keyed on the catalog foreign key."""
+        return (
+            self.db.query(ContraindicationRule)
+            .filter(
+                ContraindicationRule.drug_id == drug_id,
+                ContraindicationRule.contraindication_value == condition_value,
+                ~ContraindicationRule.is_deleted,
+            )
+            .all()
+        )
 
     def check_drug_condition(self, drug_code: str, condition_code: str) -> list[ContraindicationRule]:
-        q = self.db.query(ContraindicationRule).filter(
-            ContraindicationRule.drug_code == drug_code,
-            ContraindicationRule.condition_code == condition_code,
-        )
-        return q.all()
+        drug_id = self.resolver.by_code(drug_code)
+        if drug_id is None:
+            return []
+        return self.check_drug_condition_by_id(drug_id, condition_code)
 
     def check_patient_conditions(self, drug_code: str, condition_codes: list[str]) -> list[dict[str, Any]]:
+        drug_id = self.resolver.by_code(drug_code)
+        if drug_id is None:
+            return []
         results: list[dict[str, Any]] = []
         for cond_code in condition_codes:
-            rules = self.check_drug_condition(drug_code, cond_code)
-            for rule in rules:
+            for rule in self.check_drug_condition_by_id(drug_id, cond_code):
                 results.append({
-                    "drug_code": rule.drug_code,
-                    "condition_code": rule.condition_code,
-                    "severity": rule.severity.value,
+                    "drug_id": rule.drug_id,
+                    "drug_code": drug_code,
+                    "contraindication_type": rule.contraindication_type,
+                    "contraindication_value": rule.contraindication_value,
+                    "severity": rule.severity,
                     "description": rule.description,
+                    "clinical_consequence": rule.clinical_consequence,
                     "recommendation": rule.recommendation,
                 })
         return results
@@ -143,24 +238,48 @@ class AllergyEngine:
     def __init__(self, db: Session, lab_id: int | None = None):
         self.db = db
         self.lab_id = lab_id
+        self.resolver = DrugResolver(db)
+
+    def check_drug_allergy_by_id(self, drug_id: int, allergen_code: str) -> AllergyRule | None:
+        """The canonical lookup, keyed on the catalog foreign key.
+
+        ``allergen_code`` identifies the allergen, not the drug; it is matched
+        against either the coded allergen or its name.
+        """
+        return (
+            self.db.query(AllergyRule)
+            .filter(
+                AllergyRule.drug_id == drug_id,
+                ~AllergyRule.is_deleted,
+                or_(
+                    AllergyRule.allergen_code == allergen_code,
+                    AllergyRule.allergen == allergen_code,
+                ),
+            )
+            .first()
+        )
 
     def check_drug_allergy(self, drug_code: str, allergen_code: str) -> AllergyRule | None:
-        q = self.db.query(AllergyRule).filter(
-            AllergyRule.drug_code == drug_code,
-            AllergyRule.allergen_code == allergen_code,
-        )
-        return q.first()
+        drug_id = self.resolver.by_code(drug_code)
+        if drug_id is None:
+            return None
+        return self.check_drug_allergy_by_id(drug_id, allergen_code)
 
     def check_patient_allergies(self, drug_code: str, patient_allergens: list[str]) -> list[dict[str, Any]]:
+        drug_id = self.resolver.by_code(drug_code)
+        if drug_id is None:
+            return []
         results: list[dict[str, Any]] = []
         for allergen_code in patient_allergens:
-            rule = self.check_drug_allergy(drug_code, allergen_code)
+            rule = self.check_drug_allergy_by_id(drug_id, allergen_code)
             if rule:
                 results.append({
+                    "allergen": rule.allergen,
                     "allergen_code": rule.allergen_code,
-                    "drug_code": rule.drug_code,
-                    "severity": rule.severity.value,
-                    "reaction": rule.reaction,
+                    "drug_id": rule.drug_id,
+                    "drug_code": drug_code,
+                    "severity": rule.severity,
+                    "reaction_type": rule.reaction_type,
                     "recommendation": rule.recommendation,
                 })
         return results
@@ -199,6 +318,7 @@ class DoseEngine:
     def __init__(self, db: Session, lab_id: int | None = None):
         self.db = db
         self.lab_id = lab_id
+        self.resolver = DrugResolver(db)
 
     def calculate_dose(
         self,
@@ -207,18 +327,31 @@ class DoseEngine:
         age_months: int | None = None,
         weight_kg: float | None = None,
     ) -> list[dict[str, Any]]:
-        q = self.db.query(DoseGuideline).filter(DoseGuideline.drug_code == drug_code)
+        drug_id = self.resolver.by_code(drug_code)
+        if drug_id is None:
+            return [{
+                "drug_code": drug_code,
+                "note": "Standard dosing not found in guidelines for this combination",
+            }]
+
+        q = self.db.query(DoseGuideline).filter(
+            DoseGuideline.drug_id == drug_id,
+            ~DoseGuideline.is_deleted,
+        )
         if indication_code:
-            q = q.filter(DoseGuideline.indication_code == indication_code)
+            q = q.filter(DoseGuideline.indication == indication_code)
         if age_months is not None:
+            # The schema bounds age in years; the caller's months are converted
+            # rather than the column being reinterpreted.
+            age_years = age_months / 12.0
             q = q.filter(
                 or_(
-                    DoseGuideline.age_min_months.is_(None),
-                    DoseGuideline.age_min_months <= age_months,
+                    DoseGuideline.age_min_years.is_(None),
+                    DoseGuideline.age_min_years <= age_years,
                 ),
                 or_(
-                    DoseGuideline.age_max_months.is_(None),
-                    DoseGuideline.age_max_months >= age_months,
+                    DoseGuideline.age_max_years.is_(None),
+                    DoseGuideline.age_max_years >= age_years,
                 ),
             )
         if weight_kg is not None:
@@ -236,17 +369,19 @@ class DoseEngine:
         results: list[dict[str, Any]] = []
         for guideline in q.all():
             result: dict[str, Any] = {
-                "drug_code": guideline.drug_code,
-                "indication_code": guideline.indication_code,
+                "drug_id": guideline.drug_id,
+                "drug_code": drug_code,
+                "indication": guideline.indication,
                 "dose_min": guideline.dose_min,
                 "dose_max": guideline.dose_max,
                 "dose_unit": guideline.dose_unit,
                 "frequency": guideline.frequency,
                 "max_daily_dose": guideline.max_daily_dose,
+                "duration": guideline.duration,
                 "route": guideline.route,
                 "pediatric_note": guideline.pediatric_note,
-                "pregnancy_note": guideline.pregnancy_note,
-                "breastfeeding_note": guideline.breastfeeding_note,
+                "geriatric_note": guideline.geriatric_note,
+                "pregnancy_category": guideline.pregnancy_category,
             }
             results.append(result)
 
@@ -278,11 +413,6 @@ class DoseEngine:
         egfr: float,
         weight_kg: float | None = None,
     ) -> dict[str, Any]:
-        guideline = self.db.query(DoseGuideline).filter(
-            DoseGuideline.drug_code == drug_code,
-            DoseGuideline.renal_adjustment.isnot(None),
-        ).first()
-
         result: dict[str, Any] = {
             "drug_code": drug_code,
             "egfr": egfr,
@@ -291,10 +421,29 @@ class DoseEngine:
             "recommendation": "No adjustment needed based on guidelines",
         }
 
+        drug_id = self.resolver.by_code(drug_code)
+        if drug_id is None:
+            return result
+
+        guideline = self.db.query(DoseGuideline).filter(
+            DoseGuideline.drug_id == drug_id,
+            DoseGuideline.renal_adjustment.isnot(None),
+            ~DoseGuideline.is_deleted,
+        ).first()
+
         if not guideline or not guideline.renal_adjustment:
             return result
 
-        adjustments = guideline.renal_adjustment
+        # renal_adjustment is TEXT in the schema, not JSON. Structured banded
+        # guidance is read when the text holds JSON; free text is surfaced as
+        # the recommendation rather than discarded. No banding rule changed.
+        raw = guideline.renal_adjustment
+        try:
+            adjustments: Any = json.loads(raw)
+        except (TypeError, ValueError):
+            result["recommendation"] = raw
+            return result
+
         if isinstance(adjustments, list):
             for adj in adjustments:
                 egfr_range = adj.get("egfr_range", {})
@@ -309,8 +458,43 @@ class DoseEngine:
 
         return result
 
-    def check_therapeutic_monitoring(self, drug_code: str) -> DrugMonitoring | None:
-        return self.db.query(DrugMonitoring).filter(DrugMonitoring.drug_code == drug_code).first()
+    def get_monitoring_records(
+        self,
+        drug_code: str,
+        patient_id: int,
+        lab_id: int | None = None,
+        limit: int = 50,
+    ) -> list[DrugMonitoring]:
+        """Therapeutic-monitoring records for one patient on one drug.
+
+        Replaces ``check_therapeutic_monitoring(drug_code)``. That method
+        described a per-drug monitoring *rule* — required tests, therapeutic
+        range, toxic level — none of which exists in the schema.
+        ``pharmacy_drug_monitoring`` records monitoring *events*: a patient, a
+        date and a measured value. This reads what the table holds.
+
+        Unlike the other rule tables this one is tenant-scoped, so the
+        laboratory is always part of the filter; passing no lab_id and having
+        none configured returns nothing rather than crossing tenants.
+        """
+        effective_lab_id = lab_id if lab_id is not None else self.lab_id
+        if effective_lab_id is None:
+            return []
+        drug_id = self.resolver.by_code(drug_code)
+        if drug_id is None:
+            return []
+        return (
+            self.db.query(DrugMonitoring)
+            .filter(
+                DrugMonitoring.drug_id == drug_id,
+                DrugMonitoring.patient_id == patient_id,
+                DrugMonitoring.lab_id == effective_lab_id,
+                ~DrugMonitoring.is_deleted,
+            )
+            .order_by(DrugMonitoring.monitoring_date.desc())
+            .limit(limit)
+            .all()
+        )
 
 
 class ClinicalGuidelineService:
