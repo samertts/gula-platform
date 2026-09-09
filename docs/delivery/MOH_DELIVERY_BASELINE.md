@@ -1,6 +1,6 @@
 # GULA — Ministry of Health Delivery Baseline
 
-**Branch commit:** `f92d4132` (branch `claude/nr-003-canonical-drug-identity`)
+**Branch commit:** `1a164ccd` (branch `claude/nr-003-canonical-drug-identity`)
 **Base:** `main` @ `46158e90`
 **Date:** 2026-09-09
 **Status:** PRE-DELIVERY — NOT PRODUCTION READY
@@ -51,6 +51,8 @@ additional external identifier.
 | Migration graph integrity                                                          | 3 tests passed                                                                                                                                                                                                                                                                                              |
 | Pharmacy POS / substitution (ORM level)                                            | `test_pharmacy_pos.py` passed                                                                                                                                                                                                                                                                               |
 | Canonical drug identity migration                                                  | 13/13 checks against real PostgreSQL: Integer PKs preserved, `drug_code` preserved, all rows identified, unique, v4 UUID, not a deterministic derivation, physical type `uuid`, NOT NULL, unique constraint + index present, catalog has no `lab_id`, re-run is a no-op, duplicate rejected by the database |
+| Drug identity immutability (service layer)                                         | 6 focused tests passed: identity cannot be client-chosen at creation, `id`/`drug_id` updates rejected, business fields still updatable, clinical rule keyed on FK not `drug_code`                                                                                                                           |
+| Pharmacy non-regression after the change                                           | 15 tests passed (POS, radiology workflow, migration graph, identity)                                                                                                                                                                                                                                        |
 | Deterministic platform core                                                        | 25 tests passed                                                                                                                                                                                                                                                                                             |
 | Security + tenant isolation regression                                             | passed in CI on `main` (evidence upload blocked by artifact quota)                                                                                                                                                                                                                                          |
 
@@ -91,9 +93,16 @@ NR-003 analysis.
 
 - **P1-1.** Pharmacy public API still exposes the internal Integer PK as the
   canonical identifier; it must move to `drug_id`. Blocked behind P0-2.
-- **P1-2.** Clinical safety rules (contraindication, allergy, dose guideline,
-  monitoring) denormalize `drug_code` with no FK, so a business-code edit can
-  silently detach a rule. Must become an internal FK.
+- **P1-2.** Clinical safety rules — **ORM-only defect, not a database risk.**
+  Verified on the migrated schema: `pharmacy_contraindication_rules`,
+  `pharmacy_allergy_rules`, `pharmacy_dose_guidelines` and
+  `pharmacy_drug_monitoring` each already carry `drug_id integer` as a foreign
+  key to the catalog, and **none has a physical `drug_code` column**. The
+  contract §7 invariant — a business-code edit can never detach a clinical rule
+  — therefore already holds in the database. The denormalized `drug_code` exists
+  only in the Generation B ORM, so no data migration is required and no mapping
+  is ambiguous; the fix is subsumed by P0-2. This corrects an earlier
+  characterisation of it as a live clinical-safety risk.
 - **P1-3.** No migration-built schema test harness. Pharmacy tests build schema
   from ORM metadata on SQLite, which is how P0-2 survived undetected.
 - **P1-4.** `scripts/constitution_enforcer.py` crashes on `ast.Str` (removed in
