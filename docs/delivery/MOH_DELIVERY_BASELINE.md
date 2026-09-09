@@ -98,14 +98,27 @@ buildings, floors, clinics, rooms, beds, units, medical equipment, cost centres,
 bed assignments) still have no migration. They block nothing and were
 deliberately left out of a minimal repair. Tracked as **P1-6**.
 
-**P0-2. Pharmacy ORM ↔ physical schema divergence.**
-All 23 pharmacy tables shared between the ORM and the migrations diverge:
-roughly 190 ORM-only columns, ~200 database-only columns, ~150 type mismatches,
-including `id: VARCHAR != INTEGER`. The ORM cannot execute against the migrated
-schema, so all 63 pharmacy endpoints would fail at runtime. NR-003's identity
-model is now correct in the database; the ORM/API layer is not yet reconciled.
-Classification of every artifact (KEEP / RECONCILE / REPLACE) is recorded in the
-NR-003 analysis.
+**P0-2. Pharmacy ORM ↔ physical schema divergence — Phase 2A COMPLETE.**
+The exact delta is now measured against the migration-built PostgreSQL schema
+(103 revisions) and recorded column by column in
+`docs/pharmacy-platform/P0-2_RECONCILIATION_MATRIX.md` with machine-readable
+`.json` and `.csv` alongside it. No code has been changed.
+
+27 ORM tables, all present physically, **867 column records**: 299 KEEP,
+219 RECONCILE, 173 REMOVE_FROM_ORM, 153 DEFER, 23 REPLACE. The 23-entity figure
+is confirmed exactly — 23 tables carry a primary-key type conflict
+(`VARCHAR(26)` vs `INTEGER`); the four without one are the KEEP+RECONCILE set.
+**54 columns** are `VARCHAR(26)` against a physical `INTEGER`: 23 primary keys
+and 31 internal foreign keys.
+
+**62 physical `NOT NULL` columns with no default are unknown to the ORM**, so an
+ORM `INSERT` into those tables fails outright; 49 remain after accounting for
+renames. The ORM/API layer is not yet reconciled and the 63 pharmacy endpoints
+remain non-functional against the migrated schema.
+
+Two false-positive classes were eliminated during measurement: reflected
+timestamp timezone flags (84 spurious rows) and string-similarity rename
+matching. Both are documented in the matrix, §6.
 
 ### P1 — required for delivery
 
@@ -122,7 +135,9 @@ NR-003 analysis.
   is ambiguous; the fix is subsumed by P0-2. This corrects an earlier
   characterisation of it as a live clinical-safety risk.
 - **P1-3.** No migration-built schema test harness. Pharmacy tests build schema
-  from ORM metadata on SQLite, which is how P0-2 survived undetected.
+  from ORM metadata on SQLite, which is how P0-2 survived undetected. Phase 2A
+  now compares against real PostgreSQL, but no ORM query has yet been executed
+  against the migration-built schema — that is Phase 2H.
 - **P1-4.** `scripts/constitution_enforcer.py` crashes on `ast.Str` (removed in
   Python 3.12) while its workflow pins 3.14; the governance gate is red on
   `main` itself. One-line fix, not applied here.
@@ -131,8 +146,12 @@ NR-003 analysis.
 ### P2 — important
 
 - **P2-1.** GULA-ARCH-001: `national_facilities` mapped by two app packages.
-- **P2-2.** `pharmacy_drug_substitution_requests` carries two `String(26)`
-  catalog references with no FK, inconsistent with the corrected rules table.
+- **P2-2.** Superseded and enlarged by Phase 2A: **six** physical `varchar(26)`
+  columns carry no FK and name targets whose primary key is `integer` — three on
+  `pharmacy_drug_substitution_requests` and three on `pharmacy_sale_lines`.
+  They sit on the KEEP+RECONCILE tables, so the ORM replacement cannot reach
+  them, and Phase 2E is fail-closed on them pending a schema decision. See the
+  matrix, §9a.
 - **P2-3.** GitHub Actions artifact storage quota exhausted account-wide, so CI
   evidence cannot be archived.
 - **P2-4.** Repository security controls not enabled: code scanning and
