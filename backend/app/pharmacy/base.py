@@ -104,7 +104,9 @@ class CanonicalEntity(SoftDeleteMixin, OptimisticLockMixin, AuditMixin, Pharmacy
 
     def restore(self) -> None:
         self.is_deleted = False
-        self.deleted_at = None
+        # deleted_at is contributed by the untyped SoftDeleteMixin, so mypy
+        # reads it as a bare datetime and rejects clearing it.
+        self.deleted_at = None  # type: ignore[assignment]
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {}

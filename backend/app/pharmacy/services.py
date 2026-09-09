@@ -154,7 +154,9 @@ class PharmacyService:
             if hasattr(drug, key) and value is not None:
                 setattr(drug, key, value)
         self.db.flush()
-        self._audit("pharmacy.drug.update", "drug_catalog", drug_id, "Updated drug catalog entry")
+        self._audit(
+            "pharmacy.drug.update", "drug_catalog", str(drug_id), "Updated drug catalog entry"
+        )
         return drug
 
     def delete_drug(self, drug_id: int | str) -> bool:
@@ -163,7 +165,7 @@ class PharmacyService:
             return False
         drug.soft_delete()
         self.db.flush()
-        self._audit("pharmacy.drug.delete", "drug_catalog", drug_id)
+        self._audit("pharmacy.drug.delete", "drug_catalog", str(drug_id))
         return True
 
     def search_drugs(
