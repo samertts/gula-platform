@@ -99,13 +99,20 @@ def test_duplicate_state_key_is_per_dict_not_per_file() -> None:
 
 # --- Live agreement with independently established ground truth --------------
 
-def test_engine_reproduces_the_known_pharmacy_fk_blocker() -> None:
-    """NR-003 was found by running migrations; the static engine must agree."""
+def test_the_known_pharmacy_fk_blocker_stays_fixed() -> None:
+    """NR-003 regression guard.
+
+    This test previously asserted the blocker was PRESENT, which is what a
+    detector-development test does. NR-003 has since been fixed: both
+    substitution-rule columns are Integer foreign keys to the catalog's Integer
+    key. Left as it was, the test would fail forever on a healthy repository
+    and pass again only if the defect returned -- the opposite of a regression
+    guard. It now asserts the fix holds.
+    """
     result = detectors.detect_fk_type_mismatch()
-    assert result.status is Status.FAILED
-    columns = {f.title.split(": ")[1].split(" ->")[0] for f in result.findings}
-    assert {"original_drug_catalog_id", "alternative_drug_catalog_id"} <= columns
-    assert all(f.architecture_decision_required for f in result.findings)
+    assert result.detector_state is DetectorState.RAN_CLEAN
+    assert result.status is Status.VERIFIED
+    assert result.findings == []
 
 
 def test_repository_migration_graph_is_currently_clean() -> None:
@@ -231,3 +238,55 @@ def test_planner_never_claims_deployment_safety() -> None:
         blob = str(planner.plan(paths, include_open_blockers=False).to_dict()).lower()
         assert "safe to deploy" not in blob
         assert "production ready" not in blob
+
+
+# ── GULA-SCHEMA-002: ORM vs migration-built schema ──────────────────────────
+
+
+def test_schema_002_reports_no_evidence_without_a_database(monkeypatch) -> None:
+    """The rule the platform must never break: UNKNOWN is not VERIFIED.
+
+    An ORM cannot be checked against a schema that is not there. Reporting
+    "no findings" would present an unrun comparison as a healthy one.
+    """
+    monkeypatch.delenv("GULA_INTEL_DATABASE_URL", raising=False)
+    result = detectors.detect_orm_schema_drift()
+    assert result.detector_state is DetectorState.RAN_NO_EVIDENCE
+    assert result.findings == []
+    assert result.detector_state is not DetectorState.RAN_CLEAN
+
+
+def test_schema_002_reports_no_evidence_when_the_database_is_unreachable() -> None:
+    """A refused connection is absence of evidence, not evidence of health."""
+    result = detectors.detect_orm_schema_drift(
+        "postgresql+psycopg2://nobody@127.0.0.1:1/does-not-exist"
+    )
+    assert result.detector_state in {
+        DetectorState.RAN_NO_EVIDENCE,
+        DetectorState.NOT_RUN,
+    }
+    assert result.findings == []
+
+
+def test_schema_002_renders_both_sides_through_one_dialect() -> None:
+    """The false positive that made this detector hard.
+
+    str(TIMESTAMP(timezone=True)) is "TIMESTAMP", which does not match an ORM
+    column rendered as "TIMESTAMP WITH TIME ZONE" even though the two agree.
+    Comparing through the dialect is what makes the detector trustworthy.
+    """
+    import sqlalchemy
+
+    aware = sqlalchemy.DateTime(timezone=True)
+    naive = sqlalchemy.DateTime(timezone=False)
+
+    assert detectors._render(aware) == detectors._render(aware)
+    assert detectors._render(aware) != detectors._render(naive)
+    assert "TIME ZONE" in detectors._render(aware)
+
+
+def test_schema_002_rule_is_registered_and_blocking() -> None:
+    rule = detectors.RULES["GULA-SCHEMA-002"]
+    assert rule.severity is Severity.P0
+    assert rule.architecture_decision_required is True
+    assert "GULA-SCHEMA-002" in {r.rule_id for r in detectors.run_all(inventory.collect())}

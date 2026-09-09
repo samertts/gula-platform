@@ -218,6 +218,39 @@ remain blocking. Archival no longer fails the gate it merely documents.
 Generation C entities and the public API. `ClinicalGuideline` is untouched —
 it is a separate table, not one of the five rule domains.
 
+**GULA-SCHEMA-002 — IMPLEMENTED (was deferred).** The Intelligent Core now
+detects ORM ↔ migration-built schema drift: the exact defect class of P0-2.
+It reflects a real migrated PostgreSQL database and compares every mapped
+column, rendering **both sides through the same dialect** — the normalisation
+that made this detector hard, and without which it fabricated 84 false
+timestamp mismatches during Phase 2A.
+
+Without a database it reports `DETECTOR_RAN_EVIDENCE_UNAVAILABLE`, never
+"clean": an ORM cannot be checked against a schema that is not there, and
+reporting no findings would turn UNKNOWN into VERIFIED.
+
+Against the migrated schema it reports **27 mapped pharmacy tables: 6 match
+exactly, 21 drift, 243 column-level findings**. The six that match are exactly
+the M1 and M2 set — `pharmacy_drug_catalog` plus the five clinical-rule tables
+— which is independent confirmation that both milestones landed, from a
+detector with no knowledge of which tables were reconciled. The 243 findings
+are the true, already-tracked remainder of P0-2 (M3 and M4), now measured
+rather than estimated.
+
+Run it with `GULA_INTEL_DATABASE_URL` pointing at a migrated database.
+
+**Two defects found and fixed while building it:**
+
+- The detector could terminate the run it was reporting on. Importing the
+  application evaluates its configuration, and a missing production setting
+  raises `SystemExit`, which does not derive from `Exception`. Now caught
+  explicitly.
+- `test_engine_reproduces_the_known_pharmacy_fk_blocker` asserted the NR-003
+  blocker was **present**. That is a detector-development test, not a
+  regression guard: once NR-003 was fixed it failed on every healthy
+  repository and would have passed again only if the defect returned. It was
+  failing on `main` before this change. Rewritten to assert the fix holds.
+
 ### P1 — required for delivery
 
 - **P1-1.** Pharmacy public API still exposes the internal Integer PK as the
