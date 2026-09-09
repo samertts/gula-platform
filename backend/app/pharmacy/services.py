@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, cast
@@ -92,20 +93,52 @@ class PharmacyService:
             if hasattr(DrugCatalog, k) and k not in IMMUTABLE_CATALOG_IDENTITY_FIELDS
         }
         drug = DrugCatalog(**payload)
-        if self.lab_id:
-            drug.lab_id = self.lab_id
+        # The catalog is global national reference data (contract §6) and has
+        # no physical tenant column: a lab_id must never be stamped onto it.
         self.db.add(drug)
         self.db.flush()
-        self._audit("pharmacy.drug.create", "drug_catalog", drug.id, f"Created drug {data.get('code')}")
+        self._audit(
+            "pharmacy.drug.create",
+            "drug_catalog",
+            drug.id,
+            f"Created drug {data.get('drug_code')}",
+        )
         return drug
 
-    def get_drug(self, drug_id: str) -> DrugCatalog | None:
-        q = self.db.query(DrugCatalog).filter(DrugCatalog.id == drug_id, ~DrugCatalog.is_deleted)
-        if self.lab_id:
-            q = q.filter(DrugCatalog.lab_id == self.lab_id)
-        return q.first()
+    def get_drug(self, drug_id: int | str) -> DrugCatalog | None:
+        """Look a drug up by its INTERNAL integer key.
 
-    def update_drug(self, drug_id: str, data: dict[str, Any]) -> DrugCatalog | None:
+        Kept for internal callers that already hold a foreign key. Public
+        callers must use :meth:`get_drug_by_public_id`; the internal key is
+        never the public identity (contract §3).
+        """
+        # No tenant filter: a global catalog has no lab_id to filter on, and
+        # filtering on one would match nothing (contract §6).
+        return (
+            self.db.query(DrugCatalog)
+            .filter(DrugCatalog.id == drug_id, ~DrugCatalog.is_deleted)
+            .first()
+        )
+
+    def get_drug_by_public_id(self, public_drug_id: str | uuid.UUID) -> DrugCatalog | None:
+        """Look a drug up by its public canonical identity, ``drug_id`` (UUID4).
+
+        This is the lookup a public API surface uses (contract §8). A value
+        that is not a UUID is not an error worth raising — it simply cannot
+        identify a drug — so it resolves to no match.
+        """
+        if isinstance(public_drug_id, str):
+            try:
+                public_drug_id = uuid.UUID(public_drug_id)
+            except ValueError:
+                return None
+        return (
+            self.db.query(DrugCatalog)
+            .filter(DrugCatalog.drug_id == public_drug_id, ~DrugCatalog.is_deleted)
+            .first()
+        )
+
+    def update_drug(self, drug_id: int | str, data: dict[str, Any]) -> DrugCatalog | None:
         drug = self.get_drug(drug_id)
         if not drug:
             return None
@@ -124,7 +157,7 @@ class PharmacyService:
         self._audit("pharmacy.drug.update", "drug_catalog", drug_id, "Updated drug catalog entry")
         return drug
 
-    def delete_drug(self, drug_id: str) -> bool:
+    def delete_drug(self, drug_id: int | str) -> bool:
         drug = self.get_drug(drug_id)
         if not drug:
             return False
@@ -142,38 +175,36 @@ class PharmacyService:
         skip: int = 0,
         limit: int = 50,
     ) -> tuple[list[DrugCatalog], int]:
-        q = self.db.query(DrugCatalog).filter(~~DrugCatalog.is_deleted)
-        if self.lab_id:
-            q = q.filter(DrugCatalog.lab_id == self.lab_id)
+        # Global catalog: no tenant filter (contract §6).
+        q = self.db.query(DrugCatalog).filter(~DrugCatalog.is_deleted)
         if query:
             pattern = f"%{query}%"
+            # brand_name has no physical column, so it is no longer searched;
+            # the searchable business fields are the ones that exist.
             q = q.filter(
                 or_(
-                    DrugCatalog.name.ilike(pattern),
-                    DrugCatalog.name_ar.ilike(pattern),
+                    DrugCatalog.drug_name.ilike(pattern),
+                    DrugCatalog.drug_name_ar.ilike(pattern),
                     DrugCatalog.generic_name.ilike(pattern),
-                    DrugCatalog.brand_name.ilike(pattern),
-                    DrugCatalog.code.ilike(pattern),
+                    DrugCatalog.drug_code.ilike(pattern),
                 ),
             )
         if category:
-            q = q.filter(DrugCatalog.category == category)
+            q = q.filter(DrugCatalog.therapeutic_category == category)
         if atc_code:
             q = q.filter(DrugCatalog.atc_code == atc_code)
         if therapeutic_class:
-            q = q.filter(DrugCatalog.therapeutic_class == therapeutic_class)
+            q = q.filter(DrugCatalog.drug_class == therapeutic_class)
         total = q.count()
-        items = q.order_by(DrugCatalog.name).offset(skip).limit(limit).all()
+        items = q.order_by(DrugCatalog.drug_name).offset(skip).limit(limit).all()
         return items, total
 
     def get_drugs_by_atc(self, atc_code: str) -> list[DrugCatalog]:
-        q = self.db.query(DrugCatalog).filter(
-            DrugCatalog.atc_code == atc_code,
-            ~DrugCatalog.is_deleted,
+        return (
+            self.db.query(DrugCatalog)
+            .filter(DrugCatalog.atc_code == atc_code, ~DrugCatalog.is_deleted)
+            .all()
         )
-        if self.lab_id:
-            q = q.filter(DrugCatalog.lab_id == self.lab_id)
-        return q.all()
 
     def create_batch(self, drug_id: str, data: dict[str, Any]) -> DrugBatch | None:
         drug = self.get_drug(drug_id)
@@ -347,8 +378,8 @@ class PharmacyService:
         if not new_drug:
             return None
         item.drug_catalog_id = new_drug_id
-        item.medication_code = new_drug.code
-        item.medication_name = new_drug.name
+        item.medication_code = new_drug.drug_code
+        item.medication_name = new_drug.drug_name
         self.db.flush()
         self._audit("pharmacy.rx.substitute", "prescription_item", item_id, f"Substituted with {new_drug_id}")
         return item
@@ -597,11 +628,20 @@ class PharmacyService:
                 "requires_patient_consent": bool(rule.requires_patient_consent),
                 "available_quantity": available,
                 "eligible": available >= quantity,
-                "original": {"code": original.code, "name": original.name, "name_ar": original.name_ar},
-                "alternative": {"code": alternative.code, "name": alternative.name, "name_ar": alternative.name_ar,
-                                 "strength_value": alternative.strength_value, "strength_unit": alternative.strength_unit,
-                                 "form": str(alternative.form.value if hasattr(alternative.form, "value") else alternative.form or ""),
-                                 "route": str(alternative.route.value if hasattr(alternative.route, "value") else alternative.route or "")},
+                "original": {
+                    "drug_code": original.drug_code,
+                    "drug_name": original.drug_name,
+                    "drug_name_ar": original.drug_name_ar,
+                },
+                "alternative": {
+                    "drug_code": alternative.drug_code,
+                    "drug_name": alternative.drug_name,
+                    "drug_name_ar": alternative.drug_name_ar,
+                    "strength": alternative.strength,
+                    "unit": alternative.unit,
+                    "dosage_form": alternative.dosage_form or "",
+                    "route_of_administration": alternative.route_of_administration or "",
+                },
             })
         return candidates
 
@@ -655,7 +695,7 @@ class PharmacyService:
         )
         self.db.add(request)
         self.db.flush()
-        self._audit("pharmacy.substitution.request", "substitution_request", request.id, f"Requested {original.code} -> {alternative.code}")
+        self._audit("pharmacy.substitution.request", "substitution_request", request.id, f"Requested {original.drug_code} -> {alternative.drug_code}")
         return request
 
     def approve_substitution(self, request_id: str) -> DrugSubstitutionRequest:
@@ -793,13 +833,15 @@ class PharmacyService:
 
             barcode = str(raw_line.get("barcode") or "").strip() or None
             if drug_id is None and barcode:
-                drug = self.db.query(DrugCatalog).filter(
-                    DrugCatalog.barcode_gs1 == barcode,
-                    ~DrugCatalog.is_deleted,
-                    DrugCatalog.lab_id == self.lab_id,
-                ).first()
-                drug_id = drug.id if drug else None
-            drug = self.get_drug(str(drug_id)) if drug_id is not None else None
+                # Barcode lookup cannot resolve a drug against the real schema.
+                # A GS1 GTIN identifies a *package*, not a drug (contract §5),
+                # and the package entity does not exist yet, so the catalog has
+                # no barcode column physically. Rather than match on a column
+                # that is not there, this resolves to no drug and falls through
+                # to the "drug not found" path below. Restoring barcode sale
+                # entry needs the package entity; tracked as P0-2-GAP-BARCODE.
+                drug_id = None
+            drug = self.get_drug(drug_id) if drug_id is not None else None
             if drug is None or not drug.is_active:
                 raise ValueError("drug not found or inactive")
 
@@ -841,7 +883,10 @@ class PharmacyService:
                     "batch": batch,
                     "stock": stock,
                     "quantity": allocated,
-                    "barcode": barcode or drug.barcode_gs1,
+                    # The catalog has no barcode column: a GTIN identifies a
+                    # package, not a drug (contract §5). Only a barcode the
+                    # caller supplied can appear on the line. P0-2-GAP-BARCODE.
+                    "barcode": barcode,
                     "unit_price": unit_price,
                     "unit_cost": unit_cost,
                     "discount": allocated_discount,
@@ -899,8 +944,8 @@ class PharmacyService:
         if issue_invoice:
             billing_lines = [
                 {
-                    "service_code": f"PHARM-{item['drug'].code}",
-                    "description": item["drug"].name_ar or item["drug"].name,
+                    "service_code": f"PHARM-{item['drug'].drug_code}",
+                    "description": item["drug"].drug_name_ar or item["drug"].drug_name,
                     "quantity": item["quantity"],
                     "unit_amount": item["unit_price"],
                 }
@@ -936,8 +981,8 @@ class PharmacyService:
                 prescription_id=item["prescription_id"],
                 line_number=line_number,
                 barcode=item["barcode"],
-                medication_name=drug.name,
-                medication_name_ar=drug.name_ar,
+                medication_name=drug.drug_name,
+                medication_name_ar=drug.drug_name_ar,
                 quantity=item["quantity"],
                 quantity_unit=item["quantity_unit"],
                 lot_number=batch.batch_number,
@@ -989,12 +1034,15 @@ class PharmacyService:
                     patient_id=str(record_patient_id),
                     citizen_id=str(requested_citizen_id) if requested_citizen_id else None,
                     medication_request_id=None,
-                    medication_code=drug.code,
+                    medication_code=drug.drug_code,
                     medication_code_system="GULA-PHARMACY",
-                    medication_name=drug.name,
-                    medication_name_ar=drug.name_ar,
-                    medication_brand=drug.brand_name,
-                    medication_form=str(drug.form.value if hasattr(drug.form, "value") else drug.form or ""),
+                    medication_name=drug.drug_name,
+                    medication_name_ar=drug.drug_name_ar,
+                    # brand_name has no physical catalog column: brand is a
+                    # product/package attribute, not a drug attribute
+                    # (contract §5). Tracked as P0-2-GAP-BRAND.
+                    medication_brand=None,
+                    medication_form=drug.dosage_form or "",
                     status="completed",
                     category="outpatient",
                     quantity=item["quantity"],
@@ -1111,7 +1159,7 @@ class PharmacyService:
                 drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == stock.drug_catalog_id).first()
                 stagnant.append({
                     "drug_id": stock.drug_catalog_id,
-                    "drug_name": drug.name if drug else "Unknown",
+                    "drug_name": drug.drug_name if drug else "Unknown",
                     "available_quantity": stock.available_quantity,
                     "last_sold_at": last_sold_at.isoformat() if last_sold_at else None,
                 })
@@ -1168,7 +1216,7 @@ class PharmacyService:
                 alerts["low_stock"].append({
                     "stock_id": stock.id,
                     "drug_id": stock.drug_catalog_id,
-                    "drug_name": drug.name if drug else "Unknown",
+                    "drug_name": drug.drug_name if drug else "Unknown",
                     "available": stock.available_quantity,
                     "reorder_point": stock.reorder_point,
                 })
@@ -1177,7 +1225,7 @@ class PharmacyService:
                 alerts["overstocked"].append({
                     "stock_id": stock.id,
                     "drug_id": stock.drug_catalog_id,
-                    "drug_name": drug.name if drug else "Unknown",
+                    "drug_name": drug.drug_name if drug else "Unknown",
                     "available": stock.available_quantity,
                     "max_level": stock.max_level,
                 })
@@ -1188,7 +1236,7 @@ class PharmacyService:
             alerts["expiring_soon"].append({
                 "batch_id": batch.id,
                 "drug_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
+                "drug_name": drug.drug_name if drug else "Unknown",
                 "expiry_date": batch.expiry_date.isoformat(),
                 "quantity_remaining": batch.quantity_remaining,
             })
@@ -1411,7 +1459,7 @@ class PharmacyService:
             reorder_qty = stock.reorder_quantity or (stock.max_level or 0) * 2
             recommendations.append({
                 "drug_id": stock.drug_catalog_id,
-                "drug_name": drug.name,
+                "drug_name": drug.drug_name,
                 "current_stock": stock.available_quantity,
                 "reorder_point": stock.reorder_point,
                 "recommended_quantity": reorder_qty,
@@ -1481,7 +1529,7 @@ class PharmacyService:
                     alerts.append({
                         "batch_id": batch.id,
                         "drug_id": batch.drug_catalog_id,
-                        "drug_name": drug.name if drug else "Unknown",
+                        "drug_name": drug.drug_name if drug else "Unknown",
                         "expiry_date": batch.expiry_date.isoformat(),
                         "days_remaining": (batch.expiry_date - date.today()).days,
                         "quantity_remaining": batch.quantity_remaining,

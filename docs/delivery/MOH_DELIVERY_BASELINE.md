@@ -98,7 +98,7 @@ buildings, floors, clinics, rooms, beds, units, medical equipment, cost centres,
 bed assignments) still have no migration. They block nothing and were
 deliberately left out of a minimal repair. Tracked as **P1-6**.
 
-**P0-2. Pharmacy ORM ↔ physical schema divergence — Phase 2A COMPLETE.**
+**P0-2. Pharmacy ORM ↔ physical schema divergence — Phase 2A COMPLETE, M1 VERIFIED.**
 The exact delta is now measured against the migration-built PostgreSQL schema
 (103 revisions) and recorded column by column in
 `docs/pharmacy-platform/P0-2_RECONCILIATION_MATRIX.md` with machine-readable
@@ -119,6 +119,53 @@ remain non-functional against the migrated schema.
 Two false-positive classes were eliminated during measurement: reflected
 timestamp timezone flags (84 spurious rows) and string-similarity rename
 matching. Both are documented in the matrix, §6.
+
+**M1 (Base + DrugCatalog) — VERIFIED.** `DrugCatalog` now matches the
+migration-built PostgreSQL schema exactly: **34 of 34 columns**, no ORM-only
+column, no unmapped physical column, no type or nullability mismatch. It moved
+off the Generation B `String(26)` base onto a new `GlobalCatalogEntity`
+(`INTEGER` key, no inherited tenant column); the legacy base remains, marked
+deprecated, for the 23 entities still to be reconciled in M2–M4.
+
+`drug_id` (UUID4) is now mapped, server-generated, unique and immutable, and
+`drug_code` stays mutable. The catalog is global in code as well as in the
+schema — every `lab_id` filter was removed from the catalog service surface.
+**No migration was required**: the physical column, its `NOT NULL`, its unique
+constraint and its index already existed from NR-003, which was verified before
+any migration was considered.
+
+Proven against a disposable migrated PostgreSQL database: 15 focused M1 tests,
+plus 12 existing pharmacy tests still passing. Clean `upgrade head` exit 0 at
+103 revisions; a repeated `upgrade head` applies 0 revisions and regenerates no
+identity; integer primary keys and `drug_code` values are unchanged.
+
+**Operational warning (new).** `alembic downgrade` past `20260909_0001` drops
+the `drug_id` column, which **destroys the public drug identity permanently** —
+a later re-upgrade mints new UUIDs, so any external reference to a `drug_id`
+becomes dangling. Verified by measurement: the integer key and `drug_code`
+survived a downgrade/re-upgrade cycle, `drug_id` did not. Treat that downgrade
+as destructive in any runbook.
+
+**P0-2-SUBBLOCKER-A.** The six physical `varchar(26)` columns with no FK on
+`pharmacy_sale_lines` and `pharmacy_drug_substitution_requests` (matrix §9a) are
+untouched by M1 and block M3/Phase 2E only. M1 surfaces one visible consequence:
+a sale line stores the catalog's integer key as text, which
+`test_pharmacy_pos.py` now asserts on explicitly rather than hiding.
+
+**Functional gaps opened by matching the real schema** — both are contract
+consequences, not regressions, and neither invents a column:
+
+- **P0-2-GAP-BARCODE.** The catalog has no barcode column; a GS1 GTIN
+  identifies a package, not a drug (contract §5), and the package entity is
+  deferred to Generation C. Barcode-only POS lookup therefore resolves to no
+  drug and falls through to the existing "drug not found" path.
+- **P0-2-GAP-BRAND.** `brand_name` has no physical column; brand is a
+  product/package attribute. The dispense record now carries no brand.
+
+**Not done in M1, by design:** the other 26 pharmacy models, the clinical-rule
+FK adoption (M2), sales/substitution (M3), inventory/dispensing (M4), and the
+public API identity switch (M5/P1-1). The catalog service exposes
+`get_drug_by_public_id()` for `drug_id` lookups, but no route was changed.
 
 ### P1 — required for delivery
 

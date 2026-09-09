@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import uuid
 from datetime import datetime
 
 from sqlalchemy import (
@@ -9,6 +10,7 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
+    Double,
     Float,
     ForeignKey,
     Index,
@@ -17,6 +19,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    Uuid,
 )
 from sqlalchemy import (
     Enum as SAEnum,
@@ -24,68 +27,103 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from app._compat import UTC
-from app.pharmacy.base import TenantAuditEntity
+from app.pharmacy.base import GlobalCatalogEntity, TenantAuditEntity
 from app.pharmacy.enums import (
     DispenseStatus,
-    DosageForm,
-    DrugCategory,
     InteractionSeverity,
     PrescriptionStatus,
-    RouteOfAdministration,
     StockMovementType,
     StorageCondition,
 )
 
 
-class DrugCatalog(TenantAuditEntity):
+class DrugCatalog(GlobalCatalogEntity):
+    """The National Drug Catalog (CANONICAL_DRUG_CONTRACT §1).
+
+    Every column below exists in the migration-built PostgreSQL schema with
+    the type declared here; the physical schema is authoritative and this
+    model follows it, not the other way round.
+
+    Identity (contract §2, §3):
+
+    * ``id`` — ``INTEGER``, database-assigned, internal only, the target of
+      every relational foreign key. Never exposed as the public identity.
+    * ``drug_id`` — ``UUID4``, server-generated, ``NOT NULL``, ``UNIQUE``,
+      immutable. The only identifier that may appear in a public API path,
+      payload, export or report as *the* identity of a drug. It is a GULA
+      platform identity, **not** a Ministry of Health national registration
+      number.
+    * ``drug_code`` — mutable business/catalog code (contract §4). Unique and
+      searchable, but never a key of any kind.
+
+    Tenancy (contract §6): the catalog is global national reference data and
+    has no tenant column. There is none physically, so a ``lab_id`` filter
+    here would match nothing and must never be added.
+    """
+
     __tablename__ = "pharmacy_drug_catalog"
 
-    code = Column(String(50), nullable=False, unique=True)
-    name = Column(String(300), nullable=False)
-    name_ar = Column(String(300), nullable=True)
-    generic_name = Column(String(300), nullable=True)
-    brand_name = Column(String(300), nullable=True)
-    manufacturer = Column(String(200), nullable=True)
-    manufacturer_code = Column(String(50), nullable=True)
-
-    form = Column(SAEnum(DosageForm), nullable=True)
-    strength_value = Column(String(50), nullable=True)
-    strength_unit = Column(String(50), nullable=True)
-    route = Column(SAEnum(RouteOfAdministration), nullable=True)
-
-    category = Column(SAEnum(DrugCategory), nullable=True)
-    therapeutic_class = Column(String(200), nullable=True)
-    atc_code = Column(String(20), nullable=True)
-    atc_description = Column(String(300), nullable=True)
-
-    is_controlled = Column(Boolean, default=False)
-    is_narcotic = Column(Boolean, default=False)
-    requires_prescription = Column(Boolean, default=True)
-    is_active = Column(Boolean, default=True)
-
-    max_daily_dose = Column(String(50), nullable=True)
-    min_age = Column(Integer, nullable=True)
-    pregnancy_category = Column(String(10), nullable=True)
-    lactation_category = Column(String(10), nullable=True)
-
-    ingredients = Column(JSON, nullable=True)
-    side_effects = Column(JSON, nullable=True)
-    drug_images = Column(JSON, nullable=True)
-    barcode_gs1 = Column(String(50), nullable=True)
-    barcode_type = Column(String(20), nullable=True)
-
-    metadata_ = Column("metadata", JSON, nullable=True)
-
-    __table_args__ = (
-        Index("ix_pharmacy_drug_catalog_code", "code"),
-        Index("ix_pharmacy_drug_catalog_name", "name"),
-        Index("ix_pharmacy_drug_catalog_atc", "atc_code"),
-        Index("ix_pharmacy_drug_catalog_category", "category"),
-        Index("ix_pharmacy_drug_catalog_active", "is_active"),
-        Index("ix_pharmacy_drug_catalog_barcode", "barcode_gs1"),
-        {"extend_existing": True},
+    # -- identity -----------------------------------------------------------
+    # Generated in Python rather than by a column default: the physical column
+    # is NOT NULL with no server default, so a write that fails to supply an
+    # identity is rejected by the database instead of silently receiving one.
+    drug_id = Column(
+        # sqlalchemy.Uuid renders as PostgreSQL UUID on the real schema while
+        # staying portable, so tests that still build from ORM metadata on
+        # another dialect keep working during M2-M4.
+        Uuid(as_uuid=True),
+        nullable=False,
+        unique=True,
+        index=True,
+        default=uuid.uuid4,
     )
+    drug_code = Column(String(50), nullable=False, unique=True, index=True)
 
+    # -- naming and classification -----------------------------------------
+    drug_name = Column(String(300), nullable=False)
+    drug_name_ar = Column(String(300), nullable=True)
+    generic_name = Column(String(300), nullable=True, index=True)
+    drug_class = Column(String(100), nullable=True)
+    therapeutic_category = Column(String(100), nullable=True)
+    atc_code = Column(String(20), nullable=True, index=True)
+
+    # -- presentation -------------------------------------------------------
+    # dosage_form and route_of_administration are VARCHAR physically, not
+    # PostgreSQL enums. The DosageForm / RouteOfAdministration enums remain the
+    # vocabulary for request validation at the schema layer; they are not the
+    # storage type.
+    dosage_form = Column(String(50), nullable=False)
+    strength = Column(String(50), nullable=True)
+    unit = Column(String(20), nullable=True)
+    route_of_administration = Column(String(50), nullable=True)
+    package_description = Column(String(200), nullable=True)
+
+    # -- regulatory ---------------------------------------------------------
+    is_controlled_substance = Column(Boolean, nullable=True, default=False)
+    controlled_substance_schedule = Column(String(10), nullable=True)
+    requires_prescription = Column(Boolean, nullable=True, default=True)
+    is_antibiotic = Column(Boolean, nullable=True, default=False)
+    is_refrigerated = Column(Boolean, nullable=True, default=False)
+
+    # -- dosing -------------------------------------------------------------
+    max_daily_dosage = Column(String(100), nullable=True)
+    max_daily_dosage_mg = Column(Double, nullable=True)
+
+    # -- provenance ---------------------------------------------------------
+    manufacturer = Column(String(200), nullable=True)
+    country_of_origin = Column(String(100), nullable=True)
+
+    is_active = Column(Boolean, nullable=True, default=True)
+
+    # -- external identifiers (contract §11: each in its own column) --------
+    sync_id = Column(String(26), nullable=True, unique=True)
+    fhir_id = Column(String(64), nullable=True)
+    fhir_resource_type = Column(String(32), nullable=True)
+
+    __table_args__ = ({"extend_existing": True},)
+
+    def __repr__(self) -> str:
+        return f"<DrugCatalog id={self.id} drug_id={self.drug_id} code={self.drug_code}>"
 
 class DrugBatch(TenantAuditEntity):
     __tablename__ = "pharmacy_drug_batches"

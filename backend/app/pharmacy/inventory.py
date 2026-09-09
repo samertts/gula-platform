@@ -230,8 +230,8 @@ class ExpiryMonitoringService:
             results.append({
                 "batch_id": batch.id,
                 "drug_catalog_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
-                "drug_name_ar": drug.name_ar if drug else None,
+                "drug_name": drug.drug_name if drug else "Unknown",
+                "drug_name_ar": drug.drug_name_ar if drug else None,
                 "batch_number": batch.batch_number,
                 "expiry_date": batch.expiry_date.isoformat(),
                 "days_remaining": (batch.expiry_date - date.today()).days,
@@ -257,7 +257,7 @@ class ExpiryMonitoringService:
             results.append({
                 "batch_id": batch.id,
                 "drug_catalog_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
+                "drug_name": drug.drug_name if drug else "Unknown",
                 "batch_number": batch.batch_number,
                 "expiry_date": batch.expiry_date.isoformat(),
                 "days_expired": (date.today() - batch.expiry_date).days,
@@ -371,7 +371,7 @@ class ReorderService:
                 calc = self.calculate_reorder_quantity(drug_id)
                 if calc["needs_reorder"]:
                     drug = self.db.query(DrugCatalog).filter(DrugCatalog.id == drug_id).first()
-                    calc["drug_name"] = drug.name if drug else "Unknown"
+                    calc["drug_name"] = drug.drug_name if drug else "Unknown"
                     reorder_list.append(calc)
             except Exception as exc:
                 logger.warning("Failed to calculate reorder for %s: %s", drug_id, exc)
@@ -405,7 +405,7 @@ class ColdChainService:
             results[batch.storage_condition.value].append({
                 "batch_id": batch.id,
                 "drug_catalog_id": batch.drug_catalog_id,
-                "drug_name": drug.name if drug else "Unknown",
+                "drug_name": drug.drug_name if drug else "Unknown",
                 "batch_number": batch.batch_number,
                 "expiry_date": batch.expiry_date.isoformat() if batch.expiry_date else None,
                 "quantity_remaining": batch.quantity_remaining,

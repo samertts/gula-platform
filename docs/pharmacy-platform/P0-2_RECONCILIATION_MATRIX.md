@@ -1,6 +1,9 @@
 # P0-2 — Pharmacy ORM ↔ Physical Schema Reconciliation Matrix (Phase 2A)
 
 **Status:** Phase 2A COMPLETE — analysis only. **No code was modified.**
+**M1 applied:** `pharmacy_drug_catalog` is now fully reconciled (34/34 columns
+KEEP); its rows below describe the pre-M1 state and are retained as the record
+of what was changed. Every other table is unchanged and still accurate.
 **Physical authority:** migration-built PostgreSQL 16, `alembic upgrade head`,
 103 revisions, exit 0. Not SQLite, not ORM metadata, not documentation.
 **Machine-readable:** `P0-2_RECONCILIATION_MATRIX.json` (full records + rename

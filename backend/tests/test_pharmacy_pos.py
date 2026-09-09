@@ -30,13 +30,13 @@ def _seed_pos(db: Any) -> tuple[Any, Any, Any, Any, Any]:
     patient = Patient(lab_id=lab.id, full_name="Synthetic Citizen", phone="0000000000")
     db.add(patient)
     db.flush()
+    # The catalog is global: no lab_id. Field names follow the physical schema.
     drug = DrugCatalog(
-        lab_id=lab.id,
-        code="SYN-PAR-500",
-        name="Synthetic Paracetamol",
-        name_ar="باراسيتامول اصطناعي",
+        drug_code="SYN-PAR-500",
+        drug_name="Synthetic Paracetamol",
+        drug_name_ar="باراسيتامول اصطناعي",
         generic_name="Paracetamol",
-        barcode_gs1="890000000001",
+        dosage_form="tablet",
         is_active=True,
         requires_prescription=False,
     )
@@ -126,13 +126,13 @@ def test_pos_sale_is_idempotent_and_does_not_double_decrement(db: Any) -> None:
 def test_approved_substitution_is_consumed_by_pos_and_audited(db: Any) -> None:
     lab, patient, original, _first_batch, _second_batch = _seed_pos(db)
     alternative = DrugCatalog(
-        lab_id=lab.id,
-        code="SYN-ALT-500",
-        name="Synthetic Alternative",
-        name_ar="بديل اصطناعي",
+        drug_code="SYN-ALT-500",
+        drug_name="Synthetic Alternative",
+        drug_name_ar="بديل اصطناعي",
         generic_name="Paracetamol",
-        strength_value="500",
-        strength_unit="mg",
+        dosage_form="tablet",
+        strength="500",
+        unit="mg",
         is_active=True,
         requires_prescription=False,
     )
@@ -210,11 +210,16 @@ def test_approved_substitution_is_consumed_by_pos_and_audited(db: Any) -> None:
     db.refresh(sale)
     assert request.status == "consumed"
     assert request.consumed_sale_id == sale.id
-    assert sale.lines[0].drug_catalog_id == alternative.id
+    # Compared as text on purpose. PharmacySaleLine.drug_catalog_id is still
+    # varchar(26) both in the ORM and physically, while the catalog key is now
+    # INTEGER, so the value round-trips as a string. That FK type mismatch is
+    # P0-2-SUBBLOCKER-A and is fixed at M3, not here; asserting on the string
+    # keeps this test honest about the boundary instead of hiding it.
+    assert str(sale.lines[0].drug_catalog_id) == str(alternative.id)
     assert sale.lines[0].metadata_["original_drug_catalog_id"] == original.id
     assert db.query(StockLevel).filter(StockLevel.batch_id == alt_batch.id).one().quantity == 3
     assert db.query(MedicationDispense).filter(
         MedicationDispense.citizen_id == "SYNTHETIC-CITIZEN-SUB-001",
-        MedicationDispense.medication_code == alternative.code,
+        MedicationDispense.medication_code == alternative.drug_code,
     ).count() == 1
     assert db.query(DrugSubstitutionRequest).filter(DrugSubstitutionRequest.id == request.id).one().status == "consumed"
