@@ -1,7 +1,16 @@
 """Create surgical safety checklists.
 
 Revision ID: 20260820_0004
-Revises: 20260819_0003
+Revises: 20260820_0003
+
+down_revision was repointed from ``20260819_0003`` to ``20260820_0003`` (P0-1).
+This revision declares a foreign key to ``hospital_operation_theaters``, which no
+migration created, so on a clean database it aborted with ``UndefinedTable`` and
+the transaction rolled back — the revision never recorded, which made any later
+corrective migration unreachable. ``20260820_0003`` now creates that table and
+its two ancestors immediately before this revision runs.
+
+Only this one line changed; no schema operation in this file was modified.
 """
 from __future__ import annotations
 
@@ -10,7 +19,7 @@ import sqlalchemy as sa
 
 
 revision = "20260820_0004"
-down_revision = "20260819_0003"
+down_revision = "20260820_0003"
 branch_labels = None
 depends_on = None
 

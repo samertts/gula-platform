@@ -1,6 +1,6 @@
 # GULA — Ministry of Health Delivery Baseline
 
-**Branch commit:** `1a164ccd` (branch `claude/nr-003-canonical-drug-identity`)
+**Branch:** `claude/p0-1-hospital-migrations` (built on `claude/nr-003-canonical-drug-identity`)
 **Base:** `main` @ `46158e90`
 **Date:** 2026-09-09
 **Status:** PRE-DELIVERY — NOT PRODUCTION READY
@@ -37,15 +37,15 @@ additional external identifier.
 
 ## 2. Migration status
 
-| Item                                        | State                     | Evidence                                                     |
-| ------------------------------------------- | ------------------------- | ------------------------------------------------------------ |
-| Revision ids unique                         | PASS                      | 102 revisions, no duplicates                                 |
-| Exactly one head                            | PASS                      | `20260909_0001`                                              |
-| `clinical_command_receipts` reachable       | PASS                      | 3 graph-integrity tests                                      |
-| `20260815_0023` applies on a clean database | **PASS (was impossible)** | clean upgrade exit 0; both catalog FKs `integer`             |
-| Clean database `upgrade head`               | **FAIL**                  | aborts at `20260820_0004`, see P0-1                          |
-| Revisions applied before the abort          | 98                        | previously aborted at ~30 and rolled back to `20260505_0005` |
-| Existing-database upgrade path              | NOT VERIFIED              | only clean-database creation was exercised                   |
+| Item                                        | State                     | Evidence                                                           |
+| ------------------------------------------- | ------------------------- | ------------------------------------------------------------------ |
+| Revision ids unique                         | PASS                      | 103 revisions, no duplicates                                       |
+| Exactly one head                            | PASS                      | `20260909_0001`, verified by `alembic heads`                       |
+| `clinical_command_receipts` reachable       | PASS                      | 3 graph-integrity tests                                            |
+| `20260815_0023` applies on a clean database | **PASS (was impossible)** | clean upgrade exit 0; both catalog FKs `integer`                   |
+| Clean database `upgrade head`               | **PASS**                  | exit 0; all 103 revisions applied; downgrade -1 + re-upgrade clean |
+| Revisions applied                           | 103                       | was 98 then abort; before NR-003, ~30 then rollback                |
+| Existing-database upgrade path              | NOT VERIFIED              | only clean-database creation was exercised                         |
 
 ## 3. Verified workflows (executed evidence)
 
@@ -78,11 +78,25 @@ Overall health **DEGRADED** (previously BLOCKED). `production_ready: false`.
 
 ### P0 — blocks a clean deployment
 
-**P0-1. Hospital domain has no migration coverage.**
-13 of 14 hospital ORM tables are created by no migration. `20260820_0004`
-declares a foreign key to `hospital_operation_theaters`, which nothing creates,
-so a clean-database `upgrade head` aborts there. Same defect class as NR-003.
-Evidence: `psycopg2.errors.UndefinedTable: relation "hospital_operation_theaters" does not exist`.
+**P0-1. Hospital migration gap — RESOLVED.**
+`20260820_0004` declared a foreign key to `hospital_operation_theaters`, which no
+migration created, so a clean database aborted with
+`psycopg2.errors.UndefinedTable` and rolled back to `20260505_0005` — the
+revision never recorded, making a later corrective migration unreachable.
+
+Repaired by `20260820_0003_hospital_core_schema.py`, which creates the **minimum
+dependency closure** of the failure — `hospitals` → `hospital_departments` →
+`hospital_operation_theaters` — plus a one-line repoint of `20260820_0004`'s
+`down_revision`. No schema operation in the published migration was altered.
+
+Verified: clean database `upgrade head` **exit 0, 103 revisions**; single head
+`20260909_0001`; `downgrade -1` and re-upgrade clean; re-running at head applies
+0 revisions; all hospital FKs `integer` → `integer`; the checklist's FK resolves.
+
+**Residual, non-blocking:** the other 10 Hospital ORM tables (campuses,
+buildings, floors, clinics, rooms, beds, units, medical equipment, cost centres,
+bed assignments) still have no migration. They block nothing and were
+deliberately left out of a minimal repair. Tracked as **P1-6**.
 
 **P0-2. Pharmacy ORM ↔ physical schema divergence.**
 All 23 pharmacy tables shared between the ORM and the migrations diverge:
