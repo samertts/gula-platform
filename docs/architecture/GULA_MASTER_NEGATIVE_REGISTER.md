@@ -23,13 +23,16 @@ and `docs/adr/`.
 
 ## 1. Summary
 
-| Severity  | Count  | Fixed this session | Open        |
-| --------- | ------ | ------------------ | ----------- |
-| P0        | 3      | 2                  | 1 (blocker) |
-| P1        | 4      | 2                  | 2           |
-| P2        | 5      | 0                  | 5           |
-| P3        | 3      | 0                  | 3           |
-| **Total** | **15** | **4**              | **11**      |
+| Severity  | Count | Fixed | Open |
+| --------- | ----- | ----- | ---- |
+| P0        | 9     | 5     | 4    |
+| P1        | 10     | 6     | 4    |
+| P2        | 9     | 0     | 9    |
+| P3        | 5     | 0     | 5    |
+| **Total** | **33** | **11** | **22** |
+
+_Counts are generated from the JSON companion; the table above had drifted
+since the first pass and now reflects all findings, not one session's._
 
 **Single true deployment blocker today:** **NR-003** — pharmacy primary-key type divergence.
 
@@ -61,13 +64,15 @@ and `docs/adr/`.
 | NR-022 | P0  | National Core | Four of the five most-depended-on tables do not exist | OPEN — ARCHITECTURE DECISION REQUIRED |
 | NR-023 | P0  | Platform Migrations | Autogenerate cannot run: foreign keys cross `MetaData` boundaries | OPEN — BLOCKED BY NR-006, NR-030 |
 | NR-024 | P3  | Platform Migrations | `CitizenPlatformBase` is registered but maps zero tables | OPEN — LOW SEVERITY |
-| NR-025 | P2  | Platform-wide | One name, two identifier schemes: `_ulid()` is a real ULID twice, a truncated UUID4 thirteen times | OPEN — DESIGN DEFECT |
-| NR-026 | P0  | Nursing Platform | Entire Nursing ORM diverges from its schema; every model fails on a plain SELECT | OPEN — P0 LIVE DEFECT |
+| NR-025 | P2  | Platform-wide | One name, two identifier schemes: `_ulid()` is a real ULID twice, a truncated UUID4 twelve times (thirteen before BATCH-3) | OPEN — DESIGN DEFECT |
+| NR-026 | P0  | Nursing Platform | Entire Nursing ORM diverges from its schema; every model fails on a plain SELECT | FIXED — VERIFIED (BATCH-3; 15/15 models SELECT, 0 destructive diff, no migration) |
 | NR-027 | P1  | Blood Bank | No Blood Bank mutation writes an audit log entry | PARTIALLY VERIFIED — canonical paths audited; 7 l... |
 | NR-028 | P3  | Platform-wide | Ambiguous package root: 130 imports say `backend.app`, the rest say `app` | OPEN — CONFIRMED |
 | NR-029 | P1  | Identity Platform | Three foreign keys named the ORM class instead of its table | FIXED — VERIFIED |
 | NR-030 | P1  | Platform Migrations | Twelve physical tables are mapped by no ORM class | PARTIALLY VERIFIED — all 12 classified and named |
 | NR-031 | P1  | Blood Bank | `POST /samples/{id}/transition` required an Idempotency-Key and discarded it | FIXED — VERIFIED |
+| NR-032 | P0  | EHR Platform | Four Nursing medication endpoints query `ehr_medication_*`; zero `ehr_*` tables exist at head | OPEN — SCHEMA DECISION REQUIRED |
+| NR-033 | P2  | Nursing Platform | The eight `/nursing/coordination/*` endpoints persist nothing — audit entry only, no table | OPEN — PRODUCT DECISION REQUIRED |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.

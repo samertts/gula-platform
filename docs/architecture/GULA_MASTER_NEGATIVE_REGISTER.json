@@ -5,11 +5,11 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 31,
+    "total": 33,
     "by_severity": {
-      "P0": 8,
+      "P0": 9,
       "P1": 10,
-      "P2": 8,
+      "P2": 9,
       "P3": 5
     }
   },
@@ -933,7 +933,7 @@
       "domain": "Platform-wide",
       "severity": "P2",
       "priority": 25,
-      "status": "OPEN — DESIGN DEFECT",
+      "status": "OPEN — DESIGN DEFECT — count updated in BATCH-3: 12 truncated-UUID4 _ulid() definitions, was 13; app/nursing/base.py now uses the INTEGER key the schema creates",
       "title": "One name, two incompatible identifier schemes: _ulid() is a ULID in 2 places and a truncated UUID4 in 13",
       "description": "Fifteen functions in the tree are named _ulid(). Thirteen return str(uuid.uuid4()).replace('-', '').upper()[:26] — the first 26 hex characters of a random UUID4, with no timestamp prefix, no Crockford base32 and no monotonic ordering. Two are genuine ULIDs (48-bit millisecond timestamp plus 80 random bits, Crockford base32, time-sortable). Identifiers minted under one name are therefore not mutually ordered, and a call site does not reveal which scheme it gets. Every declarative base uses the fake one; the genuine implementation mints no primary keys.",
       "root_cause": "A ULID was intended; a truncated UUID4 was written and copied. A correct implementation was later written twice, under the same name, without reconciling the copies.",
@@ -971,7 +971,7 @@
       "domain": "Nursing Platform",
       "severity": "P0",
       "priority": 26,
-      "status": "OPEN — P0 LIVE DEFECT, whole domain non-functional (scope corrected in BATCH-2.8)",
+      "status": "FIXED — VERIFIED (BATCH-3)",
       "title": "The entire Nursing ORM diverges from its physical schema; every model fails on a plain SELECT",
       "description": "CORRECTION. BATCH-2.7 recorded this as two nursing features failing. BATCH-2.8 executed the queries: EVERY nursing model fails on a plain SELECT. Two name tables no migration creates (UndefinedTable); the rest map columns the tables do not have (UndefinedColumn). All fifteen key on String(26) against a physical INTEGER. Measured: 97 type mismatches and 137 ORM columns with no physical column. This is the Pharmacy P0-2 defect at Pharmacy's scale in a domain never reconciled.",
       "root_cause": "The same Generation-A physical vs Generation-B ORM split that P0-2 M1–M4 removed from Pharmacy, still live in a deployed domain.",
@@ -1001,7 +1001,11 @@
       "complexity": "M",
       "can_fix_now": false,
       "blocker": false,
-      "evidence_strength": "STRONG (executed against a migrated database)"
+      "evidence_strength": "STRONG (executed against a migrated database)",
+      "resolution": "BATCH-3 reconciled the domain against PostgreSQL at head, with no schema change and no migration. NursingBase and all fifteen models were regenerated from the physical tables: INTEGER serial primary key plus the nullable sync_id VARCHAR(26) the schema already carried; the two phantom table names corrected; 137 phantom columns removed; 97 type mismatches closed; cross-base ForeignKey objects replaced by plain columns (NR-023, Pharmacy precedent) with PostgreSQL still enforcing the physical constraints. Services and routes were reconciled with them, which exposed and fixed a further fourteen defects, including thirteen miscalled log_action sites that wrote the laboratory into user_role and a dict into lab_id — killing the mutation's transaction and losing the audit detail. Measured after: 15/15 models SELECT; full write round trip; 0 type mismatches; 0 phantom columns; 0 FK mismatches; 0 destructive autogenerate operations. Migration file count 106 before and after; single head; downgrade/upgrade round trip clean. All fifteen tables were empty before and after.",
+      "verification": "backend/tests/test_nursing_domain_contract.py (9 tests, expectations derived from PostgreSQL, including a destructive-diff guard) and backend/tests/test_nursing_runtime.py (15 tests exercising the repaired paths). Full backend suite green.",
+      "artifact": "docs/architecture/nursing/NURSING_SCHEMA_RECONCILIATION_3.md",
+      "residue": "encounter_id remains refused at the API boundary pending the Encounter ownership decision. Two new findings were opened for what the reconciliation uncovered outside its scope: NR-032 (EHR medication tables absent) and NR-033 (Nursing coordination endpoints persist nothing)."
     },
     {
       "id": "NR-027",
@@ -1192,6 +1196,47 @@
       "wave": "WAVE 2",
       "complexity": "S",
       "evidence_strength": "STRONG (4 HTTP regressions against PostgreSQL)"
+    },
+    {
+      "id": "NR-032",
+      "category": "Schema drift",
+      "domain": "EHR Platform",
+      "severity": "P0",
+      "priority": 32,
+      "status": "OPEN — SCHEMA DECISION REQUIRED",
+      "blocker": true,
+      "can_fix_now": false,
+      "title": "Four Nursing medication endpoints query EHR tables that do not exist",
+      "description": "MedicationAdminService reads and writes app.ehr.models.medication, whose four models declare ehr_medication_statements, ehr_medication_requests, ehr_medication_dispenses and ehr_medication_administrations. A database at head contains 423 tables and zero beginning with ehr_. The four endpoints /nursing/medication-schedule/{patient_id}, /nursing/medication-schedule/{patient_id}/missed-doses, /nursing/medication-alerts/{patient_id} and /nursing/medication-admin/record therefore raise UndefinedTable.",
+      "root_cause": "The same Generation-A/Generation-B split as NR-026, in a domain not yet reconciled: EHR ORM models exist with no migration that builds them.",
+      "evidence": "Executed against PostgreSQL at head 20260912_0001: SELECT on information_schema.tables for table_name LIKE 'ehr%' returns zero rows. app/ehr/models/medication.py lines 23, 68, 121, 172 declare the four __tablename__ values.",
+      "affected_components": "backend/app/ehr/models/medication.py, backend/app/nursing/medication.py, backend/app/nursing/routes.py",
+      "clinical_impact": "Medication administration recording and the five-rights record are unavailable to nurses. Five-rights verification itself is pure computation and still works.",
+      "security_impact": "None directly.",
+      "data_integrity_impact": "No data can be lost because none can be written.",
+      "recommended_fix": "Decide whether the EHR medication tables are adopted (a migration) or the four endpoints are withdrawn. Do not create the tables without approval.",
+      "discovered_by": "BATCH-3, reconciling the Nursing routes",
+      "owner": "EHR + Clinical Standards"
+    },
+    {
+      "id": "NR-033",
+      "category": "Architecture",
+      "domain": "Nursing Platform",
+      "severity": "P2",
+      "priority": 33,
+      "status": "OPEN — PRODUCT DECISION REQUIRED",
+      "blocker": false,
+      "can_fix_now": false,
+      "title": "The eight Nursing coordination endpoints persist nothing",
+      "description": "CareCoordinatorService builds a dictionary, writes one audit entry and returns the dictionary. There is no physician-message, lab-request, radiology-request, pharmacy-request, referral, discharge-plan, family-communication or home-care-handover table. A referral raised through /nursing/coordination/referral cannot be listed, actioned or tracked; the only record is the audit chain.",
+      "root_cause": "The endpoints were written against an intended persistence layer that was never built.",
+      "evidence": "Read of app/nursing/coordination.py: all eight methods construct a dict and call log_action. No coordination table exists at head.",
+      "affected_components": "backend/app/nursing/coordination.py, backend/app/nursing/routes.py",
+      "clinical_impact": "A nurse can raise a referral or message a physician and receive 200, with nothing for the recipient to act on.",
+      "note": "Until BATCH-3 these eight endpoints raised on every call: their log_action arguments were miscalled, so psycopg2 was handed a dict for lab_id. They now execute as designed. Whether audit-entry-only IS the design is the open question.",
+      "recommended_fix": "Decide: build the coordination tables, route to an existing domain (orders, notifications), or withdraw the endpoints.",
+      "discovered_by": "BATCH-3, reconciling the Nursing routes",
+      "owner": "Clinical Standards + Product"
     }
   ]
 }

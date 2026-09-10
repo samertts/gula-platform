@@ -196,7 +196,13 @@ def log_action(
     computation to shared.audit while maintaining backend anchor files.
     """
     serialized_details = (
-        json.dumps(details, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        # `default=str` renders values json has no encoding for — a datetime,
+        # a Decimal, a UUID. Without it a clinical mutation carrying a
+        # timestamp in its details raised TypeError from inside the audit
+        # writer and took the whole transaction down with it. No audit row can
+        # already hold such a value, so no existing chain hash changes.
+        json.dumps(details, sort_keys=True, ensure_ascii=False,
+                   separators=(",", ":"), default=str)
         if isinstance(details, dict)
         else details
     )

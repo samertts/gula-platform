@@ -46,7 +46,20 @@ ENV_PY = REPO_ROOT / "backend" / "migrations" / "env.py"
 # would silently describe a different database than the caller named.
 # GULA_SCHEMA_DATABASE_URL is owned by this guard, following the same
 # convention as GULA_INTEL_DATABASE_URL.
-SCHEMA_DATABASE_URL = os.environ.get("GULA_SCHEMA_DATABASE_URL", "")
+def _schema_database_url() -> str:
+    """The database this module inspects, migrated to head.
+
+    DATABASE_URL cannot supply it: conftest pins that variable to in-memory
+    SQLite for the whole suite. GULA_SCHEMA_DATABASE_URL is this guard's own
+    variable; MIGRATION_DATABASE_URL is the one CI already exports for the
+    migrated PostgreSQL service, so the guard runs there without the workflow
+    having to name a second variable for the same database.
+    """
+    return (os.environ.get("GULA_SCHEMA_DATABASE_URL")
+            or os.environ.get("MIGRATION_DATABASE_URL", ""))
+
+
+SCHEMA_DATABASE_URL = _schema_database_url()
 
 # Physical tables mapped by no ORM class anywhere (NR-030), each with its
 # BATCH-2.7 disposition. Every entry is a DROP candidate for a single-MetaData
@@ -59,11 +72,11 @@ UNMAPPED_PHYSICAL_TABLES = frozenset({
     # KEEP_PHYSICAL_NO_ORM — deliberately raw SQL in app/core/idempotency.py,
     # a request hot path that does not want an ORM round trip.
     "idempotency_keys",
-    # MAP_EXISTING_ORM — the models exist as ClinicalChecklist and
-    # EscalationRecord but say nursing_checklists / nursing_escalations, names
-    # no migration creates. Blocked behind NR-026: the __tablename__ and the
-    # column types have to be corrected together.
-    "nursing_clinical_checklists", "nursing_escalation_records",
+    # (BATCH-3 resolved the two nursing entries that stood here.
+    # ClinicalChecklist and EscalationRecord named nursing_checklists and
+    # nursing_escalations, tables no migration creates; they now name the real
+    # tables, so both left this list and the shared-MetaData DROP set with
+    # them. No table entered either.)
     # CREATE_ORM — 34 columns and 6 foreign keys, and the only radiology table
     # of eighteen with no model. Mechanical, but not authorised in BATCH-2.7.
     "radiology_ai_analysis_jobs",

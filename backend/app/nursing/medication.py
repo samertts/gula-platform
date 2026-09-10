@@ -91,7 +91,7 @@ class MedicationAdminService:
         admin.recorded_time = datetime.now(UTC)
         db.add(admin)
         db.flush()
-        log_action(db, "nursing.medication.administer", "medication_administration", admin.id, user_id, lab_id, admin_data)
+        log_action(db, "nursing.medication.administer", "medication_administration", admin.id, user_id=user_id, lab_id=lab_id, details=admin_data)
         return admin
 
     @staticmethod
@@ -196,8 +196,8 @@ class MedicationAdminService:
         signed_at = datetime.now(UTC)
         log_action(
             db, "nursing.medication.sign", "medication_administration",
-            medication_admin_id, nurse_id, lab_id,
-            {"signed_at": signed_at.isoformat()},
+            medication_admin_id, user_id=nurse_id, lab_id=lab_id,
+            details={"signed_at": signed_at.isoformat()},
         )
         return {
             "medication_admin_id": medication_admin_id,

@@ -133,7 +133,9 @@ def test_clinical_my_tasks_route_queries_only_the_current_nurse_after_the_gate(m
     result = routes_module.list_clinical_my_tasks(db="db", current_user=_lab_user())
 
     assert result == {"items": [], "total": 0, "skip": 0, "limit": 50}
-    assert calls == [("gate", "db", _lab_user()), ("tasks", "db", 21, "14", 50)]
+    # nurse_id reaches the query as an integer: nursing_tasks.assigned_to is
+    # INTEGER, and the route used to hand the service str(current_user.id).
+    assert calls == [("gate", "db", _lab_user()), ("tasks", "db", 21, 14, 50)]
 
 
 def test_clinical_my_tasks_route_returns_403_before_any_task_query(monkeypatch):

@@ -1,0 +1,367 @@
+{
+  "artifact": "NURSING_SCHEMA_RECONCILIATION_3",
+  "batch": "BATCH-3",
+  "finding": "NR-026",
+  "status": "RESOLVED",
+  "authoritative_source": "PostgreSQL 16.13 at alembic head 20260912_0001",
+  "schema_change": {
+    "migrations_written": 0,
+    "migrations_modified": 0,
+    "migration_file_count_before": 106,
+    "migration_file_count_after": 106,
+    "heads_before": 1,
+    "heads_after": 1,
+    "round_trip": "alembic downgrade -1 && alembic upgrade head — clean, PYTHONPATH unset"
+  },
+  "metrics": {
+    "models_that_could_not_select": {
+      "before": 15,
+      "after": 0
+    },
+    "models_naming_a_nonexistent_table": {
+      "before": 2,
+      "after": 0
+    },
+    "primary_keys_wrong_type": {
+      "before": 13,
+      "after": 0
+    },
+    "phantom_mapped_columns": {
+      "before": 137,
+      "after": 0
+    },
+    "column_type_mismatches": {
+      "before": 97,
+      "after": 0
+    },
+    "foreign_key_mismatches": {
+      "before": "all",
+      "after": 0
+    },
+    "api_fields_with_no_column": {
+      "before": 119,
+      "after": 0
+    },
+    "endpoints_failing_a_not_null_on_first_write": {
+      "before": 12,
+      "after": 0
+    },
+    "destructive_autogenerate_operations": {
+      "before": "table-level rewrite",
+      "after": 0
+    }
+  },
+  "physical_inventory": {
+    "tables": 15,
+    "columns": 422,
+    "foreign_keys": 68,
+    "rows_before": 0,
+    "rows_after": 0,
+    "primary_key_type": "integer (serial)"
+  },
+  "identity_decision": {
+    "internal_key": "INTEGER serial",
+    "portable_key": "sync_id VARCHAR(26), nullable, UNIQUE on all fifteen tables",
+    "rationale": "the schema already implements this; no new identity architecture was introduced inside Nursing",
+    "rejected": "String(26) _ulid() primary keys — a scheme no migration ever built"
+  },
+  "escalated_to_semantic_proof": {
+    "conclusion": "lab_users.id of the clinician the escalation was raised to",
+    "evidence": [
+      "physical column is integer, nullable, indexed ix_nursing_escalation_escalated_to",
+      "the only consumer (get_nurse_dashboard) compares it to the authenticated user's integer id",
+      "the sibling escalated_by is integer NOT NULL and is set from user_id"
+    ],
+    "orm_type": "Integer",
+    "api_type": "int | None",
+    "previous_api_type": "str | None"
+  },
+  "cross_domain_ownership": {
+    "referenced_not_owned": [
+      "labs",
+      "lab_users",
+      "patients",
+      "nhdw_admissions"
+    ],
+    "duplicate_owners_created": 0,
+    "orm_foreign_keys_to_those": 0,
+    "database_foreign_keys_to_those": 63,
+    "intra_domain_fk_target": "nursing_shifts",
+    "rationale": "NR-023 — a ForeignKey across MetaData boundaries cannot resolve and breaks mapper._sorted_tables on INSERT. Pharmacy precedent."
+  },
+  "destructive_diff": {
+    "method": "alembic.autogenerate.compare_metadata against NursingBase.metadata, no file written",
+    "remove_table": 0,
+    "remove_column": 0,
+    "add_table": 0,
+    "add_column": 0,
+    "modify_type": 0,
+    "remove_index": 0,
+    "remove_constraint": 0,
+    "add_index": 5,
+    "remove_fk": 63,
+    "remove_fk_targets": {
+      "lab_users": 26,
+      "labs": 15,
+      "patients": 13,
+      "nhdw_admissions": 9
+    },
+    "add_index_reason": "shared TenantMixin names lab_id's index ix_<table>_lab_id; five migrations created an abbreviated name. Same index, different name."
+  },
+  "defects_fixed": [
+    {
+      "id": 1,
+      "area": "orm",
+      "defect": "15 models keyed String(26) against INTEGER",
+      "impact": "no Nursing table could be read"
+    },
+    {
+      "id": 2,
+      "area": "orm",
+      "defect": "ClinicalChecklist/EscalationRecord named nursing_checklists/nursing_escalations",
+      "impact": "UndefinedTable; clinical escalation and clinical checklists dead"
+    },
+    {
+      "id": 3,
+      "area": "orm",
+      "defect": "137 mapped columns did not exist",
+      "impact": "any SELECT naming them failed"
+    },
+    {
+      "id": 4,
+      "area": "audit",
+      "defect": "log_action called positionally with 7 arguments at 13 sites",
+      "impact": "lab_id written to user_role, details dict to lab_id (psycopg2 cannot adapt), transaction died, audit detail lost"
+    },
+    {
+      "id": 5,
+      "area": "audit",
+      "defect": "log_action serialized details with no json default",
+      "impact": "a mutation carrying a timestamp raised TypeError inside the audit writer"
+    },
+    {
+      "id": 6,
+      "area": "service",
+      "defect": "unassign_patient set is_active/end_date, neither a column",
+      "impact": "unassignment silently did nothing"
+    },
+    {
+      "id": 7,
+      "area": "service",
+      "defect": "defer_task set due_time, not a column",
+      "impact": "a deferred task kept its original deadline"
+    },
+    {
+      "id": 8,
+      "area": "service",
+      "defect": "complete_task set patient_response, not a column",
+      "impact": "clinical outcome discarded"
+    },
+    {
+      "id": 9,
+      "area": "service",
+      "defect": "resolve_escalation set resolution/resolved_by, neither a column",
+      "impact": "the account of how an escalation was resolved was discarded"
+    },
+    {
+      "id": 10,
+      "area": "service",
+      "defect": "get_net_balance summed amount_ml, not a column",
+      "impact": "fluid balance raised AttributeError"
+    },
+    {
+      "id": 11,
+      "area": "service",
+      "defect": "get_assigned_patients read encounter_id/department_id/start_date",
+      "impact": "assigned-patient list raised AttributeError"
+    },
+    {
+      "id": 12,
+      "area": "service",
+      "defect": "start_shift wrote a datetime into a TIME column, never set shift_date",
+      "impact": "a shift could not be started"
+    },
+    {
+      "id": 13,
+      "area": "service",
+      "defect": "end_shift wrote a datetime into end_time, never set clocked_out_at",
+      "impact": "a shift could not be ended"
+    },
+    {
+      "id": 14,
+      "area": "service",
+      "defect": "assign_patient passed department_id/encounter_id to a model without them",
+      "impact": "TypeError on every assignment"
+    },
+    {
+      "id": 15,
+      "area": "api",
+      "defect": "12 tables had a NOT NULL column no request could fill",
+      "impact": "NotNullViolation on first write"
+    },
+    {
+      "id": 16,
+      "area": "security",
+      "defect": "services splatted the raw body into the model constructor",
+      "impact": "a client could set id, lab_id, version, is_deleted"
+    },
+    {
+      "id": 17,
+      "area": "api",
+      "defect": "routes coerced current_user.id to str at 17 sites",
+      "impact": "comparisons against INTEGER columns survived only by implicit cast; failed for any non-numeric id"
+    },
+    {
+      "id": 18,
+      "area": "api",
+      "defect": "list_overdue_tasks ordered by due_time",
+      "impact": "overdue tasks raised AttributeError"
+    }
+  ],
+  "api_contract_changes": {
+    "policy": "a request field must name a real column of the table it is written into; every Nursing request model inherits extra='forbid'",
+    "justification": "every changed endpoint was non-functional before this change and all fifteen tables are empty, so no working client depended on the shapes that changed",
+    "renamed_to_physical_column": 26,
+    "types_corrected_str_to_int": 11,
+    "newly_required_because_not_null": 17,
+    "now_server_owned": 12,
+    "refused_pending_schema_extension": 119
+  },
+  "schema_extensions_proposed": [
+    {
+      "group": "clinical episode",
+      "fields": [
+        "encounter_id"
+      ],
+      "models": 10,
+      "disposition": "BLOCKED — Visit/Encounter ownership is with the clinical owner"
+    },
+    {
+      "group": "neurological observation",
+      "fields": [
+        "pupil_left_size",
+        "pupil_left_reaction",
+        "pupil_right_size",
+        "pupil_right_reaction"
+      ],
+      "proposed_home": "new columns on nursing_vital_signs"
+    },
+    {
+      "group": "vital-sign context",
+      "fields": [
+        "temperature_site",
+        "glucose_context"
+      ],
+      "proposed_home": "new columns on nursing_vital_signs"
+    },
+    {
+      "group": "structured nursing note",
+      "fields": [
+        "subjective",
+        "objective",
+        "assessment",
+        "intervention",
+        "response",
+        "evaluation",
+        "plan",
+        "attachments",
+        "patient_education"
+      ],
+      "proposed_home": "SOAPIER extension of nursing_notes; today the body is a single content column"
+    },
+    {
+      "group": "pressure-injury wound record",
+      "fields": [
+        "stage",
+        "anatomical_location",
+        "length_cm",
+        "width_cm",
+        "depth_cm",
+        "wound_bed",
+        "exudate_type",
+        "exudate_amount",
+        "wound_edges",
+        "periwound_skin",
+        "infection_signs",
+        "wound_culture",
+        "dressing_type",
+        "dressing_frequency",
+        "treatment_plan",
+        "photographs"
+      ],
+      "proposed_home": "new table nursing_pressure_injury_wounds",
+      "note": "the existing table is a Braden-style risk score, not a wound description — a genuine semantic gap, not a rename"
+    },
+    {
+      "group": "nutrition detail",
+      "fields": [
+        "weight_change_1mo_kg",
+        "appetite",
+        "dietary_restrictions",
+        "chewing_difficulty",
+        "dysphagia_risk",
+        "fluid_restriction_ml",
+        "calorie_target_kcal",
+        "protein_target_g",
+        "feeding_method",
+        "supplements",
+        "diet_type"
+      ],
+      "proposed_home": "new columns on nursing_nutrition_assessments (today a MUST-style score)"
+    },
+    {
+      "group": "task scheduling",
+      "fields": [
+        "scheduled_time",
+        "is_recurring",
+        "recurrence_rule",
+        "clinical_instruction"
+      ],
+      "note": "nursing_tasks has one deadline (due_at) and no recurrence; folding scheduled_time into due_at would conflate two different times"
+    },
+    {
+      "group": "shift roster",
+      "fields": [
+        "department_id",
+        "patient_count",
+        "assigned_patients"
+      ],
+      "note": "nursing_shifts records ward and department as text; the roster lives in nursing_patient_assignments"
+    }
+  ],
+  "still_blocked": [
+    {
+      "id": "NR-026-residue",
+      "item": "Encounter/Visit ownership",
+      "state": "encounter_id refused at the boundary until the clinical owner decides"
+    },
+    {
+      "id": "NR-032",
+      "item": "four Nursing medication endpoints query app.ehr.models.medication",
+      "evidence": "zero ehr_* tables exist at head; the four declared tables (ehr_medication_statements, ehr_medication_requests, ehr_medication_dispenses, ehr_medication_administrations) are absent",
+      "state": "NR-026's shape in a second domain; creating EHR tables is a schema change requiring approval"
+    },
+    {
+      "id": "NR-033",
+      "item": "eight Nursing coordination endpoints persist nothing",
+      "evidence": "CareCoordinatorService builds a dict, writes an audit entry and returns it; no physician-message, referral, discharge-plan or family-communication table exists",
+      "state": "they now work as designed after the log_action fix; whether audit-entry-only IS the design is a product decision"
+    }
+  ],
+  "verification": {
+    "models_selecting": "15/15",
+    "write_round_trip": "server-assigned integer id, read back, soft delete",
+    "rows_left_behind_by_tests": 0,
+    "focused_tests": {
+      "test_nursing_domain_contract.py": 9,
+      "test_nursing_runtime.py": 15
+    },
+    "full_backend_suite": "green",
+    "ci_lint_gate": "ruff check backend/app/ --select=E9,F --ignore=F401,F841 — clean"
+  },
+  "guards_updated": [
+    "tests/test_alembic_metadata_registry.py — the two nursing tables left UNMAPPED_PHYSICAL_TABLES and the shared-MetaData DROP set; none entered",
+    "tests/test_identity_contract_guards.py — NR-025 truncated-_ulid count 13 to 12; nursing removed from the declarative-base list; the NR-026 guard inverted from asserting the defect to pinning its resolution",
+    "tests/test_clinical_nursing_read_gate.py — nurse_id now reaches the service as an int"
+  ]
+}

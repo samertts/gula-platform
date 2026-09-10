@@ -44,7 +44,7 @@ def test_two_incompatible_implementations_share_the_name_ulid() -> None:
 
     Fifteen functions are called `_ulid()` and they do two different things:
 
-    * 13 return ``str(uuid.uuid4()).replace('-', '').upper()[:26]`` — the first
+    * 12 return ``str(uuid.uuid4()).replace('-', '').upper()[:26]`` — the first
       26 hex characters of a random UUID4. Not a ULID: no timestamp prefix, no
       Crockford base32, no time ordering. Full 26-byte key cost, none of the
       benefit.
@@ -64,8 +64,9 @@ def test_two_incompatible_implementations_share_the_name_ulid() -> None:
         "an _ulid() appeared that is neither of the two known implementations: "
         f"{sorted(set(definitions) - truncated - genuine)}"
     )
-    assert len(truncated) == 13, (
-        f"{len(truncated)} truncated-UUID4 _ulid() definitions (was 13). "
+    assert len(truncated) == 12, (
+        f"{len(truncated)} truncated-UUID4 _ulid() definitions (was 12; 13 before "
+        "BATCH-3 reconciled Nursing onto the schema's own INTEGER key). "
         "Update NR-025 rather than the number."
     )
     assert len(genuine) == 2, (
@@ -82,9 +83,12 @@ def test_every_declarative_base_mints_keys_with_the_fake_ulid() -> None:
     across the tree are random, not time-ordered, so they buy page splits and
     26-byte index entries and nothing else.
     """
+    # Nursing left this list in BATCH-3: its base now uses the INTEGER serial
+    # key the schema actually creates, with a nullable sync_id as the portable
+    # identifier. The remaining six still mint truncated UUID4 primary keys.
     bases = [
         "care_continuum", "citizen_platform", "clinical", "ehr", "identity",
-        "national", "nursing",
+        "national",
     ]
     for package in bases:
         source = (APP / package / "base.py").read_text(encoding="utf-8")
@@ -117,33 +121,38 @@ def test_the_nursing_migration_keys_every_actor_column_on_integer() -> None:
     )
 
 
-def test_the_nursing_orm_still_contradicts_the_deployed_schema() -> None:
-    """NR-026, ORM half.
+def test_the_nursing_orm_no_longer_contradicts_the_deployed_schema() -> None:
+    """NR-026, ORM half — RESOLVED by BATCH-3.
 
-    Asserts the defect, not its absence. When Nursing is reconciled this test
-    fails, which is the signal to close NR-026 and delete the guard — not to
-    weaken it.
+    This guard used to assert the defect: 23 ``String(26)`` foreign keys against
+    the ``INTEGER`` ``lab_users.id``, and 12 ``encounter_id`` columns pointing at
+    a ``national_encounters`` table no migration creates. Its docstring said that
+    when Nursing was reconciled the test would fail, and that the answer was to
+    close NR-026 rather than weaken the guard. That is what happened, so it is
+    inverted here: it now pins the resolution, and fails if the ORM drifts back.
+
+    The live-database contract lives in tests/test_nursing_domain_contract.py;
+    this one is a source-level tripwire that needs no database.
     """
     models = (APP / "nursing" / "models.py").read_text(encoding="utf-8")
 
-    string_fks_to_lab_users = len(
-        re.findall(r'Column\(String\(26\), ForeignKey\("lab_users\.id"', models)
+    string_fks_to_lab_users = re.findall(
+        r'Column\(String\(26\), ForeignKey\("lab_users\.id"', models
     )
-    encounter_columns = len(
-        re.findall(r'encounter_id = Column\(String\(26\), ForeignKey\("national_encounters', models)
+    assert not string_fks_to_lab_users, (
+        f"{len(string_fks_to_lab_users)} String(26) foreign keys to the INTEGER "
+        "lab_users.id reappeared in the Nursing ORM; NR-026 has regressed"
     )
-
-    assert string_fks_to_lab_users == 23, (
-        f"NR-026 changed: {string_fks_to_lab_users} String(26) foreign keys to the "
-        "Integer lab_users.id (was 23). If Nursing was reconciled, close NR-026."
+    assert "encounter_id" not in models, (
+        "the Nursing ORM declares an encounter_id column again. No table has one, "
+        "and Encounter ownership is still BLOCKED pending the clinical owner."
     )
-    assert encounter_columns == 12, (
-        f"NR-026 changed: {encounter_columns} encounter_id columns declared in the ORM "
-        "(was 12). If Nursing was reconciled, close NR-026."
+    assert "String(26), primary_key=True" not in models.replace('"', "'"), (
+        "a Nursing primary key is String(26) again; the physical key is INTEGER"
     )
     assert "encounter_id" not in _nursing_migration_source(), (
-        "the nursing migration now creates an encounter_id column; NR-026's second "
-        "half is resolved and this guard should be updated"
+        "the nursing migration now creates an encounter_id column; that is a "
+        "schema decision, not something this guard may absorb silently"
     )
 
 

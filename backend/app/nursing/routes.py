@@ -5,13 +5,16 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.database import get_db
 from app.models.lab_user import LabUser
-from app.nursing.clinical_read_gate import ClinicalNursingTaskReadDenied, ClinicalNursingTaskReadGate
+from app.nursing.clinical_read_gate import (
+    ClinicalNursingTaskReadDenied,
+    ClinicalNursingTaskReadGate,
+)
 from app.nursing.coordination import CareCoordinatorService
 from app.nursing.medication import MedicationAdminService
 from app.nursing.models import (
@@ -51,123 +54,147 @@ def _paginated_response(items: list, total: int, skip: int, limit: int) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 # Schemas
 # ══════════════════════════════════════════════════════════════════════════════
+#
+# BATCH-3 (NR-026). Every field below names a real column of the table the
+# request is written into, and every model forbids extras. Before this pass the
+# request models described a second, imaginary schema: 119 fields had no column
+# at all, and twelve tables had a NOT NULL column no caller could ever fill, so
+# each of those endpoints failed on its first INSERT. Silently dropping an
+# unknown clinical field would have been worse than the failure it replaced —
+# a caller would believe a pupil reaction or a wound stage had been recorded —
+# so anything the schema cannot store is now refused at the boundary and listed
+# in docs/architecture/nursing/NURSING_SCHEMA_RECONCILIATION_3.md as a schema
+# extension for review. All fifteen tables are empty, so no working client
+# depended on the shapes that changed.
 
 
-class AssignPatientRequest(BaseModel):
-    nurse_id: str
+class _NursingRequest(BaseModel):
+    """Reject a field the table has no column for instead of discarding it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class AssignPatientRequest(_NursingRequest):
+    nurse_id: int
     patient_id: int
     assignment_type: str = "primary"
-    department_id: int | None = None
-    encounter_id: str | None = None
+    shift_id: int | None = None
+    ward: str | None = None
+    bed_number: str | None = None
     notes: str | None = None
 
 
-class UnassignPatientRequest(BaseModel):
-    nurse_id: str
+class UnassignPatientRequest(_NursingRequest):
+    nurse_id: int
     patient_id: int
+    unassigned_reason: str | None = None
 
 
-class TaskCreate(BaseModel):
-    patient_id: int
-    encounter_id: str | None = None
-    assigned_to: str | None = None
+class TaskCreate(_NursingRequest):
+    patient_id: int | None = None
+    assigned_to: int | None = None
+    shift_id: int | None = None
     task_type: str
-    description: str
+    title: str
+    description: str | None = None
     priority: str = "medium"
     status: str = "pending"
-    scheduled_time: datetime | None = None
-    due_time: datetime | None = None
-    is_recurring: bool = False
-    recurrence_rule: dict[str, Any] | None = None
-    clinical_instruction: str | None = None
+    due_at: datetime | None = None
+    requires_witness: bool = False
     notes: str | None = None
 
 
-class TaskUpdate(BaseModel):
+class TaskUpdate(_NursingRequest):
+    title: str | None = None
     description: str | None = None
     priority: str | None = None
     status: str | None = None
-    scheduled_time: datetime | None = None
-    due_time: datetime | None = None
-    assigned_to: str | None = None
-    clinical_instruction: str | None = None
+    due_at: datetime | None = None
+    assigned_to: int | None = None
+    requires_witness: bool | None = None
     notes: str | None = None
 
 
-class TaskComplete(BaseModel):
-    patient_response: str | None = None
+class TaskComplete(_NursingRequest):
+    outcome: str | None = None
     notes: str | None = None
 
 
-class TaskDefer(BaseModel):
-    new_due_time: datetime | None = None
+class TaskDefer(_NursingRequest):
+    due_at: datetime | None = None
     reason: str | None = None
 
 
-class VitalSignsCreate(BaseModel):
+class VitalSignsCreate(_NursingRequest):
     patient_id: int
-    encounter_id: str | None = None
+    admission_id: int | None = None
     recorded_at: datetime | None = None
-    bp_systolic: int | None = None
-    bp_diastolic: int | None = None
+    temperature: float | None = None
+    temperature_unit: str | None = None
     heart_rate: int | None = None
     respiratory_rate: int | None = None
-    temperature: float | None = None
-    temperature_site: str | None = None
+    systolic_bp: int | None = None
+    diastolic_bp: int | None = None
+    bp_position: str | None = None
+    bp_cuff_size: str | None = None
     oxygen_saturation: float | None = None
-    oxygen_device: str | None = None
+    oxygen_therapy: str | None = None
     oxygen_flow_rate: float | None = None
-    height_cm: float | None = None
-    weight_kg: float | None = None
-    head_circumference_cm: float | None = None
+    blood_glucose: float | None = None
+    blood_glucose_unit: str | None = None
     pain_score: int | None = None
     consciousness_level: str | None = None
+    avpu_score: str | None = None
+    gcs_score: int | None = None
     gcs_eye: int | None = None
     gcs_verbal: int | None = None
     gcs_motor: int | None = None
-    pupil_left_size: float | None = None
-    pupil_left_reaction: str | None = None
-    pupil_right_size: float | None = None
-    pupil_right_reaction: str | None = None
-    blood_glucose: float | None = None
-    glucose_context: str | None = None
+    height_cm: float | None = None
+    weight_kg: float | None = None
+    bmi: float | None = None
+    head_circumference_cm: float | None = None
+    waist_circumference_cm: float | None = None
+    news2_score: int | None = None
+    meows_score: int | None = None
+    clinical_concern: bool | None = None
     notes: str | None = None
 
 
-class FluidBalanceCreate(BaseModel):
+class FluidBalanceCreate(_NursingRequest):
     patient_id: int
-    encounter_id: str | None = None
+    admission_id: int | None = None
     recorded_at: datetime | None = None
-    balance_type: str
+    fluid_type: str
     category: str
-    fluid_name: str | None = None
-    amount_ml: float
+    balance_type: str
     route: str | None = None
-    start_time: datetime | None = None
-    end_time: datetime | None = None
-    infusion_rate: float | None = None
-    bag_volume: float | None = None
-    bag_number: str | None = None
+    solution_name: str | None = None
+    volume_ml: float
+    rate_ml_per_hour: float | None = None
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    batch_number: str | None = None
+    witnessed_by: int | None = None
     notes: str | None = None
 
 
-class PainAssessmentCreate(BaseModel):
+class PainAssessmentCreate(_NursingRequest):
     patient_id: int
-    encounter_id: str | None = None
+    admission_id: int | None = None
     assessed_at: datetime | None = None
     pain_score: int
-    pain_level: str | None = None
+    pain_scale: str | None = None
     pain_location: str | None = None
+    pain_type: str | None = None
     pain_quality: str | None = None
-    pain_pattern: str | None = None
-    onset: str | None = None
-    duration: str | None = None
+    pain_duration: str | None = None
     aggravating_factors: str | None = None
     relieving_factors: str | None = None
+    interference_with_activity: str | None = None
     pain_goal: int | None = None
-    interventions_tried: str | None = None
-    effectiveness: str | None = None
-    non_verbal_indicators: str | None = None
+    intervention: str | None = None
+    intervention_response: str | None = None
+    reassessment_at: datetime | None = None
     notes: str | None = None
 
     @field_validator("pain_score")
@@ -178,178 +205,175 @@ class PainAssessmentCreate(BaseModel):
         return v
 
 
-class FallRiskCreate(BaseModel):
+class FallRiskCreate(_NursingRequest):
+    """The physical table is a scored risk tool (Morse), not a free-form form."""
+
     patient_id: int
-    encounter_id: str | None = None
+    admission_id: int | None = None
     assessed_at: datetime | None = None
+    assessment_tool: str | None = None
+    total_score: float
+    risk_level: str
+    history_of_falls: bool | None = None
+    secondary_diagnosis: bool | None = None
+    ambulatory_aid: bool | None = None
+    iv_therapy: bool | None = None
+    gait: str | None = None
+    mental_status: str | None = None
+    medication_risk: bool | None = None
+    environmental_factors: str | None = None
+    prevention_measures: str | None = None
+    reassessment_date: datetime | None = None
+    notes: str | None = None
+
+
+class PressureInjuryCreate(_NursingRequest):
+    """Braden-style risk scoring. Wound description has no column — see the
+    reconciliation document, section "schema extensions proposed"."""
+
+    patient_id: int
+    admission_id: int | None = None
+    assessed_at: datetime | None = None
+    assessment_tool: str | None = None
     total_score: int
     risk_level: str
-    age_ge_65: bool = False
-    fall_history_12mo: bool = False
-    secondary_condition: bool = False
-    assistive_device: bool = False
-    iv_or_heparin_lock: bool = False
-    gait_impaired: bool = False
-    mental_status: str | None = None
-    elimination: str | None = None
-    medications: str | None = None
-    interventions_ordered: list[str] | None = None
+    sensory_perception: int | None = None
+    moisture: int | None = None
+    activity: int | None = None
+    mobility: int | None = None
+    nutrition: int | None = None
+    friction_shear: int | None = None
+    existing_injuries: list[dict[str, Any]] | None = None
+    prevention_measures: str | None = None
+    reassessment_date: datetime | None = None
     notes: str | None = None
 
 
-class PressureInjuryCreate(BaseModel):
+class NutritionCreate(_NursingRequest):
     patient_id: int
-    encounter_id: str | None = None
+    admission_id: int | None = None
     assessed_at: datetime | None = None
-    stage: str
-    anatomical_location: str | None = None
-    length_cm: float | None = None
-    width_cm: float | None = None
-    depth_cm: float | None = None
-    wound_bed: str | None = None
-    exudate_type: str | None = None
-    exudate_amount: str | None = None
-    wound_edges: str | None = None
-    periwound_skin: str | None = None
-    infection_signs: list[str] | None = None
-    wound_culture: str | None = None
-    dressing_type: str | None = None
-    dressing_frequency: str | None = None
-    treatment_plan: str | None = None
-    photographs: list[str] | None = None
+    assessment_tool: str | None = None
+    total_score: float
+    risk_level: str
+    bmi: float | None = None
+    weight_change_percent: float | None = None
+    weight_change_period_days: int | None = None
+    acute_disease_effect: bool | None = None
+    food_intake: str | None = None
+    dietary_requirements: str | None = None
+    swallowing_difficulty: bool | None = None
+    nutritional_support: str | None = None
+    dietitian_referral: bool | None = None
+    reassessment_date: datetime | None = None
     notes: str | None = None
 
 
-class NutritionCreate(BaseModel):
+class CarePlanCreate(_NursingRequest):
     patient_id: int
-    encounter_id: str | None = None
-    assessed_at: datetime | None = None
-    nutrition_status: str
-    weight_kg: float | None = None
-    height_cm: float | None = None
-    usual_weight_kg: float | None = None
-    weight_change_1mo_kg: float | None = None
-    appetite: str | None = None
-    dietary_restrictions: list[str] | None = None
-    chewing_difficulty: bool = False
-    swallowing_difficulty: bool = False
-    dysphagia_risk: bool = False
-    fluid_restriction_ml: float | None = None
-    calorie_target_kcal: float | None = None
-    protein_target_g: float | None = None
-    feeding_method: str | None = None
-    supplements: list[str] | None = None
-    diet_type: str | None = None
-    notes: str | None = None
-
-
-class CarePlanCreate(BaseModel):
-    patient_id: int
-    encounter_id: str | None = None
-    nursing_diagnosis: str
+    admission_id: int | None = None
+    care_plan_type: str
+    title: str
+    nursing_diagnosis: str | None = None
     goals: list[dict[str, Any]] = []
     interventions: list[dict[str, Any]] = []
-    evaluation: str | None = None
+    expected_outcomes: list[dict[str, Any]] | None = None
     start_date: datetime
     review_date: datetime | None = None
-    next_review: datetime | None = None
     status: str = "active"
     notes: str | None = None
 
 
-class CarePlanUpdate(BaseModel):
+class CarePlanUpdate(_NursingRequest):
+    title: str | None = None
     nursing_diagnosis: str | None = None
     goals: list[dict[str, Any]] | None = None
     interventions: list[dict[str, Any]] | None = None
-    evaluation: str | None = None
+    expected_outcomes: list[dict[str, Any]] | None = None
     review_date: datetime | None = None
-    next_review: datetime | None = None
     status: str | None = None
+    outcome: str | None = None
     notes: str | None = None
 
 
-class NursingNoteCreate(BaseModel):
+class NursingNoteCreate(_NursingRequest):
     patient_id: int
-    encounter_id: str | None = None
-    shift_id: str | None = None
+    admission_id: int | None = None
     note_type: str
-    subjective: str | None = None
-    objective: str | None = None
-    assessment: str | None = None
-    intervention: str | None = None
-    response: str | None = None
-    evaluation: str | None = None
-    plan: str | None = None
-    attachments: list[dict[str, Any]] | None = None
-    patient_education: str | None = None
+    title: str | None = None
+    content: str
+    tags: list[str] | None = None
     is_confidential: bool = False
 
 
-class ShiftStartRequest(BaseModel):
+class ShiftStartRequest(_NursingRequest):
     shift_type: str
     shift_date: date
-    department_id: int | None = None
-    patient_count: int = 0
-    assigned_patients: list[int] | None = None
+    ward: str | None = None
+    department: str | None = None
     notes: str | None = None
 
 
-class ShiftEndRequest(BaseModel):
-    shift_id: str
+class ShiftEndRequest(_NursingRequest):
+    shift_id: int
 
 
-class HandoverCreate(BaseModel):
-    from_shift_id: str | None = None
-    to_shift_id: str | None = None
-    from_nurse_id: str
-    to_nurse_id: str
-    handover_type: str
-    shift_date: date
-    patient_summaries: list[dict[str, Any]] = []
-    pending_tasks: list[dict[str, Any]] = []
-    critical_alerts: list[dict[str, Any]] = []
-    medication_changes: list[dict[str, Any]] = []
-    equipment_issues: list[dict[str, Any]] = []
-    staffing_issues: str | None = None
+class HandoverCreate(_NursingRequest):
+    from_shift_id: int
+    to_shift_id: int | None = None
+    from_nurse_id: int | None = None
+    to_nurse_id: int | None = None
+    patient_summary: str | None = None
+    critical_events: list[dict[str, Any]] | None = None
+    pending_tasks: list[dict[str, Any]] | None = None
+    medication_changes: list[dict[str, Any]] | None = None
+    equipment_issues: list[dict[str, Any]] | None = None
+    follow_up_required: str | None = None
     notes: str | None = None
 
 
-class ChecklistCreate(BaseModel):
-    patient_id: int
-    encounter_id: str | None = None
+class ChecklistCreate(_NursingRequest):
+    patient_id: int | None = None
+    shift_id: int | None = None
     checklist_type: str
+    title: str
     items: list[dict[str, Any]] = []
-    status: str = "draft"
+    status: str = "in_progress"
+    assigned_to: int | None = None
     notes: str | None = None
 
 
-class ChecklistItemUpdate(BaseModel):
+class ChecklistItemUpdate(_NursingRequest):
     completed: bool
 
 
-class DelegationCreate(BaseModel):
-    task_id: str | None = None
-    delegated_to: str
-    reason: str | None = None
-    scope_notes: str | None = None
-    supervising_instructions: str | None = None
-
-
-class EscalationCreate(BaseModel):
-    patient_id: int
-    encounter_id: str | None = None
-    escalated_to: str | None = None
-    reason: str
-    severity: str
-    category: str
+class DelegationCreate(_NursingRequest):
+    patient_id: int | None = None
+    delegated_to: int
+    task_type: str
+    description: str
+    requires_supervision: bool | None = None
+    supervised_by: int | None = None
     notes: str | None = None
 
 
-class EscalationResolve(BaseModel):
-    resolution: str | None = None
+class EscalationCreate(_NursingRequest):
+    patient_id: int
+    admission_id: int | None = None
+    escalated_to: int | None = None
+    escalation_level: str
+    reason: str
+    clinical_context: str | None = None
+    vital_signs_summary: dict[str, Any] | None = None
+    ews_score: int | None = None
 
 
-class MedicationVerifyRequest(BaseModel):
+class EscalationResolve(_NursingRequest):
+    resolution_notes: str | None = None
+    outcome: str | None = None
+
+
+class MedicationVerifyRequest(_NursingRequest):
     right_patient: bool = False
     right_drug: bool = False
     right_dose: bool = False
@@ -357,7 +381,7 @@ class MedicationVerifyRequest(BaseModel):
     right_time: bool = False
 
 
-class MedicationAdminRecord(BaseModel):
+class MedicationAdminRecord(_NursingRequest):
     medication_request_id: str | None = None
     patient_id: int
     encounter_id: str | None = None
@@ -376,11 +400,11 @@ class MedicationAdminRecord(BaseModel):
     note: str | None = None
 
 
-class MedicationSignRequest(BaseModel):
+class MedicationSignRequest(_NursingRequest):
     medication_admin_id: str
 
 
-class PhysicianMessageRequest(BaseModel):
+class PhysicianMessageRequest(_NursingRequest):
     physician_id: str
     patient_id: int
     subject: str
@@ -388,44 +412,44 @@ class PhysicianMessageRequest(BaseModel):
     priority: str = "normal"
 
 
-class LabRequest(BaseModel):
+class LabRequest(_NursingRequest):
     patient_id: int
     tests: list[dict[str, Any]]
 
 
-class RadiologyRequest(BaseModel):
+class RadiologyRequest(_NursingRequest):
     patient_id: int
     exam_type: str
     urgency: str = "routine"
 
 
-class PharmacyRequest(BaseModel):
+class PharmacyRequest(_NursingRequest):
     patient_id: int
     medication: str
     dose: str
     route: str
 
 
-class ReferralRequest(BaseModel):
+class ReferralRequest(_NursingRequest):
     patient_id: int
     to_specialty: str
     reason: str
     urgency: str = "routine"
 
 
-class DischargePlanRequest(BaseModel):
+class DischargePlanRequest(_NursingRequest):
     patient_id: int
     expected_date: date
     discharge_needs: dict[str, Any] | None = None
 
 
-class FamilyCommunicationRequest(BaseModel):
+class FamilyCommunicationRequest(_NursingRequest):
     patient_id: int
     family_contact: str
     message: str
 
 
-class HomeCareHandoverRequest(BaseModel):
+class HomeCareHandoverRequest(_NursingRequest):
     patient_id: int
     home_care_provider: str
     summary: str
@@ -441,7 +465,7 @@ def nurse_dashboard(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    return NursingService.get_nurse_dashboard(db, current_user.lab_id, str(current_user.id))
+    return NursingService.get_nurse_dashboard(db, current_user.lab_id, current_user.id)
 
 
 @router.get("/dashboard/shift-summary", summary="Active shift summary")
@@ -450,7 +474,7 @@ def shift_summary(
     db: Session = Depends(get_db),
 ):
     shift = db.query(NursingShift).filter(
-        NursingShift.nurse_id == str(current_user.id),
+        NursingShift.nurse_id == current_user.id,
         NursingShift.end_time.is_(None),
         NursingShift.lab_id == current_user.lab_id,
     ).first()
@@ -466,11 +490,11 @@ def shift_summary(
 
 @router.get("/patients", summary="Assigned patients")
 def list_assigned_patients(
-    nurse_id: str | None = Query(None),
+    nurse_id: int | None = Query(None),
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    nurse = nurse_id or str(current_user.id)
+    nurse = nurse_id if nurse_id is not None else current_user.id
     return NursingService.get_assigned_patients(db, current_user.lab_id, nurse)
 
 
@@ -483,7 +507,7 @@ def assign_patient(
     assignment = NursingService.assign_patient(
         db, current_user.lab_id, current_user.id,
         body.nurse_id, body.patient_id, body.assignment_type,
-        body.department_id, body.encounter_id, body.notes,
+        body.shift_id, body.ward, body.bed_number, body.notes,
     )
     return _model_to_dict(assignment)
 
@@ -494,7 +518,10 @@ def unassign_patient(
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    NursingService.unassign_patient(db, current_user.lab_id, current_user.id, body.nurse_id, body.patient_id)
+    NursingService.unassign_patient(
+        db, current_user.lab_id, current_user.id,
+        body.nurse_id, body.patient_id, body.unassigned_reason,
+    )
     return {"detail": "Patient unassigned", "detail_ar": "تم إلغاء تعيين المريض"}
 
 
@@ -505,7 +532,7 @@ def unassign_patient(
 
 @router.get("/tasks", summary="List nursing tasks")
 def list_tasks(
-    assigned_to: str | None = Query(None),
+    assigned_to: int | None = Query(None),
     patient_id: int | None = Query(None),
     status: str | None = Query(None),
     task_type: str | None = Query(None),
@@ -545,7 +572,7 @@ def list_clinical_my_tasks(
     tasks = NursingService.get_tasks(
         db=db,
         lab_id=current_user.lab_id,
-        nurse_id=str(current_user.id),
+        nurse_id=current_user.id,
         limit=50,
     )
     return _paginated_response([_model_to_dict(task) for task in tasks], len(tasks), 0, 50)
@@ -563,7 +590,7 @@ def create_task(
 
 @router.put("/tasks/{task_id}", summary="Update nursing task")
 def update_task(
-    task_id: str,
+    task_id: int,
     body: TaskUpdate,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -577,26 +604,26 @@ def update_task(
 
 @router.put("/tasks/{task_id}/complete", summary="Complete nursing task")
 def complete_task(
-    task_id: str,
+    task_id: int,
     body: TaskComplete,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     task = NursingService.complete_task(
-        db, current_user.lab_id, current_user.id, task_id, body.patient_response, body.notes,
+        db, current_user.lab_id, current_user.id, task_id, body.outcome, body.notes,
     )
     return _model_to_dict(task)
 
 
 @router.put("/tasks/{task_id}/defer", summary="Defer nursing task")
 def defer_task(
-    task_id: str,
+    task_id: int,
     body: TaskDefer,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     task = NursingService.defer_task(
-        db, current_user.lab_id, current_user.id, task_id, body.new_due_time, body.reason,
+        db, current_user.lab_id, current_user.id, task_id, body.due_at, body.reason,
     )
     return _model_to_dict(task)
 
@@ -608,12 +635,12 @@ def list_overdue_tasks(
 ):
     now = datetime.now(UTC)
     tasks = db.query(NursingTask).filter(
-        NursingTask.assigned_to == str(current_user.id),
+        NursingTask.assigned_to == current_user.id,
         NursingTask.status.in_(["pending", "in_progress"]),
-        NursingTask.due_time <= now,
+        NursingTask.due_at <= now,
         NursingTask.lab_id == current_user.lab_id,
         ~NursingTask.is_deleted,
-    ).order_by(NursingTask.due_time.asc()).all()
+    ).order_by(NursingTask.due_at.asc()).all()
     return {"items": [_model_to_dict(t) for t in tasks], "total": len(tasks)}
 
 
@@ -639,7 +666,7 @@ def record_vital_signs(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data["recorded_by"] = str(current_user.id)
+    data["recorded_by"] = current_user.id
     if "recorded_at" not in data:
         data["recorded_at"] = datetime.now(UTC)
     record = NursingService.record_vital_signs(db, current_user.lab_id, current_user.id, data)
@@ -690,7 +717,7 @@ def record_fluid_balance(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data["recorded_by"] = str(current_user.id)
+    data["recorded_by"] = current_user.id
     rec = NursingService.record_fluid_balance(db, current_user.lab_id, current_user.id, data)
     return _model_to_dict(rec)
 
@@ -729,7 +756,7 @@ def assess_pain(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data["assessed_by"] = str(current_user.id)
+    data["assessed_by"] = current_user.id
     assessment = NursingService.assess_pain(db, current_user.lab_id, current_user.id, data)
     return _model_to_dict(assessment)
 
@@ -752,7 +779,7 @@ def assess_fall_risk(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data["assessed_by"] = str(current_user.id)
+    data["assessed_by"] = current_user.id
     assessment = NursingService.assess_fall_risk(db, current_user.lab_id, current_user.id, data)
     return _model_to_dict(assessment)
 
@@ -775,7 +802,7 @@ def assess_pressure_injury(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data["assessed_by"] = str(current_user.id)
+    data["assessed_by"] = current_user.id
     assessment = NursingService.assess_pressure_injury(db, current_user.lab_id, current_user.id, data)
     return _model_to_dict(assessment)
 
@@ -798,7 +825,7 @@ def assess_nutrition(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data["assessed_by"] = str(current_user.id)
+    data["assessed_by"] = current_user.id
     assessment = NursingService.assess_nutrition(db, current_user.lab_id, current_user.id, data)
     return _model_to_dict(assessment)
 
@@ -836,14 +863,14 @@ def create_care_plan(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data["created_by"] = str(current_user.id)
+    data.pop("created_by", None)
     plan = NursingService.create_care_plan(db, current_user.lab_id, current_user.id, data)
     return _model_to_dict(plan)
 
 
 @router.put("/care-plans/{plan_id}", summary="Update care plan")
 def update_care_plan(
-    plan_id: str,
+    plan_id: int,
     body: CarePlanUpdate,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -867,8 +894,8 @@ def create_nursing_note(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data["documented_by"] = str(current_user.id)
-    data["documentation_time"] = datetime.now(UTC)
+    data["written_by"] = current_user.id
+    data["written_at"] = datetime.now(UTC)
     note = NursingService.create_nursing_note(db, current_user.lab_id, current_user.id, data)
     return _model_to_dict(note)
 
@@ -887,7 +914,7 @@ def get_nursing_notes(
 
 @router.get("/notes/detail/{note_id}", summary="Get nursing note by ID")
 def get_nursing_note(
-    note_id: str,
+    note_id: int,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -907,8 +934,6 @@ def start_shift(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data.setdefault("nurse_id", str(current_user.id))
-    data["start_time"] = datetime.now(UTC)
     shift = NursingService.start_shift(db, current_user.lab_id, current_user.id, data)
     return _model_to_dict(shift)
 
@@ -947,7 +972,7 @@ def list_handovers(
 
 @router.get("/handover/{handover_id}", summary="Get handover by ID")
 def get_handover(
-    handover_id: str,
+    handover_id: int,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -963,7 +988,7 @@ def get_handover(
 
 @router.put("/handover/{handover_id}/complete", summary="Complete shift handover")
 def complete_handover(
-    handover_id: str,
+    handover_id: int,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -983,7 +1008,7 @@ def create_checklist(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data["created_by"] = str(current_user.id)
+    data.pop("created_by", None)
     checklist = NursingService.create_checklist(db, current_user.lab_id, current_user.id, data)
     return _model_to_dict(checklist)
 
@@ -1000,7 +1025,7 @@ def get_checklists(
 
 @router.put("/checklists/{checklist_id}/items/{item_idx}", summary="Update checklist item")
 def update_checklist_item(
-    checklist_id: str,
+    checklist_id: int,
     item_idx: int,
     body: ChecklistItemUpdate,
     current_user: LabUser = Depends(get_current_user),
@@ -1046,7 +1071,7 @@ def list_delegations(
 
 @router.put("/delegations/{delegation_id}/accept", summary="Accept delegation")
 def accept_delegation(
-    delegation_id: str,
+    delegation_id: int,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1056,7 +1081,7 @@ def accept_delegation(
 
 @router.put("/delegations/{delegation_id}/complete", summary="Complete delegation")
 def complete_delegation(
-    delegation_id: str,
+    delegation_id: int,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1093,7 +1118,7 @@ def list_escalations(
 
 @router.put("/escalations/{escalation_id}/acknowledge", summary="Acknowledge escalation")
 def acknowledge_escalation(
-    escalation_id: str,
+    escalation_id: int,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -1103,13 +1128,14 @@ def acknowledge_escalation(
 
 @router.put("/escalations/{escalation_id}/resolve", summary="Resolve escalation")
 def resolve_escalation(
-    escalation_id: str,
+    escalation_id: int,
     body: EscalationResolve,
     current_user: LabUser = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     escalation = NursingService.resolve_escalation(
-        db, current_user.lab_id, current_user.id, escalation_id, body.resolution,
+        db, current_user.lab_id, current_user.id, escalation_id,
+        body.resolution_notes, body.outcome,
     )
     return _model_to_dict(escalation)
 
@@ -1177,7 +1203,7 @@ def record_medication_admin(
     db: Session = Depends(get_db),
 ):
     data = body.model_dump(exclude_none=True)
-    data["administrator_id"] = str(current_user.id)
+    data["administrator_id"] = current_user.id
     admin = MedicationAdminService.record_administration(db, current_user.lab_id, current_user.id, data)
     return _model_to_dict(admin)
 
@@ -1189,7 +1215,7 @@ def sign_medication_admin(
     db: Session = Depends(get_db),
 ):
     return MedicationAdminService.electronic_signature(
-        db, current_user.lab_id, str(current_user.id), body.medication_admin_id,
+        db, current_user.lab_id, current_user.id, body.medication_admin_id,
     )
 
 
