@@ -25,11 +25,11 @@ and `docs/adr/`.
 
 | Severity  | Count | Fixed | Open |
 | --------- | ----- | ----- | ---- |
-| P0        | 9     | 5     | 4    |
+| P0        | 10     | 5     | 5    |
 | P1        | 10     | 6     | 4    |
 | P2        | 9     | 0     | 9    |
 | P3        | 5     | 0     | 5    |
-| **Total** | **33** | **11** | **22** |
+| **Total** | **34** | **11** | **23** |
 
 _Counts are generated from the JSON companion; the table above had drifted
 since the first pass and now reflects all findings, not one session's._
@@ -71,8 +71,9 @@ since the first pass and now reflects all findings, not one session's._
 | NR-029 | P1  | Identity Platform | Three foreign keys named the ORM class instead of its table | FIXED — VERIFIED |
 | NR-030 | P1  | Platform Migrations | Twelve physical tables are mapped by no ORM class | PARTIALLY VERIFIED — all 12 classified and named |
 | NR-031 | P1  | Blood Bank | `POST /samples/{id}/transition` required an Idempotency-Key and discarded it | FIXED — VERIFIED |
-| NR-032 | P0  | EHR Platform | Four Nursing medication endpoints query `ehr_medication_*`; zero `ehr_*` tables exist at head | OPEN — SCHEMA DECISION REQUIRED |
-| NR-033 | P2  | Nursing Platform | The eight `/nursing/coordination/*` endpoints persist nothing — audit entry only, no table | OPEN — PRODUCT DECISION REQUIRED |
+| NR-032 | P0  | Medication (platform-wide) | Nine modules across five domains depend on `ehr_medication_*`; zero `ehr_*` tables exist | OPEN — OWNERSHIP DECIDED (BATCH-3.1), EXECUTION NEEDS APPROVAL |
+| NR-033 | P2  | Nursing Platform | The eight `/nursing/coordination/*` endpoints persist nothing — audit entry only, no table | OPEN — ALL EIGHT CLASSIFIED (BATCH-3.1) |
+| NR-034 | P0  | Pharmacy | A point-of-sale sale naming a patient writes an EHR `MedicationDispense` and cannot commit | OPEN — CONFIRMED, FIX SCOPED |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.

@@ -5,9 +5,9 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 33,
+    "total": 34,
     "by_severity": {
-      "P0": 9,
+      "P0": 10,
       "P1": 10,
       "P2": 9,
       "P3": 5
@@ -1200,23 +1200,27 @@
     {
       "id": "NR-032",
       "category": "Schema drift",
-      "domain": "EHR Platform",
+      "domain": "Medication (platform-wide)",
       "severity": "P0",
       "priority": 32,
-      "status": "OPEN — SCHEMA DECISION REQUIRED",
+      "status": "OPEN — CANONICAL OWNERSHIP DECIDED (BATCH-3.1); EXECUTION REQUIRES APPROVAL",
       "blocker": true,
       "can_fix_now": false,
-      "title": "Four Nursing medication endpoints query EHR tables that do not exist",
-      "description": "MedicationAdminService reads and writes app.ehr.models.medication, whose four models declare ehr_medication_statements, ehr_medication_requests, ehr_medication_dispenses and ehr_medication_administrations. A database at head contains 423 tables and zero beginning with ehr_. The four endpoints /nursing/medication-schedule/{patient_id}, /nursing/medication-schedule/{patient_id}/missed-doses, /nursing/medication-alerts/{patient_id} and /nursing/medication-admin/record therefore raise UndefinedTable.",
+      "title": "Nine modules across five domains depend on EHR medication tables that were never built",
+      "description": "Recorded in BATCH-3 as a Nursing finding. It is not: nine modules import app.ehr.models.medication — Nursing (2), Pharmacy, the Citizen Platform (2), two National FHIR exporters, the National Data canonical-medication view and the EHR re-export. No ehr_* table exists at head and no migration creates one.",
       "root_cause": "The same Generation-A/Generation-B split as NR-026, in a domain not yet reconciled: EHR ORM models exist with no migration that builds them.",
-      "evidence": "Executed against PostgreSQL at head 20260912_0001: SELECT on information_schema.tables for table_name LIKE 'ehr%' returns zero rows. app/ehr/models/medication.py lines 23, 68, 121, 172 declare the four __tablename__ values.",
+      "evidence": "Executed at head 20260912_0001: zero tables matching 'ehr%' among 423; ORM SELECT on MedicationRequest and MedicationAdministration both raise UndefinedTable; none of national_patients/citizens/encounters/practitioners exists (NR-022), and every ehr_medication_* model declares real ForeignKeys to them; no ehr_medication_* model has a lab_id column although six caller sites filter on one; all four are String(26)-keyed against INTEGER-keyed Pharmacy and Nursing. Pinned by backend/tests/test_ehr_medication_dependency_p0.py (10 tests).",
       "affected_components": "backend/app/ehr/models/medication.py, backend/app/nursing/medication.py, backend/app/nursing/routes.py",
       "clinical_impact": "Medication administration recording and the five-rights record are unavailable to nurses. Five-rights verification itself is pure computation and still works.",
       "security_impact": "None directly.",
       "data_integrity_impact": "No data can be lost because none can be written.",
       "recommended_fix": "Decide whether the EHR medication tables are adopted (a migration) or the four endpoints are withdrawn. Do not create the tables without approval.",
       "discovered_by": "BATCH-3, reconciling the Nursing routes",
-      "owner": "EHR + Clinical Standards"
+      "owner": "EHR + Clinical Standards",
+      "decision": "B + C, not A. Prescribing and dispensing already have a built, lab-scoped, INTEGER-keyed owner in Pharmacy (pharmacy_prescriptions, pharmacy_prescription_items, pharmacy_dispense_records, pharmacy_drug_catalog), so Nursing must CONSUME Pharmacy for the schedule and alert endpoints. Medication ADMINISTRATION has no owner in any built domain and is a bedside nursing act, so Nursing owns it via one additive nursing_medication_administrations table following the fifteen reconciled tables' pattern. ehr_medication_* stays BLOCKED behind NR-022 and must not be built to make an endpoint run.",
+      "artifact": "docs/architecture/nursing-medication-ownership.md",
+      "frontend_impact": "none — no caller of the four routes exists in frontend-v3, mobile, mobile-expo or client",
+      "next_batch": "MED-001"
     },
     {
       "id": "NR-033",
@@ -1224,19 +1228,60 @@
       "domain": "Nursing Platform",
       "severity": "P2",
       "priority": 33,
-      "status": "OPEN — PRODUCT DECISION REQUIRED",
+      "status": "OPEN — ALL EIGHT CLASSIFIED (BATCH-3.1); EXECUTION DEFERRED",
       "blocker": false,
       "can_fix_now": false,
       "title": "The eight Nursing coordination endpoints persist nothing",
       "description": "CareCoordinatorService builds a dictionary, writes one audit entry and returns the dictionary. There is no physician-message, lab-request, radiology-request, pharmacy-request, referral, discharge-plan, family-communication or home-care-handover table. A referral raised through /nursing/coordination/referral cannot be listed, actioned or tracked; the only record is the audit chain.",
       "root_cause": "The endpoints were written against an intended persistence layer that was never built.",
-      "evidence": "Read of app/nursing/coordination.py: all eight methods construct a dict and call log_action. No coordination table exists at head.",
+      "evidence": "All eight build a dict, write one audit entry and return it. Each asserts a status (sent, pending, ordered, created, planned, handed_over) that nothing can advance. Canonical owners verified against the physical schema, not names: nhdw_hospital_messages, lab_orders, radiology_orders, pharmacy_prescriptions and nhdw_discharges all exist, are lab-scoped and INTEGER-keyed, and have ORM owners. No table exists for referral, family communication or home-care handover. Zero frontend consumers.",
       "affected_components": "backend/app/nursing/coordination.py, backend/app/nursing/routes.py",
       "clinical_impact": "A nurse can raise a referral or message a physician and receive 200, with nothing for the recipient to act on.",
       "note": "Until BATCH-3 these eight endpoints raised on every call: their log_action arguments were miscalled, so psycopg2 was handed a dict for lab_id. They now execute as designed. Whether audit-entry-only IS the design is the open question.",
       "recommended_fix": "Decide: build the coordination tables, route to an existing domain (orders, notifications), or withdraw the endpoints.",
       "discovered_by": "BATCH-3, reconciling the Nursing routes",
-      "owner": "Clinical Standards + Product"
+      "owner": "Clinical Standards + Product",
+      "classification": {
+        "MOVE_TO_EXISTING_DOMAIN": {
+          "physician-message": "nhdw_hospital_messages",
+          "lab-request": "lab_orders",
+          "radiology-request": "radiology_orders",
+          "pharmacy-request": "pharmacy_prescriptions (after MED-001)",
+          "discharge-plan": "nhdw_discharges — PARTIALLY VERIFIED: plan vs event is a clinical-owner decision"
+        },
+        "PERSIST_IN_NURSING": {
+          "family-communication": "a nursing_notes row with a dedicated note_type"
+        },
+        "BLOCKED": {
+          "referral": "crosses an organisation boundary — needs NR-006",
+          "home-care-handover": "crosses to an external provider — needs NR-006"
+        },
+        "KEEP_AS_STATELESS": {}
+      },
+      "artifact": "docs/architecture/nursing-coordination-ownership.md",
+      "next_batch": "COORD-001"
+    },
+    {
+      "id": "NR-034",
+      "category": "Schema drift",
+      "domain": "Pharmacy",
+      "severity": "P0",
+      "priority": 34,
+      "status": "OPEN — CONFIRMED, FIX SCOPED",
+      "blocker": true,
+      "can_fix_now": false,
+      "title": "A pharmacy point-of-sale sale naming a patient writes to a table that does not exist",
+      "description": "PharmacyService.create_pos_sale builds an EHR MedicationDispense for every sale line whenever the caller supplies patient_id or citizen_id, and the POS request model accepts both. The INSERT targets ehr_medication_dispenses, which does not exist, so the sale cannot commit. Sales without a patient context are unaffected, which is why the existing POS tests pass and CI is green.",
+      "root_cause": "The POS path was written against the EHR medication domain while Pharmacy already owns pharmacy_dispense_records. Two dispensing models, one of them unbuilt.",
+      "evidence": "app/pharmacy/services.py imports MedicationDispense and constructs it under `if record_patient_id:`; app/pharmacy/routes.py exposes patient_id and citizen_id on the POS sale request. to_regclass('public.ehr_medication_dispenses') is NULL at head. Pinned by test_pharmacy_point_of_sale_writes_to_a_table_that_does_not_exist.",
+      "affected_components": "backend/app/pharmacy/services.py, backend/app/pharmacy/routes.py",
+      "clinical_impact": "A dispense cannot be recorded against a named patient at the point of sale.",
+      "data_integrity_impact": "No data is lost — the transaction fails before commit.",
+      "security_impact": "None directly; the EHR model carries no lab_id, so building it as declared would remove tenant scoping from this path.",
+      "recommended_fix": "Write the dispense to pharmacy_dispense_records, which is built, lab-scoped and INTEGER-keyed. No schema change. Sequence it first in MED-001.",
+      "discovered_by": "BATCH-3.1, tracing NR-032 ownership",
+      "owner": "Pharmacy",
+      "artifact": "docs/architecture/nursing-medication-ownership.md"
     }
   ]
 }
