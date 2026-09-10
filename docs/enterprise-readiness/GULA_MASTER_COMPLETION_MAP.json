@@ -1,6 +1,6 @@
 {
   "document": "GULA_MASTER_COMPLETION_MAP",
-  "version": 3,
+  "version": 4,
   "generated": "2026-09-10",
   "head_commit": "1d62d57de21dd547fcf9c6100896eeee0e045881",
   "branch": "claude/p0-2-pharmacy-reconciliation",
@@ -1111,5 +1111,25 @@
         "evidence": "zero ORM tables; 118 operations correctly resolve to no table"
       }
     ]
+  },
+  "batch_3_prep": {
+    "nr_021": "FIXED — VERIFIED (9 methods scoped, 7 tests, proven to catch the defect)",
+    "nr_018": "PARTIALLY FIXED — 8 bases registered, GULA-ARCH-002 10 -> 2; zero-diff proof BLOCKED by NR-023",
+    "nr_023": "NEW P0 — alembic autogenerate cannot run at all; predates the registrations",
+    "nr_007": "CONFIRMED with measurement — 4 colliding states, 28 synthetic keys; needs a clinical owner",
+    "canonical_patient": "Core patients",
+    "canonical_facility": "Core Facility",
+    "practitioner_owner": "UNDECIDED",
+    "encounter_owner": "UNDECIDED",
+    "batch_grouping": {
+      "B5_CLINICAL_RECORD": 45,
+      "B9_DEFERRED_UNTIL_DOMAIN_IMPLEMENTED": 79,
+      "B7_GOVERNANCE_AND_DATA": 79,
+      "B8_HOSPITAL": 9,
+      "B4_NATIONAL_PLATFORM": 29,
+      "B3_NATIONAL_CORE": 5,
+      "B6_CARE_CONTINUITY": 47
+    },
+    "spec": "docs/enterprise-readiness/GULA_BATCH_3_NATIONAL_CORE_SPEC.{md,json}"
   }
 }

@@ -1,11 +1,51 @@
 # GULA Master Completion Map
 
-**Version 3 · generated 2026-09-10 · branch `claude/p0-2-pharmacy-reconciliation`**
+**Version 4 · generated 2026-09-10 · branch `claude/p0-2-pharmacy-reconciliation`**
 **`production_ready: false`**
 
 Machine-readable companion: `GULA_MASTER_COMPLETION_MAP.json` (same directory).
 Update both after every batch. This is an inventory, not a plan of record for
 features — it says what exists and what is proven, nothing about what should.
+
+## 0. P0 fix and canonical decisions — complete
+
+**NR-021 is FIXED and verified.** Two corrections to how it was first recorded:
+the router *does* enforce `require_permission("system:admin")` globally, so the
+exposure was across laboratories for admin holders rather than every
+authenticated user; and the scope was **wider** than first found — nine
+route-reachable methods queried without a tenant filter, on tables that all
+carry `lab_id`. The service now takes a server-supplied `lab_id`, fails closed
+when it is absent, and strips client-supplied `lab_id` from payloads. Proven to
+catch the defect: with the scoping neutered, 5 of 7 new tests fail.
+
+**NR-018 is PARTIALLY fixed.** Eight bases registered; GULA-ARCH-002 falls from
+10 findings to 2, and the two that remain are the authorised exclusions
+(insurance DEFER, task_engine RETIRE). Duplicate-ownership verified by MetaData
+identity. **The zero-diff proof could not be obtained** — see NR-023 — so it is
+not claimed.
+
+**NR-023 is new and P0.** `alembic revision --autogenerate` cannot run at all:
+it fails on `ehr_allergies.practitioner_id → national_practitioners`, a table no
+metadata defines. Reproduced identically before the NR-018 registrations, so it
+predates them. This plausibly explains why 402 tables have no physical schema —
+**the tool that would create them does not work**, and every migration in the
+chain must have been written by hand. Same root cause as NR-022.
+
+**NR-007 is confirmed with measurement.** Four state values are shared by more
+than one entity enum (`completed`, `in_progress`, `expired`, `discarded`), three
+of them keys in the shared table — so a donation in progress is validated
+against transfusion rules. Twenty-eight table keys are not any enum value at
+all: synthetic names invented to dodge collisions. NR-004 and NR-020 were both
+instances. Remediation needs a clinical owner to attribute states to entities.
+
+**Canonical decisions recorded:** Core Patient and Core Facility are canonical;
+national equivalents are projections or retired. Practitioner and Encounter
+remain open.
+
+**The 293 missing tables are grouped** into B3 national core (5), B4 national
+platform (29), B5 clinical record (45), B6 care continuity (47), B7 governance
+and data (79), B8 hospital (9), B9 deferred until their domain exists (79).
+See `GULA_BATCH_3_NATIONAL_CORE_SPEC.md`.
 
 ## 0. BATCH-2 (canonical disposition) — complete
 

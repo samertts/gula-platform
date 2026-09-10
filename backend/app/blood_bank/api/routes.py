@@ -67,14 +67,24 @@ def _raise_blood_error(error: Exception) -> None:
     raise error
 
 
-def _get_service(db: Session = Depends(get_db)) -> BloodBankService:
+def _get_service(
+    db: Session = Depends(get_db),
+    current_user: LabUser = Depends(get_current_user),
+) -> BloodBankService:
+    """Build the service already bound to the caller's laboratory.
+
+    The tenant context comes from the authenticated user through the same
+    _lab_id helper the row-locked routes already use, never from the request
+    body or a query parameter. Before this, the service had no tenant context
+    at all and every listing crossed laboratories (NR-021).
+    """
     try:
         from app.kernel import Kernel
         kernel = Kernel.get_instance()
         event_bus = kernel.event_bus if hasattr(kernel, "event_bus") else None
     except Exception:
         event_bus = None
-    return BloodBankService(db=db, event_bus=event_bus)
+    return BloodBankService(db=db, event_bus=event_bus, lab_id=_lab_id(current_user))
 
 
 # ---- Donor Management ----

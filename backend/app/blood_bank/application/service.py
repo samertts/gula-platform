@@ -59,9 +59,42 @@ from app.national.events.base import NationalDomainEvent
 
 
 class BloodBankService:
-    def __init__(self, db: Session, event_bus: Any = None):
+    def __init__(self, db: Session, event_bus: Any = None, lab_id: int | None = None):
         self.db = db
         self.event_bus = event_bus
+        # Server-authoritative tenant context. Every blood bank table carries
+        # lab_id, so every unscoped query is a cross-tenant read (NR-021).
+        self.lab_id = lab_id
+
+    def _require_lab(self) -> int:
+        """The caller's laboratory, or refuse.
+
+        Fails closed on purpose: returning every laboratory's rows when the
+        tenant context is missing is precisely the defect this replaces.
+        """
+        if not isinstance(self.lab_id, int) or self.lab_id <= 0:
+            raise BloodBankValidationError(
+                "Blood bank operations require an authenticated laboratory context"
+            )
+        return self.lab_id
+
+    def _scoped(self, model: Any) -> Any:
+        """A query already filtered to the caller's laboratory."""
+        return self.db.query(model).filter(model.lab_id == self._require_lab())
+
+    def _owned(self, data: dict[str, Any], model: Any) -> dict[str, Any]:
+        """Client payload with tenant ownership decided by the server.
+
+        A raw request dict was mass-assigned onto models that carry lab_id, so
+        a caller could attribute a row to another laboratory. lab_id is dropped
+        from the payload and set from the authenticated context instead.
+        """
+        cleaned = {
+            k: v for k, v in data.items()
+            if hasattr(model, k) and k not in {"lab_id", "id"}
+        }
+        cleaned["lab_id"] = self._require_lab()
+        return cleaned
 
     def _emit(self, event: NationalDomainEvent) -> None:
         if self.event_bus:
@@ -70,14 +103,14 @@ class BloodBankService:
     # ---- Donor Management ----
 
     def register_donor(self, data: dict[str, Any]) -> BloodDonor:
-        existing = self.db.query(BloodDonorModel).filter(
+        existing = self._scoped(BloodDonorModel).filter(
             BloodDonorModel.citizen_id == data.get("citizen_id", ""),
             BloodDonorModel.is_deleted.isnot(True),
         ).first()
         if existing:
             existing.status = DonorStatus.ACTIVE.value
             return self._update_donor(existing, data)
-        model = BloodDonorModel(**{k: v for k, v in data.items() if hasattr(BloodDonorModel, k)})
+        model = BloodDonorModel(**self._owned(data, BloodDonorModel))
         if not model.next_eligible_date:
             model.next_eligible_date = datetime.now(UTC)
         self.db.add(model)
@@ -91,13 +124,13 @@ class BloodBankService:
         return donor
 
     def get_donor(self, donor_id: str) -> BloodDonor:
-        model = self.db.query(BloodDonorModel).filter_by(id=donor_id).first()
+        model = self._scoped(BloodDonorModel).filter_by(id=donor_id).first()
         if not model or model.is_deleted:
             raise DonorNotFoundError()
         return self._donor_from_model(model)
 
     def find_donors(self, blood_group: str | None = None, status: str | None = None, skip: int = 0, limit: int = 100) -> list[BloodDonor]:
-        query = self.db.query(BloodDonorModel).filter(BloodDonorModel.is_deleted.isnot(True))
+        query = self._scoped(BloodDonorModel).filter(BloodDonorModel.is_deleted.isnot(True))
         if blood_group:
             query = query.filter_by(blood_group=blood_group)
         if status:
@@ -105,12 +138,13 @@ class BloodBankService:
         return [self._donor_from_model(m) for m in query.offset(skip).limit(limit).all()]
 
     def defer_donor(self, donor_id: str, data: dict[str, Any]) -> DonorDeferral:
-        donor = self.db.query(BloodDonorModel).filter_by(id=donor_id).first()
+        donor = self._scoped(BloodDonorModel).filter_by(id=donor_id).first()
         if not donor:
             raise DonorNotFoundError()
         deferral_days = data.get("deferral_days", 0)
         deferred_until = datetime.now(UTC) + timedelta(days=deferral_days) if deferral_days else None
         model = DonorDeferralModel(
+            lab_id=self._require_lab(),
             donor_id=donor_id, deferral_type=data.get("deferral_type", "temporary"),
             reason=data.get("reason", "other"), reason_detail=data.get("reason_detail", ""),
             deferral_days=deferral_days, deferred_until=deferred_until,
@@ -127,17 +161,17 @@ class BloodBankService:
 
     def register_donation(self, data: dict[str, Any]) -> BloodDonation:
         donor_id = data.get("donor_id", "")
-        donor = self.db.query(BloodDonorModel).filter_by(id=donor_id).first()
+        donor = self._scoped(BloodDonorModel).filter_by(id=donor_id).first()
         if not donor:
             raise DonorNotFoundError()
         if donor.status == DonorStatus.DEFERRED.value:
-            active_deferral = self.db.query(DonorDeferralModel).filter(
+            active_deferral = self._scoped(DonorDeferralModel).filter(
                 DonorDeferralModel.donor_id == donor_id,
                 DonorDeferralModel.is_active,
             ).first()
             if active_deferral:
                 raise DonorDeferredError(f"Donor is deferred until {active_deferral.deferred_until}")
-        model = BloodDonationModel(**{k: v for k, v in data.items() if hasattr(BloodDonationModel, k)})
+        model = BloodDonationModel(**self._owned(data, BloodDonationModel))
         model.status = DonationStatus.REGISTERED.value
         self.db.add(model)
         self.db.commit()
@@ -154,7 +188,7 @@ class BloodBankService:
         )
 
     def complete_donation(self, donation_id: str) -> BloodDonation:
-        model = self.db.query(BloodDonationModel).filter_by(id=donation_id).first()
+        model = self._scoped(BloodDonationModel).filter_by(id=donation_id).first()
         if not model:
             raise DonationNotFoundError()
         model.status = DonationStatus.COMPLETED.value
@@ -166,7 +200,7 @@ class BloodBankService:
     # ---- Components ----
 
     def process_component(self, data: dict[str, Any]) -> BloodComponentEntity:
-        model = BloodComponentModel(**{k: v for k, v in data.items() if hasattr(BloodComponentModel, k)})
+        model = BloodComponentModel(**self._owned(data, BloodComponentModel))
         model.processing_date = datetime.now(UTC)
         model.status = ComponentStatus.AVAILABLE.value
         self.db.add(model)
@@ -178,7 +212,7 @@ class BloodBankService:
     # ---- Inventory ----
 
     def get_inventory(self, facility_id: str | None = None) -> list[BloodInventory]:
-        query = self.db.query(BloodInventoryModel)
+        query = self._scoped(BloodInventoryModel)
         if facility_id:
             query = query.filter_by(facility_id=facility_id)
         results = []
@@ -192,7 +226,7 @@ class BloodBankService:
         return results
 
     def get_critical_inventory(self) -> list[BloodInventory]:
-        models = self.db.query(BloodInventoryModel).all()
+        models = self._scoped(BloodInventoryModel).all()
         critical = []
         for m in models:
             available = (m.quantity or 0) - (m.reserved_quantity or 0)
@@ -206,7 +240,7 @@ class BloodBankService:
         return critical
 
     def issue_units(self, blood_group: str, component: str, quantity: int, facility_id: str) -> list[BloodUnit]:
-        available = self.db.query(BloodUnitModel).filter(
+        available = self._scoped(BloodUnitModel).filter(
             BloodUnitModel.blood_group == blood_group,
             BloodUnitModel.component == component,
             BloodUnitModel.status == "available",
@@ -253,7 +287,7 @@ class BloodBankService:
     # ---- Transfusion ----
 
     def record_transfusion(self, data: dict[str, Any]) -> Transfusion:
-        model = TransfusionModel(**{k: v for k, v in data.items() if hasattr(TransfusionModel, k)})
+        model = TransfusionModel(**self._owned(data, TransfusionModel))
         model.status = TransfusionStatus.ORDERED.value
         self.db.add(model)
         self.db.commit()
@@ -261,7 +295,7 @@ class BloodBankService:
         return Transfusion(id=model.id, patient_id=model.patient_id, unit_id=model.unit_id, status=model.status)
 
     def start_transfusion(self, transfusion_id: str) -> Transfusion:
-        model = self.db.query(TransfusionModel).filter_by(id=transfusion_id).first()
+        model = self._scoped(TransfusionModel).filter_by(id=transfusion_id).first()
         if not model:
             raise TransfusionNotFoundError()
         model.status = TransfusionStatus.IN_PROGRESS.value
@@ -271,13 +305,13 @@ class BloodBankService:
         return Transfusion(id=model.id, patient_id=model.patient_id, status=TransfusionStatus.IN_PROGRESS)
 
     def complete_transfusion(self, transfusion_id: str) -> Transfusion:
-        model = self.db.query(TransfusionModel).filter_by(id=transfusion_id).first()
+        model = self._scoped(TransfusionModel).filter_by(id=transfusion_id).first()
         if not model:
             raise TransfusionNotFoundError()
         model.status = TransfusionStatus.COMPLETED.value
         model.end_time = datetime.now(UTC)
         if model.unit_id:
-            unit = self.db.query(BloodUnitModel).filter_by(id=model.unit_id).first()
+            unit = self._scoped(BloodUnitModel).filter_by(id=model.unit_id).first()
             if unit:
                 unit.status = "transfused"
                 unit.transfused_at = datetime.now(UTC)
@@ -805,16 +839,18 @@ class BloodBankService:
     # ---- Dashboard ----
 
     def get_dashboard(self) -> dict[str, Any]:
-        total_donors = self.db.query(BloodDonorModel).filter(BloodDonorModel.is_deleted.isnot(True)).count()
-        active_donors = self.db.query(BloodDonorModel).filter_by(status="active").count()
-        donations_today = self.db.query(BloodDonationModel).filter(
+        # Every count is scoped: an unscoped dashboard reports the whole
+        # country's blood supply to one laboratory (NR-021).
+        total_donors = self._scoped(BloodDonorModel).filter(BloodDonorModel.is_deleted.isnot(True)).count()
+        active_donors = self._scoped(BloodDonorModel).filter_by(status="active").count()
+        donations_today = self._scoped(BloodDonationModel).filter(
             BloodDonationModel.created_at >= datetime.now(UTC).replace(hour=0, minute=0, second=0),
         ).count()
-        total_donations = self.db.query(BloodDonationModel).count()
-        total_units = self.db.query(BloodUnitModel).filter_by(status="available").count()
+        total_donations = self._scoped(BloodDonationModel).count()
+        total_units = self._scoped(BloodUnitModel).filter_by(status="available").count()
         critical = self.get_critical_inventory()
-        pending_requests = self.db.query(BloodRequestModel).filter_by(status="pending").count()
-        total_transfusions = self.db.query(TransfusionModel).count()
+        pending_requests = self._scoped(BloodRequestModel).filter_by(status="pending").count()
+        total_transfusions = self._scoped(TransfusionModel).count()
         return {
             "total_donors": total_donors, "active_donors": active_donors,
             "donations_today": donations_today, "total_donations": total_donations,

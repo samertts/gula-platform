@@ -1,0 +1,105 @@
+{
+ "document": "GULA_BATCH_3_NATIONAL_CORE_SPEC",
+ "version": 1,
+ "generated": "2026-09-10",
+ "status": "SPECIFICATION ONLY — NOT IMPLEMENTED",
+ "migrations_created": 0,
+ "canonical_owners": {
+  "patient": "core patients (app.models.base.Base)",
+  "facility": "core Facility (operational)",
+  "practitioner": "UNDECIDED",
+  "encounter": "UNDECIDED"
+ },
+ "entities": [
+  {
+   "entity": "Citizen",
+   "table": "national_citizens",
+   "physical": false,
+   "scope": "GLOBAL",
+   "ops": 10,
+   "pk_today": "VARCHAR"
+  },
+  {
+   "entity": "Patient (national view)",
+   "table": "national_patients",
+   "physical": false,
+   "scope": "TENANT",
+   "ops": 0,
+   "pk_today": "VARCHAR",
+   "note": "canonical owner is core patients; this is PROJECTION or RETIRE"
+  },
+  {
+   "entity": "Practitioner",
+   "table": "national_practitioners",
+   "physical": false,
+   "scope": "FACILITY",
+   "ops": 0,
+   "pk_today": "VARCHAR",
+   "inbound_refs": 58
+  },
+  {
+   "entity": "Encounter",
+   "table": "national_encounters",
+   "physical": false,
+   "scope": "TENANT",
+   "ops": 29,
+   "pk_today": "VARCHAR"
+  },
+  {
+   "entity": "Department",
+   "table": "national_departments",
+   "physical": false,
+   "scope": "FACILITY",
+   "ops": 0,
+   "pk_today": "VARCHAR"
+  },
+  {
+   "entity": "Facility",
+   "table": "national_facilities",
+   "physical": true,
+   "scope": "GLOBAL",
+   "ops": 0,
+   "pk_today": "VARCHAR",
+   "note": "MERGE — mapped by two bases (NR-006)"
+  },
+  {
+   "entity": "Organization",
+   "table": "national_organizations",
+   "physical": false,
+   "scope": "GLOBAL",
+   "ops": 0,
+   "pk_today": "VARCHAR",
+   "note": "RETIRE candidate"
+  }
+ ],
+ "identity_model": {
+  "internal": "INTEGER, never public",
+  "public": "UUID4, immutable",
+  "business_code": "mutable, never a key",
+  "external": "String(26), not converted",
+  "reference": "the settled Pharmacy contract"
+ },
+ "blockers": [
+  "national_patients: PROJECTION or RETIRE",
+  "Practitioner ownership vs core lab_users",
+  "NR-006 national_facilities double mapping",
+  "NR-023 autogenerate cannot run until this core exists"
+ ],
+ "batch_grouping_of_293_missing_tables": {
+  "B5_CLINICAL_RECORD": 45,
+  "B9_DEFERRED_UNTIL_DOMAIN_IMPLEMENTED": 79,
+  "B7_GOVERNANCE_AND_DATA": 79,
+  "B8_HOSPITAL": 9,
+  "B4_NATIONAL_PLATFORM": 29,
+  "B3_NATIONAL_CORE": 5,
+  "B6_CARE_CONTINUITY": 47
+ },
+ "out_of_scope": [
+  "ehr",
+  "clinical",
+  "care_continuum",
+  "nursing",
+  "governance",
+  "national_data"
+ ]
+}

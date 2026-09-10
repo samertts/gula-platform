@@ -30,14 +30,25 @@ domain's base maps the table.
 | Radiology study/report | `radiology` | 17/17 physical (drifting, hence `RECONCILE`) |
 | Data-warehouse aggregates | `nhdw` | 14/14 physical |
 
-### Unsettled — ownership genuinely ambiguous
+### Decided by the platform owner (2026-09-10)
+
+These were escalated because the repository could not settle them. They are now
+settled by decision, not by evidence, and are recorded as such.
+
+| Entity | Canonical owner | Consequence |
+|---|---|---|
+| **Patient** | **Core `patients`** | `national_patients` must not be an independent source of truth. It becomes a `PROJECTION` if a national read model is needed, or is retired. Its own evidence — 0 reachable operations against 51 inbound references — supports that. |
+| **Facility** | **Core Facility**, for operations | A national facility directory may exist as a registry/projection where distinct national governance attributes require it. It must not become a second owner of facility identity. NR-006 resolves under this rule. |
+
+A `PROJECTION` may be read and rebuilt. It may never be written to as a source
+of truth, and no foreign key may point at it.
+
+### Still unsettled
 
 | Entity | Competing owners | Why the repository cannot decide |
 |---|---|---|
-| **`national_facilities`** | `app.models.base.Base` **and** `app.national.base.AuditEntity` | The only table mapped by two bases. It is physical, so both mappings are live against one table. NR-006. |
-| **Person / patient at national scope** | `national` (`national_patients`, `national_citizens`) vs core (`patients`) | Both exist as concepts; `patients` is physical and lab-scoped, `national_patients` is mapped, unbuilt, and referenced 51 times. Nothing states whether they are the same person seen twice or two entities. |
-| **Practitioner** | `national` (`national_practitioners`, 58 references) vs core (`lab_users`, 21 references) | Same shape of question. |
-| **Encounter** | `national` (`national_encounters`, 42 references) | No competing owner, but no owner has built it either. |
+| **Practitioner** | `national_practitioners` (58 references, unbuilt) vs core `lab_users` (21 references, physical) | The same question as Patient, and not covered by the Patient ruling. |
+| **Encounter** | `national_encounters` (29 reachable operations, unbuilt) | No competing owner, but no owner has built it either. |
 
 ---
 

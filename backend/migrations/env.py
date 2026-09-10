@@ -44,6 +44,18 @@ from app.trust.base import TrustBase
 from app.governance.base import GovernanceBase
 from app.care_continuum.base import CareContinuumBase
 
+# Registered in BATCH-3 preparation (NR-018). Ten declarative bases were absent
+# from target_metadata, so autogenerate reported no drift for 203 mapped tables
+# and an empty diff was indistinguishable from an accurate one.
+from app.pharmacy.base import PharmacyBase
+from app.radiology.base import RadiologyBase
+from app.nhdw.base import NHDWBase
+from app.nursing.base import NursingBase
+from app.hospital.base import HospitalBase
+from app.financial.models import FinBase
+from app.national_data.base import DataPlatformBase
+from app.document_intelligence.infrastructure.models import DocIntelBase
+
 # Import EMS, Blood Bank, Critical Care, Biomedical models for Alembic autogenerate
 # Wrapped in try/except: migration `upgrade head` still works if model files are
 # incomplete or have changed names since the migration was written.
@@ -124,6 +136,18 @@ target_metadata = [
     GovernanceBase.metadata,
     CareContinuumBase.metadata,
     IdentityBase.metadata,
+    # NR-018 registrations. Deliberately excluded and recorded instead:
+    # app.national.task_engine (RETIRE: 15 tables, none physical, no reachable
+    # operation) and app.insurance (DEFER: 13 tables, none physical, no
+    # reachable operation, awaiting a product decision).
+    PharmacyBase.metadata,
+    RadiologyBase.metadata,
+    NHDWBase.metadata,
+    NursingBase.metadata,
+    HospitalBase.metadata,
+    FinBase.metadata,
+    DataPlatformBase.metadata,
+    DocIntelBase.metadata,
 ]
 
 

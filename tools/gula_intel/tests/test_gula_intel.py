@@ -435,10 +435,16 @@ def test_every_declarative_base_is_either_registered_or_reported() -> None:
     # Every base is either registered or carries a finding. Neither list may
     # quietly shrink.
     assert accounted == len(bases)
-    assert len(result.findings) == 10, (
+    assert len(result.findings) == 2, (
         "the set of bases alembic cannot see changed; confirm this is intended "
         "and update the expected count: " + result.note
     )
+    # The two that remain are deliberate, not forgotten: insurance is DEFER
+    # (13 tables, none physical, no reachable operation, awaiting a product
+    # decision) and national.task_engine is RETIRE (15 tables, same evidence).
+    domains = {f.domain for f in result.findings}
+    assert any("insurance" in d for d in domains)
+    assert any("task_engine" in d for d in domains)
 
 
 def test_the_canonical_core_registry_is_the_one_alembic_knows() -> None:
