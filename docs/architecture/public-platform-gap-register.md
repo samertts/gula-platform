@@ -39,9 +39,14 @@ Companion documents: `public-auth-boundary.md`, `public-platform-entry-audit.md`
   breach is confirmed, but the guard must never be mistaken for authorization.
 * **Canonical owner** frontend platform
 * **Dependency** none
-* **Action** AUTH-001 — invert one condition; verify against the server's own
-  role checks before changing behaviour.
-* **Status** VERIFIED
+* **Action** AUTH-001 — invert one condition.
+* **Status** **FIXED — VERIFIED (AUTH-001).** The check no longer depends on
+  `demoMode`, so it applies to every authenticated user. Proven by temporarily
+  restoring the defective condition: exactly the three live-mode tests fail and
+  the four demo/unauthenticated tests still pass, so demo behaviour is
+  unchanged. `src/components/auth/RoleGuard.test.tsx`, 7 tests; frontend suite
+  64 passed; lint and `tsc --noEmit` clean. The guard remains **navigation, not
+  authorization** — the server is still the sole authority.
 
 ### PUB-003 · `/citizen/login` is parallel authentication
 * **Area** authentication
@@ -197,7 +202,7 @@ Companion documents: `public-auth-boundary.md`, `public-platform-entry-audit.md`
 
 | Order | Batch | Why here | Blocking |
 |---|---|---|---|
-| 1 | **AUTH-001** — fix `RoleGuard` | highest severity, smallest diff, no dependency | no |
+| ✓ | ~~**AUTH-001** — fix `RoleGuard`~~ **DONE** | delivered; the route policy now applies in live mode | no |
 | 2 | **PUBLIC-002** — public layout + homepage + IA | fully independent of identity work; unblocks all public messaging | no |
 | 3 | **AUTH-002** — identity bridge | **decision required first**; unblocks workspaces, privacy, memberships | **yes** |
 | 4 | **AUTH-003** — real entry context + citizen routing | needs AUTH-002 | no |
