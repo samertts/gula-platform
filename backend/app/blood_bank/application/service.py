@@ -829,7 +829,13 @@ class BloodBankService:
     # ---- Blood Requests ----
 
     def create_blood_request(self, data: dict[str, Any]) -> BloodRequest:
-        model = BloodRequestModel(**{k: v for k, v in data.items() if hasattr(BloodRequestModel, k)})
+        # NR-021 residue, found in BATCH-2.7. BloodRequestModel is a TenantEntity
+        # and blood_bank_requests.lab_id is NOT NULL, but this was the one
+        # route-reachable method still mass-assigning the raw request body, so a
+        # caller could file a blood request against another laboratory by putting
+        # lab_id in the payload. _owned() drops any client lab_id and sets it from
+        # the authenticated context, exactly as the other create paths do.
+        model = BloodRequestModel(**self._owned(data, BloodRequestModel))
         self.db.add(model)
         self.db.commit()
         self.db.refresh(model)

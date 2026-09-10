@@ -298,5 +298,65 @@
       "assertions": 4,
       "state_machine_modified": false
     }
+  },
+  "batch_2_7": {
+    "generated": "2026-09-10T15:49:08Z",
+    "head_commit": "7319dc0d0be92d1c90280152f801342b8d33fa02",
+    "method": "For each synthetic key: is it written by code outside state_machine.py, and can any transition arrive at it?",
+    "summary": {
+      "LIVE": 7,
+      "DEAD_SYNTHETIC": 6,
+      "UNRESOLVED": 15
+    },
+    "LIVE": {
+      "keys": [
+        "collected",
+        "identified",
+        "received",
+        "released",
+        "returned",
+        "testing",
+        "validated"
+      ],
+      "evidence": "written by Blood Bank code; all are blood_unit or patient-sample states, and blood_unit is a transition() participant",
+      "action": "keep; they belong to the attributed entities"
+    },
+    "DEAD_SYNTHETIC": {
+      "keys": [
+        "crossmatch_requested",
+        "draft",
+        "issued_order",
+        "ordered_transfusion",
+        "received_sample",
+        "testing_crossmatch"
+      ],
+      "evidence": "no code writes them AND no transition can arrive at them — unreachable in both directions",
+      "note": "four are the explicit <state>_<entity> compounds invented to dodge collisions",
+      "action": "RETIRE candidates; they govern nothing and can never be entered"
+    },
+    "UNRESOLVED": {
+      "keys": [
+        "classification",
+        "clinical_assessment",
+        "compatibility_pending",
+        "investigation",
+        "reaction_suspected",
+        "ready",
+        "received_at_bedside",
+        "requested",
+        "resolution",
+        "reviewed",
+        "sample_received",
+        "sample_required",
+        "started",
+        "transfusion_stopped",
+        "verification"
+      ],
+      "evidence": "reachable as a transition target but no code writes them; they describe order, sample, crossmatch and reaction lifecycles whose entities are never passed to transition()",
+      "status": "BLOCKED — CLINICAL OWNER REQUIRED",
+      "why": "Attributing them means first deciding what those entities' lifecycles are. Order, sample and reaction have no lifecycle enum at all."
+    },
+    "state_machine_modified": false,
+    "states_renamed": false
   }
 }

@@ -1,7 +1,7 @@
 {
   "document": "GULA_BATCH_3_NATIONAL_CORE_SPEC",
-  "version": 3,
-  "generated": "2026-09-10T14:09:13Z",
+  "version": 4,
+  "generated": "2026-09-10T15:50:46Z",
   "status": "SPECIFICATION ONLY — NOT IMPLEMENTED",
   "migrations_created": 0,
   "canonical_owners": {
@@ -150,7 +150,7 @@
   "nr_023_root_cause_corrected": "Cross-MetaData foreign keys, NOT a missing national core. All 24 unresolvable FK targets are mapped, just by a different MetaData than the referencing table. 18 distinct MetaData objects, 6 fail topological sort, 360 unresolvable references. Canonical repair is one shared MetaData, blocked by exactly one collision (NR-006).",
   "scope_frozen": true,
   "scope_freeze": {
-    "batch": "BATCH-2.6",
+    "batch": "BATCH-2.7",
     "rule": "Nothing enters B3 unless it is a proven hard dependency of the National Core. EHR, Care Continuity, Governance and National Data are explicitly NOT pulled in.",
     "B3_REQUIRED": [
       {
@@ -160,19 +160,20 @@
         "proven_by": "clinical_scope.NationalFacility matches migration 20260813_0004 exactly and is the target of the physical FK from clinical_ehr_facility_bindings; the national-domain class has zero physical backing."
       },
       {
-        "item": "NR-029 — resolve the 2 dangling FK targets",
-        "why": "niam_identity_authorities (2 refs) and niam_user_sessions (1 ref) exist in neither the ORM nor the database. No metadata design resolves a reference to something that does not exist.",
-        "scope": "Define the models or remove the references. 3 declarations in app/identity/{trust,adaptive_auth}/models.py."
-      },
-      {
         "item": "NR-030 — decide the 12 unmapped physical tables",
         "why": "Each is a DROP TABLE candidate under any single-MetaData autogenerate.",
-        "scope": "Six are Financial Engine Phase A (schema-only by design — needs an explicit exclusion, not a model). Six are unexplained: idempotency_keys, nursing_clinical_checklists, nursing_escalation_records, radiology_ai_analysis_jobs, sndhs_audit_logs, visits."
+        "scope": "BATCH-2.7 classified all twelve: 7 KEEP_PHYSICAL_NO_ORM (permanent, named exclusions — 6 Financial Engine Phase A plus idempotency_keys), 2 MAP_EXISTING_ORM (the nursing pair, behind NR-026), 1 CREATE_ORM (radiology_ai_analysis_jobs), 2 BLOCKED (sndhs_audit_logs, visits). What remains for B3 is wiring the exclusion list into the combined-MetaData build, not deciding what the tables are."
       },
       {
         "item": "Practitioner — build national_practitioners",
         "why": "78 inbound FK columns; ownership CLOSED as National in BATCH-2.5.",
         "scope": "INTEGER internal key, UUID4 public id, license_number demoted to a business code, nullable lab_users.practitioner_id link."
+      },
+      {
+        "item": "NR-026 — reconcile the nursing ORM (P0, live defect)",
+        "why": "ClinicalChecklist and EscalationRecord name tables no migration creates, and live routes query them, so two nursing features fail at runtime — one of them clinical escalation.",
+        "scope": "Correct two __tablename__ values AND the 23 drifted column types in ONE change. A rename alone makes a live filter quietly wrong.",
+        "note": "Promoted into B3_REQUIRED from DEFER by BATCH-2.7 evidence."
       }
     ],
     "B3_DEPENDENCY": [
@@ -235,10 +236,6 @@
         "why": "architecture decision outstanding"
       },
       {
-        "item": "NR-026 nursing ORM/physical reconciliation",
-        "why": "real drift, but not a National Core dependency"
-      },
-      {
         "item": "NR-025 identifier scheme unification",
         "why": "design defect; no functional break"
       },
@@ -259,6 +256,11 @@
       {
         "item": "Blood Bank legacy record/start/complete_transfusion, issue_units, perform_crossmatch",
         "why": "zero callers; each strictly weaker than an existing counterpart"
+      },
+      {
+        "item": "6 dead Blood Bank transition keys",
+        "why": "crossmatch_requested, draft, issued_order, ordered_transfusion, received_sample, testing_crossmatch — no code writes them and no transition can reach them. Unreachable in both directions.",
+        "evidence": "BATCH-2.7 synthetic key classification"
       }
     ],
     "BLOCKED": [
@@ -266,9 +268,9 @@
         "item": "NR-023 autogenerate",
         "blocked_on": [
           "NR-006",
-          "NR-029",
           "NR-030"
-        ]
+        ],
+        "note": "NR-029 closed in BATCH-2.7; two blockers remain."
       },
       {
         "item": "NR-018 zero-diff proof",
@@ -405,5 +407,14 @@
       "duplicate_ownership_anywhere": 0,
       "note": "No base has duplicate ownership. Only Pharmacy and NHDW are zero-diff-capable; the rest carry a real, explainable diff."
     }
+  },
+  "batch_2_7": {
+    "nr_029": "RESOLVED — three FK target strings corrected; no migration, no schema change",
+    "nr_030": "all 12 classified: 7 KEEP_PHYSICAL_NO_ORM, 2 MAP_EXISTING_ORM, 1 CREATE_ORM, 2 BLOCKED",
+    "nr_026": "escalated to P0 live defect; promoted to B3_REQUIRED",
+    "nr_021_residue": "create_blood_request mass-assigned client lab_id onto a TenantEntity; fixed with _owned(), 2 regressions proven",
+    "visit_encounter": "Visit formally established as the clinical episode anchor; 3 sub-questions still BLOCKED",
+    "nr_007": "28 synthetic keys classified: 7 LIVE, 6 DEAD/SYNTHETIC (retire candidates), 15 UNRESOLVED (BLOCKED)",
+    "nr_018": "carried forward unchanged — Pharmacy and NHDW VERIFIED, six PARTIALLY VERIFIED"
   }
 }

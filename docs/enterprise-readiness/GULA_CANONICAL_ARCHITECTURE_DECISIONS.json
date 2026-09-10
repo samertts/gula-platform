@@ -1,7 +1,7 @@
 {
   "document": "GULA Canonical Architecture Decisions",
-  "batch": "BATCH-2.6",
-  "generated": "2026-09-10T14:07:58Z",
+  "batch": "BATCH-2.7",
+  "generated": "2026-09-10T15:50:26Z",
   "head_commit": "0eb52d0e2da648ae18692e62629dd0465019aab6",
   "decisions": [
     {
@@ -127,6 +127,55 @@
       "lab_users": "authentication principal — Core, INTEGER, tenant-scoped; NOT a second Practitioner owner",
       "future_relationship": "authentication principal (lab_users) -> practitioner identity (national_practitioners.id via a nullable lab_users.practitioner_id) -> professional/clinical authoring context (the actor recorded on clinical records)",
       "legacy": "lab_orders.doctor_name String(200) is legacy free text and must not be mass-rewritten"
+    },
+    {
+      "id": "D-15",
+      "subject": "NR-029 naming error",
+      "status": "RESOLVED — VERIFIED",
+      "finding": "niam_identity_authorities and niam_user_sessions are class names, not table names. IdentityAuthority is niam_gov_authorities; UserSession is niam_sessions.",
+      "action": "Three ForeignKey target strings corrected. No migration, no schema change.",
+      "consequence": "One of NR-023's three blockers closed; NR-006 and NR-030 remain."
+    },
+    {
+      "id": "D-16",
+      "subject": "NR-030 classification",
+      "status": "PARTIALLY VERIFIED",
+      "classes": {
+        "KEEP_PHYSICAL_NO_ORM": 7,
+        "MAP_EXISTING_ORM": 2,
+        "CREATE_ORM": 1,
+        "BLOCKED": 2
+      },
+      "rule": "The seven permanent exclusions mean a combined MetaData can never simply map everything; it must carry an explicit exclusion list, as Option C in D-11 specified."
+    },
+    {
+      "id": "D-17",
+      "subject": "NR-026 severity",
+      "status": "P0 LIVE DEFECT",
+      "finding": "ClinicalChecklist and EscalationRecord name tables no migration creates, and live HTTP routes query them, so two nursing features fail at runtime — one of them clinical escalation.",
+      "not_half_fixed": "Renaming __tablename__ alone would take these from failing loudly to succeeding with wrong types; EscalationRecord.escalated_to is String(26) against a physical integer and sits in a live filter. Name and types land together."
+    },
+    {
+      "id": "D-18",
+      "subject": "Visit as clinical episode anchor",
+      "status": "ESTABLISHED; 3 sub-questions BLOCKED",
+      "evidence": [
+        "migration 20260505_0003 states it",
+        "lab_orders.visit_id -> visits.id enforced today",
+        "no competing physical episode table"
+      ],
+      "roles": {
+        "transactional_owner": "visits",
+        "projection": "national_encounters",
+        "projection_implementation": "CanonicalEncounter"
+      },
+      "correction_to_D14": "visits has NO code consumers; BATCH-2.6 reported otherwise on substring false positives. Adoption is lower risk — no live usage to migrate."
+    },
+    {
+      "id": "D-19",
+      "subject": "NR-006 unchanged",
+      "status": "DOCUMENTED — BATCH-3 item 1",
+      "rule": "Operational facility and national facility resource are separate, bridged by review through clinical_ehr_facility_bindings. Not merged. No migration in this batch."
     }
   ]
 }

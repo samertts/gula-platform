@@ -387,3 +387,72 @@ derivable from the repository and are **BLOCKED — CLINICAL OWNER REQUIRED**:
    backfill path for orders that predate it?
 
 No table is created and no migration is written in BATCH-2.6.
+
+---
+
+# BATCH-2.7 — Physical / ORM ownership reconciliation
+
+## D-15 — NR-029 was a naming error, not a missing table
+
+`niam_identity_authorities` and `niam_user_sessions` are **class names**, not
+table names: `IdentityAuthority` is `niam_gov_authorities`, `UserSession` is
+`niam_sessions`. Both tables exist and PostgreSQL already enforces all three
+foreign keys against them. The migrations were right; three ORM strings were
+wrong. Corrected in place — no migration, no schema change.
+
+**One of NR-023's three blockers is closed.** Remaining: NR-006 and NR-030.
+
+## D-16 — NR-030: the twelve are classified, and seven are permanent
+
+| Class | Count | Rule |
+|---|---:|---|
+| `KEEP_PHYSICAL_NO_ORM` | 7 | a named, justified, permanent exclusion — never silent |
+| `MAP_EXISTING_ORM` | 2 | the nursing pair; blocked behind NR-026 |
+| `CREATE_ORM` | 1 | `radiology_ai_analysis_jobs` — mechanical, unauthorised here |
+| `BLOCKED` | 2 | `sndhs_audit_logs`, `visits` |
+
+The seven permanent exclusions mean the combined-MetaData architecture can never
+simply "map everything". It must carry an explicit exclusion list, which is why
+Option C in D-11 was specified with one.
+
+## D-17 — NR-026 is a live outage, not drift
+
+`ClinicalChecklist` says `nursing_checklists`; `EscalationRecord` says
+`nursing_escalations`. Neither name appears in any `create_table`. The migration
+creates `nursing_clinical_checklists` and `nursing_escalation_records` — and
+names the *indexes* after the short forms, which is where the mistake came from.
+
+Live HTTP routes query both models, so **two nursing features fail at runtime**,
+one of them clinical escalation. Raised from P1 drift to **P0 live defect**.
+
+**Deliberately not half-fixed.** Renaming `__tablename__` alone would take these
+from failing loudly to succeeding with wrong types —
+`EscalationRecord.escalated_to` is `String(26)` against a physical `integer` and
+sits in a live filter. Name and types land together, or not at all.
+
+## D-18 — Visit is the clinical episode anchor
+
+Established, with nothing in the repository disproving it:
+
+- the migration that created `visits` states it — *"every clinical action is
+  anchored to a visit"*;
+- `lab_orders.visit_id → visits.id` is enforced in the database today;
+- no competing physical episode table exists.
+
+`national_encounters` is the **projection**; `CanonicalEncounter` is already its
+implementation. Full mapping in `GULA_VISIT_ENCOUNTER_ARCHITECTURE.md`.
+
+**Correction to D-14:** `visits` has **no** code consumers. BATCH-2.6 reported
+it as consumed; every hit was a substring false positive. Adoption is therefore
+lower-risk than stated — there is no live usage to migrate — and the table is
+currently inert schema.
+
+Three sub-questions remain **BLOCKED — CLINICAL OWNER REQUIRED**, unchanged.
+
+## D-19 — NR-006 stands, unchanged
+
+`clinical_scope.NationalFacility` and `national.domain.facility.Facility` are
+**not merged**. The operational facility (`facilities`, INTEGER) and the national
+facility resource (`national_facilities`, String(26)) are separate resources
+bridged by review through `clinical_ehr_facility_bindings`, as `clinical_scope.py`
+states in-source. No schema migration in this batch. Still BATCH-3 item 1.

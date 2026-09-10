@@ -208,3 +208,44 @@ def test_the_dashboard_counts_only_the_callers_laboratory(session: Session) -> N
         BloodDonorModel.lab_id.in_([LAB_A, LAB_B])
     ).count()
     assert a["total_donors"] < combined, "lab A counted lab B's donors"
+
+
+# --- BATCH-2.7: the one route-reachable method the original fix missed --------
+
+
+def test_a_blood_request_cannot_be_filed_against_another_laboratory(session: Session) -> None:
+    """NR-021 residue.
+
+    create_blood_request was the last route-reachable method still mass-assigning
+    the raw request body onto a TenantEntity. blood_bank_requests.lab_id is NOT
+    NULL, so a caller who put lab_id in the payload had it written verbatim and
+    filed a blood request against another laboratory. Every other create path
+    already went through _owned().
+    """
+    from app.blood_bank.infrastructure.models import BloodRequestModel
+
+    service = BloodBankService(db=session, lab_id=LAB_A)
+    created = service.create_blood_request({
+        "lab_id": LAB_B,                     # the attacker-supplied tenant
+        "patient_id": "cross-tenant-probe",
+        "blood_group": "O",
+        "units_requested": 1,
+    })
+
+    stored = session.query(BloodRequestModel).filter(
+        BloodRequestModel.id == created.id
+    ).one()
+    assert stored.lab_id == LAB_A, (
+        "a client-supplied lab_id was written to a tenant-scoped table; the "
+        "server context must decide ownership"
+    )
+
+
+def test_a_blood_request_still_refuses_a_missing_tenant_context(session: Session) -> None:
+    """Fail closed: no laboratory context means no write, not an unscoped one."""
+    from app.blood_bank.exceptions import BloodBankValidationError
+
+    with pytest.raises(BloodBankValidationError):
+        BloodBankService(db=session, lab_id=None).create_blood_request({
+            "patient_id": "no-tenant-probe", "blood_group": "O", "units_requested": 1,
+        })

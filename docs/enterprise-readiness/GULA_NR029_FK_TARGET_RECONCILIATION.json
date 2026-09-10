@@ -1,0 +1,69 @@
+{
+  "document": "NR-029 — Foreign Keys Naming Tables That Exist Nowhere",
+  "batch": "BATCH-2.7",
+  "generated": "2026-09-10T15:48:37Z",
+  "head_commit": "7319dc0d0be92d1c90280152f801342b8d33fa02",
+  "status": "RESOLVED — VERIFIED",
+  "migrations_created": 0,
+  "schema_changes": 0,
+  "tables_created": 0,
+  "root_cause": "The ORM named the class instead of the table. IdentityAuthority is niam_gov_authorities; UserSession is niam_sessions. Both classes exist, both tables exist, and PostgreSQL already enforced all three foreign keys against the real tables.",
+  "declarations": [
+    {
+      "n": 1,
+      "model": "TrustFramework",
+      "table": "niam_trust_frameworks",
+      "fk_column": "authority_id",
+      "column_type": "String(26)",
+      "named": "niam_identity_authorities.id",
+      "real_target": "niam_gov_authorities.id",
+      "file": "app/identity/trust/models.py:35",
+      "migration": "20260723_0002_niam_completion_tables.py",
+      "physical_fk_exists": true,
+      "reachable_operation": "identity trust framework services",
+      "consumer": "app/identity/trust/",
+      "intent": "reference the governance authority that issued the framework",
+      "classification": "REPAIR"
+    },
+    {
+      "n": 2,
+      "model": "IdentityProofing",
+      "table": "niam_trust_proofing",
+      "fk_column": "authority_id",
+      "column_type": "String(26)",
+      "named": "niam_identity_authorities.id",
+      "real_target": "niam_gov_authorities.id",
+      "file": "app/identity/trust/models.py:126",
+      "migration": "20260723_0002_niam_completion_tables.py",
+      "physical_fk_exists": true,
+      "reachable_operation": "identity proofing services",
+      "consumer": "app/identity/trust/",
+      "intent": "reference the governance authority that verified the proofing",
+      "classification": "REPAIR"
+    },
+    {
+      "n": 3,
+      "model": "AdaptiveMFASession",
+      "table": "niam_adaptive_mfa_sessions",
+      "fk_column": "session_id",
+      "column_type": "String(100)",
+      "named": "niam_user_sessions.id",
+      "real_target": "niam_sessions.id",
+      "file": "app/identity/adaptive_auth/models.py:75",
+      "migration": "20260723_0002_niam_completion_tables.py",
+      "physical_fk_exists": true,
+      "reachable_operation": "adaptive MFA challenge bound to a login session",
+      "consumer": "app/identity/adaptive_auth/",
+      "intent": "bind an MFA challenge to the session that triggered it",
+      "classification": "REPAIR",
+      "width_note": "Column is String(100) against a varchar(26) PK. The difference is pre-existing in the physical schema and PostgreSQL accepts it; the ORM mirrors the deployed column, so only the target name was changed."
+    }
+  ],
+  "action": "Three ForeignKey target strings corrected. No migration, no schema change, no column change.",
+  "rejected_alternatives": {
+    "create_the_tables": "would duplicate niam_gov_authorities and niam_sessions",
+    "delete_the_foreign_keys": "would discard relationships PostgreSQL is already enforcing"
+  },
+  "verification": "backend/tests/test_alembic_metadata_registry.py::test_every_foreign_key_names_a_table_that_exists — PHANTOM_FK_TARGETS is now the empty frozenset",
+  "consequence": "One of NR-023's three blockers is closed. Remaining: NR-006 and NR-030."
+}

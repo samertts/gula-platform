@@ -231,3 +231,36 @@ assertions, no state machine change:
 The `(entity, state)` rewrite is still **not applied**. Section 10's sequencing
 rule stands: the mechanical keying must land with the attribution, and the 28
 synthetic keys are not attributed.
+
+---
+
+# BATCH-2.7 — The 28 synthetic keys, classified
+
+Method: for each key, is it written by Blood Bank code outside
+`state_machine.py`, and can any transition *arrive* at it? Nothing is attributed
+by judgement.
+
+| Class | Count | Keys |
+|---|---:|---|
+| **LIVE** | 7 | `collected`, `identified`, `received`, `released`, `returned`, `testing`, `validated` |
+| **DEAD/SYNTHETIC** | 6 | `crossmatch_requested`, `draft`, `issued_order`, `ordered_transfusion`, `received_sample`, `testing_crossmatch` |
+| **UNRESOLVED** | 15 | `classification`, `clinical_assessment`, `compatibility_pending`, `investigation`, `reaction_suspected`, `ready`, `received_at_bedside`, `requested`, `resolution`, `reviewed`, `sample_received`, `sample_required`, `started`, `transfusion_stopped`, `verification` |
+
+**LIVE** — written by code, and all are blood-unit or patient-sample states.
+`blood_unit` is one of the two `transition()` participants, so these rows are
+governed by an attributed entity. Keep.
+
+**DEAD/SYNTHETIC** — no code writes them **and** no transition can reach them.
+Unreachable in both directions, so they govern nothing and never can. Four are
+the explicit `<state>_<entity>` compounds invented to dodge collisions
+(`issued_order`, `received_sample`, `testing_crossmatch`, `ordered_transfusion`)
+— the workaround, now provably inert. **RETIRE candidates.**
+
+**UNRESOLVED** — reachable as a transition target, but nothing writes them.
+They describe order, sample, crossmatch and reaction lifecycles, and none of
+those entities is ever passed to `transition()`; order, sample and reaction have
+no lifecycle enum at all.
+
+**BLOCKED — CLINICAL OWNER REQUIRED.** Attributing them means first deciding
+what those entities' lifecycles are, which is a clinical modelling question.
+No state was renamed and no state machine was rewritten.

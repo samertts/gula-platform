@@ -250,3 +250,38 @@ five zero-caller Blood Bank legacy commands.
 | Encounter canonical adoption | clinical owner |
 | NR-007 mechanical keying | clinical owner |
 | Blood Bank legacy route audit | a behavioural API decision on 7 live endpoints |
+
+---
+
+# BATCH-2.7 — Scope freeze updated
+
+**NR-029 leaves B3_REQUIRED** — resolved as a three-word ORM correction.
+
+**NR-026 enters B3_REQUIRED**, promoted from DEFER on new evidence: it is a P0
+live defect, not drift. Two nursing features fail at runtime, one of them
+clinical escalation.
+
+### B3_REQUIRED — now four items
+
+1. **NR-006** — rename or retire `app/national/domain/facility.py::Facility`.
+2. **NR-030** — wire the classified exclusion list into the combined-MetaData
+   build. *What* the twelve tables are is now settled; only the wiring remains.
+3. **Practitioner** — build `national_practitioners` per the identity contract.
+4. **NR-026** — correct the two nursing `__tablename__` values **and** the 23
+   drifted column types in one change.
+
+### RETIRE — added
+
+Six Blood Bank transition keys that are unreachable in both directions:
+`crossmatch_requested`, `draft`, `issued_order`, `ordered_transfusion`,
+`received_sample`, `testing_crossmatch`.
+
+### BLOCKED — updated
+
+| Item | Blocked on |
+|---|---|
+| NR-023 autogenerate | **NR-006 and NR-030** (NR-029 closed) |
+| NR-018 zero-diff proof | NR-023 |
+| Visit adoption | clinical owner — 3 questions |
+| NR-007 mechanical keying | clinical owner — 15 UNRESOLVED keys |
+| Blood Bank legacy route audit | a behavioural API decision on 7 live endpoints |

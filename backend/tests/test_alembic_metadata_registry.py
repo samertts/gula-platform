@@ -48,20 +48,41 @@ ENV_PY = REPO_ROOT / "backend" / "migrations" / "env.py"
 # convention as GULA_INTEL_DATABASE_URL.
 SCHEMA_DATABASE_URL = os.environ.get("GULA_SCHEMA_DATABASE_URL", "")
 
-# Physical tables mapped by no ORM class anywhere (NR-030).
+# Physical tables mapped by no ORM class anywhere (NR-030), each with its
+# BATCH-2.7 disposition. Every entry is a DROP candidate for a single-MetaData
+# autogenerate, so the list is an explicit, named exclusion — never a silent one.
 UNMAPPED_PHYSICAL_TABLES = frozenset({
-    # Financial Engine Phase A is schema-only by design (CLAUDE.md), so these
-    # six are deliberate — but they are still DROP candidates for autogenerate.
+    # KEEP_PHYSICAL_NO_ORM — Financial Engine Phase A is schema-only by design
+    # (CLAUDE.md). Writing models for these would be adding Phase B logic.
     "fin_ads_campaigns", "fin_ads_clicks", "fin_ads_conversions",
     "fin_clinical_behavior", "fin_fraud_logs", "fin_market_benchmarks",
-    # These six are not explained by any documented decision.
-    "idempotency_keys", "nursing_clinical_checklists",
-    "nursing_escalation_records", "radiology_ai_analysis_jobs",
-    "sndhs_audit_logs", "visits",
+    # KEEP_PHYSICAL_NO_ORM — deliberately raw SQL in app/core/idempotency.py,
+    # a request hot path that does not want an ORM round trip.
+    "idempotency_keys",
+    # MAP_EXISTING_ORM — the models exist as ClinicalChecklist and
+    # EscalationRecord but say nursing_checklists / nursing_escalations, names
+    # no migration creates. Blocked behind NR-026: the __tablename__ and the
+    # column types have to be corrected together.
+    "nursing_clinical_checklists", "nursing_escalation_records",
+    # CREATE_ORM — 34 columns and 6 foreign keys, and the only radiology table
+    # of eighteen with no model. Mechanical, but not authorised in BATCH-2.7.
+    "radiology_ai_analysis_jobs",
+    # BLOCKED — a parallel UUID-keyed audit surface from SNDHS Phase 1 whose
+    # promised service (app/services/sndhs_audit.py) was never written.
+    "sndhs_audit_logs",
+    # BLOCKED — the clinical episode anchor. Its model is part of adopting
+    # Visit as canonical, which waits on the clinical owner.
+    "visits",
 })
 
 # Foreign keys naming a table that is neither mapped nor physical (NR-029).
-PHANTOM_FK_TARGETS = frozenset({"niam_identity_authorities", "niam_user_sessions"})
+#
+# Empty since BATCH-2.7. The three declarations that populated it named the ORM
+# *class* rather than its __tablename__ — IdentityAuthority is
+# niam_gov_authorities, UserSession is niam_sessions — while the migrations had
+# written the real names all along and PostgreSQL already enforced both foreign
+# keys. Repointing the ORM closed it with no migration and no schema change.
+PHANTOM_FK_TARGETS: frozenset[str] = frozenset()
 
 # Registered metadata holding zero tables (NR-024).
 EMPTY_REGISTERED_BASES = frozenset({"CitizenPlatformBase"})
@@ -235,4 +256,41 @@ def test_every_physical_table_is_mapped_by_a_registered_metadata(mapped) -> None
     assert not resolved, (
         f"these tables are now mapped: {sorted(resolved)}. Remove them from "
         "UNMAPPED_PHYSICAL_TABLES so the guard keeps its meaning."
+    )
+
+
+@pytest.mark.skipif(
+    not SCHEMA_DATABASE_URL,
+    reason="GULA_SCHEMA_DATABASE_URL is not configured; this guard needs a database migrated to head",
+)
+def test_a_shared_metadata_would_not_drop_an_unlisted_table(registry, mapped) -> None:
+    """Condition E: the destructive half of the single-MetaData architecture.
+
+    BATCH-2.6 measured what a combined MetaData would emit against a database at
+    head: 5,101 operations including 76 DROP TABLE. Importing the modules that
+    were never imported cut that to the named list above. This guard is the one
+    that would have caught the original hazard: it asserts that the set of
+    tables a shared MetaData would propose dropping is exactly the set someone
+    has written down and justified.
+
+    It deliberately does not build the shared MetaData — that architecture is
+    blocked (NR-006) — it measures the same quantity the architecture would act
+    on.
+    """
+    from sqlalchemy import create_engine, inspect
+
+    engine = create_engine(SCHEMA_DATABASE_URL)
+    try:
+        physical = set(inspect(engine).get_table_names()) - {"alembic_version"}
+    finally:
+        engine.dispose()
+
+    if not physical:
+        pytest.skip("database has no tables; not migrated to head")
+
+    would_drop = physical - mapped
+    assert would_drop == set(UNMAPPED_PHYSICAL_TABLES), (
+        "the set of tables a shared MetaData would DROP no longer matches the "
+        f"reviewed list. Unexpected: {sorted(would_drop - UNMAPPED_PHYSICAL_TABLES)}; "
+        f"no longer at risk: {sorted(UNMAPPED_PHYSICAL_TABLES - would_drop)}"
     )

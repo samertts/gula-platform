@@ -1,0 +1,112 @@
+{
+  "document": "Visit / Encounter / CanonicalEncounter — Architecture Closure",
+  "batch": "BATCH-2.7",
+  "generated": "2026-09-10T15:49:08Z",
+  "head_commit": "7319dc0d0be92d1c90280152f801342b8d33fa02",
+  "status": "Visit formally established as the clinical episode anchor; three sub-questions BLOCKED — CLINICAL OWNER REQUIRED",
+  "entities": {
+    "visits": {
+      "kind": "physical table",
+      "where": "migration 20260505_0003",
+      "key": "UUID (gen_random_uuid())",
+      "tenancy": "derived via patients.lab_id",
+      "columns": 6,
+      "referenced_by": [
+        "lab_orders.visit_id (ENFORCED FK fk_lab_orders_visit_id)"
+      ],
+      "read_or_written_by_code": false
+    },
+    "national_encounters": {
+      "kind": "ORM model, no physical table",
+      "where": "app/national/domain/encounter.py",
+      "key": "String(26) _ulid()",
+      "tenancy": "lab_id NOT NULL (contradicts national scope)",
+      "columns": 20,
+      "referenced_by": "47 ORM foreign keys, 0 physical",
+      "read_or_written_by_code": "one service that cannot run"
+    },
+    "CanonicalEncounter": {
+      "kind": "abstract class, no table",
+      "where": "app/national_data/models/canonical_encounter.py",
+      "key": null,
+      "tenancy": "derived from national_patients.lab_id",
+      "columns": "16 projected",
+      "referenced_by": "nothing",
+      "read_or_written_by_code": "query_all() / get_by_id()"
+    }
+  },
+  "semantic_roles": {
+    "transactional_owner": "visits",
+    "clinical_episode_anchor": "visits",
+    "national_projection": "national_encounters",
+    "projection_implementation": "CanonicalEncounter",
+    "fhir_representation": "Encounter",
+    "interoperability_mapping": "national/fhir/encounter.py (maps the national model; must be repointed on adoption)",
+    "lifecycle": "open -> closed via status/closed_at (6 columns) vs the national EncounterStatus (8 states)",
+    "tenant_scope": "derived through patients.lab_id — visits carries no lab_id"
+  },
+  "decisive_evidence": [
+    "Migration 20260505_0003 docstring: 'Visit-based architecture: every clinical action is anchored to a visit.'",
+    "lab_orders.visit_id UUID -> visits.id, constraint fk_lab_orders_visit_id, enforced in a database at head",
+    "visits.patient_id INT -> patients.id",
+    "No competing physical episode table exists"
+  ],
+  "correction_to_batch_2_6": "visits has NO code consumers. Every apparent hit was a substring false positive. Adoption is therefore lower risk than BATCH-2.6 implied — no live usage to migrate — and the table is currently inert.",
+  "consumer_disposition": [
+    {
+      "domain": "Laboratory",
+      "today": "lab_orders.visit_id UUID + FK",
+      "target": "unchanged",
+      "migration": "none"
+    },
+    {
+      "domain": "Pharmacy",
+      "today": "pharmacy_sales.encounter_id VARCHAR(26)",
+      "target": "visit_id UUID + FK",
+      "migration": "backfill NULL, retype, add FK"
+    },
+    {
+      "domain": "Blood Bank",
+      "today": "3 x encounter_id VARCHAR(100)",
+      "target": "visit_id UUID + FK",
+      "migration": "backfill NULL, retype, add FK"
+    },
+    {
+      "domain": "Billing",
+      "today": "encounter_ref VARCHAR(128) NOT NULL",
+      "target": "visit_id UUID + FK",
+      "migration": "hardest — NOT NULL with no default"
+    },
+    {
+      "domain": "Nursing",
+      "today": "12 ORM columns, none physical",
+      "target": "visit_id UUID",
+      "migration": "ORM only"
+    },
+    {
+      "domain": "Clinical / EHR / Care Continuity",
+      "today": "30 ORM FKs to a projection",
+      "target": "repoint to visits",
+      "migration": "ORM only"
+    }
+  ],
+  "orm_only_references": 42,
+  "visits_gaps": [
+    "lab_id or an explicit ruling that tenancy stays derived",
+    "facility_id and practitioner_id (national core, unbuilt)",
+    "encounter type taxonomy: visit_type VARCHAR(40) vs the national EncounterType enum",
+    "period semantics: created_at/closed_at vs period_start/period_end/duration_minutes",
+    "fhir_id"
+  ],
+  "blocked_questions": [
+    "Does visits gain an explicit lab_id, or does tenancy stay derived through patients?",
+    "Is visit_type extended, or replaced by the national EncounterType enum?",
+    "Does adoption require enabling SNDHS_ENABLE_VISITS, and what is the backfill path for the four physical string columns — most sharply billing_invoices.encounter_ref, which is NOT NULL?"
+  ],
+  "not_done": [
+    "no rename",
+    "no migration",
+    "no ORM model for visits",
+    "no repointing of the 47 foreign keys"
+  ]
+}
