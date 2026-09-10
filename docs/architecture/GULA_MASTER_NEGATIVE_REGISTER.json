@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 35,
+    "total": 36,
     "by_severity": {
       "P0": 10,
-      "P1": 11,
+      "P1": 12,
       "P2": 9,
       "P3": 5
     }
@@ -1267,7 +1267,7 @@
       "domain": "Pharmacy",
       "severity": "P0",
       "priority": 34,
-      "status": "OPEN — CONFIRMED, FIX SCOPED",
+      "status": "FIXED — VERIFIED (MED-001)",
       "blocker": true,
       "can_fix_now": false,
       "title": "A pharmacy point-of-sale sale naming a patient writes to a table that does not exist",
@@ -1281,7 +1281,9 @@
       "recommended_fix": "Write the dispense to pharmacy_dispense_records, which is built, lab-scoped and INTEGER-keyed. No schema change. Sequence it first in MED-001.",
       "discovered_by": "BATCH-3.1, tracing NR-032 ownership",
       "owner": "Pharmacy",
-      "artifact": "docs/architecture/nursing-medication-ownership.md"
+      "artifact": "docs/architecture/nursing-medication-ownership.md",
+      "resolution": "The POS path now writes a canonical Pharmacy DispenseRecord to pharmacy_dispense_records instead of an EHR MedicationDispense. The table is built, lab-scoped and INTEGER-keyed, and its patient_id is a real foreign key to patients(id) — which the sale already carries as billing_patient_id. The sale's canonical patient_id/citizen_id are unconstrained strings and remain on the sale, which owns them, so no identity semantics were lost. No schema change and no migration: pharmacy_sale_lines.medication_dispense_id was already String(26) and now carries the Pharmacy dispense id, so the API response shape is unchanged. is_verified is deliberately False — a counter sale has no independent verifier, and record_manual_dispense remains the path that requires one.",
+      "verification": "tests/test_pharmacy_pos.py 8 passed (sale without patient context writes no dispense; citizen_id alone still records one; canonical persistence and the sale-line link; tenant isolation across two laboratories; a failed sale leaves no dispense and no stock movement, checked through a nested savepoint; and a source guard that the EHR model is not reachable from Pharmacy). Pharmacy/billing/clinical selection 322 passed, 1 skipped. CI clinical safety gate set 35 passed."
     },
     {
       "id": "NR-035",
@@ -1305,6 +1307,27 @@
       "owner": "Identity Platform",
       "artifact": "docs/architecture/auth-identity-gap-register.md",
       "next_batch": "AUTH-003"
+    },
+    {
+      "id": "NR-036",
+      "category": "Test infrastructure",
+      "domain": "Platform-wide",
+      "severity": "P1",
+      "priority": 36,
+      "status": "OPEN — CONFIRMED, ROOT CAUSE OF A CLASS OF DEFECTS",
+      "blocker": false,
+      "can_fix_now": false,
+      "title": "The test schema is built from ORM metadata, so tests pass against tables no migration creates",
+      "description": "backend/tests/conftest.py builds the test database with _ddl_meta.create_all(engine) from the ORM metadata rather than by running migrations. Any table that exists as a model but has no migration is therefore present in tests and absent in production. The pharmacy POS tests exercised patient-linked sales and passed for exactly this reason while the same call could not commit against a migrated database.",
+      "root_cause": "Two sources of schema truth — ORM metadata for tests, migrations for production — with no gate asserting they agree. This is the mechanism that let NR-026, NR-032 and NR-034 all reach a green suite.",
+      "evidence": "conftest.py line 147: _ddl_meta.create_all(engine). test_pharmacy_pos.py asserted MedicationDispense rows keyed on citizen_id and passed, although ehr_medication_dispenses does not exist at head and no migration creates it.",
+      "affected_components": "backend/tests/conftest.py, and every test relying on the db fixture",
+      "data_integrity_impact": "None directly; the risk is undetected production defects.",
+      "security_impact": "A tenancy defect in a model with no migration would also go undetected.",
+      "recommended_fix": "Do not switch the whole suite to migrations — that is slow and would be a large change. Add a gate that asserts every table in the ORM DDL metadata either has a migration or is on a reviewed exclusion list, in the same fail-closed style as tests/test_alembic_metadata_registry.py. The exclusion list makes each unbuilt model an explicit, named decision rather than an invisible one.",
+      "discovered_by": "MED-001, while fixing NR-034",
+      "owner": "platform",
+      "next_batch": "TEST-001"
     }
   ]
 }

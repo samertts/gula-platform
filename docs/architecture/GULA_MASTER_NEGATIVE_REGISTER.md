@@ -25,11 +25,11 @@ and `docs/adr/`.
 
 | Severity  | Count | Fixed | Open |
 | --------- | ----- | ----- | ---- |
-| P0        | 10     | 5     | 5    |
-| P1        | 11     | 6     | 5    |
+| P0        | 10     | 6     | 4    |
+| P1        | 12     | 6     | 6    |
 | P2        | 9     | 0     | 9    |
 | P3        | 5     | 0     | 5    |
-| **Total** | **35** | **11** | **24** |
+| **Total** | **36** | **12** | **24** |
 
 _Counts are generated from the JSON companion; the table above had drifted
 since the first pass and now reflects all findings, not one session's._
@@ -73,8 +73,9 @@ since the first pass and now reflects all findings, not one session's._
 | NR-031 | P1  | Blood Bank | `POST /samples/{id}/transition` required an Idempotency-Key and discarded it | FIXED — VERIFIED |
 | NR-032 | P0  | Medication (platform-wide) | Nine modules across five domains depend on `ehr_medication_*`; zero `ehr_*` tables exist | OPEN — OWNERSHIP DECIDED (BATCH-3.1), EXECUTION NEEDS APPROVAL |
 | NR-033 | P2  | Nursing Platform | The eight `/nursing/coordination/*` endpoints persist nothing — audit entry only, no table | OPEN — ALL EIGHT CLASSIFIED (BATCH-3.1) |
-| NR-034 | P0  | Pharmacy | A point-of-sale sale naming a patient writes an EHR `MedicationDispense` and cannot commit | OPEN — CONFIRMED, FIX SCOPED |
+| NR-034 | P0  | Pharmacy | A point-of-sale sale naming a patient writes an EHR `MedicationDispense` and cannot commit | FIXED — VERIFIED (MED-001) |
 | NR-035 | P1  | Identity Platform | The `user_id` token claim is ambiguous across `users` and `lab_users` | OPEN — RESOLVED BY AUTH-002 DECISION, EXECUTION PENDING |
+| NR-036 | P1  | Platform-wide | The test schema is built from ORM metadata, so tests pass against tables no migration creates | OPEN — CONFIRMED |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.

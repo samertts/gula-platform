@@ -4,11 +4,11 @@ from typing import Any
 
 import pytest
 from app.billing.models import BillingInvoice
-from app.ehr.models.medication import MedicationDispense
 from app.models.lab import Lab
 from app.models.patient import Patient
 from app.national import domain as _national_domain_models
 from app.pharmacy.models import (
+    DispenseRecord,
     DrugBatch,
     DrugCatalog,
     DrugSubstitutionRequest,
@@ -106,7 +106,23 @@ def test_pos_sale_uses_fefo_and_writes_billing_and_dispense(db: Any) -> None:
     assert sale.lines[0].quantity == 2
     assert sale.lines[1].lot_number == second_batch.batch_number
     assert sale.lines[1].quantity == 1
-    assert db.query(MedicationDispense).filter(MedicationDispense.citizen_id == "SYNTHETIC-CITIZEN-001").count() == 2
+    # NR-034: the dispense lands in the canonical Pharmacy table. It used to be
+    # written to ehr_medication_dispenses, which no migration creates — the test
+    # schema is built by create_all() from ORM metadata, so it existed here and
+    # nowhere else, and this assertion passed while production could not commit.
+    dispenses = db.query(DispenseRecord).filter(DispenseRecord.lab_id == lab.id).all()
+    assert len(dispenses) == 2
+    assert {d.drug_id for d in dispenses} == {drug.id}
+    assert {d.patient_id for d in dispenses} == {patient.id}, (
+        "the dispense must reference the local patients.id its foreign key accepts"
+    )
+    assert {d.batch_id for d in dispenses} == {first_batch.id, second_batch.id}
+    assert sum(d.quantity_dispensed for d in dispenses) == 3
+    assert all(d.dispensed_by == PHARMACIST_ID for d in dispenses)
+    assert all(d.is_verified is False for d in dispenses), (
+        "a counter sale has no independent verifier and must not claim one"
+    )
+    assert {line.medication_dispense_id for line in sale.lines} == {str(d.id) for d in dispenses}
     summary = PharmacyService(db, user_id=PHARMACIST_ID, lab_id=lab.id).get_pos_summary(30)
     assert summary["sale_count"] == 1
     assert summary["units_sold"] == 3
@@ -230,8 +246,115 @@ def test_approved_substitution_is_consumed_by_pos_and_audited(db: Any) -> None:
     assert sale.lines[0].metadata_["original_drug_catalog_id"] == str(original.drug_id)
     assert sale.lines[0].metadata_["alternative_drug_catalog_id"] == str(alternative.drug_id)
     assert db.query(StockLevel).filter(StockLevel.batch_id == alt_batch.id).one().quantity_on_hand == 3
-    assert db.query(MedicationDispense).filter(
-        MedicationDispense.citizen_id == "SYNTHETIC-CITIZEN-SUB-001",
-        MedicationDispense.medication_code == alternative.drug_code,
+    assert db.query(DispenseRecord).filter(
+        DispenseRecord.lab_id == lab.id,
+        DispenseRecord.drug_id == alternative.id,
     ).count() == 1
     assert db.query(DrugSubstitutionRequest).filter(DrugSubstitutionRequest.id == request.id).one().status == "consumed"
+
+
+# ── NR-034 (MED-001): the canonical dispense owner ────────────────────────────
+
+
+def test_a_sale_without_patient_context_writes_no_dispense(db: Any) -> None:
+    """The case that always worked, pinned so the fix did not change it.
+
+    An anonymous counter sale is not dispensing to a known patient, so it
+    produces no dispense record — before this change and after it.
+    """
+    lab, patient, drug, _first, _second = _seed_pos(db)
+    sale = PharmacyService(db, user_id=PHARMACIST_ID, lab_id=lab.id).create_pos_sale({
+        "billing_patient_id": patient.id,
+        "idempotency_key": "pos-no-patient-context",
+        "lines": [{"drug_catalog_id": str(drug.drug_id), "quantity": 1}],
+    })
+    assert sale.sale_number.startswith("GULA-POS-")
+    assert db.query(DispenseRecord).filter(DispenseRecord.lab_id == lab.id).count() == 0
+    assert all(line.medication_dispense_id is None for line in sale.lines)
+
+
+def test_a_sale_with_only_a_citizen_id_still_records_the_dispense(db: Any) -> None:
+    """citizen_id alone must be enough — it was one of the two triggers."""
+    lab, patient, drug, _first, _second = _seed_pos(db)
+    sale = PharmacyService(db, user_id=PHARMACIST_ID, lab_id=lab.id).create_pos_sale({
+        "citizen_id": "SYNTHETIC-CITIZEN-ONLY",
+        "billing_patient_id": patient.id,
+        "idempotency_key": "pos-citizen-only",
+        "lines": [{"drug_catalog_id": str(drug.drug_id), "quantity": 1}],
+    })
+    record = db.query(DispenseRecord).filter(DispenseRecord.lab_id == lab.id).one()
+    assert record.patient_id == patient.id
+    assert sale.lines[0].medication_dispense_id == str(record.id)
+    # The canonical identifiers stay on the sale, which is what owns them.
+    assert sale.citizen_id == "SYNTHETIC-CITIZEN-ONLY"
+
+
+def test_the_dispense_is_scoped_to_the_selling_laboratory(db: Any) -> None:
+    """Tenant isolation: one laboratory's sale must not produce another's record."""
+    lab_a, patient_a, drug, _f, _s = _seed_pos(db)
+    lab_b = Lab(name="Other POS Lab", lab_type="pharmacy")
+    db.add(lab_b)
+    db.flush()
+
+    PharmacyService(db, user_id=PHARMACIST_ID, lab_id=lab_a.id).create_pos_sale({
+        "patient_id": "SYNTHETIC-TENANT-PROBE",
+        "billing_patient_id": patient_a.id,
+        "idempotency_key": "pos-tenant-a",
+        "lines": [{"drug_catalog_id": str(drug.drug_id), "quantity": 1}],
+    })
+
+    assert db.query(DispenseRecord).filter(DispenseRecord.lab_id == lab_a.id).count() == 1
+    assert db.query(DispenseRecord).filter(DispenseRecord.lab_id == lab_b.id).count() == 0
+
+
+def test_a_failed_sale_leaves_no_dispense_and_no_stock_change(db: Any) -> None:
+    """One atomic unit: a line that cannot be allocated rolls the whole sale back."""
+    lab, patient, drug, _first, _second = _seed_pos(db)
+    before = {
+        row.batch_id: row.quantity_on_hand
+        for row in db.query(StockLevel).filter(StockLevel.lab_id == lab.id).all()
+    }
+    service = PharmacyService(db, user_id=PHARMACIST_ID, lab_id=lab.id)
+
+    # A nested savepoint, so only the failed sale is undone. A plain rollback
+    # would discard the seed with it and prove nothing.
+    savepoint = db.begin_nested()
+    with pytest.raises(ValueError, match="insufficient non-expired stock"):
+        service.create_pos_sale({
+            "patient_id": "SYNTHETIC-ROLLBACK-PROBE",
+            "billing_patient_id": patient.id,
+            "idempotency_key": "pos-rollback",
+            # more than the seven units the two batches hold
+            "lines": [{"drug_catalog_id": str(drug.drug_id), "quantity": 99}],
+        })
+    savepoint.rollback()
+    db.expire_all()
+
+    assert db.query(DispenseRecord).filter(DispenseRecord.lab_id == lab.id).count() == 0
+    assert db.query(PharmacySale).filter(PharmacySale.lab_id == lab.id).count() == 0
+    after = {
+        row.batch_id: row.quantity_on_hand
+        for row in db.query(StockLevel).filter(StockLevel.lab_id == lab.id).all()
+    }
+    assert after == before, "a failed sale must not move stock"
+
+
+def test_the_pos_path_no_longer_depends_on_an_unbuilt_ehr_table(db: Any) -> None:
+    """The defect itself, asserted at the source.
+
+    ehr_medication_dispenses exists in this test database only because the
+    schema is built by create_all() from ORM metadata; no migration creates it,
+    so in production the INSERT could not commit. Pharmacy must not reach for
+    that model at all.
+    """
+    import pathlib
+
+    from app.pharmacy import services as pharmacy_services
+
+    source = pathlib.Path(pharmacy_services.__file__).read_text(encoding="utf-8")
+    assert "from app.ehr.models.medication import" not in source, (
+        "Pharmacy imports an EHR medication model again; NR-034 has regressed"
+    )
+    assert "MedicationDispense(" not in source, (
+        "the POS path constructs an EHR dispense again; NR-034 has regressed"
+    )

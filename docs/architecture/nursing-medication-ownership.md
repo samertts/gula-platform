@@ -108,7 +108,7 @@ administration.
 
 Missed-doses and late-doses derive from the two sources above and need no third.
 
-## 6. The P0 this trace uncovered outside Nursing — NR-034
+## 6. The P0 this trace uncovered outside Nursing — NR-034 (RESOLVED in MED-001)
 
 `PharmacyService` builds an EHR `MedicationDispense` for every sale line whenever
 the caller supplies `patient_id` or `citizen_id`; the POS request model accepts
@@ -118,9 +118,19 @@ Sales without a patient context are unaffected, which is why the existing POS
 tests pass.
 
 Pharmacy already owns `pharmacy_dispense_records`, which is built and lab-scoped.
-The fix is to write the dispense there — but it changes a clinical write path in a
-domain outside this batch's scope, so it is recorded as **NR-034 (P0)** rather
-than applied here.
+
+**MED-001 applied this fix.** The POS path now writes a canonical
+`DispenseRecord`, using the sale's `billing_patient_id` — the local `patients.id`
+that this table's foreign key accepts. The sale's canonical `patient_id` and
+`citizen_id` are unconstrained strings and stay on the sale, which owns them, so
+no identity semantics were lost. No schema change was needed:
+`pharmacy_sale_lines.medication_dispense_id` was already `String(26)` and now
+carries the Pharmacy dispense id, leaving the API response shape untouched.
+`is_verified` is deliberately `False` — a counter sale has no independent
+verifier, and `record_manual_dispense` remains the path that requires one.
+
+The wider NR-032 decision is unchanged: Nursing and the Citizen Platform still
+depend on the unbuilt EHR models, and those stay blocked behind NR-022.
 
 ## 7. Cross-domain intersections recorded (not implemented)
 
@@ -175,8 +185,13 @@ Nursing table.
 ## 10. Recommended next batch
 
 **MED-001 — Medication ownership execution** (needs approval; touches two domains):
-1. NR-034 first: re-point the Pharmacy POS dispense write at
-   `pharmacy_dispense_records`. P0, in a built domain, no schema change.
+1. ~~NR-034: re-point the Pharmacy POS dispense write at
+   `pharmacy_dispense_records`.~~ **Done in MED-001 — no schema change.**
 2. Re-point the two Nursing read endpoints at Pharmacy prescriptions.
 3. One additive migration for `nursing_medication_administrations`.
 4. Leave `ehr_medication_*` untouched and BLOCKED behind NR-022.
+
+MED-001 also exposed **NR-036**: the test schema is built by `create_all()` from
+ORM metadata, so `ehr_medication_dispenses` existed in tests and nowhere else.
+That is the mechanism by which NR-026, NR-032 and NR-034 all reached a green
+suite, and it should be gated before the remaining steps land.

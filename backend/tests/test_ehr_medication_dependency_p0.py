@@ -1,10 +1,14 @@
-"""NR-032: six domains depend on EHR medication tables that were never built.
+"""NR-032: several domains depend on EHR medication tables that were never built.
 
 BATCH-3 recorded this as a Nursing finding. Tracing it in BATCH-3.1 showed the
-Nursing endpoints are one consumer of five: Pharmacy's point-of-sale path,
-the Citizen Platform, the National FHIR exporters and the National Data
-canonical-medication view all import the same four ORM models, and no
+Nursing endpoints were one consumer of five: Pharmacy's point-of-sale path, the
+Citizen Platform, the National FHIR exporters and the National Data
+canonical-medication view all imported the same four ORM models, and no
 migration creates any of their tables.
+
+MED-001 has since removed Pharmacy from that list — its POS path now writes to
+the canonical ``pharmacy_dispense_records`` (NR-034, resolved). The remaining
+consumers are still blocked behind NR-022.
 
 These tests assert the *defect*, with the evidence that decides ownership:
 
@@ -192,9 +196,9 @@ def test_medication_administration_has_no_owner_in_any_built_domain(engine) -> N
 def test_every_dependent_domain_is_named(engine) -> None:
     """Blast radius, pinned so it cannot quietly grow.
 
-    NR-032 was recorded as a Nursing finding. It is not: five domains import
-    these models. A sixth appearing without this list changing would hide the
-    real scope again.
+    NR-032 was recorded as a Nursing finding. It was not: five domains imported
+    these models, and MED-001 removed one of them. A new importer appearing
+    without this list changing would hide the real scope again.
     """
     import pathlib
     import re
@@ -213,7 +217,7 @@ def test_every_dependent_domain_is_named(engine) -> None:
         "national/fhir/medication_request.py",
         "nursing/services.py",
         "nursing/medication.py",
-        "pharmacy/services.py",
+        # pharmacy/services.py left this list in MED-001 (NR-034).
         "national_data/models/canonical_medication.py",
         "citizen_platform/medications.py",
         "citizen_platform/routes.py",
@@ -226,30 +230,37 @@ def test_every_dependent_domain_is_named(engine) -> None:
     )
 
 
-def test_pharmacy_point_of_sale_writes_to_a_table_that_does_not_exist(engine) -> None:
-    """The reachable P0 this trace uncovered outside Nursing.
+def test_pharmacy_no_longer_writes_its_dispense_to_an_unbuilt_table(engine) -> None:
+    """NR-034 — RESOLVED by MED-001.
 
-    ``PharmacyService`` builds an EHR ``MedicationDispense`` for every sale
-    line whenever the caller supplies ``patient_id`` or ``citizen_id`` — both
-    accepted by the POS request model. The INSERT targets
-    ``ehr_medication_dispenses``, so such a sale cannot commit.
+    This guard used to assert the defect: ``PharmacyService`` built an EHR
+    ``MedicationDispense`` for every sale line whenever the caller supplied
+    ``patient_id`` or ``citizen_id``, both accepted by the POS request model, so
+    a sale naming a patient could not commit. It now pins the resolution — the
+    POS path writes to ``pharmacy_dispense_records``, which Pharmacy owns.
+
+    Nursing and the Citizen Platform still depend on the unbuilt EHR models;
+    those are NR-032 and are unchanged by MED-001.
     """
     import pathlib
 
     from app.pharmacy import services as pharmacy_services
 
     source = pathlib.Path(pharmacy_services.__file__).read_text(encoding="utf-8")
-    assert "from app.ehr.models.medication import MedicationDispense" in source, (
-        "Pharmacy no longer imports the EHR dispense model; if the POS path was "
-        "redirected at pharmacy_dispense_records, close this finding"
+    assert "from app.ehr.models.medication import" not in source, (
+        "Pharmacy imports an EHR medication model again; NR-034 has regressed"
     )
-    assert "dispense = MedicationDispense(" in source, (
-        "the POS write path changed; re-derive whether a patient-context sale "
-        "can still reach an unbuilt table"
+    assert "MedicationDispense(" not in source, (
+        "the POS path constructs an EHR dispense again; NR-034 has regressed"
+    )
+    assert "dispense = DispenseRecord(" in source, (
+        "the POS path no longer writes a canonical Pharmacy dispense record"
     )
 
     with engine.connect() as conn:
-        exists = conn.execute(text(
+        assert conn.execute(text(
+            "SELECT to_regclass('public.pharmacy_dispense_records') IS NOT NULL"
+        )).scalar_one(), "the canonical dispense table is missing"
+        assert not conn.execute(text(
             "SELECT to_regclass('public.ehr_medication_dispenses') IS NOT NULL"
-        )).scalar_one()
-    assert not exists, "ehr_medication_dispenses now exists; re-verify the POS path"
+        )).scalar_one(), "ehr_medication_dispenses now exists; re-verify the POS decision"

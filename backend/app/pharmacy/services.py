@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.billing.service import BillingService
-from app.ehr.models.medication import MedicationDispense
 from app.pharmacy.enums import DispenseStatus, PrescriptionStatus, StockMovementType
 from app.pharmacy.models import (
     DispenseQueue,
@@ -1050,7 +1049,7 @@ class PharmacyService:
 
         The method validates all lines and FEFO allocations before mutating stock.
         It then writes the commercial sale, billing projection, stock movements,
-        and durable EHR MedicationDispense records when a citizen/patient context
+        and canonical Pharmacy dispense records when a patient or citizen context
         is supplied. Payment remains synthetic and never stores card credentials.
         """
         if self.lab_id is None:
@@ -1271,7 +1270,7 @@ class PharmacyService:
             )
             sale.billing_invoice_id = invoice.id
 
-        dispense_rows: list[tuple[PharmacySaleLine, MedicationDispense | None]] = []
+        dispense_rows: list[tuple[PharmacySaleLine, DispenseRecord | None]] = []
         for line_number, item in enumerate(allocations, start=1):
             stock = item["stock"]
             batch = item["batch"]
@@ -1338,45 +1337,60 @@ class PharmacyService:
                 notes="POS sale; FEFO allocation",
             )
 
-            record_patient_id = requested_patient_id or requested_citizen_id
+            # NR-034. This wrote an EHR MedicationDispense, whose table
+            # ehr_medication_dispenses does not exist and cannot be created:
+            # every ehr_medication_* model declares foreign keys to
+            # national_patients, national_citizens, national_encounters and
+            # national_practitioners, none of which exists either (NR-022).
+            # A sale naming a patient therefore could not commit, while a sale
+            # without one was unaffected — which is why the POS tests passed.
+            #
+            # Pharmacy already owns dispensing: pharmacy_dispense_records is
+            # built, lab-scoped, INTEGER-keyed, and its patient_id is a real
+            # foreign key to patients(id). The canonical identifiers the sale
+            # was given (patient_id, citizen_id) are unconstrained strings and
+            # are already stored on the sale itself, so nothing is lost by not
+            # repeating them on the line: the sale is the record of who the
+            # medication was sold to.
             dispense = None
-            if record_patient_id:
-                dispense = MedicationDispense(
-                    patient_id=str(record_patient_id),
-                    citizen_id=str(requested_citizen_id) if requested_citizen_id else None,
-                    medication_request_id=None,
-                    medication_code=drug.drug_code,
-                    medication_code_system="GULA-PHARMACY",
-                    medication_name=drug.drug_name,
-                    medication_name_ar=drug.drug_name_ar,
-                    # brand_name has no physical catalog column: brand is a
-                    # product/package attribute, not a drug attribute
-                    # (contract §5). Tracked as P0-2-GAP-BRAND.
-                    medication_brand=None,
-                    medication_form=drug.dosage_form or "",
-                    status="completed",
-                    category="outpatient",
-                    quantity=item["quantity"],
+            if requested_patient_id or requested_citizen_id:
+                dispense = DispenseRecord(
+                    lab_id=self.lab_id,
+                    drug_id=drug.id,
+                    batch_id=batch.id,
+                    prescription_id=item["prescription_id"],
+                    # billing_patient_id is the local patients.id and the only
+                    # identifier this table's foreign key accepts; the sale's
+                    # canonical patient_id/citizen_id are strings with no
+                    # constraint and belong to the sale, not to this row.
+                    patient_id=sale.billing_patient_id,
+                    dispense_number=(
+                        f"DSP-{datetime.now(UTC):%y%m%d%H%M%S}-{uuid4().hex[:4].upper()}"
+                    ),
+                    dispensed_by=self.user_id,
+                    dispensed_at=datetime.now(UTC),
+                    quantity_dispensed=item["quantity"],
                     quantity_unit=item["quantity_unit"],
                     days_supply=item["days_supply"],
-                    dosage_instruction=item["dosage_instruction"],
-                    route=item["route"],
-                    frequency=item["frequency"],
-                    dispensed_at=datetime.now(UTC),
-                    prepared_at=datetime.now(UTC),
-                    metadata_={
-                        "source": "pharmacy_pos",
-                        "synthetic": True,
-                        "pharmacy_sale_id": str(sale.sale_id),
-                        "pharmacy_sale_number": sale.sale_number,
-                        "billing_invoice_id": invoice.id if invoice else None,
-                        "lot_number": batch.batch_number,
-                        "expiry_date": batch.expiry_date.isoformat() if batch.expiry_date else None,
-                    },
+                    dosage_dispensed=item["dosage_instruction"],
+                    instructions=item["dosage_instruction"],
+                    label_notes=(
+                        f"POS {sale.sale_number}; lot {batch.batch_number}"
+                        + (f"; exp {batch.expiry_date.isoformat()}" if batch.expiry_date else "")
+                    ),
+                    # A counter sale is not a verified clinical dispense: no
+                    # independent verifier took part, and record_manual_dispense
+                    # is the path that requires one. Saying otherwise here would
+                    # forge a verification that never happened.
+                    is_verified=False,
+                    created_by=self.user_id,
+                    updated_by=self.user_id,
                 )
                 self.db.add(dispense)
                 self.db.flush()
-                sale_line.medication_dispense_id = dispense.id
+                # The column is String(26) because it was sized for the EHR
+                # identifier. It now carries the canonical Pharmacy dispense id.
+                sale_line.medication_dispense_id = str(dispense.id)
             dispense_rows.append((sale_line, dispense))
 
         self.db.flush()
