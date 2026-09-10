@@ -75,7 +75,7 @@ since the first pass and now reflects all findings, not one session's._
 | NR-033 | P2  | Nursing Platform | The eight `/nursing/coordination/*` endpoints persist nothing — audit entry only, no table | OPEN — ALL EIGHT CLASSIFIED (BATCH-3.1) |
 | NR-034 | P0  | Pharmacy | A point-of-sale sale naming a patient writes an EHR `MedicationDispense` and cannot commit | FIXED — VERIFIED (MED-001) |
 | NR-035 | P1  | Identity Platform | The `user_id` token claim is ambiguous across `users` and `lab_users` | OPEN — RESOLVED BY AUTH-002 DECISION, EXECUTION PENDING |
-| NR-036 | P1  | Platform-wide | The test schema is built from ORM metadata, so tests pass against tables no migration creates | OPEN — CONFIRMED |
+| NR-036 | P1  | Platform-wide | The test schema is built from ORM metadata, so tests pass against tables no migration creates | PARTIALLY VERIFIED — gate built and proven (TEST-001); needs CI approval to bind |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.
