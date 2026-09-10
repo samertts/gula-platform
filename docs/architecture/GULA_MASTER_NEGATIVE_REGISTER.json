@@ -1314,7 +1314,7 @@
       "domain": "Platform-wide",
       "severity": "P1",
       "priority": 36,
-      "status": "PARTIALLY VERIFIED — gate implemented and proven (TEST-001); not yet binding in CI",
+      "status": "FIXED — VERIFIED (TEST-001 + TEST-001.1)",
       "blocker": false,
       "can_fix_now": false,
       "title": "The test schema is built from ORM metadata, so tests pass against tables no migration creates",
@@ -1330,7 +1330,7 @@
       "next_batch": "TEST-002 (make the gate binding; needs CI approval)",
       "resolution": "backend/tests/test_schema_fidelity.py adds the ORM to migration direction that was missing. Every ORM table must be migration-backed or named in a 198-entry ledger grouped by owning base with its disposition; a module in a migration-backed domain must not import a model from a domain the chain does not build (sixteen such importers are declared); and the gate refuses to report a pass unless the dialect is PostgreSQL, alembic_version exists, and no declared-unbuilt table is present, so a create_all() schema fails loudly instead of passing silently. create_all() is not banned — it remains correct for unit tests that make no schema claim.",
       "verification": "Proven by making each defect real and reverting: adding an ORM model with no migration fails the ledger check by name; restoring the EHR import in pharmacy/services.py fails the cross-generation check with 'That is NR-034 happening again'; pointing the gate at a database without alembic_version refuses to pass. 7 tests green against migrated PostgreSQL.",
-      "residue": "The gate is not yet binding: PR #258's checks come from iam-hardening.yml, whose backend jobs each run a named list of test files, and ci.yml (which runs pytest tests/ against a migrated database) triggers only on PRs targeting main or staging. The recommended change is one line appending the migration-backed files to the existing 'PostgreSQL migration and schema gate' job, which already builds the migrated database — marginal cost about 12 seconds. Workflow edits require human approval, so it was not made.",
+      "residue": "The gate is now binding. TEST-001.1 appended tests/test_schema_fidelity.py to the 'Verify workspace schema on PostgreSQL' step of the PostgreSQL migration and schema gate job in iam-hardening.yml, which already builds a postgres:16.4 service, runs alembic upgrade head and exports MIGRATION_DATABASE_URL. CI log on ef58331c shows 'tests/test_schema_fidelity.py .......' and '11 passed', up from 4 collected items, with the job green. The step carries no continue-on-error, so a gate failure fails the job. Marginal cost about 10 seconds. Four other migration-backed suites remain unbound and are recommended for the same one-line treatment: test_alembic_metadata_registry.py, test_nursing_domain_contract.py, test_nursing_runtime.py and test_ehr_medication_dependency_p0.py. The shared db fixture is unchanged, so tests claiming API, clinical, tenant and security fidelity still run on SQLite built by create_all(); the gate stops new unbuilt tables and new cross-generation dependencies rather than converting those tests.",
       "artifact": "docs/testing/test-database-strategy.md"
     }
   ]

@@ -1,7 +1,7 @@
 # Test Database Strategy — Schema Fidelity
 
-**Program:** TEST-001 · **Finding:** NR-036 · **Status:** PARTIALLY VERIFIED —
-the gate is implemented and proven; it does not yet run in this PR's CI (§6).
+**Program:** TEST-001 + TEST-001.1 · **Finding:** NR-036 · **Status:** VERIFIED —
+the gate is implemented, proven, and executing in CI (§6).
 
 > **A green test must never mean "the ORM can create this table."**
 > For production-like verification it must mean: the migration chain created the
@@ -119,43 +119,49 @@ physical table with no ORM owner (deliberately the other guard's job) — using 
 isolated `MetaData` so nothing touches a real declarative base and nothing
 survives the test.
 
-## 6. CI — the honest position
+## 6. CI — bound and demonstrated
 
-**The gate does not currently run on this pull request, and neither do the other
-migration-backed tests.** PR #258's six checks come from
-`.github/workflows/iam-hardening.yml` (five) plus Vercel. Every backend job
-there runs a **named list of test files**:
+The gate runs in the **PostgreSQL migration and schema gate** job of
+`.github/workflows/iam-hardening.yml`. That job already creates a
+`postgres:16.4` service, runs `alembic upgrade head`, and exports
+`MIGRATION_DATABASE_URL`; TEST-001.1 appended one file to the existing pytest
+invocation of its *Verify workspace schema on PostgreSQL* step. No new job, no
+second database, no duplicated migration setup, no other job touched.
 
-* *Backend identity unit and compile gates* → `tests/identity`, two clinical
-  gateway files
-* *PostgreSQL migration and schema gate* → four named identity migration files
-* *Security and tenant isolation regression* → four named security files
+Placement was checked, not assumed: the step runs **after** *Apply migration
+head* and **before** *Verify reversible workspace migration*, which downgrades to
+`20260814_0002` and back. The gate therefore reads a schema at head.
 
-`.github/workflows/ci.yml` is the workflow that runs `pytest tests/` broadly
-against a migrated PostgreSQL, and it triggers only on pull requests targeting
-`main` or `staging`, so it produces no checks here.
+The gate is **not advisory**. This workflow carries four `continue-on-error`
+flags and all four are on evidence-upload steps — the artifact quota is
+exhausted, and archival must not fail the gate it documents. The pytest step
+carries none, so a schema-fidelity failure fails the job.
 
-**Correction to an earlier claim in this session:** BATCH-3 reported that the
-nursing tests would "actually execute in CI rather than skip" once they resolved
-`MIGRATION_DATABASE_URL`. That was wrong. The variable is exported by the job
-that runs four named files, not by one that would collect them. The nursing,
-pharmacy POS, EHR-dependency and schema-fidelity tests have all been verified
-locally against migrated PostgreSQL and are **not** part of the PR's green
-checks.
-
-**Recommended change — one line, needs approval** (CLAUDE.md: workflow edits
-require human approval, so it is not made here). In `iam-hardening.yml`, the
-*PostgreSQL migration and schema gate* job already creates a fresh PostgreSQL,
-runs `alembic upgrade head`, and exports `MIGRATION_DATABASE_URL`. Appending the
-migration-backed files to its pytest invocation makes the gate binding:
+**Demonstrated execution**, CI log for `ef58331c`:
 
 ```
-tests/test_schema_fidelity.py tests/test_alembic_metadata_registry.py
-tests/test_nursing_domain_contract.py tests/test_nursing_runtime.py
-tests/test_ehr_medication_dependency_p0.py
+collected 11 items
+tests/identity/test_workspace_migration_phase5.py .                      [  9%]
+tests/identity/test_membership_migration_phase6.py .                     [ 18%]
+tests/identity/test_security_audit_migration_phase9.py .                 [ 27%]
+tests/identity/test_clinical_gateway_migration_phase10b.py .             [ 36%]
+tests/test_schema_fidelity.py .......                                    [100%]
+======================= 11 passed, 2 warnings in 10.31s ========================
 ```
 
-No new job, no new service, no other job touched.
+Collected items went from 4 to 11, on Python 3.12.14 with `ENV=migration`,
+`RUNTIME_MODE=migration` and no `BASE_URL` — the job's real environment, which
+differs from the one earlier local runs used. Job conclusion: **success**.
+
+**Correction this batch resolved.** BATCH-3 claimed the nursing tests would
+"actually execute in CI rather than skip" once they resolved
+`MIGRATION_DATABASE_URL`. That was wrong: the variable is exported by a job that
+runs a named list of files, not one that would collect them. Only
+`test_schema_fidelity.py` is bound today.
+
+**Still unbound**, recommended for the same one-line treatment:
+`test_alembic_metadata_registry.py`, `test_nursing_domain_contract.py`,
+`test_nursing_runtime.py`, `test_ehr_medication_dependency_p0.py`.
 
 ## 7. Performance
 
@@ -177,8 +183,8 @@ semantics it did not observe.
 
 ## 9. Remaining limitations
 
-1. **Not binding in CI** until §6 lands. This is the single thing standing
-   between "implemented" and VERIFIED.
+1. **Only one suite is bound.** Four other migration-backed suites still run
+   locally only; see §6.
 2. **The shared `db` fixture is unchanged.** Tests claiming API, clinical,
    tenant and security fidelity still run on SQLite built by `create_all()`.
    The gate stops *new* unbuilt tables and *new* cross-generation dependencies;
