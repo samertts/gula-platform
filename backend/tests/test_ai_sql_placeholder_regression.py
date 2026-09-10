@@ -106,3 +106,39 @@ def test_the_original_syntax_still_fails() -> None:
             {"caps": json.dumps([])},
         )
     assert "caps" in str(caught.value) or "syntax" in str(caught.value).lower()
+
+
+# ── NR-019: import must not be initialisation ──────────────────────────────
+
+
+def test_building_the_registry_does_not_touch_the_database() -> None:
+    """ModelRegistry is constructed at module scope in five places.
+
+    While its INSERT was syntactically broken the write always failed, so
+    nobody noticed. Fixing the cast made it live: importing app.ai wrote five
+    rows to whatever DATABASE_URL named, before any request or authorisation
+    context existed.
+    """
+    import app.ai.governance as governance
+
+    calls: list[object] = []
+    original = governance.ModelRegistry._sync_to_db
+    governance.ModelRegistry._sync_to_db = lambda self, entries: calls.append(entries)  # type: ignore[method-assign]
+    try:
+        registry = governance.ModelRegistry()
+        assert calls == [], "constructing the registry wrote to the database"
+        # The in-memory registry is still populated: only the write is deferred.
+        assert registry.get_model("gemini-2.0-flash") is not None
+        assert len(registry.list_models()) >= 1
+
+        registry.sync_to_db()
+        assert len(calls) == 1, "the explicit sync must still work"
+    finally:
+        governance.ModelRegistry._sync_to_db = original  # type: ignore[method-assign]
+
+
+def test_the_module_level_singleton_is_not_seeded_on_import() -> None:
+    """The singleton still exists and still answers queries, unsynced."""
+    from app.ai.governance import model_registry
+
+    assert model_registry.get_model("llama3.2:3b") is not None

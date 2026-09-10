@@ -41,11 +41,23 @@ class EvaluationResult:
 
 class ModelRegistry:
 
-    def __init__(self):
-        self._models: dict[str, ModelRegistryEntry] = {}
-        self._load_defaults()
+    def __init__(self, *, sync: bool = False):
+        """Build the in-memory registry.
 
-    def _load_defaults(self) -> None:
+        ``sync`` is opt-in and defaults to False because this class is
+        constructed at module scope in five places, so seeding from the
+        constructor made *importing* ``app.ai`` write to whatever DATABASE_URL
+        happened to name. Import is not initialisation. Callers that want the
+        row in ``ai_model_registry`` ask for it explicitly. Recorded as NR-019.
+        """
+        self._models: dict[str, ModelRegistryEntry] = {}
+        self._load_defaults(sync=sync)
+
+    def sync_to_db(self) -> None:
+        """Persist the default registry. The explicit form of the old import-time write."""
+        self._sync_to_db(list(self._models.values()))
+
+    def _load_defaults(self, *, sync: bool = False) -> None:
         defaults = [
             ModelRegistryEntry(name="gemini-2.0-flash", provider="gemini", model_type="chat", version="2.0", capabilities=["chat", "clinical_interpretation", "arabic", "arabic_english"], config={"temperature": 0.5, "max_tokens": 600, "safety": True}, is_active=True, max_tokens=8192),
             ModelRegistryEntry(name="gemini-2.0-flash-thinking", provider="gemini", model_type="reasoning", version="2.0", capabilities=["reasoning", "analysis", "complex_queries"], config={"temperature": 0.3, "max_tokens": 1000}, is_active=True, max_tokens=8192),
@@ -55,7 +67,8 @@ class ModelRegistry:
         ]
         for m in defaults:
             self._models[m.name] = m
-        self._sync_to_db(defaults)
+        if sync:
+            self._sync_to_db(defaults)
 
     def _sync_to_db(self, entries: list[ModelRegistryEntry]) -> None:
         try:

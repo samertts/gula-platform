@@ -1,11 +1,46 @@
 # GULA Master Completion Map
 
-**Version 2 · generated 2026-09-10 · branch `claude/p0-2-pharmacy-reconciliation`**
+**Version 3 · generated 2026-09-10 · branch `claude/p0-2-pharmacy-reconciliation`**
 **`production_ready: false`**
 
 Machine-readable companion: `GULA_MASTER_COMPLETION_MAP.json` (same directory).
 Update both after every batch. This is an inventory, not a plan of record for
 features — it says what exists and what is proven, nothing about what should.
+
+## 0. BATCH-2 (canonical disposition) — complete
+
+Disposition only. **No migrations created, no schema changed, no domain built.**
+Full detail: `GULA_CANONICAL_DISPOSITION_MATRIX.{md,json}` and
+`GULA_CANONICAL_ARCHITECTURE_DECISIONS.md`.
+
+All 807 mapped tables carry a rule-derived disposition:
+
+| `KEEP` | `RECONCILE` | `CREATE_PHYSICAL` | `CROSS_DOMAIN_OWNER` | `DEFER` | `RETIRE` | `MERGE` |
+|---|---|---|---|---|---|---|
+| 209 | 194 | 216 | 77 | 70 | 39 | 2 |
+
+**The structural finding, and it reorders everything.** Four of the five
+most-depended-on tables in the repository do not exist: `national_practitioners`
+(58 inbound references), `national_citizens` (51), `national_patients` (51),
+`national_encounters` (42). The fifth, `national_facilities` (44), is the only
+one that *is* physical — and is the single table mapped by two declarative bases,
+which is NR-006 arrived at independently from foreign-key evidence.
+
+`care_continuum` (45/45 tables), `ehr` (16/18), `nursing` and `national_data` all
+declare foreign keys into that national core. **EHR is not the critical path; the
+national core is.** Building EHR first would move the same unresolved foreign
+keys one layer up and settle nothing. Recorded as **NR-022**.
+
+The 179 unmeasured operations reduce to **61 genuinely unresolved** (58
+`national`, 3 `identity`). The other 118 belong to `ai_fabric`, `kernel`,
+`integration`, `platform` and `certification` — layers that map no tables at all,
+so "no table" is the right answer there rather than a gap.
+
+**Two new P0s.** NR-021: `GET /blood-bank/inventory` queries a table that has
+`lab_id` without filtering it, so any authenticated user reads every laboratory's
+blood inventory; `POST /blood-bank/components` mass-assigns a raw dict onto a
+model that also carries `lab_id`. Both reachable. NR-022 above. **NR-019 closed**
+— importing `app.ai` no longer writes to the database.
 
 ## 0a. BATCH-1 (verification truth) — complete
 

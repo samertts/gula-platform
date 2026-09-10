@@ -1,8 +1,8 @@
 {
   "document": "GULA_MASTER_COMPLETION_MAP",
-  "version": 2,
+  "version": 3,
   "generated": "2026-09-10",
-  "head_commit": "09935dff80d0ee7d32884a28acefe6d7b8badd3d",
+  "head_commit": "1d62d57de21dd547fcf9c6100896eeee0e045881",
   "branch": "claude/p0-2-pharmacy-reconciliation",
   "production_ready": false,
   "method": "Deterministic scan. Physical schema read from a database migrated to alembic head 20260912_0001. Endpoint reachability measured by booting the app and walking FastAPI's lazy _IncludedRouter tree, not by counting decorators. Table backing resolved by exact import-name resolution, not transitive closure.",
@@ -993,5 +993,123 @@
     "decision": "verified -> in_progress is LEGAL",
     "change": "one key added to _TRANSITIONS in backend/app/blood_bank/domain/state_machine.py",
     "schema_or_migration_change": false
+  },
+  "batch_2": {
+    "status": "COMPLETE — disposition only, no migrations created",
+    "matrix": "docs/enterprise-readiness/GULA_CANONICAL_DISPOSITION_MATRIX.{md,json}",
+    "decisions": "docs/enterprise-readiness/GULA_CANONICAL_ARCHITECTURE_DECISIONS.md",
+    "dispositions": {
+      "CREATE_PHYSICAL": 216,
+      "KEEP": 209,
+      "RECONCILE": 194,
+      "CROSS_DOMAIN_OWNER": 77,
+      "DEFER": 70,
+      "RETIRE": 39,
+      "MERGE": 2
+    },
+    "operations": {
+      "MEASURED": 1923,
+      "NOT_REACHABLE_NO_PERSISTENCE": 118,
+      "UNRESOLVED": 61
+    },
+    "structural_finding": "Four of the five most-depended-on tables do not exist: national_practitioners (58 references), national_citizens (51), national_patients (51), national_encounters (42). The fifth, national_facilities (44), is physical but mapped by two bases. EHR is not the critical path; the national core is. Recorded as NR-022.",
+    "new_findings": [
+      "NR-021 (P0 blood bank tenant isolation)",
+      "NR-022 (P0 national core ownership)"
+    ],
+    "closed": [
+      "NR-019 (import-time database write)"
+    ]
+  },
+  "dependency_graph": {
+    "note": "Corrected from the conceptual order by real foreign-key direction and reference counts.",
+    "layers": [
+      {
+        "layer": 1,
+        "name": "Core + Identity",
+        "domains": [
+          "models",
+          "identity",
+          "security",
+          "audit",
+          "kernel"
+        ],
+        "status": "BUILT",
+        "evidence": "models 121/143 physical, identity 87/87 physical"
+      },
+      {
+        "layer": 2,
+        "name": "National core (person, practitioner, encounter, facility)",
+        "domains": [
+          "national"
+        ],
+        "status": "NOT BUILT — CRITICAL PATH",
+        "evidence": "national_patients/citizens/practitioners/encounters mapped, none physical; 191 tables, 79 RECONCILE, 57 CREATE_PHYSICAL",
+        "blocks": [
+          "ehr",
+          "care_continuum",
+          "nursing",
+          "national_data",
+          "governance"
+        ]
+      },
+      {
+        "layer": 3,
+        "name": "Clinical record",
+        "domains": [
+          "ehr",
+          "clinical"
+        ],
+        "status": "BLOCKED on layer 2",
+        "evidence": "16 of 18 EHR tables FK into national_*"
+      },
+      {
+        "layer": 4,
+        "name": "Operational domains",
+        "domains": [
+          "pharmacy",
+          "lims",
+          "radiology",
+          "blood_bank",
+          "hospital",
+          "nursing"
+        ],
+        "status": "PARTIAL",
+        "evidence": "pharmacy 27/27 KEEP; lims and radiology physical but drifting; hospital 9 CREATE_PHYSICAL"
+      },
+      {
+        "layer": 5,
+        "name": "Care continuity",
+        "domains": [
+          "care_continuum"
+        ],
+        "status": "BLOCKED on layer 2",
+        "evidence": "45 of 45 tables CROSS_DOMAIN_OWNER, 153 FK references into national"
+      },
+      {
+        "layer": 6,
+        "name": "Public health, national data, governance",
+        "domains": [
+          "public_health",
+          "national_data",
+          "governance",
+          "nhdw"
+        ],
+        "status": "BLOCKED / PARTIAL",
+        "evidence": "governance 56 CREATE_PHYSICAL; national_data 36 tables, none physical; nhdw 14/14 physical but drifting"
+      },
+      {
+        "layer": 7,
+        "name": "Analytics, AI, interoperability",
+        "domains": [
+          "ai_fabric",
+          "integration",
+          "fhir",
+          "interoperability"
+        ],
+        "status": "STATELESS",
+        "evidence": "zero ORM tables; 118 operations correctly resolve to no table"
+      }
+    ]
   }
 }
