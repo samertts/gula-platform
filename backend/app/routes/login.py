@@ -7,11 +7,19 @@ from pydantic import BaseModel, field_validator
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from ..config import DEMO_MODE, JWT_EXPIRE_MINUTES, NID_HMAC_KEY, REFRESH_TOKEN_EXPIRE_DAYS, USE_SECURE_COOKIES
+from ..config import (
+    DEMO_MODE,
+    JWT_EXPIRE_MINUTES,
+    NID_HMAC_KEY,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    USE_SECURE_COOKIES,
+)
 from ..database import get_db
 from ..models.lab_user import LabUser
 from ..models.user import User
 from ..security.auth import (
+    ACCOUNT_KIND_LAB,
+    ACCOUNT_KIND_USER,
     blacklist_token,
     build_token_payload,
     create_refresh_token,
@@ -20,9 +28,9 @@ from ..security.auth import (
     decode_token,
     verify_password,
 )
-from ..security.rate_limit import get_client_ip, rate_limit_auth
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, resolve_token_subject
 from ..security.login_protection import is_locked, register_failed_login, register_successful_login
+from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..security.session import bump_perm_version, warm_perm_version
 from ..services.audit_service import log_action
 
@@ -174,7 +182,7 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
 
         # Warm Redis perm_version cache (lab users only)
         warm_perm_version(lab_user)
-        base_payload = build_token_payload(lab_user)
+        base_payload = build_token_payload(lab_user, account_kind=ACCOUNT_KIND_LAB)
         user_name = lab_user.name
         lab_name = lab.name if lab else None
     else:
@@ -184,6 +192,9 @@ def login(data: LoginRequest, request: Request, response: Response, db: Session 
             "lab_id": None,
             "role": "citizen",
             "perm_ver": 1,
+            # NR-035: a citizen is a `users` row. Without this the claim is
+            # indistinguishable from a lab_users id of the same number.
+            "act": ACCOUNT_KIND_USER,
         }
         user_name = citizen.full_name
         lab_name = None
@@ -251,6 +262,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     import time as _time
 
     user_id = None
+    account_kind = None
 
     # Layer 1: blacklist access token JTI in Redis
     access_token = request.cookies.get("access_token")
@@ -258,6 +270,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         payload = decode_token(access_token)
         if payload:
             user_id = payload.get("user_id")
+            account_kind = payload.get("act")
             jti = payload.get("jti")
             if jti:
                 remaining = int((payload["exp"] - _time.time()) + 1)
@@ -274,14 +287,15 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
                 blacklist_token(rp["jti"], min(remaining, REFRESH_TOKEN_EXPIRE_DAYS * 86400))
             if not user_id:
                 user_id = rp.get("user_id")
+                account_kind = rp.get("act")
 
     # Layer 2: bump perm_version in DB so ALL existing tokens become invalid
     # This is the safety net if Redis is wiped — get_current_user will reject
     # any token whose perm_ver no longer matches the DB value.
     if user_id:
-        user = db.query(LabUser).filter(LabUser.id == user_id).first()
-        if user is None:
-            user = db.query(User).filter(User.id == user_id).first()
+        # NR-035: resolve through the shared discriminator-aware resolver so a
+        # logout cannot bump the permission version of the wrong identity.
+        user = resolve_token_subject(db, {"user_id": user_id, "act": account_kind})
         if user:
             bump_perm_version(
                 user,

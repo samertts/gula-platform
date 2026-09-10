@@ -22,7 +22,16 @@ Owner, Dependency, Recommended Action, Status.
 * **Dependency** resolved by the AUTH-002 bridge (Option A)
 * **Action** carry `source_kind` through the bridge; do not add a discriminator
   claim to the legacy token as a separate mechanism.
-* **Status** VERIFIED
+* **Status** **FIXED — VERIFIED (AUTH-003)**, with a declared deviation from the
+  action above. The bridge is blocked (see AUTH-F10), so AUTH-003 carried the
+  discriminator in the token as `act` rather than leaving a P1
+  account-takeover-class defect open until the first citizen registers. `act`
+  is the same `{user, lab_user}` value `LegacyAccountLinkSource` defines, so it
+  becomes the bridge's input rather than a parallel mechanism. AUTH-003 also
+  found a **second instance** this finding missed: the mobile refresh rotation
+  resolved identically and mints from what it resolves. Both are closed, with
+  structural guards against a third. See
+  `auth-identity-hardening.md`.
 
 ## AUTH-F5 · P2 · Memberships do not confer workspace eligibility
 * **Area** authorization model
@@ -49,7 +58,13 @@ Owner, Dependency, Recommended Action, Status.
 * **Dependency** AUTH-002
 * **Action** add an explicit purpose/audience claim as a hardening step at the
   SHADOW stage; **not** a reason to delay ADD.
-* **Status** VERIFIED
+* **Status** VERIFIED — **evidence corrected by AUTH-003.** "Both stacks call
+  the same `create_token` with the same `SECRET_KEY`" is true of access tokens
+  only: access and refresh are signed with *different* secrets (`SECRET_KEY` vs
+  `REFRESH_TOKEN_SECRET`), so cross-use between the two fails on signature, not
+  on claim inspection. The finding stands on its narrower basis. It does not
+  widen under AUTH-003: a token that does not name an identity table is now
+  refused at resolution rather than searched for.
 
 ## AUTH-F7 · P2 · Two revocation mechanisms must both be honoured during the bridge
 * **Area** session lifecycle
@@ -62,7 +77,39 @@ Owner, Dependency, Recommended Action, Status.
 * **Dependency** AUTH-002 ADD stage
 * **Action** logout must do both, from the first cohort onward. This is a
   correctness requirement of ADD, not a later hardening.
-* **Status** VERIFIED
+* **Status** VERIFIED — correctly deferred. There is no first cohort:
+  `niam_sessions = 0`, because ADD is blocked (AUTH-F10). AUTH-003 fixed the
+  *legacy* half of revocation precision: `/logout` resolved its subject with
+  the same ambiguous fallback, so a citizen's logout bumped a colliding
+  laboratory user's `perm_version` — leaving the citizen signed in and signing
+  an unrelated laboratory user out. Regression-tested.
+
+## AUTH-F10 · P1 · The legacy → NIAM bridge cannot be executed from evidence available in-repository
+* **Area** identity migration
+* **Evidence** the chain is `Account.identity_id → IdentityRecord.person_id →
+  niam_persons.id`. Backfilling an `Account` for an existing `lab_users` row
+  therefore **asserts that a Person exists**. Measured at head:
+  `niam_persons = 0`, `niam_accounts = 0`, `niam_sessions = 0`; the scratch
+  database holds 6 seeded `lab_users` and 0 `users`.
+* **Current state** BLOCKED. Raised by AUTH-003 on reaching its own STOP
+  conditions.
+* **Risk** executing it anyway would either violate the AUTH-003 rule that
+  *account creation must not automatically prove identity* (Account ≠ Person ≠
+  Patient), or require identity-proofing semantics no repository evidence
+  supports. Auto-merging on same integer id, username, role or `lab_id` is
+  explicitly forbidden.
+* **Canonical owner** Identity Platform + platform governance
+* **Dependency** two inputs, neither of them code:
+  1. a **production cohort extract** — how many rows in each identity table,
+     and how many share an integer id, measured on production rather than on a
+     seed;
+  2. a **collision policy** — when a legacy row cannot be matched to exactly
+     one Person, does the bridge block, quarantine, or create? The rule *if
+     deterministic identity evidence is absent, BLOCK* fixes the shape; the
+     operational handling of blocked rows is a governance choice.
+* **Action** obtain both before scheduling ADD. Blocks AUTH-003 Phases 2, 3
+  and 7, and by dependency AUTH-F7's two-mechanism logout.
+* **Status** OPEN — BLOCKED
 
 ## AUTH-F9 · P3 · Mapper configuration depends on import order
 * **Area** maintainability

@@ -24,6 +24,8 @@ from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.user import User
 from ..security.auth import (
+    ACCOUNT_KIND_LAB,
+    ACCOUNT_KIND_USER,
     build_token_payload,
     create_refresh_token,
     create_token,
@@ -31,7 +33,7 @@ from ..security.auth import (
     hash_password,
     verify_password,
 )
-from ..security.dependencies import get_current_user
+from ..security.dependencies import get_current_user, resolve_token_subject
 from ..security.rate_limit import get_client_ip, rate_limit_auth
 from ..security.session import bump_perm_version, get_perm_version
 from ..services.audit_service import log_action
@@ -80,18 +82,11 @@ def refresh_access_token(
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
-    lab_user = (
-        db.query(LabUser)
-        .filter(LabUser.id == user_id, LabUser.is_active)
-        .first()
-    )
-    user = lab_user
-    if user is None:
-        user = (
-            db.query(User)
-            .filter(User.id == user_id, User.is_active, User.is_verified)
-            .first()
-        )
+    # NR-035: `user_id` alone does not say which identity table it means, and
+    # this endpoint mints fresh tokens from whatever it resolves. Resolving
+    # LabUser-first meant a citizen's refresh token could be exchanged for an
+    # access token carrying a laboratory user's role and tenant.
+    user = resolve_token_subject(db, payload)
 
     if not user:
         raise HTTPException(status_code=401, detail="User not found, deactivated, or unverified")
@@ -117,13 +112,16 @@ def refresh_access_token(
     # with the old token and finds it already revoked, forcing a full re-login.
     # A short grace period (30 s) allows in-flight retries to succeed.
     base_payload = (
-        build_token_payload(user)
+        build_token_payload(user, account_kind=ACCOUNT_KIND_LAB)
         if isinstance(user, LabUser)
         else {
             "user_id": user.id,
             "lab_id": user.lab_id,
             "role": user.role,
             "perm_ver": user.perm_version or 1,
+            # NR-035: the rotated token must carry the same discriminator, or
+            # the refresh path would keep re-minting ambiguous tokens.
+            "act": ACCOUNT_KIND_USER,
         }
     )
     new_access_token = create_token(base_payload)

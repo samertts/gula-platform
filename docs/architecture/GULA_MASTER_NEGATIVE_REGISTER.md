@@ -26,10 +26,10 @@ and `docs/adr/`.
 | Severity  | Count | Fixed | Open |
 | --------- | ----- | ----- | ---- |
 | P0        | 10     | 6     | 4    |
-| P1        | 12     | 7     | 5    |
+| P1        | 12     | 8     | 4    |
 | P2        | 9     | 0     | 9    |
 | P3        | 5     | 0     | 5    |
-| **Total** | **36** | **13** | **23** |
+| **Total** | **36** | **14** | **22** |
 
 _Counts are generated from the JSON companion; the table above had drifted
 since the first pass and now reflects all findings, not one session's._
@@ -74,7 +74,7 @@ since the first pass and now reflects all findings, not one session's._
 | NR-032 | P0  | Medication (platform-wide) | Nine modules across five domains depend on `ehr_medication_*`; zero `ehr_*` tables exist | OPEN — OWNERSHIP DECIDED (BATCH-3.1), EXECUTION NEEDS APPROVAL |
 | NR-033 | P2  | Nursing Platform | The eight `/nursing/coordination/*` endpoints persist nothing — audit entry only, no table | OPEN — ALL EIGHT CLASSIFIED (BATCH-3.1) |
 | NR-034 | P0  | Pharmacy | A point-of-sale sale naming a patient writes an EHR `MedicationDispense` and cannot commit | FIXED — VERIFIED (MED-001) |
-| NR-035 | P1  | Identity Platform | The `user_id` token claim is ambiguous across `users` and `lab_users` | OPEN — RESOLVED BY AUTH-002 DECISION, EXECUTION PENDING |
+| NR-035 | P1  | Identity Platform | The `user_id` token claim is ambiguous across `users` and `lab_users` | FIXED — VERIFIED (AUTH-003; `act` discriminator, single fail-closed resolver) |
 | NR-036 | P1  | Platform-wide | The test schema is built from ORM metadata, so tests pass against tables no migration creates | FIXED — VERIFIED (TEST-001 + TEST-001.1; gate binding in CI) |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance

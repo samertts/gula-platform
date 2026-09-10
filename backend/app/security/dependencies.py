@@ -11,7 +11,12 @@ from ..database import get_db
 from ..models.lab import Lab
 from ..models.lab_user import LabUser
 from ..models.user import User
-from .auth import decode_token, is_token_blacklisted
+from .auth import (
+    ACCOUNT_KIND_LAB,
+    ACCOUNT_KIND_USER,
+    decode_token,
+    is_token_blacklisted,
+)
 from .rbac import get_permissions_for_role
 from .session import get_perm_version
 
@@ -31,6 +36,55 @@ def _extract_token(
     if credentials is not None:
         return credentials.credentials
     return request.cookies.get("access_token")
+
+
+def resolve_token_subject(db: Session, payload: dict) -> LabUser | User | None:
+    """Resolve the token's subject to exactly one identity table (NR-035).
+
+    `users` and `lab_users` have independent integer primary keys, so a bare
+    `user_id` claim does not say which table it means. Resolving one and falling
+    back to the other means a token for `users.id = N` silently becomes
+    `lab_users.id = N` whenever that row exists — with that laboratory user's
+    role and tenant.
+
+    Tokens now carry `act`, the same {user, lab} discriminator the platform
+    already uses in `get_perm_version` and `LegacyAccountLinkSource`, and it
+    selects exactly one table. Tokens minted before this change have no `act`;
+    rather than force every session to re-authenticate, those still resolve by
+    search — but **fail closed if the id exists in both tables**, which is the
+    only case where the old behaviour could have been wrong. Ambiguity is
+    refused, never guessed.
+    """
+    user_id = payload.get("user_id")
+    if user_id is None:
+        return None
+
+    account_kind = payload.get("act")
+    if account_kind == ACCOUNT_KIND_LAB:
+        return db.query(LabUser).filter(LabUser.id == user_id, LabUser.is_active).first()
+    if account_kind == ACCOUNT_KIND_USER:
+        return (
+            db.query(User)
+            .filter(User.id == user_id, User.is_active, User.is_verified)
+            .first()
+        )
+    if account_kind is not None:
+        logger.warning("Unknown account kind in token act=%r user_id=%s", account_kind, user_id)
+        return None
+
+    lab_user = db.query(LabUser).filter(LabUser.id == user_id, LabUser.is_active).first()
+    legacy_user = (
+        db.query(User)
+        .filter(User.id == user_id, User.is_active, User.is_verified)
+        .first()
+    )
+    if lab_user is not None and legacy_user is not None:
+        logger.error(
+            "Ambiguous legacy token: user_id=%s exists in both users and lab_users; refusing",
+            user_id,
+        )
+        return None
+    return lab_user or legacy_user
 
 
 def get_current_user(
@@ -62,13 +116,7 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload",
         )
 
-    user = db.query(LabUser).filter(LabUser.id == user_id, LabUser.is_active).first()
-    if user is None:
-        user = (
-            db.query(User)
-            .filter(User.id == user_id, User.is_active, User.is_verified)
-            .first()
-        )
+    user = resolve_token_subject(db, payload)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
