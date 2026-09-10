@@ -200,6 +200,37 @@ The structural guards are the durable half. NR-035 existed in two places
 because the fallback was written twice; a third writing is now a test failure
 rather than a discovery.
 
+### CI evidence — the gate executed, it was not merely bound
+
+A local pass is not evidence, and a green pull request is not evidence that a
+*particular* file ran: `iam-hardening.yml` runs named test files, so an unbound
+test executes nowhere. Read from the "Security and tenant isolation regression"
+job log on `97b6a283` (run 34533530656, job 103059794877, Python 3.12.14):
+
+```
+collected 89 items
+tests/test_security_regression.py .....................                  [ 23%]
+tests/test_auth_identity_discriminator.py .............                  [ 38%]
+tests/test_tenant_isolation_matrix.py .................................. [ 76%]
+...........                                                              [ 88%]
+tests/test_clinical_gateway_contracts.py .....                           [ 94%]
+tests/test_clinical_gateway_service.py .....                             [100%]
+======================= 89 passed, 3 warnings in 36.93s ========================
+```
+
+Thirteen dots against the file, on the platform's CI Python rather than the
+3.13 used locally. All six checks green on that head. The
+`Failed to CreateArtifact: Artifact storage quota has been hit` line in that
+log is the known pre-existing quota condition on the evidence-upload step,
+which carries `continue-on-error` precisely so archival cannot fail the gate it
+documents; the pytest step itself is blocking and passed.
+
+The PostgreSQL migration and schema gate — which carries the widened
+schema-fidelity ledger — also concluded success. That step is blocking under
+`set -o pipefail`, so its green conclusion is the proof; the counted line for
+that job was read at TEST-001.1 and the invocation is unchanged apart from the
+ledger contents.
+
 ---
 
 ## 5. Phase 8 — the Account ≠ Person ≠ Patient boundary, as it stands today
