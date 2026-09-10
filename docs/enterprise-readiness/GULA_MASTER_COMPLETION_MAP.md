@@ -1,11 +1,49 @@
 # GULA Master Completion Map
 
-**Version 1 · generated 2026-09-09 · head `ed475222` · branch `claude/p0-2-pharmacy-reconciliation`**
+**Version 2 · generated 2026-09-10 · branch `claude/p0-2-pharmacy-reconciliation`**
 **`production_ready: false`**
 
 Machine-readable companion: `GULA_MASTER_COMPLETION_MAP.json` (same directory).
 Update both after every batch. This is an inventory, not a plan of record for
 features — it says what exists and what is proven, nothing about what should.
+
+## 0a. BATCH-1 (verification truth) — complete
+
+Scope was verification only: **no application schema, migration, ORM or route
+change**. Full detail in `GULA_CI_TRUTH.md` and the `batch_1` block of the JSON.
+
+| | Before | After |
+|---|---|---|
+| Tables GULA-SCHEMA-002 compares | 27 (pharmacy only) | **405**, across 20 declarative bases |
+| GULA-SCHEMA-002 findings | 0 — read as clean | **1,677** |
+| Mapped tables with no physical table | not detected | **402** (GULA-SCHEMA-003) |
+| Cross-domain missing dependencies | not detected | **145** (GULA-SCHEMA-004) |
+| Bases invisible to alembic autogenerate | not detected | **10 of 20**, 203 tables (GULA-ARCH-002) |
+| Model modules unmeasured | unknown | **0** |
+| Gate states | PASS/FAIL/BLOCKED | + **DID_NOT_RUN**, **UNMEASURED** |
+| Full CI result on this branch | **UNKNOWN** — never ran | **RED**: 1 failed, 2,743 passed, 157 skipped |
+| Boot-time AI seeding | failed every boot, 0 rows | succeeds, 5 rows, boot clean |
+
+**A measurement-basis correction.** Version 1 counted `__tablename__`
+declarations in source: 828 tables, 418 missing. The detector imports the model
+modules and reads real mapper metadata: **807 mapped tables across 20 bases,
+402 missing**. Both are accurate measurements of different things; the mapper
+figure is authoritative, because it is what SQLAlchemy actually maps. The v1
+domain tables below are still source-derived and are superseded by the detector
+output wherever they disagree.
+
+**Two v1 P0s are now detector findings rather than prose**: EHR's 18/18 missing
+tables (GULA-SCHEMA-003) and Pharmacy's write to `ehr_medication_dispenses`
+(GULA-SCHEMA-004) — the latter being the finding per-domain verification
+structurally cannot make.
+
+**MCM-P0-4 is now measured, not merely described.** 2 of 30 workflows gate every
+PR; `ci.yml` gates only PRs into `main`/`staging`. Run locally, full CI is RED on
+one pre-existing clinical-safety test — `verified -> in_progress` rejected by the
+blood-bank state machine. Confirmed pre-existing by stashing every BATCH-1 change
+and re-running at `09935dff`. Widening the trigger was **deliberately not done**:
+it would mark three PRs red on a defect BATCH-1 is not authorised to fix, which
+is the repository owner's call. See `GULA_CI_TRUTH.md` §4.
 
 ## 0. How these numbers were obtained
 
@@ -129,10 +167,12 @@ verification-integrity defect of the same family as NR-016.
 
 | ID | Blocker | Evidence |
 |---|---|---|
-| **MCM-P1-1** | `GULA-SCHEMA-002` is scoped to Pharmacy's 27 tables. It cannot see MCM-P0-3, a Pharmacy service writing an EHR table | Detector scope vs. the confirmed defect |
+| ~~MCM-P1-1~~ | **FIXED in BATCH-1.** The detector now discovers all 20 declarative bases (405 tables compared), and GULA-SCHEMA-004 catches cross-domain dependencies | 41 tests in `tools/gula_intel/tests/` |
 | **MCM-P1-2** | 179 reachable operations resolve to no ORM class: unmeasured, not clean | Exact-resolution pass |
-| **MCM-P1-3** | Boot-time AI model seeding always fails. `app/ai/governance.py:71,74` embed PostgreSQL `::jsonb` casts inside SQLAlchemy `text()`, so `:caps::jsonb` is not parsed as a bind parameter and reaches the driver literally | Reproduced on every boot in this session |
-| **MCM-P1-4** | 24 `declarative_base()` instances; no single metadata, so no global create/drop or cross-domain FK enforcement | Scan |
+| ~~MCM-P1-3~~ | **FIXED in BATCH-1.** 17 `:param::cast` collisions across `ai/governance.py`, `ai/memory.py`, `ai/vector_store.py` rewritten as `CAST(:param AS type)`; boot now seeds 5 rows | `backend/tests/test_ai_sql_placeholder_regression.py` (3 tests) + clean boot |
+| **MCM-P1-6** | `model_registry = ModelRegistry()` runs at **import** time (`ai/governance.py:108`), so importing `app.ai` writes to whatever `DATABASE_URL` names. Harmless while the statement was broken; live now that MCM-P1-3 is fixed | Observed during detector runs and in the test suite |
+| **MCM-P1-7** | One clinical-safety test fails: `BloodBankWorkflowError: Invalid transfusion transition: verified -> in_progress`. Pre-existing; needs a blood-bank domain decision (adjacent to NR-004, NR-007) | Full suite run; reproduced at `09935dff` with all BATCH-1 changes stashed |
+| **MCM-P1-4** | 20 declarative bases (19 hand-written + generators); **10 are absent from alembic `target_metadata`**, covering 203 mapped tables, so autogenerate reports no drift for any of them — an empty diff indistinguishable from an accurate one. Registering a base changes what autogenerate emits, so it is a schema decision and was not made here | GULA-ARCH-002, resolved by MetaData identity |
 | **MCM-P1-5** | Negative-register status drift: NR-003 still reads `OPEN — BLOCKED` though PR #256 carries its fix | Register vs. PR stack |
 | NR-006 | `national_facilities` mapped by two ORM classes on different bases | Existing register entry |
 | NR-007 | Clinical state machine is entity-agnostic by construction | Existing register entry |

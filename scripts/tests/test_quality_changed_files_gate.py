@@ -11,6 +11,7 @@ import pytest
 
 from scripts import quality_changed_files_gate as gate
 from scripts.quality_changed_files_gate import (
+    Diagnostic,
     ToolResult,
     compare_counts,
     execution_blockers,
@@ -184,3 +185,52 @@ def test_the_gate_honours_a_real_subprocess_exit_code(one_python_file: Path) -> 
     real = gate.run((sys.executable, "-c", "import sys; sys.exit(2)"), one_python_file)
     assert real.returncode == 2
     assert real.returncode not in (0, 1), "exit 2 must not be inside the measured range"
+
+
+# ── The five states, named explicitly ──────────────────────────────────────
+#
+# BATCH-1 requires PASS / FAIL / BLOCKED / DID_NOT_RUN / UNMEASURED to stay
+# distinguishable in the machine-readable report, not only in the printed
+# summary. `measured` is a boolean and collapses the two unknowns into one.
+
+
+def test_a_measured_run_states_clean_or_findings() -> None:
+    clean = ToolResult("mypy", "changed-files", 0, (), "", "")
+    assert clean.state == "CLEAN"
+    assert clean.measured is True
+
+    finding = Diagnostic("a.py", 1, "assignment", "boom")
+    found = ToolResult("mypy", "changed-files", 1, (finding,), "", "")
+    assert found.state == "FINDINGS"
+    assert found.measured is True
+
+
+def test_an_unrunnable_tool_states_did_not_run() -> None:
+    """Exit outside {0, 1}: the process never produced analysis."""
+    result = ToolResult("mypy", "changed-files", 2, (), "", "boom", "boom")
+    assert result.state == "DID_NOT_RUN"
+    assert result.measured is False
+
+
+def test_a_failure_inside_the_normal_range_states_unmeasured() -> None:
+    """An execution error with a 0/1 exit is a different unknown.
+
+    The tool returned a code that normally means "ran", but something else
+    prevented the result being usable. Calling that DID_NOT_RUN would overstate
+    what is known.
+    """
+    result = ToolResult("ruff", "changed-files", 0, (), "", "", "unparseable JSON")
+    assert result.state == "UNMEASURED"
+    assert result.measured is False
+
+
+def test_the_report_omits_a_diagnostic_count_for_a_run_that_did_not_happen() -> None:
+    """A zero here would be read as a measurement of zero problems."""
+    ran = gate.result_payload(ToolResult("mypy", "changed-files", 0, (), "", ""))
+    assert ran["diagnostic_count"] == 0
+    assert ran["state"] == "CLEAN"
+
+    never = gate.result_payload(ToolResult("mypy", "changed-files", 2, (), "", "x", "x"))
+    assert never["diagnostic_count"] is None
+    assert never["state"] == "DID_NOT_RUN"
+    assert never["measured"] is False

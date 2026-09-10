@@ -61,6 +61,21 @@ class ToolResult:
         return self.execution_error is None
 
     @property
+    def state(self) -> str:
+        """The explicit state, for consumers that read the report rather than stdout.
+
+        ``measured`` is a boolean and collapses two different unknowns into one.
+        DID_NOT_RUN means the process failed to produce analysis; UNMEASURED
+        means it produced an exit code outside the range the tool defines as a
+        completed run. Neither is CLEAN, and neither may be counted.
+        """
+        if self.execution_error is None:
+            return "CLEAN" if not self.diagnostics else "FINDINGS"
+        if self.returncode in (0, 1):
+            return "UNMEASURED"
+        return "DID_NOT_RUN"
+
+    @property
     def counts(self) -> Counter[str]:
         return Counter(diagnostic.path for diagnostic in self.diagnostics)
 
@@ -298,7 +313,11 @@ def result_payload(result: ToolResult) -> dict[str, object]:
         "tool": result.tool,
         "scope": result.scope,
         "returncode": result.returncode,
-        "diagnostic_count": len(result.diagnostics),
+        "state": result.state,
+        "measured": result.measured,
+        # Absent, not zero, when the tool did not run: a count would be read as
+        # a measurement.
+        "diagnostic_count": len(result.diagnostics) if result.measured else None,
         "counts": dict(sorted(result.counts.items())),
         "diagnostics": [asdict(diagnostic) for diagnostic in result.diagnostics],
         "execution_error": result.execution_error,

@@ -85,13 +85,13 @@ class VectorStore:
             meta_json = json.dumps(metadata, ensure_ascii=False)
             if existing:
                 db.execute(
-                    text("UPDATE ai_embeddings SET embedding = :vec::vector, text = :txt, metadata = :meta::jsonb, model = :model WHERE id = :id"),
+                    text("UPDATE ai_embeddings SET embedding = CAST(:vec AS vector), text = :txt, metadata = CAST(:meta AS jsonb), model = :model WHERE id = :id"),
                     {"vec": vec_str, "txt": text, "meta": meta_json, "model": "gemini-embedding-exp-03-07", "id": existing[0]},
                 )
                 record_id = existing[0]
             else:
                 result = db.execute(
-                    text("INSERT INTO ai_embeddings (lab_id, content_type, content_id, content_hash, text, embedding, model, dimensions, metadata) VALUES (:lab, :ct, :cid, :ch, :txt, :vec::vector, :model, :dims, :meta::jsonb) RETURNING id"),
+                    text("INSERT INTO ai_embeddings (lab_id, content_type, content_id, content_hash, text, embedding, model, dimensions, metadata) VALUES (:lab, :ct, :cid, :ch, :txt, CAST(:vec AS vector), :model, :dims, CAST(:meta AS jsonb)) RETURNING id"),
                     {"lab": lab_id, "ct": content_type, "cid": content_id, "ch": content_hash, "txt": text, "vec": vec_str, "model": "gemini-embedding-exp-03-07", "dims": len(embedding), "meta": meta_json},
                 )
                 record_id = result.fetchone()[0]
@@ -130,13 +130,13 @@ class VectorStore:
             if content_type:
                 params["ct"] = content_type
             if lab is not None and content_type:
-                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e WHERE e.lab_id = :lab AND e.content_type = :ct ORDER BY score DESC LIMIT :limit")
+                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> CAST(:vec AS vector)) AS score FROM ai_embeddings e WHERE e.lab_id = :lab AND e.content_type = :ct ORDER BY score DESC LIMIT :limit")
             elif lab is not None:
-                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e WHERE e.lab_id = :lab ORDER BY score DESC LIMIT :limit")
+                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> CAST(:vec AS vector)) AS score FROM ai_embeddings e WHERE e.lab_id = :lab ORDER BY score DESC LIMIT :limit")
             elif content_type:
-                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e WHERE e.content_type = :ct ORDER BY score DESC LIMIT :limit")
+                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> CAST(:vec AS vector)) AS score FROM ai_embeddings e WHERE e.content_type = :ct ORDER BY score DESC LIMIT :limit")
             else:
-                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> :vec::vector) AS score FROM ai_embeddings e ORDER BY score DESC LIMIT :limit")
+                sql = text("SELECT e.id, e.content_type, e.content_id, e.text, e.metadata, 1 - (e.embedding <=> CAST(:vec AS vector)) AS score FROM ai_embeddings e ORDER BY score DESC LIMIT :limit")
             rows = db.execute(sql, params).fetchall()
             results = []
             for row in rows:
@@ -209,9 +209,9 @@ class VectorStore:
             params: dict[str, Any] = {"filter_json": json.dumps(metadata_filter), "limit": limit}
             if self.lab_id is not None:
                 params["lab"] = self.lab_id
-                sql = text("SELECT id, content_type, content_id, text, metadata FROM ai_embeddings WHERE metadata @> :filter_json::jsonb AND lab_id = :lab LIMIT :limit")
+                sql = text("SELECT id, content_type, content_id, text, metadata FROM ai_embeddings WHERE metadata @> CAST(:filter_json AS jsonb) AND lab_id = :lab LIMIT :limit")
             else:
-                sql = text("SELECT id, content_type, content_id, text, metadata FROM ai_embeddings WHERE metadata @> :filter_json::jsonb LIMIT :limit")
+                sql = text("SELECT id, content_type, content_id, text, metadata FROM ai_embeddings WHERE metadata @> CAST(:filter_json AS jsonb) LIMIT :limit")
             rows = db.execute(sql, params).fetchall()
             return [
                 VectorSearchResult(

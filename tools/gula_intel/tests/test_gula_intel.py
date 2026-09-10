@@ -7,6 +7,7 @@ independently established ground truth.
 """
 from __future__ import annotations
 
+import os
 import pathlib
 import sys
 from typing import Any
@@ -290,3 +291,162 @@ def test_schema_002_rule_is_registered_and_blocking() -> None:
     assert rule.severity is Severity.P0
     assert rule.architecture_decision_required is True
     assert "GULA-SCHEMA-002" in {r.rule_id for r in detectors.run_all(inventory.collect())}
+
+
+# --- BATCH-1: cross-domain schema truth --------------------------------------
+#
+# GULA-SCHEMA-002 compares columns, so it skips tables that do not exist at all
+# and reported zero findings for a repository where 402 mapped tables have no
+# schema. These two rules close that hole. They need a migration-built database;
+# without one they must say so rather than report health.
+
+_DB = os.environ.get("GULA_INTEL_DATABASE_URL")
+_needs_db = pytest.mark.skipif(not _DB, reason="GULA_INTEL_DATABASE_URL is not configured")
+
+
+@pytest.mark.parametrize(
+    "detector",
+    [
+        detectors.detect_orm_tables_without_physical_table,
+        detectors.detect_cross_domain_missing_dependency,
+        detectors.detect_orm_schema_drift,
+    ],
+)
+def test_without_a_database_the_schema_detectors_report_unavailable_not_clean(
+    monkeypatch: pytest.MonkeyPatch, detector: Any
+) -> None:
+    """The fail-closed requirement, asserted for every schema detector.
+
+    An unreachable database yields no findings. If that were reported as
+    RAN_CLEAN it would read as VERIFIED, which is precisely the false-green
+    this batch exists to remove.
+    """
+    monkeypatch.delenv("GULA_INTEL_DATABASE_URL", raising=False)
+    result = detector()
+    assert result.detector_state is DetectorState.RAN_NO_EVIDENCE
+    assert result.status is Status.PARTIALLY_VERIFIED
+    assert result.status is not Status.VERIFIED
+    assert result.findings == []
+
+
+@pytest.mark.parametrize(
+    "detector",
+    [
+        detectors.detect_orm_tables_without_physical_table,
+        detectors.detect_cross_domain_missing_dependency,
+    ],
+)
+def test_an_unreachable_database_is_unavailable_not_clean(detector: Any) -> None:
+    """A URL that points at nothing must not read as a clean run either."""
+    result = detector("postgresql+psycopg2://postgres@127.0.0.1:1/does-not-exist")
+    assert result.detector_state is DetectorState.RAN_NO_EVIDENCE
+    assert result.findings == []
+
+
+@_needs_db
+def test_ehr_has_no_physical_schema_and_that_is_a_blocker() -> None:
+    """MCM-P0-2, as a detector finding rather than a paragraph in a report.
+
+    Every EHR table is mapped and none exists. The old detector said nothing
+    about this domain at all.
+    """
+    result = detectors.detect_orm_tables_without_physical_table()
+    assert result.detector_state is DetectorState.RAN_FOUND
+    ehr = [f for f in result.findings if f.domain.startswith("app.ehr")]
+    assert len(ehr) == 18, f"expected all 18 EHR tables missing, got {len(ehr)}"
+    assert all(f.severity is Severity.P0 for f in ehr)
+    assert "ehr" in result.note
+
+
+@_needs_db
+def test_pharmacy_is_broken_by_a_table_it_does_not_own() -> None:
+    """MCM-P0-3, the finding per-domain verification structurally cannot make.
+
+    Pharmacy is 27/27 against its own schema and GULA-SCHEMA-002 reports it
+    clean. It still writes ehr_medication_dispenses, which does not exist, so a
+    sale carrying a patient id cannot complete.
+    """
+    result = detectors.detect_cross_domain_missing_dependency()
+    assert result.detector_state is DetectorState.RAN_FOUND
+    pharmacy = [f for f in result.findings if f.domain == "backend/app/pharmacy"]
+    assert len(pharmacy) == 1
+    assert pharmacy[0].affected == ["pharmacy/services.py", "ehr_medication_dispenses"]
+    assert pharmacy[0].severity is Severity.P0
+
+
+@_needs_db
+def test_measurement_covers_every_domain_not_just_the_reconciled_one() -> None:
+    """The scope fix itself.
+
+    Enrolment was one domain, so the detector could only ever describe one
+    domain. Discovery now finds every declarative base, and RECONCILED_DOMAINS
+    records what has been proven without suppressing anything.
+    """
+    bases = detectors._load_orm_metadata()
+    labels = {label for label, _ in bases}
+    assert len(bases) >= 18, f"expected every declarative base, found {len(bases)}"
+    for expected in ("app.pharmacy", "app.ehr", "app.identity", "app.national"):
+        assert any(label.startswith(expected) for label in labels), expected
+    assert frozenset({"pharmacy"}) == detectors.RECONCILED_DOMAINS
+
+
+@_needs_db
+def test_a_module_that_cannot_be_imported_is_recorded_not_skipped() -> None:
+    """UNMEASURED must be visible. Silence here would be indistinguishable
+    from a domain that measured clean."""
+    detectors._load_orm_metadata()
+    unimportable = detectors._unimportable_model_modules()
+    assert isinstance(unimportable, dict)
+    if unimportable:
+        result = detectors.detect_orm_tables_without_physical_table()
+        assert "UNMEASURED" in result.note
+
+
+# --- BATCH-1: metadata registry drift ----------------------------------------
+
+
+def test_the_alembic_registry_is_resolved_by_identity_not_by_name() -> None:
+    """Names would invent drift that is not there.
+
+    ``CareContinuumBase`` and ``CareContinuumAuditEntity`` are two names for one
+    MetaData. A name comparison reports the second unregistered; an identity
+    comparison does not.
+    """
+    registered, note = detectors._registered_metadata_ids()
+    assert registered, note
+    assert "unresolved" not in note, note
+
+
+def test_every_declarative_base_is_either_registered_or_reported() -> None:
+    """Recurrence protection for the registry itself.
+
+    A base that alembic cannot see produces an empty autogenerate diff, which is
+    indistinguishable from an accurate one. This fails if a new unregistered
+    base appears without the count being reconsidered.
+    """
+    result = detectors.detect_unregistered_declarative_bases()
+    assert result.detector_state in {
+        DetectorState.RAN_FOUND,
+        DetectorState.RAN_CLEAN,
+    }, result.note
+    bases = detectors._load_orm_metadata()
+    registered, _ = detectors._registered_metadata_ids()
+    accounted = len(result.findings) + sum(1 for _, md in bases if id(md) in registered)
+    # Every base is either registered or carries a finding. Neither list may
+    # quietly shrink.
+    assert accounted == len(bases)
+    assert len(result.findings) == 10, (
+        "the set of bases alembic cannot see changed; confirm this is intended "
+        "and update the expected count: " + result.note
+    )
+
+
+def test_the_canonical_core_registry_is_the_one_alembic_knows() -> None:
+    """app.models.base.Base carries the core tables and must stay registered."""
+    bases = dict(detectors._load_orm_metadata())
+    registered, _ = detectors._registered_metadata_ids()
+    core = bases.get("app.models.base.Base")
+    assert core is not None, "the core declarative base was not discovered"
+    assert id(core) in registered
+    for table in ("patients", "labs", "lab_orders", "lab_results"):
+        assert table in core.tables, f"{table} is not on the canonical core base"

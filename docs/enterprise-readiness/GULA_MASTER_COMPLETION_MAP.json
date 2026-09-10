@@ -1,8 +1,8 @@
 {
   "document": "GULA_MASTER_COMPLETION_MAP",
-  "version": 1,
-  "generated": "2026-09-09",
-  "head_commit": "ed47522286c6dd8595b34819d6576b6c4fd0966f",
+  "version": 2,
+  "generated": "2026-09-10",
+  "head_commit": "09935dff80d0ee7d32884a28acefe6d7b8badd3d",
   "branch": "claude/p0-2-pharmacy-reconciliation",
   "production_ready": false,
   "method": "Deterministic scan. Physical schema read from a database migrated to alembic head 20260912_0001. Endpoint reachability measured by booting the app and walking FastAPI's lazy _IncludedRouter tree, not by counting decorators. Table backing resolved by exact import-name resolution, not transitive closure.",
@@ -916,5 +916,77 @@
     "radiology": 1,
     "models": 1
   },
-  "attribution_note": "reachable_operations counts endpoints DEFINED in a domain's own package; operations_serving_this_domains_tables counts endpoints that TOUCH its tables wherever they are defined. They differ for domains whose routes live in the flat app/routes/ package (ehr, clinical, care_continuum, hospital, national_data)."
+  "attribution_note": "reachable_operations counts endpoints DEFINED in a domain's own package; operations_serving_this_domains_tables counts endpoints that TOUCH its tables wherever they are defined. They differ for domains whose routes live in the flat app/routes/ package (ehr, clinical, care_continuum, hospital, national_data).",
+  "batch_1": {
+    "status": "COMPLETE",
+    "scope": "verification truth only; no application schema or migration change",
+    "measurement_basis_correction": "v1 counted __tablename__ declarations in source (828 tables / 418 missing). Detector discovery imports the model modules and reads real mapper metadata: 807 mapped tables across 20 declarative bases, 402 with no physical table. Both are correct measurements of different things; the detector figure is authoritative because it is what SQLAlchemy actually maps.",
+    "before": {
+      "GULA-SCHEMA-002_tables_compared": 27,
+      "GULA-SCHEMA-002_findings": 0,
+      "GULA-SCHEMA-003": "did not exist",
+      "GULA-SCHEMA-004": "did not exist",
+      "GULA-ARCH-002": "did not exist",
+      "declarative_bases_measured": 1,
+      "gate_states": [
+        "PASS",
+        "FAIL",
+        "BLOCKED"
+      ],
+      "full_ci_result_on_this_branch": "UNKNOWN — ci.yml never ran on a stacked PR",
+      "ai_boot_seeding": "failed on every boot; 0 rows seeded"
+    },
+    "after": {
+      "GULA-SCHEMA-002_tables_compared": 405,
+      "GULA-SCHEMA-002_findings": 1677,
+      "GULA-SCHEMA-003_findings": 402,
+      "GULA-SCHEMA-004_findings": 145,
+      "GULA-ARCH-002_findings": 10,
+      "declarative_bases_measured": 20,
+      "model_modules_unmeasured": 0,
+      "gate_states": [
+        "PASS",
+        "FAIL",
+        "BLOCKED",
+        "DID_NOT_RUN",
+        "UNMEASURED"
+      ],
+      "full_ci_result_on_this_branch": "RED — 1 failed, 2743 passed, 157 skipped",
+      "ai_boot_seeding": "succeeds; 5 rows seeded; boot clean"
+    },
+    "acceptance": {
+      "ehr_18_of_18_is_a_detector_finding": true,
+      "pharmacy_cross_domain_dependency_is_a_finding": true,
+      "failed_tool_cannot_produce_pass": true,
+      "unknown_never_becomes_verified": true,
+      "no_schema_or_migration_change": true
+    }
+  },
+  "detectors": {
+    "GULA-SCHEMA-002": "ORM column drift vs physical schema — 20 bases, 405 tables compared",
+    "GULA-SCHEMA-003": "mapped table has no physical table — 402 findings",
+    "GULA-SCHEMA-004": "cross-domain persistence dependency missing — 145 findings",
+    "GULA-ARCH-002": "declarative base absent from alembic target_metadata — 10 findings",
+    "canonical_registries": {
+      "core_orm_base": "app.models.base.Base (143 tables: patients, labs, lab_orders, lab_results)",
+      "schema_generation": "target_metadata in backend/migrations/env.py (10 of 20 bases registered)"
+    }
+  },
+  "ci_truth": {
+    "document": "docs/enterprise-readiness/GULA_CI_TRUTH.md",
+    "data": "docs/enterprise-readiness/GULA_CI_TRUTH.json",
+    "workflows_total": 30,
+    "gate_every_pr": 2,
+    "gate_protected_branch_prs_only": 16,
+    "never_gate_a_pr": 12,
+    "full_ci_measured_locally": {
+      "syntax_gate": "PASS",
+      "lint": "PASS",
+      "migration_check": "PASS",
+      "backend_tests": "1 failed, 2743 passed, 157 skipped",
+      "failure": "test_icu_lab_workflow_p0.py::test_transfusion_requires_independent_crossmatch_and_bedside_verification",
+      "failure_cause": "BloodBankWorkflowError: Invalid transfusion transition: verified -> in_progress",
+      "pre_existing": "verified by stashing all BATCH-1 changes and re-running at 09935dff"
+    }
+  }
 }

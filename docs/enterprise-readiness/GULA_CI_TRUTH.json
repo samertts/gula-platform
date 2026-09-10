@@ -1,0 +1,342 @@
+{
+ "workflows": [
+  {
+   "name": "Auto Rollback",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": true,
+   "file": "auto-rollback.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "Blue-Green Deploy (Kubernetes)",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": true,
+   "file": "blue-green-deploy.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "Canary Deploy",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": true,
+   "file": "canary-deploy.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "CI Pipeline",
+   "pull_request": true,
+   "pr_branches": [
+    "main",
+    "staging"
+   ],
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": false,
+   "file": "ci.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "CodeQL Analysis",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": true,
+   "push": true,
+   "workflow_dispatch": false,
+   "file": "codeql-analysis.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "CodeQL Advanced",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": true,
+   "push": true,
+   "workflow_dispatch": false,
+   "file": "codeql.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Constitution Compliance",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": false,
+   "file": "constitution-compliance.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Dependency Review",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": false,
+   "file": "dependency-review.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Verify Railway Deployment",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": true,
+   "file": "deploy.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "Formatting Check",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": false,
+   "file": "formatting.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Foundation Gate",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": true,
+   "file": "foundation-gate.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "Frontend Bundle Budget",
+   "pull_request": true,
+   "pr_branches": "ALL",
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": false,
+   "file": "frontend-bundle-budget.yml",
+   "tier": "every-pr"
+  },
+  {
+   "name": "Frontend E2E Tests",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": true,
+   "file": "frontend-e2e.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Frontend - PWA Build & Deploy",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": true,
+   "file": "frontend-pwa.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "IAM Hardening Gate",
+   "pull_request": true,
+   "pr_branches": "ALL",
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": false,
+   "file": "iam-hardening.yml",
+   "tier": "every-pr"
+  },
+  {
+   "name": "Mobile - Android CI/CD",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": true,
+   "file": "mobile-android.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Mobile Expo Speech Quality",
+   "pull_request": true,
+   "pr_branches": [
+    "main",
+    "develop"
+   ],
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": true,
+   "file": "mobile-expo.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Mobile - Flutter Desktop CI/CD",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": true,
+   "file": "mobile-flutter-desktop.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Mobile - iOS CI/CD",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": true,
+   "file": "mobile-ios.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Nightly Build",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": true,
+   "push": false,
+   "workflow_dispatch": true,
+   "file": "nightly.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "Opt-in PR Auto-Merge",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": true,
+   "file": "opt-in-pr-auto-merge.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "Preview Deploy",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": false,
+   "file": "preview-deploy.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Changed Files Quality Gate",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": false,
+   "file": "quality-changed-files.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Quality Gate",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": false,
+   "push": true,
+   "workflow_dispatch": false,
+   "file": "quality-gate.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Release - Unified Release",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": true,
+   "file": "release.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "Rollback",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": true,
+   "file": "rollback.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "OpenSSF Scorecard",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": true,
+   "push": true,
+   "workflow_dispatch": false,
+   "file": "scorecard.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "SDK - Publish Packages",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": true,
+   "file": "sdk-publish.yml",
+   "tier": "not-a-pr-check"
+  },
+  {
+   "name": "Security Hardening",
+   "pull_request": true,
+   "pr_branches": [
+    "main"
+   ],
+   "schedule": true,
+   "push": true,
+   "workflow_dispatch": true,
+   "file": "security-hardening.yml",
+   "tier": "protected-branch-prs-only"
+  },
+  {
+   "name": "Verify Staging Deployment",
+   "pull_request": false,
+   "pr_branches": null,
+   "schedule": false,
+   "push": false,
+   "workflow_dispatch": true,
+   "file": "staging-verify.yml",
+   "tier": "not-a-pr-check"
+  }
+ ],
+ "every_pr": [
+  "frontend-bundle-budget.yml",
+  "iam-hardening.yml"
+ ]
+}
