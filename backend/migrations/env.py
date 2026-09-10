@@ -118,6 +118,30 @@ import app.care_continuum.models  # noqa: E402
 from app.identity.base import IdentityBase  # noqa: E402
 import app.identity.models  # noqa: E402
 
+# Model modules that no other import in this file reaches. Measured, not guessed:
+# with these absent, 64 physical tables were mapped by NO registered metadata,
+# and a single-MetaData autogenerate would have proposed DROP TABLE for every
+# one of them. A registered base being *populated* is not the same as it being
+# *complete* — IdentityBase held 39 tables while 48 of its own were missing.
+#
+# Imported explicitly and NOT wrapped in suppress(ImportError): a module that
+# stops importing must fail the migration loudly, because silently skipping it
+# is exactly how the DROP-TABLE hazard returns.
+import app.governance.models.citizen_platform  # noqa: E402
+import app.identity.adaptive_auth.models  # noqa: E402
+import app.identity.admin.models  # noqa: E402
+import app.identity.compliance.models  # noqa: E402
+import app.identity.federation.models  # noqa: E402
+import app.identity.governance.models  # noqa: E402
+import app.identity.lifecycle.models  # noqa: E402
+import app.identity.notifications.models  # noqa: E402
+import app.identity.trust.models  # noqa: E402
+import app.identity.workflows.models  # noqa: E402
+import app.models.ai  # noqa: E402
+import app.models.integration_inbox  # noqa: E402
+import app.models.mfa_device  # noqa: E402
+import app.national.search_platform.infrastructure.models  # noqa: E402
+
 # ── Alembic Config object ─────────────────────────────────────────────────────
 config = context.config
 

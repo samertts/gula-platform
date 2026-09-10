@@ -317,3 +317,61 @@ The blocker is proven, named, and reduced to a single decision.
 
 NR-018 remains **PARTIALLY VERIFIED**: zero-diff cannot be proven while
 autogenerate cannot run, and no proof is fabricated here.
+
+---
+
+# BATCH-2.6 — Finalised contract and ownership matrix
+
+Documentation only. No National Core schema is implemented.
+
+## 5. The seven entities
+
+`Person` and `Health Identity` are added here; they were implicit before.
+
+| Entity | Internal DB PK | Public ID | National identifier | External identifier | FHIR identifier | Business identifier | Scope | Canonical owner |
+|---|---|---|---|---|---|---|---|---|
+| **Person** | `INTEGER` | `UUID4` | Iraqi national ID — encrypted at rest, HMAC-indexed | — | `fhir_id String(64)` | — | GLOBAL | **National** (`national_citizens`) |
+| **Patient** | `INTEGER` *(physical, Core `patients`)* | `UUID4` | inherited from Person, never restated | `lab_patient_id INTEGER` on the projection | `fhir_id` | medical record number | TENANT (`lab_id`) | **Core `patients`** |
+| **Practitioner** | `INTEGER` | `UUID4` | national ID — encrypted, HMAC-indexed | `health_profession_number`, nullable `lab_user_id INTEGER` | `fhir_id` | `license_number` | GLOBAL | **National** |
+| **Organization** | `INTEGER` | `UUID4` | — | — | `fhir_id` | `org_code` | GLOBAL | **National** |
+| **Facility (operational)** | `INTEGER` *(physical)* | `UUID4` | — | — | `fhir_id` | `facility_code` | GLOBAL | **Core `facilities`** |
+| **Facility (national resource)** | `String(26)` *(physical — do not retype)* | — | — | bridged via `clinical_ehr_facility_bindings` | — | `facility_code` (unique) | GLOBAL | **Core `national_facilities`** |
+| **Encounter** | `UUID` *(physical, `visits.id`)* | the same `UUID` | — | the five legacy string columns, until migrated | `fhir_id` | `visit_type` | TENANT — **derived** through `patients.lab_id` | **Core `visits`** (see D-14) |
+| **Health Identity** | `INTEGER` | `UUID4` | `sndhs_health_id`, `national_health_number` | payer/insurer member ids | `fhir_id` | `national_health_number` | GLOBAL | **National** |
+
+Encounter's key changes from the BATCH-2.5 proposal. That proposal specified
+`BIGINT` for a table yet to be built; the table exists and is keyed `UUID`.
+Retyping a live primary key to satisfy a rule is the churn this contract
+forbids, and UUID suits an identity that crosses domain boundaries.
+
+## 6. Ownership matrix
+
+| Entity | Canonical owner | National role | Physical owner | Identity | Tenant / scope | Dependencies | Consumers | FHIR role | Status |
+|---|---|---|---|---|---|---|---|---|---|
+| Person | National | **source of truth** | none — not built | `INTEGER` + `UUID4` | GLOBAL | — | Patient, Health Identity | `Patient`/`RelatedPerson` subject | **NOT STARTED** |
+| Patient | Core `patients` | **PROJECTION** (`national_patients`) | `patients` | `INTEGER` + `UUID4` | TENANT | Person | orders, results, pharmacy, blood bank, nursing, EHR | `Patient` | **VERIFIED** (physical) |
+| Practitioner | National | source of truth | none — not built | `INTEGER` + `UUID4` | GLOBAL | Organization, Facility | 78 FK columns across ehr, care_continuum, national_data | `Practitioner` / `PractitionerRole` | **BLOCKED** on build |
+| Organization | National | source of truth | none — not built | `INTEGER` + `UUID4` | GLOBAL | — | Facility, Practitioner, Department | `Organization` | **NOT STARTED** |
+| Facility (operational) | Core `facilities` | consumer | `facilities` | `INTEGER` + `UUID4` | GLOBAL | Organization | operations, authorization scope | `Location` | **VERIFIED** (physical) |
+| Facility (national resource) | Core `national_facilities` | **registry** | `national_facilities` | `String(26)` | GLOBAL | — | clinical scope bridges | `Organization`/`Location` directory | **PARTIALLY VERIFIED** — NR-006 duplicate mapping |
+| Encounter | Core `visits` | **PROJECTION** (`national_encounters`) | `visits` | `UUID` | TENANT (derived) | Patient | 11 packages; 5 legacy string columns | `Encounter` | **PARTIALLY VERIFIED** — physical, unmapped, flag-gated |
+| Health Identity | National | source of truth | none — not built | `INTEGER` + `UUID4` | GLOBAL | Person | SNDHS integration, payer routing | `Patient.identifier` | **NOT STARTED** |
+
+## 7. Rules, restated as they now apply
+
+1. **No universal PK type.** `INTEGER` for population-bounded registries, `UUID`
+   where an identity crosses domains and already exists that way (`visits`),
+   `String(26)` retained where it is already physical (`national_facilities`).
+   The type follows the entity, never a house rule.
+2. **Mutable business codes are not canonical identity.** `license_number`,
+   `facility_code`, `org_code`, `national_health_number`, `visit_type` are
+   uniquely constrained, mutable, and never join targets.
+3. **Projections are not transactional owners.** `national_patients` and
+   `national_encounters` are read-only and rebuildable. **No foreign key may
+   point at a projection** — which is precisely what the 47 ORM foreign keys to
+   `national_encounters` currently do, and why they must be repointed.
+4. **External IDs remain external.** A `String(26)` reference arriving from
+   another domain is not converted because this domain uses integer keys.
+5. **Tenant scope is explicit.** Encounter's is currently *derived* through
+   `patients.lab_id`; making it explicit is one of the three questions blocked
+   on a clinical owner.

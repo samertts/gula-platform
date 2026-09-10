@@ -43,7 +43,7 @@ and `docs/adr/`.
 | NR-004 | P1  | Blood Bank | Shared transition table shadowed the blood-unit `reserved` state | FIXED — VERIFIED |
 | NR-005 | P1  | Platform/Alembic | Unguarded duplicate index could never succeed | FIXED — VERIFIED |
 | NR-006 | P1  | National + Core | `national_facilities` mapped by two ORM classes | OPEN — DECISION REQUIRED |
-| NR-007 | P1  | Clinical/Blood Bank | State machine is entity-agnostic by construction | CONFIRMED — REMEDIATION REQUIRES A DOMAIN D... |
+| NR-007 | P1  | Clinical/Blood Bank | State machine is entity-agnostic by construction | PARTIALLY RESOLVED — 4 collisions attributed; 28 ... |
 | NR-008 | P2  | Platform | `signxml` missing from lock file | OPEN — NOT A PRODUCTION BLOCKER |
 | NR-009 | P2  | Platform CI | Artifact quota exhausted; evidence jobs all red | OPEN — EXTERNAL |
 | NR-010 | P2  | Platform CI | `if:always()` upload masks the true failing step | OPEN |
@@ -54,17 +54,19 @@ and `docs/adr/`.
 | NR-015 | P3  | Platform CI | Postgres auth failure in migration gate | OPEN — LOW EVIDENCE |
 | NR-016 | P1  | Platform CI | Changed-files quality gate reported PASS when MyPy failed to execute | FIXED — VERIFIED |
 | NR-017 | P2  | Pharmacy | Warehouse is modelled in the schema but implemented nowhere | OPEN — ARCHITECTURE DECISION REQUIRED |
-| NR-018 | P1  | Platform Migrations | Ten declarative bases were invisible to autogenerate | PARTIALLY FIXED — PROOF BLOCKED BY NR-023 |
+| NR-018 | P1  | Platform Migrations | Ten declarative bases were invisible to autogenerate | PARTIALLY VERIFIED — 2 of 8 bases zero-diff capab... |
 | NR-019 | P1  | AI Platform | Importing `app.ai` wrote to the database at import time | FIXED — VERIFIED |
 | NR-020 | P0  | Blood Bank | Transfusion state machine had no `verified` state | FIXED — VERIFIED |
 | NR-021 | P0  | Blood Bank | Inventory and component endpoints ignored `lab_id` | FIXED — VERIFIED |
 | NR-022 | P0  | National Core | Four of the five most-depended-on tables do not exist | OPEN — ARCHITECTURE DECISION REQUIRED |
-| NR-023 | P0  | Platform Migrations | Autogenerate cannot run: foreign keys cross `MetaData` boundaries | OPEN — BLOCKED BY NR-006 |
+| NR-023 | P0  | Platform Migrations | Autogenerate cannot run: foreign keys cross `MetaData` boundaries | OPEN — BLOCKED BY NR-006, NR-029, NR-030 |
 | NR-024 | P3  | Platform Migrations | `CitizenPlatformBase` is registered but maps zero tables | OPEN — LOW SEVERITY |
 | NR-025 | P2  | Platform-wide | One name, two identifier schemes: `_ulid()` is a real ULID twice, a truncated UUID4 thirteen times | OPEN — DESIGN DEFECT |
 | NR-026 | P1  | Nursing Platform | Nursing ORM contradicts its own physical schema | OPEN — CONFIRMED |
-| NR-027 | P1  | Blood Bank | No Blood Bank mutation writes an audit log entry | OPEN — CONFIRMED |
+| NR-027 | P1  | Blood Bank | No Blood Bank mutation writes an audit log entry | PARTIALLY VERIFIED — canonical paths audited; 7 l... |
 | NR-028 | P3  | Platform-wide | Ambiguous package root: 130 imports say `backend.app`, the rest say `app` | OPEN — CONFIRMED |
+| NR-029 | P1  | Identity Platform | Three foreign keys name two tables that exist nowhere | OPEN — CONFIRMED |
+| NR-030 | P1  | Platform Migrations | Twelve physical tables are mapped by no ORM class | OPEN — CONFIRMED |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.
@@ -177,5 +179,5 @@ remediation plan rather than guessed at here.
 | NR-003 | Canonical pharmacy primary-key type, then a migration strategy for 23 tables | Pharmacy + Platform/Data |
 | NR-006 | Which domain owns `national_facilities`; the other becomes a consumer        | National + Core          |
 | NR-007 | Per-entity state machine keying vs. accepting union semantics                | Clinical Standards       |
-| NR-012 | Whether stored-response replay is required by API clients                    | Clinical Standards + API |
+| PARTIALLY RESOLVED — 4 collisions attributed; 28 ... | Whether stored-response replay is required by API clients                    | Clinical Standards + API |
 | NR-014 | National capacity targets                                                    | Programme                |

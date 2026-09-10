@@ -154,3 +154,80 @@ stop condition, and this document does not guess.
 The mechanical keying in §8 must land **in the same change** as the attribution
 in §9 — never before it. Keying by `(entity, state)` against a table whose rows
 have no attributed entity fails every transition in the system.
+
+---
+
+# BATCH-2.6 — Attribution by call-site evidence
+
+## 11. A correction to §4 above
+
+Section 4 said that a shared row means *"a donation in progress is validated
+against transfusion rules"*. **Measured, that does not happen today.**
+
+Only **two** entity values are ever passed to `transition()`:
+
+| Entity | `transition()` call sites |
+|---|---|
+| `blood_unit` | **11** — `service.py` lines 373, 626, 701, 720, 738, 759, 760, 782, 784, 786, 788 |
+| `transfusion` | **2** — `service.py` lines 579, 620 |
+| `crossmatch`, `donation`, `donor` | **0 — never validated by the state machine at all** |
+
+A donation never reaches the machine, so its states are never checked against
+anything. NR-007 is a **latent trap**, not an active mis-validation: it fires
+when a new entity is wired up, which is exactly how NR-004 and NR-020 happened.
+The severity stays P1; the mechanism is different from what §4 claimed.
+
+## 12. The four collisions are attributable — provably
+
+For every colliding state, exactly one claimant reaches the state machine and
+the other never does. The live transition row therefore belongs to the
+participant. This is read off call sites, not judged.
+
+| State | Claimants | Reaches `transition()` | **Owner** | Live outgoing set | Migration needed? |
+|---|---|---|---|---|---|
+| `completed` | donation, transfusion | transfusion only | **transfusion** | `{}` — terminal | No |
+| `in_progress` | donation, transfusion | transfusion only | **transfusion** | `{completed, reaction_suspected}` | No |
+| `expired` | blood_unit, donor | blood_unit only | **blood_unit** | `{discarded}` | No |
+| `discarded` | blood_unit, donation | blood_unit only | **blood_unit** | not a key — terminal by absence | No |
+
+No migration is required for any of the four: no colliding value appears as a
+`server_default` on a Blood Bank table. (`completed` and `in_progress` appear as
+defaults in `pharmacy_sales`, `national_trust_platform` and `nursing_platform`
+— different domains, different state machines, unaffected.)
+
+**Status: the four collisions are ATTRIBUTED.** The `(entity, state)` keying can
+now be written for them without a clinical decision.
+
+## 13. What remains BLOCKED
+
+The **28 synthetic keys** are still **BLOCKED — CLINICAL OWNER REQUIRED**, and
+the reason is now sharper than "attribution has not been written down".
+
+They describe order, sample, crossmatch and reaction lifecycles — and *none of
+those entities is ever passed to `transition()`*. Three of them
+(`crossmatch`, `donation`, `donor`) have enums but no call site; order, sample
+and reaction have no lifecycle enum at all. Attributing those 28 keys means
+first deciding what those entities' lifecycles *are*, which is a clinical
+modelling question, not a code-reading one.
+
+Consequence worth stating: **those 28 rows govern nothing today.** They are
+unreachable. They would begin governing the moment someone wires the
+corresponding entity up — and, being keyed on state alone, they would collide
+with `blood_unit` and `transfusion` on the four states above.
+
+## 14. The guard
+
+`backend/tests/blood_bank/test_state_registry_guard.py` — four fail-closed
+assertions, no state machine change:
+
+1. no **new** state name is claimed by two entity enums;
+2. no **new** entity reaches `transition()` while the table is keyed on state
+   alone — the precise mechanism of NR-004 and NR-020;
+3. each known collision still has exactly one claimant that reaches the machine,
+   so the attribution above cannot silently become ambiguous;
+4. the table is still keyed on a bare state name — when this fails, the
+   mechanical half is done and the guard should be updated, not deleted.
+
+The `(entity, state)` rewrite is still **not applied**. Section 10's sequencing
+rule stands: the mechanical keying must land with the attribution, and the 28
+synthetic keys are not attributed.

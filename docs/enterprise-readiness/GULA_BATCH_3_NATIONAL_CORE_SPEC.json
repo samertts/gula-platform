@@ -1,7 +1,7 @@
 {
   "document": "GULA_BATCH_3_NATIONAL_CORE_SPEC",
-  "version": 2,
-  "generated": "2026-09-10T10:48:17Z",
+  "version": 3,
+  "generated": "2026-09-10T14:09:13Z",
   "status": "SPECIFICATION ONLY — NOT IMPLEMENTED",
   "migrations_created": 0,
   "canonical_owners": {
@@ -144,8 +144,266 @@
     "governance",
     "national_data"
   ],
-  "head_commit": "ac894767bf33dd160ae8131ee8570e29e31f7481",
+  "head_commit": "0eb52d0e2da648ae18692e62629dd0465019aab6",
   "identity_contract": "docs/enterprise-readiness/GULA_NATIONAL_CORE_IDENTITY_CONTRACT.json",
   "nr_025": "One name, two incompatible schemes. Of 15 _ulid() definitions, 13 return str(uuid.uuid4()).replace('-','').upper()[:26] — the first 26 hex characters of a random UUID4, not a ULID — and 2 are genuine Crockford-base32 ULIDs. Every declarative base uses the fake one; the real implementation mints no primary keys. A third reason not to copy the VARCHAR shape.",
-  "nr_023_root_cause_corrected": "Cross-MetaData foreign keys, NOT a missing national core. All 24 unresolvable FK targets are mapped, just by a different MetaData than the referencing table. 18 distinct MetaData objects, 6 fail topological sort, 360 unresolvable references. Canonical repair is one shared MetaData, blocked by exactly one collision (NR-006)."
+  "nr_023_root_cause_corrected": "Cross-MetaData foreign keys, NOT a missing national core. All 24 unresolvable FK targets are mapped, just by a different MetaData than the referencing table. 18 distinct MetaData objects, 6 fail topological sort, 360 unresolvable references. Canonical repair is one shared MetaData, blocked by exactly one collision (NR-006).",
+  "scope_frozen": true,
+  "scope_freeze": {
+    "batch": "BATCH-2.6",
+    "rule": "Nothing enters B3 unless it is a proven hard dependency of the National Core. EHR, Care Continuity, Governance and National Data are explicitly NOT pulled in.",
+    "B3_REQUIRED": [
+      {
+        "item": "NR-006 — rename or retire app/national/domain/facility.py::Facility",
+        "why": "One table name, two registered metadata. Blocks any single-namespace MetaData.",
+        "scope": "ORM change plus the 9 sibling FKs inside the national domain. No physical schema change.",
+        "proven_by": "clinical_scope.NationalFacility matches migration 20260813_0004 exactly and is the target of the physical FK from clinical_ehr_facility_bindings; the national-domain class has zero physical backing."
+      },
+      {
+        "item": "NR-029 — resolve the 2 dangling FK targets",
+        "why": "niam_identity_authorities (2 refs) and niam_user_sessions (1 ref) exist in neither the ORM nor the database. No metadata design resolves a reference to something that does not exist.",
+        "scope": "Define the models or remove the references. 3 declarations in app/identity/{trust,adaptive_auth}/models.py."
+      },
+      {
+        "item": "NR-030 — decide the 12 unmapped physical tables",
+        "why": "Each is a DROP TABLE candidate under any single-MetaData autogenerate.",
+        "scope": "Six are Financial Engine Phase A (schema-only by design — needs an explicit exclusion, not a model). Six are unexplained: idempotency_keys, nursing_clinical_checklists, nursing_escalation_records, radiology_ai_analysis_jobs, sndhs_audit_logs, visits."
+      },
+      {
+        "item": "Practitioner — build national_practitioners",
+        "why": "78 inbound FK columns; ownership CLOSED as National in BATCH-2.5.",
+        "scope": "INTEGER internal key, UUID4 public id, license_number demoted to a business code, nullable lab_users.practitioner_id link."
+      }
+    ],
+    "B3_DEPENDENCY": [
+      {
+        "item": "Encounter — adopt `visits` as the canonical clinical episode",
+        "blocked_on": "three clinical-owner questions (explicit lab_id vs derived tenancy; visit_type taxonomy; SNDHS_ENABLE_VISITS and backfill)",
+        "note": "The shape is RECOMMENDED (D-14). Do not create clinical_encounters — that would be a fourth episode representation."
+      },
+      {
+        "item": "Repoint the 47 ORM foreign keys away from national_encounters",
+        "blocked_on": "the Encounter decision above",
+        "why": "national_encounters is a PROJECTION and no foreign key may point at a projection."
+      },
+      {
+        "item": "Migrate the 5 legacy unconstrained episode columns to visit_id UUID",
+        "blocked_on": "the Encounter decision above",
+        "columns": [
+          "billing_invoices.encounter_ref VARCHAR(128)",
+          "blood_bank_patient_samples.encounter_id VARCHAR(100)",
+          "blood_bank_reservations.encounter_id VARCHAR(100)",
+          "blood_bank_reactions.encounter_id VARCHAR(100)",
+          "pharmacy_sales.encounter_id VARCHAR(26)"
+        ]
+      },
+      {
+        "item": "NR-007 — key the transition table by (entity, state)",
+        "blocked_on": "clinical attribution of the 28 synthetic keys",
+        "note": "The 4 colliding states ARE attributed (BATCH-2.6). The mechanical keying must land with the attribution, never before it."
+      }
+    ],
+    "B4_PLUS": [
+      {
+        "item": "Person, Organization, Health Identity",
+        "why": "National Core entities with no inbound pressure yet"
+      },
+      {
+        "item": "national platform (29 tables)",
+        "why": "not a dependency of the core"
+      },
+      {
+        "item": "clinical record (45), care continuity (47)",
+        "why": "consumers of the core, not dependencies"
+      },
+      {
+        "item": "governance and data (79)",
+        "why": "downstream"
+      },
+      {
+        "item": "hospital (9)",
+        "why": "HospitalBase maps 14, only 4 physical; not a core dependency"
+      }
+    ],
+    "DEFER": [
+      {
+        "item": "app.insurance (13 tables)",
+        "why": "none physical, no reachable operation, awaiting a product decision"
+      },
+      {
+        "item": "NR-017 pharmacy warehouse",
+        "why": "architecture decision outstanding"
+      },
+      {
+        "item": "NR-026 nursing ORM/physical reconciliation",
+        "why": "real drift, but not a National Core dependency"
+      },
+      {
+        "item": "NR-025 identifier scheme unification",
+        "why": "design defect; no functional break"
+      },
+      {
+        "item": "NR-028 package root ambiguity",
+        "why": "130 imports; env.py bootstraps around it"
+      }
+    ],
+    "RETIRE": [
+      {
+        "item": "app.national.task_engine (15 tables)",
+        "why": "none physical, no reachable operation"
+      },
+      {
+        "item": "app/national/domain/facility.py::Facility",
+        "why": "duplicate claim on a physically-owned table name"
+      },
+      {
+        "item": "Blood Bank legacy record/start/complete_transfusion, issue_units, perform_crossmatch",
+        "why": "zero callers; each strictly weaker than an existing counterpart"
+      }
+    ],
+    "BLOCKED": [
+      {
+        "item": "NR-023 autogenerate",
+        "blocked_on": [
+          "NR-006",
+          "NR-029",
+          "NR-030"
+        ]
+      },
+      {
+        "item": "NR-018 zero-diff proof",
+        "blocked_on": [
+          "NR-023"
+        ]
+      },
+      {
+        "item": "Encounter canonical adoption",
+        "blocked_on": [
+          "clinical owner"
+        ]
+      },
+      {
+        "item": "NR-007 mechanical keying",
+        "blocked_on": [
+          "clinical owner"
+        ]
+      },
+      {
+        "item": "Blood Bank legacy route audit coverage",
+        "blocked_on": [
+          "a behavioural API decision on 7 live endpoints"
+        ]
+      }
+    ]
+  },
+  "nr_018_per_base": {
+    "method": "mapped vs physical vs duplicate-ownership vs cross-MetaData FKs, against a database migrated to head",
+    "bases": [
+      {
+        "base": "PharmacyBase",
+        "mapped": 27,
+        "physical": 27,
+        "missing": 0,
+        "duplicate": 0,
+        "cross_metadata_fks": 0,
+        "unmapped_physical_owned": 0,
+        "status": "VERIFIED"
+      },
+      {
+        "base": "NHDWBase",
+        "mapped": 14,
+        "physical": 14,
+        "missing": 0,
+        "duplicate": 0,
+        "cross_metadata_fks": 0,
+        "unmapped_physical_owned": 0,
+        "status": "VERIFIED"
+      },
+      {
+        "base": "RadiologyBase",
+        "mapped": 18,
+        "physical": 17,
+        "missing": 1,
+        "duplicate": 0,
+        "cross_metadata_fks": 0,
+        "unmapped_physical_owned": 1,
+        "unmapped": [
+          "radiology_ai_analysis_jobs"
+        ],
+        "status": "PARTIALLY VERIFIED"
+      },
+      {
+        "base": "NursingBase",
+        "mapped": 15,
+        "physical": 13,
+        "missing": 2,
+        "duplicate": 0,
+        "cross_metadata_fks": 49,
+        "unmapped_physical_owned": 2,
+        "unmapped": [
+          "nursing_clinical_checklists",
+          "nursing_escalation_records"
+        ],
+        "status": "PARTIALLY VERIFIED",
+        "note": "also NR-026 ORM/physical type drift"
+      },
+      {
+        "base": "FinBase",
+        "mapped": 37,
+        "physical": 31,
+        "missing": 6,
+        "duplicate": 0,
+        "cross_metadata_fks": 0,
+        "unmapped_physical_owned": 6,
+        "unmapped": [
+          "fin_ads_campaigns",
+          "fin_ads_clicks",
+          "fin_ads_conversions",
+          "fin_clinical_behavior",
+          "fin_fraud_logs",
+          "fin_market_benchmarks"
+        ],
+        "status": "PARTIALLY VERIFIED",
+        "note": "Financial Engine Phase A is schema-only by design"
+      },
+      {
+        "base": "HospitalBase",
+        "mapped": 14,
+        "physical": 4,
+        "missing": 10,
+        "duplicate": 0,
+        "cross_metadata_fks": 0,
+        "unmapped_physical_owned": 0,
+        "status": "PARTIALLY VERIFIED",
+        "note": "10 mapped tables have no physical table"
+      },
+      {
+        "base": "DataPlatformBase",
+        "mapped": 36,
+        "physical": 0,
+        "missing": 36,
+        "duplicate": 0,
+        "cross_metadata_fks": 13,
+        "unmapped_physical_owned": 0,
+        "status": "PARTIALLY VERIFIED"
+      },
+      {
+        "base": "DocIntelBase",
+        "mapped": 21,
+        "physical": 0,
+        "missing": 21,
+        "duplicate": 0,
+        "cross_metadata_fks": 0,
+        "unmapped_physical_owned": 0,
+        "status": "PARTIALLY VERIFIED"
+      }
+    ],
+    "summary": {
+      "VERIFIED": 2,
+      "PARTIALLY_VERIFIED": 6,
+      "BLOCKED": 0,
+      "duplicate_ownership_anywhere": 0,
+      "note": "No base has duplicate ownership. Only Pharmacy and NHDW are zero-diff-capable; the rest carry a real, explainable diff."
+    }
+  }
 }

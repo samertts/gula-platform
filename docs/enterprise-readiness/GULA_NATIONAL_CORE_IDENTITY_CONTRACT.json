@@ -325,5 +325,193 @@
   "nr_018": {
     "status": "PARTIALLY VERIFIED",
     "why": "zero-diff cannot be proven while autogenerate cannot run; no proof is fabricated"
+  },
+  "batch_2_6": {
+    "generated": "2026-09-10T14:08:33Z",
+    "head_commit": "0eb52d0e2da648ae18692e62629dd0465019aab6",
+    "scope": "documentation only; no National Core schema implemented",
+    "entities": [
+      {
+        "entity": "Person",
+        "canonical_owner": "National",
+        "national_role": "source of truth",
+        "physical_owner": null,
+        "internal_pk": "INTEGER",
+        "public_id": "UUID4",
+        "national_identifier": "Iraqi national ID (encrypted, HMAC-indexed)",
+        "external_identifier": null,
+        "fhir_identifier": "fhir_id String(64)",
+        "business_identifier": null,
+        "scope": "GLOBAL",
+        "dependencies": [],
+        "consumers": [
+          "Patient",
+          "Health Identity"
+        ],
+        "fhir_role": "Patient/RelatedPerson subject",
+        "status": "NOT STARTED"
+      },
+      {
+        "entity": "Patient",
+        "canonical_owner": "Core patients",
+        "national_role": "PROJECTION (national_patients)",
+        "physical_owner": "patients",
+        "internal_pk": "INTEGER",
+        "public_id": "UUID4",
+        "national_identifier": "inherited from Person",
+        "external_identifier": "lab_patient_id INTEGER on the projection",
+        "fhir_identifier": "fhir_id",
+        "business_identifier": "medical record number",
+        "scope": "TENANT (lab_id)",
+        "dependencies": [
+          "Person"
+        ],
+        "consumers": [
+          "orders",
+          "results",
+          "pharmacy",
+          "blood bank",
+          "nursing",
+          "EHR"
+        ],
+        "fhir_role": "Patient",
+        "status": "VERIFIED"
+      },
+      {
+        "entity": "Practitioner",
+        "canonical_owner": "National",
+        "national_role": "source of truth",
+        "physical_owner": null,
+        "internal_pk": "INTEGER",
+        "public_id": "UUID4",
+        "national_identifier": "national ID (encrypted, HMAC-indexed)",
+        "external_identifier": "health_profession_number; nullable lab_user_id INTEGER",
+        "fhir_identifier": "fhir_id",
+        "business_identifier": "license_number",
+        "scope": "GLOBAL",
+        "dependencies": [
+          "Organization",
+          "Facility"
+        ],
+        "consumers": [
+          "78 FK columns across ehr, care_continuum, national_data"
+        ],
+        "fhir_role": "Practitioner / PractitionerRole",
+        "status": "BLOCKED"
+      },
+      {
+        "entity": "Organization",
+        "canonical_owner": "National",
+        "national_role": "source of truth",
+        "physical_owner": null,
+        "internal_pk": "INTEGER",
+        "public_id": "UUID4",
+        "national_identifier": null,
+        "external_identifier": null,
+        "fhir_identifier": "fhir_id",
+        "business_identifier": "org_code",
+        "scope": "GLOBAL",
+        "dependencies": [],
+        "consumers": [
+          "Facility",
+          "Practitioner",
+          "Department"
+        ],
+        "fhir_role": "Organization",
+        "status": "NOT STARTED"
+      },
+      {
+        "entity": "Facility (operational)",
+        "canonical_owner": "Core facilities",
+        "national_role": "consumer",
+        "physical_owner": "facilities",
+        "internal_pk": "INTEGER",
+        "public_id": "UUID4",
+        "national_identifier": null,
+        "external_identifier": null,
+        "fhir_identifier": "fhir_id",
+        "business_identifier": "facility_code",
+        "scope": "GLOBAL",
+        "dependencies": [
+          "Organization"
+        ],
+        "consumers": [
+          "operations",
+          "authorization scope"
+        ],
+        "fhir_role": "Location",
+        "status": "VERIFIED"
+      },
+      {
+        "entity": "Facility (national resource)",
+        "canonical_owner": "Core national_facilities",
+        "national_role": "registry",
+        "physical_owner": "national_facilities",
+        "internal_pk": "String(26) — already physical, do not retype",
+        "public_id": null,
+        "national_identifier": null,
+        "external_identifier": "bridged via clinical_ehr_facility_bindings",
+        "fhir_identifier": null,
+        "business_identifier": "facility_code (unique)",
+        "scope": "GLOBAL",
+        "dependencies": [],
+        "consumers": [
+          "clinical scope bridges"
+        ],
+        "fhir_role": "Organization/Location directory",
+        "status": "PARTIALLY VERIFIED — NR-006 duplicate mapping"
+      },
+      {
+        "entity": "Encounter",
+        "canonical_owner": "Core visits",
+        "national_role": "PROJECTION (national_encounters)",
+        "physical_owner": "visits",
+        "internal_pk": "UUID (physical, visits.id)",
+        "public_id": "the same UUID",
+        "national_identifier": null,
+        "external_identifier": "the five legacy string columns, until migrated",
+        "fhir_identifier": "fhir_id",
+        "business_identifier": "visit_type",
+        "scope": "TENANT — derived through patients.lab_id",
+        "dependencies": [
+          "Patient"
+        ],
+        "consumers": [
+          "11 packages; 5 legacy string columns"
+        ],
+        "fhir_role": "Encounter",
+        "status": "PARTIALLY VERIFIED — physical, unmapped, flag-gated",
+        "identity_change_from_batch_2_5": "BATCH-2.5 specified BIGINT for a table yet to be built. The table exists and is keyed UUID. Retyping a live primary key to satisfy a rule is the churn this contract forbids."
+      },
+      {
+        "entity": "Health Identity",
+        "canonical_owner": "National",
+        "national_role": "source of truth",
+        "physical_owner": null,
+        "internal_pk": "INTEGER",
+        "public_id": "UUID4",
+        "national_identifier": "sndhs_health_id, national_health_number",
+        "external_identifier": "payer/insurer member ids",
+        "fhir_identifier": "fhir_id",
+        "business_identifier": "national_health_number",
+        "scope": "GLOBAL",
+        "dependencies": [
+          "Person"
+        ],
+        "consumers": [
+          "SNDHS integration",
+          "payer routing"
+        ],
+        "fhir_role": "Patient.identifier",
+        "status": "NOT STARTED"
+      }
+    ],
+    "rules": [
+      "No universal PK type: INTEGER for population-bounded registries, UUID where identity crosses domains and already exists that way (visits), String(26) retained where already physical (national_facilities).",
+      "Mutable business codes are not canonical identity and are never join targets.",
+      "Projections are not transactional owners; no foreign key may point at a projection — which is what the 47 ORM FKs to national_encounters currently do.",
+      "External IDs remain external.",
+      "Tenant scope is explicit; Encounter's is currently derived and that is one of the blocked questions."
+    ]
   }
 }

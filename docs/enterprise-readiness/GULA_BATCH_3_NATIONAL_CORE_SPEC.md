@@ -172,3 +172,81 @@ clean database.
 EHR, clinical, care_continuum, nursing, governance, national_data — every one
 of them waits. Building any of them inside this batch would reintroduce the
 coupling this batch exists to remove.
+
+---
+
+# BATCH-2.6 — Scope freeze and per-base verification
+
+## 9. NR-018 — per-base status, measured
+
+Against a database migrated to head `20260912_0001`. "Missing" means mapped but
+not physical; "unmapped owned" means physical but mapped by no registered
+metadata — a `DROP TABLE` candidate.
+
+| Base | Mapped | Physical | Missing | Duplicate | Cross-MetaData FKs | Unmapped owned | Status |
+|---|---:|---:|---:|---:|---:|---:|---|
+| `PharmacyBase` | 27 | 27 | 0 | 0 | 0 | 0 | **VERIFIED** |
+| `NHDWBase` | 14 | 14 | 0 | 0 | 0 | 0 | **VERIFIED** |
+| `RadiologyBase` | 18 | 17 | 1 | 0 | 0 | **1** | PARTIALLY VERIFIED |
+| `NursingBase` | 15 | 13 | 2 | 0 | **49** | **2** | PARTIALLY VERIFIED |
+| `FinBase` | 37 | 31 | 6 | 0 | 0 | **6** | PARTIALLY VERIFIED |
+| `HospitalBase` | 14 | 4 | 10 | 0 | 0 | 0 | PARTIALLY VERIFIED |
+| `DataPlatformBase` | 36 | 0 | 36 | 0 | 13 | 0 | PARTIALLY VERIFIED |
+| `DocIntelBase` | 21 | 0 | 21 | 0 | 0 | 0 | PARTIALLY VERIFIED |
+
+**No base has duplicate ownership.** Only Pharmacy and NHDW are zero-diff
+capable; every other base carries a real, explainable diff. Nothing was modified
+to reduce a diff.
+
+## 10. BATCH-3 scope — FROZEN
+
+Nothing enters B3 unless it is a **proven hard dependency** of the National
+Core. EHR, Care Continuity, Governance and National Data are explicitly not
+pulled in.
+
+### B3_REQUIRED
+
+1. **NR-006** — rename or retire `app/national/domain/facility.py::Facility` and
+   follow the 9 sibling foreign keys. ORM only; no physical schema change.
+2. **NR-029** — resolve `niam_identity_authorities` and `niam_user_sessions`:
+   define the models, or remove the 3 declarations. No metadata design resolves
+   a reference to something that exists nowhere.
+3. **NR-030** — decide the 12 unmapped physical tables. Six are Financial Engine
+   Phase A (schema-only *by design* — they need an explicit exclusion, not a
+   model); six are unexplained.
+4. **Practitioner** — build `national_practitioners` per the identity contract.
+   78 inbound foreign-key columns; ownership already CLOSED as National.
+
+### B3_DEPENDENCY (blocked on a decision, not on effort)
+
+- Adopt `visits` as the canonical clinical episode — blocked on three
+  clinical-owner questions.
+- Repoint the 47 ORM foreign keys away from `national_encounters` — a projection
+  may not be a foreign-key target.
+- Migrate the 5 legacy unconstrained episode columns to `visit_id UUID`.
+- NR-007 `(entity, state)` keying — blocked on attributing the 28 synthetic keys.
+
+### B4+
+
+Person, Organization, Health Identity; national platform (29); clinical record
+(45); care continuity (47); governance and data (79); hospital (9).
+
+### DEFER
+
+`app.insurance` (13); NR-017 warehouse; NR-026 nursing reconciliation; NR-025
+identifier unification; NR-028 package root.
+
+### RETIRE
+
+`app.national.task_engine` (15); the duplicate national-domain `Facility`; the
+five zero-caller Blood Bank legacy commands.
+
+### BLOCKED
+
+| Item | Blocked on |
+|---|---|
+| NR-023 autogenerate | NR-006 **and** NR-029 **and** NR-030 |
+| NR-018 zero-diff proof | NR-023 |
+| Encounter canonical adoption | clinical owner |
+| NR-007 mechanical keying | clinical owner |
+| Blood Bank legacy route audit | a behavioural API decision on 7 live endpoints |

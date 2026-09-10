@@ -193,3 +193,197 @@ review, through `clinical_ehr_facility_bindings`.
 
 Resolving it unblocks NR-023, whose canonical repair — one shared `MetaData` —
 is held up by exactly this one table-name collision.
+
+---
+
+# BATCH-2.6 — Final architecture closure
+
+## D-11 — NR-023: the safe architecture, and why it is still BLOCKED
+
+Three architectures were evaluated against actual SQLAlchemy/Alembic behaviour,
+not against documentation.
+
+### Option A — one canonical MetaData
+
+Assemble a single `MetaData` at env.py time with `Table.to_metadata()`. No
+declarative base changes, no application schema changes: infrastructure only.
+
+**Measured: it works.** All 363 cross-`MetaData` foreign-key references resolve,
+and `sort_tables_and_constraints` succeeds over all 651 tables — the failure
+that has blocked autogenerate since it was first recorded disappears entirely.
+
+**And it is unsafe today.** Running `compare_metadata` against a database
+migrated to head produced **5,101 operations, including 76 `DROP TABLE`** —
+larger than the 74-table hazard BATCH-2.5 closed. Resolving the foreign keys
+does not make autogenerate safe; it makes a second, larger problem reachable.
+
+### Option B — explicit multi-MetaData orchestration
+
+Run autogenerate per base with the referenced tables copied in and
+`include_object` restricted to the base's own tables.
+
+**Rejected on evidence.** It does not avoid the collision — a base referencing
+`national_facilities` must still choose which of the two mappings it means — and
+it multiplies the exclusion surface by the number of bases, turning one
+reviewable decision into eighteen. It also cannot see cross-base drift, which is
+the drift most likely to hurt.
+
+### Option C — combined MetaData with explicit, guarded resolution
+
+Option A plus: a named collision resolution, a named exclusion list for physical
+tables with no ORM model, and a fail-closed check that refuses to build the
+metadata when anything appears that is not on either list.
+
+**This is the correct target architecture.** It preserves canonical ownership
+(no base changes), FK integrity (one namespace), determinism (fail closed), and
+it excludes nothing silently.
+
+### It cannot be implemented yet — three proven dependencies
+
+| # | Dependency | Measured | Why it blocks |
+|---|---|---|---|
+| 1 | **NR-006** — `national_facilities` claimed by two registered metadata | 1 collision | A single namespace must pick one mapping. The naive "first wins" happens to pick the physical one by list order — correct by accident, which is not a design |
+| 2 | **NR-030** — physical tables mapped by no ORM class | **12** | Each is a `DROP TABLE` candidate. Six are Financial Engine Phase A (schema-only *by design*); six are unexplained |
+| 3 | **NR-029** — foreign keys naming a table that exists nowhere | **2 targets, 3 declarations** | `niam_identity_authorities`, `niam_user_sessions`. These break even a combined `MetaData` — no design resolves a reference to something that does not exist |
+
+Dependency 1 requires an ownership decision. Dependency 3 requires a model
+change. Neither is infrastructure-only, and BATCH-2.6 forbids resolving
+`national_facilities` through an unapproved schema change.
+
+### **NR-023 = BLOCKED**
+
+The exact architectural dependency: *a single canonical `MetaData` requires one
+table-name namespace (NR-006), a complete ORM registry (NR-030) and no dangling
+foreign keys (NR-029). All three are proven; none is infrastructure-only.*
+
+### What was implemented — infrastructure only
+
+env.py now imports the fourteen model modules no other import reached. **The
+DROP-TABLE hazard falls from 76 tables to 12** — an 84% reduction — and the
+registry becomes truthful. Verified: `upgrade head`, `downgrade -1`,
+`upgrade head` clean on a fresh database with `PYTHONPATH` unset.
+
+This does not fix NR-023 and is not claimed to.
+
+## D-12 — "Registered" is not "complete"
+
+The BATCH-2.5 hazard was a base registered with **zero** tables. BATCH-2.6 found
+that was the extreme end of a spectrum: `IdentityBase` was registered and held
+39 tables while **48 of its own were never imported**.
+
+The invariant is therefore not *"no registered metadata is empty"* but *"every
+physical table is mapped by a registered metadata, or explicitly and namedly
+excluded"*. `backend/tests/test_alembic_metadata_registry.py` asserts the
+stronger form, fails closed, and reads the import graph out of env.py rather
+than restating it — proven by deleting one import and watching it fail.
+
+## D-13 — NR-006: Operational Facility vs National Facility Resource
+
+Two entities, not one duplicated entity. **Do not merge them.**
+
+| | Operational Facility | National Facility Resource |
+|---|---|---|
+| Canonical owner | **Core** | **Core** (national EHR directory) |
+| Physical table | `facilities` | `national_facilities` |
+| Physical mapping | `app.models` | **`app/models/clinical_scope.py::NationalFacility`** |
+| Identity | `INTEGER` PK | `String(26)` PK — already physical, do not retype |
+| Columns | operational | exactly the 6 from migration `20260813_0004` |
+| Authoritative for | scheduling, staffing, operations, tenancy | national directory identity, `facility_code` |
+| Relationship | ← `clinical_ehr_facility_bindings` → | a **reviewed** bridge, physically enforced |
+| Synchronisation | none — they are different resources | registry is externally sourced; GULA does not write it back |
+| Consumers | operations, authorization scope | clinical scope bridges, national reporting |
+
+`app/models/clinical_scope.py` states in-source that the national EHR facility
+is a **separate resource** from the operational facility and that no
+relationship may be inferred from identifier similarity. The bridge exists
+precisely because the mapping is a decision, not an inference.
+
+**`app/national/domain/facility.py::Facility` is the duplicate**: 18 columns,
+zero physical backing, `extend_existing=True`, claiming a name another base
+already owns physically. It must be renamed or retired.
+
+**Not implemented in BATCH-2.6.** It is an ORM schema change, nine sibling
+foreign keys inside the national domain point at the name, and NR-023 is blocked
+on more than this alone — so resolving it here would not unblock autogenerate.
+**BATCH-3 item 1.**
+
+## D-14 — Encounter: the episode already exists
+
+BATCH-2.5 left this as Option A (extend `lab_orders`) versus Option B (a new
+tenant-scoped `clinical_encounters`). The dependency analysis produced a third
+answer that neither option stated, and the evidence for it is unambiguous.
+
+**`visits` is already the clinical episode, and it is already physical.**
+
+```
+visits: id UUID PK, patient_id INTEGER FK -> patients, visit_type, status,
+        created_at, closed_at
+lab_orders.visit_id UUID  FK -> visits.id   (constraint fk_lab_orders_visit_id)
+```
+
+Migration `20260505_0003_sndhs_phase1_visits_table.py` states the architecture in
+its own docstring: *"Visit-based architecture: every clinical action is anchored
+to a visit."*
+
+### Why this settles Option A vs Option B
+
+**Option A — extend `lab_orders` — is refused by the evidence.**
+`lab_orders` has **8** inbound foreign-key references and every one is internal
+to `app.database.Base`. No other domain references it. Meanwhile **11 packages**
+reference an *encounter*. The domains have already voted, in code, that the
+episode is not the laboratory order. A pharmacy sale, a blood-bank reservation
+and a nursing assessment are not laboratory orders, and anchoring them to one
+would require creating a lab order to have an episode.
+
+**Option B's shape is right; building a new table is wrong.** `visits` already
+has Option B's exact structure — a tenant-scoped episode that `lab_orders`
+references — with the foreign key already enforced. Creating
+`clinical_encounters` would produce a **fourth** episode representation
+alongside `lab_orders`, `visits` and `national_encounters`.
+
+### RECOMMENDED — Option B, realised by adopting `visits`
+
+| | |
+|---|---|
+| Canonical clinical episode | **`visits`** (physical, UUID PK) |
+| `national_encounters` | **PROJECTION** — read-only, rebuildable, never an FK target |
+| `lab_orders` | references the episode; it is **not** the episode |
+
+**Advantages.** The table, its key and its `lab_orders` foreign key already
+exist and are already deployed. It is UUID-keyed, which suits an entity whose
+identity crosses domains. Migration complexity is additive: extend `visits`,
+then migrate the five unconstrained string columns to `visit_id UUID`. It gives
+one episode for laboratory, pharmacy, blood bank, nursing, radiology and billing
+alike.
+
+**Disadvantages, stated plainly.** `visits` has only six columns — no facility,
+no practitioner, no encounter-type taxonomy beyond `visit_type`, no period
+semantics beyond `closed_at`; extension is required. It carries **no `lab_id`**:
+tenancy is derived through `patients.lab_id`, which is indirect and needs an
+explicit decision. It is mapped by **no ORM model at all** (it is one of the
+twelve in NR-030), so nothing reads or writes it today. It is gated off by
+`SNDHS_ENABLE_VISITS`, and `docs/sndhs/phase1/RUNBOOK.md` must be read before
+that flag is touched on real data.
+
+**Affected entities:** `visits`, `lab_orders`, `billing_invoices.encounter_ref`,
+`blood_bank_{patient_samples,reservations,reactions}.encounter_id`,
+`pharmacy_sales.encounter_id`, plus 47 ORM foreign keys across
+`care_continuum` (16), `ehr` (14), `nursing` (12) and `national` (5).
+
+**Future limitation of not deciding:** every new domain invents a sixth episode
+type. There are already five incompatible ones — `String(26)`, `String(64)`,
+`String(100)`, `String(128)` and `UUID`.
+
+### Still requiring a human
+
+The recommendation is evidence-backed, but three sub-questions are not
+derivable from the repository and are **BLOCKED — CLINICAL OWNER REQUIRED**:
+
+1. Does `visits` gain an explicit `lab_id`, or does tenancy stay derived through
+   `patients`?
+2. What is the encounter-type taxonomy — is `visit_type` extended, or replaced
+   by the `EncounterType` enum the national layer already defines?
+3. Does adopting `visits` require enabling `SNDHS_ENABLE_VISITS`, and what is the
+   backfill path for orders that predate it?
+
+No table is created and no migration is written in BATCH-2.6.

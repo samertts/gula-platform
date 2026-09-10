@@ -1,0 +1,62 @@
+{
+  "document": "Blood Bank Audit Coverage — NR-027",
+  "batch": "BATCH-2.6",
+  "generated": "2026-09-10T14:07:58Z",
+  "head_commit": "0eb52d0e2da648ae18692e62629dd0465019aab6",
+  "status": "PARTIALLY VERIFIED",
+  "correction": "BATCH-2.5 recorded 'no Blood Bank mutation writes an audit log entry'. The search evidence (no 'audit' in application/service.py) was accurate; the conclusion did not follow. The audit write lives in the route layer: ClinicalCommandGuard.complete() calls log_action into the SHA-256 hash-chained audit_logs table inside the caller's transaction.",
+  "measured_coverage": {
+    "mutating_routes": 21,
+    "with_receipt_and_audit_entry": 13,
+    "with_neither": 8,
+    "of_which_non_mutating": 1,
+    "real_gap": 7
+  },
+  "uncovered_routes": [
+    "POST /donors",
+    "POST /donors/{donor_id}/defer",
+    "POST /donations",
+    "POST /donations/{id}/complete",
+    "POST /components",
+    "POST /requests",
+    "POST /samples/{id}/transition"
+  ],
+  "recorded_fields": {
+    "actor": "user_id",
+    "tenant": "lab_id",
+    "entity": "resource_type",
+    "entity_id": "details.resource_id (string; the column is Integer)",
+    "action": "action=clinical.<operation>",
+    "previous_state": "details.state_before",
+    "new_state": "details.state_after",
+    "reason_context": "details.reason, details.version_before/after",
+    "timestamp": "created_at",
+    "correlation_idempotency": "details.idempotency_key"
+  },
+  "details_is_hash_covered": true,
+  "regressions": [
+    {
+      "property": "one mutation -> one clinical effect AND exactly one audit event",
+      "result": "PASS"
+    },
+    {
+      "property": "entry is chained, tenant-scoped, actor-attributed, carries the transition",
+      "result": "PASS"
+    },
+    {
+      "property": "idempotent replay adds no second audit event",
+      "result": "PASS",
+      "why_structural": "guard.claim() rejects a reused key before complete() is reached"
+    },
+    {
+      "property": "failure rolls back the effect and the audit entry together",
+      "result": "PASS"
+    }
+  ],
+  "test_file": "backend/tests/blood_bank/test_audit_chain_coverage.py",
+  "facts_surfaced": [
+    "audit_logs is genuinely append-only: PL/pgSQL trigger audit_logs_deny_mutation rejects DELETE and UPDATE. The tests measure rows added above a watermark and never touch the chain.",
+    "AuditLog.resource_id and user_id are Integer while Blood Bank identifiers are String(26)/String(100), so string identity lives in details."
+  ],
+  "not_done": "The 7 uncovered routes are the legacy generation. Bringing them under the guard means giving each an idempotency key and a precondition contract — a behavioural API change on live endpoints, not audit wiring. BATCH-2.6 authorises canonical paths only, and those needed no change."
+}

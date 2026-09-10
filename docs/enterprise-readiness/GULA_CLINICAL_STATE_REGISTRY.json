@@ -222,5 +222,81 @@
       "For each of the 28 synthetic keys, which entity owns it, and does its real name differ from the collision-dodging one?"
     ]
   },
-  "sequencing": "The mechanical keying must land in the same change as the attribution, never before it."
+  "sequencing": "The mechanical keying must land in the same change as the attribution, never before it.",
+  "batch_2_6": {
+    "generated": "2026-09-10T14:08:33Z",
+    "head_commit": "0eb52d0e2da648ae18692e62629dd0465019aab6",
+    "correction_to_batch_2_5": "Section 4 said a shared row means 'a donation in progress is validated against transfusion rules'. Measured, that does not happen: donations are never passed to transition(). NR-007 is a latent trap that fires when a new entity is wired up (as in NR-004 and NR-020), not an active mis-validation.",
+    "transition_call_sites": {
+      "blood_unit": 11,
+      "transfusion": 2,
+      "crossmatch": 0,
+      "donation": 0,
+      "donor": 0
+    },
+    "attribution": [
+      {
+        "state": "completed",
+        "claimants": [
+          "donation",
+          "transfusion"
+        ],
+        "reaches_transition": "transfusion",
+        "owner": "transfusion",
+        "live_outgoing": [],
+        "migration_needed": false
+      },
+      {
+        "state": "in_progress",
+        "claimants": [
+          "donation",
+          "transfusion"
+        ],
+        "reaches_transition": "transfusion",
+        "owner": "transfusion",
+        "live_outgoing": [
+          "completed",
+          "reaction_suspected"
+        ],
+        "migration_needed": false
+      },
+      {
+        "state": "expired",
+        "claimants": [
+          "blood_unit",
+          "donor"
+        ],
+        "reaches_transition": "blood_unit",
+        "owner": "blood_unit",
+        "live_outgoing": [
+          "discarded"
+        ],
+        "migration_needed": false
+      },
+      {
+        "state": "discarded",
+        "claimants": [
+          "blood_unit",
+          "donation"
+        ],
+        "reaches_transition": "blood_unit",
+        "owner": "blood_unit",
+        "live_outgoing": "not a key — terminal by absence",
+        "migration_needed": false
+      }
+    ],
+    "attribution_status": "ATTRIBUTED — all four collisions, by call-site evidence, not judgement",
+    "no_migration_required": "No colliding value appears as a server_default on a Blood Bank table. completed/in_progress appear as defaults in pharmacy_sales, national_trust_platform and nursing_platform — different domains, different state machines.",
+    "still_blocked": {
+      "subject": "the 28 synthetic keys",
+      "status": "BLOCKED — CLINICAL OWNER REQUIRED",
+      "why": "They describe order, sample, crossmatch and reaction lifecycles, and none of those entities is ever passed to transition(). Three have enums but no call site; order, sample and reaction have no lifecycle enum at all. Attributing them means deciding what those lifecycles are.",
+      "consequence": "Those 28 rows govern nothing today. They would begin governing the moment the corresponding entity is wired up, and would collide with blood_unit and transfusion on the four attributed states."
+    },
+    "guard": {
+      "file": "backend/tests/blood_bank/test_state_registry_guard.py",
+      "assertions": 4,
+      "state_machine_modified": false
+    }
+  }
 }
