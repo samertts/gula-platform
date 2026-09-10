@@ -983,10 +983,15 @@
       "syntax_gate": "PASS",
       "lint": "PASS",
       "migration_check": "PASS",
-      "backend_tests": "1 failed, 2743 passed, 157 skipped",
-      "failure": "test_icu_lab_workflow_p0.py::test_transfusion_requires_independent_crossmatch_and_bedside_verification",
-      "failure_cause": "BloodBankWorkflowError: Invalid transfusion transition: verified -> in_progress",
-      "pre_existing": "verified by stashing all BATCH-1 changes and re-running at 09935dff"
+      "clinical_safety_gate": "PASS — 30/30",
+      "backend_tests": "PASS — 2746 passed, 157 skipped, 0 failed",
+      "note": "Green after NR-020. Before it: 1 failed, 2743 passed. The failure was the transfusion state machine missing a 'verified' key, so a bedside-verified transfusion could never be started."
     }
+  },
+  "nr_020": {
+    "status": "FIXED — VERIFIED",
+    "decision": "verified -> in_progress is LEGAL",
+    "change": "one key added to _TRANSITIONS in backend/app/blood_bank/domain/state_machine.py",
+    "schema_or_migration_change": false
   }
 }

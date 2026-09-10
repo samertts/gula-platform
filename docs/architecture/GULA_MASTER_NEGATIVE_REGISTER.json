@@ -10,8 +10,8 @@
     "P1": 7,
     "P2": 6,
     "P3": 3,
-    "fixed": 5,
-    "open_blockers": 2
+    "fixed": 6,
+    "open_blockers": 1
   },
   "findings": [
     {
@@ -738,7 +738,7 @@
     },
     {
       "dependencies": "",
-      "intersections": "NR-004 (blood-unit reserved state), NR-007 (entity-agnostic clinical state machine), MCM-P0-4 (this is what full CI would report)",
+      "intersections": "NR-004 (same shared table, same class of omission). Unrelated and still open: start_transfusion/complete_transfusion (service.py:263,273) are legacy paths that bypass transition() entirely and do not filter by lab_id.",
       "contradictions": "",
       "related_adrs": "",
       "related_contracts": "",
@@ -753,25 +753,25 @@
       "domain": "Blood Bank",
       "severity": "P0",
       "priority": 19,
-      "status": "OPEN — DECISION REQUIRED",
-      "title": "Transfusion state machine rejects verified -> in_progress",
+      "status": "FIXED — VERIFIED",
+      "title": "Transfusion state machine had no \"verified\" state, so a verified transfusion could never be started",
       "description": "tests/test_icu_lab_workflow_p0.py::test_transfusion_requires_independent_crossmatch_and_bedside_verification fails with BloodBankWorkflowError: Invalid transfusion transition: verified -> in_progress. The test asserts that a transfusion verified at the bedside can then start; the state machine does not allow that edge.",
-      "root_cause": "Either the permitted transition set omits a legal clinical edge, or the test encodes a workflow the domain does not define. The repository does not settle which.",
-      "evidence": "Reproduced with all BATCH-1 changes stashed at 09935dff, so it is pre-existing and unrelated. Full suite: 1 failed, 2743 passed, 157 skipped.",
+      "root_cause": "The shared _TRANSITIONS table keys transfusion states on TransfusionStatus values (\"in_progress\" -> \"completed\" is present and correct), but \"verified\" was absent. transition() fails closed on an unknown current state, so start_transfusion_safely — which requires status == VERIFIED and targets IN_PROGRESS — could never succeed. The table also carries a parallel \"verification\"/\"started\"/\"ordered_transfusion\" chain that no code path ever writes. Same defect class as NR-004.",
+      "evidence": "TransfusionStatus (domain/enums.py:111) defines ordered/dispensed/verified/in_progress/completed/reacted/cancelled — no \"verification\" or \"started\". verify_transfusion_safely (service.py:529) is the only writer of \"verified\". start_transfusion_safely (service.py:543-545) requires VERIFIED then calls transition(status, IN_PROGRESS, entity=\"transfusion\"). complete_transfusion_safely (service.py:586) validates in_progress -> completed and that key exists, proving the table keys on real status values for this entity. grep confirms nothing ever writes \"verification\", \"started\" or \"ordered_transfusion\". An existing test, test_state_machine_rejects_completion_without_start, already treated \"verified\" as a transfusion state and asserted only that verified -> completed is illegal.",
       "affected_components": "backend/app/blood_bank/, backend/tests/test_icu_lab_workflow_p0.py",
       "affected_users": "Clinical staff performing transfusions",
       "recommended_fix": "A blood-bank domain owner decides whether verified -> in_progress is legal, then either the transition table or the test changes. Adjacent to NR-004 and NR-007.",
-      "minimal_safe_fix": "None. Guessing clinical state semantics is a stop condition.",
-      "verification_method": "python -m pytest tests/test_icu_lab_workflow_p0.py -q against a migrated database.",
+      "minimal_safe_fix": "Added one key: \"verified\": {\"in_progress\"}. One outgoing edge, no incoming edge, no other transition touched. No schema, migration or ORM change.",
+      "verification_method": "backend/tests/blood_bank/test_domain_safety.py::test_verified_transfusion_can_be_started and ::test_verified_transfusion_cannot_skip_or_reverse. Full backend suite 2746 passed, 0 failed (was 2743 passed, 1 failed). ci.yml clinical safety gate 30/30 (was 29/30).",
       "acceptance_criteria": "The transition set and the test agree, and a domain owner has said which was wrong.",
-      "regression_risk": "Changing a clinical state machine affects every transfusion path.",
+      "regression_risk": "Minimal: the change only adds an outgoing edge from a state that previously had none, so no previously-rejected transition into or out of any other state becomes possible. test_state_machine_rejects_completion_without_start still passes.",
       "owner": "Clinical / Blood Bank",
       "related_tests": "backend/tests/test_icu_lab_workflow_p0.py",
       "related_files": "backend/app/blood_bank/exceptions.py",
       "wave": "WAVE 1",
       "complexity": "M",
-      "can_fix_now": false,
-      "blocker": true,
+      "can_fix_now": true,
+      "blocker": false,
       "evidence_strength": "STRONG (reproduced at the parent commit)"
     }
   ]

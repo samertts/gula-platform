@@ -88,6 +88,16 @@ _TRANSITIONS: dict[str, set[str]] = {
     "ordered_transfusion": {"verification", "cancelled"},
     "verification": {"started", "returned", "reaction_suspected"},
     "started": {"in_progress", "reaction_suspected"},
+    # The transfusion entity's own vocabulary is TransfusionStatus, and its
+    # lifecycle is ordered -> verified -> in_progress -> completed.
+    # "verified" was missing, so start_transfusion_safely could never succeed:
+    # it requires status == VERIFIED and then asks this table to validate
+    # verified -> in_progress. "in_progress" -> "completed" below is already
+    # keyed on the real status values, which is what makes the omission a gap
+    # rather than a different naming scheme. Same defect class as NR-004, where
+    # a blood-unit state was likewise absent from this shared table.
+    # "verification"/"started" above are written by no code path.
+    "verified": {"in_progress"},
     "in_progress": {"completed", "reaction_suspected"},
     "completed": set(),
     "reaction_suspected": {"transfusion_stopped"},

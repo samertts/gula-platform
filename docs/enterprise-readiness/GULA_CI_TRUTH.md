@@ -62,42 +62,31 @@ postgres:17 migrated to `20260912_0001`:
 | syntax-gate (flake8 `E9,F`) | **PASS** — ruff equivalent, exit 0 |
 | lint (`ruff check backend/app/ --select=E9,F`) | **PASS** — exit 0 |
 | migration-check | **PASS** — 106 revisions, single head, round trip |
-| test → clinical safety regression gate | **FAIL** — 1 of 30 |
-| test → `pytest tests/` | **1 failed, 2,743 passed, 157 skipped** |
+| test → clinical safety regression gate | **PASS** — 30/30 |
+| test → `pytest tests/` | **PASS** — 2,746 passed, 157 skipped, 0 failed |
 
-The one failure is `test_icu_lab_workflow_p0.py::
-test_transfusion_requires_independent_crossmatch_and_bedside_verification`:
-
-```
-app.blood_bank.exceptions.BloodBankWorkflowError:
-Invalid transfusion transition: verified -> in_progress
-```
-
-**It is pre-existing.** Verified by stashing every BATCH-1 change and re-running
-at `09935dff`: it fails identically. It is not caused by BATCH-1, and BATCH-1
-does not fix it — the blood-bank state machine's legal transitions are a domain
-question (adjacent to NR-004 and NR-007), and guessing clinical state semantics
-is a stop condition.
-
-So **full CI on this branch would be RED**, on one clinical-safety test, and has
-been for as long as `ci.yml` has been unable to run here.
+**Full CI on this branch is now green.** It was RED on one clinical-safety test
+until NR-020 was resolved: the transfusion state machine had no `verified`
+state, so `start_transfusion_safely` — which requires `status == VERIFIED` and
+targets `in_progress` — could never succeed. One key was added to the shared
+transition table. The measurement above was taken after that fix; before it the
+same run reported 1 failed, 2,743 passed.
 
 ## 4. The decision this leaves open
 
-Making `ci.yml` run on stacked PRs is a one-line trigger change. It was **not
-made in BATCH-1**, deliberately: it would immediately mark #256, #257 and #258
-red on a failing clinical-safety test that BATCH-1 is not authorised to fix, and
-turning a required check red across three PRs is a merge-policy consequence that
-belongs to the repository owner, not to a verification batch.
+Making `ci.yml` run on stacked PRs is a one-line trigger change. It has **not
+been made**, and it remains the repository owner's call: widening a trigger
+changes which checks are required on three open PRs, which is merge policy.
 
-The two orderings, stated plainly:
+What has changed is the risk of doing it. The blocker that made this a hard
+choice is gone — full CI now measures green locally, so widening the trigger
+would be expected to keep the stack green rather than turn it red. That is a
+measurement on this branch at this commit, not a guarantee about the GitHub
+runner, which differs in Python version, service containers and timing.
 
-1. **Resolve the transfusion transition first, then widen the trigger.** CI goes
-   green and stays meaningful. Needs a blood-bank domain decision.
-2. **Widen the trigger first.** The stack goes red immediately and honestly, and
-   stays red until the same decision is made.
-
-Either is defensible. Neither is Claude's to choose.
+If you widen it, the honest expectation is: the stack stays green, and any red
+that does appear is a real difference between this environment and CI's, worth
+knowing about.
 
 ## 5. Gate states
 

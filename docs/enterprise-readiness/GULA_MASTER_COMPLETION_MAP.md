@@ -21,7 +21,7 @@ change**. Full detail in `GULA_CI_TRUTH.md` and the `batch_1` block of the JSON.
 | Bases invisible to alembic autogenerate | not detected | **10 of 20**, 203 tables (GULA-ARCH-002) |
 | Model modules unmeasured | unknown | **0** |
 | Gate states | PASS/FAIL/BLOCKED | + **DID_NOT_RUN**, **UNMEASURED** |
-| Full CI result on this branch | **UNKNOWN** — never ran | **RED**: 1 failed, 2,743 passed, 157 skipped |
+| Full CI result on this branch | **UNKNOWN** — never ran | **GREEN**: 2,746 passed, 157 skipped, 0 failed (RED at 1 failed until NR-020 was resolved) |
 | Boot-time AI seeding | failed every boot, 0 rows | succeeds, 5 rows, boot clean |
 
 **A measurement-basis correction.** Version 1 counted `__tablename__`
@@ -38,12 +38,12 @@ tables (GULA-SCHEMA-003) and Pharmacy's write to `ehr_medication_dispenses`
 structurally cannot make.
 
 **MCM-P0-4 is now measured, not merely described.** 2 of 30 workflows gate every
-PR; `ci.yml` gates only PRs into `main`/`staging`. Run locally, full CI is RED on
-one pre-existing clinical-safety test — `verified -> in_progress` rejected by the
-blood-bank state machine. Confirmed pre-existing by stashing every BATCH-1 change
-and re-running at `09935dff`. Widening the trigger was **deliberately not done**:
-it would mark three PRs red on a defect BATCH-1 is not authorised to fix, which
-is the repository owner's call. See `GULA_CI_TRUTH.md` §4.
+PR; `ci.yml` gates only PRs into `main`/`staging`. Run locally, full CI was RED
+on one pre-existing clinical-safety test; that blocker (NR-020) has since been
+resolved and full CI now measures **green**: 2,746 passed, 157 skipped, 0 failed.
+Widening the trigger is still **not done** — it changes which checks are required
+on three open PRs, which is merge policy and the repository owner's call. See
+`GULA_CI_TRUTH.md` §4.
 
 ## 0. How these numbers were obtained
 
@@ -171,7 +171,7 @@ verification-integrity defect of the same family as NR-016.
 | **MCM-P1-2** | 179 reachable operations resolve to no ORM class: unmeasured, not clean | Exact-resolution pass |
 | ~~MCM-P1-3~~ | **FIXED in BATCH-1.** 17 `:param::cast` collisions across `ai/governance.py`, `ai/memory.py`, `ai/vector_store.py` rewritten as `CAST(:param AS type)`; boot now seeds 5 rows | `backend/tests/test_ai_sql_placeholder_regression.py` (3 tests) + clean boot |
 | **MCM-P1-6** | `model_registry = ModelRegistry()` runs at **import** time (`ai/governance.py:108`), so importing `app.ai` writes to whatever `DATABASE_URL` names. Harmless while the statement was broken; live now that MCM-P1-3 is fixed | Observed during detector runs and in the test suite |
-| **MCM-P1-7** | One clinical-safety test fails: `BloodBankWorkflowError: Invalid transfusion transition: verified -> in_progress`. Pre-existing; needs a blood-bank domain decision (adjacent to NR-004, NR-007) | Full suite run; reproduced at `09935dff` with all BATCH-1 changes stashed |
+| ~~MCM-P1-7~~ | **FIXED (NR-020).** The transfusion state machine had no `verified` state at all, so `start_transfusion_safely` — which requires `status == VERIFIED` and targets `in_progress` — could never succeed. One key added; full CI now green | `tests/blood_bank/test_domain_safety.py` (2 new tests); suite 2,746 passed, 0 failed |
 | **MCM-P1-4** | 20 declarative bases (19 hand-written + generators); **10 are absent from alembic `target_metadata`**, covering 203 mapped tables, so autogenerate reports no drift for any of them — an empty diff indistinguishable from an accurate one. Registering a base changes what autogenerate emits, so it is a schema decision and was not made here | GULA-ARCH-002, resolved by MetaData identity |
 | **MCM-P1-5** | Negative-register status drift: NR-003 still reads `OPEN — BLOCKED` though PR #256 carries its fix | Register vs. PR stack |
 | NR-006 | `national_facilities` mapped by two ORM classes on different bases | Existing register entry |
