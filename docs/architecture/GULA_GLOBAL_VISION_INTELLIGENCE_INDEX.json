@@ -1,0 +1,82 @@
+{
+  "document": "GULA Global Vision Intelligence Index",
+  "batch": "BATCH-2.8",
+  "generated": "2026-09-10T16:13:03Z",
+  "head_commit": "ae3e1f5650cd1fdfb43a64cfbdce270c07f82eff",
+  "runtime_component": false,
+  "rule": "Nothing listed here may be deleted as unused. None of it is imported by runtime, by design.",
+  "detectors": {
+    "location": "tools/gula_intel/",
+    "items": [
+      "GULA-MIG-001",
+      "GULA-MIG-002",
+      "GULA-ARCH-001",
+      "GULA-ARCH-002",
+      "GULA-SCHEMA-001",
+      "GULA-SCHEMA-002",
+      "GULA-SCHEMA-003",
+      "GULA-SCHEMA-004",
+      "GULA-STATE-001"
+    ],
+    "state_model": "DetectorState — a detector that could not run never reports clean",
+    "tests": 43
+  },
+  "evidence_collectors": {
+    "location": "scripts/enterprise_readiness/",
+    "items": [
+      "scan.py",
+      "delta.py",
+      "reach2.py",
+      "join.py",
+      "routes_reachable.py",
+      "ci_truth.py",
+      "disposition.py"
+    ],
+    "notes": {
+      "reach2.py": "exact-name reachability; import closure over-attributes",
+      "routes_reachable.py": "route decorators overstate by 304"
+    }
+  },
+  "registries": {
+    "location": "docs/enterprise-readiness/",
+    "items": [
+      "GULA_MASTER_COMPLETION_MAP",
+      "GULA_CANONICAL_DISPOSITION_MATRIX",
+      "GULA_CANONICAL_ARCHITECTURE_DECISIONS",
+      "GULA_NATIONAL_CORE_IDENTITY_CONTRACT",
+      "GULA_BATCH_3_NATIONAL_CORE_SPEC",
+      "GULA_VISIT_ENCOUNTER_ARCHITECTURE",
+      "GULA_CLINICAL_STATE_REGISTRY",
+      "GULA_NR029_FK_TARGET_RECONCILIATION",
+      "GULA_NR030_PHYSICAL_ORM_OWNERSHIP",
+      "GULA_BLOOD_BANK_AUDIT_GAP",
+      "GULA_BLOOD_BANK_LEGACY_BYPASS",
+      "GULA_CI_TRUTH",
+      "GULA_GLOBAL_CAPABILITY_RADAR",
+      "GULA_OSS_CANDIDATE_REGISTRY",
+      "GULA_HEALTHCARE_IDEA_BACKLOG",
+      "GULA_DELETION_CANDIDATES"
+    ]
+  },
+  "decision_history": {
+    "location": "docs/architecture/",
+    "primary": "GULA_MASTER_NEGATIVE_REGISTER.{md,json}",
+    "findings": 30,
+    "includes_corrections": true,
+    "note": "The record of where an earlier finding was wrong, and why, is the reason the architecture is trustworthy. It must not be pruned to look tidier."
+  },
+  "guards": {
+    "location": "backend/tests/",
+    "items": [
+      "test_alembic_metadata_registry.py",
+      "test_nursing_domain_contract.py",
+      "test_identity_contract_guards.py",
+      "blood_bank/test_state_registry_guard.py",
+      "blood_bank/test_audit_chain_coverage.py",
+      "blood_bank/test_sample_transition_idempotency.py",
+      "blood_bank/test_tenant_isolation_nr021.py",
+      "scripts/tests/test_quality_changed_files_gate.py"
+    ]
+  },
+  "preservation_rule": "Runtime code may be retired. Discovery knowledge must not disappear because a runtime implementation is deferred."
+}

@@ -680,14 +680,39 @@ async def transition_patient_blood_sample(
     if not sample:
         raise HTTPException(status_code=404, detail="Resource not found")
     guard = _guard(db, current_user)
-    guard.require_expected_version(if_match, current_version=sample.version, resource_name="patient blood sample")
-    guard.require_idempotency_key(idempotency_key)
+    version_before = sample.version
+    state_before = sample.status
+    guard.require_expected_version(if_match, current_version=version_before, resource_name="patient blood sample")
+    # This route required an Idempotency-Key, then discarded it without claiming a
+    # receipt: a reused key was neither honoured nor rejected, and the transition
+    # left no entry in the audit chain. The strict transition map already stopped a
+    # replay from applying twice — the second call fails the state check — but that
+    # is a refusal, not the canonical replay answer, and it left this the only
+    # guarded Blood Bank route with no audit record. Claiming the receipt gives both,
+    # through the same mechanism its thirteen siblings already use.
+    key = guard.require_idempotency_key(idempotency_key)
+    receipt = guard.claim(
+        operation="blood.sample.transition", resource_type="blood_bank_patient_sample",
+        resource_id=sample.id, idempotency_key=key, payload=body,
+    )
     try:
         updated = BloodBankService(db).transition_patient_sample(sample_id, lab_id, str(body.get("target", "")), str(current_user.id))
+        guard.complete(
+            receipt, resource_type="blood_bank_patient_sample", resource_id=updated.id,
+            state_before=state_before, state_after=updated.status,
+            version_before=version_before, version_after=updated.version,
+        )
         db.commit(); db.refresh(updated)
         return _phase2_dict(updated)
     except Exception as exc:
-        db.rollback(); _raise_blood_error(exc); raise
+        db.rollback()
+        guard.reject(
+            operation="blood.sample.transition", resource_type="blood_bank_patient_sample",
+            resource_id=sample_id, state_before=state_before,
+            version_before=version_before, reason=str(exc),
+        )
+        db.commit()
+        _raise_blood_error(exc); raise
 
 
 @router.post("/reservations", status_code=status.HTTP_201_CREATED)

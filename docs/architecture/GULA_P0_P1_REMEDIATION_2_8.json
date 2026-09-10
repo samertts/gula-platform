@@ -1,0 +1,93 @@
+{
+  "document": "GULA P0/P1 Remediation — BATCH-2.8",
+  "generated": "2026-09-10T16:14:22Z",
+  "head_commit": "ae3e1f5650cd1fdfb43a64cfbdce270c07f82eff",
+  "baseline": {
+    "branch": "claude/p0-2-pharmacy-reconciliation",
+    "head": "ae3e1f56",
+    "tree": "clean",
+    "python": "3.13.12",
+    "database": "PostgreSQL 16",
+    "alembic_head": "20260912_0001",
+    "migrations": 106,
+    "note": "The batch brief named 7319dc0d; that is one commit stale — BATCH-2.7 landed and closed NR-029."
+  },
+  "nr_026": {
+    "status": "BLOCKED — scope corrected and pinned",
+    "severity": "P0",
+    "correction": "BATCH-2.7 recorded 'two nursing features fail at runtime'. Executed queries show EVERY nursing model fails on a plain SELECT; the whole domain is non-functional.",
+    "executed_proof": [
+      "ClinicalChecklist  UndefinedTable   relation \"nursing_checklists\" does not exist",
+      "EscalationRecord   UndefinedTable   relation \"nursing_escalations\" does not exist",
+      "NursingNote        UndefinedColumn  column nursing_notes.encounter_id does not exist",
+      "NursingShift       UndefinedColumn  column nursing_shifts.department_id does not exist"
+    ],
+    "measured": {
+      "models": 15,
+      "models_with_no_table": 2,
+      "models_with_wrong_pk_type": 13,
+      "type_mismatches": 97,
+      "phantom_columns": 137
+    },
+    "escalated_to_semantics": {
+      "proven": true,
+      "evidence": "migration 20260716_0002 declares sa.Column('escalated_to', sa.Integer(), sa.ForeignKey('lab_users.id', ondelete='SET NULL')) and the constraint exists at head",
+      "conclusion": "a lab_users foreign key, Integer; the ORM String(26) is wrong"
+    },
+    "data_risk": "NONE — no application code, raw SQL, seeder or generator names the physical tables, and the ORM cannot execute against them, so they are provably empty. No data migration or backfill is required.",
+    "why_blocked": [
+      "The PK type is wrong on all fifteen and they reference each other, so they must move together",
+      "Fixing two of fifteen leaves the only correct models on a base (NursingBaseEntity) that is itself wrong",
+      "The correct shape is the M1-M4 pattern proven for Pharmacy — its own authorised batch"
+    ],
+    "guard": "backend/tests/test_nursing_domain_contract.py pins 15 models, 2 missing tables, 97 mismatches, 137 phantom columns"
+  },
+  "sample_transition_idempotency": {
+    "status": "FIXED — VERIFIED",
+    "severity": "P1",
+    "route": "POST /blood-bank/samples/{id}/transition",
+    "defect": "required an Idempotency-Key then discarded it without claiming a receipt; also the only guarded Blood Bank route writing no audit entry",
+    "replay_was_never_double_applying": "the service takes a row lock and validates a strict transition map, so a second call fails the state check — a refusal, not the canonical replay answer, and silent about a reused key with a different payload",
+    "fix": "claim + complete through the existing ClinicalCommandGuard; no second idempotency mechanism",
+    "tests": {
+      "file": "backend/tests/blood_bank/test_sample_transition_idempotency.py",
+      "count": 4,
+      "fail_without_fix": 3,
+      "properties": [
+        "first request succeeds with one receipt and one audit entry",
+        "exact replay: no second effect, receipt or audit event",
+        "same key + different payload refused",
+        "missing key refused"
+      ]
+    }
+  },
+  "carried_forward": {
+    "NR-029": "VERIFIED",
+    "NR-030": "PARTIALLY VERIFIED",
+    "NR-023": "BLOCKED by NR-006 + NR-030",
+    "NR-006": "PARTIALLY VERIFIED",
+    "NR-007": "PARTIALLY VERIFIED",
+    "NR-018": "PARTIALLY VERIFIED",
+    "NR-027": "PARTIALLY VERIFIED",
+    "NR-022": "BLOCKED",
+    "MCM-P0-1..3": "BLOCKED — depend on NR-023",
+    "MCM-P0-4": "unchanged — CI scope framing"
+  },
+  "national_core_created": false,
+  "migrations_created": 0,
+  "migrations_modified": 0,
+  "verification": {
+    "alembic": "upgrade head / downgrade -1 / upgrade head exit 0 with PYTHONPATH unset",
+    "tables": 423,
+    "ci_required_tables": "7/7",
+    "migration_files": "106 before and after, git clean",
+    "tests": {
+      "metadata_registry": 5,
+      "nursing_contract": 3,
+      "identity_guards": 5,
+      "blood_bank": 54,
+      "state_registry": 4
+    },
+    "ruff": "no new findings (21 vs 22 at HEAD)"
+  }
+}

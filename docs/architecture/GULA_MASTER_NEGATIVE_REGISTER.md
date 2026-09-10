@@ -62,11 +62,12 @@ and `docs/adr/`.
 | NR-023 | P0  | Platform Migrations | Autogenerate cannot run: foreign keys cross `MetaData` boundaries | OPEN — BLOCKED BY NR-006, NR-030 |
 | NR-024 | P3  | Platform Migrations | `CitizenPlatformBase` is registered but maps zero tables | OPEN — LOW SEVERITY |
 | NR-025 | P2  | Platform-wide | One name, two identifier schemes: `_ulid()` is a real ULID twice, a truncated UUID4 thirteen times | OPEN — DESIGN DEFECT |
-| NR-026 | P0  | Nursing Platform | Nursing ORM names two tables no migration creates; live routes query them | OPEN — LIVE DEFECT |
+| NR-026 | P0  | Nursing Platform | Entire Nursing ORM diverges from its schema; every model fails on a plain SELECT | OPEN — P0 LIVE DEFECT |
 | NR-027 | P1  | Blood Bank | No Blood Bank mutation writes an audit log entry | PARTIALLY VERIFIED — canonical paths audited; 7 l... |
 | NR-028 | P3  | Platform-wide | Ambiguous package root: 130 imports say `backend.app`, the rest say `app` | OPEN — CONFIRMED |
 | NR-029 | P1  | Identity Platform | Three foreign keys named the ORM class instead of its table | FIXED — VERIFIED |
 | NR-030 | P1  | Platform Migrations | Twelve physical tables are mapped by no ORM class | PARTIALLY VERIFIED — all 12 classified and named |
+| NR-031 | P1  | Blood Bank | `POST /samples/{id}/transition` required an Idempotency-Key and discarded it | FIXED — VERIFIED |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.
