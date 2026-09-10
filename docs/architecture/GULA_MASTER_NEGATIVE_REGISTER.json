@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 34,
+    "total": 35,
     "by_severity": {
       "P0": 10,
-      "P1": 10,
+      "P1": 11,
       "P2": 9,
       "P3": 5
     }
@@ -1282,6 +1282,29 @@
       "discovered_by": "BATCH-3.1, tracing NR-032 ownership",
       "owner": "Pharmacy",
       "artifact": "docs/architecture/nursing-medication-ownership.md"
+    },
+    {
+      "id": "NR-035",
+      "category": "Identity integrity",
+      "domain": "Identity Platform",
+      "severity": "P1",
+      "priority": 35,
+      "status": "OPEN — RESOLVED BY THE AUTH-002 BRIDGE DECISION; EXECUTION PENDING",
+      "blocker": false,
+      "can_fix_now": false,
+      "title": "The user_id token claim is ambiguous across two identity tables",
+      "description": "get_current_user resolves the user_id claim by querying LabUser first and falling back to User. Both tables have independent INTEGER primary keys and the token carries no discriminator, so a token claiming user_id = N resolves to lab_users.id = N whenever one exists — silently, with that laboratory user's role and lab_id.",
+      "root_cause": "Two legacy identity tables behind a single undiscriminated claim. The platform models the discriminator everywhere else — get_perm_version takes account_kind='user'|'lab', and LegacyAccountLinkSource is exactly {user, lab_user} — but the token does not carry it.",
+      "evidence": "app/security/dependencies.py:65-71. Measured at head: users = 0 rows, lab_users = 6, so the ambiguity is latent rather than live. AUTH-002 flow harness: a legacy token resolves through the legacy dependency with 200 OK and no kind check.",
+      "affected_components": "backend/app/security/dependencies.py, backend/app/routes/login.py",
+      "security_impact": "Account-takeover class. Unexploitable only while the users table is empty; it becomes exploitable the moment citizens are registered.",
+      "clinical_impact": "A citizen token could resolve to a laboratory user's role and tenant.",
+      "data_integrity_impact": "Cross-tenant read/write under a mistaken identity.",
+      "recommended_fix": "Resolve through LegacyAccountLink using source_kind during the AUTH-002 bridge. Do not add a separate discriminator claim to the legacy token as a parallel mechanism.",
+      "discovered_by": "AUTH-002",
+      "owner": "Identity Platform",
+      "artifact": "docs/architecture/auth-identity-gap-register.md",
+      "next_batch": "AUTH-003"
     }
   ]
 }
