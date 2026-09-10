@@ -33,8 +33,8 @@ Per the authorising decision, and recorded in
 |---|---|---|
 | **Patient** | **Core `patients`** (`app.models.base.Base`, physical, 22 inbound refs) | `national_patients` must **not** become a second transactional owner |
 | **Facility** | **Core Facility** for operations | a national directory may exist as a registry/projection only |
-| Practitioner | open — see §7 | `national_practitioners` has 58 references and no owner decision |
-| Encounter | open — see §7 | `national_encounters` has 29 reachable operations |
+| **Practitioner** | **National** (BATCH-2.5) | `lab_users` is an account, `national_practitioners` is a professional registry — two entities, not one. Linked by an optional nullable `lab_users.practitioner_id`. |
+| **Encounter** | **Clinical (tenant-owned) canonical + National `PROJECTION`** (BATCH-2.5) | Which clinical table is canonical is **BLOCKED — CLINICAL OWNER REQUIRED** |
 
 A national read model is permitted and must be classified `PROJECTION`. A
 projection may be read from and rebuilt; it may never be written to as a source
@@ -58,9 +58,26 @@ Measured state, not aspiration:
 in P0-2. Building them as they stand would recreate the defect P0-2 spent four
 milestones removing.
 
+BATCH-2.5 added a third reason not to copy it: one name covers two
+incompatible schemes. Of the fifteen `_ulid()` definitions, **13** return
+`str(uuid.uuid4()).replace("-","").upper()[:26]` — the first 26 hex characters
+of a random UUID4, which is **not a ULID** (no timestamp prefix, no monotonic
+ordering, full 26-byte cost, none of the benefit) — while **2** are genuine
+Crockford-base32 ULIDs. Every declarative base uses the fake one. Recorded as
+**NR-025**.
+
 ## 4. Identity model
 
-Follow the settled Pharmacy contract exactly; it is the reference
+**Superseded in detail by
+`docs/enterprise-readiness/GULA_NATIONAL_CORE_IDENTITY_CONTRACT.md`, which
+gives the per-entity contract (internal key, public id, national identifier,
+external identifiers, FHIR identifier, business code) and justifies each type.**
+Two departures from a blanket rule are deliberate: `Encounter` takes `BIGINT`
+because its row count grows with time rather than population, and
+`national_facilities` keeps its physical `String(26)` key because retyping a
+live key to satisfy a rule is schema churn for tooling convenience.
+
+Follow the settled Pharmacy contract otherwise; it is the reference
 implementation and is not reopened:
 
 - internal `INTEGER` primary key, never exposed by an API;
@@ -108,14 +125,36 @@ without a tenant filter, on tables that all carried `lab_id`.
    `national_patients` becomes a `PROJECTION` of it, or is retired outright.
    Its own evidence — 0 reachable operations, 51 inbound references — supports
    projection-or-retire, not independent existence.
-2. **Practitioner.** 58 inbound references, no owner decision, and a core
-   `lab_users` table already exists with 21. Same question as Patient, unanswered.
-3. **`national_facilities` (NR-006).** Physical and mapped by two bases. Which
-   base keeps it, and does the other become a projection?
+2. ~~**Practitioner.**~~ **ANSWERED (BATCH-2.5): National.** The two are
+   distinct entities — `lab_users` is an authentication principal (no licence,
+   no specialty, no verification state, `lab_id NOT NULL`); `national_practitioners`
+   is a professional registry with a globally unique `license_number` and no
+   tenant column. Core has no practitioner entity at all: the ordering clinician
+   is `lab_orders.doctor_name String(200)`, free text. They link through an
+   optional nullable `lab_users.practitioner_id`, not through identity.
+3. **`national_facilities` (NR-006).** Physical and mapped by two bases —
+   **now the single blocker for NR-023, and evidence-determined.**
+   `app/models/clinical_scope.py::NationalFacility` declares exactly the six
+   columns migration `20260813_0004` creates and is the target of the physical
+   FK from `clinical_ehr_facility_bindings`; `app/national/domain/facility.py::Facility`
+   declares eighteen different columns with zero physical backing. Keep the
+   former, rename or retire the latter, and follow the rename through the nine
+   sibling foreign keys inside the national domain. **This is BATCH-3 item 1.**
 
-**Blocking but already answered elsewhere:** NR-023 — autogenerate cannot run
-until this core exists. That is not a reason to delay; it is a reason this batch
-must be written by hand and verified against a clean database.
+4. **Which clinical table is the canonical Encounter** — extend `lab_orders`,
+   or create a tenant-scoped `clinical_encounters` that `lab_orders` references?
+   **BLOCKED — CLINICAL OWNER REQUIRED.** Both are consistent with the evidence;
+   the choice decides whether a pharmacy sale, a blood-bank reservation and a lab
+   order can share one episode.
+
+**Blocking but already answered elsewhere:** NR-023 — autogenerate cannot run.
+BATCH-2.5 proved the root cause is **not** "the core does not exist": all 24
+unresolvable foreign-key targets **are** mapped, just by a different `MetaData`
+than the table referencing them. `target_metadata` is 18 distinct `MetaData`
+objects and Alembic sorts each independently, so 6 of the 18 fail. The canonical
+repair is one shared `MetaData`, blocked by exactly one table-name collision —
+item 3 above. This batch must still be written by hand and verified against a
+clean database.
 
 ## 8. Acceptance criteria
 

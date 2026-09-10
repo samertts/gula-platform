@@ -456,3 +456,66 @@ def test_the_canonical_core_registry_is_the_one_alembic_knows() -> None:
     assert id(core) in registered
     for table in ("patients", "labs", "lab_orders", "lab_results"):
         assert table in core.tables, f"{table} is not on the canonical core base"
+
+
+# --- BATCH-2.5: alembic must not be handed an empty metadata ------------------
+
+
+@_needs_db
+def test_no_registered_base_resolves_to_an_empty_metadata() -> None:
+    """The hazard NR-018's registration created, before it could fire.
+
+    Importing a *base* module registers no tables — the models live elsewhere.
+    Four of the eight bases registered in target_metadata (pharmacy, radiology,
+    nhdw, nursing) resolved to an EMPTY MetaData from a base-only import. An
+    empty metadata is worse than an unregistered one: autogenerate compares zero
+    mapped tables against a populated database and proposes dropping all of
+    them. env.py now calls import_all_models() before building target_metadata.
+    """
+    registered, _ = detectors._registered_metadata_ids()
+    bases = detectors._load_orm_metadata()
+    empty = {
+        label for label, metadata in bases
+        if id(metadata) in registered and not metadata.tables
+    }
+    # CitizenPlatformBase is a pre-existing instance, not one this work
+    # introduced: it is registered in target_metadata and maps nothing, because
+    # no concrete model inherits from its abstract entities. Recorded as NR-024.
+    # (`citizens` and `citizen_links` are physical and ARE mapped — by
+    # app.database.Base. An earlier draft of NR-024 said otherwise; that was
+    # measured on a partial import graph.) Pinned rather than asserted empty so
+    # a *new* empty registration fails here.
+    known = {"app.citizen_platform.base.CitizenAuditEntity"}
+    assert empty <= known, (
+        "a base is registered for autogeneration but maps no tables, so "
+        "autogenerate would propose dropping its physical tables: "
+        + ", ".join(sorted(empty - known))
+    )
+    assert empty == known, (
+        "NR-024 appears to be resolved; update this guard rather than leaving "
+        "it asserting a defect that no longer exists"
+    )
+
+
+@_needs_db
+def test_the_cross_metadata_collision_blocking_autogenerate_is_exactly_one() -> None:
+    """NR-023's remaining blocker, pinned so it cannot grow silently.
+
+    Foreign keys cannot resolve across MetaData objects. Measured against the
+    exact env.py import graph: 360 references to 24 distinct targets sit in a
+    different metadata from the table referencing them, and 6 of the 18
+    registered metadata objects fail their topological sort because of it.
+    Every one of those 24 targets IS mapped — just elsewhere — so the canonical
+    fix is one shared MetaData. It is blocked by table-name collisions, of which
+    there is exactly one: national_facilities, mapped by both app.database.Base
+    and app.national.base. That is NR-006.
+    """
+    bases = detectors._load_orm_metadata()
+    owners: dict[str, list[str]] = {}
+    for label, metadata in bases:
+        for table in metadata.tables:
+            owners.setdefault(table, []).append(label)
+    collisions = {t: o for t, o in owners.items() if len(o) > 1}
+    assert set(collisions) == {"national_facilities"}, (
+        "the set of table names blocking a shared MetaData changed: " + str(collisions)
+    )

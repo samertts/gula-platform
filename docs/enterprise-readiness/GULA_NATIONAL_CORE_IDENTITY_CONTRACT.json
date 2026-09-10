@@ -1,0 +1,329 @@
+{
+  "document": "GULA National Core — Ownership and Identity Contract",
+  "batch": "BATCH-2.5",
+  "generated": "2026-09-10T10:45:31Z",
+  "head_commit": "ac894767bf33dd160ae8131ee8570e29e31f7481",
+  "method": "repository evidence only; no estimates; unresolved questions recorded as BLOCKED",
+  "measurement_correction": {
+    "note": "Earlier NR-023 figures were measured before import_all_models() was added to env.py and must not be quoted.",
+    "registered_metadata_objects": {
+      "earlier": 10,
+      "now": 18
+    },
+    "distinct_metadata_objects": 18,
+    "unresolvable_fk_targets": {
+      "earlier": 13,
+      "now": 24
+    },
+    "unresolvable_fk_references": {
+      "earlier": 130,
+      "now": 360
+    },
+    "targets_mapped_by_no_metadata": {
+      "earlier": 1,
+      "now": 0
+    },
+    "table_names_claimed_by_two_metadata": 1
+  },
+  "practitioner": {
+    "decision": "NATIONAL",
+    "option": "B",
+    "confidence": "STRONG",
+    "refinement": "Two distinct entities, not one duplicated entity: lab_users is an authentication principal (Core); national_practitioners is a professional registry (National). Related by an optional nullable link on the account side, not by identity.",
+    "evidence": [
+      {
+        "id": "P1",
+        "claim": "Exactly one practitioner entity exists in the repository",
+        "where": "backend/app/national/domain/practitioner.py"
+      },
+      {
+        "id": "P2",
+        "claim": "Zero practitioner or provider tables in any of the 106 migrations",
+        "where": "backend/migrations/versions/"
+      },
+      {
+        "id": "P3",
+        "claim": "Core stores the ordering clinician as free text lab_orders.doctor_name String(200)",
+        "where": "backend/app/models/lab_order.py:30"
+      },
+      {
+        "id": "P4",
+        "claim": "lab_users is an authentication principal with no licence, specialty, qualification or verification state",
+        "where": "backend/app/models/lab_user.py"
+      },
+      {
+        "id": "P5",
+        "claim": "Practitioner extends AuditEntity (no lab_id); the national package already partitions registry (non-tenant) from clinical episode (TenantAuditEntity)",
+        "where": "backend/app/national/domain/*.py"
+      },
+      {
+        "id": "P6",
+        "claim": "license_number is globally unique, which a tenant-scoped entity cannot carry",
+        "where": "backend/app/national/domain/practitioner.py:22"
+      },
+      {
+        "id": "P7",
+        "claim": "78 FK columns reference national_practitioners.id (care_continuum 56, ehr 21, national_data 1)",
+        "where": "env.py metadata probe"
+      },
+      {
+        "id": "P8",
+        "claim": "Zero persistence: no query, repository, service or route; only a FHIR mapper",
+        "where": "grep across backend/app"
+      },
+      {
+        "id": "P9",
+        "claim": "national_patients.lab_patient_id is the repository's own projection pointer; Practitioner has no equivalent",
+        "where": "backend/app/national/domain/patient.py:13"
+      }
+    ],
+    "rejected": {
+      "A_core": "Nothing in Core defines the entity (P2, P3, P4); the globally unique licence cannot be expressed in Core's tenant model (P6).",
+      "C_core_plus_projection": "A projection requires a Core canonical entity to project from; none exists, and there is no lab_user_id pointer analogous to lab_patient_id (P9)."
+    }
+  },
+  "encounter": {
+    "decision": "CLINICAL_CANONICAL_PLUS_NATIONAL_PROJECTION",
+    "option": "C",
+    "confidence": "STRONG for the shape; BLOCKED for the canonical table",
+    "evidence": [
+      {
+        "id": "E1",
+        "claim": "Encounter extends TenantAuditEntity so lab_id is NOT NULL, contradicting national scope",
+        "where": "backend/app/national/domain/encounter.py:6"
+      },
+      {
+        "id": "E2",
+        "claim": "Three physical deployed tables reference an encounter as an unconstrained string in three widths with no FK: billing_invoices.encounter_ref VARCHAR(128) NOT NULL, blood_bank_* VARCHAR(100) x3, pharmacy_sales VARCHAR(26)",
+        "where": "migrations 20260814_0009, 20260901_0001, 20260815_0022"
+      },
+      {
+        "id": "E3",
+        "claim": "42 FK columns reference national_encounters.id (care_continuum 16, ehr 14, nursing 12), all String(26)",
+        "where": "env.py metadata probe"
+      },
+      {
+        "id": "E4",
+        "claim": "CanonicalEncounter already exists as an abstract read-only projection joining national_encounters -> national_patients -> lab_orders, deriving lab_id from national_patients rather than from Encounter.lab_id",
+        "where": "backend/app/national_data/models/canonical_encounter.py"
+      },
+      {
+        "id": "E5",
+        "claim": "The only writer has no tenant enforcement, no state machine and no audit, and cannot execute because the table does not exist",
+        "where": "backend/app/national/services/encounter_service.py:35"
+      },
+      {
+        "id": "E6",
+        "claim": "Core's actual clinical episode in service today is lab_orders: physical, Integer PK, lab_id NOT NULL, with a state machine",
+        "where": "backend/app/domain/order_state.py"
+      }
+    ],
+    "national_encounters_disposition": "PROJECTION — read-only, rebuildable, never an FK target",
+    "blocked": {
+      "question": "Which clinical entity is canonical: extend lab_orders into a general clinical encounter, or create a tenant-scoped clinical_encounters table that lab_orders references?",
+      "status": "BLOCKED — CLINICAL OWNER REQUIRED",
+      "why": "Both options are consistent with every observation. The choice decides whether a pharmacy sale, a blood-bank reservation and a lab order can share one episode — a clinical modelling question, not a schema-mechanics one.",
+      "interim_rule": "The three existing production string columns stay exactly as they are and must not be retyped."
+    }
+  },
+  "identity_model": {
+    "varchar_proposal": "NOT ADOPTED AS-IS",
+    "reasons": [
+      "NR-025: one name, two incompatible identifier schemes. Fifteen functions are called _ulid(). 13 return str(uuid.uuid4()).replace('-','').upper()[:26] — the first 26 hex characters of a random UUID4, which is NOT a ULID: no timestamp prefix, no Crockford base32, no monotonic ordering, and a silent truncation from 128 to 104 bits. 2 are genuine ULIDs (48-bit ms timestamp + 80 random bits, Crockford base32, time-sortable) in app/services/consent_service.py and app/services/mpi/resolver.py. Identifiers minted under one name are therefore not mutually ordered, and every declarative base uses the fake one while the real implementation mints no primary keys.",
+      "P0-2 M1–M4 already moved 27 pharmacy tables off String(26) _ulid() keys because the physical schema was Integer while the ORM said String(26); building the national core on VARCHAR would recreate that defect at national scale.",
+      "But do not force one type everywhere: national_facilities is already physical with a String(26) PK and an existing physical FK pointing at it. Retyping a live key to satisfy a rule is schema churn for tooling convenience."
+    ],
+    "identifier_classes": {
+      "INTERNAL_KEY": "database primary key; never in a payload, never in a URL",
+      "PUBLIC_ID": "UUID4, immutable, the only identifier an API returns",
+      "BUSINESS_CODE": "human-facing, mutable, uniquely constrained, never a join target",
+      "NATIONAL_IDENTIFIER": "encrypted at rest, HMAC-indexed, never a key, dual-read NULL-tolerant",
+      "EXTERNAL_IDENTIFIER": "opaque, owned by another system, never a key",
+      "FHIR_IDENTIFIER": "interop projection, non-authoritative, nullable"
+    },
+    "entities": [
+      {
+        "entity": "Citizen",
+        "owner": "National",
+        "internal_key": "INTEGER",
+        "why_key": "cardinality bounded by population (~45M), three orders of magnitude below the INTEGER ceiling; matches the settled Pharmacy contract",
+        "public_id": "UUID4",
+        "national_identifier": "national ID (encrypted + HMAC)",
+        "external_identifiers": [],
+        "fhir_identifier": "fhir_id String(64)",
+        "business_code": "national_health_number"
+      },
+      {
+        "entity": "Patient (national view)",
+        "owner": "PROJECTION of Core patients",
+        "internal_key": "none — carries patient_id INTEGER",
+        "why_key": "a projection has no independent identity; giving national_patients its own key is what made it look like a second source of truth",
+        "public_id": "reuses Core patient UUID4",
+        "national_identifier": "inherited, not restated",
+        "external_identifiers": [
+          "lab_patient_id INTEGER"
+        ],
+        "fhir_identifier": "fhir_id",
+        "business_code": null
+      },
+      {
+        "entity": "Practitioner",
+        "owner": "National",
+        "internal_key": "INTEGER",
+        "why_key": "cardinality bounded by licensed professionals; same rule as Citizen",
+        "public_id": "UUID4",
+        "national_identifier": "national ID (encrypted + HMAC)",
+        "external_identifiers": [
+          "health_profession_number",
+          "lab_user_id INTEGER NULL"
+        ],
+        "fhir_identifier": "fhir_id",
+        "business_code": "license_number",
+        "note": "license_number is currently unique=True and used as an identifier; it must be demoted to a BUSINESS_CODE when the table is built"
+      },
+      {
+        "entity": "Encounter",
+        "owner": "BLOCKED — CLINICAL OWNER REQUIRED",
+        "internal_key": "BIGINT",
+        "why_key": "encounters are events, not entities: row count grows with time rather than population. At national volume the INTEGER ceiling is reachable within the service life, and a PK type change on the largest clinical table is the most expensive migration a platform can be made to perform.",
+        "public_id": "UUID4",
+        "national_identifier": "none — an encounter has none; the patient does",
+        "external_identifiers": [
+          "the three legacy string refs, until migrated"
+        ],
+        "fhir_identifier": "fhir_id",
+        "business_code": "encounter_number (per tenant)"
+      },
+      {
+        "entity": "Department",
+        "owner": "National (facility-scoped)",
+        "internal_key": "INTEGER",
+        "why_key": "bounded cardinality; same rule as Citizen",
+        "public_id": "UUID4",
+        "national_identifier": null,
+        "external_identifiers": [],
+        "fhir_identifier": "fhir_id",
+        "business_code": "department_code (unique within facility)"
+      },
+      {
+        "entity": "Facility (operational)",
+        "owner": "Core facilities",
+        "internal_key": "INTEGER (already physical)",
+        "why_key": "already physical with an Integer PK; no change",
+        "public_id": "UUID4",
+        "national_identifier": null,
+        "external_identifiers": [],
+        "fhir_identifier": "fhir_id",
+        "business_code": "facility_code"
+      },
+      {
+        "entity": "Facility (national EHR directory)",
+        "owner": "Core national_facilities",
+        "internal_key": "String(26) — already physical, do not retype",
+        "why_key": "physical, target of a physical FK from clinical_ehr_facility_bindings, and a separate resource from the operational facility as stated explicitly in app/models/clinical_scope.py",
+        "public_id": null,
+        "national_identifier": null,
+        "external_identifiers": [
+          "bridged via clinical_ehr_facility_bindings"
+        ],
+        "fhir_identifier": null,
+        "business_code": "facility_code (already uniquely constrained)"
+      },
+      {
+        "entity": "Organization",
+        "owner": "National",
+        "internal_key": "INTEGER",
+        "why_key": "bounded cardinality; same rule as Citizen",
+        "public_id": "UUID4",
+        "national_identifier": null,
+        "external_identifiers": [],
+        "fhir_identifier": "fhir_id",
+        "business_code": "org_code"
+      }
+    ],
+    "rules": [
+      "No API response may contain an INTERNAL_KEY; response builders are explicit.",
+      "BUSINESS_CODEs are uniquely constrained, mutable, and never join targets.",
+      "National identifiers keep the SNDHS rules: encrypted at rest, dual-read NULL-tolerant, never plaintext, never a key.",
+      "An external identifier arriving from another domain keeps its own type.",
+      "No foreign key may point at a PROJECTION."
+    ]
+  },
+  "nr_023": {
+    "status": "OPEN — NOT FIXED",
+    "root_cause_corrected": "Cross-MetaData foreign keys. SQLAlchemy resolves ForeignKey('table.col') only within the referrer's own MetaData. target_metadata is a list of 18 distinct MetaData objects and Alembic sorts each independently. The previously recorded root cause ('the national core is mapped nowhere') is disproven: all 24 unresolvable targets are mapped.",
+    "reproduction": "Pure metadata failure; no database connection required.",
+    "metadata_sort_results": {
+      "total": 18,
+      "clean": 12,
+      "failing": 6,
+      "failures": [
+        {
+          "metadata": "app.ehr.base.EHRBase",
+          "column": "ehr_allergies.encounter_id",
+          "target": "national_encounters"
+        },
+        {
+          "metadata": "app.trust.base.TrustBase",
+          "column": "trust_consent_records.lab_id",
+          "target": "labs"
+        },
+        {
+          "metadata": "app.care_continuum.base.CareContinuumBase",
+          "column": "cc_care_journeys.organization_id",
+          "target": "national_organizations"
+        },
+        {
+          "metadata": "app.identity.base.IdentityBase",
+          "column": "niam_assignments.clinical_organization_resource_id",
+          "target": "organizations"
+        },
+        {
+          "metadata": "app.nursing.base.NursingBase",
+          "column": "nursing_shifts.department_id",
+          "target": "hospital_departments"
+        },
+        {
+          "metadata": "app.national_data.base.DataPlatformBase",
+          "column": "dp_consent_directives.patient_id",
+          "target": "patients"
+        }
+      ]
+    },
+    "canonical_repair": "One shared MetaData across all bases.",
+    "single_blocker": {
+      "finding": "NR-006",
+      "collision": "national_facilities",
+      "claimed_by": [
+        "app.database.Base",
+        "app.national.base.NationalBase"
+      ],
+      "resolution_now_evidence_determined": {
+        "authoritative": "app.models.clinical_scope.NationalFacility on app.database.Base — 6 columns matching migration 20260813_0004 exactly, and the target of the physical FK from clinical_ehr_facility_bindings",
+        "duplicate": "app.national.domain.facility.Facility on app.national.base — 18 entirely different columns, zero physical backing, extend_existing=True"
+      }
+    },
+    "not_done_and_why": "Renaming or retiring the national-domain Facility class would unblock the shared MetaData. It is an ORM schema change and nine sibling foreign keys inside the national domain point at the name. It is the first item of BATCH-3.",
+    "safe_infrastructure_correction_applied": {
+      "change": "backend/migrations/env.py now calls import_all_models() before target_metadata is built",
+      "hazard_closed": "A base-only import registers no tables, so PharmacyBase, RadiologyBase, NHDWBase and NursingBase each resolved to an EMPTY MetaData. Autogenerate would have compared zero mapped tables against a populated database and proposed dropping all 74 of them (27+18+14+15). They now resolve to 27/18/14/15.",
+      "second_change": "env.py now puts the repository root on sys.path before importing application models. import_all_models() reaches modules that use absolute `backend.app...` imports (130 such imports exist), so `backend` must resolve as a package. CI exports PYTHONPATH with the workspace root; a developer running `alembic upgrade head` from backend/ does not, and without the bootstrap the first change broke `upgrade head` with ModuleNotFoundError: No module named 'backend'. Caught by running the migration before committing, not by CI."
+    },
+    "invariant_met": false,
+    "invariant": "autogenerate executes deterministically and never fails because of an unresolved metadata relationship",
+    "executed_verification": {
+      "database": "clean, migrated to head 20260912_0001",
+      "tables": 423,
+      "ci_required_tables_present": 7,
+      "round_trip": "downgrade -1 && upgrade head clean",
+      "autogenerate_exit_code": 1,
+      "autogenerate_error": "NoReferencedTableError: Foreign key associated with column 'ehr_allergies.citizen_id' could not find table 'national_citizens'",
+      "migration_directory_unchanged": "106 files before, 106 after, git clean",
+      "note": "The named column moves between runs (practitioner_id / encounter_id / citizen_id) because import order decides which foreign key is reached first. The class of failure does not."
+    }
+  },
+  "nr_018": {
+    "status": "PARTIALLY VERIFIED",
+    "why": "zero-diff cannot be proven while autogenerate cannot run; no proof is fabricated"
+  }
+}

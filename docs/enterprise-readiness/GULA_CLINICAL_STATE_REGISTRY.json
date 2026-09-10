@@ -1,0 +1,226 @@
+{
+  "document": "GULA Clinical State Registry — NR-007",
+  "batch": "BATCH-2.5",
+  "generated": "2026-09-10T10:45:31Z",
+  "head_commit": "ac894767bf33dd160ae8131ee8570e29e31f7481",
+  "subject": "backend/app/blood_bank/domain/state_machine.py",
+  "method": "enum reflection and exact string matching against _TRANSITIONS",
+  "state_machine_modified": false,
+  "shape": {
+    "transition_table_keys": 39,
+    "distinct_state_vocabulary": 43,
+    "lifecycle_enums": 5,
+    "colliding_states": 4,
+    "synthetic_keys": 28,
+    "enum_values_without_a_key": 18,
+    "distinct_entity_values_at_call_sites": 2,
+    "entity_values_at_call_sites": [
+      "blood_unit",
+      "transfusion"
+    ]
+  },
+  "lifecycle_enums": {
+    "blood_unit": {
+      "enum": "ComponentStatus",
+      "values": [
+        "available",
+        "discarded",
+        "expired",
+        "issued",
+        "pending_processing",
+        "processing",
+        "quarantined",
+        "recalled",
+        "reserved",
+        "transfused"
+      ]
+    },
+    "donation": {
+      "enum": "DonationStatus",
+      "values": [
+        "completed",
+        "discarded",
+        "in_progress",
+        "registered",
+        "rejected",
+        "screened"
+      ]
+    },
+    "donor": {
+      "enum": "DonorStatus",
+      "values": [
+        "active",
+        "deferred",
+        "expired",
+        "inactive",
+        "permanently_deferred"
+      ]
+    },
+    "crossmatch": {
+      "enum": "CrossmatchStatus",
+      "values": [
+        "compatible",
+        "incompatible",
+        "partially_compatible",
+        "pending",
+        "waived"
+      ]
+    },
+    "transfusion": {
+      "enum": "TransfusionStatus",
+      "values": [
+        "cancelled",
+        "completed",
+        "dispensed",
+        "in_progress",
+        "ordered",
+        "reacted",
+        "verified"
+      ]
+    }
+  },
+  "collisions": [
+    {
+      "state": "completed",
+      "entities": [
+        "donation",
+        "transfusion"
+      ],
+      "is_table_key": true,
+      "shared_row": "set() — terminal",
+      "meaning_today": "Terminal for both. Correct for a transfusion. A completed donation also cannot advance, but it is the input to component processing.",
+      "clinical_significance": "HIGH",
+      "owner": "BLOCKED — CLINICAL OWNER REQUIRED"
+    },
+    {
+      "state": "in_progress",
+      "entities": [
+        "donation",
+        "transfusion"
+      ],
+      "is_table_key": true,
+      "shared_row": "{completed, reaction_suspected}",
+      "meaning_today": "A donation in progress is validated against transfusion rules and may transition to reaction_suspected, a transfusion-reaction state meaningless for a collection.",
+      "clinical_significance": "HIGH",
+      "owner": "BLOCKED — CLINICAL OWNER REQUIRED"
+    },
+    {
+      "state": "expired",
+      "entities": [
+        "blood_unit",
+        "donor"
+      ],
+      "is_table_key": true,
+      "shared_row": "{discarded}",
+      "meaning_today": "Correct for a blood unit. A donor whose eligibility expires would be 'discarded', which is not a thing that happens to a person.",
+      "clinical_significance": "HIGH",
+      "owner": "BLOCKED — CLINICAL OWNER REQUIRED"
+    },
+    {
+      "state": "discarded",
+      "entities": [
+        "blood_unit",
+        "donation"
+      ],
+      "is_table_key": false,
+      "shared_row": "absent — terminal by omission",
+      "meaning_today": "Probably correct for both, but by accident rather than by statement.",
+      "clinical_significance": "MEDIUM",
+      "owner": "BLOCKED — CLINICAL OWNER REQUIRED"
+    }
+  ],
+  "synthetic_keys": [
+    "classification",
+    "clinical_assessment",
+    "collected",
+    "compatibility_pending",
+    "crossmatch_requested",
+    "draft",
+    "identified",
+    "investigation",
+    "issued_order",
+    "ordered_transfusion",
+    "reaction_suspected",
+    "ready",
+    "received",
+    "received_at_bedside",
+    "received_sample",
+    "released",
+    "requested",
+    "resolution",
+    "returned",
+    "reviewed",
+    "sample_received",
+    "sample_required",
+    "started",
+    "testing",
+    "testing_crossmatch",
+    "transfusion_stopped",
+    "validated",
+    "verification"
+  ],
+  "synthetic_key_note": "Four are explicit <state>_<entity> compounds — issued_order, received_sample, testing_crossmatch, ordered_transfusion — which is (entity, state) keying implemented by hand inside the string.",
+  "enum_values_without_a_key": {
+    "blood_unit": [
+      "discarded",
+      "pending_processing",
+      "processing",
+      "recalled"
+    ],
+    "donation": [
+      "discarded",
+      "registered",
+      "rejected",
+      "screened"
+    ],
+    "donor": [
+      "active",
+      "deferred",
+      "inactive",
+      "permanently_deferred"
+    ],
+    "crossmatch": [
+      "partially_compatible",
+      "pending",
+      "waived"
+    ],
+    "transfusion": [
+      "cancelled",
+      "dispensed",
+      "ordered",
+      "reacted"
+    ]
+  },
+  "vocabulary_drift": {
+    "in_BloodBankState_not_a_table_key": [
+      "cancelled",
+      "crossmatch_testing",
+      "discarded",
+      "rejected",
+      "sample_expired",
+      "sample_rejected"
+    ],
+    "table_keys_absent_from_BloodBankState": [
+      "available",
+      "issued_order",
+      "ordered_transfusion",
+      "received_sample",
+      "testing_crossmatch",
+      "verified"
+    ]
+  },
+  "target_model": {
+    "signature": "_TRANSITIONS: dict[tuple[str, str], frozenset[str]]  # (entity, state) -> targets",
+    "entity_default_removed": true,
+    "applied": false,
+    "why_not_applied": "Applying the keying without the attribution would convert every currently-permitted transition into a refusal at runtime — a clinical regression dressed as a correctness fix."
+  },
+  "blocked": {
+    "status": "BLOCKED — CLINICAL OWNER REQUIRED",
+    "questions": [
+      "For each of the 4 colliding states, which entity owns it and what are that entity's legal transitions out of it?",
+      "For each of the 28 synthetic keys, which entity owns it, and does its real name differ from the collision-dodging one?"
+    ]
+  },
+  "sequencing": "The mechanical keying must land in the same change as the attribution, never before it."
+}

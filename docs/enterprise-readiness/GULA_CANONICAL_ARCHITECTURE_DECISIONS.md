@@ -118,3 +118,78 @@ own parallel implementation of any of them.
 The divergence that does exist is not in the contract but beneath it: domains
 disagree about which entity is canonical (§1), so they consume the same
 contract against different notions of the same person.
+
+---
+
+# BATCH-2.5 — National Core ownership and identity
+
+Full evidence: `GULA_NATIONAL_CORE_IDENTITY_CONTRACT.md` / `.json`.
+
+## D-07 — Practitioner belongs to the National core
+
+`lab_users` and `national_practitioners` are **two distinct entities**, not one
+duplicated entity:
+
+| | `lab_users` | `national_practitioners` |
+|---|---|---|
+| Owner | **Core** | **National** |
+| Nature | authentication principal | professional registry |
+| Carries | email, password hash, lockout, `perm_version` | licence, specialty, qualification, verification |
+| Tenancy | `lab_id NOT NULL` | none — global |
+| Key | `Integer` (physical) | `INTEGER` (to be built) |
+
+They link through an optional nullable `lab_users.practitioner_id`. A
+practitioner may have no GULA account; an account may belong to a non-clinical
+user.
+
+Decisive evidence: Core has **no** practitioner entity — the ordering clinician
+is `lab_orders.doctor_name String(200)`, free text. `license_number` is
+**globally** unique, which a tenant-scoped entity cannot carry. And the
+repository already shows what it looks like when it means *projection*
+(`national_patients.lab_patient_id`); Practitioner has no such pointer.
+
+## D-08 — Encounter: tenant-owned canonical, national projection
+
+`national_encounters` is a **`PROJECTION`** — read-only, rebuildable, never a
+foreign-key target. `CanonicalEncounter` already implements that shape and is
+the thing to extend.
+
+The canonical transactional encounter is **tenant-scoped and clinically owned**:
+`Encounter` already declares `lab_id NOT NULL`; the three production tables that
+reference an encounter do so with tenant-local unconstrained strings; and the
+real episode record in service today is `lab_orders`.
+
+**BLOCKED — CLINICAL OWNER REQUIRED:** whether to extend `lab_orders` into a
+general clinical encounter, or create a tenant-scoped `clinical_encounters` that
+`lab_orders` references. Both fit every observation. Until it is answered, the
+five legacy string columns stay exactly as they are.
+
+## D-09 — Identity types are chosen per entity, not by blanket rule
+
+`INTEGER` internal key for registry entities whose cardinality is bounded by
+population or profession (Citizen, Practitioner, Department, Organization);
+`BIGINT` for Encounter alone, because encounters are *events* whose row count
+grows with time; **no new key at all** for the Patient projection; and
+`String(26)` retained for `national_facilities`, which is already physical and
+already the target of a physical foreign key.
+
+Public identifiers are `UUID4` throughout and are the only identifier an API
+returns. `license_number`, `facility_code`, `department_code`, `org_code` and
+`national_health_number` are business codes — uniquely constrained, mutable,
+never join targets.
+
+## D-10 — NR-006 is resolved by evidence and is BATCH-3 item 1
+
+`app/models/clinical_scope.py::NationalFacility` is authoritative: it declares
+exactly the six columns migration `20260813_0004` creates and is the target of
+the physical foreign key from `clinical_ehr_facility_bindings`.
+`app/national/domain/facility.py::Facility` declares eighteen different columns
+with zero physical backing.
+
+This is **not a merge**. `clinical_scope.py` states in-source that the national
+EHR facility is a *separate resource* from the operational facility and that no
+relationship may be inferred from identifier similarity. The two are bridged by
+review, through `clinical_ehr_facility_bindings`.
+
+Resolving it unblocks NR-023, whose canonical repair — one shared `MetaData` —
+is held up by exactly this one table-name collision.

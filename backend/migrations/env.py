@@ -4,8 +4,10 @@ Works in both online mode (direct DB connection) and offline mode (SQL script).
 DATABASE_URL is read from the environment / .env via the app's own config module.
 """
 import os
+import sys
 from contextlib import suppress
 from logging.config import fileConfig
+from pathlib import Path
 
 from sqlalchemy import engine_from_config, pool
 from alembic import context
@@ -17,6 +19,13 @@ os.environ.setdefault("SECRET_KEY", "alembic-migration-key-" + "x" * 48)
 os.environ.setdefault("ENCRYPTION_KEY", "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=")
 os.environ.setdefault("NID_HMAC_KEY", "a" * 64)
 os.environ.setdefault("REDIS_URL", "")
+
+# The repository root must be importable: a few modules reached by
+# import_all_models() use absolute `backend.app...` imports, so `backend` has to
+# resolve as a package. CI exports PYTHONPATH with the workspace root, but a
+# developer running `alembic upgrade head` from backend/ does not, and env.py
+# must not depend on the caller's environment to import the models it needs.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 # ── Import models so their tables are visible to autogenerate ─────────────────
 from app.database import Base
@@ -33,6 +42,16 @@ from app.billing.models import (
     BillingPayment,
     InsuranceCoverage,
 )
+
+# Populates every declarative base; called below, before target_metadata is
+# built. Importing a *base* module registers no tables — the models live
+# elsewhere — so PharmacyBase, RadiologyBase, NHDWBase and NursingBase each
+# resolve to an EMPTY MetaData from a base-only import. Registering an empty
+# metadata is worse than not registering it: autogenerate would compare zero
+# mapped tables against a populated database and propose dropping all 74 of
+# them. Reuses the application's own import_all_models() rather than a second
+# list to maintain.
+from app.factory import import_all_models
 
 # Include NationalBase and other declarative bases so Alembic detects their tables
 from app.national.base import NationalBase
@@ -122,6 +141,10 @@ config.set_main_option("sqlalchemy.url", database_url)
 # Logging — only configure if the ini file has a logging section
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Every base above is imported but not all of their models are; import_all_models()
+# closes that gap so no registered metadata is empty when target_metadata is built.
+import_all_models()
 
 # Collect all declarative base metadata for autogenerate detection
 # (EHR, Clinical, Citizen, and National models use separate declarative bases)

@@ -1,105 +1,151 @@
 {
- "document": "GULA_BATCH_3_NATIONAL_CORE_SPEC",
- "version": 1,
- "generated": "2026-09-10",
- "status": "SPECIFICATION ONLY — NOT IMPLEMENTED",
- "migrations_created": 0,
- "canonical_owners": {
-  "patient": "core patients (app.models.base.Base)",
-  "facility": "core Facility (operational)",
-  "practitioner": "UNDECIDED",
-  "encounter": "UNDECIDED"
- },
- "entities": [
-  {
-   "entity": "Citizen",
-   "table": "national_citizens",
-   "physical": false,
-   "scope": "GLOBAL",
-   "ops": 10,
-   "pk_today": "VARCHAR"
+  "document": "GULA_BATCH_3_NATIONAL_CORE_SPEC",
+  "version": 2,
+  "generated": "2026-09-10T10:48:17Z",
+  "status": "SPECIFICATION ONLY — NOT IMPLEMENTED",
+  "migrations_created": 0,
+  "canonical_owners": {
+    "patient": "core patients (app.models.base.Base)",
+    "facility": "core Facility (operational)",
+    "practitioner": "NATIONAL (BATCH-2.5) — national_practitioners is a professional registry; lab_users is an authentication principal; two entities, linked by an optional nullable lab_users.practitioner_id",
+    "encounter": "CLINICAL tenant-owned canonical + national_encounters as PROJECTION (BATCH-2.5); which clinical table is canonical is BLOCKED — CLINICAL OWNER REQUIRED"
   },
-  {
-   "entity": "Patient (national view)",
-   "table": "national_patients",
-   "physical": false,
-   "scope": "TENANT",
-   "ops": 0,
-   "pk_today": "VARCHAR",
-   "note": "canonical owner is core patients; this is PROJECTION or RETIRE"
+  "entities": [
+    {
+      "entity": "Citizen",
+      "table": "national_citizens",
+      "physical": false,
+      "scope": "GLOBAL",
+      "ops": 10,
+      "pk_today": "VARCHAR",
+      "internal_key": "INTEGER"
+    },
+    {
+      "entity": "Patient (national view)",
+      "table": "national_patients",
+      "physical": false,
+      "scope": "TENANT",
+      "ops": 0,
+      "pk_today": "VARCHAR",
+      "note": "canonical owner is core patients; this is PROJECTION or RETIRE",
+      "internal_key": "none — PROJECTION carries patient_id INTEGER"
+    },
+    {
+      "entity": "Practitioner",
+      "table": "national_practitioners",
+      "physical": false,
+      "scope": "GLOBAL",
+      "ops": 0,
+      "pk_today": "VARCHAR",
+      "inbound_refs": 78,
+      "inbound_refs_note": "78 measured against the full env.py import graph; the earlier 58 was measured on a partial graph",
+      "decision": "NATIONAL",
+      "internal_key": "INTEGER",
+      "scope_correction": "Practitioner extends AuditEntity and has no lab_id; the earlier 'FACILITY' label overstated its scoping. facility_id is an attribute, not a tenant boundary."
+    },
+    {
+      "entity": "Encounter",
+      "table": "national_encounters",
+      "physical": false,
+      "scope": "TENANT",
+      "ops": 29,
+      "pk_today": "VARCHAR",
+      "inbound_refs": 42,
+      "decision": "CLINICAL_CANONICAL_PLUS_NATIONAL_PROJECTION",
+      "internal_key": "BIGINT",
+      "blocked": "Which clinical table is canonical — extend lab_orders, or a new tenant-scoped clinical_encounters that lab_orders references. BLOCKED — CLINICAL OWNER REQUIRED.",
+      "legacy_physical_references": [
+        {
+          "column": "billing_invoices.encounter_ref",
+          "type": "VARCHAR(128) NOT NULL",
+          "fk": false
+        },
+        {
+          "column": "blood_bank_patient_samples.encounter_id",
+          "type": "VARCHAR(100)",
+          "fk": false
+        },
+        {
+          "column": "blood_bank_reservations.encounter_id",
+          "type": "VARCHAR(100)",
+          "fk": false
+        },
+        {
+          "column": "blood_bank_reactions.encounter_id",
+          "type": "VARCHAR(100)",
+          "fk": false
+        },
+        {
+          "column": "pharmacy_sales.encounter_id",
+          "type": "VARCHAR(26)",
+          "fk": false
+        }
+      ],
+      "legacy_reference_rule": "These stay exactly as they are until the canonical Encounter is chosen. Do not retype them to chase a decision that has not been made."
+    },
+    {
+      "entity": "Department",
+      "table": "national_departments",
+      "physical": false,
+      "scope": "FACILITY",
+      "ops": 0,
+      "pk_today": "VARCHAR",
+      "internal_key": "INTEGER"
+    },
+    {
+      "entity": "Facility",
+      "table": "national_facilities",
+      "physical": true,
+      "scope": "GLOBAL",
+      "ops": 0,
+      "pk_today": "VARCHAR",
+      "note": "NR-006 — mapped by two bases, and now the SINGLE blocker for NR-023. Resolution is evidence-determined: app/models/clinical_scope.py::NationalFacility declares exactly the 6 columns migration 20260813_0004 creates and is the target of the physical FK from clinical_ehr_facility_bindings; app/national/domain/facility.py::Facility declares 18 different columns with zero physical backing. Keep the former; rename or retire the latter. Not MERGE: clinical_scope.py states in-source that the national EHR facility is a SEPARATE resource from the operational facility.",
+      "internal_key": "String(26) — already physical, do not retype",
+      "batch_3_item": 1
+    },
+    {
+      "entity": "Organization",
+      "table": "national_organizations",
+      "physical": false,
+      "scope": "GLOBAL",
+      "ops": 0,
+      "pk_today": "VARCHAR",
+      "note": "RETIRE candidate",
+      "internal_key": "INTEGER"
+    }
+  ],
+  "identity_model": {
+    "internal": "INTEGER, never public",
+    "public": "UUID4, immutable",
+    "business_code": "mutable, never a key",
+    "external": "String(26), not converted",
+    "reference": "the settled Pharmacy contract"
   },
-  {
-   "entity": "Practitioner",
-   "table": "national_practitioners",
-   "physical": false,
-   "scope": "FACILITY",
-   "ops": 0,
-   "pk_today": "VARCHAR",
-   "inbound_refs": 58
+  "blockers": [
+    "national_patients: PROJECTION or RETIRE",
+    "Practitioner ownership vs core lab_users",
+    "NR-006 national_facilities double mapping",
+    "NR-023 autogenerate cannot run until this core exists"
+  ],
+  "batch_grouping_of_293_missing_tables": {
+    "B5_CLINICAL_RECORD": 45,
+    "B9_DEFERRED_UNTIL_DOMAIN_IMPLEMENTED": 79,
+    "B7_GOVERNANCE_AND_DATA": 79,
+    "B8_HOSPITAL": 9,
+    "B4_NATIONAL_PLATFORM": 29,
+    "B3_NATIONAL_CORE": 5,
+    "B6_CARE_CONTINUITY": 47
   },
-  {
-   "entity": "Encounter",
-   "table": "national_encounters",
-   "physical": false,
-   "scope": "TENANT",
-   "ops": 29,
-   "pk_today": "VARCHAR"
-  },
-  {
-   "entity": "Department",
-   "table": "national_departments",
-   "physical": false,
-   "scope": "FACILITY",
-   "ops": 0,
-   "pk_today": "VARCHAR"
-  },
-  {
-   "entity": "Facility",
-   "table": "national_facilities",
-   "physical": true,
-   "scope": "GLOBAL",
-   "ops": 0,
-   "pk_today": "VARCHAR",
-   "note": "MERGE — mapped by two bases (NR-006)"
-  },
-  {
-   "entity": "Organization",
-   "table": "national_organizations",
-   "physical": false,
-   "scope": "GLOBAL",
-   "ops": 0,
-   "pk_today": "VARCHAR",
-   "note": "RETIRE candidate"
-  }
- ],
- "identity_model": {
-  "internal": "INTEGER, never public",
-  "public": "UUID4, immutable",
-  "business_code": "mutable, never a key",
-  "external": "String(26), not converted",
-  "reference": "the settled Pharmacy contract"
- },
- "blockers": [
-  "national_patients: PROJECTION or RETIRE",
-  "Practitioner ownership vs core lab_users",
-  "NR-006 national_facilities double mapping",
-  "NR-023 autogenerate cannot run until this core exists"
- ],
- "batch_grouping_of_293_missing_tables": {
-  "B5_CLINICAL_RECORD": 45,
-  "B9_DEFERRED_UNTIL_DOMAIN_IMPLEMENTED": 79,
-  "B7_GOVERNANCE_AND_DATA": 79,
-  "B8_HOSPITAL": 9,
-  "B4_NATIONAL_PLATFORM": 29,
-  "B3_NATIONAL_CORE": 5,
-  "B6_CARE_CONTINUITY": 47
- },
- "out_of_scope": [
-  "ehr",
-  "clinical",
-  "care_continuum",
-  "nursing",
-  "governance",
-  "national_data"
- ]
+  "out_of_scope": [
+    "ehr",
+    "clinical",
+    "care_continuum",
+    "nursing",
+    "governance",
+    "national_data"
+  ],
+  "head_commit": "ac894767bf33dd160ae8131ee8570e29e31f7481",
+  "identity_contract": "docs/enterprise-readiness/GULA_NATIONAL_CORE_IDENTITY_CONTRACT.json",
+  "nr_025": "One name, two incompatible schemes. Of 15 _ulid() definitions, 13 return str(uuid.uuid4()).replace('-','').upper()[:26] — the first 26 hex characters of a random UUID4, not a ULID — and 2 are genuine Crockford-base32 ULIDs. Every declarative base uses the fake one; the real implementation mints no primary keys. A third reason not to copy the VARCHAR shape.",
+  "nr_023_root_cause_corrected": "Cross-MetaData foreign keys, NOT a missing national core. All 24 unresolvable FK targets are mapped, just by a different MetaData than the referencing table. 18 distinct MetaData objects, 6 fail topological sort, 360 unresolvable references. Canonical repair is one shared MetaData, blocked by exactly one collision (NR-006)."
 }
