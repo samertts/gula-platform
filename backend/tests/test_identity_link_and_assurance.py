@@ -2290,3 +2290,212 @@ def test_a_genuine_context_denial_is_still_translated_to_invalid_context(db) -> 
         ClinicalAuthorizationContextService.resolve_for_legacy_lab_user = original
 
     assert blocked.value.reason_code == "invalid_context"
+
+
+# ── NR-044.3 Part H: the two findings whose proof was blocked on reachability ─
+#
+# NR-038 and AUTH-F5/NR-043 have been PARTIALLY VERIFIED since AUTH-005 for the
+# same reason: the code was correct and could not run, so no behavioural proof
+# existed. NR-044.3 made both paths executable. These are the proofs that were
+# owed — and they are behavioural, because "it no longer raises" is not the same
+# as "the control works".
+
+
+def test_an_account_with_no_identity_evidence_gets_the_floor_assurance_nr038(db) -> None:
+    """NR-038 — the level is derived from evidence, and absent evidence is low.
+
+    The route used to accept `ial`, `aal`, `fal`, `assessed_by` and `evidence`
+    from the caller and write them through with `status="active"`. The static
+    half of that (the parameters are gone) has been pinned since AUTH-005. This
+    is the half that needed a database: with no verification record at all, the
+    derived profile must sit at the floor rather than anywhere a caller might
+    have preferred.
+    """
+    from app.identity.trust.services import AssuranceService
+
+    identity_id = _identity_chain(db, "nr038-floor")
+    account = Account(
+        id="acct-nr038-floor", uuid=str(uuid.uuid4()), identity_id=identity_id,
+        status=AccountStatus.active.value, is_active=True, is_locked=False,
+    )
+    db.add(account)
+    db.flush()
+
+    profile = AssuranceService(db).derive_profile(
+        account_id=account.id, person_id="person-nr038-floor",
+        identity_id=identity_id, assessed_by=account.id,
+    )
+    db.flush()
+
+    assert profile.ial == "IAL1", f"no evidence produced {profile.ial}"
+    assert profile.aal == "AAL1"
+    assert profile.fal == "FAL1"
+    assert profile.overall_assurance == "IAL1"
+    assert profile.evidence["derived_from"] == "niam_verification_records"
+    assert profile.assessed_by == account.id
+
+
+def test_only_a_real_verification_record_raises_the_level_nr038(db) -> None:
+    """NR-038 — and the only thing that raises it is evidence a verifier wrote.
+
+    The record is created through `VerificationWorkflow`, the real state
+    machine, not by inserting a row that says the right thing. The profile then
+    has to move on its own.
+    """
+    from app.identity.trust.services import AssuranceService
+
+    identity_id = _identity_chain(db, "nr038-raise")
+    account = Account(
+        id="acct-nr038-raise", uuid=str(uuid.uuid4()), identity_id=identity_id,
+        status=AccountStatus.active.value, is_active=True, is_locked=False,
+    )
+    db.add(account)
+    db.flush()
+
+    before = AssuranceService(db).derive_profile(
+        account_id=account.id, person_id="person-nr038-raise",
+        identity_id=identity_id, assessed_by=account.id,
+    )
+    db.flush()
+
+    _verify(db, account.id, VerificationMethod.official_identity, identity_id=identity_id)
+
+    after = AssuranceService(db).derive_profile(
+        account_id=account.id, person_id="person-nr038-raise",
+        identity_id=identity_id, assessed_by=account.id,
+    )
+    db.flush()
+
+    assert before.ial == "IAL1"
+    assert after.ial != before.ial, "a verified identity record did not raise the level"
+    assert after.evidence["identity_assurance"] != "none"
+
+
+def test_the_overall_assurance_is_the_weakest_axis_not_the_average_nr038(db) -> None:
+    """NR-038 — averaging let authentication strength lift an unproofed identity.
+
+    With AAL and FAL pinned at the floor, a raised IAL must not drag the overall
+    up with it: the overall is the weakest axis. Asserted from a real derived
+    profile rather than by reading `_calculate_overall`.
+    """
+    from app.identity.trust.services import AssuranceService
+
+    identity_id = _identity_chain(db, "nr038-weakest")
+    account = Account(
+        id="acct-nr038-weakest", uuid=str(uuid.uuid4()), identity_id=identity_id,
+        status=AccountStatus.active.value, is_active=True, is_locked=False,
+    )
+    db.add(account)
+    db.flush()
+    _verify(db, account.id, VerificationMethod.official_identity, identity_id=identity_id)
+
+    profile = AssuranceService(db).derive_profile(
+        account_id=account.id, person_id="person-nr038-weakest",
+        identity_id=identity_id, assessed_by=account.id,
+    )
+    db.flush()
+
+    assert profile.aal == "AAL1" and profile.fal == "FAL1"
+    assert profile.overall_assurance == "IAL1", (
+        f"a raised IAL lifted the overall to {profile.overall_assurance} while AAL "
+        "and FAL are at the floor; the overall must be the weakest axis"
+    )
+
+
+def test_asserting_for_another_account_needs_an_administrative_assignment_nr038(db) -> None:
+    """NR-038 — the route's own gate, executed.
+
+    `create_assurance_profile` recomputes the caller's own profile freely, and
+    requires an active administrative assignment to name a different subject.
+    The gate is called here directly with a real session and a real actor.
+    """
+    from app.identity.trust.routes import _require_assurance_administrator
+    from fastapi import HTTPException
+
+    identity_id = _identity_chain(db, "nr038-admin")
+    account = Account(
+        id="acct-nr038-admin", uuid=str(uuid.uuid4()), identity_id=identity_id,
+        status=AccountStatus.active.value, is_active=True, is_locked=False,
+    )
+    db.add(account)
+    db.flush()
+
+    from app.identity.models.session import UserSession
+
+    _request, jti = _mint_niam_token(account.uuid)
+    session_row = UserSession(
+        id="sess-nr038-admin", uuid=str(uuid.uuid4()), account_id=account.id,
+        token_jti=jti, session_type="web", is_active=True,
+        started_at=_now(), last_activity_at=_now(), expires_at=_now() + timedelta(hours=1),
+    )
+    db.add(session_row)
+    db.flush()
+
+    from app.identity.api.workspaces import NiamActor
+
+    actor = NiamActor(account=account, session=session_row)
+    with pytest.raises(HTTPException) as denied:
+        _require_assurance_administrator(db, actor)
+    assert denied.value.status_code == 403
+
+
+def test_a_deactivated_organization_loses_its_workspaces_nr043(db) -> None:
+    """AUTH-F5 / NR-043 — the narrowing, executed against PostgreSQL.
+
+    `list_eligible` returned an organization's workspaces to an account with an
+    active representative record without checking that the organization itself
+    was still live, so a representative of a deactivated organization kept
+    access. The fix has been correct-but-unrunnable since AUTH-005.
+
+    One fact changes between the two assertions — the organization's standing —
+    so what is proved is the predicate, not merely that the function returns a
+    list.
+    """
+    from app.identity.models.administrative_structure import (
+        OrganizationRepresentative,
+        RepresentativeStatus,
+    )
+    from app.identity.models.workspace import Workspace, WorkspaceStatus
+    from app.identity.services.workspace_service import WorkspaceService
+
+    identity_id = _identity_chain(db, "nr043")
+    account = Account(
+        id="acct-nr043", uuid=str(uuid.uuid4()), identity_id=identity_id,
+        status=AccountStatus.active.value, is_active=True, is_locked=False,
+    )
+    db.add(account)
+    db.flush()
+
+    organization = _niam_organization(db, org_key=f"org-nr043-{uuid.uuid4().hex[:6]}")
+    workspace = Workspace(
+        id=f"ws-nr043-{uuid.uuid4().hex[:6]}", uuid=str(uuid.uuid4()),
+        workspace_key=f"wsk-nr043-{uuid.uuid4().hex[:8]}",
+        workspace_type="organization", name="NR-043 Org Workspace", name_ar="مساحة",
+        status=WorkspaceStatus.active.value, organization_id=organization.id,
+        is_personal=False,
+    )
+    db.add(workspace)
+    db.add(OrganizationRepresentative(
+        uuid=str(uuid.uuid4()), organization_id=organization.id,
+        account_id=account.id, status=RepresentativeStatus.active.value,
+    ))
+    db.flush()
+
+    service = WorkspaceService(db)
+    eligible_before = {w.id for w in service.list_eligible(account)}
+    assert workspace.id in eligible_before, "an active organization's workspace was not offered"
+
+    organization.is_active = False
+    db.flush()
+
+    eligible_after = {w.id for w in service.list_eligible(account)}
+    assert workspace.id not in eligible_after, (
+        "a representative of a deactivated organization kept its workspace"
+    )
+
+    organization.is_active = True
+    organization.status = "suspended"
+    db.flush()
+    assert workspace.id not in {w.id for w in service.list_eligible(account)}, (
+        "a suspended organization still offered its workspace"
+    )

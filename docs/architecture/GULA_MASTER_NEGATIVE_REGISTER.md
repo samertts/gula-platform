@@ -65,11 +65,12 @@ NR-047, now fixed) and **NR-049** (the ledger's own owner rule could not see a
 module that named its session `self._session`, so one had been invisible since
 the ledger was written; the rule is fixed, the module is NR-044.3's to convert)._
 
-_NR-038 and AUTH-F5/NR-043 still may not be re-graded. Both live in
-`identity/trust/services.py` and `identity/services/workspace_service.py`
-respectively; the second is now executable, but NR-038's assurance writer is not,
-and NR-043's narrowing is only half the story until the trust routes that call it
-can run. That is NR-044.3._
+_**NR-044.3** then converted what was left and both were re-graded on evidence.
+It also surfaced **NR-052**: the gate deciding who may assert an assurance
+profile for another account filtered on a column that does not exist, so it had
+never evaluated — a control that failed closed by crashing. That is the third
+finding in this sequence (with NR-045 and NR-048) that was invisible purely
+because the code could not run._
 
 _**PROGRAM-EXT-001** then established the extensibility foundation on top of the
 registry that already loads, rather than building a second one. It added
@@ -123,19 +124,20 @@ since the first pass and now reflects all findings, not one session's._
 | NR-035 | P1  | Identity Platform | The `user_id` token claim is ambiguous across `users` and `lab_users` | FIXED — VERIFIED (AUTH-003; `act` discriminator, single fail-closed resolver) |
 | NR-036 | P1  | Platform-wide | The test schema is built from ORM metadata, so tests pass against tables no migration creates | FIXED — VERIFIED (TEST-001 + TEST-001.1; gate binding in CI) |
 | NR-037 | P1  | Identity Platform | Assurance was one scale across four independent verification purposes | FIXED — VERIFIED (AUTH-004; purpose-scoped profile, ADR-026) |
-| NR-038 | P1  | Identity Platform | The client supplies its own identity assurance level, assessor and evidence | PARTIALLY VERIFIED (AUTH-005; authorship removed, route still unexecutable — NR-044.1 opened the gate, not the handlers) |
+| NR-038 | P1  | Identity Platform | The client supplies its own identity assurance level, assessor and evidence | **FIXED — VERIFIED** (NR-044.3). Proved behaviourally at last: no verification record → floor assurance; only a record written through the real state machine raises it; the overall is the weakest axis, so authentication strength cannot lift an unproofed identity; acting for another account is refused with 403 |
 | NR-039 | P1  | Identity Platform | `users.is_verified` means both "a code was received" and "identity confirmed" | FIXED — VERIFIED (AUTH-005; linkage requires identity L2) |
 | NR-040 | P2  | Identity Platform | The canonical verification domain had a reader and no writer | FIXED — VERIFIED (AUTH-005; VerificationWorkflow) |
 | NR-041 | P2  | Identity Platform | MFA exists for staff only, and its service takes an undiscriminated integer id | OPEN |
 | NR-042 | P3  | National Platform | The declared biometrics table points at raw biometric data | OPEN — DO NOT BUILD |
-| NR-043 | P2  | Identity Platform | Workspace eligibility ignored the organization's own standing | PARTIALLY VERIFIED (AUTH-005; `list_eligible` is executable since NR-044.2 and proven against PostgreSQL, but the trust routes that consume it are NR-044.3) |
-| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | PARTIALLY RESOLVED — **NR-044.1 and NR-044.2 are VERIFIED**. The ALLOW path returns 200, and the service layer (authentication, workspace, membership, authorization decision, both audit writers) now reaches PostgreSQL. Ledger 40 → 20 modules. NR-044.3–.5 remain open |
+| NR-043 | P2  | Identity Platform | Workspace eligibility ignored the organization's own standing | **FIXED — VERIFIED** (NR-044.3). Deactivating the organization removes its workspace from an active representative's eligible set; suspending it does too. One fact changes between assertions, so the predicate is what is proved. AUTH-F5's open half (should membership confer eligibility?) is a policy decision and unchanged |
+| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | **RESOLVED for every reachable path** — .1, .2 and .3 all VERIFIED. Ledger 50 → 40 → 20 → **4**, and the four that remain are inside the dead `app/capabilities/` tree (NR-050), unreachable twice over. One Class B coroutine is preserved deliberately: `test_fhir_connection` makes a real httpx call, and only its database work was converted |
 | NR-045 | P1  | Clinical Gateway | `CanonicalAuditService` cannot write a row, so every clinical-gateway request answers 503 | **VERIFIED** — `IdentityAuditEntry.uuid` now carries the canonical default; the gateway answers 403 where it answered 503 and the denial is readable in `niam_audit_entries` with a valid hash chain. No migration, no constraint weakened |
 | NR-047 | P1  | Operational models | The `Organization` ORM does not match the `organizations` table | **VERIFIED** — `org_id`/`org_type` mapped onto the existing `organization_id`/`organization_type`; `updated_at` removed from the ORM (read by nothing) rather than added; only `parent_org_id` added, by additive migration `20260913_0001`. Bootstrap now completes and is idempotent for organizations; the clinical ALLOW path returns **200** |
 | NR-046 | P2  | Identity Platform | The NIAM actor dependency does not consult `UserSession.expires_at` | OPEN — pre-existing, not a NR-044.1 regression; bounded by the access token's own enforced `exp` |
 | NR-048 | P1  | Clinical Gateway | The gateway reported any internal fault as an authorization denial | **VERIFIED** (NR-044.2) — `except Exception → invalid_context` narrowed to the context service's own denial vocabulary. This is how NR-047's `UndefinedColumn` reached clients as a 403 and was written into the audit chain as a decision nobody made |
 | NR-049 | P2  | Identity Platform | The NR-044 ledger could not see a module that stored its session as `self._session` | OPEN (module) / FIXED (guard) — widening the owner rule raised the ledger from 19 to 20 and surfaced `reference/infrastructure/repositories.py`, invisible for as long as the ledger has existed. Converting it belongs to NR-044.3 |
 | NR-050 | P2  | Platform / Capabilities | All ten packages under `app/capabilities/` fail to import | OPEN — **DECISION REQUIRED**. 268 files, 40 of 40 modules raise `ModuleNotFoundError`; `execute()` returns `{"success": True}`. Only `fhir_interoperability`'s models and routes are live, and only because `factory.py` imports them by relative path. Complete them, or retire them |
+| NR-052 | P1  | Identity Platform | The assurance-profile administrator gate filtered on a column that does not exist | **VERIFIED** (NR-044.3) — `Assignment.account_id` is not a column, so the gate raised `AttributeError` rather than deciding. It failed closed, as a 500, and had never once been evaluated: NR-044 meant the route could not run. Now joins account → identity → person |
 | NR-051 | P2  | Platform / Capabilities | Six reusable concepts have 2–4 implementations and no canonical owner | OPEN — **DECISION REQUIRED**. Notification ×4, document ×3+1 dead, workflow ×3+1 dead, consent ×3+1 dead, audit ×3 writers, terminology ×2 same-named classes. *Reuse Before Build* cannot be followed while nothing says what to reuse |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance

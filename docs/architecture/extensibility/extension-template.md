@@ -120,9 +120,8 @@ exists and its chain verifies.
 
 ## 7. Before opening the PR
 
-Run these locally. On a feature-branch PR the extensibility guards are not
-executed by any workflow — see README.md — so local is the only place they run
-until the change reaches `main`.
+Run these locally first; CI runs the guards too, in the IAM workflow's backend
+job on every pull request.
 
 ```bash
 cd backend

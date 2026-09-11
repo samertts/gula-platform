@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.certificates.models import (
@@ -57,10 +57,10 @@ def _now() -> datetime:
 
 class CertificateService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def issue_certificate(
+    def issue_certificate(
         self,
         cert_type: str,
         subject: str,
@@ -108,15 +108,15 @@ class CertificateService:
             is_active=True,
         )
         self.session.add(cert)
-        await self.session.flush()
+        self.session.flush()
         return cert
 
-    async def revoke_certificate(self, certificate_id: str, reason: str) -> DigitalCertificate | None:
+    def revoke_certificate(self, certificate_id: str, reason: str) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(
             DigitalCertificate.certificate_id == certificate_id,
             DigitalCertificate.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         cert = result.scalar_one_or_none()
         if not cert:
             return None
@@ -126,14 +126,14 @@ class CertificateService:
         cert.revocation_reason = reason
         cert.revocation_date = now
         cert.is_active = False
-        await self.session.flush()
+        self.session.flush()
         return cert
 
-    async def rotate_certificate(self, certificate_id: str) -> DigitalCertificate | None:
+    def rotate_certificate(self, certificate_id: str) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(
             DigitalCertificate.certificate_id == certificate_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         old_cert = result.scalar_one_or_none()
         if not old_cert:
             return None
@@ -141,7 +141,7 @@ class CertificateService:
         old_cert.status = "expired"
         old_cert.is_active = False
 
-        new_cert = await self.issue_certificate(
+        new_cert = self.issue_certificate(
             cert_type=old_cert.certificate_type,
             subject=old_cert.subject,
             issuer=old_cert.issuer,
@@ -155,14 +155,14 @@ class CertificateService:
         )
         new_cert.last_rotated_at = _now()
         old_cert.last_rotated_at = _now()
-        await self.session.flush()
+        self.session.flush()
         return new_cert
 
-    async def validate_certificate(self, thumbprint: str) -> dict[str, Any]:
+    def validate_certificate(self, thumbprint: str) -> dict[str, Any]:
         stmt = select(DigitalCertificate).where(
             DigitalCertificate.thumbprint == thumbprint,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         cert = result.scalar_one_or_none()
         if not cert:
             return {"valid": False, "reason": "not_found"}
@@ -175,12 +175,12 @@ class CertificateService:
             return {"valid": False, "reason": "expired", "expires_at": cert.expires_at.isoformat()}
         return {"valid": True, "subject": cert.subject, "certificate_type": cert.certificate_type, "expires_at": cert.expires_at.isoformat() if cert.expires_at else None}
 
-    async def get_certificate(self, thumbprint: str) -> DigitalCertificate | None:
+    def get_certificate(self, thumbprint: str) -> DigitalCertificate | None:
         stmt = select(DigitalCertificate).where(DigitalCertificate.thumbprint == thumbprint)
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_for_organization(self, org_id: str) -> list[DigitalCertificate]:
+    def list_for_organization(self, org_id: str) -> list[DigitalCertificate]:
         stmt = (
             select(DigitalCertificate)
             .where(
@@ -189,10 +189,10 @@ class CertificateService:
             )
             .order_by(DigitalCertificate.issued_at.desc())
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def list_expiring(self, days: int = 30) -> list[DigitalCertificate]:
+    def list_expiring(self, days: int = 30) -> list[DigitalCertificate]:
         cutoff = _now() + timedelta(days=days)
         stmt = (
             select(DigitalCertificate)
@@ -204,7 +204,7 @@ class CertificateService:
             )
             .order_by(DigitalCertificate.expires_at.asc())
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
     @staticmethod
@@ -214,10 +214,10 @@ class CertificateService:
 
 class CertificateAuthorityService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def register_ca(
+    def register_ca(
         self,
         name: str,
         ca_type: str,
@@ -260,28 +260,28 @@ class CertificateAuthorityService:
             is_active=True,
         )
         self.session.add(ca)
-        await self.session.flush()
+        self.session.flush()
         return ca
 
-    async def get_ca(self, ca_id: str) -> CertificateAuthority | None:
+    def get_ca(self, ca_id: str) -> CertificateAuthority | None:
         stmt = select(CertificateAuthority).where(
             CertificateAuthority.ca_id == ca_id,
             CertificateAuthority.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_cas(self) -> list[CertificateAuthority]:
+    def list_cas(self) -> list[CertificateAuthority]:
         stmt = (
             select(CertificateAuthority)
             .where(CertificateAuthority.is_active.is_(True))
             .order_by(CertificateAuthority.valid_from.desc())
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def generate_crl(self, ca_id: str) -> CertificateRevocationList | None:
-        ca = await self.get_ca(ca_id)
+    def generate_crl(self, ca_id: str) -> CertificateRevocationList | None:
+        ca = self.get_ca(ca_id)
         if not ca:
             return None
 
@@ -289,7 +289,7 @@ class CertificateAuthorityService:
             DigitalCertificate.issuer_ca_id == ca.id,
             DigitalCertificate.status == "revoked",
         )
-        result = await self.session.execute(revoked)
+        result = self.session.execute(revoked)
         revoked_certs = list(result.scalars().all())
 
         revoked_list = []
@@ -321,11 +321,11 @@ class CertificateAuthorityService:
         )
         self.session.add(crl)
         ca.revoked_certificate_count = (ca.revoked_certificate_count or 0) + 1
-        await self.session.flush()
+        self.session.flush()
         return crl
 
-    async def get_crl(self, ca_id: str) -> CertificateRevocationList | None:
-        ca = await self.get_ca(ca_id)
+    def get_crl(self, ca_id: str) -> CertificateRevocationList | None:
+        ca = self.get_ca(ca_id)
         if not ca:
             return None
         stmt = (
@@ -337,7 +337,7 @@ class CertificateAuthorityService:
             .order_by(CertificateRevocationList.this_update.desc())
             .limit(1)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     @staticmethod
@@ -347,10 +347,10 @@ class CertificateAuthorityService:
 
 class APIKeyService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def generate_key(
+    def generate_key(
         self,
         name: str,
         organization_id: str,
@@ -388,15 +388,15 @@ class APIKeyService:
             is_active=True,
         )
         self.session.add(ak)
-        await self.session.flush()
+        self.session.flush()
         return ak, raw_key
 
-    async def validate_key(self, key_prefix: str, key: str) -> APIKey | None:
+    def validate_key(self, key_prefix: str, key: str) -> APIKey | None:
         stmt = select(APIKey).where(
             APIKey.key_prefix == key_prefix,
             APIKey.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         ak = result.scalar_one_or_none()
         if not ak:
             return None
@@ -410,25 +410,25 @@ class APIKeyService:
 
         return ak
 
-    async def revoke_key(self, api_key_id: str) -> APIKey | None:
+    def revoke_key(self, api_key_id: str) -> APIKey | None:
         stmt = select(APIKey).where(
             APIKey.api_key_id == api_key_id,
             APIKey.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         ak = result.scalar_one_or_none()
         if not ak:
             return None
         ak.status = "revoked"
         ak.is_active = False
-        await self.session.flush()
+        self.session.flush()
         return ak
 
-    async def rotate_key(self, api_key_id: str) -> tuple[APIKey, str] | None:
+    def rotate_key(self, api_key_id: str) -> tuple[APIKey, str] | None:
         stmt = select(APIKey).where(
             APIKey.api_key_id == api_key_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         old_ak = result.scalar_one_or_none()
         if not old_ak:
             return None
@@ -437,7 +437,7 @@ class APIKeyService:
         old_ak.is_active = False
         old_ak.rotated_at = _now()
 
-        new_ak, raw_key = await self.generate_key(
+        new_ak, raw_key = self.generate_key(
             name=old_ak.name,
             organization_id=old_ak.organization_id,
             enterprise_account_id=old_ak.enterprise_account_id,
@@ -450,10 +450,10 @@ class APIKeyService:
             created_by=old_ak.created_by,
             expires_at=old_ak.expires_at,
         )
-        await self.session.flush()
+        self.session.flush()
         return new_ak, raw_key
 
-    async def list_for_organization(self, org_id: str) -> list[APIKey]:
+    def list_for_organization(self, org_id: str) -> list[APIKey]:
         stmt = (
             select(APIKey)
             .where(
@@ -462,12 +462,12 @@ class APIKeyService:
             )
             .order_by(APIKey.created_at.desc())
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_by_id(self, api_key_id: str) -> APIKey | None:
+    def get_by_id(self, api_key_id: str) -> APIKey | None:
         stmt = select(APIKey).where(APIKey.api_key_id == api_key_id)
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
     @staticmethod

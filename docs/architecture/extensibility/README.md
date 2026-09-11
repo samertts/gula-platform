@@ -26,18 +26,17 @@ Read in this order:
 Enforced by `backend/tests/test_extensibility_guards.py`. Contract types live in
 `backend/app/kernel/types.py`; validation in `backend/app/kernel/extensibility.py`.
 
-**Where the guards do and do not run today.** `ci.yml`'s Backend Tests job runs
-`pytest tests/`, which includes this file — but that workflow triggers only on
-pushes to `main`/`staging`/`release/*` and on pull requests *targeting*
-`main`/`staging`. On a feature branch whose PR targets another feature branch,
-the only backend workflow that runs is `iam-hardening.yml`, and its jobs name
-their test paths explicitly: `tests/identity`, the clinical-gateway files, a
-migration set and a security set. None of them includes this file.
+**Where the guards run.** `backend/tests/test_extensibility_guards.py` is
+executed by the **Backend identity unit and compile gates** job in
+`.github/workflows/iam-hardening.yml`, which triggers on every pull request.
+That job is blocking — no `continue-on-error` on the test step.
 
-So these guards are gated on the path to `main` and **not** on a feature-branch
-PR. Closing that gap means adding one path to `iam-hardening.yml`, and CI
-pipeline modifications require human approval (`CLAUDE.md`), so it has not been
-done. Run them locally before opening a PR:
+It is also picked up by `ci.yml`'s Backend Tests job (`pytest tests/`), but that
+workflow only triggers on pushes to `main`/`staging`/`release/*` and on pull
+requests targeting them, so on a feature-branch PR the IAM job is the one doing
+the work. The guards need no database.
+
+Run them locally before opening a PR:
 
 ```bash
 cd backend && python3 -m pytest tests/test_extensibility_guards.py -q

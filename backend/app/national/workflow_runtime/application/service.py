@@ -81,29 +81,29 @@ class WorkflowRuntimeService:
         self._state_machine = WorkflowStateMachine()
         self._saga_engine = SagaEngine()
 
-    async def create_definition(
+    def create_definition(
         self, definition: WorkflowDefinition,
     ) -> WorkflowDefinition:
-        existing = await self._def_repo.find_active_version(definition.type)
+        existing = self._def_repo.find_active_version(definition.type)
         if existing:
             definition.version = existing.version + 1
-        return await self._def_repo.save(definition)
+        return self._def_repo.save(definition)
 
-    async def get_definition(self, definition_id: str) -> WorkflowDefinition | None:
-        return await self._def_repo.get(definition_id)
+    def get_definition(self, definition_id: str) -> WorkflowDefinition | None:
+        return self._def_repo.get(definition_id)
 
-    async def list_definitions(
+    def list_definitions(
         self, skip: int = 0, limit: int = 100, filters: dict | None = None,
     ) -> list[WorkflowDefinition]:
-        return await self._def_repo.list(skip=skip, limit=limit, filters=filters)
+        return self._def_repo.list(skip=skip, limit=limit, filters=filters)
 
-    async def list_versions(self, workflow_type: str) -> list[WorkflowDefinition]:
-        return await self._def_repo.list_versions(workflow_type)
+    def list_versions(self, workflow_type: str) -> list[WorkflowDefinition]:
+        return self._def_repo.list_versions(workflow_type)
 
-    async def delete_definition(self, definition_id: str) -> bool:
-        return await self._def_repo.delete(definition_id)
+    def delete_definition(self, definition_id: str) -> bool:
+        return self._def_repo.delete(definition_id)
 
-    async def start_execution(
+    def start_execution(
         self,
         workflow_type: str,
         input_data: dict[str, Any],
@@ -112,7 +112,7 @@ class WorkflowRuntimeService:
         created_by: str | None = None,
         tenant_id: str | None = None,
     ) -> WorkflowExecution:
-        definition = await self._def_repo.find_active_version(workflow_type)
+        definition = self._def_repo.find_active_version(workflow_type)
         if not definition:
             raise WorkflowNotFoundError(workflow_type)
 
@@ -130,21 +130,21 @@ class WorkflowRuntimeService:
             tenant_id=tenant_id,
             context={"saga_id": saga_id},
         )
-        execution = await self._exec_repo.save(execution)
+        execution = self._exec_repo.save(execution)
 
         try:
-            await self._execute_steps(execution, definition)
+            self._execute_steps(execution, definition)
         except Exception as e:
             execution.status = WorkflowExecutionStatus.FAILED
             execution.error = str(e)
             execution.completed_at = datetime.now(UTC)
-            await self._exec_repo.save(execution)
+            self._exec_repo.save(execution)
             if definition.compensation_strategy != CompensationStrategy.NONE:
-                await self._compensate(execution, definition)
+                self._compensate(execution, definition)
 
         return execution
 
-    async def _execute_steps(
+    def _execute_steps(
         self, execution: WorkflowExecution, definition: WorkflowDefinition,
     ) -> None:
         steps = definition.ordered_steps()
@@ -155,7 +155,7 @@ class WorkflowRuntimeService:
                 break
 
             execution.current_step = step_def.id
-            await self._exec_repo.save(execution)
+            self._exec_repo.save(execution)
 
             step_exec = WorkflowExecutionStep(
                 id=str(uuid.uuid4()),
@@ -165,22 +165,22 @@ class WorkflowRuntimeService:
                 status=WorkflowStepStatus.RUNNING,
                 started_at=datetime.now(UTC),
             )
-            step_exec = await self._step_repo.save(step_exec)
+            step_exec = self._step_repo.save(step_exec)
 
             if step_def.approval_required and self._approval_handler:
                 step_exec.status = WorkflowStepStatus.PENDING
-                await self._step_repo.save(step_exec)
-                await self._approval_handler.request_approval(
+                self._step_repo.save(step_exec)
+                self._approval_handler.request_approval(
                     execution.id, step_def.id, step_def.assigned_roles, execution.context,
                 )
                 if self._notifier:
-                    await self._notifier.notify_approval_required(
+                    self._notifier.notify_approval_required(
                         execution.id, step_def.name, step_def.assigned_roles,
                 )
                 continue
 
             try:
-                result = await self._execute_step(step_def, execution, step_exec)
+                result = self._execute_step(step_def, execution, step_exec)
                 step_exec.status = WorkflowStepStatus.COMPLETED
                 step_exec.result = result
                 step_exec.completed_at = datetime.now(UTC)
@@ -188,11 +188,11 @@ class WorkflowRuntimeService:
                     step_exec.duration_ms = (
                         step_exec.completed_at - step_exec.started_at
                     ).total_seconds() * 1000
-                await self._step_repo.save(step_exec)
+                self._step_repo.save(step_exec)
 
                 if execution.context.get("saga_id"):
                     saga_id = execution.context["saga_id"]
-                    await self._saga_engine.complete_step(saga_id, step_def.id, result)
+                    self._saga_engine.complete_step(saga_id, step_def.id, result)
                 completed_step_ids.append(step_def.id)
 
             except Exception as e:
@@ -200,29 +200,29 @@ class WorkflowRuntimeService:
                 step_exec.error = str(e)
                 step_exec.attempt += 1
                 step_exec.completed_at = datetime.now(UTC)
-                await self._step_repo.save(step_exec)
+                self._step_repo.save(step_exec)
 
                 if execution.context.get("saga_id"):
                     saga_id = execution.context["saga_id"]
-                    await self._saga_engine.fail_step(saga_id, step_def.id, str(e))
+                    self._saga_engine.fail_step(saga_id, step_def.id, str(e))
 
                 retry_policy = step_def.retry_policy or RetryPolicyConfig()
                 if step_exec.attempt < retry_policy.max_retries:
                     step_exec.status = WorkflowStepStatus.RETRYING
-                    await self._step_repo.save(step_exec)
+                    self._step_repo.save(step_exec)
                     raise WorkflowStepFailedError(execution.id, step_def.id, str(e)) from e
 
                 execution.status = WorkflowExecutionStatus.FAILED
                 execution.error = f"Step {step_def.name} failed: {e}"
                 execution.completed_at = datetime.now(UTC)
-                await self._exec_repo.save(execution)
+                self._exec_repo.save(execution)
                 return
 
         execution.status = WorkflowExecutionStatus.COMPLETED
         execution.completed_at = datetime.now(UTC)
-        await self._exec_repo.save(execution)
+        self._exec_repo.save(execution)
 
-    async def _execute_step(
+    def _execute_step(
         self,
         step_def: WorkflowStepDefinition,
         execution: WorkflowExecution,
@@ -232,26 +232,26 @@ class WorkflowRuntimeService:
         input_data.update(execution.context)
 
         if self._step_executor:
-            return await self._step_executor.execute(
+            return self._step_executor.execute(
                 step_def.type, step_def.name, input_data, execution.context,
             )
         return {"executed": True, "step": step_def.name}
 
-    async def _compensate(
+    def _compensate(
         self, execution: WorkflowExecution, definition: WorkflowDefinition,
     ) -> None:
-        steps = await self._step_repo.find_by_execution(execution.id)
+        steps = self._step_repo.find_by_execution(execution.id)
         completed = [s for s in steps if s.status == WorkflowStepStatus.COMPLETED]
 
         saga_id = execution.context.get("saga_id", str(uuid.uuid4()))
-        await self._saga_engine.compensate(saga_id, [s.step_id for s in completed])
+        self._saga_engine.compensate(saga_id, [s.step_id for s in completed])
 
         execution.status = WorkflowExecutionStatus.COMPENSATED
         execution.completed_at = datetime.now(UTC)
-        await self._exec_repo.save(execution)
+        self._exec_repo.save(execution)
 
-    async def cancel_execution(self, execution_id: str, reason: str | None = None) -> WorkflowExecution:
-        execution = await self._exec_repo.get(execution_id)
+    def cancel_execution(self, execution_id: str, reason: str | None = None) -> WorkflowExecution:
+        execution = self._exec_repo.get(execution_id)
         if not execution:
             raise WorkflowExecutionNotFoundError(execution_id)
         execution.status = self._state_machine.transition(
@@ -259,39 +259,39 @@ class WorkflowRuntimeService:
         )
         execution.completed_at = datetime.now(UTC)
         execution.error = reason
-        return await self._exec_repo.save(execution)
+        return self._exec_repo.save(execution)
 
-    async def pause_execution(self, execution_id: str, reason: str | None = None) -> WorkflowExecution:
-        execution = await self._exec_repo.get(execution_id)
+    def pause_execution(self, execution_id: str, reason: str | None = None) -> WorkflowExecution:
+        execution = self._exec_repo.get(execution_id)
         if not execution:
             raise WorkflowExecutionNotFoundError(execution_id)
         execution.status = self._state_machine.transition(
             execution_id, execution.status, WorkflowExecutionStatus.PAUSED,
         )
-        return await self._exec_repo.save(execution)
+        return self._exec_repo.save(execution)
 
-    async def resume_execution(self, execution_id: str) -> WorkflowExecution:
-        execution = await self._exec_repo.get(execution_id)
+    def resume_execution(self, execution_id: str) -> WorkflowExecution:
+        execution = self._exec_repo.get(execution_id)
         if not execution:
             raise WorkflowExecutionNotFoundError(execution_id)
         execution.status = self._state_machine.transition(
             execution_id, execution.status, WorkflowExecutionStatus.RUNNING,
         )
-        return await self._exec_repo.save(execution)
+        return self._exec_repo.save(execution)
 
-    async def retry_step(
+    def retry_step(
         self, execution_id: str, step_id: str,
     ) -> WorkflowExecutionStep:
-        step = await self._step_repo.find_by_execution_and_step(execution_id, step_id)
+        step = self._step_repo.find_by_execution_and_step(execution_id, step_id)
         if not step:
             raise WorkflowStepFailedError(execution_id, step_id, "Step not found")
         step.status = WorkflowStepStatus.RUNNING
         step.attempt += 1
         step.error = None
         step.started_at = datetime.now(UTC)
-        return await self._step_repo.save(step)
+        return self._step_repo.save(step)
 
-    async def approve_step(
+    def approve_step(
         self,
         execution_id: str,
         step_id: str,
@@ -307,9 +307,9 @@ class WorkflowRuntimeService:
             comments=comments,
             responded_at=datetime.now(UTC),
         )
-        return await self._approval_repo.save(approval)
+        return self._approval_repo.save(approval)
 
-    async def reject_step(
+    def reject_step(
         self,
         execution_id: str,
         step_id: str,
@@ -325,39 +325,39 @@ class WorkflowRuntimeService:
             comments=comments,
             responded_at=datetime.now(UTC),
         )
-        return await self._approval_repo.save(approval)
+        return self._approval_repo.save(approval)
 
-    async def get_execution(self, execution_id: str) -> WorkflowExecution | None:
-        return await self._exec_repo.get(execution_id)
+    def get_execution(self, execution_id: str) -> WorkflowExecution | None:
+        return self._exec_repo.get(execution_id)
 
-    async def list_executions(
+    def list_executions(
         self, skip: int = 0, limit: int = 100, filters: dict | None = None,
     ) -> list[WorkflowExecution]:
-        return await self._exec_repo.list(skip=skip, limit=limit, filters=filters)
+        return self._exec_repo.list(skip=skip, limit=limit, filters=filters)
 
-    async def get_execution_steps(self, execution_id: str) -> list[WorkflowExecutionStep]:
-        return await self._step_repo.find_by_execution(execution_id)
+    def get_execution_steps(self, execution_id: str) -> list[WorkflowExecutionStep]:
+        return self._step_repo.find_by_execution(execution_id)
 
-    async def get_pending_approvals(self, user_id: str) -> list[WorkflowApproval]:
-        return await self._approval_repo.find_pending_for_user(user_id)
+    def get_pending_approvals(self, user_id: str) -> list[WorkflowApproval]:
+        return self._approval_repo.find_pending_for_user(user_id)
 
-    async def create_template(
+    def create_template(
         self, template: WorkflowTemplate,
     ) -> WorkflowTemplate:
-        return await self._template_repo.save(template)
+        return self._template_repo.save(template)
 
-    async def list_templates(
+    def list_templates(
         self, skip: int = 0, limit: int = 100, filters: dict | None = None,
     ) -> list[WorkflowTemplate]:
-        return await self._template_repo.list(skip=skip, limit=limit, filters=filters)
+        return self._template_repo.list(skip=skip, limit=limit, filters=filters)
 
-    async def instantiate_template(
+    def instantiate_template(
         self,
         template_id: str,
         parameters: dict[str, Any],
         created_by: str | None = None,
     ) -> WorkflowDefinition:
-        template = await self._template_repo.get(template_id)
+        template = self._template_repo.get(template_id)
         if not template:
             raise WorkflowNotFoundError(template_id)
         definition_data = dict(template.definition)
@@ -371,7 +371,7 @@ class WorkflowRuntimeService:
             type=template.category,
             created_by=created_by,
         )
-        return await self._def_repo.save(definition)
+        return self._def_repo.save(definition)
 
-    async def get_stats(self) -> dict[str, Any]:
-        return await self._exec_repo.get_stats()
+    def get_stats(self) -> dict[str, Any]:
+        return self._exec_repo.get_stats()

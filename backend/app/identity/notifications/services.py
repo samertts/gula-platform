@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 
@@ -14,10 +14,10 @@ from .models import NotificationPreference, NotificationQueue, NotificationTempl
 
 class NotificationService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def send_notification(
+    def send_notification(
         self,
         recipient_id: str,
         notification_type: str,
@@ -56,10 +56,10 @@ class NotificationService:
             is_active=True,
         )
         self.session.add(notification)
-        await self.session.flush()
+        self.session.flush()
         return notification
 
-    async def send_template(
+    def send_template(
         self,
         template_id: str,
         recipient_id: str,
@@ -72,7 +72,7 @@ class NotificationService:
             NotificationTemplate.template_id == template_id,
             NotificationTemplate.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         template = result.scalar_one_or_none()
         if not template:
             return None
@@ -113,49 +113,49 @@ class NotificationService:
             is_active=True,
         )
         self.session.add(notification)
-        await self.session.flush()
+        self.session.flush()
         return notification
 
-    async def mark_sent(self, queue_id: str) -> NotificationQueue | None:
+    def mark_sent(self, queue_id: str) -> NotificationQueue | None:
         stmt = select(NotificationQueue).where(
             NotificationQueue.queue_id == queue_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         notification = result.scalar_one_or_none()
         if not notification:
             return None
         notification.status = "sent"
         notification.sent_at = datetime.now(UTC)
-        await self.session.flush()
+        self.session.flush()
         return notification
 
-    async def mark_delivered(self, queue_id: str) -> NotificationQueue | None:
+    def mark_delivered(self, queue_id: str) -> NotificationQueue | None:
         stmt = select(NotificationQueue).where(
             NotificationQueue.queue_id == queue_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         notification = result.scalar_one_or_none()
         if not notification:
             return None
         notification.status = "delivered"
         notification.delivered_at = datetime.now(UTC)
-        await self.session.flush()
+        self.session.flush()
         return notification
 
-    async def mark_read(self, queue_id: str) -> NotificationQueue | None:
+    def mark_read(self, queue_id: str) -> NotificationQueue | None:
         stmt = select(NotificationQueue).where(
             NotificationQueue.queue_id == queue_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         notification = result.scalar_one_or_none()
         if not notification:
             return None
         notification.status = "read"
         notification.read_at = datetime.now(UTC)
-        await self.session.flush()
+        self.session.flush()
         return notification
 
-    async def get_pending(self, limit: int = 50) -> list[NotificationQueue]:
+    def get_pending(self, limit: int = 50) -> list[NotificationQueue]:
         stmt = (
             select(NotificationQueue)
             .where(
@@ -165,10 +165,10 @@ class NotificationService:
             .order_by(NotificationQueue.priority.asc(), NotificationQueue.scheduled_at)
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_preferences(
+    def get_preferences(
         self,
         recipient_id: str,
     ) -> list[NotificationPreference]:
@@ -176,10 +176,10 @@ class NotificationService:
             NotificationPreference.recipient_id == recipient_id,
             NotificationPreference.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def update_preferences(
+    def update_preferences(
         self,
         recipient_id: str,
         category: str,
@@ -195,7 +195,7 @@ class NotificationService:
             NotificationPreference.channel == channel,
             NotificationPreference.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         preference = result.scalar_one_or_none()
 
         if preference:
@@ -221,10 +221,10 @@ class NotificationService:
             )
             self.session.add(preference)
 
-        await self.session.flush()
+        self.session.flush()
         return preference
 
-    async def create_template(
+    def create_template(
         self,
         template_id: str,
         name: str,
@@ -249,10 +249,10 @@ class NotificationService:
             is_active=False,
         )
         self.session.add(template)
-        await self.session.flush()
+        self.session.flush()
         return template
 
-    async def list_templates(
+    def list_templates(
         self,
         skip: int = 0,
         limit: int = 100,
@@ -263,10 +263,10 @@ class NotificationService:
             .offset(skip)
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_queue_for_recipient(
+    def get_queue_for_recipient(
         self,
         recipient_id: str,
         skip: int = 0,
@@ -282,5 +282,5 @@ class NotificationService:
             .offset(skip)
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())

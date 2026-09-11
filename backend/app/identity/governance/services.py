@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.governance.models import (
@@ -26,12 +26,12 @@ def _now() -> datetime:
 
 class GovernanceService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
     # ── Authorities ───────────────────────────────────────────────────────────
 
-    async def create_authority(
+    def create_authority(
         self,
         authority_id: str,
         name_en: str,
@@ -60,18 +60,18 @@ class GovernanceService:
             is_active=True,
         )
         self.session.add(authority)
-        await self.session.flush()
+        self.session.flush()
         return authority
 
-    async def get_authority(self, authority_id: str) -> IdentityAuthority | None:
+    def get_authority(self, authority_id: str) -> IdentityAuthority | None:
         stmt = select(IdentityAuthority).where(
             IdentityAuthority.authority_id == authority_id,
             IdentityAuthority.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_authorities(
+    def list_authorities(
         self,
         authority_type: str | None = None,
     ) -> list[IdentityAuthority]:
@@ -81,39 +81,39 @@ class GovernanceService:
         if authority_type:
             stmt = stmt.where(IdentityAuthority.authority_type == authority_type)
         stmt = stmt.order_by(IdentityAuthority.name_en)
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def suspend_authority(self, authority_id: str) -> IdentityAuthority | None:
+    def suspend_authority(self, authority_id: str) -> IdentityAuthority | None:
         stmt = select(IdentityAuthority).where(
             IdentityAuthority.authority_id == authority_id,
             IdentityAuthority.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         authority = result.scalar_one_or_none()
         if authority:
             authority.status = "suspended"
             authority.is_active = False
             authority.updated_at = _now()
-            await self.session.flush()
+            self.session.flush()
         return authority
 
-    async def activate_authority(self, authority_id: str) -> IdentityAuthority | None:
+    def activate_authority(self, authority_id: str) -> IdentityAuthority | None:
         stmt = select(IdentityAuthority).where(
             IdentityAuthority.authority_id == authority_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         authority = result.scalar_one_or_none()
         if authority:
             authority.status = "active"
             authority.is_active = True
             authority.updated_at = _now()
-            await self.session.flush()
+            self.session.flush()
         return authority
 
     # ── Councils ──────────────────────────────────────────────────────────────
 
-    async def create_council(
+    def create_council(
         self,
         council_id: str,
         name_en: str,
@@ -142,18 +142,18 @@ class GovernanceService:
             is_active=True,
         )
         self.session.add(council)
-        await self.session.flush()
+        self.session.flush()
         return council
 
-    async def get_council(self, council_id: str) -> DigitalIdentityCouncil | None:
+    def get_council(self, council_id: str) -> DigitalIdentityCouncil | None:
         stmt = select(DigitalIdentityCouncil).where(
             DigitalIdentityCouncil.council_id == council_id,
             DigitalIdentityCouncil.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_councils(
+    def list_councils(
         self,
         authority_id: str | None = None,
     ) -> list[DigitalIdentityCouncil]:
@@ -163,12 +163,12 @@ class GovernanceService:
         if authority_id:
             stmt = stmt.where(DigitalIdentityCouncil.authority_id == authority_id)
         stmt = stmt.order_by(DigitalIdentityCouncil.name_en)
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
     # ── Review Boards ─────────────────────────────────────────────────────────
 
-    async def create_review_board(
+    def create_review_board(
         self,
         board_id: str,
         name_en: str,
@@ -196,24 +196,24 @@ class GovernanceService:
             is_active=True,
         )
         self.session.add(board)
-        await self.session.flush()
+        self.session.flush()
         return board
 
-    async def get_review_board(self, board_id: str) -> IdentityReviewBoard | None:
+    def get_review_board(self, board_id: str) -> IdentityReviewBoard | None:
         stmt = select(IdentityReviewBoard).where(
             IdentityReviewBoard.board_id == board_id,
             IdentityReviewBoard.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
 
 class PolicyApprovalService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def submit_policy(
+    def submit_policy(
         self,
         policy_id: str,
         submitted_by: str,
@@ -229,10 +229,10 @@ class PolicyApprovalService:
             is_active=True,
         )
         self.session.add(workflow)
-        await self.session.flush()
+        self.session.flush()
         return workflow
 
-    async def review_policy(
+    def review_policy(
         self,
         workflow_id: str,
         reviewer: str,
@@ -243,7 +243,7 @@ class PolicyApprovalService:
             PolicyApprovalWorkflow.workflow_id == workflow_id,
             PolicyApprovalWorkflow.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         workflow = result.scalar_one_or_none()
         if not workflow:
             return None
@@ -261,10 +261,10 @@ class PolicyApprovalService:
         workflow.review_comments = review_comments
         workflow.status = "review"
         workflow.updated_at = _now()
-        await self.session.flush()
+        self.session.flush()
         return workflow
 
-    async def approve_policy(
+    def approve_policy(
         self,
         workflow_id: str,
         approved_by: str,
@@ -273,7 +273,7 @@ class PolicyApprovalService:
             PolicyApprovalWorkflow.workflow_id == workflow_id,
             PolicyApprovalWorkflow.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         workflow = result.scalar_one_or_none()
         if not workflow:
             return None
@@ -281,10 +281,10 @@ class PolicyApprovalService:
         workflow.approved_by = approved_by
         workflow.approved_at = _now()
         workflow.updated_at = _now()
-        await self.session.flush()
+        self.session.flush()
         return workflow
 
-    async def reject_policy(
+    def reject_policy(
         self,
         workflow_id: str,
         rejected_by: str,
@@ -294,7 +294,7 @@ class PolicyApprovalService:
             PolicyApprovalWorkflow.workflow_id == workflow_id,
             PolicyApprovalWorkflow.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         workflow = result.scalar_one_or_none()
         if not workflow:
             return None
@@ -303,10 +303,10 @@ class PolicyApprovalService:
         workflow.rejected_at = _now()
         workflow.rejection_reason = reason
         workflow.updated_at = _now()
-        await self.session.flush()
+        self.session.flush()
         return workflow
 
-    async def deploy_policy(
+    def deploy_policy(
         self,
         workflow_id: str,
     ) -> PolicyApprovalWorkflow | None:
@@ -314,16 +314,16 @@ class PolicyApprovalService:
             PolicyApprovalWorkflow.workflow_id == workflow_id,
             PolicyApprovalWorkflow.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         workflow = result.scalar_one_or_none()
         if not workflow:
             return None
         workflow.status = "deployed"
         workflow.updated_at = _now()
-        await self.session.flush()
+        self.session.flush()
         return workflow
 
-    async def get_pending_approvals(
+    def get_pending_approvals(
         self,
         reviewer_id: str,
     ) -> list[PolicyApprovalWorkflow]:
@@ -331,7 +331,7 @@ class PolicyApprovalService:
             PolicyApprovalWorkflow.status.in_(["draft", "review"]),
             PolicyApprovalWorkflow.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         all_pending = list(result.scalars().all())
         pending = []
         for wf in all_pending:
@@ -343,10 +343,10 @@ class PolicyApprovalService:
 
 class AppealService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def submit_appeal(
+    def submit_appeal(
         self,
         appeal_id: str,
         appellant_person_id: str,
@@ -367,10 +367,10 @@ class AppealService:
             is_active=True,
         )
         self.session.add(appeal)
-        await self.session.flush()
+        self.session.flush()
         return appeal
 
-    async def assign_to_council(
+    def assign_to_council(
         self,
         appeal_id: str,
         council_id: str,
@@ -379,7 +379,7 @@ class AppealService:
             IdentityAppeal.appeal_id == appeal_id,
             IdentityAppeal.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         appeal = result.scalar_one_or_none()
         if not appeal:
             return None
@@ -387,10 +387,10 @@ class AppealService:
         appeal.assigned_to = council_id
         appeal.status = "under_review"
         appeal.updated_at = _now()
-        await self.session.flush()
+        self.session.flush()
         return appeal
 
-    async def make_decision(
+    def make_decision(
         self,
         appeal_id: str,
         decision: str,
@@ -401,7 +401,7 @@ class AppealService:
             IdentityAppeal.appeal_id == appeal_id,
             IdentityAppeal.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         appeal = result.scalar_one_or_none()
         if not appeal:
             return None
@@ -411,10 +411,10 @@ class AppealService:
         appeal.notes = notes
         appeal.status = "approved" if decision.lower() in ("approve", "approved") else "rejected"
         appeal.updated_at = _now()
-        await self.session.flush()
+        self.session.flush()
         return appeal
 
-    async def escalate_appeal(
+    def escalate_appeal(
         self,
         appeal_id: str,
         reason: str,
@@ -423,17 +423,17 @@ class AppealService:
             IdentityAppeal.appeal_id == appeal_id,
             IdentityAppeal.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         appeal = result.scalar_one_or_none()
         if not appeal:
             return None
         appeal.status = "escalated"
         appeal.notes = (appeal.notes or "") + f"\n[ESCALATED] {reason}"
         appeal.updated_at = _now()
-        await self.session.flush()
+        self.session.flush()
         return appeal
 
-    async def get_appeals(
+    def get_appeals(
         self,
         status: str | None = None,
         person_id: str | None = None,
@@ -446,16 +446,16 @@ class AppealService:
         if person_id:
             stmt = stmt.where(IdentityAppeal.appellant_person_id == person_id)
         stmt = stmt.order_by(IdentityAppeal.created_at.desc())
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
 
 class SuspensionService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def suspend_identity(
+    def suspend_identity(
         self,
         person_id: str,
         identity_id: str,
@@ -484,10 +484,10 @@ class SuspensionService:
             is_active=True,
         )
         self.session.add(suspension)
-        await self.session.flush()
+        self.session.flush()
         return suspension
 
-    async def lift_suspension(
+    def lift_suspension(
         self,
         suspension_id: str,
         lifted_by: str,
@@ -497,7 +497,7 @@ class SuspensionService:
             IdentitySuspension.suspension_id == suspension_id,
             IdentitySuspension.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         suspension = result.scalar_one_or_none()
         if not suspension:
             return None
@@ -506,19 +506,19 @@ class SuspensionService:
         suspension.lifted_at = _now()
         suspension.lift_reason = reason
         suspension.updated_at = _now()
-        await self.session.flush()
+        self.session.flush()
         return suspension
 
-    async def get_active_suspensions(self) -> list[IdentitySuspension]:
+    def get_active_suspensions(self) -> list[IdentitySuspension]:
         stmt = select(IdentitySuspension).where(
             IdentitySuspension.status == "active",
             IdentitySuspension.is_active.is_(True),
         )
         stmt = stmt.order_by(IdentitySuspension.suspended_at.desc())
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_suspension_history(
+    def get_suspension_history(
         self,
         person_id: str,
     ) -> list[IdentitySuspension]:
@@ -527,10 +527,10 @@ class SuspensionService:
             IdentitySuspension.is_active.is_(True),
         )
         stmt = stmt.order_by(IdentitySuspension.suspended_at.desc())
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def expire_suspensions(self) -> int:
+    def expire_suspensions(self) -> int:
         now = _now()
         stmt = (
             update(IdentitySuspension)
@@ -545,17 +545,17 @@ class SuspensionService:
                 updated_at=now,
             )
         )
-        result = await self.session.execute(stmt)
-        await self.session.flush()
+        result = self.session.execute(stmt)
+        self.session.flush()
         return result.rowcount
 
 
 class RegistryService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def register_identity(
+    def register_identity(
         self,
         person_id: str,
         identity_id: str,
@@ -575,10 +575,10 @@ class RegistryService:
             is_active=True,
         )
         self.session.add(registration)
-        await self.session.flush()
+        self.session.flush()
         return registration
 
-    async def verify_registration(
+    def verify_registration(
         self,
         registry_id: str,
         verified_by: str,
@@ -587,7 +587,7 @@ class RegistryService:
             NationalIdentityRegistry.registry_id == registry_id,
             NationalIdentityRegistry.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         registration = result.scalar_one_or_none()
         if not registration:
             return None
@@ -596,10 +596,10 @@ class RegistryService:
         registration.verified_by = verified_by
         registration.last_verified = now
         registration.updated_at = now
-        await self.session.flush()
+        self.session.flush()
         return registration
 
-    async def certify_identity(
+    def certify_identity(
         self,
         certification_id: str,
         person_id: str,
@@ -630,10 +630,10 @@ class RegistryService:
             is_active=True,
         )
         self.session.add(cert)
-        await self.session.flush()
+        self.session.flush()
         return cert
 
-    async def get_registration(
+    def get_registration(
         self,
         person_id: str,
     ) -> NationalIdentityRegistry | None:
@@ -641,10 +641,10 @@ class RegistryService:
             NationalIdentityRegistry.person_id == person_id,
             NationalIdentityRegistry.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_certification(
+    def get_certification(
         self,
         person_id: str,
     ) -> IdentityCertificationRegistry | None:
@@ -652,10 +652,10 @@ class RegistryService:
             IdentityCertificationRegistry.person_id == person_id,
             IdentityCertificationRegistry.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def revoke_certification(
+    def revoke_certification(
         self,
         certification_id: str,
         reason: str,
@@ -664,12 +664,12 @@ class RegistryService:
             IdentityCertificationRegistry.certification_id == certification_id,
             IdentityCertificationRegistry.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         cert = result.scalar_one_or_none()
         if not cert:
             return None
         cert.status = "revoked"
         cert.revocation_reason = reason
         cert.updated_at = _now()
-        await self.session.flush()
+        self.session.flush()
         return cert

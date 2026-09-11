@@ -1,14 +1,14 @@
 {
   "document": "GULA Master Negative Register",
-  "generated": "2026-09-11T16:38:50Z",
+  "generated": "2026-09-11T17:12:19Z",
   "head_commit": "ac894767bf33dd160ae8131ee8570e29e31f7481",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 51,
+    "total": 52,
     "by_severity": {
       "P0": 10,
-      "P1": 19,
+      "P1": 20,
       "P2": 16,
       "P3": 6
     }
@@ -1368,7 +1368,7 @@
       "domain": "Identity Platform",
       "category": "Identity assurance",
       "title": "The client supplies its own identity assurance level, assessor and evidence",
-      "status": "PARTIALLY VERIFIED (AUTH-005)",
+      "status": "FIXED — VERIFIED (NR-044.3)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 38,
@@ -1378,12 +1378,12 @@
       "security_impact": "Identity assurance can be asserted rather than earned. Latent in the same way NR-035 was: the route sits behind NIAM authentication, which the application cannot reach with a legacy token, so it goes live with the AUTH-002 bridge.",
       "clinical_impact": "Any future gate on assurance before clinical access would be satisfiable by assertion.",
       "recommended_fix": "Derive the profile from VerificationRecord rows via AssuranceEngine; make ial/aal/fal server-computed and never request fields; bind the caller's authority to assert for that person_id.",
-      "verification": "backend/tests/test_identity_assurance_boundaries.py pins that ial/aal/fal/assessed_by/evidence are no longer request parameters and that the trust service derives from AssuranceEngine. test_identity_platform_runtime.py pins the TypeError and the absence of any async engine.",
+      "verification": "Behavioural, against migrated PostgreSQL, now that the path executes: test_an_account_with_no_identity_evidence_gets_the_floor_assurance_nr038 (no record -> IAL1/AAL1/FAL1, evidence derived_from=niam_verification_records, assessed_by is the actor); test_only_a_real_verification_record_raises_the_level_nr038 (the level moves only after VerificationWorkflow writes a verified record through the real state machine); test_the_overall_assurance_is_the_weakest_axis_not_the_average_nr038 (a raised IAL does not lift the overall while AAL and FAL are at the floor); test_asserting_for_another_account_needs_an_administrative_assignment_nr038 (the route gate refuses with 403). The static half — ial/aal/fal/assessed_by/evidence are not request parameters — remains pinned in test_identity_assurance_boundaries.py.",
       "affected_components": "backend/app/identity/trust/routes.py, backend/app/identity/trust/services.py",
       "discovered_by": "AUTH-004",
       "owner": "Identity Platform",
       "artifact": "docs/architecture/identity/verification-wiring.md",
-      "next_batch": "Requires a decision on who may assert assurance and on what evidence.",
+      "next_batch": "",
       "resolution": "POST /niam/trust/assurance-profiles now names a subject and nothing else. ial is derived from the account's identity-purpose assurance via AssuranceEngine; aal and fal sit at the floor because neither is derivable from verification records; assessed_by is the authenticated actor; acting for another account requires an active administrative assignment. _calculate_overall no longer averages IAL/AAL/FAL - the overall is the weakest axis, so authentication strength can no longer lift an unproofed identity. FINALIZATION CORRECTION: the route cannot execute at all (NR-044) — get_db yields a sync Session while the service awaits session.execute — so the behavioural proof AUTH-005 Phase 2 required cannot be produced for this path, and the finding is PARTIALLY VERIFIED rather than VERIFIED. It also means NR-038 was never exploitable: the route raised before a client-authored assurance level could be persisted.",
       "fixed_by": "AUTH-005"
     },
@@ -1489,7 +1489,7 @@
       "domain": "Identity Platform",
       "category": "Authorization",
       "title": "Workspace eligibility ignored the organization's own standing",
-      "status": "PARTIALLY VERIFIED (AUTH-005)",
+      "status": "FIXED — VERIFIED (NR-044.3)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 43,
@@ -1500,7 +1500,7 @@
       "clinical_impact": "Workspace access is the entry point to clinical context for organization members.",
       "recommended_fix": "Filter organization-derived workspaces to organizations that are active; this narrows access and is safe.",
       "resolution": "list_eligible now requires NIAMOrganization.is_active and status == 'active'. Memberships remain deliberately unconsulted (AUTH-F5). FINALIZATION CORRECTION: list_eligible cannot execute at runtime (NR-044), so this is correct code in an unreachable function. The narrowing stands; its behavioural proof is blocked.",
-      "verification": "tests/identity/ suite (174 passed). The change narrows access only.",
+      "verification": "test_a_deactivated_organization_loses_its_workspaces_nr043, against migrated PostgreSQL: an account with an active OrganizationRepresentative record is offered the organization's workspace; deactivating the organization removes it; restoring is_active and setting status='suspended' removes it again. One fact changes between assertions, so what is proved is the predicate rather than that the function returns a list. AUTH-F5's open half — whether membership should confer eligibility — is a policy decision and is unchanged.",
       "affected_components": "backend/app/identity/services/workspace_service.py",
       "discovered_by": "AUTH-005",
       "fixed_by": "AUTH-005",
@@ -1514,7 +1514,7 @@
       "domain": "Identity Platform",
       "category": "Runtime",
       "title": "The NIAM async service layer cannot execute — there is no async engine",
-      "status": "PARTIALLY RESOLVED (NR-044.1 and NR-044.2 VERIFIED; NR-044.3-.5 open)",
+      "status": "RESOLVED for every reachable path (NR-044.1/.2/.3 VERIFIED); 4 modules remain inside the dead NR-050 tree",
       "blocker": false,
       "can_fix_now": true,
       "priority": 44,
@@ -1529,8 +1529,8 @@
       "discovered_by": "AUTH-005 finalization",
       "owner": "Identity Platform",
       "artifact": "docs/architecture/identity/nr-044-decision.md; docs/architecture/identity/nr-044-blast-radius.json",
-      "next_batch": "NR-044.3: the remaining 20 ledger modules — identity/trust, identity/admin, identity/compliance, identity/federation, identity/governance, identity/notifications, identity/certificates, identity/adaptive_auth, identity/bootstrap, identity/workflows, capabilities/ (4), national/ (2) and reference/ (NR-049). NR-038 and AUTH-F5/NR-043 stay PARTIALLY VERIFIED until identity/trust/services.py is among them.",
-      "resolution": "NR-044.1 converted the ten modules of app/identity/repositories/ and the actor dependency in app/identity/api/workspaces.py to the synchronous Session. No AsyncEngine, AsyncSession, asyncpg, second pool or migration was introduced. The AST ledger shrank from 50 modules to 40 — exactly the ten repositories, added: []. PRECISE REACHABILITY: get_current_niam_actor now executes against PostgreSQL, so every /niam/* route passes its gate; the route handlers are still async and still await AsyncSession-annotated services, so an individual handler still raises TypeError past the gate. /niam/* is gated, not yet served — serving it is NR-044.2 (services) and NR-044.3 (routes). NR-038 and NR-043 therefore stay PARTIALLY VERIFIED; their behavioural proof needs the service layer, not the gate. TWO BEHAVIOUR CHANGES, not refactors: (1) the converged gate keeps the sync implementation's Account.is_locked filter, which the async twin omitted, so the gate is strictly tighter than either predecessor; (2) a latent ModuleNotFoundError was fixed — IdentityRepositoryBase.count read 'from sqlalchemy.func import count', and sqlalchemy.func is an attribute of the package, not a module; it was unreachable while the layer could not execute and surfaced on the first real call. NR-044.2 converted identity/services (16 modules), identity/api (13), identity/policy_engine.py and services/clinical_scope_bridge_service.py to the synchronous Session, and deleted SyncSessionAsyncFacade — the shim that made a sync Session look awaitable so the clinical gateway could drive async services with asyncio.run() inside a request. Ledger 40 -> 20 modules, none added. No AsyncEngine, AsyncSession, asyncpg or second pool was introduced; one Engine and one sessionmaker remain, asserted by test_exactly_one_database_engine_architecture_exists.",
+      "next_batch": "Nothing, unless NR-050 is decided. The four modules still in the ledger are capabilities/*/infrastructure/repository.py, whose packages raise ModuleNotFoundError; converting them means completing or retiring that tree, which is NR-050's decision.",
+      "resolution": "NR-044.1 converted the ten modules of app/identity/repositories/ and the actor dependency in app/identity/api/workspaces.py to the synchronous Session. No AsyncEngine, AsyncSession, asyncpg, second pool or migration was introduced. The AST ledger shrank from 50 modules to 40 — exactly the ten repositories, added: []. PRECISE REACHABILITY: get_current_niam_actor now executes against PostgreSQL, so every /niam/* route passes its gate; the route handlers are still async and still await AsyncSession-annotated services, so an individual handler still raises TypeError past the gate. /niam/* is gated, not yet served — serving it is NR-044.2 (services) and NR-044.3 (routes). NR-038 and NR-043 therefore stay PARTIALLY VERIFIED; their behavioural proof needs the service layer, not the gate. TWO BEHAVIOUR CHANGES, not refactors: (1) the converged gate keeps the sync implementation's Account.is_locked filter, which the async twin omitted, so the gate is strictly tighter than either predecessor; (2) a latent ModuleNotFoundError was fixed — IdentityRepositoryBase.count read 'from sqlalchemy.func import count', and sqlalchemy.func is an attribute of the package, not a module; it was unreachable while the layer could not execute and surfaced on the first real call. NR-044.2 converted identity/services (16 modules), identity/api (13), identity/policy_engine.py and services/clinical_scope_bridge_service.py to the synchronous Session, and deleted SyncSessionAsyncFacade — the shim that made a sync Session look awaitable so the clinical gateway could drive async services with asyncio.run() inside a request. Ledger 40 -> 20 modules, none added. No AsyncEngine, AsyncSession, asyncpg or second pool was introduced; one Engine and one sessionmaker remain, asserted by test_exactly_one_database_engine_architecture_exists. NR-044.3 converted the remaining identity sub-packages (trust, admin, compliance, federation, governance, notifications, certificates, adaptive_auth, bootstrap, workflows and their routes), reference/infrastructure (NR-049's module), and the two national repositories — task_engine and workflow_runtime — which were NOT dead: their routers are registered in factory.py and they import fine under the PYTHONPATH the application actually runs with. One Class B boundary was preserved deliberately: EnterprisePortalService.test_fhir_connection stays a coroutine because it makes a genuine httpx call to an external FHIR server; its database statements are synchronous. Ledger 20 -> 4.",
       "fixed_by": "NR-044.1 (partial)"
     },
     {
@@ -1699,6 +1699,31 @@
       "owner": "Platform Architecture",
       "artifact": "docs/architecture/extensibility/reusable-capabilities.md",
       "next_batch": "Blocked on six canonical-owner decisions."
+    },
+    {
+      "id": "NR-052",
+      "severity": "P1",
+      "domain": "Identity Platform",
+      "category": "Authorization gate that could not evaluate",
+      "title": "The assurance-profile administrator gate filtered on a column that does not exist",
+      "status": "VERIFIED (NR-044.3)",
+      "blocker": false,
+      "can_fix_now": true,
+      "priority": 52,
+      "description": "_require_assurance_administrator in app/identity/trust/routes.py is the gate that decides whether an actor may recompute an assurance profile for a different account. It filtered on Assignment.account_id, which is not a column on that model: an assignment belongs to a person, and an account reaches one through Account.identity_id -> IdentityRecord.person_id. The gate therefore raised AttributeError instead of deciding anything.",
+      "root_cause": "Written against the wrong side of the account/person split, and never executed. NR-044 meant the whole trust router could not run, so the error could not surface; AUTH-005 reviewed the predicate as source rather than as behaviour.",
+      "evidence": "`AttributeError: type object 'Assignment' has no attribute 'account_id'`, raised the first time the gate was called with a real session — which was the first time it had ever been called, in the NR-044.3 Part H proof. app/identity/models/assignment.py declares person_id, employment_id and organization_id; there is no account_id.",
+      "security_impact": "Fails closed, so nothing was ever wrongly allowed: the AttributeError propagates and the request is refused as a 500. The finding is that the control had never once been evaluated, so 'an active administrative assignment is required' was an untested claim, and the refusal was an availability failure wearing an authorization decision's clothes — the same confusion as NR-048.",
+      "clinical_impact": "None direct. Assurance profiles feed identity-linkage decisions, so a gate that cannot evaluate is a control gap in the chain that governs who may assert another person's identity assurance.",
+      "recommended_fix": "Join through the account's identity to the person, matching the chain ClinicalAuthorizationContextService already uses.",
+      "verification": "backend/tests/test_identity_link_and_assurance.py::test_asserting_for_another_account_needs_an_administrative_assignment_nr038 calls the gate with a real account and session against migrated PostgreSQL and asserts HTTP 403. Negative proof: restoring `Assignment.account_id` fails that test.",
+      "affected_components": "backend/app/identity/trust/routes.py",
+      "discovered_by": "NR-044.3 Part H (proving NR-038 once the path became reachable)",
+      "owner": "Identity Platform",
+      "artifact": "docs/architecture/identity/nr-044-decision.md",
+      "next_batch": "",
+      "fixed_by": "NR-044.3",
+      "resolution": "The gate joins Assignment to IdentityRecord on person_id and matches the actor's identity_id, keeping the identity's own active standing in the conjunction rather than trusting the account alone. The predicate is at least as strict as the one that was intended, and it now evaluates."
     }
   ]
 }

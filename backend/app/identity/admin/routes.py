@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.admin.models import (
@@ -27,9 +27,9 @@ from app.identity.services.canonical_audit import CanonicalAuditService
 router = APIRouter(prefix="/admin", tags=["NIAM Admin"])
 
 
-async def _require_permission(
+def _require_permission(
     actor: NiamActor,
-    db: AsyncSession,
+    db: Session,
     *,
     organization_id: str,
     permission_key: str,
@@ -57,20 +57,20 @@ def _safe_connection_payload(connection: FHIRConnection) -> dict[str, Any]:
 
 
 @router.post("/portals")
-async def create_portal(
+def create_portal(
     org_id: str,
     name: str,
     portal_type: str,
     features: str = "{}",
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_permission(actor, db, organization_id=org_id, permission_key="organization.manage")
+    _require_permission(actor, db, organization_id=org_id, permission_key="organization.manage")
     try:
         parsed_features = json.loads(features) if features else None
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="features must be valid JSON") from exc
-    portal = await EnterprisePortalService(db).create_portal(
+    portal = EnterprisePortalService(db).create_portal(
         org_id=org_id,
         name=name,
         portal_type=portal_type,
@@ -81,18 +81,18 @@ async def create_portal(
 
 
 @router.get("/portals/organization/{org_id}")
-async def list_org_portals(
+def list_org_portals(
     org_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_permission(actor, db, organization_id=org_id, permission_key="organization.read")
-    portals = await EnterprisePortalService(db).get_portals_for_org(org_id)
+    _require_permission(actor, db, organization_id=org_id, permission_key="organization.read")
+    portals = EnterprisePortalService(db).get_portals_for_org(org_id)
     return {"portals": [portal.to_dict() for portal in portals]}
 
 
 @router.post("/portals/{portal_id}/branches")
-async def add_branch(
+def add_branch(
     portal_id: str,
     org_id: str,
     name_en: str,
@@ -102,10 +102,10 @@ async def add_branch(
     email: str = "",
     manager_person_id: str = "",
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     portal = (
-        await db.execute(
+        db.execute(
             select(EnterprisePortal).where(EnterprisePortal.portal_id == portal_id, EnterprisePortal.is_active.is_(True)),
         )
     ).scalar_one_or_none()
@@ -113,8 +113,8 @@ async def add_branch(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Portal not found")
     if portal.organization_id != org_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Portal organization mismatch")
-    await _require_permission(actor, db, organization_id=portal.organization_id, permission_key="organization.manage")
-    branch = await EnterprisePortalService(db).add_branch(
+    _require_permission(actor, db, organization_id=portal.organization_id, permission_key="organization.manage")
+    branch = EnterprisePortalService(db).add_branch(
         portal_id=portal.id,
         org_id=portal.organization_id,
         name_en=name_en,
@@ -129,7 +129,7 @@ async def add_branch(
 
 
 @router.post("/branches/{branch_id}/facilities")
-async def add_facility(
+def add_facility(
     branch_id: str,
     org_id: str,
     name_en: str,
@@ -139,10 +139,10 @@ async def add_facility(
     accreditation: str = "",
     address: str = "",
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     branch = (
-        await db.execute(
+        db.execute(
             select(PortalBranch).where(PortalBranch.branch_id == branch_id, PortalBranch.is_active.is_(True)),
         )
     ).scalar_one_or_none()
@@ -150,8 +150,8 @@ async def add_facility(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Branch not found")
     if branch.organization_id != org_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Branch organization mismatch")
-    await _require_permission(actor, db, organization_id=branch.organization_id, permission_key="organization.manage")
-    facility = await EnterprisePortalService(db).add_facility(
+    _require_permission(actor, db, organization_id=branch.organization_id, permission_key="organization.manage")
+    facility = EnterprisePortalService(db).add_facility(
         branch_id=branch.id,
         org_id=branch.organization_id,
         name_en=name_en,
@@ -166,24 +166,24 @@ async def add_facility(
 
 
 @router.post("/facilities/{facility_id}/departments")
-async def add_department(
+def add_department(
     facility_id: str,
     name_en: str,
     name_ar: str,
     dept_type: str = "",
     head_person_id: str = "",
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     organization_id = (
-        await db.execute(
+        db.execute(
             select(PortalFacility.organization_id).where(PortalFacility.facility_id == facility_id, PortalFacility.is_active.is_(True)),
         )
     ).scalar_one_or_none()
     if organization_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Facility not found")
-    await _require_permission(actor, db, organization_id=organization_id, permission_key="organization.manage")
-    department = await EnterprisePortalService(db).add_department(
+    _require_permission(actor, db, organization_id=organization_id, permission_key="organization.manage")
+    department = EnterprisePortalService(db).add_department(
         facility_id=facility_id,
         name_en=name_en,
         name_ar=name_ar,
@@ -196,18 +196,18 @@ async def add_department(
 
 
 @router.get("/subscriptions/{org_id}")
-async def get_subscription(
+def get_subscription(
     org_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_permission(actor, db, organization_id=org_id, permission_key="organization.read")
-    subscription = await EnterprisePortalService(db).get_subscription(org_id)
+    _require_permission(actor, db, organization_id=org_id, permission_key="organization.read")
+    subscription = EnterprisePortalService(db).get_subscription(org_id)
     return {"subscription": subscription.to_dict() if subscription else None}
 
 
 @router.post("/subscriptions")
-async def create_subscription(
+def create_subscription(
     org_id: str,
     plan_type: str,
     user_limit: int = 0,
@@ -218,10 +218,10 @@ async def create_subscription(
     currency: str = "IQD",
     auto_renew: bool = False,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_permission(actor, db, organization_id=org_id, permission_key="subscription.manage")
-    subscription = await EnterprisePortalService(db).manage_subscription(
+    _require_permission(actor, db, organization_id=org_id, permission_key="subscription.manage")
+    subscription = EnterprisePortalService(db).manage_subscription(
         org_id=org_id,
         plan_type=plan_type,
         user_limit=user_limit or None,
@@ -237,23 +237,23 @@ async def create_subscription(
 
 
 @router.put("/subscriptions/{sub_id}")
-async def update_subscription(
+def update_subscription(
     sub_id: str,
     plan_type: str = "",
     billing_cycle: str = "",
     billing_amount: int = 0,
     auto_renew: bool = False,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     subscription = (
-        await db.execute(
+        db.execute(
             select(PortalSubscription).where(PortalSubscription.sub_id == sub_id, PortalSubscription.is_active.is_(True)),
         )
     ).scalar_one_or_none()
     if subscription is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Subscription not found")
-    await _require_permission(actor, db, organization_id=subscription.organization_id, permission_key="subscription.manage")
+    _require_permission(actor, db, organization_id=subscription.organization_id, permission_key="subscription.manage")
     kwargs: dict[str, Any] = {"auto_renew": auto_renew}
     if plan_type:
         kwargs["plan_type"] = plan_type
@@ -261,23 +261,23 @@ async def update_subscription(
         kwargs["billing_cycle"] = billing_cycle
     if billing_amount:
         kwargs["billing_amount"] = billing_amount
-    updated = await EnterprisePortalService(db).update_subscription(sub_id, actor_id=actor.account.id, **kwargs)
+    updated = EnterprisePortalService(db).update_subscription(sub_id, actor_id=actor.account.id, **kwargs)
     return {"subscription": updated.to_dict() if updated else None}
 
 
 @router.post("/fhir-connections")
-async def create_fhir_connection(
+def create_fhir_connection(
     org_id: str,
     name: str,
     fhir_version: str,
     base_url: str,
     auth_type: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_permission(actor, db, organization_id=org_id, permission_key="integration.manage")
+    _require_permission(actor, db, organization_id=org_id, permission_key="integration.manage")
     try:
-        connection = await EnterprisePortalService(db).create_fhir_connection(
+        connection = EnterprisePortalService(db).create_fhir_connection(
             org_id=org_id,
             name=name,
             fhir_version=fhir_version,
@@ -292,13 +292,13 @@ async def create_fhir_connection(
 
 
 @router.get("/fhir-connections/organization/{org_id}")
-async def list_fhir_connections(
+def list_fhir_connections(
     org_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_permission(actor, db, organization_id=org_id, permission_key="organization.read")
-    connections = await EnterprisePortalService(db).get_fhir_connections_for_org(org_id)
+    _require_permission(actor, db, organization_id=org_id, permission_key="organization.read")
+    connections = EnterprisePortalService(db).get_fhir_connections_for_org(org_id)
     return {"fhir_connections": [_safe_connection_payload(connection) for connection in connections]}
 
 
@@ -306,26 +306,30 @@ async def list_fhir_connections(
 async def test_fhir_connection(
     conn_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
     connection = (
-        await db.execute(
+        db.execute(
             select(FHIRConnection).where(FHIRConnection.conn_id == conn_id, FHIRConnection.is_active.is_(True)),
         )
     ).scalar_one_or_none()
     if connection is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="FHIR connection not found")
-    await _require_permission(actor, db, organization_id=connection.organization_id, permission_key="integration.manage")
+    _require_permission(actor, db, organization_id=connection.organization_id, permission_key="integration.manage")
+    # NR-044.3 Class B: this is the one identity service method that is still a
+    # coroutine, because it performs a genuine httpx call to an external FHIR
+    # server between two database statements. Its database work is synchronous
+    # now; the HTTP boundary is not, so the route still awaits it.
     return await EnterprisePortalService(db).test_fhir_connection(conn_id, actor_id=actor.account.id)
 
 
 @router.get("/audit-log/{org_id}")
-async def get_audit_log(
+def get_audit_log(
     org_id: str,
     limit: int = Query(default=100, ge=1, le=100),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_permission(actor, db, organization_id=org_id, permission_key="audit.read")
+    _require_permission(actor, db, organization_id=org_id, permission_key="audit.read")
     entries = CanonicalAuditService(db).search(organization_id=org_id, limit=limit)
     return {"audit_log": [{"id": entry.id, "event_type": entry.event_type, "action": entry.action, "decision": entry.decision, "occurred_at": entry.occurred_at.isoformat()} for entry in entries]}

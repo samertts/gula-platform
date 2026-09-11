@@ -545,3 +545,112 @@ NR-043; but `identity/trust/services.py` — where the assurance writer lives an
 where the trust routes consume eligibility — is still in the ledger. Promoting
 either on the strength of NR-044.2 alone would be claiming a proof that has not
 been run.
+
+## 16. NR-044.3 — the ledger closes, and what closing it exposed
+
+### 16.1 The classification, re-derived before anything was edited
+
+The ledger was rebuilt from source with a stronger detector (§16.2), then every
+candidate was classified with evidence rather than by directory:
+
+| Class | Meaning | Items |
+| --- | --- | --- |
+| **A** — DB-only async, convert | 20 modules | 13 identity sub-package modules (trust, admin, compliance, federation, governance, notifications, certificates, adaptive_auth, bootstrap, workflows and their routes), `reference/infrastructure/repositories.py`, the two `national/` repositories and their application and route layers |
+| **B** — DB plus genuine async I/O | **1 method** | `EnterprisePortalService.test_fhir_connection` |
+| **C** — deliberate non-DB async seam | 2 | `OrganizationVerificationProvider.verify`, the `verification_service` protocol (unchanged from NR-044.2) |
+| **D** — dead, evidenced | 4 | `capabilities/*/infrastructure/repository.py` |
+| **E** — false positive | 8 | seven identity route modules and `reference/infrastructure/dependencies.py`, which annotated `AsyncSession` without awaiting a session; annotation corrected |
+
+Ledger: **20 → 4**.
+
+**The two `national/` repositories were nearly classified D, and that would have
+been wrong.** They import `backend.app.database.SessionLocal`, which raises
+`ModuleNotFoundError: No module named 'backend'` under a bare interpreter rooted
+at `backend/`. It would have been easy to record that as proof of death. But
+`PYTHONPATH` includes the repository root in CI and under pytest, so they import
+fine where it counts — and `factory.py` registers both their routers. They were
+reachable, broken endpoints: `async with SessionLocal()` on a *synchronous*
+sessionmaker, which has no `__aenter__` and would fail even after the import
+resolved. They were converted. The guard now measures importability in the
+environment the application actually runs in, and says so.
+
+The four that remain are genuinely dead: every module of those ten capability
+packages raises `ModuleNotFoundError` (NR-050). Converting them would mean
+repairing code no interpreter can load, and whether that tree lives or is retired
+is its owner's decision.
+
+### 16.2 NR-049: the detector stopped guessing
+
+The old rule matched session owners by string — `.session`, `.db` — which is why
+`reference/infrastructure/repositories.py` (`self._session`) had been invisible
+since the ledger was written. Widening the list would only have moved the blind
+spot to the next name someone chose.
+
+Ownership is now *resolved*: every `__init__` is read, any parameter whose
+annotation mentions `Session` is treated as one, and the attribute it is assigned
+to becomes an owner for that module. A session called `self.whatever` is caught;
+an unrelated `self.result_db` that was never assigned a Session is not. Both
+halves are asserted.
+
+### 16.3 The one Class B boundary
+
+`EnterprisePortalService.test_fhir_connection` performs a genuine
+`httpx.AsyncClient` call to an external FHIR server, between two database
+statements. Per the Class B rule its **database work was converted and its HTTP
+boundary was not**: it is the only coroutine left in `identity/`, and
+`admin/routes.py` still awaits it — only it. The test asserts exactly that, by
+AST, so a second coroutine cannot appear unnoticed.
+
+A follow-up option is recorded rather than taken: switching it to `httpx.Client`
+would let the whole method be a plain `def` running in FastAPI's threadpool,
+which is more consistent with the architecture. That changes real I/O colour, so
+it is the user's call, not a conversion to make on the way past.
+
+### 16.4 NR-052 — a control that failed closed by crashing
+
+Proving NR-038 meant calling `_require_assurance_administrator` for the first
+time. It raised `AttributeError: type object 'Assignment' has no attribute
+'account_id'`.
+
+An assignment belongs to a *person*; an account reaches one through
+`Account.identity_id → IdentityRecord.person_id`. So the gate deciding who may
+assert an assurance profile for another account had never evaluated. It failed
+closed — the error propagates and the request is refused — but as a 500, and the
+rule it was supposed to enforce was untested. It now joins through the identity
+and keeps that identity's own standing in the conjunction.
+
+This is the third finding in this sequence (with NR-045 and NR-048) that existed
+only because the code could not run. That is the argument for this whole
+programme in one line: unreachable code is not safe code, it is unexamined code.
+
+### 16.5 NR-038 and AUTH-F5/NR-043, re-graded on evidence
+
+Both had been PARTIALLY VERIFIED since AUTH-005 for the same reason — correct
+code that could not execute. Both are now **FIXED — VERIFIED**, against migrated
+PostgreSQL:
+
+* **NR-038** — no verification record yields floor assurance; only a record
+  written through the real `VerificationWorkflow` state machine raises it; the
+  overall is the weakest axis, so a raised IAL does not lift the profile while
+  AAL and FAL sit at the floor; asserting for another account is refused 403.
+* **NR-043** — an active representative is offered the organization's workspace;
+  deactivating the organization removes it; suspending it removes it too. One
+  fact changes between assertions, so the predicate is what is proved.
+
+AUTH-F5's open half — whether membership should confer eligibility — is a policy
+decision and is untouched.
+
+### 16.6 Evidence
+
+Focused suites, migrated PostgreSQL 16.13, **no migration and no schema change**:
+link-and-assurance 60 → **65**, runtime ledger 16 → **14** (three rewritten, three
+added), extensibility guards **41**, niam suites **89**.
+
+Negative proofs, each restored: re-introducing an async DB call in a converted
+module fails the ledger; re-introducing the NR-049 `self._session` shape fails it
+too; restoring `Assignment.account_id` fails the NR-038 gate test; and the four
+PROGRAM-EXT-001 perturbations still catch.
+
+The extensibility guards are now gated in CI — one path added to the IAM
+workflow's backend job, no new workflow, no `continue-on-error`, no trigger
+change.

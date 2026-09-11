@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import bindparam, column, func, select, table, text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.reference.domain.interfaces import (
     OrderRepository,
@@ -18,7 +18,6 @@ from app.reference.domain.models import (
     PatientDomain,
     ReferenceRange,
 )
-
 
 _PATIENTS = table(
     "patients",
@@ -49,10 +48,10 @@ class SQLPatientRepository(PatientRepository):
         "national_id": "national_id",
     }
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self._session = session
 
-    async def save(self, patient: PatientDomain) -> PatientDomain:
+    def save(self, patient: PatientDomain) -> PatientDomain:
         stmt = text("""
             INSERT INTO patients (name, date_of_birth, gender, phone,
                                   lab_id, national_id, address,
@@ -73,7 +72,7 @@ class SQLPatientRepository(PatientRepository):
         """)
         now = datetime.utcnow()
         row = (
-            await self._session.execute(
+            self._session.execute(
                 stmt,
                 {
                     "name": patient.name,
@@ -91,7 +90,7 @@ class SQLPatientRepository(PatientRepository):
 
         return self._row_to_domain(row)
 
-    async def get_by_id(self, patient_id: str) -> PatientDomain | None:
+    def get_by_id(self, patient_id: str) -> PatientDomain | None:
         stmt = text("""
             SELECT id AS patient_id, name, date_of_birth, gender, phone,
                    lab_id, national_id, address, created_at, updated_at
@@ -99,11 +98,11 @@ class SQLPatientRepository(PatientRepository):
             WHERE id = :patient_id
         """)
         row = (
-            await self._session.execute(stmt, {"patient_id": patient_id})
+            self._session.execute(stmt, {"patient_id": patient_id})
         ).mappings().one_or_none()
         return self._row_to_domain(row) if row else None
 
-    async def search(
+    def search(
         self,
         *,
         name: str | None = None,
@@ -130,7 +129,7 @@ class SQLPatientRepository(PatientRepository):
 
         count_stmt = select(func.count().label("total")).select_from(_PATIENTS).where(*conditions)
         total_row = (
-            await self._session.execute(count_stmt, params)
+            self._session.execute(count_stmt, params)
         ).mappings().one()
         total = total_row["total"]
 
@@ -154,13 +153,13 @@ class SQLPatientRepository(PatientRepository):
             .offset(offset)
         )
         rows = (
-            await self._session.execute(data_stmt, params)
+            self._session.execute(data_stmt, params)
         ).mappings().all()
 
         patients = [self._row_to_domain(r) for r in rows]
         return patients, total
 
-    async def find_duplicate(
+    def find_duplicate(
         self,
         name: str,
         phone: str,
@@ -174,7 +173,7 @@ class SQLPatientRepository(PatientRepository):
             LIMIT 1
         """)
         row = (
-            await self._session.execute(
+            self._session.execute(
                 stmt,
                 {
                     "name": name,
@@ -204,10 +203,10 @@ class SQLPatientRepository(PatientRepository):
 class SQLOrderRepository(OrderRepository):
     """SQLAlchemy implementation of OrderRepository."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self._session = session
 
-    async def save(self, order: LabOrderDomain) -> LabOrderDomain:
+    def save(self, order: LabOrderDomain) -> LabOrderDomain:
         stmt = text("""
             INSERT INTO lab_orders
                 (patient_id, lab_id, test_type, status, priority,
@@ -221,7 +220,7 @@ class SQLOrderRepository(OrderRepository):
         """)
         now = datetime.utcnow()
         row = (
-            await self._session.execute(
+            self._session.execute(
                 stmt,
                 {
                     "patient_id": order.patient_id,
@@ -238,7 +237,7 @@ class SQLOrderRepository(OrderRepository):
         ).mappings().one()
         return self._row_to_domain(row)
 
-    async def get_by_id(self, order_id: str) -> LabOrderDomain | None:
+    def get_by_id(self, order_id: str) -> LabOrderDomain | None:
         stmt = text("""
             SELECT id AS order_id, patient_id, lab_id, test_type, status,
                    priority, notes, created_at, updated_at, performed_by
@@ -246,11 +245,11 @@ class SQLOrderRepository(OrderRepository):
             WHERE id = :order_id
         """)
         row = (
-            await self._session.execute(stmt, {"order_id": order_id})
+            self._session.execute(stmt, {"order_id": order_id})
         ).mappings().one_or_none()
         return self._row_to_domain(row) if row else None
 
-    async def list_by_patient(
+    def list_by_patient(
         self,
         patient_id: str,
         limit: int = 20,
@@ -262,7 +261,7 @@ class SQLOrderRepository(OrderRepository):
             WHERE patient_id = :patient_id
         """)
         total_row = (
-            await self._session.execute(
+            self._session.execute(
                 count_stmt, {"patient_id": patient_id},
             )
         ).mappings().one()
@@ -277,7 +276,7 @@ class SQLOrderRepository(OrderRepository):
             LIMIT :limit OFFSET :offset
         """)
         rows = (
-            await self._session.execute(
+            self._session.execute(
                 data_stmt,
                 {
                     "patient_id": patient_id,
@@ -307,10 +306,10 @@ class SQLOrderRepository(OrderRepository):
 class SQLResultRepository(ResultRepository):
     """SQLAlchemy implementation of ResultRepository."""
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self._session = session
 
-    async def save(self, result: LabResultDomain) -> LabResultDomain:
+    def save(self, result: LabResultDomain) -> LabResultDomain:
         stmt = text("""
             INSERT INTO lab_results
                 (order_id, analyte, value, unit,
@@ -328,7 +327,7 @@ class SQLResultRepository(ResultRepository):
         now = datetime.utcnow()
         rr = result.reference_range
         row = (
-            await self._session.execute(
+            self._session.execute(
                 stmt,
                 {
                     "order_id": result.order_id,
@@ -349,7 +348,7 @@ class SQLResultRepository(ResultRepository):
         ).mappings().one()
         return self._row_to_domain(row)
 
-    async def get_by_id(self, result_id: str) -> LabResultDomain | None:
+    def get_by_id(self, result_id: str) -> LabResultDomain | None:
         stmt = text("""
             SELECT id AS result_id, order_id, analyte, value, unit,
                    min_value, max_value, min_critical, max_critical,
@@ -358,11 +357,11 @@ class SQLResultRepository(ResultRepository):
             WHERE id = :result_id
         """)
         row = (
-            await self._session.execute(stmt, {"result_id": result_id})
+            self._session.execute(stmt, {"result_id": result_id})
         ).mappings().one_or_none()
         return self._row_to_domain(row) if row else None
 
-    async def list_by_order(
+    def list_by_order(
         self,
         order_id: str,
     ) -> Sequence[LabResultDomain]:
@@ -375,11 +374,11 @@ class SQLResultRepository(ResultRepository):
             ORDER BY created_at ASC
         """)
         rows = (
-            await self._session.execute(stmt, {"order_id": order_id})
+            self._session.execute(stmt, {"order_id": order_id})
         ).mappings().all()
         return [self._row_to_domain(r) for r in rows]
 
-    async def list_critical(
+    def list_critical(
         self,
         lab_id: str,
         limit: int = 50,
@@ -393,7 +392,7 @@ class SQLResultRepository(ResultRepository):
               AND lo.lab_id = :lab_id
         """)
         total_row = (
-            await self._session.execute(
+            self._session.execute(
                 count_stmt, {"lab_id": lab_id},
             )
         ).mappings().one()
@@ -414,7 +413,7 @@ class SQLResultRepository(ResultRepository):
             LIMIT :limit OFFSET :offset
         """)
         rows = (
-            await self._session.execute(
+            self._session.execute(
                 data_stmt,
                 {
                     "lab_id": lab_id,

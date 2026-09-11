@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.identity.api.workspaces import NiamActor, get_current_niam_actor
@@ -15,9 +15,9 @@ from app.identity.services.authorization_decision import (
 router = APIRouter(prefix="/compliance", tags=["NIAM Compliance"])
 
 
-async def _require_compliance_permission(
+def _require_compliance_permission(
     actor: NiamActor,
-    db: AsyncSession,
+    db: Session,
     *,
     organization_id: str,
     permission_key: str,
@@ -39,46 +39,46 @@ async def _require_compliance_permission(
 
 
 @router.post("/frameworks")
-async def register_framework(
+def register_framework(
     organization_id: str = Query(min_length=1, max_length=26),
     name: str = Query(min_length=1, max_length=300),
     framework_type: str = Query(min_length=1, max_length=50),
     version: str = Query(default="", max_length=20),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.manage")
-    framework = await ComplianceService(db).register_framework(name=name, framework_type=framework_type, version=version or None)
+    _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.manage")
+    framework = ComplianceService(db).register_framework(name=name, framework_type=framework_type, version=version or None)
     return {"framework": framework.to_dict()}
 
 
 @router.get("/frameworks")
-async def list_frameworks(
+def list_frameworks(
     organization_id: str = Query(min_length=1, max_length=26),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.read")
-    frameworks = await ComplianceService(db).list_frameworks()
+    _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.read")
+    frameworks = ComplianceService(db).list_frameworks()
     return {"frameworks": [framework.to_dict() for framework in frameworks]}
 
 
 @router.get("/frameworks/{framework_id}")
-async def get_framework(
+def get_framework(
     framework_id: str,
     organization_id: str = Query(min_length=1, max_length=26),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.read")
-    framework = await ComplianceService(db).get_framework(framework_id)
+    _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.read")
+    framework = ComplianceService(db).get_framework(framework_id)
     if framework is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Compliance framework not found")
     return {"framework": framework.to_dict()}
 
 
 @router.post("/checks")
-async def run_check(
+def run_check(
     organization_id: str = Query(min_length=1, max_length=26),
     framework_id: str = Query(min_length=1, max_length=26),
     requirement_id: str = Query(min_length=1, max_length=100),
@@ -86,13 +86,13 @@ async def run_check(
     target_id: str = Query(min_length=1, max_length=100),
     check_type: str = Query(default="automated", max_length=20),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.manage")
+    _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.manage")
     if target_type not in {"organization", "facility", "workspace", "control", "system"}:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Unsupported compliance target type")
     try:
-        check = await ComplianceService(db).run_check(
+        check = ComplianceService(db).run_check(
             framework_id=framework_id,
             requirement_id=requirement_id,
             target_type=target_type,
@@ -107,28 +107,28 @@ async def run_check(
 
 
 @router.get("/checks/{target_type}/{target_id}")
-async def list_checks(
+def list_checks(
     target_type: str,
     target_id: str,
     organization_id: str = Query(min_length=1, max_length=26),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.read")
-    checks = await ComplianceService(db).get_checks(target_type, target_id, organization_id=organization_id)
+    _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.read")
+    checks = ComplianceService(db).get_checks(target_type, target_id, organization_id=organization_id)
     return {"checks": [check.to_dict() for check in checks]}
 
 
 @router.post("/reports")
-async def generate_report(
+def generate_report(
     organization_id: str = Query(min_length=1, max_length=26),
     framework_id: str = Query(min_length=1, max_length=26),
     report_type: str = Query(default="self_assessment", max_length=20),
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.report")
-    report = await ComplianceService(db).generate_report(
+    _require_compliance_permission(actor, db, organization_id=organization_id, permission_key="compliance.report")
+    report = ComplianceService(db).generate_report(
         org_id=organization_id,
         framework_id=framework_id,
         generated_by=actor.account.id,
@@ -138,24 +138,24 @@ async def generate_report(
 
 
 @router.get("/reports/{report_id}")
-async def get_report(
+def get_report(
     report_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    report = await ComplianceService(db).get_report(report_id)
+    report = ComplianceService(db).get_report(report_id)
     if report is None or report.organization_id is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Compliance report not found")
-    await _require_compliance_permission(actor, db, organization_id=report.organization_id, permission_key="compliance.read")
+    _require_compliance_permission(actor, db, organization_id=report.organization_id, permission_key="compliance.read")
     return {"report": report.to_dict()}
 
 
 @router.get("/status/{org_id}")
-async def get_org_compliance_status(
+def get_org_compliance_status(
     org_id: str,
     actor: NiamActor = Depends(get_current_niam_actor),
-    db: AsyncSession = Depends(get_db),
+    db: Session = Depends(get_db),
 ):
-    await _require_compliance_permission(actor, db, organization_id=org_id, permission_key="compliance.read")
-    statuses = await ComplianceService(db).get_org_compliance_status(org_id)
+    _require_compliance_permission(actor, db, organization_id=org_id, permission_key="compliance.read")
+    statuses = ComplianceService(db).get_org_compliance_status(org_id)
     return {"compliance_status": statuses}

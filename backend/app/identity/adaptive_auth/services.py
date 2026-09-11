@@ -6,7 +6,7 @@ from math import asin, cos, radians, sin, sqrt
 from typing import Any
 
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 
@@ -49,10 +49,10 @@ _SEVERITIES = {"low", "medium", "high", "critical"}
 
 class AdaptiveAuthService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def evaluate_risk(
+    def evaluate_risk(
         self,
         account_id: str,
         ip_address: str,
@@ -62,27 +62,27 @@ class AdaptiveAuthService:
         score = 0
         factors: list[dict[str, Any]] = []
 
-        travel = await self.check_impossible_travel(account_id, ip_address, location)
+        travel = self.check_impossible_travel(account_id, ip_address, location)
         if travel and travel.get("impossible"):
             score += travel.get("risk_score", 30)
             factors.append({"factor": "impossible_travel", "score": travel.get("risk_score", 30)})
 
-        stuffing = await self.check_credential_stuffing(account_id, ip_address)
+        stuffing = self.check_credential_stuffing(account_id, ip_address)
         if stuffing:
             score += stuffing
             factors.append({"factor": "credential_stuffing", "score": stuffing})
 
-        spray = await self.check_password_spray(ip_address)
+        spray = self.check_password_spray(ip_address)
         if spray:
             score += spray
             factors.append({"factor": "password_spray", "score": spray})
 
-        brute = await self.check_brute_force(account_id)
+        brute = self.check_brute_force(account_id)
         if brute:
             score += brute
             factors.append({"factor": "brute_force", "score": brute})
 
-        new_loc = await self.detect_new_location(account_id, ip_address, location)
+        new_loc = self.detect_new_location(account_id, ip_address, location)
         if new_loc:
             score += 15
             factors.append({"factor": "new_location", "score": 15})
@@ -91,7 +91,7 @@ class AdaptiveAuthService:
 
         return {"risk_score": score, "factors": factors}
 
-    async def check_impossible_travel(
+    def check_impossible_travel(
         self,
         account_id: str,
         ip_address: str,
@@ -107,7 +107,7 @@ class AdaptiveAuthService:
             .order_by(RiskEvent.timestamp.desc())
             .limit(1)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         last_event = result.scalar_one_or_none()
         if not last_event or not last_event.location_lat or not last_event.location_lng:
             return None
@@ -161,7 +161,7 @@ class AdaptiveAuthService:
         self.session.add(travel_event)
 
         if impossible:
-            await self.record_risk_event(
+            self.record_risk_event(
                 event_type="impossible_travel",
                 severity="high",
                 risk_score=min(int(speed / 10), 90),
@@ -175,7 +175,7 @@ class AdaptiveAuthService:
                 ip_address=ip_address,
             )
 
-        await self.session.flush()
+        self.session.flush()
         return {
             "impossible": impossible,
             "distance_km": distance,
@@ -183,7 +183,7 @@ class AdaptiveAuthService:
             "risk_score": min(int(speed / 10), 90) if impossible else 0,
         }
 
-    async def check_credential_stuffing(
+    def check_credential_stuffing(
         self, account_id: str, ip_address: str,
     ) -> int | None:
         since = datetime.now(UTC) - timedelta(minutes=5)
@@ -197,10 +197,10 @@ class AdaptiveAuthService:
                 RiskEvent.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         count = result.scalar() or 0
         if count >= 10:
-            await self.record_risk_event(
+            self.record_risk_event(
                 event_type="credential_stuffing",
                 severity="high",
                 risk_score=40,
@@ -211,7 +211,7 @@ class AdaptiveAuthService:
             return 40
         return None
 
-    async def check_password_spray(self, ip_address: str) -> int | None:
+    def check_password_spray(self, ip_address: str) -> int | None:
         since = datetime.now(UTC) - timedelta(minutes=10)
         stmt = (
             select(func.count(func.distinct(RiskEvent.account_id)))
@@ -222,10 +222,10 @@ class AdaptiveAuthService:
                 RiskEvent.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         distinct_accounts = result.scalar() or 0
         if distinct_accounts >= 5:
-            await self.record_risk_event(
+            self.record_risk_event(
                 event_type="password_spray",
                 severity="high",
                 risk_score=50,
@@ -236,7 +236,7 @@ class AdaptiveAuthService:
             return 50
         return None
 
-    async def check_brute_force(self, account_id: str) -> int | None:
+    def check_brute_force(self, account_id: str) -> int | None:
         since = datetime.now(UTC) - timedelta(minutes=2)
         stmt = (
             select(func.count(RiskEvent.id))
@@ -247,10 +247,10 @@ class AdaptiveAuthService:
                 RiskEvent.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         count = result.scalar() or 0
         if count >= 5:
-            await self.record_risk_event(
+            self.record_risk_event(
                 event_type="brute_force",
                 severity="critical",
                 risk_score=60,
@@ -260,7 +260,7 @@ class AdaptiveAuthService:
             return 60
         return None
 
-    async def detect_new_location(
+    def detect_new_location(
         self,
         account_id: str,
         ip_address: str,
@@ -278,12 +278,12 @@ class AdaptiveAuthService:
             )
             .limit(1)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         existing = result.scalar_one_or_none()
         if existing:
             return False
 
-        await self.record_risk_event(
+        self.record_risk_event(
             event_type="new_location",
             severity="medium",
             risk_score=15,
@@ -297,7 +297,7 @@ class AdaptiveAuthService:
         )
         return True
 
-    async def detect_new_device(
+    def detect_new_device(
         self, account_id: str, device_fingerprint: str,
     ) -> bool:
         stmt = (
@@ -309,12 +309,12 @@ class AdaptiveAuthService:
             )
             .limit(1)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         existing = result.scalar_one_or_none()
         if existing:
             return False
 
-        await self.record_risk_event(
+        self.record_risk_event(
             event_type="new_device",
             severity="medium",
             risk_score=20,
@@ -323,7 +323,7 @@ class AdaptiveAuthService:
         )
         return True
 
-    async def record_risk_event(
+    def record_risk_event(
         self,
         event_type: str,
         severity: str,
@@ -367,10 +367,10 @@ class AdaptiveAuthService:
             is_active=True,
         )
         self.session.add(entity)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def apply_mitigation(
+    def apply_mitigation(
         self, risk_score: int, account_id: str,
     ) -> dict[str, Any]:
         stmt = (
@@ -382,7 +382,7 @@ class AdaptiveAuthService:
             .order_by(RiskPolicy.created_at.desc())
             .limit(1)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         policy = result.scalar_one_or_none()
 
         if not policy:
@@ -397,7 +397,7 @@ class AdaptiveAuthService:
         if risk_score >= policy.risk_threshold_critical:
             action = policy.actions.get("critical", "lock_account")
             if action == "lock_account":
-                await self.record_risk_event(
+                self.record_risk_event(
                     event_type="high_value_action",
                     severity="critical",
                     risk_score=risk_score,
@@ -418,7 +418,7 @@ class AdaptiveAuthService:
         action = policy.actions.get("low", "allow")
         return {"action": action, "reason": "low_risk", "policy_id": policy.policy_id}
 
-    async def create_mfa_challenge(
+    def create_mfa_challenge(
         self, account_id: str, mfa_type: str = "totp",
     ) -> AdaptiveMFASession:
         challenge_code = str(uuid.uuid4()).replace("-", "")[:12]
@@ -439,10 +439,10 @@ class AdaptiveAuthService:
             is_active=True,
         )
         self.session.add(entity)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def verify_mfa(
+    def verify_mfa(
         self, mfa_id: str, challenge_response: str,
     ) -> dict[str, Any]:
         stmt = (
@@ -452,7 +452,7 @@ class AdaptiveAuthService:
                 AdaptiveMFASession.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         mfa_session = result.scalar_one_or_none()
 
         if not mfa_session:
@@ -466,12 +466,12 @@ class AdaptiveAuthService:
 
         if mfa_session.challenge_expires_at < datetime.now(UTC):
             mfa_session.status = "expired"
-            await self.session.flush()
+            self.session.flush()
             return {"verified": False, "reason": "mfa_expired"}
 
         if mfa_session.attempts >= mfa_session.max_attempts:
             mfa_session.status = "failed"
-            await self.session.flush()
+            self.session.flush()
             return {"verified": False, "reason": "max_attempts_exceeded"}
 
         mfa_session.attempts += 1
@@ -480,14 +480,14 @@ class AdaptiveAuthService:
             mfa_session.verified = True
             mfa_session.verified_at = datetime.now(UTC)
             mfa_session.status = "verified"
-            await self.session.flush()
+            self.session.flush()
             return {"verified": True, "reason": "success"}
 
-        await self.session.flush()
+        self.session.flush()
         remaining = mfa_session.max_attempts - mfa_session.attempts
         return {"verified": False, "reason": "invalid_challenge", "remaining_attempts": remaining}
 
-    async def get_risk_history(
+    def get_risk_history(
         self, account_id: str, limit: int = 50,
     ) -> list[RiskEvent]:
         stmt = (
@@ -499,16 +499,16 @@ class AdaptiveAuthService:
             .order_by(RiskEvent.timestamp.desc())
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
 
 class SessionGovernanceService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def get_session_policy(self, account_type: str) -> SessionPolicy | None:
+    def get_session_policy(self, account_type: str) -> SessionPolicy | None:
         stmt = (
             select(SessionPolicy)
             .where(
@@ -518,21 +518,21 @@ class SessionGovernanceService:
             .order_by(SessionPolicy.created_at.desc())
             .limit(1)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def enforce_session_policy(
+    def enforce_session_policy(
         self, account_id: str, account_type: str,
     ) -> dict[str, Any]:
-        policy = await self.get_session_policy(account_type)
+        policy = self.get_session_policy(account_type)
         if not policy:
             return {"enforced": False, "reason": "no_policy_found"}
 
-        active_count = await self.get_active_session_count(account_id)
+        active_count = self.get_active_session_count(account_id)
 
         if not policy.allow_concurrent and active_count >= policy.max_sessions:
             if policy.terminate_previous_on_new_login:
-                await self.terminate_previous_sessions(
+                self.terminate_previous_sessions(
                     account_id, current_session_id=None, notify=policy.notify_previous_device,
                 )
                 return {
@@ -556,7 +556,7 @@ class SessionGovernanceService:
             "inactivity_timeout_minutes": policy.inactivity_timeout_minutes,
         }
 
-    async def terminate_previous_sessions(
+    def terminate_previous_sessions(
         self,
         account_id: str,
         current_session_id: str | None = None,
@@ -574,7 +574,7 @@ class SessionGovernanceService:
         if current_session_id:
             stmt = stmt.where(UserSession.id != current_session_id)
 
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         sessions = list(result.scalars().all())
 
         count = 0
@@ -585,14 +585,14 @@ class SessionGovernanceService:
             count += 1
 
         if count > 0:
-            await self.session.flush()
+            self.session.flush()
 
         if notify and count > 0:
-            await self.notify_previous_device(account_id, current_session_id)
+            self.notify_previous_device(account_id, current_session_id)
 
         return count
 
-    async def notify_previous_device(
+    def notify_previous_device(
         self, account_id: str, session_id: str | None = None,
     ) -> dict[str, Any]:
         return {
@@ -603,7 +603,7 @@ class SessionGovernanceService:
             "message": "New login detected from another device",
         }
 
-    async def create_session_policy(
+    def create_session_policy(
         self,
         policy_id: str,
         name: str,
@@ -639,33 +639,33 @@ class SessionGovernanceService:
             is_active=True,
         )
         self.session.add(entity)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def update_session_policy(
+    def update_session_policy(
         self, policy_id: str, **kwargs: Any,
     ) -> SessionPolicy | None:
         stmt = select(SessionPolicy).where(
             SessionPolicy.policy_id == policy_id,
             SessionPolicy.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         entity = result.scalar_one_or_none()
         if not entity:
             return None
         for key, value in kwargs.items():
             if hasattr(entity, key) and value is not None:
                 setattr(entity, key, value)
-        await self.session.flush()
+        self.session.flush()
         return entity
 
-    async def check_session_expiry(self) -> int:
+    def check_session_expiry(self) -> int:
         from app.identity.models import UserSession
 
         now = datetime.now(UTC)
         expired_count = 0
 
-        policies_result = await self.session.execute(
+        policies_result = self.session.execute(
             select(SessionPolicy).where(SessionPolicy.is_active.is_(True)),
         )
         policies = list(policies_result.scalars().all())
@@ -683,7 +683,7 @@ class SessionGovernanceService:
                     UserSession.created_at < timeout_limit,
                 )
             )
-            result = await self.session.execute(stmt)
+            result = self.session.execute(stmt)
             sessions = list(result.scalars().all())
 
             for session in sessions:
@@ -699,7 +699,7 @@ class SessionGovernanceService:
                 UserSession.last_activity_at.isnot(None),
             )
         )
-        inactivity_result = await self.session.execute(inactivity_stmt)
+        inactivity_result = self.session.execute(inactivity_stmt)
         all_sessions = list(inactivity_result.scalars().all())
 
         for session in all_sessions:
@@ -709,7 +709,7 @@ class SessionGovernanceService:
                 SessionPolicy.applies_to == session.account_type,
                 SessionPolicy.is_active.is_(True),
             )
-            policy_result = await self.session.execute(stmt)
+            policy_result = self.session.execute(stmt)
             policy = policy_result.scalar_one_or_none()
             if policy and policy.inactivity_timeout_minutes:
                 inactive_limit = datetime.now(UTC) - timedelta(minutes=policy.inactivity_timeout_minutes)
@@ -720,11 +720,11 @@ class SessionGovernanceService:
                     expired_count += 1
 
         if expired_count > 0:
-            await self.session.flush()
+            self.session.flush()
 
         return expired_count
 
-    async def get_active_session_count(self, account_id: str) -> int:
+    def get_active_session_count(self, account_id: str) -> int:
         from app.identity.models import UserSession
 
         stmt = (
@@ -734,17 +734,17 @@ class SessionGovernanceService:
                 UserSession.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar() or 0
 
-    async def is_session_valid(self, session_id: str) -> bool:
+    def is_session_valid(self, session_id: str) -> bool:
         from app.identity.models import UserSession
 
         stmt = select(UserSession).where(
             UserSession.id == session_id,
             UserSession.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         session = result.scalar_one_or_none()
         if not session:
             return False
@@ -756,7 +756,7 @@ class SessionGovernanceService:
             SessionPolicy.applies_to == session.account_type,
             SessionPolicy.is_active.is_(True),
         )
-        policy_result = await self.session.execute(stmt)
+        policy_result = self.session.execute(stmt)
         policy = policy_result.scalar_one_or_none()
 
         if policy and policy.inactivity_timeout_minutes:
@@ -765,7 +765,7 @@ class SessionGovernanceService:
                 session.is_active = False
                 session.terminated_at = datetime.now(UTC)
                 session.termination_reason = "inactivity_timeout"
-                await self.session.flush()
+                self.session.flush()
                 return False
 
         return True

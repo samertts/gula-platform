@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.identity.models.niam_organization import NIAMOrganization
 from app.identity.models.person import Person
 
 
-async def seed_master_admin(session: AsyncSession) -> str:
+def seed_master_admin(session: Session) -> str:
     admin_id = str(uuid.uuid4())
     admin = Person(
         id=admin_id,
@@ -19,11 +19,11 @@ async def seed_master_admin(session: AsyncSession) -> str:
         is_active=True,
     )
     session.add(admin)
-    await session.flush()
+    session.flush()
     return admin.id
 
 
-async def seed_platform_organization(session: AsyncSession) -> str:
+def seed_platform_organization(session: Session) -> str:
     org_id = str(uuid.uuid4())
     org = NIAMOrganization(
         id=org_id,
@@ -35,5 +35,5 @@ async def seed_platform_organization(session: AsyncSession) -> str:
         is_active=True,
     )
     session.add(org)
-    await session.flush()
+    session.flush()
     return org.id

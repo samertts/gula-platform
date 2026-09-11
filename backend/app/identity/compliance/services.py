@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 from app.identity.base import _ulid
@@ -14,13 +14,13 @@ from app.identity.services.canonical_audit import AuditEventInput, CanonicalAudi
 
 class ComplianceService:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
         self.audit = CanonicalAuditService(session)
 
     # --- Frameworks ---
 
-    async def register_framework(
+    def register_framework(
         self,
         name: str,
         framework_type: str,
@@ -38,7 +38,7 @@ class ComplianceService:
             is_active=True,
         )
         self.session.add(framework)
-        await self.session.flush()
+        self.session.flush()
         self.audit.record(
             AuditEventInput(
                 event_type="COMPLIANCE_FRAMEWORK_REGISTERED",
@@ -54,26 +54,26 @@ class ComplianceService:
         )
         return framework
 
-    async def get_framework(self, framework_id: str) -> ComplianceFramework | None:
+    def get_framework(self, framework_id: str) -> ComplianceFramework | None:
         stmt = select(ComplianceFramework).where(
             ComplianceFramework.framework_id == framework_id,
             ComplianceFramework.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def list_frameworks(self) -> list[ComplianceFramework]:
+    def list_frameworks(self) -> list[ComplianceFramework]:
         stmt = (
             select(ComplianceFramework)
             .where(ComplianceFramework.is_active.is_(True))
             .order_by(ComplianceFramework.name)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
     # --- Checks ---
 
-    async def run_check(
+    def run_check(
         self,
         framework_id: str,
         requirement_id: str,
@@ -87,7 +87,7 @@ class ComplianceService:
             ComplianceFramework.id == framework_id,
             ComplianceFramework.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         framework = result.scalar_one_or_none()
         if not framework:
             raise ValueError(f"Framework with id {framework_id} not found")
@@ -107,7 +107,7 @@ class ComplianceService:
             is_active=True,
         )
         self.session.add(check)
-        await self.session.flush()
+        self.session.flush()
         self.audit.record(
             AuditEventInput(
                 event_type="COMPLIANCE_CHECK_EXECUTED",
@@ -125,7 +125,7 @@ class ComplianceService:
         )
         return check
 
-    async def get_checks(self, target_type: str, target_id: str, organization_id: str | None = None) -> list[ComplianceCheck]:
+    def get_checks(self, target_type: str, target_id: str, organization_id: str | None = None) -> list[ComplianceCheck]:
         stmt = (
             select(ComplianceCheck)
             .where(
@@ -136,12 +136,12 @@ class ComplianceService:
             )
             .order_by(ComplianceCheck.checked_at.desc())
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
     # --- Reports ---
 
-    async def generate_report(
+    def generate_report(
         self,
         org_id: str | None,
         framework_id: str,
@@ -153,7 +153,7 @@ class ComplianceService:
             ComplianceCheck.organization_id == org_id if org_id is not None else ComplianceCheck.organization_id.is_(None),
             ComplianceCheck.is_active.is_(True),
         )
-        checks_result = await self.session.execute(checks_stmt)
+        checks_result = self.session.execute(checks_stmt)
         checks = list(checks_result.scalars().all())
 
         passed = sum(1 for c in checks if c.status == "passed")
@@ -187,7 +187,7 @@ class ComplianceService:
             is_active=True,
         )
         self.session.add(report)
-        await self.session.flush()
+        self.session.flush()
         self.audit.record(
             AuditEventInput(
                 event_type="COMPLIANCE_REPORT_GENERATED",
@@ -205,15 +205,15 @@ class ComplianceService:
         )
         return report
 
-    async def get_report(self, report_id: str) -> ComplianceReport | None:
+    def get_report(self, report_id: str) -> ComplianceReport | None:
         stmt = select(ComplianceReport).where(
             ComplianceReport.report_id == report_id,
             ComplianceReport.is_active.is_(True),
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_org_compliance_status(self, org_id: str) -> list[dict[str, Any]]:
+    def get_org_compliance_status(self, org_id: str) -> list[dict[str, Any]]:
         stmt = (
             select(
                 ComplianceFramework.framework_id,
@@ -232,7 +232,7 @@ class ComplianceService:
             )
             .group_by(ComplianceFramework.id)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         rows = result.all()
 
         statuses: list[dict[str, Any]] = []

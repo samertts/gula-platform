@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app._compat import UTC
 
@@ -14,10 +14,10 @@ from .models import WorkflowApproval, WorkflowDefinition, WorkflowInstance
 
 class WorkflowEngine:
 
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: Session) -> None:
         self.session = session
 
-    async def create_definition(
+    def create_definition(
         self,
         def_id: str,
         name: str,
@@ -47,30 +47,30 @@ class WorkflowEngine:
             is_active=False,
         )
         self.session.add(definition)
-        await self.session.flush()
+        self.session.flush()
         return definition
 
-    async def get_definition(self, def_id: str) -> WorkflowDefinition | None:
+    def get_definition(self, def_id: str) -> WorkflowDefinition | None:
         stmt = select(WorkflowDefinition).where(
             WorkflowDefinition.def_id == def_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def activate_definition(self, def_id: str) -> WorkflowDefinition | None:
+    def activate_definition(self, def_id: str) -> WorkflowDefinition | None:
         stmt = select(WorkflowDefinition).where(
             WorkflowDefinition.def_id == def_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         definition = result.scalar_one_or_none()
         if not definition:
             return None
         definition.status = "active"
         definition.is_active = True
-        await self.session.flush()
+        self.session.flush()
         return definition
 
-    async def start_instance(
+    def start_instance(
         self,
         def_id: str,
         trigger_type: str,
@@ -78,7 +78,7 @@ class WorkflowEngine:
         initiator_id: str,
         context: dict[str, Any] | None = None,
     ) -> WorkflowInstance | None:
-        definition = await self.get_definition(def_id)
+        definition = self.get_definition(def_id)
         if not definition or definition.status != "active":
             return None
 
@@ -109,24 +109,24 @@ class WorkflowEngine:
             is_active=True,
         )
         self.session.add(instance)
-        await self.session.flush()
+        self.session.flush()
         return instance
 
-    async def get_instance(self, instance_id: str) -> WorkflowInstance | None:
+    def get_instance(self, instance_id: str) -> WorkflowInstance | None:
         stmt = select(WorkflowInstance).where(
             WorkflowInstance.instance_id == instance_id,
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def submit_approval(
+    def submit_approval(
         self,
         instance_id: str,
         approver_id: str,
         decision: str,
         comments: str | None = None,
     ) -> WorkflowApproval | None:
-        instance = await self.get_instance(instance_id)
+        instance = self.get_instance(instance_id)
         if not instance:
             return None
 
@@ -152,35 +152,35 @@ class WorkflowEngine:
 
         instance.status = "approved" if decision == "approved" else "rejected"
         instance.last_action_at = now
-        await self.session.flush()
+        self.session.flush()
         return approval
 
-    async def cancel_instance(
+    def cancel_instance(
         self,
         instance_id: str,
         reason: str,
     ) -> WorkflowInstance | None:
-        instance = await self.get_instance(instance_id)
+        instance = self.get_instance(instance_id)
         if not instance:
             return None
         instance.status = "cancelled"
         instance.completed_at = datetime.now(UTC)
         instance.last_action_at = datetime.now(UTC)
         instance.is_active = False
-        await self.session.flush()
+        self.session.flush()
         return instance
 
-    async def advance_step(self, instance_id: str) -> WorkflowInstance | None:
-        instance = await self.get_instance(instance_id)
+    def advance_step(self, instance_id: str) -> WorkflowInstance | None:
+        instance = self.get_instance(instance_id)
         if not instance:
             return None
 
-        definition = await self.get_definition(instance.def_id)
+        definition = self.get_definition(instance.def_id)
         if not definition or not definition.steps:
             instance.status = "completed"
             instance.completed_at = datetime.now(UTC)
             instance.last_action_at = datetime.now(UTC)
-            await self.session.flush()
+            self.session.flush()
             return instance
 
         steps = definition.steps
@@ -194,7 +194,7 @@ class WorkflowEngine:
             instance.status = "completed"
             instance.completed_at = datetime.now(UTC)
             instance.last_action_at = datetime.now(UTC)
-            await self.session.flush()
+            self.session.flush()
             return instance
 
         next_step = steps[current_idx + 1]
@@ -207,10 +207,10 @@ class WorkflowEngine:
         elif step_type == "notification":
             instance.status = "running"
 
-        await self.session.flush()
+        self.session.flush()
         return instance
 
-    async def get_pending_approvals(self, approver_id: str) -> list[WorkflowApproval]:
+    def get_pending_approvals(self, approver_id: str) -> list[WorkflowApproval]:
         stmt = (
             select(WorkflowApproval)
             .where(
@@ -220,10 +220,10 @@ class WorkflowEngine:
             )
             .order_by(WorkflowApproval.assigned_at)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def list_definitions(
+    def list_definitions(
         self,
         skip: int = 0,
         limit: int = 100,
@@ -234,5 +234,5 @@ class WorkflowEngine:
             .offset(skip)
             .limit(limit)
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())

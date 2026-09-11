@@ -5,28 +5,27 @@ from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-from sqlalchemy.orm import Session
-
 from app._compat import UTC
 from app.identity.base import IdentityBaseEntity
 from app.identity.governance.models import (
-    IdentityAuthority,
     DigitalIdentityCouncil,
-    PolicyApprovalWorkflow,
     IdentityAppeal,
-    IdentitySuspension,
-    IdentityRestoration,
-    NationalIdentityRegistry,
+    IdentityAuthority,
     IdentityCertificationRegistry,
+    IdentityRestoration,
     IdentityReviewBoard,
+    IdentitySuspension,
+    NationalIdentityRegistry,
+    PolicyApprovalWorkflow,
 )
 from app.identity.governance.services import (
+    AppealService,
     GovernanceService,
     PolicyApprovalService,
-    AppealService,
-    SuspensionService,
     RegistryService,
+    SuspensionService,
 )
+from sqlalchemy.orm import Session
 
 
 @pytest.fixture
@@ -35,24 +34,6 @@ def mock_session():
     session.add = MagicMock()
     session.flush = MagicMock()
     session.execute = MagicMock()
-    return session
-
-
-@pytest.fixture
-def async_mock_session():
-    """A session whose methods are awaitable.
-
-    Only for the modules NR-044.3 still owns. They await a session the
-    application never supplies, so they cannot run against the real one; this
-    fixture matches their shape and nothing more. It is not evidence that they
-    work — the ledger in tests/test_identity_platform_runtime.py records that
-    they do not.
-    """
-    session = MagicMock()
-    session.add = MagicMock()
-    session.flush = AsyncMock()
-    session.execute = AsyncMock()
-    session.commit = AsyncMock()
     return session
 
 
@@ -635,36 +616,32 @@ class TestComplianceModels:
 class TestGovernanceServices:
     """Verify governance services instantiation.
 
-    Still async: `identity/governance/services.py` is NR-044.3 scope and remains
-    in the unreachable-async ledger.
+    Synchronous since NR-044.3 converted `identity/governance/services.py`.
     """
 
-    @pytest.mark.asyncio
-    async def test_governance_service_create_authority(self, async_mock_session):
-        svc = GovernanceService(async_mock_session)
-        result = await svc.create_authority(
+    def test_governance_service_create_authority(self, mock_session):
+        svc = GovernanceService(mock_session)
+        result = svc.create_authority(
             authority_id="IA-TEST",
             name_en="Test Authority",
             name_ar="هيئة اختبار",
             authority_type="identity_authority",
             jurisdiction="national",
         )
-        async_mock_session.add.assert_called_once()
+        mock_session.add.assert_called_once()
         assert result is not None
 
-    @pytest.mark.asyncio
-    async def test_policy_approval_service_submit(self, async_mock_session):
-        svc = PolicyApprovalService(async_mock_session)
-        result = await svc.submit_policy(
+    def test_policy_approval_service_submit(self, mock_session):
+        svc = PolicyApprovalService(mock_session)
+        result = svc.submit_policy(
             policy_id="POL-001",
             submitted_by="admin",
         )
         assert result is not None
 
-    @pytest.mark.asyncio
-    async def test_appeal_service_submit(self, async_mock_session):
-        svc = AppealService(async_mock_session)
-        result = await svc.submit_appeal(
+    def test_appeal_service_submit(self, mock_session):
+        svc = AppealService(mock_session)
+        result = svc.submit_appeal(
             appeal_id="APL-TEST-001",
             appellant_person_id="p1",
             identity_id="id1",
@@ -673,10 +650,9 @@ class TestGovernanceServices:
         )
         assert result is not None
 
-    @pytest.mark.asyncio
-    async def test_suspension_service_suspend(self, async_mock_session):
-        svc = SuspensionService(async_mock_session)
-        result = await svc.suspend_identity(
+    def test_suspension_service_suspend(self, mock_session):
+        svc = SuspensionService(mock_session)
+        result = svc.suspend_identity(
             person_id="p1",
             identity_id="id1",
             reason="Security breach",
@@ -687,10 +663,9 @@ class TestGovernanceServices:
         assert result is not None
         assert result.severity == "high"
 
-    @pytest.mark.asyncio
-    async def test_registry_service_register(self, async_mock_session):
-        svc = RegistryService(async_mock_session)
-        result = await svc.register_identity(
+    def test_registry_service_register(self, mock_session):
+        svc = RegistryService(mock_session)
+        result = svc.register_identity(
             person_id="p1",
             identity_id="id1",
             registry_type="citizen",
