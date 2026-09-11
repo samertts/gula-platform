@@ -1,0 +1,8 @@
+{
+  "registry": "GULA Global Health Systems Intelligence",
+  "programme": "PROGRAM-GLOBAL-001",
+  "schema_version": 1,
+  "status": "FOUNDATION ONLY — the structure is established; the research sweep has not been run",
+  "note": "This registry is deliberately empty. PROGRAM-EXT-001 was asked to establish the reusable structure and explicitly not to perform the global sweep, so seeding it with remembered examples would put unsourced claims into a document whose whole purpose is evidence quality. Entries are validated by app.kernel.extensibility.GlobalIntelligenceEntry.violations(); see docs/architecture/extensibility/global-intelligence-registry.md for the field meanings and the rule that ADOPT may not rest on anecdotal evidence.",
+  "entries": []
+}

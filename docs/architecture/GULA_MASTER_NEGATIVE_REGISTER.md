@@ -71,6 +71,12 @@ respectively; the second is now executable, but NR-038's assurance writer is not
 and NR-043's narrowing is only half the story until the trust routes that call it
 can run. That is NR-044.3._
 
+_**PROGRAM-EXT-001** then established the extensibility foundation on top of the
+registry that already loads, rather than building a second one. It added
+**NR-050** (the `app/capabilities/` tree is 268 files of scaffolding that cannot
+import) and **NR-051** (six reusable concepts with no canonical owner). Both are
+decisions, not patches, and both are listed in the decisions table below._
+
 _Counts are generated from the JSON companion; the table above had drifted
 since the first pass and now reflects all findings, not one session's._
 
@@ -129,6 +135,8 @@ since the first pass and now reflects all findings, not one session's._
 | NR-046 | P2  | Identity Platform | The NIAM actor dependency does not consult `UserSession.expires_at` | OPEN — pre-existing, not a NR-044.1 regression; bounded by the access token's own enforced `exp` |
 | NR-048 | P1  | Clinical Gateway | The gateway reported any internal fault as an authorization denial | **VERIFIED** (NR-044.2) — `except Exception → invalid_context` narrowed to the context service's own denial vocabulary. This is how NR-047's `UndefinedColumn` reached clients as a 403 and was written into the audit chain as a decision nobody made |
 | NR-049 | P2  | Identity Platform | The NR-044 ledger could not see a module that stored its session as `self._session` | OPEN (module) / FIXED (guard) — widening the owner rule raised the ledger from 19 to 20 and surfaced `reference/infrastructure/repositories.py`, invisible for as long as the ledger has existed. Converting it belongs to NR-044.3 |
+| NR-050 | P2  | Platform / Capabilities | All ten packages under `app/capabilities/` fail to import | OPEN — **DECISION REQUIRED**. 268 files, 40 of 40 modules raise `ModuleNotFoundError`; `execute()` returns `{"success": True}`. Only `fhir_interoperability`'s models and routes are live, and only because `factory.py` imports them by relative path. Complete them, or retire them |
+| NR-051 | P2  | Platform / Capabilities | Six reusable concepts have 2–4 implementations and no canonical owner | OPEN — **DECISION REQUIRED**. Notification ×4, document ×3+1 dead, workflow ×3+1 dead, consent ×3+1 dead, audit ×3 writers, terminology ×2 same-named classes. *Reuse Before Build* cannot be followed while nothing says what to reuse |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.

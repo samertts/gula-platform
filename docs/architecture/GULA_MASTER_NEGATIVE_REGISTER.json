@@ -1,15 +1,15 @@
 {
   "document": "GULA Master Negative Register",
-  "generated": "2026-09-11T14:09:05Z",
+  "generated": "2026-09-11T16:38:50Z",
   "head_commit": "ac894767bf33dd160ae8131ee8570e29e31f7481",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 49,
+    "total": 51,
     "by_severity": {
       "P0": 10,
       "P1": 19,
-      "P2": 14,
+      "P2": 16,
       "P3": 6
     }
   },
@@ -1653,6 +1653,52 @@
       "owner": "Identity Platform",
       "artifact": "docs/architecture/identity/nr-044-decision.md",
       "next_batch": "NR-044.3"
+    },
+    {
+      "id": "NR-050",
+      "severity": "P2",
+      "domain": "Platform / Capabilities",
+      "category": "Dead code presented as architecture",
+      "title": "All ten packages under app/capabilities/ fail to import",
+      "status": "OPEN — DECISION REQUIRED (complete them, or retire them)",
+      "blocker": false,
+      "can_fix_now": false,
+      "priority": 50,
+      "description": "app/capabilities/ holds 268 files across ten capability packages (clinical_foundation, document_management, encounter_management, fhir_interoperability, healthcare_consent, provider_management, reporting_service, search_service, storage_service, workflow_engine). Every module of every one of them raises ModuleNotFoundError. The tree reads as a capability platform and is not one.",
+      "root_cause": "Generated scaffolding that was never wired up. Two distinct import faults: each __init__.py uses a bare top-level import (`from document_management.capability import ...`) that resolves against no package on sys.path, and each capability.py imports `from backend.app.kernel.integration import get_kernel` — a root that does not exist, since the application is rooted at `app`, not `backend.app`. 55 modules across app/ use the `backend.app` prefix.",
+      "evidence": "Measured by importlib over all four module kinds (__init__, capability, contract, routes) in all ten packages: 40 of 40 raise ModuleNotFoundError. Their execute() bodies return {'success': True}. Four of their repositories are also in the NR-044 unreachable-async ledger, so they would be unreachable twice over. Exactly one thing in the tree is live: app/factory.py imports capabilities.fhir_interoperability.models and .routes by RELATIVE path, which resolves — so the FHIR capability's models and routes run while its own capability.py manifest cannot load.",
+      "security_impact": "None directly — dead code has no attack surface. The risk is misdirection: the registry advertises these ten as active capabilities, so a reviewer looking for an implementation finds a plausible file that has never executed.",
+      "clinical_impact": "None today. The concern is that document_management, healthcare_consent and encounter_management are clinical concepts whose apparent existence may discourage someone from building the real thing.",
+      "recommended_fix": "A decision, not a patch. Either (a) complete the ten: fix the imports, give each a real implementation, a contract-satisfying descriptor and tests against migrated PostgreSQL; or (b) retire the tree and keep only fhir_interoperability's live models and routes, moving them out of app/capabilities/. Option (b) is materially cheaper and loses nothing that runs.",
+      "verification": "backend/tests/test_extensibility_guards.py deliberately does NOT import this tree — a guard that swallowed the ModuleNotFoundError would report a clean estate it had not measured. The guards work from the registry that actually loads.",
+      "affected_components": "backend/app/capabilities/ (268 files), backend/app/factory.py",
+      "discovered_by": "PROGRAM-EXT-001 Phase 1",
+      "owner": "Platform Architecture",
+      "artifact": "docs/architecture/extensibility/core-boundary.md",
+      "next_batch": "Blocked on the user's decision between complete and retire."
+    },
+    {
+      "id": "NR-051",
+      "severity": "P2",
+      "domain": "Platform / Capabilities",
+      "category": "Duplicate reusable capability implementations",
+      "title": "Six reusable concepts have between two and four implementations and no canonical owner",
+      "status": "OPEN — DECISION REQUIRED (six canonical-owner choices)",
+      "blocker": false,
+      "can_fix_now": false,
+      "priority": 51,
+      "description": "Notification has four implementations, document three live plus one dead, workflow three live plus one dead, consent three live plus one dead, audit three writers, terminology two classes of the same name in different modules. The Platform Constitution's Reuse Before Build article cannot be followed because nothing states which one to reuse.",
+      "root_cause": "Capabilities were built per-domain as each domain needed them, with no catalogue to check first and no guard on the name.",
+      "evidence": "Enumerated by class name across app/. Notification: identity/notifications/services.py, platform/notifications.py, national/notification_platform/application/service.py, notifications/service.py. Document: platform/documents.py, national/document_platform/application/service.py, document_intelligence/ (4 ABCs), capabilities/document_management (dead). Workflow: platform/workflow.py, national/workflow_runtime/application/service.py, identity/workflows/engine.py, capabilities/workflow_engine (dead). Consent: identity/services/consent_service_v2.py, trust/services.py, national/security/consent_enforcement.py, capabilities/healthcare_consent (dead). Audit: identity/services/audit_service.py (v1), identity/services/canonical_audit.py (v2), platform/audit.py. Terminology: services/clinical_service.py and integration/standards/terminology.py both define TerminologyService. At the descriptor level the same duplication appears as consent_management (2.1.0) and healthcare_consent (1.0.0) both registered.",
+      "security_impact": "Audit is the sharp edge: CanonicalAuditService maintains the hash chain, and a third writer (platform/audit.py) that does not is a gap in an immutable trail that is supposed to have none.",
+      "clinical_impact": "Four notification services means four places a national clinical alert can silently fail to send, and no single place to look when one does.",
+      "recommended_fix": "Six ownership decisions, one per concept, recorded in docs/architecture/extensibility/reusable-capabilities.md §5. Consolidation follows the decision; guessing would create a fifth implementation.",
+      "verification": "backend/tests/test_extensibility_guards.py::test_a_new_capability_does_not_duplicate_a_canonical_one freezes the five existing name collisions and blocks a sixth. It does not consolidate what exists — that needs the decisions.",
+      "affected_components": "app/platform/, app/notifications/, app/national/notification_platform/, app/national/document_platform/, app/national/workflow_runtime/, app/identity/notifications/, app/identity/workflows/, app/trust/, app/document_intelligence/, app/integration/standards/",
+      "discovered_by": "PROGRAM-EXT-001 Phase 5",
+      "owner": "Platform Architecture",
+      "artifact": "docs/architecture/extensibility/reusable-capabilities.md",
+      "next_batch": "Blocked on six canonical-owner decisions."
     }
   ]
 }
