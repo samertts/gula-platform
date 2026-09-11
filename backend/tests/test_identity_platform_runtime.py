@@ -288,6 +288,12 @@ DECLARED_UNREACHABLE_ASYNC_DB_MODULES = frozenset({
     # nothing. Converting them would be repairing code no interpreter can load.
     # That whole tree is NR-050, a decision that belongs to its owner, so
     # NR-044.3 classified these D (dead, evidenced) and left them.
+    #
+    # NR-050's discovery then measured the tree properly: nine of the ten
+    # packages fail this way, the tenth (fhir_interoperability) is complete and
+    # live, and these four carry a second defect underneath — a dataclass that
+    # defaults `id` before its non-default fields. So they are two repairs from
+    # loadable, not one; still not NR-044's to make.
     "capabilities/document_management/infrastructure/repository.py",
     "capabilities/encounter_management/infrastructure/repository.py",
     "capabilities/provider_management/infrastructure/repository.py",

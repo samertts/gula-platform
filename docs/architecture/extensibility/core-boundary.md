@@ -51,7 +51,7 @@ validation, workflow), `app/integration/` (95) for the ESB/CDC machinery,
 **APPLICATION/UI** — `app/routes/` (63), `app/clinical_gateway/`,
 `frontend/`, `frontend-v2/`, `frontend-v3/`, `client/`.
 
-**EXPERIMENTAL** — `app/capabilities/` (268 files, see §4),
+**EXPERIMENTAL** — `app/capabilities/` (267 modules, see §4),
 `app/research_platform/`, `app/pilot_platform/`, `app/knowledge_graph/`,
 `app/ai_fabric/`, `backend/services/`, `backend/core/`.
 
@@ -97,7 +97,7 @@ clinical organization identity.
 
 ## 4. `app/capabilities/` — present, and dead
 
-Ten capability packages (268 files) exist under `app/capabilities/`:
+Ten capability packages (267 modules) exist under `app/capabilities/`:
 `clinical_foundation`, `document_management`, `encounter_management`,
 `fhir_interoperability`, `healthcare_consent`, `provider_management`,
 `reporting_service`, `search_service`, `storage_service`, `workflow_engine`.

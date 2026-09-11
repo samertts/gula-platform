@@ -10,7 +10,7 @@ counts, and the guard fails when a new one appears or an existing one grows.
 Frozen, visible debt beats a gate that nobody can turn on.
 
 **UNKNOWN is never VERIFIED.** Nothing here imports `app/capabilities/`, because
-all ten of those packages raise `ModuleNotFoundError` (NR-050); a guard that
+nine of those ten packages raise `ModuleNotFoundError` (NR-050); a guard that
 swallowed that would report a clean estate it had not measured. The guards work
 from the registry that actually loads, and from AST over source.
 """
@@ -470,8 +470,9 @@ def _synthetic() -> CapabilityDescriptor:
 
     Deliberately not written to `app/`. A synthetic business implementation in
     the source tree is code that looks finished, does nothing, and gets copied:
-    `app/capabilities/` already holds 268 files of exactly that, none of which
-    imports (NR-050). This proves the contract without leaving another corpse.
+    `app/capabilities/` already holds 267 modules of largely that, nine packages
+    of which do not import (NR-050). This proves the contract without leaving
+    another corpse.
     """
     return CapabilityDescriptor(
         capability_id="cap.synthetic.referral_echo",

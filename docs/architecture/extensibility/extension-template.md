@@ -134,7 +134,7 @@ ruff check app/<area>/<name>
 
 A synthetic business implementation would be a lie in the repository: code that
 looks finished, does nothing, and gets copied. `app/capabilities/` already holds
-268 files of exactly that, none of which imports (NR-050).
+267 modules of largely that, nine packages of which do not import (NR-050).
 
 The template is proved instead by
 `backend/tests/test_extensibility_guards.py::TestSyntheticExtension`, which

@@ -114,7 +114,7 @@ Run `validate_descriptor` on it. An empty list is the contract met.
 
 It does not load code, construct the capability, or check that `module_path`
 exists on disk. Those are runtime concerns and adding them here would make a
-metadata check depend on import success — which, given that all ten packages
-under `app/capabilities/` currently fail to import, would make the contract
-unusable on the day it shipped. The guard checks metadata; reachability is the
+metadata check depend on import success — which, given that nine of the ten
+packages under `app/capabilities/` currently fail to import (NR-050), would make
+the contract unusable on the day it shipped. The guard checks metadata; reachability is the
 lifecycle's job.

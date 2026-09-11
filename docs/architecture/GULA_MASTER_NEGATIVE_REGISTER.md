@@ -72,6 +72,13 @@ never evaluated — a control that failed closed by crashing. That is the third
 finding in this sequence (with NR-045 and NR-048) that was invisible purely
 because the code could not run._
 
+_**NR-050 discovery** then measured the capability tree properly and corrected
+this register: the earlier "all ten fail to import" was measured with the wrong
+`sys.path` and a four-module sample. One package is complete and live, nine are a
+single character from importable, and all three defect classes come from one
+generator that is still emitting them (**NR-053**). Nine of the nine also have
+shipped frontend routes pointing at unregistered endpoints (**NR-054**)._
+
 _**PROGRAM-EXT-001** then established the extensibility foundation on top of the
 registry that already loads, rather than building a second one. It added
 **NR-050** (the `app/capabilities/` tree is 268 files of scaffolding that cannot
@@ -136,7 +143,9 @@ since the first pass and now reflects all findings, not one session's._
 | NR-046 | P2  | Identity Platform | The NIAM actor dependency does not consult `UserSession.expires_at` | OPEN — pre-existing, not a NR-044.1 regression; bounded by the access token's own enforced `exp` |
 | NR-048 | P1  | Clinical Gateway | The gateway reported any internal fault as an authorization denial | **VERIFIED** (NR-044.2) — `except Exception → invalid_context` narrowed to the context service's own denial vocabulary. This is how NR-047's `UndefinedColumn` reached clients as a 403 and was written into the audit chain as a decision nobody made |
 | NR-049 | P2  | Identity Platform | The NR-044 ledger could not see a module that stored its session as `self._session` | OPEN (module) / FIXED (guard) — widening the owner rule raised the ledger from 19 to 20 and surfaced `reference/infrastructure/repositories.py`, invisible for as long as the ledger has existed. Converting it belongs to NR-044.3 |
-| NR-050 | P2  | Platform / Capabilities | All ten packages under `app/capabilities/` fail to import | OPEN — **DECISION REQUIRED**. 268 files, 40 of 40 modules raise `ModuleNotFoundError`; `execute()` returns `{"success": True}`. Only `fhir_interoperability`'s models and routes are live, and only because `factory.py` imports them by relative path. Complete them, or retire them |
+| NR-050 | P2  | Platform / Capabilities | Nine of ten packages under `app/capabilities/` cannot import, and nine have live frontend routes | **DISCOVERY COMPLETE — DECISION REQUIRED** (recommendation: SPLIT). Corrects the earlier entry: measured in the real environment over all 267 modules, `fhir_interoperability` imports 27/27 and is fully live; the other nine fail on **one character each**. They are not orphans — frontend-v3 ships nine routes, nine pages and nine nav entries for them, gated on `dashboard:read`, calling endpoints `factory.py` never registers |
+| NR-053 | P2  | Platform / Engineering | The capability generator still emits all three defects that made nine packages unimportable | OPEN — bare import (line 485), `backend.app` imports (8/191/514), and a dataclass template that defaults `id` before non-default fields. Every capability generated from today is born broken. Actionable now, independent of the NR-050 decision |
+| NR-054 | P2  | Frontend / Platform | Nine frontend routes call capability endpoints that are never registered | OPEN — **DECISION REQUIRED**. Nine navigable clinical-section pages backed by nothing. Whatever NR-050 decides, leaving navigable pages pointing at nothing is the one option to rule out |
 | NR-052 | P1  | Identity Platform | The assurance-profile administrator gate filtered on a column that does not exist | **VERIFIED** (NR-044.3) — `Assignment.account_id` is not a column, so the gate raised `AttributeError` rather than deciding. It failed closed, as a 500, and had never once been evaluated: NR-044 meant the route could not run. Now joins account → identity → person |
 | NR-051 | P2  | Platform / Capabilities | Six reusable concepts have 2–4 implementations and no canonical owner | OPEN — **DECISION REQUIRED**. Notification ×4, document ×3+1 dead, workflow ×3+1 dead, consent ×3+1 dead, audit ×3 writers, terminology ×2 same-named classes. *Reuse Before Build* cannot be followed while nothing says what to reuse |
 
