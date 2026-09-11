@@ -6,11 +6,15 @@ nothing reconciles them: divergent columns, divergent constraints, divergent
 nullability. Writes through one can violate what the other declares.
 
 The scan behind this guard found GULA is already close to that rule -- 829 ORM
-classes over 828 distinct tables. Exactly one table has two owners, and that
-one is NR-006, open since BATCH-2.
+classes over 828 distinct tables. Exactly one table had two owners, NR-006's
+`national_facilities`, and that one is now closed: the second mapper is gone and
+the table it anchored is declared as a bare `Table`. The rule now holds with no
+exceptions, which is why the ledger below is empty.
 
-This is an AST scan, not an import: it costs milliseconds, needs no database,
-and cannot be defeated by a module that fails to import.
+The rule itself is checked by AST scan, not by import: it costs milliseconds,
+needs no database, and cannot be defeated by a module that fails to import. The
+last test is the exception and is deliberately behavioural -- what NR-006 got
+wrong was a column list, and only building the table proves that right.
 """
 
 from __future__ import annotations
@@ -22,24 +26,17 @@ from pathlib import Path
 BACKEND = Path(__file__).resolve().parents[1]
 APP = BACKEND / "app"
 
-# Tables with more than one ORM owner, as of NR-051. This ledger may shrink.
-# It may never grow.
+# Tables with more than one ORM owner. This ledger may shrink. It may never grow.
 #
-# national_facilities: `models.clinical_scope.NationalFacility` (id,
-# facility_code, name, status, created_at, updated_at) and
-# `national.domain.facility.Facility` (facility_type, name_ar, code,
-# organization_id, directorate_id, parent_facility_id, phone, email).
-# Migration 20260813_0004_clinical_ehr_scope_bridge.py creates the table with
-# the first shape, so the second maps eight columns that do not physically
-# exist. Both are currently dormant, which is the only reason this is latent
-# rather than live. Resolving it is a canonical-ownership decision (NR-006),
-# not a mechanical repair, so it is recorded here rather than changed.
-DECLARED_DUPLICATE_TABLE_OWNERS = {
-    "national_facilities": {
-        "models.clinical_scope.NationalFacility",
-        "national.domain.facility.Facility",
-    },
-}
+# It is empty, and that is a measured state rather than an aspiration: NR-006 was
+# its only entry and was closed by this commit. `national.domain.facility.Facility`
+# mapped `national_facilities` with 28 columns, 24 of which migration
+# 20260813_0004_clinical_ehr_scope_bridge.py never creates -- including
+# `facility_type` NOT NULL -- while omitting two that do exist. It had no consumer,
+# and any query through it raised UndefinedColumn. It is now a bare `Table` holding
+# the foreign-key anchor that fourteen tables in `NationalBase.metadata` need, so
+# `models.clinical_scope.NationalFacility` is the sole ORM owner.
+DECLARED_DUPLICATE_TABLE_OWNERS: dict[str, set[str]] = {}
 
 
 def _orm_owners() -> dict[str, set[str]]:
@@ -77,11 +74,11 @@ def test_the_orm_scan_finds_the_model_layer() -> None:
 
 
 def test_no_table_has_two_orm_owners() -> None:
-    """The canonical persistence rule, held.
+    """The canonical persistence rule, held with no exceptions.
 
-    A new duplicate is in neither the repository's clean state nor the NR-006
-    ledger, so it fails here rather than being discovered years later by a
-    column that does not exist.
+    The ledger is empty, so this is now an absolute assertion: any table mapped
+    twice fails here rather than being discovered years later by a column that
+    does not exist.
     """
     offenders = {
         table: sorted(classes)
@@ -97,8 +94,10 @@ def test_no_table_has_two_orm_owners() -> None:
 def test_the_duplicate_ledger_is_accurate() -> None:
     """A ledger entry that has been resolved should be deleted, not left to rot.
 
-    Fails both ways: if NR-006 is fixed and the entry stays, and if the entry's
-    recorded owners stop matching what the code actually declares.
+    Vacuous while the ledger is empty, which is the point -- it is what makes an
+    entry added later expire on its own instead of becoming a permanent
+    exemption. Fails both ways: if a listed duplicate is fixed and the entry
+    stays, and if an entry's recorded owners stop matching what is declared.
     """
     owners = _orm_owners()
     for table, declared in DECLARED_DUPLICATE_TABLE_OWNERS.items():
@@ -109,3 +108,63 @@ def test_the_duplicate_ledger_is_accurate() -> None:
         assert actual == declared, (
             f"{table}'s owners changed: expected {sorted(declared)}, found {sorted(actual)}"
         )
+
+
+def test_national_facilities_has_exactly_one_orm_owner() -> None:
+    """NR-006, named rather than left to the general rule.
+
+    The general assertion above would catch a second mapper appearing anywhere.
+    This one says which table and which owner, so a regression reports the
+    finding it reopens instead of a bare pair of class names.
+    """
+    owners = _orm_owners().get("national_facilities", set())
+    assert owners == {"models.clinical_scope.NationalFacility"}, (
+        "national_facilities must be mapped by NationalFacility alone -- "
+        f"found {sorted(owners)}"
+    )
+
+
+def test_the_national_facilities_anchor_mirrors_the_canonical_model() -> None:
+    """The half a static scan cannot check.
+
+    `NationalBase.metadata` still has to carry `national_facilities`, because
+    fourteen tables in it hold a foreign key to that id and would not resolve
+    otherwise. Declaring it as a bare `Table` is what keeps them resolvable
+    without a second mapper -- but a bare table can drift from the canonical
+    model exactly as the old mapper had, and silently, since nothing imports it.
+
+    So: same columns, same order, and `create_all` builds them. That last point
+    is what actually failed before -- three test modules build this metadata
+    directly, so the suite was creating a `national_facilities` shape that no
+    migration produces.
+    """
+    import app.national.domain  # imported for its side effect: registers the anchor
+    import sqlalchemy as sa
+    from app.models.clinical_scope import NationalFacility
+    from app.national.base import NationalBase
+
+    anchor = NationalBase.metadata.tables["national_facilities"]
+    canonical = [c.name for c in NationalFacility.__table__.columns]
+    assert [c.name for c in anchor.columns] == canonical, (
+        "the national_facilities foreign-key anchor has drifted from its "
+        "canonical model; queries through NationalFacility are what is real"
+    )
+
+    dependents = {
+        fk.parent.table.name
+        for table in NationalBase.metadata.tables.values()
+        for fk in table.foreign_keys
+        if fk.column.table.name == "national_facilities"
+    }
+    assert len(dependents) >= 14, (
+        "the anchor exists for these foreign keys; finding almost none means "
+        f"the package stopped registering, not that the need went away: {sorted(dependents)}"
+    )
+
+    engine = sa.create_engine("sqlite://")
+    NationalBase.metadata.create_all(engine)
+    with engine.connect() as conn:
+        built = [r[1] for r in conn.exec_driver_sql("PRAGMA table_info(national_facilities)")]
+    assert built == canonical, (
+        f"create_all built a table the migration does not produce: {built}"
+    )

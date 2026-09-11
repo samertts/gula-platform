@@ -10,9 +10,11 @@ NR-051 was recorded as "six reusable concepts have 2–4 implementations and no
 canonical owner". Measured against the persistence layer, **that framing
 overstates the problem and mislocates it**.
 
-**829 ORM classes map 828 distinct tables. Exactly one table has two ORM
-owners.** At the layer that decides truth — who writes the row — GULA is
-already 827/828 canonical.
+**829 ORM classes mapped 828 distinct tables. Exactly one table had two ORM
+owners.** At the layer that decides truth — who writes the row — GULA was
+already 827/828 canonical. That one exception was NR-006, and §23 records how it
+was closed in the same work: **the persistence layer is now 828/828, with no
+declared exceptions.**
 
 What NR-051 was counting was not competing owners. It was:
 
@@ -25,7 +27,8 @@ What NR-051 was counting was not competing owners. It was:
    `…/providers` paths are AI, payment and federation *service* providers, not
    practitioners; `/lims/storage` is refrigerators, not object storage.
 
-Three concepts remain genuinely contested, and one defect is provable today.
+Three concepts remain genuinely contested; the one defect that was provable
+is fixed.
 
 ## 2. Canonical Ownership Principles
 
@@ -76,31 +79,57 @@ Only **consent** and **practitioner/provider** are genuine multi-owner
 conflicts. Everything else previously counted as duplication is a projection, a
 domain-local association, a within-owner table family, or a homonym.
 
-## 23. Conflicting owners — `national_facilities`, resolved by evidence
+## 23. Conflicting owners — `national_facilities` — RESOLVED AND EXECUTED
 
 The one table with two ORM owners, open as **NR-006** since BATCH-2:
 
-| | `models.clinical_scope.NationalFacility` | `national.domain.facility.Facility` |
+| | `models.clinical_scope.NationalFacility` | `national.domain.facility.Facility` (retired) |
 | --- | --- | --- |
-| columns | id, facility_code, name, status, created_at, updated_at | + facility_type (**NOT NULL**), name_ar, code, organization_id, directorate_id, parent_facility_id, phone, email |
-| unique | `facility_code` | `code` |
+| columns mapped | 6 | 28 |
+| of those, not physically created | 0 | **24**, three of them NOT NULL |
+| physical columns omitted | 0 | 2 (`facility_code`, `status`) |
+| unique | `facility_code` | `code` — a column that does not exist |
 | matches the migration? | **yes** | **no** |
 
 `20260813_0004_clinical_ehr_scope_bridge.py` creates the table with exactly the
-first shape. The second maps **eight columns that do not physically exist**;
-any query through it raises `UndefinedColumn`, and its `facility_type NOT NULL`
-could never be satisfied.
+first shape. The second mapped **24 columns that do not physically exist** — the
+register's earlier figures of 18 and 8 were both undercounts, because neither
+included what `AuditEntity` contributes. Any query through it raises
+`UndefinedColumn`, and its `facility_type NOT NULL` could never be satisfied.
 
 **This is not a preference between two designs. One of them cannot execute.**
 
-Severity is **latent, not live**: `Facility` is referenced only by
-`national/domain/__init__.py`, and `NationalFacility` only by its own module.
-Neither is queried today.
+### What made it latent, and what did not
 
-**Recommendation: `NationalFacility` is the canonical owner of
-`national_facilities`.** Not executed here — retiring or reshaping the other is
-a canonical-ownership decision with data consequences, and the brief reserves
-those. Recorded and guarded instead.
+`Facility` had **zero consumers**. Every `Facility` import in the repository
+resolves to `app.models.organization.Facility`, which maps the unrelated
+`facilities` table; the national one was named only by its own package
+`__init__`. So no request path could reach it.
+
+`create_all` could, and did. Three test modules build `NationalBase.metadata`
+directly, so the suite was creating a `national_facilities` that no deployment
+has. Nothing was written against that shape yet — but the next test to do so
+would have passed locally and been wrong in production. That is the same failure
+mode as NR-026, NR-032 and NR-034, waiting on an author rather than on a bug.
+
+### The repair
+
+`NationalBase.metadata` still has to carry `national_facilities`: **14 tables in
+it hold a foreign key to that id** and would not resolve otherwise. That is a
+requirement for a *table*, not for an *entity*. So the mapped class is replaced
+by a bare `sqlalchemy.Table` mirroring the physical schema column for column.
+
+- the 14 dependent foreign keys still resolve;
+- `create_all` now builds the migration's shape, verified against it;
+- `models.clinical_scope.NationalFacility` is the **sole ORM owner**, so nothing
+  else in the codebase can write a facility row;
+- no migration, no schema change, no data movement — the table was always
+  correct; one of its two ORM views was not.
+
+Held by `backend/tests/test_canonical_table_ownership.py`, whose exception ledger
+is now **empty**: the rule holds across all 828 tables with no declared
+exceptions. Negative-proven in both directions — reintroducing a second mapper
+fails two tests, drifting the anchor by a single column fails a third.
 
 ## 24–26. Schema / API / identifier conflicts
 
@@ -151,9 +180,8 @@ owners already, and moving them into Core would be growth for its own sake.
 1. **Consent ownership** — 7 tables, 6 domains. The only remaining NR-050 blocker.
 2. **Practitioner registry** — `national_practitioners` is the sole candidate;
    confirm the insurance/payment homonyms stay separate.
-3. **NR-006 execution** — the evidence names the owner; retiring the fiction is a decision.
-4. **Identifier strategy across Core/National** — NR-022.
-5. **Audit rule** — which of the 16 audit tables must chain to the canonical log.
+3. **Identifier strategy across Core/National** — NR-022.
+4. **Audit rule** — which of the 16 audit tables must chain to the canonical log.
 
 ## 32. Recommended target architecture
 
@@ -184,7 +212,7 @@ and writing the boundary down so it stops eroding.
 
 ## Confidence
 
-**HIGH** for the structural finding (827/828), the NR-006 resolution, and the
+**HIGH** for the structural finding (now 828/828), the NR-006 resolution, and the
 workflow/notification/encounter/FHIR owners — all measured.
 **MEDIUM** for document, organization, terminology and audit — evidence points
 one way, no rival has been excluded by test.

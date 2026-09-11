@@ -1,40 +1,51 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Index, String, Text
-from sqlalchemy import Enum as SAEnum
+"""NR-006 — ``national_facilities`` has one ORM owner, and it is not this module.
 
-from app.national.base import AuditEntity
-from app.national.enums import FacilityType
+``app.models.clinical_scope.NationalFacility`` maps this table on
+``app.database.Base``, and migration ``20260813_0004_clinical_ehr_scope_bridge``
+creates it with exactly that model's six columns.
 
+A second mapped class used to live here. It declared 28 columns, 24 of which the
+migration never creates -- including ``facility_type`` NOT NULL -- while omitting
+two that do exist (``facility_code``, ``status``). It had no consumer anywhere in
+the repository: every ``Facility`` import resolves to
+``app.models.organization.Facility``, which maps the unrelated ``facilities``
+table. Any query issued through this one would have raised ``UndefinedColumn``.
 
-class Facility(AuditEntity):
-    __tablename__ = "national_facilities"
+The more dangerous half was ``create_all``: three test modules build
+``NationalBase.metadata`` directly, so the suite was creating a
+``national_facilities`` that production cannot have. Tests written against that
+shape would have passed against a schema no migration produces.
 
-    facility_type = Column(SAEnum(FacilityType), nullable=False)
-    name = Column(String(200), nullable=False)
-    name_ar = Column(String(200), nullable=True)
-    code = Column(String(20), nullable=True, unique=True, index=True)
+What ``NationalBase``'s metadata genuinely needs from this module is the foreign
+key target -- seventeen models in this package carry
+``ForeignKey("national_facilities.id")`` and must resolve inside their own
+MetaData. That is a table, not an entity. Declared as a bare ``Table`` it keeps
+every one of those references resolvable, makes what ``create_all`` builds match
+the migration, and leaves exactly one class in the codebase able to write a
+facility row.
 
-    organization_id = Column(String(26), ForeignKey("national_organizations.id", ondelete="RESTRICT"), nullable=True, index=True)
-    directorate_id = Column(String(26), ForeignKey("national_directorates.id", ondelete="RESTRICT"), nullable=True, index=True)
-    parent_facility_id = Column(String(26), nullable=True, index=True)
+Do not re-add a mapped class here. Facilities are written through
+``app.models.clinical_scope.NationalFacility``.
+"""
 
-    phone = Column(String(20), nullable=True)
-    email = Column(String(255), nullable=True)
+from __future__ import annotations
 
-    address_line = Column(String(500), nullable=True)
-    city = Column(String(100), nullable=True)
-    governorate = Column(String(100), nullable=True)
-    district = Column(String(100), nullable=True)
+from sqlalchemy import Column, DateTime, String, Table, UniqueConstraint
 
-    latitude = Column(String(20), nullable=True)
-    longitude = Column(String(20), nullable=True)
+from app.national.base import NationalBase
 
-    is_active = Column(Boolean, default=True)
-    is_emergency_available = Column(Boolean, default=False)
-    operating_hours = Column(Text, nullable=True)
+#: Foreign-key anchor only -- mirrors the physical table column for column.
+national_facilities = Table(
+    "national_facilities",
+    NationalBase.metadata,
+    Column("id", String(26), primary_key=True, nullable=False),
+    Column("facility_code", String(100), nullable=True),
+    Column("name", String(255), nullable=False),
+    Column("status", String(20), nullable=False, server_default="active"),
+    Column("created_at", DateTime(timezone=True), nullable=False),
+    Column("updated_at", DateTime(timezone=True), nullable=False),
+    UniqueConstraint("facility_code", name="uq_national_facilities_facility_code"),
+    extend_existing=True,
+)
 
-    __table_args__ = (
-        Index("ix_national_facilities_type", "facility_type"),
-        Index("ix_national_facilities_org", "organization_id"),
-        Index("ix_national_facilities_directorate", "directorate_id"),
-        {"extend_existing": True},
-    )
+__all__ = ["national_facilities"]

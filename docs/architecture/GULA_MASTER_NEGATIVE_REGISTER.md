@@ -99,7 +99,7 @@ since the first pass and now reflects all findings, not one session's._
 | NR-003 | P0  | Pharmacy | PK type divergence blocks any full `upgrade head` | OPEN — BLOCKED / DECISION REQUIRED |
 | NR-004 | P1  | Blood Bank | Shared transition table shadowed the blood-unit `reserved` state | FIXED — VERIFIED |
 | NR-005 | P1  | Platform/Alembic | Unguarded duplicate index could never succeed | FIXED — VERIFIED |
-| NR-006 | P1  | National + Core | `national_facilities` mapped by two ORM classes | OPEN — DECISION REQUIRED |
+| NR-006 | P1  | National + Core | `national_facilities` mapped by two ORM classes | FIXED — VERIFIED (second mapper retired to a bare FK anchor) |
 | NR-007 | P1  | Clinical/Blood Bank | State machine is entity-agnostic by construction | PARTIALLY RESOLVED — 4 collisions attributed; 28 ... |
 | NR-008 | P2  | Platform | `signxml` missing from lock file | OPEN — NOT A PRODUCTION BLOCKER |
 | NR-009 | P2  | Platform CI | Artifact quota exhausted; evidence jobs all red | OPEN — EXTERNAL |
@@ -116,7 +116,7 @@ since the first pass and now reflects all findings, not one session's._
 | NR-020 | P0  | Blood Bank | Transfusion state machine had no `verified` state | FIXED — VERIFIED |
 | NR-021 | P0  | Blood Bank | Inventory and component endpoints ignored `lab_id` | FIXED — VERIFIED |
 | NR-022 | P0  | National Core | Four of the five most-depended-on tables do not exist | OPEN — ARCHITECTURE DECISION REQUIRED |
-| NR-023 | P0  | Platform Migrations | Autogenerate cannot run: foreign keys cross `MetaData` boundaries | OPEN — BLOCKED BY NR-006, NR-030 |
+| NR-023 | P0  | Platform Migrations | Autogenerate cannot run: foreign keys cross `MetaData` boundaries | OPEN — BLOCKED BY NR-030 (NR-006 cleared) |
 | NR-024 | P3  | Platform Migrations | `CitizenPlatformBase` is registered but maps zero tables | OPEN — LOW SEVERITY |
 | NR-025 | P2  | Platform-wide | One name, two identifier schemes: `_ulid()` is a real ULID twice, a truncated UUID4 twelve times (thirteen before BATCH-3) | OPEN — DESIGN DEFECT |
 | NR-026 | P0  | Nursing Platform | Entire Nursing ORM diverges from its schema; every model fails on a plain SELECT | FIXED — VERIFIED (BATCH-3; 15/15 models SELECT, 0 destructive diff, no migration) |
@@ -178,7 +178,7 @@ described this as a Blood Bank issue; that understated it.
 | C-03       | Pharmacy ORM uses `String(26)` ULIDs; pharmacy migrations create `Integer` ids                                                                                                                                                                                          | NR-003         | **VERIFIED** — unresolved                                 |
 | C-04       | Per-entity clinical state semantics vs. one shared entity-agnostic transition table                                                                                                                                                                                     | NR-004, NR-007 | **VERIFIED** — partially resolved                         |
 | C-05       | `production_ready=false` gating vs. CI that structurally cannot certify (all evidence jobs fail at upload)                                                                                                                                                              | NR-009         | **VERIFIED**                                              |
-| C-06       | Domain ownership boundaries vs. two domains mapping one physical table                                                                                                                                                                                                  | NR-006         | **VERIFIED**                                              |
+| C-06       | Domain ownership boundaries vs. two domains mapping one physical table                                                                                                                                                                                                  | NR-006         | **RESOLVED** — one owner, one table       |
 | C-07       | Reproducible-build intent vs. lock file that cannot start the app                                                                                                                                                                                                       | NR-008         | **VERIFIED**                                              |
 | C-08       | "National scale" ambition vs. absence of any capacity numbers                                                                                                                                                                                                           | NR-014         | **VERIFIED as a gap**                                     |
 | C-09..C-20 | offline-first vs clinical authority · CRDT vs clinical truth · privacy vs emergency access · consent withdrawal vs legal retention · AI assistance vs clinical responsibility · HA vs strong consistency · green vs performance · citizen ownership vs record integrity | —              | **NOT AUDITED** — candidates only, no evidence gathered   |
@@ -191,7 +191,7 @@ described this as a Blood Bank issue; that understated it.
 | I-02 | Alembic graph                                                                              | every domain — no schema without it                                              | NR-001/002                                                 |
 | I-03 | Pharmacy id type                                                                           | pharmacy + any FK referencing pharmacy entities                                  | NR-003                                                     |
 | I-04 | Blood Bank state machine                                                                   | units, orders, samples, crossmatches, transfusions, reactions (one shared table) | NR-004/007                                                 |
-| I-05 | `national_facilities`                                                                      | national platform + core clinical scope + authorization scoping                  | NR-006                                                     |
+| I-05 | `national_facilities`                                                                      | national platform + core clinical scope + authorization scoping                  | NR-006 — RESOLVED: `NationalFacility` owns it; the national domain holds a bare FK anchor |
 | I-06 | Identity change → Patient → Consent → Clinical → Lab → Pharmacy → Audit → FHIR → Analytics | all                                                                              | **NOT AUDITED** — asserted by the brief, not verified here |
 
 **Rule:** none of I-01..I-05 may be remediated inside a single domain in isolation.
@@ -205,12 +205,12 @@ Only rows with real evidence are filled. Everything else is explicitly unaudited
 | Clinical command idempotency claims                          | `clinical_command_receipts` (single table)  | `ClinicalCommandGuard` only           | 8 domains (I-01)                         | Guard fails closed → 409         | **VERIFIED**          |
 | Blood unit lifecycle state                                   | `blood_bank_units.status` via state machine | Blood Bank routes/service under guard | traceability, reservations, issue        | Transition rejected → 422        | **VERIFIED**          |
 | Blood inventory movements                                    | `blood_bank_inventory_movements`            | Blood Bank service                    | traceability, reconciliation             | Rolled back with the transaction | **VERIFIED**          |
-| `national_facilities`                                        | **CONTESTED — two ORM owners**              | `app/models` and `app/national`       | authorization scoping, national platform | Undefined                        | **CONFLICT (NR-006)** |
+| `national_facilities`                                        | `models.clinical_scope.NationalFacility`    | `app/models` (the national domain holds a bare `Table` as FK anchor only) | authorization scoping, national platform | Rolled back with the transaction | **RESOLVED (NR-006)** |
 | Pharmacy catalog / substitution                              | Undefined — schema and ORM disagree         | n/a (cannot deploy)                   | pharmacy                                 | Migration fails                  | **BROKEN (NR-003)**   |
 | Patient / MPI / National ID                                  | —                                           | —                                     | —                                        | —                                | **NOT AUDITED**       |
 | Consent, provider identity, device identity, analytics, FHIR | —                                           | —                                     | —                                        | —                                | **NOT AUDITED**       |
 
-828 mapped tables were scanned for dual ownership; exactly one conflict was found (NR-006).
+828 mapped tables were scanned for dual ownership; exactly one conflict was found (NR-006), and it is now closed — the rule holds across all 828 with no declared exceptions, held by `backend/tests/test_canonical_table_ownership.py`.
 
 ## 7. Audit coverage matrix
 
@@ -220,7 +220,7 @@ Only rows with real evidence are filled. Everything else is explicitly unaudited
 | Clinical state machines (Blood Bank)                                                        | **AUDITED — NR-004/007**                       |
 | Idempotency, concurrency, transaction boundaries, failure/retry (Blood Bank + shared guard) | **VERIFIED in Phases 14B/14B.1/14C**           |
 | Authorization / IDOR (Blood Bank cross-facility only)                                       | **PARTIALLY VERIFIED** — Blood Bank paths only |
-| Source-of-truth / data ownership (ORM table mapping)                                        | **AUDITED — NR-006**                           |
+| Source-of-truth / data ownership (ORM table mapping)                                        | **AUDITED AND ENFORCED — NR-006 closed; guarded in CI** |
 | Dependency reproducibility                                                                  | **AUDITED — NR-008**                           |
 | CI/CD failure classification                                                                | **AUDITED — NR-009/010/015**                   |
 | Frontend accessibility (one component)                                                      | **AUDITED — NR-011**                           |
@@ -262,7 +262,7 @@ remediation plan rather than guessed at here.
 | Ref    | Decision                                                                     | Owner                    |
 | ------ | ---------------------------------------------------------------------------- | ------------------------ |
 | NR-003 | Canonical pharmacy primary-key type, then a migration strategy for 23 tables | Pharmacy + Platform/Data |
-| NR-006 | Which domain owns `national_facilities`; the other becomes a consumer        | National + Core          |
+| ~~NR-006~~ | DECIDED AND APPLIED: `models.clinical_scope.NationalFacility` owns `national_facilities`; the national domain keeps a bare FK anchor, not a mapper | National + Core |
 | NR-007 | Per-entity state machine keying vs. accepting union semantics                | Clinical Standards       |
 | PARTIALLY RESOLVED — 4 collisions attributed; 28 ... | Whether stored-response replay is required by API clients                    | Clinical Standards + API |
 | NR-014 | National capacity targets                                                    | Programme                |
