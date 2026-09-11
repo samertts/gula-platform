@@ -260,3 +260,40 @@ government authorization is made anywhere in this document.
 The machinery to prove identity now exists end to end and is tested; what is
 missing is a connected authority to prove it *against*, and the cohort decision
 that lets legacy accounts reach it.
+
+---
+
+## 10. CI evidence
+
+Bound to the **PostgreSQL migration and schema gate**, not the SQLite security
+job: these tests need the migrated schema, and running them anywhere else would
+defeat their purpose.
+
+All six checks green on `27bd108c` (run 34569128113, job 103167272498, Python
+3.12.14, PostgreSQL 16.4). The proof that the new file executed came from an
+unusually direct place — the job's PostgreSQL **service container log**:
+
+```
+2026-09-11 06:16:33.894 UTC [133] ERROR:  duplicate key value violates unique
+    constraint "uq_niam_legacy_account_link_source"
+2026-09-11 06:16:33.894 UTC [133] DETAIL:  Key (source_kind, legacy_account_id)
+    =(user, 880053) already exists.
+2026-09-11 06:16:33.894 UTC [133] STATEMENT:  INSERT INTO
+    niam_legacy_account_links (...) VALUES ('user', 880053, 'acct-dup-a',
+    'fp-dup-b', 'validated', ...)
+```
+
+Those are this suite's own fixture values — legacy id `880053`, account
+`acct-dup-a`, fingerprint `fp-dup-b` — from
+`test_the_schema_makes_a_second_mapping_impossible`. The database refused the
+second mapping in CI, on the real migrated schema, and the test passed because
+it refused.
+
+That is better evidence than a passing count. A count says a file ran; this says
+the control being relied upon is the *database's*, enforced against any writer,
+including one that bypasses `resolve_canonical_account` entirely.
+
+The `Failed to CreateArtifact` line in that log is the known storage-quota
+condition on the evidence-upload step, which carries `continue-on-error` so
+archival cannot fail the gate it documents. The pytest step is blocking and
+passed, as did `alembic downgrade` and the re-upgrade to head after it.
