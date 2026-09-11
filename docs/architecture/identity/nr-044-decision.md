@@ -265,3 +265,82 @@ dependency was awaitable and handed it a fake session exposing only
 boundary against a fake and cannot prove a predicate — which is precisely how
 the missing `is_locked` filter stayed out of sight. The predicates are proved
 against migrated PostgreSQL in `tests/test_identity_link_and_assurance.py`.
+
+## 13. NR-044.1 final verification (evidence-based closeout)
+
+NR-044.1 was re-examined against the standard that a conversion is proved by
+running it, not by reading it. No application code changed: `git status` for
+`backend/app/` is empty against the commit under test. What changed is the
+strength of the guard and the depth of the runtime proof.
+
+**Classification: PARTIALLY VERIFIED.** Everything below passed except one
+thing, and that one thing is load-bearing enough to withhold the grade.
+
+### What is now proved rather than asserted
+
+| Invariant | How |
+|---|---|
+| One engine architecture | `database.engine` and the optional `read_engine` are both `sqlalchemy.engine.Engine`; `SessionLocal`/`ReadSessionLocal` bind to them; **no** module under `app/identity/` constructs an engine or a `sessionmaker` |
+| No `AsyncEngine` | zero `create_async_engine` in `app/` |
+| No second pool | the guard above; the read replica is the same synchronous `create_engine`, off by default, and predates NR-044 |
+| The actor takes the canonical session | `typing.get_type_hints` resolves `db` to `sqlalchemy.orm.Session` (not a string compare), and its default resolves to `get_db`, which is a plain generator |
+| Genuine async I/O preserved | the `httpx.AsyncClient` call in `identity/admin/services.py` is still async — Option B converts database colour, not I/O colour |
+| Ledger exact | 40 modules, two-state contract unchanged; `add` added to the watched methods |
+
+### Runtime, on migrated PostgreSQL 16.13, through the real dependency graph
+
+Authentication: unauthenticated → 401; malformed token → 401; foreign-signed
+token → 401; expired token → 401 **with the session row still live**, which
+proves the refusal comes from claim validation rather than a missed lookup;
+locked, suspended, revoked-session, wrong-jti and cross-account actors all
+refused.
+
+Authorization: an eight-step denial ladder through
+`ClinicalGatewayContextResolver`, each step provoked by a real row and each
+naming a *different* boundary — `missing_workspace` → `workspace_inactive` →
+`invalid_context` (organization suspended) → `invalid_context` (facility
+suspended) → `membership_missing` → `membership_missing` for a membership in
+another organization → `legacy_identity_unresolved`. A resolver that had
+stopped executing could not produce that sequence; it would raise the same
+error every time. Tenant isolation and NR-035's `source_kind` discriminator are
+both proved inside that ladder.
+
+Transaction: the gate, both repositories and the resolver hold the *same*
+`Session`; a row flushed but uncommitted through one is visible through the
+others; the transaction is still open afterwards. No parallel database path.
+
+Negative proof, four reversible perturbations, all restored: async actor → 18
+failures across three files; one repository reverted → 4; an `AsyncEngine`
+introduced → 3; a second `sessionmaker` inside `app/identity/` → 1.
+
+### Why not VERIFIED
+
+The authorization **allow** path could not be exercised, because of a defect the
+verification itself found: **NR-045**. `CanonicalAuditService.record()` inserts
+into `niam_audit_entries` without the NOT NULL `uuid`, so the insert always
+violates the constraint. The clinical gateway audits before it allows *and*
+before it denies, so **every** `/api/v1/clinical/*` request answers 503. It
+fails closed — nothing leaks — but the gateway is inert and its canonical audit
+trail is empty.
+
+This is not caused by NR-044.1; it was simply unreachable behind a gate that
+could not authenticate, and invisible to tests that monkeypatch the audit call.
+It is registered, pinned by a test that asserts the defect, and left unfixed
+because fixing it is outside NR-044.1's scope.
+
+**NR-046** was also found: the actor dependency never consults
+`UserSession.expires_at`. Also pre-existing — the converted query is
+byte-for-byte the old `get_current_niam_actor_sync`, and the async twin omitted
+it too. Exposure is bounded by the access token's own `exp`, which *is*
+enforced.
+
+### What stays open, and why no dependent finding was closed
+
+* **NR-038** — PARTIALLY VERIFIED. Its route is still unexecutable (NR-044.3).
+* **AUTH-F5 / NR-043** — PARTIALLY VERIFIED. `list_eligible` is still
+  unexecutable (NR-044.2).
+* **NR-035** — unchanged and independently re-proved on the clinical path: a
+  `user`-kind legacy link is refused where a `lab_user` link is required.
+
+Closing any of these on the strength of NR-044.1 would be closing them on the
+gate rather than on the thing each one actually asserts.

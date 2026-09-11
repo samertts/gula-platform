@@ -36,8 +36,11 @@ from __future__ import annotations
 
 import inspect
 import pathlib
+import typing
 
 import pytest
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 APP = pathlib.Path(__file__).resolve().parents[1] / "app"
 
@@ -190,6 +193,10 @@ DECLARED_UNREACHABLE_ASYNC_DB_MODULES = frozenset({
 _DB_METHODS = frozenset({
     "execute", "commit", "flush", "refresh", "scalars", "scalar",
     "get", "delete", "merge", "stream", "rollback", "close", "begin",
+    # `add` is synchronous on AsyncSession too, so `await session.add(...)` is
+    # always wrong. Listing it costs nothing today (it matches nothing) and
+    # closes the hole if someone writes it tomorrow.
+    "add",
 })
 _SESSION_OWNERS = frozenset({"session", "db", "self.session", "self.db", "_session", "sess"})
 
@@ -316,3 +323,98 @@ def test_the_repository_layer_is_synchronous() -> None:
         assert "AsyncSession" not in source, f"{path.name} references AsyncSession again"
         assert "async def " not in source, f"{path.name} has an async def again"
         assert "await " not in source, f"{path.name} awaits again"
+
+
+# ── NR-044.1 closeout: the invariants the ledger alone could not prove ────────
+
+
+def test_exactly_one_database_engine_architecture_exists() -> None:
+    """Option B's whole point: one Session type, one engine architecture.
+
+    NR-044 rejected Option A partly because a second `AsyncEngine` would mean a
+    second pool (30 -> 60 connections against PostgreSQL's 100) and a second
+    transaction boundary per request. This pins that the conversion did not
+    smuggle one in.
+
+    The read replica is not a second architecture: it is the same synchronous
+    `create_engine`, off unless `READ_REPLICA_ENABLED` is set, and
+    `ReadSessionLocal` falls back to the primary engine when it is absent. It
+    predates NR-044 and is unrelated to it.
+    """
+    from app import database
+
+    assert not _an_async_engine_exists(), "an async engine was introduced"
+
+    assert isinstance(database.engine, Engine), "the primary engine is no longer a sync Engine"
+    assert database.read_engine is None or isinstance(database.read_engine, Engine), (
+        "the read replica engine is no longer a sync Engine"
+    )
+    assert database.SessionLocal.kw["bind"] is database.engine
+    assert database.ReadSessionLocal.kw["bind"] is (database.read_engine or database.engine)
+
+    # No part of the identity platform may construct an engine or a sessionmaker
+    # of its own — that is how a second pool would appear without an AsyncEngine.
+    offenders = [
+        path.relative_to(APP).as_posix()
+        for path in (APP / "identity").rglob("*.py")
+        if "__pycache__" not in path.parts
+        and ("create_engine(" in path.read_text(encoding="utf-8", errors="ignore")
+             or "sessionmaker(" in path.read_text(encoding="utf-8", errors="ignore"))
+    ]
+    assert not offenders, f"{offenders} build their own engine or sessionmaker"
+
+
+def test_the_actor_dependency_takes_the_canonical_synchronous_session() -> None:
+    """Not merely "not a coroutine" — the annotated type is the one get_db yields.
+
+    A dependency could be made synchronous and still annotate `AsyncSession`,
+    which is how the original defect read: the annotation said one thing and the
+    provider did another. This asserts the two agree.
+    """
+    from app.database import get_db
+    from app.identity.api.workspaces import get_current_niam_actor
+
+    # workspaces.py carries `from __future__ import annotations`, so the raw
+    # annotation is the string "Session". Resolve it rather than string-matching:
+    # a module that rebinds the name to AsyncSession would pass a string compare
+    # and fail this one.
+    signature = inspect.signature(get_current_niam_actor)
+    hints = typing.get_type_hints(get_current_niam_actor)
+    annotation = hints["db"]
+    assert annotation is Session, (
+        f"the actor dependency annotates {annotation!r}, not the sqlalchemy.orm.Session "
+        "that get_db yields"
+    )
+
+    default = signature.parameters["db"].default
+    assert getattr(default, "dependency", None) is get_db, (
+        "the actor dependency no longer resolves its session through get_db"
+    )
+
+    # And get_db really yields that type — a synchronous generator, not an async one.
+    assert not inspect.isasyncgenfunction(get_db)
+    assert inspect.isgeneratorfunction(get_db)
+
+
+def test_the_one_genuine_async_io_site_is_still_async() -> None:
+    """NR-044 measured exactly one real async I/O site in 506 async functions.
+
+    Option B converts database colour, not I/O colour. The httpx call in the
+    admin FHIR connection test is genuinely concurrent work and must stay async.
+    Converting it would be the error in the other direction.
+
+    Note what this does *not* claim: the function containing it still awaits its
+    own session, so it remains in the ledger and remains unreachable until
+    NR-044.3. The async HTTP call is preserved; the function is not yet callable.
+    """
+    source = (APP / "identity" / "admin" / "services.py").read_text(encoding="utf-8")
+    assert "async with httpx.AsyncClient(" in source, (
+        "the genuine async I/O site was converted away; Option B converts database "
+        "access, not real concurrent I/O"
+    )
+    assert "await client.get(" in source
+
+    assert "identity/admin/services.py" in DECLARED_UNREACHABLE_ASYNC_DB_MODULES, (
+        "identity/admin/services.py left the ledger — if it was converted, this test's "
+        "caveat about reachability is stale and should be rewritten"
+    )

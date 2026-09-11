@@ -26,10 +26,10 @@ and `docs/adr/`.
 | Severity  | Count | Fixed | Open |
 | --------- | ----- | ----- | ---- |
 | P0        | 10     | 6     | 4    |
-| P1        | 16     | 10     | 6    |
-| P2        | 12     | 1     | 11    |
+| P1        | 17     | 10     | 7    |
+| P2        | 13     | 1     | 12    |
 | P3        | 6     | 0     | 6    |
-| **Total** | **44** | **17** | **27** |
+| **Total** | **46** | **17** | **29** |
 
 _Fixed counts only rows whose status begins FIXED. AUTH-005's finalization
 re-graded NR-038 and NR-043 to PARTIALLY VERIFIED after NR-044 showed the code
@@ -38,6 +38,14 @@ work itself stands. NR-044.1 has since converted the repositories and the actor
 dependency, which makes the `/niam/*` gate executable; it does not make the
 route handlers executable, so neither finding may be re-graded yet — that needs
 NR-044.2 and NR-044.3._
+
+_NR-044.1's final verification added NR-045 and NR-046. Both were found by
+running the converted path against the migrated schema rather than by reading
+it, and neither is caused by the conversion: NR-045 is a v2 audit writer that
+was never exercised against real columns, NR-046 is a predicate that both
+pre-conversion dependencies also omitted. NR-045 is why NR-044.1 is PARTIALLY
+VERIFIED rather than VERIFIED — the authorization allow path cannot be
+exercised while every gateway request answers 503._
 
 _Counts are generated from the JSON companion; the table above had drifted
 since the first pass and now reflects all findings, not one session's._
@@ -91,7 +99,9 @@ since the first pass and now reflects all findings, not one session's._
 | NR-041 | P2  | Identity Platform | MFA exists for staff only, and its service takes an undiscriminated integer id | OPEN |
 | NR-042 | P3  | National Platform | The declared biometrics table points at raw biometric data | OPEN — DO NOT BUILD |
 | NR-043 | P2  | Identity Platform | Workspace eligibility ignored the organization's own standing | PARTIALLY VERIFIED (AUTH-005; narrowed, still unexecutable — `list_eligible` is NR-044.2) |
-| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | PARTIALLY RESOLVED (NR-044.1: 10 repositories + the actor dependency converted, ledger 50 → 40; the `/niam/*` gate now executes, the handlers do not — NR-044.2–.5 open) |
+| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | PARTIALLY RESOLVED (NR-044.1 **PARTIALLY VERIFIED**: architecture, authentication, authorization-denial, token/session and transaction proofs all pass on migrated PostgreSQL; the authorization **allow** path is blocked by NR-045. NR-044.2–.5 open) |
+| NR-045 | P1  | Clinical Gateway | `CanonicalAuditService` cannot write a row, so every clinical-gateway request answers 503 | OPEN — found by the NR-044.1 verification; fails closed, but the gateway is inert and its canonical audit trail is empty |
+| NR-046 | P2  | Identity Platform | The NIAM actor dependency does not consult `UserSession.expires_at` | OPEN — pre-existing, not a NR-044.1 regression; bounded by the access token's own enforced `exp` |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.
