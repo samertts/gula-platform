@@ -26,10 +26,10 @@ and `docs/adr/`.
 | Severity  | Count | Fixed | Open |
 | --------- | ----- | ----- | ---- |
 | P0        | 10     | 6     | 4    |
-| P1        | 17     | 10     | 7    |
+| P1        | 18     | 11     | 7    |
 | P2        | 13     | 1     | 12    |
 | P3        | 6     | 0     | 6    |
-| **Total** | **46** | **17** | **29** |
+| **Total** | **47** | **18** | **29** |
 
 _Fixed counts only rows whose status begins FIXED. AUTH-005's finalization
 re-graded NR-038 and NR-043 to PARTIALLY VERIFIED after NR-044 showed the code
@@ -46,6 +46,14 @@ was never exercised against real columns, NR-046 is a predicate that both
 pre-conversion dependencies also omitted. NR-045 is why NR-044.1 is PARTIALLY
 VERIFIED rather than VERIFIED — the authorization allow path cannot be
 exercised while every gateway request answers 503._
+
+_NR-045 has since been repaired and verified. The gateway's DENY path is now
+proven end to end: 403 with the denial recorded and hash-chained. Attempting the
+ALLOW proof with a fully authorized fixture then surfaced **NR-047** — the
+`Organization` ORM does not match its table, so the operational-scope lookup
+raises `UndefinedColumn` and the resolver reports it as `invalid_context`.
+NR-044.1 therefore stays PARTIALLY VERIFIED, with a different and more precisely
+located blocker than before._
 
 _Counts are generated from the JSON companion; the table above had drifted
 since the first pass and now reflects all findings, not one session's._
@@ -99,8 +107,9 @@ since the first pass and now reflects all findings, not one session's._
 | NR-041 | P2  | Identity Platform | MFA exists for staff only, and its service takes an undiscriminated integer id | OPEN |
 | NR-042 | P3  | National Platform | The declared biometrics table points at raw biometric data | OPEN — DO NOT BUILD |
 | NR-043 | P2  | Identity Platform | Workspace eligibility ignored the organization's own standing | PARTIALLY VERIFIED (AUTH-005; narrowed, still unexecutable — `list_eligible` is NR-044.2) |
-| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | PARTIALLY RESOLVED (NR-044.1 **PARTIALLY VERIFIED**: architecture, authentication, authorization-denial, token/session and transaction proofs all pass on migrated PostgreSQL; the authorization **allow** path is blocked by NR-045. NR-044.2–.5 open) |
-| NR-045 | P1  | Clinical Gateway | `CanonicalAuditService` cannot write a row, so every clinical-gateway request answers 503 | OPEN — found by the NR-044.1 verification; fails closed, but the gateway is inert and its canonical audit trail is empty |
+| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | PARTIALLY RESOLVED (NR-044.1 **PARTIALLY VERIFIED**: architecture, authentication, authorization-denial, token/session and transaction proofs all pass on migrated PostgreSQL; the authorization **allow** path is now blocked by **NR-047**, not NR-045. NR-044.2–.5 open) |
+| NR-045 | P1  | Clinical Gateway | `CanonicalAuditService` cannot write a row, so every clinical-gateway request answers 503 | **VERIFIED** — `IdentityAuditEntry.uuid` now carries the canonical default; the gateway answers 403 where it answered 503 and the denial is readable in `niam_audit_entries` with a valid hash chain. No migration, no constraint weakened |
+| NR-047 | P1  | National Core / Operational models | The `Organization` ORM does not match the `organizations` table, so the clinical allow path cannot resolve operational scope | OPEN — found while proving NR-045; the ORM declares `org_id`, `org_type`, `parent_org_id`, `updated_at` that the table lacks, so `select(Organization)` raises `UndefinedColumn`. Now the blocker on the NR-044.1 ALLOW proof |
 | NR-046 | P2  | Identity Platform | The NIAM actor dependency does not consult `UserSession.expires_at` | OPEN — pre-existing, not a NR-044.1 regression; bounded by the access token's own enforced `exp` |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance

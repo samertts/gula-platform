@@ -14,6 +14,7 @@ the assessor and the evidence from the caller (NR-038).
 from __future__ import annotations
 
 import os
+import pathlib
 import uuid
 from datetime import (
     datetime,
@@ -839,86 +840,102 @@ def test_an_expired_token_is_rejected(db, niam_session) -> None:
     assert exc.value.status_code == 401
 
 
-def test_a_valid_actor_passes_the_gate_and_execution_continues_past_it(db, niam_session) -> None:
-    """Phase 3.4/3.6 — the point of NR-044.1, proved over real HTTP.
+def test_a_valid_actor_passes_the_gate_and_the_denial_is_audited(db) -> None:
+    """The gate, and the deny path that NR-045 used to break, end to end.
 
-    Before the conversion this request died in the dependency: the async actor
-    raised `TypeError` before a statement reached PostgreSQL, so the response
-    was a 500 and no gateway code ran at all.
+    Three states have been true for this request in sequence, and the
+    difference between them is the whole point of NR-044.1 and NR-045:
 
-    It now authenticates against PostgreSQL and execution carries on into the
-    gateway. The response is 503, not 403, and that is *not* an authentication
-    failure — it is NR-045: `CanonicalAuditService.record()` cannot insert into
-    `niam_audit_entries` because it never sets the NOT NULL `uuid`, and the
-    gateway audits before it denies. So the 503 is proof that we reached the
-    audit-before-deny path, which is downstream of the gate.
+      * before NR-044.1 — 500: the async actor raised TypeError before a
+        statement reached PostgreSQL;
+      * after NR-044.1, before NR-045 — 503: authentication succeeded and the
+        gateway tried to audit the denial, and the audit insert was refused;
+      * now — 403, with the denial recorded in `niam_audit_entries`.
 
-    What this test pins, therefore, is: not 401 (the gate passed) and 503 with
-    the gateway's own error envelope (execution reached the gateway's audit).
-    When NR-045 is fixed this becomes 403 and this test must be updated to
-    assert that — the failure is the signal, not a regression.
+    A 403 here therefore proves authentication passed, authorization ran, and
+    the audit write succeeded. The audit row is the evidence for all three.
     """
     import os as _os
 
-    account, _session_row, request = niam_session
-    token = request.cookies["access_token"]
+    from app.identity.models.session import UserSession
+    from sqlalchemy import text
+
+    identity_id = _identity_chain(db, "gate-deny")
+    account = Account(
+        id="acct-gate-deny", uuid=str(uuid.uuid4()), identity_id=identity_id,
+        status=AccountStatus.active.value, is_active=True, is_locked=False,
+    )
+    db.add(account)
+    db.flush()
+    request, jti = _mint_niam_token(account.uuid)
+    db.add(UserSession(
+        id="sess-gate-deny", uuid=str(uuid.uuid4()), account_id=account.id,
+        token_jti=jti, session_type="web", is_active=True,
+        started_at=_now(), last_activity_at=_now(),
+        expires_at=_now() + timedelta(hours=1),
+    ))
+    db.flush()
 
     _os.environ["GULA_CLINICAL_GATEWAY_MODE"] = "ON"
     try:
         response = _client(db).get(
-            "/api/v1/clinical/patients", headers={"Authorization": f"Bearer {token}"}
+            "/api/v1/clinical/patients",
+            headers={"Authorization": f"Bearer {request.cookies['access_token']}"},
         )
     finally:
         _os.environ.pop("GULA_CLINICAL_GATEWAY_MODE", None)
 
-    assert response.status_code != 401, (
-        "the gate rejected a valid actor — NR-044.1 has regressed"
-    )
-    assert response.status_code != 500, (
-        "the request raised before reaching the gateway — the NR-044 TypeError is back"
-    )
-    assert response.status_code == 503, response.text
-    assert response.json()["detail"]["error"]["code"] == "UNAVAILABLE", response.text
-    assert account.id  # resolved out of PostgreSQL to get this far
+    assert response.status_code != 500, "the NR-044 TypeError is back"
+    assert response.status_code != 401, "the gate rejected a valid actor"
+    assert response.status_code != 503, "NR-045 has regressed — the audit write failed again"
+    assert response.status_code == 403, response.text
+
+    row = db.execute(
+        text("SELECT uuid, entry_hash, decision, reason_code, actor_id, session_id, source "
+             "FROM niam_audit_entries WHERE actor_id = :a"),
+        {"a": account.id},
+    ).one()
+    assert row.uuid and row.entry_hash, "the denial was audited without canonical fields"
+    assert row.decision == "deny"
+    assert row.reason_code == "missing_workspace"
+    assert row.session_id == "sess-gate-deny"
+    assert row.source == "clinical_gateway"
 
 
-def test_the_canonical_audit_writer_cannot_insert_a_row_nr045(db) -> None:
-    """NR-045, pinned where it was found. Not caused by NR-044.1.
+def test_the_canonical_audit_writer_satisfies_the_schema_contract_nr045(db) -> None:
+    """NR-045, repaired and pinned where it was found.
 
-    `IdentityAuditEntry.uuid` is NOT NULL with no default.
-    `AuditService` sets id/uuid/entry_hash/previous_hash explicitly;
-    `CanonicalAuditService.record()` — the writer the clinical gateway uses for
-    every allow and every deny — sets none of them. So the insert violates the
-    constraint, `ClinicalGatewayAuditFailure` is raised, and every
-    `/api/v1/clinical/*` request answers 503.
+    This test previously asserted the defect: `CanonicalAuditService.record()`
+    omitted the NOT NULL `uuid`, the insert raised IntegrityError, and the
+    clinical gateway answered 503 to every request because it audits before it
+    allows *and* before it denies.
 
-    It fails closed, so no clinical data escapes, but the gateway is inert and
-    its audit trail is empty. This test asserts the defect so that fixing it
-    fails here and this test is rewritten to pin the fix.
+    `IdentityAuditEntry.uuid` now carries the canonical default, so the writer
+    satisfies the contract `AuditService` was already meeting. The assertion is
+    inverted rather than deleted: the row must now be written.
     """
     import asyncio
 
-    from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
-    from app.identity.services.canonical_audit import AuditEventInput, CanonicalAuditService
-    from sqlalchemy.exc import IntegrityError
+    from sqlalchemy import text
 
-    service = CanonicalAuditService(SyncSessionAsyncFacade(db))
-    with pytest.raises(IntegrityError) as exc:
-        asyncio.run(
-            service.record(
-                AuditEventInput(
-                    event_type="clinical_gateway_access", category="clinical_access",
-                    action="patients.read", actor_id="acct-nr045",
-                    actor_identity_id="ident-nr045", target_type="clinical_patient",
-                    decision="deny", reason_code="missing_workspace",
-                    request_id=str(uuid.uuid4()), correlation_id=str(uuid.uuid4()),
-                    session_id="sess-nr045", source="clinical_gateway",
-                    data_classification="CLINICAL_SENSITIVE", outcome="denied",
-                ),
-            ),
-        )
-    assert "niam_audit_entries" in str(exc.value)
-    assert "uuid" in str(exc.value)
+    marker = f"nr045-{uuid.uuid4()}"
+    entry = asyncio.run(_canonical_audit(db).record(_audit_event(
+        actor_id="acct-nr045", request_id=marker, decision="deny",
+        reason_code="missing_workspace", outcome="denied",
+    )))
+    db.flush()
+
+    stored = db.execute(
+        text("SELECT uuid, entry_hash, action, decision, outcome "
+             "FROM niam_audit_entries WHERE request_id = :m"),
+        {"m": marker},
+    ).one()
+    assert stored.uuid == entry.uuid
+    assert uuid.UUID(stored.uuid)
+    assert stored.entry_hash
+    assert stored.action == "patients.read"
+    assert stored.decision == "deny"
+    assert stored.outcome == "denied"
 
 
 # ── NR-044.1 closeout: authorization, against real rows, no mocks ────────────
@@ -1312,3 +1329,431 @@ def test_the_actor_and_the_repositories_share_one_session_and_transaction(db, ni
     # And the transaction is still open — nothing the gate or the repositories
     # did committed on its own.
     assert db.in_transaction(), "something committed the caller's transaction"
+
+
+# ── NR-045: the canonical audit write, and the allow path it was blocking ────
+#
+# NR-044.1 could prove every authorization DENIAL but not a single ALLOW,
+# because the gateway audits before it allows *and* before it denies and
+# `CanonicalAuditService.record()` could not insert a row. Everything below
+# runs against the migrated PostgreSQL schema through the real services.
+
+
+def _canonical_audit(db):
+    from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
+    from app.identity.services.canonical_audit import CanonicalAuditService
+
+    return CanonicalAuditService(SyncSessionAsyncFacade(db))
+
+
+def _audit_event(**overrides):
+    from app.identity.services.canonical_audit import AuditEventInput
+
+    fields = {
+        "event_type": "clinical_gateway_access", "category": "clinical_access",
+        "action": "patients.read", "actor_id": "acct-nr045",
+        "actor_identity_id": "ident-nr045", "target_type": "clinical_patient",
+        "decision": "allow", "reason_code": "permission_granted",
+        "request_id": str(uuid.uuid4()), "correlation_id": str(uuid.uuid4()),
+        "session_id": "sess-nr045", "source": "clinical_gateway",
+        "data_classification": "CLINICAL_SENSITIVE", "outcome": "success",
+    }
+    fields.update(overrides)
+    return AuditEventInput(**fields)
+
+
+def test_the_canonical_audit_writer_produces_a_schema_valid_row(db) -> None:
+    """NR-045 repaired. The row the constraint used to refuse.
+
+    `uuid` is NOT NULL with no server default and `IdentityBaseEntity` does not
+    supply it; the column default added by this repair does. `uuid` is
+    deliberately absent from v2's `_canonical_payload`, so populating it cannot
+    change any entry hash — past entries verify exactly as before.
+    """
+    import asyncio
+
+    entry = asyncio.run(_canonical_audit(db).record(_audit_event(organization_id="org-nr045")))
+    db.flush()
+
+    assert entry.uuid, "uuid is still unpopulated — NR-045 has regressed"
+    assert uuid.UUID(entry.uuid)           # canonical uuid4, not an arbitrary string
+    assert entry.id and len(entry.id) == 26
+    assert entry.event_version == "2"
+    assert entry.occurred_at is not None
+    assert entry.actor_id == "acct-nr045"
+    assert entry.decision == "allow"
+    assert entry.data_classification == "CLINICAL_SENSITIVE"
+
+
+def test_the_canonical_audit_entry_carries_a_valid_hash_chain(db) -> None:
+    """Hash-chain fields populated, and the chain verifies as the service defines it."""
+    import asyncio
+
+    from app.identity.services.canonical_audit import CanonicalAuditService, IntegrityStatus
+
+    service = _canonical_audit(db)
+    first = asyncio.run(service.record(_audit_event(organization_id="org-chain")))
+    second = asyncio.run(service.record(_audit_event(organization_id="org-chain", decision="deny", reason_code="permission_denied", outcome="denied")))
+    db.flush()
+
+    assert first.entry_hash and second.entry_hash
+    assert first.entry_hash == CanonicalAuditService._hash(first)
+    assert second.entry_hash == CanonicalAuditService._hash(second)
+    assert second.previous_hash == first.entry_hash, "the second entry does not chain to the first"
+
+    report = asyncio.run(service.verify(organization_id="org-chain"))
+    assert report["status"] == IntegrityStatus.valid.value, report["violations"]
+    assert report["entries_checked"] == 2
+    assert report["violations"] == []
+
+
+def test_the_audit_service_never_commits_on_its_own(db) -> None:
+    """Phase 4.8 — the audit write joins the caller's transaction, it does not end it.
+
+    An audit service that committed would make the protected operation
+    un-rollbackable: the audit row would survive a failure it was recording.
+    """
+    import asyncio
+
+    from sqlalchemy import text
+
+    db.execute(text("SELECT 1"))            # a Session begins lazily; make it real first
+    assert db.in_transaction()
+    asyncio.run(_canonical_audit(db).record(_audit_event(organization_id="org-tx")))
+    assert db.in_transaction(), "the audit service committed the caller's transaction"
+
+    source = (
+        pathlib.Path(__file__).resolve().parents[1]
+        / "app" / "identity" / "services" / "canonical_audit.py"
+    ).read_text(encoding="utf-8")
+    record_body = source[source.index("async def record("):source.index("async def search(")]
+    assert "commit" not in record_body, "CanonicalAuditService.record() now commits"
+
+
+def test_a_rolled_back_operation_leaves_no_committed_audit_row(db, engine) -> None:
+    """Phase 4.3 — atomicity, proved by a real rollback against PostgreSQL.
+
+    The audit row is written and flushed inside a transaction that is then
+    rolled back. A separate connection must not see it. This is the property
+    that makes "audit before deny" meaningful rather than decorative.
+    """
+    import asyncio
+
+    from sqlalchemy import text
+
+    marker = f"rollback-probe-{uuid.uuid4()}"
+    connection = engine.connect()
+    transaction = connection.begin()
+    scratch = Session(bind=connection, future=True)
+    try:
+        asyncio.run(_canonical_audit(scratch).record(_audit_event(request_id=marker)))
+        scratch.flush()
+        # Visible inside its own transaction ...
+        assert scratch.execute(
+            text("SELECT count(*) FROM niam_audit_entries WHERE request_id = :m"), {"m": marker}
+        ).scalar() == 1
+    finally:
+        scratch.close()
+        transaction.rollback()
+        connection.close()
+
+    # ... and gone once that transaction rolls back.
+    assert db.execute(
+        text("SELECT count(*) FROM niam_audit_entries WHERE request_id = :m"), {"m": marker}
+    ).scalar() == 0, "a rolled-back operation left a committed audit row"
+
+
+def _authorized_clinical_context(db, *, suffix="allow"):
+    """Every row a genuinely authorized clinical read requires, and nothing more.
+
+    Assembled from the actual predicates in ClinicalGatewayContextResolver,
+    ClinicalAuthorizationContextService and AuthorizationDecisionService. No
+    mock, no monkeypatch, no fake decision: if any row is wrong the real
+    services refuse, which is what the denial ladder above already demonstrates.
+    """
+    from datetime import date
+
+    from app.identity.models.administrative_structure import (
+        NIAMAdminBranch,
+        NIAMAdminFacility,
+    )
+    from app.identity.models.authorization import (
+        Permission,
+        Role,
+        RoleAssignment,
+        RolePermission,
+    )
+    from app.identity.models.membership import Membership, MembershipStatus
+    from app.identity.models.session import UserSession
+    from app.identity.models.workspace import (
+        Workspace,
+        WorkspaceSessionContext,
+        WorkspaceStatus,
+    )
+    from app.models.clinical_scope import ClinicalLabFacilityBinding
+    from app.models.lab_user import LabUser
+    from app.models.organization import Facility
+    from app.models.tenant import Tenant
+    from sqlalchemy import text as _text
+
+    tag = f"{suffix}-{uuid.uuid4().hex[:6]}"
+    # The operational tables (tenants/organizations/facilities/lab_users) are the
+    # legacy integer-keyed side of the bridge; the NIAM tables are string-keyed.
+    # That divergence is precisely why ClinicalLabFacilityBinding exists.
+    nonce = uuid.uuid4().int % 900000
+    legacy_lab_id = 9100000 + nonce
+    legacy_lab_user_id = 9200000 + nonce
+
+    # ── operational scope: tenant -> organization -> facility ────────────────
+    tenant = Tenant(id=9300000 + nonce, tenant_id=f"tid-{tag}", name_en="T", name_ar="ت", is_active=True)
+    db.add(tenant)
+    db.flush()
+    # NR-047: the Organization ORM declares org_id/org_type/parent_org_id while
+    # the migrated `organizations` table has organization_id/organization_type
+    # and no parent_org_id, so the ORM cannot be used here at all.
+    op_org_id = 9400000 + nonce
+    db.execute(
+        _text(
+            "INSERT INTO organizations (id, organization_id, name_en, name_ar, "
+            " organization_type, tenant_id, is_active, created_at) "
+            "VALUES (:id, :oid, 'O', 'م', 'hospital', :tenant, true, now())"
+        ),
+        {"id": op_org_id, "oid": f"oid-{tag}", "tenant": tenant.id},
+    )
+    op_facility = Facility(
+        id=9500000 + nonce, facility_id=f"ofid-{tag}", name_en="F", name_ar="ف",
+        facility_type="hospital", organization_id=op_org_id, is_active=True,
+    )
+    db.add(op_facility)
+    db.flush()
+
+    # ── NIAM scope: organization -> portal -> branch -> facility -> workspace ─
+    niam_org = _niam_organization(db, org_key=f"norg-{tag}")
+    niam_facility = _admin_facility(db, organization_id=niam_org.id, suffix=tag)
+    assert isinstance(niam_facility, NIAMAdminFacility)
+    assert db.query(NIAMAdminBranch).filter_by(organization_id=niam_org.id).count() == 1
+
+    workspace = Workspace(
+        id=f"ws-{tag}", uuid=str(uuid.uuid4()), workspace_key=f"wk-{uuid.uuid4()}",
+        workspace_type="professional", name="Allow Workspace",
+        status=WorkspaceStatus.active.value, is_personal=False, version=1,
+        organization_id=niam_org.id, facility_id=niam_facility.id,
+    )
+    db.add(workspace)
+    db.flush()
+
+    # ── the account, its identity chain, and a live session ──────────────────
+    identity_id = _identity_chain(db, tag)
+    account = Account(
+        id=f"acct-{tag}", uuid=str(uuid.uuid4()), identity_id=identity_id,
+        status=AccountStatus.active.value, is_active=True, is_locked=False,
+    )
+    db.add(account)
+    db.flush()
+    request, jti = _mint_niam_token(account.uuid)
+    session_row = UserSession(
+        id=f"sess-{tag}", uuid=str(uuid.uuid4()), account_id=account.id,
+        token_jti=jti, session_type="web", is_active=True,
+        started_at=_now(), last_activity_at=_now(),
+        expires_at=_now() + timedelta(hours=1),
+    )
+    db.add(session_row)
+    db.add(WorkspaceSessionContext(
+        id=f"wsc-{tag}", session_id=session_row.id, account_id=account.id,
+        identity_id=account.identity_id, workspace_id=workspace.id,
+        version=1, is_active=True,
+    ))
+    membership = Membership(
+        id=f"mem-{tag}", uuid=str(uuid.uuid4()), membership_key=f"mk-{uuid.uuid4()}",
+        account_id=account.id, organization_id=niam_org.id,
+        facility_id=niam_facility.id, workspace_id=workspace.id,
+        relationship_type="staff", scope_type="organization",
+        status=MembershipStatus.active.value, source="test", version=1, is_active=True,
+    )
+    db.add(membership)
+    db.flush()
+
+    # ── the legacy bridge: lab -> lab user -> migrated link -> binding ──────
+    db.execute(
+        _text(
+            "INSERT INTO labs (id, name, is_active, created_at) "
+            "VALUES (:id, :name, true, now())"
+        ),
+        {"id": legacy_lab_id, "name": f"Lab {tag}"},
+    )
+    db.add(LabUser(
+        id=legacy_lab_user_id, lab_id=legacy_lab_id, name="Clinician",
+        email=f"clinician-{tag}@example.invalid", password_hash="x", is_active=True,
+        role="lab_technician",
+    ))
+    db.add(LegacyAccountLink(
+        source_kind=LegacyAccountLinkSource.lab_user.value,
+        legacy_account_id=legacy_lab_user_id, canonical_account_id=account.id,
+        source_fingerprint=f"fp-{tag}", status=LegacyAccountLinkStatus.migrated.value,
+        rollback_token=uuid.uuid4().hex,
+    ))
+    db.add(ClinicalLabFacilityBinding(
+        legacy_lab_id=legacy_lab_id, facility_resource_id=op_facility.id,
+        niam_organization_id=niam_org.id, niam_facility_id=niam_facility.id,
+        status="active", mapping_version=1,
+    ))
+    db.flush()
+
+    # ── the reviewed person->assignment proof chain ──────────────────────────
+    person_id = db.execute(
+        _text("SELECT person_id FROM niam_identities WHERE id = :i"), {"i": identity_id}
+    ).scalar_one()
+    employment_id = f"emp-{tag}"
+    db.execute(
+        _text(
+            "INSERT INTO niam_employments (id, uuid, person_id, organization_id, "
+            " employment_type, status, position, start_date, is_active, "
+            " created_at, updated_at) "
+            "VALUES (:id, :uuid, :person, :org, 'full_time', 'active', 'Clinician', "
+            " :start, true, now(), now())"
+        ),
+        {"id": employment_id, "uuid": str(uuid.uuid4()), "person": person_id,
+         "org": niam_org.id, "start": date.today() - timedelta(days=30)},
+    )
+    clinical_role = Role(
+        id=f"role-{tag}", uuid=str(uuid.uuid4()), role_key=f"clinician-{tag}",
+        name="Clinician", scope_type="organization", status="active",
+    )
+    db.add(clinical_role)
+    db.flush()
+    # Core SQL: niam_assignments carries foreign keys into `organizations` and
+    # `facilities`, which live in a different declarative base, so the ORM
+    # mapper cannot be configured from this side (the 16-base problem NR-018
+    # and NR-019 already track). The row itself is ordinary.
+    db.execute(
+        _text(
+            "INSERT INTO niam_assignments (id, uuid, employment_id, person_id, "
+            " role_id, assignment_type, organization_id, facility_id, "
+            " clinical_organization_resource_id, clinical_facility_resource_id, "
+            " status, is_active, start_date, assigned_at, created_at, updated_at) "
+            "VALUES (:id, :uuid, :emp, :person, :role, 'clinical', :org, :fac, "
+            " :corg, :cfac, 'active', true, :start, now(), now(), now())"
+        ),
+        {"id": f"asg-{tag}", "uuid": str(uuid.uuid4()), "emp": employment_id,
+         "person": person_id, "role": clinical_role.id, "org": niam_org.id,
+         "fac": niam_facility.id, "corg": op_org_id, "cfac": op_facility.id,
+         "start": date.today() - timedelta(days=30)},
+    )
+
+    # ── the permission the gateway asks for, granted in this exact scope ─────
+    # `patients.read` is seeded platform catalog data. Use the real row rather
+    # than a duplicate — the catalog is the thing the gateway consults.
+    permission = db.query(Permission).filter_by(permission_key="patients.read").one_or_none()
+    if permission is None:
+        permission = Permission(
+            id=f"perm-{tag}", uuid=str(uuid.uuid4()), permission_key="patients.read",
+            name="Read patients", resource="clinical_patient", action="read", status="active",
+        )
+        db.add(permission)
+        db.flush()
+    assert permission.status == "active", "the seeded patients.read permission is not active"
+    db.add(RolePermission(
+        id=f"rp-{tag}", role_id=clinical_role.id, permission_id=permission.id, status="active",
+    ))
+    db.add(RoleAssignment(
+        id=f"ra-{tag}", uuid=str(uuid.uuid4()),
+        assignment_key=f"{account.id}:{membership.id}:{clinical_role.id}:{niam_org.id}:-:-:-:-",
+        account_id=account.id, membership_id=membership.id, role_id=clinical_role.id,
+        organization_id=niam_org.id, scope_type="organization", status="active",
+    ))
+    db.flush()
+
+    return SimpleNamespace(
+        account=account, session=session_row, request=request, workspace=workspace,
+        niam_org=niam_org, niam_facility=niam_facility, op_facility=op_facility,
+        legacy_lab_id=legacy_lab_id, legacy_lab_user_id=legacy_lab_user_id, tag=tag,
+    )
+
+
+def test_a_fully_authorized_actor_reaches_the_operational_scope_and_is_blocked_by_nr047(db) -> None:
+    """The ALLOW path, as far as it currently goes — and the exact wall it hits.
+
+    Every NIAM-side precondition is satisfied by real rows: active account,
+    live session, active workspace bound to the session, active organization and
+    facility, an active membership in that organization, a migrated `lab_user`
+    link, an active lab-to-facility binding, an active employment and clinical
+    assignment, and the seeded `patients.read` permission granted through a role
+    assignment in exactly this scope. The denial ladder above proves each of
+    those checks is really evaluated, so reaching past them is meaningful.
+
+    It then fails in the *operational* scope lookup, and not for an
+    authorization reason: `ClinicalAuthorizationContextService` selects the
+    `Organization` entity, whose ORM declares `org_id`, `org_type` and
+    `parent_org_id` while the migrated `organizations` table has
+    `organization_id`, `organization_type` and no `parent_org_id`. PostgreSQL
+    answers `UndefinedColumn`, the resolver's `except Exception` converts it to
+    `invalid_context`, and the request is refused.
+
+    That is NR-047 — an ORM/migration divergence in the operational models,
+    unrelated to NR-044.1 and unrelated to NR-045, and outside this batch's
+    scope to repair. It is why the ALLOW half of NR-044.1 is still unproven.
+
+    The assertions below pin the cause precisely rather than the symptom, so
+    that repairing NR-047 fails this test and it is rewritten to assert the
+    200 it was written to want.
+    """
+    import asyncio
+
+    from app.clinical_gateway.session_facade import SyncSessionAsyncFacade
+    from app.identity.services.clinical_authorization_context_service import (
+        ClinicalAuthorizationContextService,
+    )
+    from sqlalchemy.exc import ProgrammingError
+
+    ctx = _authorized_clinical_context(db)
+
+    # The gate itself is fine: the actor resolves out of PostgreSQL.
+    from app.identity.api.workspaces import get_current_niam_actor
+
+    actor = get_current_niam_actor(ctx.request, None, db)
+    assert actor.account.id == ctx.account.id
+
+    # And the wall is a schema divergence, not an authorization decision.
+    service = ClinicalAuthorizationContextService(SyncSessionAsyncFacade(db))
+    with pytest.raises(ProgrammingError) as exc:
+        asyncio.run(
+            service.resolve_for_legacy_lab_user(
+                legacy_lab_user_id=ctx.legacy_lab_user_id,
+                legacy_lab_id=ctx.legacy_lab_id,
+                expected_niam_organization_id=ctx.niam_org.id,
+                expected_niam_facility_id=ctx.niam_facility.id,
+            ),
+        )
+    message = str(exc.value)
+    assert "organizations.org_id" in message, message
+    assert "does not exist" in message, message
+
+
+def test_the_operational_organization_orm_does_not_match_its_table_nr047(db) -> None:
+    """NR-047 stated plainly, independent of the gateway.
+
+    Four columns the ORM declares are absent from the migrated table — three
+    renamed (`org_id`/`org_type` are `organization_id`/`organization_type`,
+    `parent_org_id` is gone) and `updated_at`, which the table never grew. Any
+    ORM query that selects the `Organization` entity therefore fails, which is
+    what blocks the clinical allow path.
+    """
+    from app.models.organization import Organization
+    from sqlalchemy import text
+
+    physical = {
+        row[0]
+        for row in db.execute(
+            text("SELECT column_name FROM information_schema.columns "
+                 "WHERE table_name = 'organizations'")
+        )
+    }
+    declared = {column.name for column in Organization.__table__.columns}
+    missing = sorted(declared - physical)
+
+    assert missing == ["org_id", "org_type", "parent_org_id", "updated_at"], (
+        f"NR-047 has changed shape: the ORM declares {missing} that the table lacks"
+    )
+    assert {"organization_id", "organization_type"} <= physical, (
+        "the table no longer carries the names the ORM should be using"
+    )

@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 46,
+    "total": 47,
     "by_severity": {
       "P0": 10,
-      "P1": 17,
+      "P1": 18,
       "P2": 13,
       "P3": 6
     }
@@ -1513,7 +1513,7 @@
       "domain": "Identity Platform",
       "category": "Runtime",
       "title": "The NIAM async service layer cannot execute — there is no async engine",
-      "status": "PARTIALLY RESOLVED (NR-044.1 PARTIALLY VERIFIED; NR-044.2-.5 open)",
+      "status": "PARTIALLY RESOLVED (NR-044.1 PARTIALLY VERIFIED - allow path now blocked by NR-047; NR-044.2-.5 open)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 44,
@@ -1538,7 +1538,7 @@
       "domain": "Clinical Gateway",
       "category": "Audit / runtime",
       "title": "CanonicalAuditService cannot write a row, so every clinical-gateway request answers 503",
-      "status": "OPEN",
+      "status": "VERIFIED (NR-045 repair)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 45,
@@ -1548,12 +1548,14 @@
       "security_impact": "Fails closed - no clinical data is returned and nothing is exposed - but the canonical audit trail for the clinical gateway is empty, and a control that cannot record is not a control. Any future reader may mistake the 503 for an infrastructure problem rather than a broken audit writer.",
       "clinical_impact": "The canonical clinical read gateway is entirely non-functional. No clinician can read patients or orders through it.",
       "recommended_fix": "Set id, uuid and the hash-chain fields in CanonicalAuditService.record() the way AuditService already does, or give IdentityAuditEntry a default for uuid. Then exercise the allow path against the migrated schema rather than around it.",
-      "verification": "backend/tests/test_identity_link_and_assurance.py::test_the_canonical_audit_writer_cannot_insert_a_row_nr045 pins the defect against migrated PostgreSQL, and ::test_a_valid_actor_passes_the_gate_and_execution_continues_past_it pins the resulting 503. Both are written to fail when the defect is fixed, which is the signal to rewrite them to pin the fix.",
+      "verification": "Against migrated PostgreSQL 16.13: the insert that used to raise NotNullViolation now succeeds with a canonical uuid4 and a populated entry_hash; two consecutive entries chain (second.previous_hash == first.entry_hash) and CanonicalAuditService.verify() returns VALID with zero violations. Atomicity: the audit row is visible inside its own transaction and absent from another connection after rollback; record() never commits (asserted behaviourally and by source inspection). End to end over real HTTP the clinical gateway now answers 403 where it answered 503, and the denial is readable in niam_audit_entries with decision=deny, reason_code=missing_workspace, source=clinical_gateway. Negative proof: removing the column default fails 6 tests; restored. Tests in backend/tests/test_identity_link_and_assurance.py.",
       "affected_components": "backend/app/identity/services/canonical_audit.py, backend/app/identity/models/audit.py, backend/app/clinical_gateway/routes.py, backend/app/clinical_gateway/service.py",
       "discovered_by": "NR-044.1 final verification",
       "owner": "Identity Platform",
       "artifact": "docs/architecture/identity/nr-044-decision.md",
-      "next_batch": "Blocks the allow-side authorization proof for the clinical gateway, which is why NR-044.1 is PARTIALLY VERIFIED rather than VERIFIED."
+      "next_batch": "Unblocked the clinical-gateway DENY path end to end. The ALLOW path is still blocked, but by NR-047 (Organization ORM/migration divergence), not by audit.",
+      "fixed_by": "NR-045",
+      "resolution": "IdentityAuditEntry.uuid now carries the canonical default (_audit_entry_uuid). The column is the single authority for every writer of niam_audit_entries rather than a second generator beside AuditService's; AuditService still passes its own value, which takes precedence, so v1 behaviour is byte-identical. `uuid` is deliberately absent from CanonicalAuditService._canonical_payload, so populating it cannot alter any entry hash, past or future. No migration: a Python-side column default emits no DDL (compiled CREATE TABLE for the column is unchanged, 'uuid VARCHAR(36) NOT NULL'). No constraint weakened, no field made nullable, no second hash-chain implementation, no separate commit."
     },
     {
       "id": "NR-046",
@@ -1577,6 +1579,29 @@
       "owner": "Identity Platform",
       "artifact": "docs/architecture/identity/nr-044-decision.md",
       "next_batch": ""
+    },
+    {
+      "id": "NR-047",
+      "severity": "P1",
+      "domain": "National Core / Operational models",
+      "category": "ORM/migration divergence",
+      "title": "The Organization ORM does not match the organizations table, so the clinical allow path cannot resolve operational scope",
+      "status": "OPEN",
+      "blocker": false,
+      "can_fix_now": false,
+      "priority": 47,
+      "description": "app/models/organization.py declares org_id, org_type, parent_org_id and updated_at. The migrated `organizations` table has organization_id and organization_type, no parent_org_id and no updated_at. Any ORM query that selects the Organization entity therefore raises UndefinedColumn.",
+      "root_cause": "The operational organization model and its migration diverged and nothing executed the pair together; the identity platform's own reconciliation batches (M3/M4, BATCH-3) covered other domains.",
+      "evidence": "Measured on migrated PostgreSQL 16.13: select(Facility, Organization, Tenant) raises psycopg2.errors.UndefinedColumn: column organizations.org_id does not exist. ClinicalAuthorizationContextService._get_active_operational_scope issues exactly that query, so resolve_for_legacy_lab_user raises ProgrammingError; ClinicalGatewayContextResolver's `except Exception` converts it to ClinicalGatewayBlocked('invalid_context'). Set-difference measured in-test: declared-minus-physical == ['org_id', 'org_type', 'parent_org_id', 'updated_at'].",
+      "security_impact": "Fails closed - the request is refused - but the refusal is reported as an authorization outcome (invalid_context) when it is a schema fault, which is exactly the kind of mislabelling that hides real authorization defects.",
+      "clinical_impact": "No clinician can complete an authorized clinical read through the canonical gateway; every fully authorized actor is refused.",
+      "recommended_fix": "Reconcile the Organization ORM to the physical schema the way M3/M4 reconciled Pharmacy - rename to organization_id/organization_type, drop parent_org_id and updated_at or add them by migration - and prove the pair together against the migrated database. Likely belongs with NR-022 (National Core ownership) rather than standing alone.",
+      "verification": "backend/tests/test_identity_link_and_assurance.py::test_the_operational_organization_orm_does_not_match_its_table_nr047 pins the exact column set; ::test_a_fully_authorized_actor_reaches_the_operational_scope_and_is_blocked_by_nr047 pins the ProgrammingError at the point the allow path dies, with a fully authorized fixture behind it. Both fail when NR-047 is fixed, which is the signal to rewrite them to assert the 200.",
+      "affected_components": "backend/app/models/organization.py, backend/app/identity/services/clinical_authorization_context_service.py, backend/app/clinical_gateway/context.py",
+      "discovered_by": "NR-045 repair (attempting the NR-044.1 allow-path proof)",
+      "owner": "National Core",
+      "artifact": "docs/architecture/identity/nr-044-decision.md",
+      "next_batch": "Blocks the NR-044.1 authorization ALLOW proof and any Golden Path clinical read."
     }
   ]
 }

@@ -344,3 +344,82 @@ enforced.
 
 Closing any of these on the strength of NR-044.1 would be closing them on the
 gate rather than on the thing each one actually asserts.
+
+## 14. NR-045 repaired, and what it revealed (NR-047)
+
+### The defect, exactly
+
+`niam_audit_entries.uuid` is `NOT NULL` with no server default, and
+`IdentityBaseEntity` supplies `id`, `created_at` and `updated_at` but not
+`uuid`. `AuditService` (event_version 1) passed one explicitly;
+`CanonicalAuditService` (event_version 2) did not. Every v2 insert therefore
+violated the constraint — and because the clinical gateway audits before it
+allows *and* before it denies, **every** `/api/v1/clinical/*` request answered
+503.
+
+### Are the two services the same contract?
+
+No, and that settles the repair. They are two generations over one table,
+separated by `event_version`, each with its own chain head lookup
+(`_last_canonical_hash` filters `event_version == "2"`), its own hash payload,
+and its own verifier. v2's payload carries `decision`, `reason_code`,
+`workspace_id`, `data_classification`, `request_id` and `correlation_id` —
+fields v1 has no concept of and which the gateway depends on. Consolidating v2
+into v1 would destroy them and invalidate every existing v2 hash. So the repair
+is to satisfy the existing schema contract, not to merge the services.
+
+### The repair
+
+One line, on the column:
+
+```python
+uuid = Column(String(36), unique=True, nullable=False, index=True, default=_audit_entry_uuid)
+```
+
+Why the column rather than the service: it makes **one** place authoritative for
+every writer of this table, instead of adding a second generator beside v1's.
+`AuditService` still passes its own value, which takes precedence, so v1 is
+byte-identical. `uuid` is deliberately absent from `_canonical_payload`, so
+populating it cannot alter any entry hash, past or future.
+
+No migration: a Python-side default emits no DDL — the compiled column is still
+`uuid VARCHAR(36) NOT NULL`. No constraint weakened, no field made nullable, no
+second hash-chain implementation, no separate commit, no change to the
+gateway's fail-closed behaviour.
+
+### What is now proved
+
+Against migrated PostgreSQL 16.13: the insert succeeds with a canonical uuid4
+and a populated `entry_hash`; two consecutive entries chain correctly and
+`verify()` returns `VALID` with zero violations; the audit row is visible inside
+its own transaction and **absent from another connection after rollback**;
+`record()` never commits. End to end over real HTTP, the gateway now answers
+**403 where it answered 503**, with the denial readable in `niam_audit_entries`
+(`decision=deny`, `reason_code=missing_workspace`, `source=clinical_gateway`).
+
+Negative proof: removing the column default fails six tests; restored.
+
+### NR-047 — the wall the ALLOW path actually hits
+
+With NR-045 repaired, a fully authorized fixture was assembled: active account,
+live session, active workspace bound to that session, active NIAM organization
+and facility, an active membership, a migrated `lab_user` link, an active
+lab-to-facility binding, an active employment and clinical assignment, and the
+seeded `patients.read` permission granted through a role assignment in exactly
+that scope.
+
+It still does not reach 200 — and not for an authorization reason.
+`ClinicalAuthorizationContextService` selects the `Organization` entity, whose
+ORM declares `org_id`, `org_type`, `parent_org_id` and `updated_at` while the
+migrated `organizations` table has `organization_id`, `organization_type` and
+neither of the last two. PostgreSQL answers `UndefinedColumn`; the resolver's
+`except Exception` converts it to `invalid_context`.
+
+That is **NR-047**, registered P1 against National Core / operational models. It
+is unrelated to NR-044.1 and unrelated to NR-045, and reconciling an operational
+domain's ORM to its migration is outside this batch's scope — it is the same
+shape of work M3/M4 did for Pharmacy, and probably belongs with NR-022.
+
+**So NR-044.1 stays PARTIALLY VERIFIED.** The blocker moved and became far more
+precisely located, but the ALLOW half is still unproven, and half an
+authorization proof is not a verified conversion.
