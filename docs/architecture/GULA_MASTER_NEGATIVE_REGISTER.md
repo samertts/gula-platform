@@ -26,10 +26,10 @@ and `docs/adr/`.
 | Severity  | Count | Fixed | Open |
 | --------- | ----- | ----- | ---- |
 | P0        | 10     | 6     | 4    |
-| P1        | 20     | 11     | 9    |
+| P1        | 21     | 11     | 10    |
 | P2        | 20     | 5     | 15    |
 | P3        | 7     | 1     | 6    |
-| **Total** | **57** | **23** | **34** |
+| **Total** | **58** | **23** | **35** |
 
 _Fixed counts only rows whose status begins FIXED. AUTH-005's finalization
 re-graded NR-038 and NR-043 to PARTIALLY VERIFIED after NR-044 showed the code
@@ -150,6 +150,7 @@ since the first pass and now reflects all findings, not one session's._
 | NR-052 | P1  | Identity Platform | The assurance-profile administrator gate filtered on a column that does not exist | **VERIFIED** (NR-044.3) — `Assignment.account_id` is not a column, so the gate raised `AttributeError` rather than deciding. It failed closed, as a 500, and had never once been evaluated: NR-044 meant the route could not run. Now joins account → identity → person |
 | NR-051 | P2  | Platform / Capabilities | Six reusable concepts have 2–4 implementations and no canonical owner | OPEN — **DECISION REQUIRED**. Notification ×4, document ×3+1 dead, workflow ×3+1 dead, consent ×3+1 dead, audit ×3 writers, terminology ×2 same-named classes. *Reuse Before Build* cannot be followed while nothing says what to reuse |
 | NR-057 | P2  | Frontend / Platform | Thirty further frontend calls resolve to no registered backend route | OPEN. Same defect class as NR-054 in other domains — /niam/* ×15, /citizen-platform/* ×6, /certification/* ×2 and 7 singletons. Held by a ledger in the NR-054 contract guard that may shrink but never grow |
+| NR-058 | P1  | Platform / Runtime | A real application start loads a second copy of the application through the `backend.app` root | OPEN — **PARTIALLY MITIGATED**. `create_app()` loaded 36 shadow modules including a second kernel, config, `Base` and `Engine`; `a is b` is False with identical `__file__`. NR-050 repaired the capability share (36 → 34, second kernel gone). Residual is `national/task_engine` + `workflow_runtime`; root cause is `Dockerfile:24-26` copying the app twice |
 | NR-056 | P3  | Platform / Engineering | Seventeen generator modules and the engineering CLI resolved only from the repository root | **FIXED — VERIFIED**. 44 imports across 18 files. `backend/` has no `__init__.py` and the distribution publishes `app*`, so `backend.app.` only ever resolved because conftest and CI put the repo root on `sys.path`. Eighteen of nineteen modules failed to import before; all nineteen import now, and the CLI reads all 52 registry descriptors. Guarded by AST package discovery, so a future generator is covered without editing the test |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance

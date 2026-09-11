@@ -284,6 +284,98 @@ already; `clinical_foundation` has no definition anywhere to build against.
 *Must not happen*: none of the three may be registered, because registering
 them ships the fabricated empty response.
 
+## Import Root / Kernel Hazard — proven live, partly repaired
+
+The analysis above described this as a hazard. It was not: it was **live in
+every running process**, and it is now measured, partly repaired and guarded.
+
+### What was happening
+
+`factory.py` imports `app.capabilities.fhir_interoperability.models`. That
+executes the package `__init__`, which imports `capability.py`, which named
+`backend.app.kernel.integration`. So a real `create_app()` loaded **36
+`backend.app.*` modules** — a second copy of the application inside the same
+process:
+
+| shadow module | consequence |
+| --- | --- |
+| `backend.app.kernel.integration` | second kernel; `_kernel_instance` is a module-level global, so capability registration through it reaches a registry `factory.py` never boots |
+| `backend.app.database` | second `Base`, **second `Engine`** |
+| `backend.app.config` | config validation runs twice |
+| `backend.app.national.task_engine.*` (13) | duplicate subsystem incl. ORM models |
+| `backend.app.national.workflow_runtime.*` (14) | duplicate subsystem incl. ORM models |
+
+Proven by identity rather than by reading: `app.kernel.integration is
+backend.app.kernel.integration` → `False`, with identical `__file__`.
+
+**What tempers the severity:** the shadow `Base` carries **0 tables**, so ORM
+metadata is not corrupted; the shadow kernel's `_kernel_instance` is `None` and
+nothing boots it; the shadow engine is never used. The damage today is a loaded
+dormant tree, not active divergence. The danger is the moment anything
+registers through it — which is precisely what the nine unregistered
+capabilities would have done.
+
+### Repaired here
+
+Ten `capability.py` files, one line each, `backend.app.` → `app.`. A real
+`create_app()` now loads **34** such modules and **no second kernel**.
+
+### Not repaired here — NR-058
+
+The residual 34 belong to `national/task_engine` and
+`national/workflow_runtime`, which use that root throughout — for their own
+internal references as well as for `database` and `config`. That is a
+package-wide change with its own review, and this work was explicitly forbidden
+from a repository-wide import migration undertaken merely because the defect
+exists. Also outside: `services/governance`, `services/reference`,
+`integration/connectors/email.py`.
+
+### Prevention
+
+`backend/tests/test_capability_import_roots.py` — 9 tests. AST (not grep) for
+the capability tree; a **behavioural** assertion that a real application start
+loads no second kernel, because the static check alone would have missed the
+`factory.py → __init__ → capability.py` path that made this live; and an
+NR-058 ledger that may shrink but never grow, with a per-entry test that fails
+if a listed package is quietly repaired and left in the list.
+
+### Root cause
+
+`Dockerfile:24-26` copies the application twice: `COPY backend ./backend`
+alongside `COPY backend/app ./app`. Removing that duplication is the permanent
+fix and is **DECISION REQUIRED** — it changes the container layout.
+
+## Registry Integrity
+
+All ten descriptors declare `maturity = PRODUCTION` while nine cannot import
+and only one is registered. Classification: **REGISTRY DEFECT**, specifically
+*lifecycle design weakness* — `maturity` is author-declared and nothing
+reconciles it against reachability. The existing guards check that `maturity`
+is typed and that deprecated/retired capabilities name a successor; none checks
+that a PRODUCTION capability can be imported or is routed.
+
+Not changed here. Correcting the values is a one-field edit with no runtime
+effect, but it is still execution, and the right fix is probably the invariant
+rather than the values. **DECISION REQUIRED.**
+
+## Safe Remediation Performed
+
+| file(s) | defect | class | repair | test |
+| --- | --- | --- | --- | --- |
+| 10 × `app/capabilities/*/capability.py` | `backend.app.` import root (D2) | **ARCHITECTURE DEFECT** (not tooling — it split the kernel) | `backend.app.kernel.integration` → `app.kernel.integration` | `test_capability_import_roots.py` (9 tests, 3 negative-proven) |
+
+**Deliberately NOT repaired, though mechanically trivial:**
+
+- **D1** (bare `__init__` import, 9 packages) and **D3** (dataclass ordering, 4
+  packages). Both are one-line template defects and both are within the letter
+  of the autonomy granted. They are held because repairing them makes the four
+  hexagonal packages *importable*, and their
+  `infrastructure/repository.py` are the four remaining entries in the NR-044
+  ledger — async-session code that was closed as unreachable. Making it
+  reachable is an architectural consequence, not a mechanical one, and it would
+  reopen a finding that was verified closed. That decision belongs to NR-050
+  execution.
+
 ## Dependencies
 
 ```

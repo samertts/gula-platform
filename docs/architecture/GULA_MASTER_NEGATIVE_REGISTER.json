@@ -5,10 +5,10 @@
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 57,
+    "total": 58,
     "by_severity": {
       "P0": 10,
-      "P1": 20,
+      "P1": 21,
       "P2": 20,
       "P3": 7
     }
@@ -1660,7 +1660,7 @@
       "domain": "Platform / Capabilities",
       "category": "Dead code presented as architecture",
       "title": "Nine of the ten packages under app/capabilities/ cannot import, and nine have live frontend routes",
-      "status": "DISCOVERY COMPLETE — DECISION REQUIRED (recommendation: SPLIT)",
+      "status": "DISCOVERY COMPLETE — DECISION READY (capability import-root share repaired)",
       "blocker": false,
       "can_fix_now": false,
       "priority": 50,
@@ -1868,6 +1868,38 @@
       "owner": "platform-architecture",
       "artifact": "backend/tests/test_frontend_backend_contract.py",
       "next_batch": "unscheduled — awaiting decision",
+      "fixed_by": null,
+      "resolution": null
+    },
+    {
+      "id": "NR-058",
+      "severity": "P1",
+      "domain": "Platform / Runtime",
+      "category": "Duplicate application tree loaded in-process",
+      "title": "A real application start loads a second copy of the application through the backend.app root",
+      "status": "OPEN — PARTIALLY MITIGATED (NR-050 closed the capability share)",
+      "blocker": false,
+      "can_fix_now": false,
+      "priority": 58,
+      "description": "A real create_app() loaded 36 backend.app.* modules — a second copy of the application inside the same process, including a second kernel, a second config, and a second database module with its own Base and its own Engine. NR-050 repaired the capability share (10 capability.py files), bringing it to 34 and removing the second kernel. The residual belongs to app/national/task_engine (13 modules) and app/national/workflow_runtime (14), plus services/governance, services/reference and integration/connectors/email.py.",
+      "root_cause": "Dockerfile:24-26 copies the application twice — `COPY backend ./backend` alongside `COPY backend/app ./app` — so from WORKDIR /app both `app.x` and `backend.app.x` resolve to the same file as two distinct module objects, each with its own module-level globals. Modules that name the backend.app root then bind to the shadow copy.",
+      "evidence": "`import app.kernel.integration as a; import backend.app.kernel.integration as b; a is b` → False with identical __file__. app/kernel/integration.py:15 holds `_kernel_instance` as a module-level global. Counted live: 36 shadow modules before the NR-050 repair, 34 after. The shadow Base carries 0 tables and the shadow engine is unused, so nothing has diverged yet.",
+      "security_impact": "None demonstrated. No authorization or tenancy path runs through the shadow tree today.",
+      "clinical_impact": "None today. The hazard is silent divergence: state written through one copy is invisible to the other, and a capability registering through the shadow kernel would succeed while reaching nobody.",
+      "recommended_fix": "Permanent fix is the container layout — stop copying the application twice. Correcting the task_engine and workflow_runtime import roots is a package-wide change with its own review. Neither was done under NR-050, whose brief forbade a repository-wide import migration.",
+      "verification": "backend/tests/test_capability_import_roots.py holds the repaired capability tree and carries the residual as DECLARED_SHADOW_ROOT_PACKAGES — a ledger that may shrink but never grow, with a per-entry test that fails if a listed package is repaired and left in the list.",
+      "affected_components": [
+        "Dockerfile",
+        "backend/app/national/task_engine/",
+        "backend/app/national/workflow_runtime/",
+        "backend/app/services/governance/",
+        "backend/app/services/reference/",
+        "backend/app/integration/connectors/email.py"
+      ],
+      "discovered_by": "NR-050 (accelerated discovery + controlled remediation)",
+      "owner": "platform-architecture",
+      "artifact": "docs/architecture/NR-050-capability-disposition.md",
+      "next_batch": "unscheduled — DECISION REQUIRED on container layout",
       "fixed_by": null,
       "resolution": null
     }
