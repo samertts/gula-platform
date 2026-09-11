@@ -28,8 +28,8 @@ and `docs/adr/`.
 | P0        | 10     | 6     | 4    |
 | P1        | 20     | 11     | 9    |
 | P2        | 19     | 4     | 15    |
-| P3        | 7     | 0     | 7    |
-| **Total** | **56** | **21** | **35** |
+| P3        | 7     | 1     | 6    |
+| **Total** | **56** | **22** | **34** |
 
 _Fixed counts only rows whose status begins FIXED. AUTH-005's finalization
 re-graded NR-038 and NR-043 to PARTIALLY VERIFIED after NR-044 showed the code
@@ -149,7 +149,7 @@ since the first pass and now reflects all findings, not one session's._
 | NR-054 | P2  | Frontend / Platform | Nine frontend routes call capability endpoints that are never registered | OPEN — **DECISION REQUIRED**. Nine navigable clinical-section pages backed by nothing. Whatever NR-050 decides, leaving navigable pages pointing at nothing is the one option to rule out |
 | NR-052 | P1  | Identity Platform | The assurance-profile administrator gate filtered on a column that does not exist | **VERIFIED** (NR-044.3) — `Assignment.account_id` is not a column, so the gate raised `AttributeError` rather than deciding. It failed closed, as a 500, and had never once been evaluated: NR-044 meant the route could not run. Now joins account → identity → person |
 | NR-051 | P2  | Platform / Capabilities | Six reusable concepts have 2–4 implementations and no canonical owner | OPEN — **DECISION REQUIRED**. Notification ×4, document ×3+1 dead, workflow ×3+1 dead, consent ×3+1 dead, audit ×3 writers, terminology ×2 same-named classes. *Reuse Before Build* cannot be followed while nothing says what to reuse |
-| NR-056 | P3  | Platform / Engineering | Ten sibling generators and the engineering CLI still resolve only from the repository root | OPEN. The same one-line self-import NR-053 removed from `capability.py` survives verbatim in cqrs, crud, dto, microservice, module, plugin, project, openapi, repository and rest — and in `productivity/cli.py`, which loads all eleven through it. Their templates are clean, so this is how the tool loads, not what it emits. Left for a separate reviewable change |
+| NR-056 | P3  | Platform / Engineering | Seventeen generator modules and the engineering CLI resolved only from the repository root | **FIXED — VERIFIED**. 44 imports across 18 files. `backend/` has no `__init__.py` and the distribution publishes `app*`, so `backend.app.` only ever resolved because conftest and CI put the repo root on `sys.path`. Eighteen of nineteen modules failed to import before; all nineteen import now, and the CLI reads all 52 registry descriptors. Guarded by AST package discovery, so a future generator is covered without editing the test |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.

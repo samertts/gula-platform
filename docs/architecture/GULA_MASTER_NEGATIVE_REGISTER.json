@@ -1803,18 +1803,18 @@
       "severity": "P3",
       "domain": "Platform / Engineering",
       "category": "Import root ambiguity (D2 class)",
-      "title": "Ten sibling generators and the engineering CLI still resolve only from the repository root",
-      "status": "OPEN",
+      "title": "Seventeen generator modules and the engineering CLI resolved only from the repository root",
+      "status": "FIXED — VERIFIED (NR-056)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 56,
-      "description": "NR-053 removed the `backend.app.` root from the capability generator and from everything it emits. The same one-line self-import survives verbatim in the ten sibling generators (cqrs, crud, dto, microservice, module, plugin, project, openapi, repository, rest) and in app/engineering/productivity/cli.py, which imports all eleven through that root. Each is the identical line: `from backend.app.engineering.generators.base import BaseGenerator, GenerateResult`.",
-      "root_cause": "`backend.app.` resolves only where the repository root happens to be on sys.path — true under pytest and in CI (both set PYTHONPATH to workspace and workspace/backend), false for an interpreter rooted at backend/, which is how the application itself runs. The generators were written against the test environment rather than the runtime one.",
-      "evidence": "`grep -h 'backend\\.app'` across the ten sibling generators returns exactly ten identical lines and nothing else — their templates are clean, so the defect is in how the tool loads, not in what it emits. `cd backend && python3 -c 'import app.engineering.productivity.cli'` raises ModuleNotFoundError: No module named 'backend'; the same import succeeds with the repository root added. Pre-existing: last touched in d33021e3, untouched by NR-053's commit 612ab2a3.",
+      "description": "NR-053 removed the `backend.app.` root from the capability generator and from everything it emits. The same defect remained in seventeen sibling modules that build on BaseGenerator (cqrs, crud, dto, openapi, repository, rest; generators/microservice, module, plugin, project; deployment/github_actions; docs/adr, docs/mermaid; testing/factories, fixtures, performance, unit) and across all twenty-seven imports of app/engineering/productivity/cli.py, which loads them. The original NR-056 entry named ten of the seventeen; the other seven are reached through the CLI's deferred, in-handler imports and carry the identical line.",
+      "root_cause": "`backend/` is not a package — it has no `__init__.py` — and backend/pyproject.toml publishes `include = [\"app*\"]`. `backend.app.` therefore resolves only as an implicit namespace package when the repository root is on sys.path. tests/conftest.py puts it there for the unrelated `shared` package and CI exports it too, so the whole family sat broken behind a green suite.",
+      "evidence": "Before: a probe importing the nineteen modules with backend/ as the only root failed eighteen times with `ModuleNotFoundError: No module named 'backend'`; only NR-053's capability.py passed. After: 19/19 import, `cd backend && python3 -c 'import app.engineering.productivity.cli'` prints CLI_IMPORT_OK, and `python3 -m app.engineering.productivity.cli capability summary` reads all 52 registry descriptors — exercising the deferred app.kernel imports end to end.",
       "security_impact": "None. No authorization, tenancy or audit path runs through these modules.",
       "clinical_impact": "None. Development tooling only; no clinical request touches it.",
-      "recommended_fix": "Replace the eleven `backend.app.` imports with `app.` — mechanically identical to the fix NR-053 applied at capability.py line 8. Deliberately not done under NR-053, whose scope was the capability generator and its output; eleven further modules is a separate, reviewable change.",
-      "verification": "A subprocess rooted at backend/ with PYTHONPATH=backend imports each of the eleven modules — the same shape as test_the_generator_itself_imports_without_the_repository_root in backend/tests/test_capability_generator.py, which already proves it for capability.py.",
+      "recommended_fix": "Rewrite the import root from `backend.app.` to `app.` in place. The imports were already absolute, so only the root prefix changed: no relative-import conversion, no sys.path or PYTHONPATH manipulation, no importlib indirection, no duplicated modules, no new dependency.",
+      "verification": "backend/tests/test_engineering_tooling_imports.py — 24 tests. Every importability assertion runs in a subprocess rooted at backend/ with no PYTHONPATH, because the pytest process can import both roots and would mask a regression. Generator membership is discovered structurally from the AST (an import of BaseGenerator or a class subclassing it), so a generator added later is covered without editing the test. One architecture guard asserts that no module under app/engineering names `backend` as an import root.",
       "affected_components": [
         "backend/app/engineering/cqrs/generator.py",
         "backend/app/engineering/crud/generator.py",
@@ -1832,8 +1832,8 @@
       "owner": "platform-architecture",
       "artifact": "backend/tests/test_capability_generator.py",
       "next_batch": "unscheduled — awaiting decision",
-      "fixed_by": null,
-      "resolution": null
+      "fixed_by": "NR-056",
+      "resolution": "44 import statements across 18 files, plus the unused PACKAGE constant in cli.py which named the same dead root. Negative proof: reintroducing the defect in one module failed three tests — that module's import, the CLI deferred-load test, and the architecture guard."
     }
   ]
 }
