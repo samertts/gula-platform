@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
@@ -34,12 +33,27 @@ def _raw_niam_token(request: Request, credentials: HTTPAuthorizationCredentials 
     return raw_token
 
 
-def get_current_niam_actor_sync(
+def get_current_niam_actor(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
     db: Session = Depends(get_db),
 ) -> NiamActor:
-    """Canonical actor dependency for the sync clinical gateway."""
+    """The canonical actor dependency for every NIAM route (NR-044.1).
+
+    There used to be two of these, differing only in colour. The async one
+    guarded the whole `/niam/*` router and could never execute: `get_db` yields
+    a synchronous `Session`, so `await db.execute(...)` raised
+    ``TypeError: object ChunkedIteratorResult can't be used in 'await'
+    expression`` before any statement reached PostgreSQL. The sync one was
+    written for the clinical gateway because that path had to work.
+
+    This is that sync implementation, now serving both. One consequence is
+    deliberate and worth stating: it also checks ``Account.is_locked``, which
+    the async version omitted. A locked account could not authenticate through
+    it before only because the function could not run at all; the check is kept
+    rather than dropped, so the conversion strengthens the gate rather than
+    preserving a gap.
+    """
     raw_token = _raw_niam_token(request, credentials)
     payload = decode_token(raw_token)
     if not payload or not payload.get("account_uuid") or not payload.get("jti"):
@@ -62,31 +76,9 @@ def get_current_niam_actor_sync(
     return NiamActor(account=actor[0], session=actor[1])
 
 
-async def get_current_niam_actor(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
-    db: AsyncSession = Depends(get_db),
-) -> NiamActor:
-    raw_token = _raw_niam_token(request, credentials)
-    payload = decode_token(raw_token)
-    if not payload or not payload.get("account_uuid") or not payload.get("jti"):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid NIAM access token")
-
-    result = await db.execute(
-        select(Account, UserSession)
-        .join(UserSession, UserSession.account_id == Account.id)
-        .where(
-            Account.uuid == payload["account_uuid"],
-            Account.status == AccountStatus.active.value,
-            Account.is_active.is_(True),
-            UserSession.token_jti == payload["jti"],
-            UserSession.is_active.is_(True),
-        ),
-    )
-    actor = result.first()
-    if actor is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive or invalid NIAM session")
-    return NiamActor(account=actor[0], session=actor[1])
+# The clinical gateway and its tests import this name. It is the same function:
+# there is one actor dependency now, and it is synchronous.
+get_current_niam_actor_sync = get_current_niam_actor
 
 
 def serialize_workspace(workspace: Workspace) -> dict[str, object]:

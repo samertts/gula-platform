@@ -11,10 +11,10 @@ class PolicyRepository(IdentityRepositoryBase[IdentityPolicy]):
 
     model_class = IdentityPolicy
 
-    async def find_enabled_for_action(self, action: str) -> list[IdentityPolicy]:
+    def find_enabled_for_action(self, action: str) -> list[IdentityPolicy]:
         statement = select(self.model_class).where(
             self.model_class.is_active.is_(True),
             self.model_class.is_enabled.is_(True),
         )
-        result = await self.session.execute(statement)
+        result = self.session.execute(statement)
         return [policy for policy in result.scalars().all() if action in (policy.actions or [])]

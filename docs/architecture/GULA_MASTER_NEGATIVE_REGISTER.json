@@ -1513,9 +1513,9 @@
       "domain": "Identity Platform",
       "category": "Runtime",
       "title": "The NIAM async service layer cannot execute — there is no async engine",
-      "status": "OPEN — DECISION MADE (Option B), CONVERSION IS A SEPARATE BATCH",
+      "status": "PARTIALLY RESOLVED (NR-044.1: repositories + actor dependency converted; NR-044.2-.5 open)",
       "blocker": false,
-      "can_fix_now": false,
+      "can_fix_now": true,
       "priority": 44,
       "description": "get_db yields a synchronous sqlalchemy.orm.Session. Thirty-six modules under app/identity/ annotate AsyncSession and call `await session.execute(...)`, and no create_async_engine exists anywhere in app/. Awaiting a sync result raises TypeError before any statement reaches the database, so the trust/assurance routes, workspace eligibility, membership services and the identity repositories are unreachable at runtime.",
       "root_cause": "The identity platform was written against an async session contract the application never provided. The annotations are decorative; no async engine was ever created.",
@@ -1523,12 +1523,14 @@
       "security_impact": "Neutral-to-positive today — it is why NR-038 was never exploitable — but it means several controls that appear to exist cannot run, and any future reader may mistake unreachable code for an enforced control.",
       "clinical_impact": "None directly: the health-identity linkage path is synchronous and does execute. The unreachable layer is organizational/workspace, not clinical.",
       "recommended_fix": "Option B: converge on the synchronous Session. Evidence: one genuine async I/O site in 506 async functions; no measured concurrency requirement; Option A would add a second engine and pool (30 -> 60 connections against PostgreSQL's 100) and two transaction boundaries per request, creating a permanent dual architecture; and the conversion already exists in the tree as get_current_niam_actor_sync. Costs no migrations and no connections. Conversion is a separate batch in five steps, NR-044.1 first (repositories + the actor dependency), which unblocks the entire /niam/* router.",
-      "verification": "backend/tests/test_identity_platform_runtime.py — 8 tests including an AST ledger of the 50 modules that accepts exactly two states (async engine exists -> deliberate failure; no async engine -> the set must equal the ledger). Negative proof in both directions, both reverted.",
+      "verification": "backend/tests/test_identity_platform_runtime.py — 9 tests, including the two-state AST ledger (now 40 modules), test_the_niam_actor_dependency_is_one_synchronous_function and test_the_repository_layer_is_synchronous. backend/tests/test_identity_link_and_assurance.py — the actor dependency and the repository layer exercised against migrated PostgreSQL (test_the_niam_actor_dependency_now_authenticates_against_postgresql, test_a_locked_account_is_refused, test_a_revoked_session_is_refused, test_a_token_naming_another_session_is_refused, test_a_suspended_account_is_refused, test_the_repository_layer_reaches_postgresql). Negative proof in both directions: reverting the actor to async fails 7 tests; reverting one repository fails 3. Both reverted.",
       "affected_components": "backend/app/identity/ (36 modules), backend/app/database.py",
       "discovered_by": "AUTH-005 finalization",
       "owner": "Identity Platform",
       "artifact": "docs/architecture/identity/nr-044-decision.md; docs/architecture/identity/nr-044-blast-radius.json",
-      "next_batch": "Blocks AUTH-F5 behavioural proof, NR-038 behavioural proof, and organization workspace access."
+      "next_batch": "NR-044.2 (identity/services/, ~20 modules), NR-044.3 (trust/admin/governance/compliance/federation sub-packages and their routes), NR-044.4 (capabilities/national/services stragglers, 7 modules), NR-044.5 (test conversion and ledger retirement). Still blocks the AUTH-F5 and NR-038 behavioural proofs and organization workspace access, all of which need NR-044.2/.3.",
+      "resolution": "NR-044.1 converted the ten modules of app/identity/repositories/ and the actor dependency in app/identity/api/workspaces.py to the synchronous Session. No AsyncEngine, AsyncSession, asyncpg, second pool or migration was introduced. The AST ledger shrank from 50 modules to 40 — exactly the ten repositories, added: []. PRECISE REACHABILITY: get_current_niam_actor now executes against PostgreSQL, so every /niam/* route passes its gate; the route handlers are still async and still await AsyncSession-annotated services, so an individual handler still raises TypeError past the gate. /niam/* is gated, not yet served — serving it is NR-044.2 (services) and NR-044.3 (routes). NR-038 and NR-043 therefore stay PARTIALLY VERIFIED; their behavioural proof needs the service layer, not the gate. TWO BEHAVIOUR CHANGES, not refactors: (1) the converged gate keeps the sync implementation's Account.is_locked filter, which the async twin omitted, so the gate is strictly tighter than either predecessor; (2) a latent ModuleNotFoundError was fixed — IdentityRepositoryBase.count read 'from sqlalchemy.func import count', and sqlalchemy.func is an attribute of the package, not a module; it was unreachable while the layer could not execute and surfaced on the first real call.",
+      "fixed_by": "NR-044.1 (partial)"
     }
   ]
 }

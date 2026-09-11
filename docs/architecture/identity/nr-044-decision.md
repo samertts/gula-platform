@@ -175,15 +175,16 @@ Not implemented. Measured.
 and the spec's own instruction is to stop at that point. The proposed boundary:
 
 | Batch | Scope | Why this order |
-|---|---|---|
-| **NR-044.1** | `identity/repositories/` (9 modules) + `identity/api/workspaces.py` actor dependency | the leaves, plus the one dependency that unblocks *every* `/niam/*` route |
-| **NR-044.2** | `identity/services/` (≈20 modules) | depends on the repositories |
-| **NR-044.3** | `identity/{trust,admin,governance,compliance,federation,certificates,…}` sub-packages and their routes | depends on the services |
-| **NR-044.4** | `capabilities/`, `national/`, `services/` stragglers (7 modules) | independent; can run any time after 1 |
-| **NR-044.5** | test conversion and ledger retirement | last, once the ledger is empty |
+|---|---|---|---|
+| **NR-044.1** | `identity/repositories/` (10 modules) + `identity/api/workspaces.py` actor dependency | the leaves, plus the one dependency that unblocks *every* `/niam/*` route | **DONE** |
+| **NR-044.2** | `identity/services/` (≈20 modules) | depends on the repositories | pending approval |
+| **NR-044.3** | `identity/{trust,admin,governance,compliance,federation,certificates,…}` sub-packages and their routes | depends on the services | pending approval |
+| **NR-044.4** | `capabilities/`, `national/`, `services/` stragglers (7 modules) | independent; can run any time after 1 | pending approval |
+| **NR-044.5** | test conversion and ledger retirement | last, once the ledger is empty | pending approval |
 
-After NR-044.1 the whole NIAM router becomes reachable, so it is the batch that
-converts the most blocked surface per line changed.
+After NR-044.1 the whole NIAM router's *gate* becomes reachable, so it is the
+batch that converts the most blocked surface per line changed. See §12 for what
+that did and did not turn out to mean.
 
 ## 10. AUTH-005 findings this would unblock
 
@@ -215,3 +216,52 @@ engine now exists. NR-044's premise has changed`. Both reverted.
 
 It is AST-based rather than grep-based: comments and string literals do not
 count, and the session-owner and method names are matched structurally.
+
+## 12. Outcome of NR-044.1 (recorded after implementation)
+
+Converted: the ten modules of `app/identity/repositories/` and the actor
+dependency in `app/identity/api/workspaces.py`. Nothing else. No `AsyncEngine`,
+no `AsyncSession`, no `asyncpg`, no second pool, no migration, no change to
+National Core or AUTH-F10.
+
+### What is now reachable, stated precisely
+
+`get_current_niam_actor` executes against PostgreSQL and returns a correct 401
+or a `NiamActor`. Every `/niam/*` route passes through it, so the door opens.
+The route handlers in `workspaces.py` are still `async def` and still `await`
+`WorkspaceService`, which still annotates `AsyncSession` — so an individual
+handler still raises `TypeError` past the gate. **`/niam/*` is gated, not yet
+served.** Serving it is NR-044.2 (services) and NR-044.3 (routes). Any claim
+that NR-044.1 made the NIAM router work end to end would be false.
+
+Consequently NR-038 and NR-043 stay **PARTIALLY VERIFIED**. Their behavioural
+proof needs the service layer, not the gate.
+
+### Two behaviour changes that are not refactors
+
+1. **The gate is stricter than either predecessor.** `get_current_niam_actor`
+   (async) did not filter `Account.is_locked`; `get_current_niam_actor_sync`
+   did. Converging kept the check, so a locked account is now refused where the
+   async twin would have admitted it had it ever been able to run. Pinned by
+   `test_a_locked_account_is_refused` against real PostgreSQL.
+2. **A latent `ModuleNotFoundError` was fixed.** `IdentityRepositoryBase.count`
+   read `from sqlalchemy.func import count`. `sqlalchemy.func` is an attribute
+   of the package, not a module, so the import raises. It was invisible while
+   the layer could not execute and surfaced on the first real call. Now
+   `from sqlalchemy import func`, pinned by
+   `test_the_repository_layer_reaches_postgresql`.
+
+### Ledger
+
+`DECLARED_UNREACHABLE_ASYNC_DB_MODULES` shrank from 50 to 40 — exactly the ten
+repositories, `added: []`. The guard's two-state contract is unchanged.
+
+### Tests touched, and why
+
+`tests/identity/test_workspace_api_hardening_phase5.py` asserted the actor
+dependency was awaitable and handed it a fake session exposing only
+`async execute`. Three tests were made synchronous and the fake taught the
+`query(...).join(...).filter(...).first()` chain. That file proves the HTTP
+boundary against a fake and cannot prove a predicate — which is precisely how
+the missing `is_locked` filter stayed out of sight. The predicates are proved
+against migrated PostgreSQL in `tests/test_identity_link_and_assurance.py`.

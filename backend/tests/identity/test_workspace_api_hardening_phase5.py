@@ -18,10 +18,37 @@ class _Result:
         return self.row
 
 
+class _Query:
+    """The tail of the synchronous chain the actor dependency builds.
+
+    It records nothing about the predicates: a fake cannot prove that
+    `Account.is_locked` is filtered, which is exactly how the async
+    dependency kept a missing lock check out of sight. The predicates are
+    proved against real PostgreSQL in tests/test_identity_link_and_assurance.py
+    (`test_a_locked_account_is_refused`). What this file proves is the HTTP
+    boundary: which status code comes back for which shape of input.
+    """
+
+    def __init__(self, row):
+        self.row = row
+
+    def join(self, *args, **kwargs):
+        return self
+
+    def filter(self, *args, **kwargs):
+        return self
+
+    def first(self):
+        return self.row
+
+
 class _Db:
     def __init__(self, row=None, workspace=None):
         self.row = row
         self.workspace = workspace
+
+    def query(self, *entities):
+        return _Query(self.row)
 
     async def execute(self, statement):
         return _Result(self.row)
@@ -91,19 +118,16 @@ def workspace():
 def test_missing_niam_credentials_are_rejected(monkeypatch):
     credentials = None
     with pytest.raises(HTTPException) as error:
-        import asyncio
-
-        asyncio.run(workspace_api.get_current_niam_actor(request(), credentials, _Db()))
+        workspace_api.get_current_niam_actor(request(), credentials, _Db())
 
     assert error.value.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_invalid_or_inactive_niam_token_is_rejected(monkeypatch):
+def test_invalid_or_inactive_niam_token_is_rejected(monkeypatch):
     monkeypatch.setattr(workspace_api, "decode_token", lambda token: {"jti": "jti-1"})
 
     with pytest.raises(HTTPException) as error:
-        await workspace_api.get_current_niam_actor(
+        workspace_api.get_current_niam_actor(
             request(),
             _Credentials("invalid-token"),
             _Db(row=None),
@@ -112,8 +136,7 @@ async def test_invalid_or_inactive_niam_token_is_rejected(monkeypatch):
     assert error.value.status_code == 401
 
 
-@pytest.mark.asyncio
-async def test_valid_token_requires_matching_active_account_and_session(monkeypatch):
+def test_valid_token_requires_matching_active_account_and_session(monkeypatch):
     monkeypatch.setattr(
         workspace_api,
         "decode_token",
@@ -122,7 +145,7 @@ async def test_valid_token_requires_matching_active_account_and_session(monkeypa
     account = SimpleNamespace(id="account-1")
     session = SimpleNamespace(id="session-1")
 
-    result = await workspace_api.get_current_niam_actor(
+    result = workspace_api.get_current_niam_actor(
         request(),
         _Credentials("valid-token"),
         _Db(row=(account, session)),

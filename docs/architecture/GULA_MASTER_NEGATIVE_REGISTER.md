@@ -34,7 +34,10 @@ and `docs/adr/`.
 _Fixed counts only rows whose status begins FIXED. AUTH-005's finalization
 re-graded NR-038 and NR-043 to PARTIALLY VERIFIED after NR-044 showed the code
 paths they harden cannot execute, so the fixed total moves down by two while the
-work itself stands._
+work itself stands. NR-044.1 has since converted the repositories and the actor
+dependency, which makes the `/niam/*` gate executable; it does not make the
+route handlers executable, so neither finding may be re-graded yet — that needs
+NR-044.2 and NR-044.3._
 
 _Counts are generated from the JSON companion; the table above had drifted
 since the first pass and now reflects all findings, not one session's._
@@ -82,13 +85,13 @@ since the first pass and now reflects all findings, not one session's._
 | NR-035 | P1  | Identity Platform | The `user_id` token claim is ambiguous across `users` and `lab_users` | FIXED — VERIFIED (AUTH-003; `act` discriminator, single fail-closed resolver) |
 | NR-036 | P1  | Platform-wide | The test schema is built from ORM metadata, so tests pass against tables no migration creates | FIXED — VERIFIED (TEST-001 + TEST-001.1; gate binding in CI) |
 | NR-037 | P1  | Identity Platform | Assurance was one scale across four independent verification purposes | FIXED — VERIFIED (AUTH-004; purpose-scoped profile, ADR-026) |
-| NR-038 | P1  | Identity Platform | The client supplies its own identity assurance level, assessor and evidence | PARTIALLY VERIFIED (AUTH-005; authorship removed, route unexecutable — NR-044) |
+| NR-038 | P1  | Identity Platform | The client supplies its own identity assurance level, assessor and evidence | PARTIALLY VERIFIED (AUTH-005; authorship removed, route still unexecutable — NR-044.1 opened the gate, not the handlers) |
 | NR-039 | P1  | Identity Platform | `users.is_verified` means both "a code was received" and "identity confirmed" | FIXED — VERIFIED (AUTH-005; linkage requires identity L2) |
 | NR-040 | P2  | Identity Platform | The canonical verification domain had a reader and no writer | FIXED — VERIFIED (AUTH-005; VerificationWorkflow) |
 | NR-041 | P2  | Identity Platform | MFA exists for staff only, and its service takes an undiscriminated integer id | OPEN |
 | NR-042 | P3  | National Platform | The declared biometrics table points at raw biometric data | OPEN — DO NOT BUILD |
-| NR-043 | P2  | Identity Platform | Workspace eligibility ignored the organization's own standing | PARTIALLY VERIFIED (AUTH-005; narrowed, but unexecutable — NR-044) |
-| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | OPEN — DECISION MADE (Option B: converge on sync Session); conversion is a separate batch |
+| NR-043 | P2  | Identity Platform | Workspace eligibility ignored the organization's own standing | PARTIALLY VERIFIED (AUTH-005; narrowed, still unexecutable — `list_eligible` is NR-044.2) |
+| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | PARTIALLY RESOLVED (NR-044.1: 10 repositories + the actor dependency converted, ledger 50 → 40; the `/niam/*` gate now executes, the handlers do not — NR-044.2–.5 open) |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.

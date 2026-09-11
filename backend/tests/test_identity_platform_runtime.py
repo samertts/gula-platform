@@ -64,27 +64,36 @@ def test_no_async_engine_exists_anywhere_in_the_application() -> None:
     )
 
 
-def test_the_async_identity_services_are_numerous_enough_to_matter() -> None:
-    """Scope, pinned so it cannot quietly grow or be understated."""
-    import re
+def test_the_unconverted_async_surface_matches_the_ledger() -> None:
+    """Scope, measured the same way in both tests.
 
-    pattern = re.compile(r"await\s+(self\.session|self\.db|db|session)\.execute\(")
-    modules = sorted(
-        path.relative_to(APP).as_posix()
-        for path in APP.rglob("*.py")
-        if "__pycache__" not in path.parts
-        and pattern.search(path.read_text(encoding="utf-8", errors="ignore"))
+    An earlier version counted with a regex over `.execute(` while the ledger
+    was built by AST over every session method, so the two disagreed (33 vs 40)
+    the moment the numbers mattered. There is one definition now:
+    `_modules_awaiting_the_database`.
+    """
+    modules = _modules_awaiting_the_database()
+    assert modules == DECLARED_UNREACHABLE_ASYNC_DB_MODULES, (
+        "the unconverted async surface and the ledger disagree; NR-044 batches "
+        "must shrink both together"
     )
-    assert len(modules) >= 30, (
-        f"only {len(modules)} modules await a session execute; if the count fell "
-        "sharply the async layer may have been converted — re-derive NR-044"
-    )
+
+    # Still unconverted, and named so their conversion is visible when it lands.
     for expected in (
         "identity/services/workspace_service.py",
         "identity/services/membership_service.py",
         "identity/trust/services.py",
     ):
-        assert expected in modules, f"{expected} is no longer async; re-derive NR-044"
+        assert expected in modules, (
+            f"{expected} no longer awaits a session — a later NR-044 batch landed; "
+            "shrink the ledger and re-derive this list"
+        )
+    # Converted by NR-044.1 and therefore required to be absent.
+    for converted in ("identity/repositories/base.py",
+                      "identity/repositories/account_repository.py"):
+        assert converted not in modules, (
+            f"{converted} awaits a session again; NR-044.1 has regressed"
+        )
 
 
 @pytest.mark.asyncio
@@ -163,14 +172,6 @@ DECLARED_UNREACHABLE_ASYNC_DB_MODULES = frozenset({
     "identity/bootstrap/seed.py", "identity/certificates/services.py",
     "identity/compliance/services.py", "identity/federation/services.py",
     "identity/governance/services.py", "identity/notifications/services.py",
-    "identity/repositories/account_repository.py",
-    "identity/repositories/assignment_repository.py", "identity/repositories/base.py",
-    "identity/repositories/device_repository.py",
-    "identity/repositories/employment_repository.py",
-    "identity/repositories/identity_repository.py",
-    "identity/repositories/organization_repository.py",
-    "identity/repositories/person_repository.py", "identity/repositories/policy_repository.py",
-    "identity/repositories/session_repository.py",
     "identity/services/account_request_service.py", "identity/services/account_service.py",
     "identity/services/audit_service.py", "identity/services/authorization_decision.py",
     "identity/services/authorization_service_v2.py", "identity/services/canonical_audit.py",
@@ -184,7 +185,6 @@ DECLARED_UNREACHABLE_ASYNC_DB_MODULES = frozenset({
     "national/task_engine/infrastructure/repository.py",
     "national/workflow_runtime/infrastructure/repository.py",
     "services/clinical_scope_bridge_service.py"
-
 })
 
 _DB_METHODS = frozenset({
@@ -280,23 +280,39 @@ def test_no_async_database_call_exists_without_an_async_engine() -> None:
     )
 
 
-def test_the_sync_twin_of_the_niam_actor_dependency_is_the_precedent() -> None:
-    """Someone already hit this and wrote the fix, once.
+def test_the_niam_actor_dependency_is_one_synchronous_function() -> None:
+    """NR-044.1 — the precedent became the rule.
 
-    `get_current_niam_actor_sync` exists beside the async original because the
-    clinical gateway had to work. The two differ only in colour: given the same
-    token and the same session the async one raises TypeError at the database
-    call and the sync one executes the query and returns a correct 401. That is
-    the conversion Option B generalises, and it is already in the tree.
+    There were two actor dependencies differing only in colour: an async one
+    guarding every `/niam/*` route that could never execute, and a sync one
+    written for the clinical gateway because that path had to work. There is one
+    now, it is synchronous, and the old name is an alias for it.
+
+    The sync implementation also filtered on `Account.is_locked`, which the
+    async twin omitted. Adopting it tightened the gate; that behaviour is
+    asserted against the migrated schema in
+    tests/test_identity_link_and_assurance.py.
     """
     from app.identity.api import workspaces
 
-    assert hasattr(workspaces, "get_current_niam_actor_sync")
-    assert not inspect.iscoroutinefunction(workspaces.get_current_niam_actor_sync)
-    assert inspect.iscoroutinefunction(workspaces.get_current_niam_actor)
+    assert not inspect.iscoroutinefunction(workspaces.get_current_niam_actor), (
+        "the NIAM actor dependency is async again; it would stop reaching the database"
+    )
+    assert workspaces.get_current_niam_actor_sync is workspaces.get_current_niam_actor, (
+        "the two dependencies diverged again — that is how NR-044 stayed hidden"
+    )
 
     gateway = (APP / "clinical_gateway" / "routes.py").read_text(encoding="utf-8")
     assert "get_current_niam_actor_sync" in gateway, (
-        "the clinical gateway no longer uses the synchronous actor dependency; "
-        "it would stop being able to authenticate"
+        "the clinical gateway no longer uses the actor dependency it was given"
     )
+
+
+def test_the_repository_layer_is_synchronous() -> None:
+    """The leaves NR-044.1 converted, pinned against reversion."""
+    repositories = APP / "identity" / "repositories"
+    for path in sorted(repositories.glob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        assert "AsyncSession" not in source, f"{path.name} references AsyncSession again"
+        assert "async def " not in source, f"{path.name} has an async def again"
+        assert "await " not in source, f"{path.name} awaits again"

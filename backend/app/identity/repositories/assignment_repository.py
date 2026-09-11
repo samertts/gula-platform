@@ -8,7 +8,7 @@ class AssignmentRepository(IdentityRepositoryBase[Assignment]):
 
     model_class = Assignment
 
-    async def find_by_employment_id(self, employment_id: str) -> list[Assignment]:
+    def find_by_employment_id(self, employment_id: str) -> list[Assignment]:
         stmt = (
             select(self.model_class)
             .where(
@@ -16,10 +16,10 @@ class AssignmentRepository(IdentityRepositoryBase[Assignment]):
                 self.model_class.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def find_by_person_id(self, person_id: str) -> list[Assignment]:
+    def find_by_person_id(self, person_id: str) -> list[Assignment]:
         stmt = (
             select(self.model_class)
             .where(
@@ -27,10 +27,10 @@ class AssignmentRepository(IdentityRepositoryBase[Assignment]):
                 self.model_class.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def find_by_organization_id(self, org_id: str) -> list[Assignment]:
+    def find_by_organization_id(self, org_id: str) -> list[Assignment]:
         stmt = (
             select(self.model_class)
             .where(
@@ -38,10 +38,10 @@ class AssignmentRepository(IdentityRepositoryBase[Assignment]):
                 self.model_class.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def find_active(self) -> list[Assignment]:
+    def find_active(self) -> list[Assignment]:
         stmt = (
             select(self.model_class)
             .where(
@@ -49,5 +49,5 @@ class AssignmentRepository(IdentityRepositoryBase[Assignment]):
                 self.model_class.is_active.is_(True),
             )
         )
-        result = await self.session.execute(stmt)
+        result = self.session.execute(stmt)
         return list(result.scalars().all())

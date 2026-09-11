@@ -705,6 +705,7 @@
    "sync_session_annotations": 0
   }
  },
+ "snapshot_note": "This is the measurement at head 4935bf85, before any conversion, and is kept as-is. NR-044.1 has since converted the ten app/identity/repositories/ modules and the actor dependency in app/identity/api/workspaces.py. The live count is the ledger DECLARED_UNREACHABLE_ASYNC_DB_MODULES in backend/tests/test_identity_platform_runtime.py, now 40 modules; do not read the totals below as current.",
  "totals": {
   "async_context_managers": 45,
   "async_defs_in_those_modules": 506,

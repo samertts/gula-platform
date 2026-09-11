@@ -556,3 +556,146 @@ def test_a_refused_linkage_is_audited_with_its_reason(db, account) -> None:
     assert "reason=insufficient_identity_assurance" in row[1]
     assert "identity_assurance=L0" in row[1]
     assert relationship.status == "pending", "a refused activation changed state"
+
+
+# ── NR-044.1: the NIAM gate now reaches PostgreSQL ───────────────────────────
+
+
+def _mint_niam_token(account_uuid: str) -> tuple[object, str]:
+    """Mint a NIAM access token and report the jti the platform assigned.
+
+    `create_token` generates its own `jti` and ignores any supplied one, so the
+    session row has to be built from the minted token rather than the reverse.
+    """
+    from types import SimpleNamespace
+
+    from app.security.auth import create_token, decode_token
+
+    token = create_token({
+        "account_uuid": account_uuid, "user_id": 1,
+        "lab_id": None, "role": "citizen", "perm_ver": 1,
+    })
+    jti = decode_token(token)["jti"]
+    return SimpleNamespace(cookies={"access_token": token}, headers={}), jti
+
+
+@pytest.fixture()
+def niam_session(db):
+    """An active account with a live session, on the migrated schema."""
+    from app.identity.models.session import UserSession
+
+    identity_id = _identity_chain(db, "niam-gate")
+    account = Account(
+        id="acct-niam-gate", uuid=str(uuid.uuid4()), identity_id=identity_id,
+        status=AccountStatus.active.value, is_active=True, is_locked=False,
+    )
+    db.add(account)
+    db.flush()
+
+    request, jti = _mint_niam_token(account.uuid)
+    session_row = UserSession(
+        id="sess-niam-gate", uuid=str(uuid.uuid4()), account_id=account.id,
+        token_jti=jti, session_type="web", is_active=True,
+        started_at=_now(), last_activity_at=_now(),
+        expires_at=_now() + timedelta(hours=1),
+    )
+    db.add(session_row)
+    db.flush()
+    return account, session_row, request
+
+
+def test_the_niam_actor_dependency_now_authenticates_against_postgresql(db, niam_session) -> None:
+    """NR-044.1. The gate on every `/niam/*` route used to raise before it
+    could query. It now executes and returns the actor."""
+    from app.identity.api.workspaces import get_current_niam_actor
+
+    account, session_row, request = niam_session
+    actor = get_current_niam_actor(request, None, db)
+    assert actor.account.id == account.id
+    assert actor.session.id == session_row.id
+
+
+def test_the_actor_dependency_is_no_longer_a_coroutine(db) -> None:
+    """One dependency, synchronous, and the old name is an alias for it."""
+    import inspect as _inspect
+
+    from app.identity.api import workspaces
+
+    assert not _inspect.iscoroutinefunction(workspaces.get_current_niam_actor)
+    assert workspaces.get_current_niam_actor_sync is workspaces.get_current_niam_actor
+
+
+def test_a_locked_account_is_refused(db, niam_session) -> None:
+    """The check the async version omitted.
+
+    `get_current_niam_actor_sync` filtered on `Account.is_locked`; the async
+    twin did not. Converting adopted the stricter of the two, so the gate is
+    tightened by this change rather than merely relocated.
+    """
+    from app.identity.api.workspaces import get_current_niam_actor
+    from fastapi import HTTPException
+
+    account, _session_row, request = niam_session
+    account.is_locked = True
+    db.flush()
+
+    with pytest.raises(HTTPException) as exc:
+        get_current_niam_actor(request, None, db)
+    assert exc.value.status_code == 401
+
+
+def test_a_revoked_session_is_refused(db, niam_session) -> None:
+    from app.identity.api.workspaces import get_current_niam_actor
+    from fastapi import HTTPException
+
+    _account, session_row, request = niam_session
+    session_row.is_active = False
+    db.flush()
+
+    with pytest.raises(HTTPException) as exc:
+        get_current_niam_actor(request, None, db)
+    assert exc.value.status_code == 401
+
+
+def test_a_token_naming_another_session_is_refused(db, niam_session) -> None:
+    """The jti must match the stored session, not merely exist."""
+    from app.identity.api.workspaces import get_current_niam_actor
+    from fastapi import HTTPException
+
+    account, _session_row, _request = niam_session
+    other_request, _jti = _mint_niam_token(account.uuid)   # a different jti
+    with pytest.raises(HTTPException) as exc:
+        get_current_niam_actor(other_request, None, db)
+    assert exc.value.status_code == 401
+
+
+def test_a_suspended_account_is_refused(db, niam_session) -> None:
+    from app.identity.api.workspaces import get_current_niam_actor
+    from fastapi import HTTPException
+
+    account, _session_row, request = niam_session
+    account.status = AccountStatus.suspended.value
+    db.flush()
+
+    with pytest.raises(HTTPException) as exc:
+        get_current_niam_actor(request, None, db)
+    assert exc.value.status_code == 401
+
+
+def test_the_repository_layer_reaches_postgresql(db, niam_session) -> None:
+    """The leaves of the conversion, against real tables.
+
+    `count()` is included deliberately: it imported `sqlalchemy.func` as a
+    module, which does not exist. The bug was unreachable while this layer
+    could not execute and surfaced the moment it could.
+    """
+    from app.identity.repositories.account_repository import AccountRepository
+
+    account, _session_row, _request = niam_session
+    repo = AccountRepository(db)
+
+    assert repo.get_by_id(account.id) is not None
+    assert repo.get_by_uuid(account.uuid) is not None
+    assert repo.find_by_email("nobody-at-all@example.invalid") is None
+    assert repo.count() >= 1
+    assert any(row.id == account.id for row in repo.list_all())
