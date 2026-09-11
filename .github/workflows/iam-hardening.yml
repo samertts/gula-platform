@@ -43,7 +43,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts
-          python -m pytest backend/tests/identity backend/tests/test_clinical_gateway_contracts.py backend/tests/test_clinical_gateway_service.py backend/tests/test_extensibility_guards.py -m "not integration" -q --junitxml=artifacts/pytest-identity.xml 2>&1 | tee artifacts/pytest-identity.log
+          python -m pytest backend/tests/identity backend/tests/test_clinical_gateway_contracts.py backend/tests/test_clinical_gateway_service.py backend/tests/test_extensibility_guards.py backend/tests/test_capability_generator.py backend/tests/test_engineering_tooling_imports.py -m "not integration" -q --junitxml=artifacts/pytest-identity.xml 2>&1 | tee artifacts/pytest-identity.log
       - name: Compile backend source
         run: python -m compileall -q backend/app backend/migrations
       - name: Upload backend evidence

@@ -23,6 +23,7 @@ the disposition of those ten packages remains NR-050's decision.
 from __future__ import annotations
 
 import importlib
+import os
 import py_compile
 import subprocess
 import sys
@@ -37,6 +38,21 @@ from app.engineering.generators.capability import (
 )
 
 BACKEND = Path(__file__).resolve().parents[1]
+
+
+def _env_rooted_at_the_application_only() -> dict[str, str]:
+    """The parent environment with PYTHONPATH pinned to the application root.
+
+    Inheriting and overriding, rather than building an env from scratch: a
+    hand-built env drops `LD_LIBRARY_PATH`, which the hosted Python in CI needs
+    to start at all, so these tests would fail for a reason that has nothing to
+    do with imports. What matters is that the repository root — which CI puts on
+    PYTHONPATH alongside backend/ — is not inherited, because that is the root
+    D2 leaned on.
+    """
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(BACKEND)
+    return env
 
 
 def _generate(tmp_path: Path, spec: CapabilitySpec) -> Path:
@@ -229,18 +245,7 @@ def test_the_generated_package_imports_without_the_repository_root(tmp_path) -> 
             print("OK")
         """)],
         capture_output=True, text=True, cwd=str(tmp_path),
-        env={
-            "PATH": "/usr/bin:/bin:/usr/local/bin",
-            "PYTHONPATH": str(BACKEND),
-            "RUNTIME_MODE": "test",
-            "FEATURE_BACKGROUND_TASKS": "false",
-            "ENV": "test",
-            "DATABASE_URL": "sqlite:///:memory:",
-            "SECRET_KEY": "test-secret-key-not-for-production-" + "x" * 32,
-            "ENCRYPTION_KEY": "6TJUTgJxBREYK9_yDy6VMXBw1HPwwxv1kiynV0WaAdw=",
-            "NID_HMAC_KEY": "a" * 64,
-            "REDIS_URL": "",
-        },
+        env=_env_rooted_at_the_application_only(),
     )
     assert result.returncode == 0, (
         "the generated package does not import with only the application root on "
@@ -260,7 +265,7 @@ def test_the_generator_itself_imports_without_the_repository_root(tmp_path) -> N
         [sys.executable, "-c",
          "import app.engineering.generators.capability as g; print(g.CapabilityGenerator.__name__)"],
         capture_output=True, text=True, cwd=str(BACKEND),
-        env={"PATH": "/usr/bin:/bin:/usr/local/bin", "PYTHONPATH": str(BACKEND)},
+        env=_env_rooted_at_the_application_only(),
     )
     assert result.returncode == 0, f"the generator still needs the repository root:\n{result.stderr}"
     assert "CapabilityGenerator" in result.stdout

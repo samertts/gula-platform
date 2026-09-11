@@ -21,6 +21,7 @@ rest of the family plus `productivity/cli.py`, which loads all of them.
 from __future__ import annotations
 
 import ast
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -96,6 +97,18 @@ GENERATOR_MODULES = [p for p in _module_paths() if _is_generator_module(p)]
 CLI_MODULE = ENGINEERING / "productivity" / "cli.py"
 
 
+def _env_without_the_repository_root() -> dict[str, str]:
+    """The parent environment minus the one variable under test.
+
+    Inheriting and subtracting, rather than building an env from scratch: a
+    hand-built env drops `LD_LIBRARY_PATH`, which the hosted Python in CI needs
+    to start at all, so the test would fail for a reason that has nothing to do
+    with imports. PYTHONPATH is what CI uses to put the repository root on
+    sys.path, and removing it is the whole point.
+    """
+    return {k: v for k, v in os.environ.items() if k != "PYTHONPATH"}
+
+
 def _import_in_real_environment(dotted: str) -> subprocess.CompletedProcess[str]:
     """Import one module in a process rooted at backend/ and nothing else.
 
@@ -109,7 +122,7 @@ def _import_in_real_environment(dotted: str) -> subprocess.CompletedProcess[str]
         capture_output=True,
         text=True,
         cwd=str(BACKEND),
-        env={"PATH": "/usr/bin:/bin:/usr/local/bin"},
+        env=_env_without_the_repository_root(),
     )
 
 
@@ -169,7 +182,7 @@ def test_the_cli_can_load_every_generator_it_advertises() -> None:
     result = subprocess.run(
         [sys.executable, "-c", program],
         capture_output=True, text=True, cwd=str(BACKEND),
-        env={"PATH": "/usr/bin:/bin:/usr/local/bin"},
+        env=_env_without_the_repository_root(),
     )
     assert result.returncode == 0, (
         f"a module the CLI imports lazily does not resolve:\n{result.stderr[-1500:]}"
