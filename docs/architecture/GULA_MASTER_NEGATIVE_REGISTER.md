@@ -88,7 +88,7 @@ since the first pass and now reflects all findings, not one session's._
 | NR-041 | P2  | Identity Platform | MFA exists for staff only, and its service takes an undiscriminated integer id | OPEN |
 | NR-042 | P3  | National Platform | The declared biometrics table points at raw biometric data | OPEN — DO NOT BUILD |
 | NR-043 | P2  | Identity Platform | Workspace eligibility ignored the organization's own standing | PARTIALLY VERIFIED (AUTH-005; narrowed, but unexecutable — NR-044) |
-| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | OPEN — BLOCKED ON A RUNTIME DECISION |
+| NR-044 | P1  | Identity Platform | The NIAM async service layer cannot execute — there is no async engine | OPEN — DECISION MADE (Option B: converge on sync Session); conversion is a separate batch |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.
