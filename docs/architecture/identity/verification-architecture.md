@@ -436,3 +436,51 @@ government authorization is made anywhere in this document.
 accounts safely today and cannot yet prove who holds them. Opening public
 registration before B converts every unproven account into a migration problem
 at exactly the moment AUTH-F10 has no policy for it.
+
+---
+
+## 17. Evidence
+
+`backend/tests/test_identity_assurance_boundaries.py` — 15 tests, plus four
+rewritten in `tests/identity/`.
+
+| Group | What it proves |
+|---|---|
+| Vocabulary | the purposes the record persists are the purposes the policy scores |
+| Substitution | organization and professional checks never raise identity assurance; a code proves contact and nothing further |
+| Capture ≠ attestation | OCR and NFC stay at L0 for identity |
+| Provider honesty | a provider cannot declare its own level; any non-verified status carries L0 whatever it claims |
+| State machine | `failed → verified` is refused; revocation drops assurance to L0 and deactivates |
+| Registration | `/register/citizen` creates no Patient and no Person, and marks both its claims unproven |
+| Defects | AUTH-V1/V2/V3/V4 each pinned with the evidence that identifies them |
+
+**Negative proof.** Folding `organization_registry` back onto the identity
+purpose — the exact shape of the original defect — fails two tests:
+
+```
+assert VerificationPolicy.purpose_for(method) == purpose
+E   AssertionError: assert <...identity: 'identity'> == <...organization: 'organization'>
+assert AssuranceEngine.level_for(results, VerificationPurpose.organization) == AssuranceLevel.L2
+E   AssertionError: assert <AssuranceLevel.L0: 'L0'> == <AssuranceLevel.L2: 'L2'>
+```
+
+Restored after measurement.
+
+**Suite:** 2977 passed, 34 skipped. **Lint:** clean on every changed file.
+
+**CI evidence.** The defect-pinning tests are worth nothing unless they run, and
+this workflow executes *named files* — so the suite was bound into the
+security-regression job and the job log read on `6a8c5c42` (run 34546587086,
+job 103100431515, Python 3.12.14):
+
+```
+======================= 104 passed, 3 warnings in 39.39s =======================
+```
+
+The same invocation collected 89 on the previous head; 104 − 89 = 15, exactly
+the number of tests in the new file, and a named file that failed to collect
+would have failed the step rather than passing it. All six checks green on that
+head. The `Failed to CreateArtifact` line is the known storage-quota condition
+on the evidence-upload step, which carries `continue-on-error` precisely so
+archival cannot fail the gate it documents; the pytest step is blocking and
+passed.
