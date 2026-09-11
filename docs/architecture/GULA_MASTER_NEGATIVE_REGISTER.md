@@ -26,10 +26,10 @@ and `docs/adr/`.
 | Severity  | Count | Fixed | Open |
 | --------- | ----- | ----- | ---- |
 | P0        | 10     | 6     | 4    |
-| P1        | 12     | 8     | 4    |
-| P2        | 9     | 0     | 9    |
-| P3        | 5     | 0     | 5    |
-| **Total** | **36** | **14** | **22** |
+| P1        | 15     | 9     | 6    |
+| P2        | 11     | 0     | 11    |
+| P3        | 6     | 0     | 6    |
+| **Total** | **42** | **15** | **27** |
 
 _Counts are generated from the JSON companion; the table above had drifted
 since the first pass and now reflects all findings, not one session's._
@@ -76,6 +76,12 @@ since the first pass and now reflects all findings, not one session's._
 | NR-034 | P0  | Pharmacy | A point-of-sale sale naming a patient writes an EHR `MedicationDispense` and cannot commit | FIXED — VERIFIED (MED-001) |
 | NR-035 | P1  | Identity Platform | The `user_id` token claim is ambiguous across `users` and `lab_users` | FIXED — VERIFIED (AUTH-003; `act` discriminator, single fail-closed resolver) |
 | NR-036 | P1  | Platform-wide | The test schema is built from ORM metadata, so tests pass against tables no migration creates | FIXED — VERIFIED (TEST-001 + TEST-001.1; gate binding in CI) |
+| NR-037 | P1  | Identity Platform | Assurance was one scale across four independent verification purposes | FIXED — VERIFIED (AUTH-004; purpose-scoped profile, ADR-026) |
+| NR-038 | P1  | Identity Platform | The client supplies its own identity assurance level, assessor and evidence | OPEN — BLOCKED ON POLICY |
+| NR-039 | P1  | Identity Platform | `users.is_verified` means both "a code was received" and "identity confirmed" | OPEN — BLOCKED ON POLICY |
+| NR-040 | P2  | Identity Platform | The canonical verification domain is built, migrated and wired to nothing | OPEN |
+| NR-041 | P2  | Identity Platform | MFA exists for staff only, and its service takes an undiscriminated integer id | OPEN |
+| NR-042 | P3  | National Platform | The declared biometrics table points at raw biometric data | OPEN — DO NOT BUILD |
 
 Full per-finding detail (root cause, all impact axes, minimal safe fix, acceptance
 criteria, regression risk, owner, wave) is in the JSON companion.

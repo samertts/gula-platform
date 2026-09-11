@@ -11,13 +11,14 @@ from app.identity.services.verification_service import (
     NotConnectedProvider,
     VerificationMethod,
     VerificationPolicy,
+    VerificationPurpose,
     VerificationRequest,
     VerificationResult,
     VerificationStatus,
 )
 
 
-def result(status: VerificationStatus, method: VerificationMethod, assurance: AssuranceLevel = AssuranceLevel.L5):
+def result(status: VerificationStatus, method: VerificationMethod, assurance: AssuranceLevel = AssuranceLevel.L3):
     return VerificationResult(
         status=status,
         assurance=assurance,
@@ -44,36 +45,74 @@ def test_non_verified_statuses_always_have_zero_assurance(status):
     candidate = result(status, VerificationMethod.professional_registry)
 
     assert VerificationPolicy.assurance_for(candidate) == AssuranceLevel.L0
-    assert AssuranceEngine.level_for([candidate]) == AssuranceLevel.L0
-    with pytest.raises(PermissionError, match="Required assurance"):
-        AssuranceEngine.require([candidate], AssuranceLevel.L1)
+    assert AssuranceEngine.level_for([candidate], VerificationPurpose.professional) == AssuranceLevel.L0
+    with pytest.raises(PermissionError, match="Required professional assurance"):
+        AssuranceEngine.require([candidate], VerificationPurpose.professional, AssuranceLevel.L1)
 
 
 @pytest.mark.parametrize(
-    ("method", "expected"),
+    ("method", "purpose", "expected"),
     [
-        (VerificationMethod.phone, AssuranceLevel.L1),
-        (VerificationMethod.email, AssuranceLevel.L1),
-        (VerificationMethod.official_identity, AssuranceLevel.L2),
-        (VerificationMethod.professional_registry, AssuranceLevel.L3),
-        (VerificationMethod.organization_registry, AssuranceLevel.L4),
+        (VerificationMethod.phone, VerificationPurpose.contact, AssuranceLevel.L1),
+        (VerificationMethod.email, VerificationPurpose.contact, AssuranceLevel.L1),
+        (VerificationMethod.official_identity, VerificationPurpose.identity, AssuranceLevel.L2),
+        (VerificationMethod.professional_registry, VerificationPurpose.professional, AssuranceLevel.L2),
+        (VerificationMethod.organization_registry, VerificationPurpose.organization, AssuranceLevel.L2),
+        # Capture techniques read a document; they do not attest to it.
+        (VerificationMethod.ocr, VerificationPurpose.identity, AssuranceLevel.L0),
+        (VerificationMethod.nfc, VerificationPurpose.identity, AssuranceLevel.L0),
     ],
 )
-def test_verified_method_mapping_is_authoritative(method, expected):
-    assert VerificationPolicy.assurance_for(result(VerificationStatus.verified, method)) == expected
+def test_verified_method_mapping_is_authoritative(method, purpose, expected):
+    candidate = result(VerificationStatus.verified, method)
+    assert VerificationPolicy.purpose_for(method) == purpose
+    assert VerificationPolicy.assurance_for(candidate) == expected
 
 
-def test_assurance_engine_selects_highest_verified_level_only():
+def test_assurance_is_scoped_per_purpose_and_never_substituted():
+    """AUTH-004. This test previously asserted the defect.
+
+    It read: phone + organization_registry + an expired professional check
+    collapse to a single ``L4``, and ``require(results, L4)`` passes. On one
+    ladder ``organization_registry`` sat above ``official_identity``, so an
+    account whose *employer* was verified out-ranked one whose *holder* was,
+    and any caller asking for "at least L2 — we know who this person is" was
+    satisfied by an organization check.
+
+    Purposes are independent questions. They are answered separately now, and
+    a caller must say which one it is asking.
+    """
     results = [
-        result(VerificationStatus.verified, VerificationMethod.phone, AssuranceLevel.L5),
-        result(VerificationStatus.verified, VerificationMethod.organization_registry, AssuranceLevel.L1),
-        result(VerificationStatus.expired, VerificationMethod.professional_registry, AssuranceLevel.L5),
+        result(VerificationStatus.verified, VerificationMethod.phone),
+        result(VerificationStatus.verified, VerificationMethod.organization_registry),
+        result(VerificationStatus.expired, VerificationMethod.professional_registry),
     ]
 
-    assert AssuranceEngine.level_for(results) == AssuranceLevel.L4
-    AssuranceEngine.require(results, AssuranceLevel.L4)
-    with pytest.raises(PermissionError):
-        AssuranceEngine.require(results, AssuranceLevel.L5)
+    assert AssuranceEngine.level_for(results, VerificationPurpose.contact) == AssuranceLevel.L1
+    assert AssuranceEngine.level_for(results, VerificationPurpose.organization) == AssuranceLevel.L2
+    # Never proven, and never inferred from the other two:
+    assert AssuranceEngine.level_for(results, VerificationPurpose.identity) == AssuranceLevel.L0
+    # An expired check contributes nothing.
+    assert AssuranceEngine.level_for(results, VerificationPurpose.professional) == AssuranceLevel.L0
+
+    AssuranceEngine.require(results, VerificationPurpose.organization, AssuranceLevel.L2)
+    with pytest.raises(PermissionError, match="Required identity assurance"):
+        AssuranceEngine.require(results, VerificationPurpose.identity, AssuranceLevel.L2)
+
+
+def test_a_caller_that_does_not_name_a_purpose_cannot_be_answered():
+    """Fail closed at the call site rather than returning a wrong number.
+
+    The old signature took results alone. Any call written against it now
+    raises TypeError instead of silently answering a different question from
+    the one the caller believed it was asking.
+    """
+    results = [result(VerificationStatus.verified, VerificationMethod.organization_registry)]
+
+    with pytest.raises(TypeError):
+        AssuranceEngine.level_for(results)
+    with pytest.raises(TypeError):
+        AssuranceEngine.require(results, AssuranceLevel.L2)
 
 
 @pytest.mark.asyncio
