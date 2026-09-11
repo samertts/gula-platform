@@ -1,15 +1,15 @@
 {
   "document": "GULA Master Negative Register",
-  "generated": "2026-09-11T17:29:51Z",
+  "generated": "2026-09-11T17:41:46Z",
   "head_commit": "ac894767bf33dd160ae8131ee8570e29e31f7481",
   "production_ready": false,
   "scope_note": "First evidence-driven pass. Findings are limited to what was actually executed or read in this session. Absence of a finding in a category does NOT mean the category is clean — see NR-013 and the coverage matrix.",
   "counts": {
-    "total": 54,
+    "total": 55,
     "by_severity": {
       "P0": 10,
       "P1": 20,
-      "P2": 18,
+      "P2": 19,
       "P3": 6
     }
   },
@@ -1731,7 +1731,7 @@
       "domain": "Platform / Engineering",
       "category": "Code generator emits broken code",
       "title": "The capability generator still emits all three defects that made nine packages unimportable",
-      "status": "OPEN",
+      "status": "FIXED — VERIFIED (NR-053)",
       "blocker": false,
       "can_fix_now": true,
       "priority": 53,
@@ -1741,12 +1741,14 @@
       "security_impact": "None directly. The risk is that a future capability is generated broken and the breakage is only noticed when something tries to import it — which, on this evidence, may be never.",
       "clinical_impact": "None directly; a clinical capability generated from this template would not run.",
       "recommended_fix": "Three template edits: relative import, `app.` instead of `backend.app.`, and non-default fields before defaulted ones. Then generate one capability into a temporary directory in a test and assert it imports.",
-      "verification": "Not yet fixed. The defects are reproduced and isolated in docs/architecture/nr-050-capability-tree-discovery.md §2.",
+      "verification": "backend/tests/test_capability_generator.py — eight tests that RUN the generator into a temporary directory and import what comes out, rather than grepping its source. D1: the generated package imports through its own name. D2: no generated file names the backend.app root, and the package imports in a subprocess given only the application root (backend/) and not the repository root — the environment D2 broke. D3: an entity with two required and one optional field is imported and instantiated; the required fields are still required and `id` still defaults. Four negative proofs, one per defect, each failing the intended test and each restored.",
       "affected_components": "backend/app/engineering/generators/capability.py",
       "discovered_by": "NR-050 discovery",
       "owner": "Platform Architecture",
       "artifact": "docs/architecture/nr-050-capability-tree-discovery.md",
-      "next_batch": "Actionable now; independent of the NR-050 disposition."
+      "next_batch": "",
+      "fixed_by": "NR-053",
+      "resolution": "Six edits in app/engineering/generators/capability.py. D1: the __init__ template emits `from .capability import` instead of a bare top-level import. D2: `module_path` is `app.capabilities.<cap>` — one string that feeds the infrastructure repository's two imports, the unit test's import and the descriptor metadata — plus the two literal template imports (routes, capability) and the generator's own import of its base class. D3: the entity template puts required fields ahead of the defaulted `id`, and the field list is split by whether a field carries a default; no field is renamed, retyped, added or dropped. A fourth defect (NR-055) was found by generating rather than reading. The ten existing packages were NOT touched — their disposition remains NR-050's decision."
     },
     {
       "id": "NR-054",
@@ -1770,6 +1772,31 @@
       "owner": "Frontend + Platform Architecture",
       "artifact": "docs/architecture/nr-050-capability-tree-discovery.md",
       "next_batch": "Blocked on the NR-050 disposition, but the defect is live today either way."
+    },
+    {
+      "id": "NR-055",
+      "severity": "P2",
+      "domain": "Platform / Engineering",
+      "category": "Code generator emits invalid Python",
+      "title": "The routes template built Python function names from the hyphenated URL prefix",
+      "status": "FIXED — VERIFIED (NR-053)",
+      "blocker": false,
+      "can_fix_now": true,
+      "priority": 55,
+      "description": "_ROUTES_TPL used a single {prefix} placeholder for both the FastAPI path prefix and the five generated function names. The prefix is the capability name with underscores replaced by hyphens, so the template emitted `async def list_clinical-foundation(` — a SyntaxError. Every generated routes.py with a multi-word capability name was invalid Python.",
+      "root_cause": "One placeholder serving two purposes with incompatible character sets: a URL segment may contain hyphens and a Python identifier may not.",
+      "evidence": "Found by running the generator, not by reading it: the first Phase 3 generation produced `SyntaxError: expected '('` at routes.py line 13 for both test specs. It had been invisible because the on-disk routes.py in app/capabilities/ say `async def list_clinical_foundation` with underscores — those files were hand-corrected after generation and the template never was, so the shipped tree is not a faithful sample of what the generator produces today.",
+      "security_impact": "None. A module that does not parse cannot run.",
+      "clinical_impact": "None directly; a clinical capability generated from this template would not import.",
+      "recommended_fix": "Separate the two placeholders: {prefix} for the URL, {func} for the identifier.",
+      "verification": "backend/tests/test_capability_generator.py::test_a_minimal_capability_generates_compiles_and_imports and ::test_a_capability_with_entities_generates_every_layer compile every generated module with py_compile. Negative proof: restoring {prefix} in the function names fails both.",
+      "affected_components": "backend/app/engineering/generators/capability.py",
+      "discovered_by": "NR-053 Phase 3 (generating rather than inspecting)",
+      "owner": "Platform Architecture",
+      "artifact": "docs/architecture/nr-050-capability-tree-discovery.md",
+      "next_batch": "",
+      "fixed_by": "NR-053",
+      "resolution": "The routes template takes {func} for the five function names, fed by the underscored capability name, while {prefix} continues to carry the hyphenated URL. Route paths and the generated API are unchanged."
     }
   ]
 }
